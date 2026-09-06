@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Heart } from "lucide-react";
+import { Flame } from "lucide-react";
 import { toggleKudos } from "@/lib/actions/kudos";
 import { cn } from "@/lib/utils/cn";
 
@@ -45,7 +45,7 @@ export default function KudosButton({
         given ? "text-accent" : "text-muted hover:text-foreground",
       )}
     >
-      <Heart className="h-3.5 w-3.5" aria-hidden="true" fill={given ? "currentColor" : "none"} />
+      <Flame className="h-3.5 w-3.5" aria-hidden="true" fill={given ? "currentColor" : "none"} />
       <span className="font-mono tabular-nums">{count}</span>
     </button>
   );
