@@ -236,6 +236,13 @@ export interface Profile {
   // Radius der Privatzone in Metern (0 = aus), siehe
   // 0045_freie_fahrten_teilen.sql und cropTrackEnds in lib/track.ts.
   privatzone_radius_m: number;
+  // Zeitpunkt der Kontolöschung, null bei aktiven Konten (siehe
+  // 0058_kontoloeschung_werte_nullen.sql). Ein gelöschtes Konto trägt in
+  // allen übrigen Spalten nur noch null bzw. false — der Zeitstempel ist
+  // das Einzige, woran es noch als gelöscht erkennbar ist. Ohne
+  // Spalten-Grant an anon/authenticated: nur über den Service-Role-Client
+  // lesbar.
+  geloescht_am: string | null;
   created_at: string;
 }
 

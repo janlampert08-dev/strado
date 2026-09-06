@@ -241,9 +241,12 @@ export interface DeleteAccountState {
 
 // Löscht kein auth.users-Zeile (siehe 0042_account_deletion.sql für die
 // ausführliche Begründung — würde per Cascade Fahrten/Bewertungen/Kudos/
-// Follows mitreissen), sondern anonymisiert das Profil und entwertet die
-// Zugangsdaten, sodass sich niemand mehr mit dem alten Passwort anmelden
-// kann. Verlangt eine erneute Passwort-Eingabe direkt vor der irreversiblen
+// Follows mitreissen), sondern leert das Profil (Name, Avatar und
+// Stripe-Kundenzuordnung auf null, alle Sichtbarkeits- und Status-Flags auf
+// false; welche Spalten bewusst stehen bleiben — darunter
+// privatzone_radius_m — steht in 0058_kontoloeschung_werte_nullen.sql) und
+// entwertet die Zugangsdaten, sodass sich niemand mehr mit dem alten Passwort
+// anmelden kann. Verlangt eine erneute Passwort-Eingabe vor der irreversiblen
 // Aktion — anders als bei den übrigen destruktiven Aktionen dieser App
 // (ConfirmDialog reicht dort), da eine unbeaufsichtigt offene Sitzung
 // (geteiltes Gerät, vergessene Abmeldung) sonst mit einem einzigen Klick
@@ -268,10 +271,14 @@ export async function deleteAccount(
   });
   if (reauthError) return { error: "Passwort ist falsch." };
 
-  // Anonymisiert das eigene Profil und löscht eigene Fahrzeuge — läuft über
-  // die normale, session-gebundene Verbindung (kein user.id-Parameter
-  // nötig/möglich, anonymize_own_account() bindet sich selbst über
-  // auth.uid()), siehe 0042 für die Details.
+  // Nullt Name, Avatar und Stripe-Kundenzuordnung des eigenen Profils,
+  // schaltet die Sichtbarkeits- und Status-Flags ab (not null, deshalb false
+  // statt null), setzt geloescht_am, entfernt die GPS-Tracks und löscht eigene
+  // Fahrzeuge. Unberührt bleiben id/created_at, privatzone_radius_m und
+  // kudos_gesehen_am, jeweils mit Begründung in 0058. Läuft über die normale,
+  // session-gebundene Verbindung (kein user.id-Parameter nötig/möglich,
+  // anonymize_own_account() bindet sich selbst über auth.uid()), siehe
+  // 0042/0045/0058 für die Details.
   const { error: anonymizeError } = await supabase.rpc("anonymize_own_account");
   if (anonymizeError) return { error: "Konto konnte nicht gelöscht werden." };
 
@@ -283,11 +290,19 @@ export async function deleteAccount(
   // synthetische E-Mail gibt die ursprüngliche Adresse für eine künftige
   // Neu-Registrierung frei und entfernt sie als personenbezogenes Datum aus
   // auth.users; das zufällige Passwort macht die alten Zugangsdaten nutzlos.
+  //
+  // user_metadata.display_name wird dabei genullt: signUp() legt den bei der
+  // Registrierung gewählten Namen dort ab (siehe oben und den Trigger
+  // handle_new_user in 0001), er überlebte die Profil-Anonymisierung bisher
+  // also als Kopie in auth.users. Ein null-Wert entfernt den Schlüssel aus
+  // den Metadaten (GoTrue löscht bei einem Merge genau die Schlüssel, deren
+  // Wert null ist), statt ihn nur zu überschreiben.
   const admin = createAdminClient();
   const { error: revokeError } = await admin.auth.admin.updateUserById(user.id, {
     email: `geloescht-${user.id}@geloescht.cornice.invalid`,
     password: crypto.randomUUID() + crypto.randomUUID(),
     email_confirm: true,
+    user_metadata: { display_name: null },
   });
   if (revokeError) {
     // Profil ist bereits anonymisiert (oben) — dieser Schritt lässt sich
