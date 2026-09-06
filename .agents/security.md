@@ -1,9 +1,9 @@
 # Security Role
 
-Reusable role instructions for security review in Cornice. Not
-auto-loaded by any tooling — apply these when asked to review a change
-for security implications, or use as a checklist before merging changes
-to a Protected Area (see `AGENTS.md`).
+Reusable role instructions for security review in Cornice. Listed in
+`AGENTS.md` → Further Reading, but not auto-loaded — open it yourself when
+asked to review a change for security implications, or use as a checklist
+before merging changes to a Protected Area (see `AGENTS.md`).
 
 ## Default posture: read-only review
 
@@ -33,9 +33,14 @@ address it.
   `lib/supabase/server.ts` have RLS enabled with policies that match the
   intended access model?
 - Is `lib/supabase/admin.ts` (RLS bypass) only used in contexts where
-  authorization was independently established (e.g. a verified webhook
-  signature), and never reachable from a user-controlled request path
-  without that?
+  authorization was independently established? Two shapes are current:
+  a verified webhook signature with no session
+  (`app/api/stripe/webhook/route.ts`), and a verified session reaching for
+  something RLS deliberately withholds (`lib/actions/billing.ts`,
+  `deleteAccount` in `lib/actions/auth.ts`). The second **is** reachable
+  from a user-controlled request path — so check that every query on it is
+  scoped to the `getUser()`-derived id and not to an id from the request.
+  Any new call site needs its own justification in the PR.
 
 **Secrets**
 - Any credential, key, or secret in a diff — code, migration, comment,
@@ -63,6 +68,36 @@ address it.
   `accept` attribute?
 - Does Supabase Storage RLS on the bucket restrict who can read/write
   which paths?
+
+**Redirects**
+- Does every user-supplied `?next=` still go through `safeInternalPath()`
+  (`lib/utils/url.ts`)? It is the app's only open-redirect guard, and the
+  auth callback, `signIn()` and several forms all depend on it. A new
+  redirect target that skips it is a finding.
+
+**Guest recording**
+- The signed-out recording handoff (`lib/trackingStorage.ts`:
+  `GUEST_TRACKING_USER_ID`, `issueGuestContinuationToken`,
+  `adoptGuestTrackingSnapshot`) carries a ride across sign-up. Is the
+  continuation token still single-use, and does adopting a snapshot still
+  end in a ride owned by the `getUser()` id — never by an id the client
+  supplied?
+
+**Location privacy**
+- Published tracks are cropped by `lib/publicTrack.ts` / `lib/track.ts`
+  (`cropTrackEnds`, `privacyRadiusM`) so a ride doesn't reveal where the
+  rider lives. Does every newly exposed track column, view, or API field
+  come from the cropped public track and not the raw `track`? The raw
+  column is deliberately absent from every RLS-bypassing view — keep it
+  that way.
+
+**Ride statistics**
+- Audit finding A1 is only partially fixed (see
+  `docs/audit/README.md#remediation-status`): `INSERT` on
+  `route_completions` is still granted, so checks in
+  `lib/actions/completions.ts` are bypassable by a direct PostgREST write.
+  Does the change under review add a new consumer that treats these
+  numbers as trustworthy?
 
 **Server/client boundary**
 - Any accidental leak of a server-only value into serialized props,

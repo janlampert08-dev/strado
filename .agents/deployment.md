@@ -2,9 +2,10 @@
 
 Reusable role instructions for shipping Cornice to production: Vercel
 (hosting/build), Supabase (schema + storage), Stripe (webhook endpoint).
-Not auto-loaded by any tooling — apply these when a change is about to go
-live, or when verifying that what is on `main` is actually what is
-running. See `AGENTS.md` for the full constitution these extend.
+Listed in `AGENTS.md` → Further Reading, but not auto-loaded — open it
+yourself when a change is about to go live, or when verifying that what is
+on `main` is actually what is running. See `AGENTS.md` for the full
+constitution these extend.
 
 The "Definition of Done" in `AGENTS.md` ends at the merge: tests, lint,
 build, security review, no secrets. This document covers what happens
@@ -55,7 +56,11 @@ the load-bearing part of this list, not paperwork.
       Reconcile every migration version in this deploy against that list —
       do not cut the query short, an unapplied migration can sit far below
       the most recent rows. Names in the ledger are historically
-      inconsistent, so they prove nothing; the objects do. And for a
+      inconsistent, so they prove nothing; the objects do. And `version` is
+      a primary key while the repo has four duplicated prefixes (`0034`,
+      `0041`, `0053`, `0054`), so a single matching row does **not** prove
+      both files of a duplicated pair ran — check each one's objects
+      separately. For a
       migration that *changes* something — a policy, a function body, an
       index, a constraint, a backfill — existence is not enough either:
       read back the current definition, and check the data the migration
