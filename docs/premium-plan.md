@@ -102,9 +102,14 @@ Stripe garantiert keine Reihenfolge. Ein spät zugestelltes
 `customer.subscription.updated` (Status `active`) nach einem bereits
 verarbeiteten `customer.subscription.deleted` schaltet Premium wieder ein.
 → Bei jedem Abo-Event den Zustand frisch von Stripe holen
-(`subscriptions.retrieve`) und schreiben, statt der Nutzlast zu vertrauen;
-zusätzlich `event.created` bzw. die Stripe-seitige Version gegen den zuletzt
-geschriebenen Stand prüfen.
+(`subscriptions.retrieve`) und diesen schreiben, statt der Nutzlast zu
+vertrauen. **`event.created` taugt ausdrücklich nicht als Versionsschlüssel** —
+Stripe dokumentiert Sekundenauflösung, mehrere Ereignisse können denselben
+Zeitstempel tragen. Der Schutz muss deshalb am Schreibvorgang hängen, nicht am
+Ereignis: pro `stripe_subscription_id` serialisiert schreiben (bedingtes
+`UPDATE` bzw. Zeilensperre), sodass zwei gleichzeitig verarbeitete Ereignisse
+nacheinander je den frisch geholten Zustand schreiben und das Ergebnis
+unabhängig von der Reihenfolge derselbe ist.
 
 **3.4 Jeder Aufruf von `createSubscriptionIntent()` legt ein neues Abo an.**
 Wer die Kaufseite zweimal öffnet oder neu lädt, erzeugt zwei `incomplete`-Abos;
@@ -126,7 +131,8 @@ Behandelt werden `checkout.session.completed` (wird vom heutigen
 Payment-Element-Fluss gar nicht mehr erzeugt), `customer.subscription.updated`
 und `.deleted`. Es fehlen `customer.subscription.created`, `invoice.paid`,
 `invoice.payment_failed` und `customer.subscription.paused/resumed`. Ohne
-`invoice.payment_failed` gibt es keine Kulanzfrist und keine Mahnlogik.
+`invoice.payment_failed` gibt es keine Kulanzfrist und keine Mahnlogik — und
+ohne `invoice.paid` keinen ausdrücklichen Weg zurück aus ihr heraus.
 
 **3.7 Keine API-Version gepinnt.**
 `lib/stripe.ts` nutzt die Dashboard-Standardversion. `confirmation_secret` (statt
@@ -177,7 +183,7 @@ Das ist Absicht: die Grenzkosten pro Abonnent bleiben so praktisch bei null
 
 Der Funktionsumfang allein trägt CHF 4.90 nicht — ehrlicherweise ist das ein
 Unterstützer-Abo mit Vergünstigungen. Genau so sollte es auch benannt werden
-(„Cornice unterstützen", Abzeichen als sichtbarer Dank). Das erhöht die
+(„Cornice unterstützen“, Abzeichen als sichtbarer Dank). Das erhöht die
 Zahlungsbereitschaft bei dünnem Funktionsumfang und vermeidet den Reflex,
 zunehmend Kernfunktionen einzuzäunen, um den Preis zu rechtfertigen.
 
@@ -189,7 +195,7 @@ zunehmend Kernfunktionen einzuzäunen, um den Preis zu rechtfertigen.
 
 | Posten | Kosten | Anmerkung |
 | --- | --- | --- |
-| Vercel Pro | $20 ≈ CHF 16 | **Pflicht ab dem ersten Franken Umsatz** — Hobby ist nicht für kommerzielle Nutzung lizenziert |
+| Vercel Pro | $20 ≈ CHF 16 | **Pflicht, bevor der Premium-Verkauf aktiviert wird** — Hobby ist laut Vercels Bedingungen auf persönliche, nichtkommerzielle Nutzung beschränkt; ausschlaggebend ist die kommerzielle Nutzung selbst, nicht der erzielte Umsatz |
 | Supabase Pro | $25 ≈ CHF 20 | 8 GB DB, 100 GB Storage, 250 GB Egress, 100k MAU inklusive |
 | Domain + Mail | ≈ CHF 5 | |
 | Mapbox | CHF 0 | innerhalb der Freikontingente, siehe 5.2 |
@@ -203,12 +209,12 @@ Annahmen für einen aktiven Nutzer: 15 Streckendetail-Aufrufe, 12 Kartensitzunge
 
 | Posten | Menge | Preis über Freikontingent | Kosten |
 | --- | --- | --- | --- |
-| Mapbox Tilequery (Verkehr) | 15 Aufrufe × ~15 Stichproben = 225 | ~$1.00/1000 | **$0.225** |
-| Mapbox Map Loads (Web) | 12 Sitzungen | ~$5.00/1000 | $0.060 |
+| Mapbox Tilequery (Verkehr) | 15 Aufrufe × ~15 Stichproben = 225 | $1.50/1000 (Tier 100'001–500'000) | **$0.338** |
+| Mapbox Map Loads (Web) | 12 Sitzungen | $5.00/1000 (Tier 50'001–100'000) | $0.060 |
 | Mapbox Directions + Geocoding | ~1 Streckenvorschlag | ~$2.00/1000 | $0.002 |
 | Supabase Egress | 0.2 GB | $0.09/GB | $0.018 |
 | Supabase Storage (Zuwachs) | 0.023 GB | $0.021/GB | $0.0005 |
-| **Summe** | | | **≈ $0.31 ≈ CHF 0.25** |
+| **Summe** | | | **≈ $0.42 ≈ CHF 0.33** |
 
 Solange die Freikontingente reichen, sind das **CHF 0.00**. Die Kontingente
 reichen bis:
@@ -251,8 +257,10 @@ Liquidität.
   (≈ CHF 27/Monat) buchen. Kein Blocker für den Code, aber einer für den Launch.
 - **geo.admin.ch Höhenprofil** (`lib/elevation.ts`): Nutzungsbedingungen der
   Bundesgeodaten auf kommerzielle Nutzung und Abfragevolumen prüfen.
-- **MWST:** Steuerpflicht ab CHF 100'000 weltweitem Jahresumsatz, Normalsatz
-  8.1 %. Das entspricht ~1'700 Jahresabos — vorerst nicht relevant. Der Preis
+- **MWST:** Steuerpflicht ab CHF 100'000 weltweitem Jahresumsatz aus
+  steuerbaren, nicht von der Steuer ausgenommenen Leistungen; Normalsatz
+  8.1 %. Das entspricht ~2'041 Jahresabos zu CHF 49 oder ~1'701 Monatsabos zu
+  CHF 4.90 (12 × 4.90 = CHF 58.80/Jahr) — vorerst nicht relevant. Der Preis
   muss trotzdem **von Anfang an als Bruttopreis inkl. MWST** kommuniziert
   werden (Preisbekanntgabeverordnung), damit die spätere Steuerpflicht keine
   Preiserhöhung erzwingt, sondern 7.5 % Marge kostet. Im Modell unten bereits
@@ -264,17 +272,18 @@ Liquidität.
 | --- | --- | --- |
 | Bruttoumsatz pro Monat | 4.90 | 4.08 |
 | ./. Stripe | −0.48 | −0.17 |
-| ./. Infrastruktur (Grenzkosten) | −0.25 | −0.25 |
-| **Deckungsbeitrag** | **CHF 4.17 (85 %)** | **CHF 3.66 (90 %)** |
-| Gewinnschwelle bei CHF 41 Fixkosten | **10 Abos** | **12 Abos** |
+| ./. Infrastruktur (Grenzkosten) | −0.33 | −0.33 |
+| **Deckungsbeitrag** | **CHF 4.09 (83 %)** | **CHF 3.58 (88 %)** |
+| Gewinnschwelle bei CHF 41 Fixkosten | **11 Abos** | **12 Abos** |
 | Gewinnschwelle inkl. Open-Meteo (CHF 68) | 17 Abos | 19 Abos |
 
 Der eigentliche Kostenblock ist nicht die Infrastruktur, sondern die
 **Kuratierung und Moderation** — die Zeit, die in geprüfte Strecken fliesst.
-Rechnet man dafür auch nur 4 Stunden pro Monat zu CHF 60 an, verschiebt sich
-die Gewinnschwelle auf ~66 Abos. Das ist die realistische Zielmarke, nicht die
-10 aus der Infrastrukturrechnung. Der Preis muss deshalb nach Wert und Markt
-gesetzt werden, nicht nach Serverkosten.
+Rechnet man dafür auch nur 4 Stunden pro Monat zu CHF 60 an (CHF 240), liegen
+die Gesamtkosten bei CHF 281 im Monat und die Gewinnschwelle bei ~69
+Monatsabos beziehungsweise ~79 Jahresabos. Das ist die realistische Zielmarke,
+nicht die 11 aus der Infrastrukturrechnung. Der Preis muss deshalb nach Wert
+und Markt gesetzt werden, nicht nach Serverkosten.
 
 ---
 
@@ -287,7 +296,7 @@ gesetzt werden, nicht nach Serverkosten.
 | Kurviger Tourer+ | €29.99/Jahr ≈ CHF 28 | Navigation + Offline-Karten |
 | REVER Pro | $39.99/Jahr ≈ CHF 32 | Routenplanung + Tracking |
 | Calimoto Premium | €59.99/Jahr ≈ CHF 56 | Vollnavigation, grosse Nutzerbasis |
-| Strava | ≈ CHF 8–10/Monat | Referenz für „Community-Abo" |
+| Strava | ≈ CHF 8–10/Monat | Referenz für „Community-Abo“ |
 
 Cornice bietet weniger Funktion als alle drei Motorrad-Apps (keine Navigation,
 keine Offline-Karten), aber etwas, das keine von ihnen hat: **kuratierte,
@@ -299,7 +308,7 @@ getragen werden, nicht über einen Funktionsvergleich.
 
 | Plan | Preis | Begründung |
 | --- | --- | --- |
-| **Monat** | **CHF 4.90 inkl. MWST** | Zahl steht bereits in der (auskommentierten) Oberfläche; niedrige Einstiegshürde, klarer Vergleich zu „ein Kaffee" |
+| **Monat** | **CHF 4.90 inkl. MWST** | Zahl steht bereits in der (auskommentierten) Oberfläche; niedrige Einstiegshürde, klarer Vergleich zu „ein Kaffee“ |
 | **Jahr** | **CHF 49.00 inkl. MWST** | 2 Monate gratis (−17 %), Standardrabatt; senkt die Gebührenlast von 9.7 % auf 4.2 % und die Kündigungsentscheidungen von 12 auf 1 pro Jahr |
 | **Gründerpreis Jahr** | **CHF 39.00**, dauerhaft preisgebunden, erste 100 Abos | Erzeugt Dringlichkeit ohne Rabattschleife, belohnt frühe Unterstützer, bleibt über der Gebührenschwelle |
 
@@ -310,6 +319,21 @@ Tage Geld-zurück auf Anfrage**, per Hand über das Stripe-Dashboard erstattet.
 Null Code, in der Praxis konversionsstark, jederzeit zurücknehmbar. Der Webhook
 akzeptiert `trialing` bereits, ein Trial lässt sich also später ohne
 Codeänderung nachrüsten.
+
+Erstattung und Kündigung sind bei Stripe **zwei getrennte Vorgänge** — eine
+Rückerstattung allein stoppt das Abo nicht, es würde weiterlaufen und erneut
+belasten. Der Ablauf für einen Geld-zurück-Fall ist deshalb festgeschrieben:
+
+1. Abo bei Stripe kündigen (`subscriptions.cancel`, sofort statt zum
+   Periodenende — es wird ja erstattet).
+2. Die Zahlung erstatten (`refunds.create` auf den zugehörigen PaymentIntent).
+3. Beide Schritte erzeugen Webhook-Ereignisse; der Handler schreibt daraus
+   `subscriptions` und `ist_premium` fort. Kein Handeingriff in der Datenbank.
+4. Nur wenn nach wenigen Minuten kein Ereignis eintraf, den Zustand über den
+   Abgleich aus Phase 6 nachziehen.
+
+Kündigung zuerst: bricht Schritt 2 ab, ist der Nutzer erstattungsberechtigt,
+aber wenigstens nicht weiter belastet — umgekehrt liefe die Belastung weiter.
 
 **Zahlungsmittel:** Karten + Apple Pay/Google Pay + **TWINT**. TWINT unterstützt
 laut Stripe-Dokumentation wiederkehrende Zahlungen und Abos (Maximalbetrag CHF
@@ -341,11 +365,14 @@ spielt sie ein, vor dem Deploy des Codes, der sie braucht.
 1. Rechtstexte veröffentlichen und `LEGAL_URLS` in `lib/constants.ts` auf die
    echte Domain zeigen lassen. AGB brauchen mindestens: Laufzeit, automatische
    Verlängerung, Kündigungsfrist, Preis inkl. MWST, Erstattungsregel.
-2. Stripe: Produkt „Cornice Premium" mit drei Preisen (Monat 4.90, Jahr 49.00,
+2. Stripe: Produkt „Cornice Premium“ mit drei Preisen (Monat 4.90, Jahr 49.00,
    Gründer 39.00, alle CHF, wiederkehrend). TWINT im Dashboard beantragen.
-3. Vercel auf Pro heben (Lizenzpflicht ab Umsatz).
-4. Open-Meteo-Lizenzfrage klären (5.4).
-5. Webhook-Endpunkt in Production registrieren, Ereignisliste aus 3.6.
+3. Stripe-API-Version pinnen (siehe 3.7) — mindestens `2023-08-16`, sonst
+   greifen die im Dashboard aktivierten Zahlungsmethoden nicht.
+4. Vercel auf Pro heben, bevor der Verkauf aktiviert wird (Hobby ist auf
+   nichtkommerzielle Nutzung beschränkt, siehe 5.1).
+5. Open-Meteo-Lizenzfrage klären (5.4).
+6. Webhook-Endpunkt in Production registrieren, Ereignisliste aus 3.6.
 
 ### Phase 1 — Abo-Zustand und Webhook-Korrektheit (geschützter Bereich)
 
@@ -361,6 +388,8 @@ create table public.subscriptions (
   current_period_end timestamptz not null,
   cancel_at_period_end boolean not null default false,
   kulanz_bis timestamptz,            -- gesetzt bei past_due, siehe unten
+  kulanz_invoice_id text,            -- Rechnung, die die Frist ausgelöst hat:
+                                     -- verhindert, dass Smart Retries sie verlängern
   stripe_updated_at timestamptz not null,  -- Schutz gegen Events ausser der Reihe
   updated_at timestamptz not null default now()
 );
@@ -369,14 +398,33 @@ alter table public.subscriptions enable row level security;
 -- Service-Role-Client erreichbar, wie stripe_webhook_events (0026).
 ```
 
-`profiles.ist_premium` bleibt **die einzige Lesequelle** für die Anwendung —
-alle bestehenden Views, Policies und Abfragen hängen daran. Der Webhook leitet
-den Wert aus der `subscriptions`-Zeile ab und schreibt ihn:
+**Kanonische Quelle ist `subscriptions`.** `profiles.ist_premium` bleibt die
+einzige Lesequelle für das reine Ja/Nein — alle bestehenden Views, Policies und
+Abfragen hängen daran und sollen unverändert bleiben —, ist aber ab jetzt
+ausdrücklich nur noch eine **Projektion** der `subscriptions`-Zeile:
 
-```
+```text
 ist_premium = status in ('active','trialing')
            or (status = 'past_due' and now() < kulanz_bis)
 ```
+
+Daraus folgt eine Regel für jeden Schreibpfad: Wer `ist_premium` setzt, muss
+im selben Vorgang die `subscriptions`-Zeile setzen. Das betrifft nicht nur den
+Webhook, sondern auch `confirmSubscription()` (`lib/actions/billing.ts:94–144`),
+das heute allein `ist_premium` schreibt — sonst ist Premium sofort aktiv,
+während `getPremiumStatus()` (Phase 2) keine Zeile für Plan, Periodenende und
+Kulanzfrist findet. Beide Schreibvorgänge gehören in eine Transaktion
+beziehungsweise ein gemeinsames Upsert.
+
+**Bestandsbereinigung vor der Aktivierung.** `user_id` ist Primärschlüssel,
+lässt also genau eine Zeile pro Nutzer zu — während heute pro Customer mehrere
+`active`/`trialing`/`incomplete`-Abos existieren können (Befund 3.4). Vor dem
+Scharfschalten des neuen Reducers deshalb einmalig: alle Abos je Customer
+erheben, das kanonische bestimmen (das älteste bezahlte `active`; sonst das
+zuletzt erstellte), überzählige bei Stripe kündigen — bezahlte anteilig
+erstatten — und erst die bereinigten Zustände in `subscriptions` schreiben.
+Diese Bereinigung läuft als einmaliges Skript gegen die Stripe-API, nicht als
+Migration: die Daten liegen bei Stripe, nicht in der Datenbank.
 
 **Webhook-Umbau** (`app/api/stripe/webhook/route.ts`):
 
@@ -385,19 +433,40 @@ ist_premium = status in ('active','trialing')
   Zustandsübergang ohne Netzwerk oder Datenbank testbar.
 - Bei jedem Abo-Ereignis den Zustand frisch von Stripe holen statt der Nutzlast
   zu vertrauen (behebt 3.3).
-- `stripe_updated_at` als Wächter: ältere Ereignisse werden verworfen.
+- Schreibvorgänge pro `stripe_subscription_id` serialisieren (bedingtes
+  `UPDATE`/Zeilensperre), damit gleichzeitig verarbeitete Ereignisse
+  deterministisch enden. `stripe_updated_at` dient der Nachvollziehbarkeit,
+  **nicht** als Reihenfolgenkriterium (siehe 3.3).
 - Idempotenz zweiphasig (behebt 3.1); `500` bei Schreibfehler (behebt 3.2).
-- Ereignisse ergänzen (3.6). `invoice.payment_failed` setzt
-  `kulanz_bis = now() + 7 Tage` und lässt Premium bestehen.
-- `checkout.session.completed` entfernen — dieser Fluss existiert nicht mehr.
+- Ereignisse ergänzen (3.6):
+  - `invoice.payment_failed` setzt `kulanz_bis = now() + 7 Tage` **einmal pro
+    Rechnung** und lässt Premium bestehen. Stripes Smart Retries lösen für
+    dieselbe Rechnung mehrere solche Ereignisse aus; jedes weitere darf die
+    Frist nicht verlängern. Dafür die auslösende `invoice_id` mitschreiben und
+    `kulanz_bis` nur setzen, wenn für diese Rechnung noch keine Frist läuft.
+  - `invoice.paid` beendet die Kulanzfrist ausdrücklich (`kulanz_bis = null`)
+    und schreibt den frisch geholten Abo-Zustand — idempotent, mehrfach
+    zustellbar ohne Wirkungsunterschied. Sich allein auf
+    `customer.subscription.updated` zu verlassen, wäre eine Wette darauf, dass
+    dieses Ereignis in jedem Erholungsfall kommt und zuerst ankommt.
+- `checkout.session.completed` **nicht sofort entfernen**: der Fluss wird zwar
+  nicht mehr ausgelöst, aber Stripe wiederholt unzugestellte Ereignisse bis zu
+  drei Tage lang. Ein entfernter Zweig würde eine solche Wiederholung nur als
+  verarbeitet markieren, ohne Premium zu setzen. Erst entfernen, wenn das
+  Ereignisprotokoll im Dashboard über mehr als drei Tage keinen einzigen
+  Eintrag dieses Typs mehr zeigt — bis dahin bleibt der bestehende Zweig
+  unverändert stehen.
 
 **Tests (`lib/stripeWebhook.test.ts` erweitern):** Reducer je Status;
-Wiederholung desselben Events; Event ausser der Reihe; `past_due` innerhalb und
-ausserhalb der Kulanzfrist; Schreibfehler → `500`.
+Wiederholung desselben Events; verspätet zugestelltes Ereignis; zwei Ereignisse
+mit identischem `created`-Zeitstempel; zwei gleichzeitig verarbeitete
+Ereignisse für dasselbe Abo; wiederholtes `invoice.payment_failed` derselben
+Rechnung verlängert `kulanz_bis` nicht; `invoice.paid` beendet die Frist;
+`past_due` innerhalb und ausserhalb der Kulanzfrist; Schreibfehler → `500`.
 
 ### Phase 2 — Berechtigungsschicht
 
-Neu: `lib/premium.ts` als einzige Antwort auf „darf dieser Nutzer X?".
+Neu: `lib/premium.ts` als einzige Antwort auf „darf dieser Nutzer X?“.
 
 ```ts
 export type PremiumStatus = {
@@ -423,8 +492,14 @@ nicht verstreut in Komponenten.
   Price-ID aus einer serverseitigen Zuordnung entgegen — **nie** eine vom
   Client übergebene Price-ID verwenden.
 - Doppelte Abos verhindern (3.4).
-- TWINT und Wallets über das Payment Element aktivieren (Dashboard-seitig, keine
-  Codeänderung nötig — dynamische Zahlungsmethoden).
+- TWINT und Wallets über das Payment Element aktivieren. Dashboard-seitig und
+  ohne Codeänderung geht das nur mit einer Stripe-API-Version ab
+  `2023-08-16` — seither sind dynamische Zahlungsmethoden der Standard. Auf
+  einer älteren Version bliebe trotz Dashboard-Freischaltung allein die
+  Kartenzahlung übrig. Also zuerst die gepinnte Version aus Phase 0 prüfen
+  (siehe 3.7); ist sie älter, im Abo-Aufruf `automatic_payment_methods`
+  ausdrücklich setzen. Der bestehende `clientSecret`-/`PaymentElement`-Fluss
+  bleibt davon unberührt.
 - Erfolgszustand hängt an `confirmSubscription()` (existiert bereits), nicht am
   Webhook: der Nutzer sieht Premium sofort, auch wenn das Ereignis Sekunden
   später eintrifft.
@@ -446,7 +521,7 @@ nicht verstreut in Komponenten.
 ### Phase 5 — Lebenszyklus
 
 - Kündigung über das Stripe-Kundenportal (existiert); Profilseite zeigt
-  „Premium bis TT.MM.JJJJ" bei `cancel_at_period_end`.
+  „Premium bis TT.MM.JJJJ“ bei `cancel_at_period_end`.
 - Herabstufung: private Strecken werden **nie gelöscht** — sie bleiben privat
   und für den Eigentümer sichtbar, nur das Neuanlegen ist gesperrt.
   Gold-Abzeichen verschwindet automatisch (`ist_premium` fällt weg, die Views
