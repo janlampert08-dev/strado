@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getOrigin } from "@/lib/utils/url";
+import { getOrigin, safeInternalPath } from "@/lib/utils/url";
 import { getClientIp, isRateLimitedByKey } from "@/lib/rateLimit";
 
 export interface AuthFormState {
@@ -59,7 +59,15 @@ export async function signIn(
     return { error: "E-Mail oder Passwort ist falsch." };
   }
 
-  redirect("/profil");
+  // Optionales verstecktes Feld "next" (siehe AnmeldenForm.tsx) bringt
+  // Nutzer nach der Anmeldung dorthin, wofür sie sich angemeldet haben —
+  // etwa /fahrten/neu nach einem Klick auf "Fahrt starten". FormData ist
+  // vollständig client-kontrolliert, der Wert läuft deshalb durch
+  // safeInternalPath: ohne diese Prüfung liesse sich die Anmeldung als
+  // Open-Redirect auf eine fremde Domain missbrauchen (Phishing-Seite, die
+  // nach einer echten Anmeldung erscheint). Ohne/ungültiges Feld bleibt
+  // /profil das unveränderte Standardziel.
+  redirect(safeInternalPath(formData.get("next")) ?? "/profil");
 }
 
 // PostgREST reicht ilike als SQL LIKE durch — % und _ (und \ selbst) haben
