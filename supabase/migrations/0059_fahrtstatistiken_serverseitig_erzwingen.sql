@@ -30,6 +30,10 @@
 -- verändern darf — ein Überschreiben aus st_length(track) würde jede Distanz
 -- systematisch kürzen. Deshalb ein Plausibilitätsband statt einer Ableitung.
 --
+-- Der Trigger prüft ausserdem nur, wenn sich eine der drei Statistikspalten
+-- tatsächlich ändert (Schritt 0 unten). Andernfalls würde er fremde Updates
+-- mit in Sippenhaft nehmen, allen voran die Kontolöschung aus 0058.
+--
 -- Bewusst NICHT abgedeckt (siehe unten, "Bekannte Restrisiken").
 -- ---------------------------------------------------------------------------
 
@@ -42,6 +46,30 @@ declare
   v_track_km numeric;
   v_kmh numeric;
 begin
+  -- 0. Bei einem UPDATE, das keine der drei Statistikspalten anfasst, gibt es
+  --    nichts zu prüfen — unverändert durchlassen. Dieselbe Disziplin wie in
+  --    0052 (dort Fall 4).
+  --
+  --    Das ist nicht bloss Sparsamkeit, sondern notwendig: 0058
+  --    (anonymize_own_account) setzt bei der Kontolöschung track = null und
+  --    ist_oeffentlich, rührt distanz_km/dauer_sekunden/hoehenmeter_aufstieg
+  --    aber nicht an. Liefe die Plausibilitätsprüfung auch dort, würde eine
+  --    einzige Altzeile mit unplausiblen Werten (angelegt, bevor es diese
+  --    Prüfung gab) die ganze Löschung mit einer Exception abbrechen — das
+  --    Konto liesse sich nicht mehr löschen. Gleiches gilt für die
+  --    Sichtbarkeits- und Notiz-Updates aus 0046.
+  --
+  --    track selbst braucht hier keinen Vergleich: 0046 hat UPDATE auf
+  --    route_completions entzogen und nur ist_oeffentlich, notiz und
+  --    track_oeffentlich neu vergeben. Die Geometrie kann ein Nutzer also
+  --    ohnehin nicht direkt ändern.
+  if tg_op = 'UPDATE'
+     and new.distanz_km is not distinct from old.distanz_km
+     and new.dauer_sekunden is not distinct from old.dauer_sekunden
+     and new.hoehenmeter_aufstieg is not distinct from old.hoehenmeter_aufstieg then
+    return new;
+  end if;
+
   -- 1. Grob unmögliche Werte hart ablehnen. Der App-Pfad prüft das bereits
   --    (implausibilityReason/MAX_PLAUSIBLE_KMH in lib/actions/completions.ts)
   --    und gibt eine freundliche Meldung aus, bevor es hierher kommt — für

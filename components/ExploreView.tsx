@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ExploreSidebar from "@/components/ExploreSidebar";
@@ -9,14 +9,7 @@ import Skeleton from "@/components/ui/Skeleton";
 import { haversineKm } from "@/lib/geo";
 import { matchesSearch } from "@/lib/search";
 import { computeSignatures } from "@/lib/signature";
-import {
-  applyAdvancedFilters,
-  parseExploreSearchParams,
-  serializeExploreSearchParams,
-  type AdvancedFilters,
-  type ExploreFiltersState,
-} from "@/lib/exploreFilters";
-import type { Kategorie, RouteGeoJSON } from "@/types/database";
+import type { RouteGeoJSON } from "@/types/database";
 
 // URL-Sync für den Suchtext wird debounced (siehe searchInput-Effekt unten),
 // damit nicht jeder Tastendruck einen router.replace() (und damit einen
@@ -24,6 +17,19 @@ import type { Kategorie, RouteGeoJSON } from "@/types/database";
 // unbenommen sofort responsiv, nur der Query-String hinkt bis zu diesem
 // Delay hinterher.
 const SEARCH_URL_SYNC_DEBOUNCE_MS = 300;
+
+// Der Suchtext ist der einzige Filter, den die Startseite noch führt. Die
+// Kategorie-Chips sind hier entfallen, weil das Signatur-Merkmal je Strecke
+// (lib/signature.ts) sie in dieser Ansicht ohnehin ablösen sollte, und die
+// erweiterten km-/Höhen-/Saison-Filter, weil ein kuratierter Bestand dieser
+// Grösse eher gelesen als eingegrenzt wird — beides steht als Modul bereit
+// (components/AdvancedFiltersPanel.tsx), sobald der Bestand es wieder
+// rechtfertigt. Leerer Suchtext ergibt weiterhin eine saubere URL ohne
+// Query-String, statt eines leeren ?q=.
+function searchQueryHref(pathname: string, query: string): string {
+  const trimmed = query.trim();
+  return trimmed ? `${pathname}?${new URLSearchParams({ q: trimmed })}` : pathname;
+}
 
 // mapbox-gl ist eine schwere Abhängigkeit (WebGL, eigenes CSS) — dynamisch
 // geladen, damit Suchfeld/Streckenliste interaktiv werden, ohne auf den
@@ -48,33 +54,18 @@ export default function ExploreView({
   routes: RouteGeoJSON[];
   loadError?: boolean;
 }) {
-  // Kategorie-Chips und erweiterte Filter leben nicht mehr in eigenem
-  // useState, sondern werden bei jedem Render direkt aus der URL gelesen
-  // (searchParams) — die URL ist hier die "single source of truth". So
-  // bleibt die Auswahl beim Zurück-/Vorwärtsnavigieren, Neuladen und beim
-  // Zurückkehren von der Routendetailseite erhalten (statt beim Verlassen
-  // der Komponente verloren zu gehen), und der Zustand lässt sich als Link
-  // teilen. router.replace() (nicht push()) hält die Browser-History dabei
-  // sauber, siehe updateUrl().
+  // Der Suchtext wird nicht in eigenem State gehalten *statt* in der URL,
+  // sondern zusätzlich: die URL ist die "single source of truth" (teilbar,
+  // übersteht Reload und die Rückkehr von der Routendetailseite), das
+  // Eingabefeld braucht aber bei jedem Tastendruck eine sofortige Antwort,
+  // während der URL-Sync (s.u.) debounced erfolgt. router.replace() (nicht
+  // push()) hält dabei die Browser-History sauber.
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const urlFilters = useMemo(() => parseExploreSearchParams(searchParams), [searchParams]);
-  const { selectedKategorien, advancedFilters } = urlFilters;
+  const urlSearchQuery = searchParams.get("q") ?? "";
 
-  const updateUrl = useCallback(
-    (next: ExploreFiltersState) => {
-      const qs = serializeExploreSearchParams(next).toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    },
-    [pathname, router],
-  );
-
-  // Der Suchtext braucht dagegen eigenen React-State: das Eingabefeld muss
-  // bei jedem Tastendruck sofort reagieren, während der URL-Sync (s.u.)
-  // debounced erfolgt. Initialwert kommt aus der URL (Lazy-Init), damit ein
-  // Reload/Zurücknavigieren mit vorhandenem ?q=… den Suchtext wiederherstellt.
-  const [searchInput, setSearchInput] = useState(() => urlFilters.searchQuery);
+  const [searchInput, setSearchInput] = useState(urlSearchQuery);
   // Merkt sich, mit welchem URL-Wert searchInput zuletzt abgeglichen wurde,
   // um externe Änderungen (Browser-Zurück/Vorwärts auf eine URL mit
   // anderem ?q=…) von den eigenen (debounced) Schreibvorgängen zu
@@ -82,24 +73,19 @@ export default function ExploreView({
   // in einem useEffect — React "Adjusting state when a prop changes"-Muster
   // — da setState synchron in einem Effekt Render-Kaskaden auslöst
   // (react-hooks/set-state-in-effect).
-  const [syncedSearchQuery, setSyncedSearchQuery] = useState(() => urlFilters.searchQuery);
-  if (urlFilters.searchQuery !== syncedSearchQuery) {
-    setSyncedSearchQuery(urlFilters.searchQuery);
-    setSearchInput(urlFilters.searchQuery);
+  const [syncedSearchQuery, setSyncedSearchQuery] = useState(urlSearchQuery);
+  if (urlSearchQuery !== syncedSearchQuery) {
+    setSyncedSearchQuery(urlSearchQuery);
+    setSearchInput(urlSearchQuery);
   }
 
-  // Schreibt den Suchtext debounced in die URL, ohne die Kategorie-/
-  // Advanced-Filter-Teile der URL anzufassen — urlFilters ist hier absichtlich
-  // Abhängigkeit, damit ein zwischenzeitlicher Chip-/Filter-Wechsel den
-  // ausstehenden Timeout mit dem aktuellen restlichen Zustand neu aufsetzt,
-  // statt ihn mit einer veralteten Momentaufnahme zu überschreiben.
   useEffect(() => {
-    if (searchInput === urlFilters.searchQuery) return;
+    if (searchInput === urlSearchQuery) return;
     const timeout = setTimeout(() => {
-      updateUrl({ ...urlFilters, searchQuery: searchInput });
+      router.replace(searchQueryHref(pathname, searchInput), { scroll: false });
     }, SEARCH_URL_SYNC_DEBOUNCE_MS);
     return () => clearTimeout(timeout);
-  }, [searchInput, urlFilters, updateUrl]);
+  }, [searchInput, urlSearchQuery, pathname, router]);
 
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [locating, setLocating] = useState(false);
@@ -111,31 +97,6 @@ export default function ExploreView({
   // Die eigentliche Drag-/Tap-Mechanik steckt in DragSheet.tsx, wiederverwendet
   // auf der Routendetailseite (app/strecken/[id]/page.tsx).
   const containerRef = useRef<HTMLElement>(null);
-
-  const onToggleKategorie = useCallback(
-    (kategorie: Kategorie) => {
-      const next = urlFilters.selectedKategorien.includes(kategorie)
-        ? urlFilters.selectedKategorien.filter((k) => k !== kategorie)
-        : [...urlFilters.selectedKategorien, kategorie];
-      updateUrl({ ...urlFilters, selectedKategorien: next });
-    },
-    [urlFilters, updateUrl],
-  );
-
-  // Bug 2: eigener Reset nur für die Kategorie-Chips, unabhängig vom
-  // "Filter zurücksetzen" von AdvancedFiltersPanel (das nur km/Höhe/Saison
-  // betrifft) — Suchtext bleibt bewusst unangetastet, jede Filtergruppe
-  // setzt nur sich selbst zurück.
-  const onResetKategorien = useCallback(() => {
-    updateUrl({ ...urlFilters, selectedKategorien: [] });
-  }, [urlFilters, updateUrl]);
-
-  const onAdvancedFiltersChange = useCallback(
-    (filters: AdvancedFilters) => {
-      updateUrl({ ...urlFilters, advancedFilters: filters });
-    },
-    [urlFilters, updateUrl],
-  );
 
   function requestLocation() {
     if (!navigator.geolocation) {
@@ -177,21 +138,9 @@ export default function ExploreView({
   const visibleRoutes = useMemo(() => {
     // searchInput statt des (debounced) URL-Werts: die Liste soll bei jedem
     // Tastendruck sofort reagieren, nicht erst nach dem URL-Sync-Delay.
-    let filtered = searchInput.trim()
+    const filtered = searchInput.trim()
       ? routes.filter((r) => matchesSearch(r, searchInput))
       : routes;
-
-    // Eine Strecke passt, sobald sie mindestens eines der ausgewählten Tags
-    // trägt (ODER-Verknüpfung) — Strecken haben meist nur 1-2 Kategorien, eine
-    // UND-Verknüpfung würde die Auswahl bei mehreren aktiven Tags zu stark
-    // einschränken.
-    if (selectedKategorien.length > 0) {
-      filtered = filtered.filter((r) =>
-        r.kategorien.some((k) => selectedKategorien.includes(k)),
-      );
-    }
-
-    filtered = applyAdvancedFilters(filtered, advancedFilters);
 
     if (!userLocation) return filtered;
 
@@ -200,7 +149,7 @@ export default function ExploreView({
         haversineKm(userLocation, a.start_geojson.coordinates) -
         haversineKm(userLocation, b.start_geojson.coordinates),
     );
-  }, [routes, searchInput, selectedKategorien, advancedFilters, userLocation]);
+  }, [routes, searchInput, userLocation]);
 
   return (
     <main ref={containerRef} className="relative flex flex-1 flex-col overflow-hidden md:flex-row">
@@ -241,11 +190,6 @@ export default function ExploreView({
           locationError={locationError}
           onRequestLocation={requestLocation}
           onHoverRoute={setHoveredRouteId}
-          selectedKategorien={selectedKategorien}
-          onToggleKategorie={onToggleKategorie}
-          onResetKategorien={onResetKategorien}
-          advancedFilters={advancedFilters}
-          onAdvancedFiltersChange={onAdvancedFiltersChange}
         />
       </DragSheet>
     </main>

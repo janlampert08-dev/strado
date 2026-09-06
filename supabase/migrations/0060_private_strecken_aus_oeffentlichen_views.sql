@@ -83,7 +83,7 @@ where r.status_ok = true
   and rc.art = 'strecke';
 
 comment on view public.route_leaderboard is
-  'Bestzeiten einer einzelnen Strecke für die Streckenseite. Läuft bewusst mit den Rechten des View-Owners (bypasst RLS), seit 0059 gefiltert auf r.status_ok = true UND r.ist_privat = false — vorher fehlte der Join auf routes ganz, wodurch Fahrten auf privaten und noch nicht moderierten Strecken über einen direkten PostgREST-Aufruf lesbar waren.';
+  'Bestzeiten einer einzelnen Strecke für die Streckenseite. Läuft bewusst mit den Rechten des View-Owners (bypasst RLS), seit 0060 gefiltert auf r.status_ok = true UND r.ist_privat = false — vorher fehlte der Join auf routes ganz, wodurch Fahrten auf privaten und noch nicht moderierten Strecken über einen direkten PostgREST-Aufruf lesbar waren.';
 
 -- ---------------------------------------------------------------------------
 -- 2. route_photos — derselbe Join, dasselbe Prädikat.
@@ -112,7 +112,7 @@ where r.status_ok = true
 order by rc.datum desc, cp.position asc;
 
 comment on view public.route_photos is
-  'Fotos öffentlicher Fahrten einer Strecke für die Streckenseite. Läuft bewusst mit den Rechten des View-Owners (bypasst RLS), seit 0059 gefiltert auf r.status_ok = true UND r.ist_privat = false — derselbe Filter, den 0038 B für public_completion_photos nachgezogen hatte und den die 0044-Fassung dieser View nicht übernommen hat.';
+  'Fotos öffentlicher Fahrten einer Strecke für die Streckenseite. Läuft bewusst mit den Rechten des View-Owners (bypasst RLS), seit 0060 gefiltert auf r.status_ok = true UND r.ist_privat = false — derselbe Filter, den 0038 B für public_completion_photos nachgezogen hatte und den die 0044-Fassung dieser View nicht übernommen hat.';
 
 -- ---------------------------------------------------------------------------
 -- 3. leaderboard_completions — ist_privat im Streckenzweig ergänzen.
@@ -146,4 +146,4 @@ where rc.ist_oeffentlich = true
   );
 
 comment on view public.leaderboard_completions is
-  'Aggregierte oeffentliche Fahrdaten fuer die globalen Bestenlisten (meiste Fahrten/km/Hoehenmeter/Strecken). Seit 0056 zaehlen freie Fahrten mit (vorher 0044: streckenbasiert). hoehenmeter_aufstieg (kumulierter Anstieg) ersetzt fuer beide Fahrtarten die vorherige Scheitelhoehe-basierte Zahl. Seit 0059 zusaetzlich auf r.ist_privat = false gefiltert (Streckenzweig), passend zur Policy aus 0049.';
+  'Aggregierte oeffentliche Fahrdaten fuer die globalen Bestenlisten (meiste Fahrten/km/Hoehenmeter/Strecken). Seit 0056 zaehlen freie Fahrten mit (vorher 0044: streckenbasiert). hoehenmeter_aufstieg (kumulierter Anstieg) ersetzt fuer beide Fahrtarten die vorherige Scheitelhoehe-basierte Zahl. Seit 0060 zusaetzlich auf r.ist_privat = false gefiltert (Streckenzweig), passend zur Policy aus 0049.';

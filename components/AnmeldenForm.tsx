@@ -8,13 +8,16 @@ import Button from "@/components/ui/Button";
 
 const initialState: AuthFormState = { error: null };
 
-export default function AnmeldenForm() {
+export default function AnmeldenForm({ nextHref }: { nextHref?: string } = {}) {
   const [state, formAction, pending] = useActionState(signIn, initialState);
 
   return (
     <>
       <h1 className="text-display font-semibold">Anmelden</h1>
       <form action={formAction} className="flex flex-col gap-4">
+        {/* Optionales Rücksprungziel, analog zu NeuesFahrzeugForm — signIn()
+            validiert den Wert erneut, bevor daraus ein Redirect wird. */}
+        {nextHref && <input type="hidden" name="next" value={nextHref} />}
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           E-Mail
           <Input type="email" name="email" required autoComplete="email" />
@@ -40,7 +43,10 @@ export default function AnmeldenForm() {
       </form>
       <p className="text-sm text-muted">
         Noch kein Konto?{" "}
-        <Link href="/registrieren" className="font-medium text-accent hover:underline">
+        <Link
+          href={nextHref ? `/registrieren?next=${encodeURIComponent(nextHref)}` : "/registrieren"}
+          className="font-medium text-accent hover:underline"
+        >
           Registrieren
         </Link>
       </p>

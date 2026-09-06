@@ -11,7 +11,7 @@ export const metadata = {
 
 // Eigene Seite für "Community reagiert" im Kernloop (siehe AGENTS.md, "Core
 // User Loop", Schritt 7→8) statt nur eines Badges auf dem Profil-Tab — das
-// Herz-Icon im Header verlinkt hierher (Header.tsx, auf jeder
+// Flammen-Icon im Header verlinkt hierher (Header.tsx, auf jeder
 // Bildschirmgrösse sichtbar), analog zum bisherigen Ungelesen-Zähler
 // (lib/kudos.ts, getUnseenKudosCount). Nur der Besitzer selbst sieht seine
 // eigene Liste, siehe recent_kudos_received

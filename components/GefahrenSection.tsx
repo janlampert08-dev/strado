@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import LiveTrackingForm from "@/components/LiveTrackingForm";
 import type { RouteGeoJSON, Vehicle } from "@/types/database";
 
@@ -9,18 +9,40 @@ export default function GefahrenSection({
   userId,
   vehicles,
   personalBestSeconds,
+  guestContinuationToken = null,
 }: {
   route: RouteGeoJSON;
-  userId: string;
+  // null heisst abgemeldeter Besucher — aufzeichnen darf er, das Konto
+  // verlangt erst das Speichern (siehe LiveTrackingForm.tsx).
+  userId: string | null;
   vehicles: Vehicle[];
   personalBestSeconds: number | null;
+  // Aus ?fortsetzen=<token>: der Besucher kommt gerade aus dem Anmelde-Gate
+  // einer als Gast aufgezeichneten Fahrt zurück.
+  guestContinuationToken?: string | null;
 }) {
   // Standardmässig eingeklappt, damit die Seite beim blossen Ansehen einer
   // Strecke nicht durch ein immer offenes Formular überladen wirkt. Bleibt
   // nach dem Öffnen bewusst offen (kein Wieder-Einklappen), damit eine
   // laufende GPS-Aufzeichnung nie durch Unmounten unterbrochen werden kann —
   // "Zurück"/"Verwerfen" in LiveTrackingForm klappt über onExit wieder ein.
-  const [open, setOpen] = useState(false);
+  //
+  // Ausnahme: mit einem Fortsetzungs-Marker klappt der Abschnitt sofort auf.
+  // Sonst käme der Besucher nach der Anmeldung auf einer Seite an, die von
+  // seiner eben gefahrenen Strecke nichts zeigt — LiveTrackingForm muss
+  // mounten, damit die Aufzeichnung übernommen und das Fazit gezeigt wird.
+  const [open, setOpen] = useState(guestContinuationToken !== null);
+
+  // Den verbrauchten Marker aus der Adressleiste nehmen, sobald er
+  // weitergereicht ist: er ist einmalig einlösbar, ein Neuladen derselben
+  // URL würde also nichts mehr übernehmen, aber den Abschnitt trotzdem
+  // aufklappen und eine neue Aufzeichnung starten. history.replaceState
+  // statt router.replace, weil letzteres diese Komponente samt "open"-Zustand
+  // (und einer eventuell laufenden Aufzeichnung) neu rendern würde.
+  useEffect(() => {
+    if (!guestContinuationToken) return;
+    window.history.replaceState(null, "", `/strecken/${route.id}`);
+  }, [guestContinuationToken, route.id]);
 
   if (!open) {
     return (
@@ -42,6 +64,7 @@ export default function GefahrenSection({
       userId={userId}
       vehicles={vehicles}
       personalBestSeconds={personalBestSeconds}
+      guestContinuationToken={guestContinuationToken}
       onExit={() => setOpen(false)}
     />
   );

@@ -3,14 +3,11 @@
 import Link from "next/link";
 import { useMemo, type CSSProperties } from "react";
 import { Gauge, Mountain, Route, Ruler, SearchX, TrendingUp } from "lucide-react";
-import { KATEGORIEN } from "@/lib/constants";
 import { routeShapePath } from "@/lib/routeShape";
 import { formatKm } from "@/lib/format";
 import { withAlpha, type RouteSignature, type SignatureKey } from "@/lib/signature";
-import type { AdvancedFilters } from "@/lib/exploreFilters";
-import type { Kategorie, RouteGeoJSON } from "@/types/database";
+import type { RouteGeoJSON } from "@/types/database";
 import { fieldClassName } from "@/components/ui/Input";
-import AdvancedFiltersPanel from "@/components/AdvancedFiltersPanel";
 import EmptyState from "@/components/ui/EmptyState";
 
 // Icon je Signatur-Merkmal — spiegelt visuell wider, worin die Strecke
@@ -35,11 +32,6 @@ export default function ExploreSidebar({
   locationError,
   onRequestLocation,
   onHoverRoute,
-  selectedKategorien,
-  onToggleKategorie,
-  onResetKategorien,
-  advancedFilters,
-  onAdvancedFiltersChange,
 }: {
   routes: RouteGeoJSON[];
   loadError?: boolean;
@@ -51,11 +43,6 @@ export default function ExploreSidebar({
   locationError: string | null;
   onRequestLocation: () => void;
   onHoverRoute: (id: string | null) => void;
-  selectedKategorien: Kategorie[];
-  onToggleKategorie: (kategorie: Kategorie) => void;
-  onResetKategorien: () => void;
-  advancedFilters: AdvancedFilters;
-  onAdvancedFiltersChange: (filters: AdvancedFilters) => void;
 }) {
   // Nur bei Änderung des Streckenbestands neu berechnet — sonst würde jeder
   // Hover (der über onHoverRoute den State im Elternteil ändert) hier eine
@@ -87,10 +74,12 @@ export default function ExploreSidebar({
       />
 
       <div className="flex flex-col items-start gap-2 border-b border-border pb-6">
-        {/* Gleiche Grösse wie die Kategorie-Chips darunter (rounded-full,
-            px-3 py-1.5, text-sm) statt buttonVariants' secondary/sm
-            (rounded-lg, text-xs) — vorher wirkte dieser Button trotz
-            identischem Zweck sichtlich kleiner/anders als die Filter-Chips. */}
+        {/* Chip-Form (rounded-full, px-3 py-1.5, text-sm) statt
+            buttonVariants' secondary/sm (rounded-lg, text-xs) — beibehalten
+            aus der Zeit, als hier noch die Kategorie-Chips daneben standen,
+            und weiterhin passend: neben dem Suchfeld ist das das einzige
+            verbliebene Bedienelement über der Liste und soll leichter wirken
+            als ein Formular-Button. */}
         <button
           onClick={onRequestLocation}
           disabled={locating}
@@ -104,54 +93,6 @@ export default function ExploreSidebar({
         </button>
         {locationError && <p className="text-xs text-muted">{locationError}</p>}
       </div>
-
-      {/* Umbrechende Chip-Reihe statt Checkboxen/Dropdown — mehrere Tags lassen
-          sich per Antippen kombinieren (ODER-Verknüpfung, siehe ExploreView).
-          Bewusst kein horizontales Scrollen: bei nur 4 Kategorien zeigt
-          Umbrechen alle Optionen sofort, statt einen Teil ohne erkennbaren
-          Scroll-Hinweis ausserhalb des sichtbaren Bereichs zu verstecken. */}
-      <div className="flex flex-col items-start gap-2">
-        <div className="flex flex-wrap gap-2">
-          {KATEGORIEN.map((k) => {
-            const active = selectedKategorien.includes(k.value);
-            return (
-              <button
-                key={k.value}
-                type="button"
-                onClick={() => onToggleKategorie(k.value)}
-                aria-pressed={active}
-                className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-sm font-medium transition-colors duration-fast active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-                  active
-                    ? "border-accent bg-accent text-background"
-                    : "border-border text-foreground hover:border-border-strong"
-                }`}
-              >
-                {k.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Nur sichtbar, wenn es tatsächlich etwas zurückzusetzen gibt (kein
-            totes UI-Element bei leerer Auswahl) — bewusst nur die
-            Kategorie-Chips betreffend, analog zum eigenen "Filter
-            zurücksetzen" von AdvancedFiltersPanel weiter unten, das nur
-            dessen Felder zurücksetzt. Zwei separate Buttons, die jeweils nur
-            ihre eigene Filtergruppe zurücksetzen, statt eines globalen
-            Resets, der Nutzer:innen überraschen könnte, wenn er auch
-            unbeteiligte Filter mitlöscht. */}
-        {selectedKategorien.length > 0 && (
-          <button
-            type="button"
-            onClick={onResetKategorien}
-            className="text-sm font-medium text-accent hover:underline"
-          >
-            Kategorien zurücksetzen
-          </button>
-        )}
-      </div>
-
-      <AdvancedFiltersPanel filters={advancedFilters} onChange={onAdvancedFiltersChange} />
 
       <ul className="flex flex-col gap-1">
         {routes.length === 0 && loadError && (

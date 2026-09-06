@@ -8,6 +8,7 @@ import {
   loadTrackingSnapshot,
   clearTrackingSnapshot,
   purgeLegacyTrackingSnapshots,
+  adoptGuestTrackingSnapshot,
   type TrackingSnapshot,
 } from "@/lib/trackingStorage";
 
@@ -98,6 +99,7 @@ export function useRideRecorder({
   userId,
   storageKey,
   gate = null,
+  guestContinuationToken = null,
 }: {
   // Teil des localStorage-Schlüssels: eine abgebrochene Aufzeichnung darf
   // auf einem geteilten Gerät nicht dem nächsten angemeldeten Nutzer
@@ -105,6 +107,12 @@ export function useRideRecorder({
   userId: string;
   storageKey: string;
   gate?: RideGate | null;
+  // Einmalig einlösbarer Marker aus dem Anmelde-Gate einer Gastfahrt: ist er
+  // gesetzt und gültig, wird der als Gast aufgezeichnete Snapshot beim Mount
+  // für diesen Nutzer übernommen (siehe adoptGuestTrackingSnapshot). Ohne
+  // gültigen Marker passiert nichts — eine fremde Gastaufzeichnung auf einem
+  // geteilten Gerät darf dem nächsten Konto nicht angeboten werden.
+  guestContinuationToken?: string | null;
 }): RideRecorder {
   const [phase, setPhase] = useState<RecorderPhase>("idle");
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -155,6 +163,10 @@ export function useRideRecorder({
   const gateRef = useRef(gate);
   const storageKeyRef = useRef(storageKey);
   const userIdRef = useRef(userId);
+  // Nur der Wert beim Mount zählt — die Übernahme passiert einmalig im
+  // Wiederherstellungs-Effekt unten, ein späteres Umschalten der Prop hätte
+  // dort keine Wirkung mehr.
+  const guestContinuationTokenRef = useRef(guestContinuationToken);
 
   useEffect(() => {
     gateRef.current = gate;
@@ -528,6 +540,16 @@ export function useRideRecorder({
     // Reste aus der Zeit vor der Nutzertrennung wegräumen, bevor irgendetwas
     // wiederhergestellt wird.
     purgeLegacyTrackingSnapshots();
+    // Vor dem Laden: eine Fahrt, die dieser Nutzer noch abgemeldet
+    // aufgezeichnet hat, liegt unter dem Gast-Schlüssel und würde sonst
+    // nicht gefunden.
+    if (guestContinuationTokenRef.current) {
+      adoptGuestTrackingSnapshot(
+        userIdRef.current,
+        storageKeyRef.current,
+        guestContinuationTokenRef.current,
+      );
+    }
     const snapshot = loadTrackingSnapshot(userIdRef.current, storageKeyRef.current);
 
     const timeout = setTimeout(() => {
