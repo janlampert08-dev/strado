@@ -149,6 +149,20 @@ describe("trackingStorage", () => {
     vi.restoreAllMocks();
   });
 
+  // Seit auch Streckenfahrten als Gast aufgezeichnet werden können, teilen
+  // sich zwei Abläufe denselben Mechanismus — der Marker gehört deshalb zu
+  // genau einer Aufzeichnung. Sonst könnte das Gate einer freien Fahrt die
+  // liegengebliebene Streckenfahrt eines anderen freischalten.
+  it("scopes the continuation marker to the ride it was issued for", () => {
+    const routeToken = gastfahrtMitGateDurchlauf();
+    saveTrackingSnapshot(GUEST_TRACKING_USER_ID, "route-id", snapshot({ distanceKm: 5 }));
+
+    expect(adoptGuestTrackingSnapshot(USER_A, "route-id", routeToken)).toBe(false);
+    expect(loadTrackingSnapshot(USER_A, "route-id")).toBeNull();
+    // Für die Fahrt, zu der er gehört, gilt er weiterhin.
+    expect(adoptGuestTrackingSnapshot(USER_A, FREE_RIDE_STORAGE_KEY, routeToken)).toBe(true);
+  });
+
   it("has nothing to adopt when no guest recording exists", () => {
     const token = issueGuestContinuationToken(FREE_RIDE_STORAGE_KEY)!;
 

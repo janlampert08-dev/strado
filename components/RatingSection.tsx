@@ -42,6 +42,23 @@ export default function RatingSection({
         )}
       </div>
 
+      {/* Kommentieren bleibt angemeldeten Nutzern vorbehalten. Der Hinweis
+          darauf stand früher auf der Streckenseite und deckte dort zugleich
+          das Eintragen einer Fahrt ab — das braucht inzwischen kein Konto
+          mehr, dieser Teil schon. Verlinkt zurück auf diese Strecke, damit
+          der Kommentar danach dort landet, wo er gemeint war. */}
+      {!canRate && (
+        <p className="border-b border-border pb-4 text-sm text-muted">
+          <Link
+            href={`/anmelden?next=${encodeURIComponent(`/strecken/${routeId}`)}`}
+            className="font-medium text-accent hover:underline"
+          >
+            Melde dich an
+          </Link>
+          , um diese Strecke zu bewerten.
+        </p>
+      )}
+
       {canRate && (
         <form action={formAction} className="flex flex-col gap-2 border-b border-border pb-4">
           <Textarea
