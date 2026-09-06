@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { metadatenEntfernen } from "@/lib/imageMetadata";
 import { recomputePublicTracks } from "@/lib/publicTrack";
 import { DEFAULT_PRIVACY_RADIUS_M, PRIVACY_RADIUS_OPTIONS } from "@/lib/track";
 
@@ -129,9 +130,16 @@ export async function uploadAvatar(
 
   const ext = foto.name.split(".").pop() ?? "jpg";
   const path = `${user.id}/avatar.${ext}`;
+
+  // Wie beim Fahrt-Foto: EXIF-Metadaten raus, bevor die Datei gespeichert
+  // wird. Ein Profilbild ist zwar zum Zeigen gedacht, sein Aufnahmeort ist es
+  // nicht — und der avatars-Bucket ist öffentlich lesbar.
+  const bereinigt = metadatenEntfernen(new Uint8Array(await foto.arrayBuffer()), foto.type);
+
   const { error: uploadError } = await supabase.storage
     .from("avatars")
-    .upload(path, foto, { upsert: true });
+    // contentType explizit, weil ein Uint8Array den Typ nicht mitbringt.
+    .upload(path, bereinigt, { upsert: true, contentType: foto.type });
   if (uploadError) return { error: "Foto konnte nicht hochgeladen werden." };
 
   const { data } = supabase.storage.from("avatars").getPublicUrl(path);

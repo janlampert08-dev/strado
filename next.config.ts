@@ -25,14 +25,22 @@ const nextConfig: NextConfig = {
     serverSourceMaps: true,
   },
   images: {
-    // Hochgeladene Fotos/Avatare liegen in Supabase Storage (öffentliche
-    // Bucket-URLs) — auf den Storage-Pfad eingeschränkt statt den ganzen
-    // Host freizugeben.
+    // Hochgeladene Fotos/Avatare liegen in Supabase Storage — auf den
+    // Storage-Pfad eingeschränkt statt den ganzen Host freizugeben.
     remotePatterns: [
       {
+        // Avatare (öffentlicher Bucket).
         protocol: "https",
         hostname: "**.supabase.co",
         pathname: "/storage/v1/object/public/**",
+      },
+      {
+        // Fahrt-Fotos: seit 0061 privater Bucket, die Links werden
+        // serverseitig signiert (lib/storageUrls.ts) und liegen deshalb
+        // unter /sign/ statt unter /public/.
+        protocol: "https",
+        hostname: "**.supabase.co",
+        pathname: "/storage/v1/object/sign/**",
       },
     ],
   },

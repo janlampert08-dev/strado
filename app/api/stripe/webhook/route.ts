@@ -1,30 +1,88 @@
-// Premium-UI ist vorerst deaktiviert (siehe components/PremiumCard.tsx) —
-// dieser Webhook bleibt unverändert aktiv und signaturgeprüft bestehen,
-// falls Stripe zwischenzeitlich Events für bestehende Abos sendet, und damit
-// Premium später ohne Backend-Änderungen reaktiviert werden kann.
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { wasAlreadyProcessed } from "@/lib/stripeWebhook";
+import {
+  ereignisAbschliessen,
+  ereignisBeanspruchen,
+  ereignisFreigeben,
+  kulanzAktionFuer,
+  KULANZ_TAGE,
+  leseAboIdAusRechnung,
+  leseAboZustand,
+  type KulanzAktion,
+} from "@/lib/stripeWebhook";
 
 // Kein eingeloggter Supabase-Nutzer hier (Server-zu-Server-Aufruf von
-// Stripe) — die Stripe-Signaturprüfung unten (constructEvent) ist die
-// eigentliche Authentifizierung dieses Requests. Der Premium-Status wird
-// deshalb direkt über den Service-Role-Client gesetzt (RLS-Bypass, aber nur
-// serverseitig und nur erreichbar über diesen bereits verifizierten
-// Request) statt über die frühere set_premium_status-RPC, deren Secret im
-// Klartext in einer Migration lag und per anon/authenticated aufrufbar war.
-async function setPremium(
-  supabase: ReturnType<typeof createAdminClient>,
-  customerId: string,
-  istPremium: boolean,
-) {
-  const { error } = await supabase
-    .from("profiles")
-    .update({ ist_premium: istPremium })
-    .eq("stripe_customer_id", customerId);
-  if (error) console.error("setPremium failed", error);
+// Stripe) — die Signaturprüfung unten (constructEvent) ist die eigentliche
+// Authentifizierung dieses Requests. Erst danach wird überhaupt etwas
+// geschrieben, und zwar über den Service-Role-Client (RLS-Bypass, aber nur
+// serverseitig und nur über diesen bereits verifizierten Request
+// erreichbar).
+
+type AdminClient = ReturnType<typeof createAdminClient>;
+
+// Holt den Abo-Zustand frisch von Stripe, statt der Ereignis-Nutzlast zu
+// vertrauen. Stripe garantiert keine Zustellreihenfolge: ein spät
+// zugestelltes "updated" könnte sonst ein bereits verarbeitetes "deleted"
+// überschreiben und Premium wieder einschalten. Der frisch geholte Zustand
+// ist dagegen immer der aktuelle, egal welches Ereignis ihn ausgelöst hat.
+async function schreibeAboZustand(
+  supabase: AdminClient,
+  subscriptionId: string,
+  kulanzAktion: KulanzAktion,
+  kulanzInvoiceId: string | null,
+): Promise<void> {
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  // Zeitpunkt NACH dem Abruf: apply_subscription_state verwirft damit einen
+  // Schreibvorgang, dessen Zustand älter ist als der bereits gespeicherte.
+  const abgerufenAm = new Date().toISOString();
+
+  const zustand = leseAboZustand(subscription);
+  if (!zustand) {
+    throw new Error(`Abo ${subscriptionId} ohne Customer oder Preis — nicht zuordenbar`);
+  }
+
+  const { data, error } = await supabase.rpc("apply_subscription_state", {
+    p_stripe_customer_id: zustand.stripeCustomerId,
+    p_stripe_subscription_id: zustand.stripeSubscriptionId,
+    p_status: zustand.status,
+    p_price_id: zustand.priceId,
+    p_current_period_end: zustand.currentPeriodEnd,
+    p_cancel_at_period_end: zustand.cancelAtPeriodEnd,
+    p_stripe_fetched_at: abgerufenAm,
+    p_kulanz_aktion: kulanzAktion,
+    p_kulanz_invoice_id: kulanzInvoiceId,
+    p_kulanz_tage: KULANZ_TAGE,
+  });
+
+  if (error) throw error;
+
+  // false heisst: kein Profil zu diesem Customer (gelöschtes Konto) oder ein
+  // neuerer Zustand war bereits gespeichert. Beides ist kein Fehler, aber
+  // beim gelöschten Konto einen Blick wert.
+  if (data === false) {
+    console.info("apply_subscription_state hat nichts geschrieben", { subscriptionId });
+  }
+}
+
+// Welche Abo-ID betrifft dieses Ereignis? Abo-Ereignisse tragen sie direkt,
+// Rechnungs-Ereignisse über parent.subscription_details.
+function betroffenesAbo(event: Stripe.Event): { id: string; invoiceId: string | null } | null {
+  if (event.type.startsWith("customer.subscription.")) {
+    const subscription = event.data.object as Stripe.Subscription;
+    return { id: subscription.id, invoiceId: null };
+  }
+
+  if (event.type.startsWith("invoice.")) {
+    const invoice = event.data.object as Stripe.Invoice;
+    const aboId = leseAboIdAusRechnung(invoice);
+    // Rechnungen ohne Abo (einmalige Zahlungen) gehen Premium nichts an.
+    if (!aboId) return null;
+    return { id: aboId, invoiceId: invoice.id ?? null };
+  }
+
+  return null;
 }
 
 export async function POST(req: Request) {
@@ -44,40 +102,55 @@ export async function POST(req: Request) {
 
   const supabase = createAdminClient();
 
-  // Stripe delivers events at-least-once, so this exact event can arrive
-  // again (retries, reconnects, duplicate endpoints). Skip re-running the
-  // side effects below on redelivery — see lib/stripeWebhook.ts and
-  // supabase/migrations/0026_stripe_webhook_idempotency.sql.
-  if (await wasAlreadyProcessed(supabase, event.id, event.type)) {
+  const anspruch = await ereignisBeanspruchen(supabase, event.id, event.type);
+  if (anspruch.art === "erledigt") {
     return NextResponse.json({ received: true, duplicate: true });
   }
-
-  switch (event.type) {
-    case "checkout.session.completed": {
-      const session = event.data.object as Stripe.Checkout.Session;
-      if (session.mode === "subscription" && typeof session.customer === "string") {
-        await setPremium(supabase, session.customer, true);
-      }
-      break;
-    }
-    case "customer.subscription.updated": {
-      const subscription = event.data.object as Stripe.Subscription;
-      if (typeof subscription.customer === "string") {
-        const active = subscription.status === "active" || subscription.status === "trialing";
-        await setPremium(supabase, subscription.customer, active);
-      }
-      break;
-    }
-    case "customer.subscription.deleted": {
-      const subscription = event.data.object as Stripe.Subscription;
-      if (typeof subscription.customer === "string") {
-        await setPremium(supabase, subscription.customer, false);
-      }
-      break;
-    }
-    default:
-      break;
+  if (anspruch.art === "in_arbeit") {
+    // Ein anderer Aufruf hält den Anspruch gerade. Nicht doppelt ausführen —
+    // aber auch nicht mit 200 quittieren: von hier aus ist nicht
+    // unterscheidbar, ob dort wirklich noch jemand arbeitet oder ob ein
+    // gestorbener Aufruf den Anspruch nicht mehr freigeben konnte. Ein 200
+    // wäre für Stripe eine Bestätigung und würde die Zustellung beenden,
+    // obwohl der Seiteneffekt womöglich nie lief.
+    //
+    // 503 lässt Stripe es später erneut versuchen. Ist der andere Aufruf bis
+    // dahin fertig, sieht die Wiederholung 'erledigt' und quittiert sauber;
+    // ist er gestorben, ist der Anspruch inzwischen verfallen und wird
+    // übernommen. Der Preis sind ein paar zusätzliche Zustellversuche bei
+    // echter Gleichzeitigkeit — deutlich billiger als ein verlorenes Abo.
+    return NextResponse.json({ error: "Ereignis wird bereits verarbeitet" }, { status: 503 });
   }
 
-  return NextResponse.json({ received: true });
+  try {
+    // checkout.session.completed wird vom heutigen Payment-Element-Fluss
+    // nicht mehr erzeugt, bleibt aber vorerst stehen: Stripe wiederholt
+    // automatisch bis zu drei Tage, von Hand bis zu 15 (Dashboard) bzw. 30
+    // Tage (CLI). Ein entfernter Zweig würde eine solche Zustellung nur als
+    // erledigt markieren, ohne Premium zu setzen. Erst entfernen, wenn seit
+    // dem letzten möglichen Alt-Ereignis 30 Tage vergangen sind.
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const aboId = typeof session.subscription === "string" ? session.subscription : null;
+      if (session.mode === "subscription" && aboId) {
+        await schreibeAboZustand(supabase, aboId, "unveraendert", null);
+      }
+    } else {
+      const kulanzAktion = kulanzAktionFuer(event.type);
+      const abo = kulanzAktion ? betroffenesAbo(event) : null;
+      if (kulanzAktion && abo) {
+        await schreibeAboZustand(supabase, abo.id, kulanzAktion, abo.invoiceId);
+      }
+    }
+
+    await ereignisAbschliessen(supabase, event.id);
+    return NextResponse.json({ received: true });
+  } catch (fehler) {
+    // Bewusst 500 statt 200: nur so wiederholt Stripe die Zustellung. Die
+    // frühere Fassung loggte den Fehler und meldete Erfolg — der Ausfall
+    // blieb dadurch dauerhaft und unsichtbar.
+    console.error("Stripe-Webhook fehlgeschlagen", { eventId: event.id, type: event.type }, fehler);
+    await ereignisFreigeben(supabase, event.id);
+    return NextResponse.json({ error: "Verarbeitung fehlgeschlagen" }, { status: 500 });
+  }
 }

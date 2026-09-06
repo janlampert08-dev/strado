@@ -16,6 +16,7 @@ import {
   toCoordinates,
   toEwktLineString,
 } from "@/lib/track";
+import { metadatenEntfernen } from "@/lib/imageMetadata";
 import { publicTrackEwkt } from "@/lib/publicTrack";
 import { buildHoehenprofil, computeAscentM, fetchElevationProfile } from "@/lib/elevation";
 import { reverseGeocode } from "@/lib/geocoding";
@@ -125,7 +126,21 @@ async function uploadFoto(
 
   const ext = foto.name.split(".").pop() ?? "jpg";
   const path = `${userId}/${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase.storage.from(ROUTE_PHOTOS_BUCKET).upload(path, foto);
+
+  // Metadaten entfernen, bevor die Datei den Server verlässt. Ein Foto vom
+  // Handy trägt sonst Aufnahmeort und -zeitpunkt im EXIF-Block mit sich — bei
+  // einer Plattform für gefahrene Strecken heisst das im Zweifel die
+  // Heimadresse, und zwar auch dann, wenn die Fahrt privat bleibt und der
+  // Track an den Enden gekappt wurde.
+  const bereinigt = metadatenEntfernen(new Uint8Array(await foto.arrayBuffer()), foto.type);
+
+  const { error } = await supabase.storage
+    .from(ROUTE_PHOTOS_BUCKET)
+    // contentType muss hier mit, weil ein Uint8Array — anders als ein File —
+    // seinen Typ nicht selbst mitbringt; ohne die Angabe landete die Datei
+    // als application/octet-stream im Bucket und würde von der
+    // MIME-Beschränkung aus 0033 abgelehnt.
+    .upload(path, bereinigt, { contentType: foto.type });
   if (error) return { error: "Foto konnte nicht hochgeladen werden." };
   const { data } = supabase.storage.from(ROUTE_PHOTOS_BUCKET).getPublicUrl(path);
   return { url: data.publicUrl };

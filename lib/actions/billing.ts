@@ -9,7 +9,15 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { stripe } from "@/lib/stripe";
+import { KULANZ_TAGE, leseAboZustand } from "@/lib/stripeWebhook";
 import type Stripe from "stripe";
+
+// Ein Customer-Feld kann bei Stripe die ID oder das ausgeklappte Objekt
+// sein (auch ein gelöschter Customer). Nur die ID interessiert hier.
+function idVonCustomer(customer: Stripe.Subscription["customer"]): string | null {
+  if (!customer) return null;
+  return typeof customer === "string" ? customer : customer.id;
+}
 
 // Legt bei Bedarf einen Stripe-Customer an (einmalig pro Nutzer) und
 // speichert die ID am Profil — sowohl der Webhook als auch confirmSubscription
@@ -50,11 +58,43 @@ export type SubscriptionIntentResult =
   | { ok: true; clientSecret: string; subscriptionId: string }
   | { ok: false; error: string };
 
+// Die wählbaren Pläne. Der Gründerpreis fehlt hier bewusst: er ist an eine
+// Mengenregel gebunden (die ersten 100 Abos, siehe docs/premium-plan.md) und
+// wird erst zusammen mit der Kaufoberfläche in Phase 3 vergeben — als
+// serverseitige Entscheidung, nie als Wahl des Clients.
+export type AboPlan = "monat" | "jahr";
+
+// Preis-IDs kommen ausschliesslich aus dieser serverseitigen Zuordnung. Eine
+// vom Client übergebene Price-ID würde bedeuten, dass sich jeder seinen
+// eigenen Preis aussuchen kann — auch einen fremden oder einen aus einem
+// anderen Katalog.
+function preisIdFuer(plan: AboPlan): string | undefined {
+  switch (plan) {
+    case "monat":
+      // Fallback auf die alte, einzelne Variable, damit bestehende
+      // .env.local-Dateien ohne Anpassung weiterlaufen.
+      return process.env.STRIPE_PREMIUM_PRICE_ID_MONAT ?? process.env.STRIPE_PREMIUM_PRICE_ID;
+    case "jahr":
+      return process.env.STRIPE_PREMIUM_PRICE_ID_JAHR;
+  }
+}
+
+function clientSecretVon(subscription: Stripe.Subscription): string | null {
+  // Seit API-Version 2025-03-31.basil hängt das PaymentIntent-Client-Secret
+  // nicht mehr unter invoice.payment_intent, sondern unter
+  // invoice.confirmation_secret (siehe das Pinning in lib/stripe.ts).
+  const invoice = subscription.latest_invoice;
+  if (!invoice || typeof invoice !== "object") return null;
+  return invoice.confirmation_secret?.client_secret ?? null;
+}
+
 // Erzeugt ein Abo im Status "incomplete" und gibt das zugehörige PaymentIntent-
 // Client-Secret zurück — das Payment Element (PremiumCheckoutForm) sammelt
 // die Zahlungsdaten direkt eingebettet im eigenen UI, statt zu Stripes
 // gehosteter Checkout-Seite umzuleiten.
-export async function createSubscriptionIntent(): Promise<SubscriptionIntentResult> {
+export async function createSubscriptionIntent(
+  plan: AboPlan = "monat",
+): Promise<SubscriptionIntentResult> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -62,23 +102,62 @@ export async function createSubscriptionIntent(): Promise<SubscriptionIntentResu
 
   if (!user) return { ok: false, error: "Bitte melde dich zuerst an." };
 
+  const preisId = preisIdFuer(plan);
+  if (!preisId) return { ok: false, error: "Dieser Plan ist zurzeit nicht verfügbar." };
+
   const customerId = await getOrCreateStripeCustomerId(user.id, user.email);
 
-  const subscription = await stripe.subscriptions.create({
-    customer: customerId,
-    items: [{ price: process.env.STRIPE_PREMIUM_PRICE_ID! }],
-    payment_behavior: "default_incomplete",
-    payment_settings: { save_default_payment_method: "on_subscription" },
-    expand: ["latest_invoice.confirmation_secret"],
-  });
+  // Ohne diese Prüfung legte jeder Aufruf ein neues Abo an: wer die
+  // Kaufseite zweimal öffnet oder neu lädt, erzeugte zwei incomplete-Abos —
+  // und wer beide bezahlt, zahlt doppelt für dasselbe Konto.
+  //
+  // Gezielt nach Status abfragen statt status "all" mit einer Seitengrenze:
+  // ein Konto mit vielen beendeten Abos hätte sonst genau das laufende aus
+  // der ersten Seite verdrängt, und daneben wäre ein zweites entstanden.
+  const [aktive, testphase, unbezahlte] = await Promise.all([
+    stripe.subscriptions.list({ customer: customerId, status: "active", limit: 1 }),
+    stripe.subscriptions.list({ customer: customerId, status: "trialing", limit: 1 }),
+    stripe.subscriptions.list({
+      customer: customerId,
+      status: "incomplete",
+      limit: 20,
+      expand: ["data.latest_invoice.confirmation_secret"],
+    }),
+  ]);
 
-  // Aktuelle Stripe-API-Version: das PaymentIntent-Client-Secret hängt nicht
-  // mehr direkt am Invoice (invoice.payment_intent existiert nicht mehr),
-  // sondern unter invoice.confirmation_secret.
-  const invoice = subscription.latest_invoice;
-  const clientSecret =
-    invoice && typeof invoice === "object" ? (invoice.confirmation_secret?.client_secret ?? null) : null;
+  if (aktive.data.length > 0 || testphase.data.length > 0) {
+    return { ok: false, error: "Du hast bereits ein aktives Premium-Abo." };
+  }
 
+  // Ein noch unbezahltes Abo für denselben Plan wiederverwenden, statt
+  // daneben ein zweites anzulegen.
+  const offen = unbezahlte.data.find(
+    (abo) =>
+      abo.items.data.some((position) => position.price.id === preisId) &&
+      clientSecretVon(abo) !== null,
+  );
+  if (offen) {
+    return { ok: true, clientSecret: clientSecretVon(offen)!, subscriptionId: offen.id };
+  }
+
+  const subscription = await stripe.subscriptions.create(
+    {
+      customer: customerId,
+      items: [{ price: preisId }],
+      payment_behavior: "default_incomplete",
+      payment_settings: { save_default_payment_method: "on_subscription" },
+      expand: ["latest_invoice.confirmation_secret"],
+    },
+    {
+      // Fängt den Doppelklick ab, bei dem zwei Anfragen die Prüfung oben
+      // gleichzeitig passieren: beide bekommen dann dasselbe Abo zurück.
+      // Auf eine Stunde begrenzt, damit ein späteres, absichtliches
+      // Neuabschliessen nicht auf einer alten Antwort hängen bleibt.
+      idempotencyKey: `abo:${user.id}:${plan}:${Math.floor(Date.now() / 3_600_000)}`,
+    },
+  );
+
+  const clientSecret = clientSecretVon(subscription);
   if (!clientSecret) {
     return { ok: false, error: "Zahlung konnte nicht vorbereitet werden." };
   }
@@ -107,11 +186,10 @@ export async function confirmSubscription(subscriptionId: string): Promise<boole
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("stripe_customer_id, ist_premium")
+    .select("stripe_customer_id")
     .eq("id", user.id)
     .maybeSingle();
 
-  if (profile?.ist_premium) return true;
   if (!profile?.stripe_customer_id) return false;
 
   let subscription: Stripe.Subscription;
@@ -122,6 +200,7 @@ export async function confirmSubscription(subscriptionId: string): Promise<boole
   } catch {
     return false;
   }
+  const abgerufenAm = new Date().toISOString();
 
   // Kein Gratis-Testzeitraum konfiguriert — "trialing" hier bewusst NICHT
   // akzeptiert (im Gegensatz zum Webhook-Handler, der auch künftige
@@ -129,14 +208,41 @@ export async function confirmSubscription(subscriptionId: string): Promise<boole
   // zusätzlich prüfen wir, dass die zugehörige Rechnung tatsächlich bezahlt
   // wurde, statt uns allein auf das Subscription-Status-Feld zu verlassen.
   if (subscription.status !== "active") return false;
-  if (subscription.customer !== profile.stripe_customer_id) return false;
+  // Das Abo muss dem eigenen Customer gehören: subscriptionId kommt aus dem
+  // Browser, ist also eine Nutzereingabe. Ohne diese Prüfung liesse sich mit
+  // einer fremden Abo-ID Premium für das eigene Konto einschalten.
+  if (idVonCustomer(subscription.customer) !== profile.stripe_customer_id) return false;
 
   const invoice = subscription.latest_invoice;
   const invoicePaid = invoice && typeof invoice === "object" && invoice.status === "paid";
   if (!invoicePaid) return false;
 
-  const { error } = await admin.from("profiles").update({ ist_premium: true }).eq("id", user.id);
+  // Beide Zustände gemeinsam schreiben. Früher setzte diese Stelle nur
+  // profiles.ist_premium — Premium war damit sofort aktiv, während es zu dem
+  // Abo keine Zeile in subscriptions gab und die Anwendung weder Plan noch
+  // Periodenende noch Kulanzfrist kannte. apply_subscription_state erledigt
+  // beides in einer Transaktion (0059_premium_abo_zustand.sql).
+  const zustand = leseAboZustand(subscription);
+  if (!zustand) return false;
+
+  const { data: angewendet, error } = await admin.rpc("apply_subscription_state", {
+    p_stripe_customer_id: zustand.stripeCustomerId,
+    p_stripe_subscription_id: zustand.stripeSubscriptionId,
+    p_status: zustand.status,
+    p_price_id: zustand.priceId,
+    p_current_period_end: zustand.currentPeriodEnd,
+    p_cancel_at_period_end: zustand.cancelAtPeriodEnd,
+    p_stripe_fetched_at: abgerufenAm,
+    p_kulanz_aktion: "unveraendert",
+    p_kulanz_invoice_id: null,
+    p_kulanz_tage: KULANZ_TAGE,
+  });
+
   if (error) return false;
+  // false heisst hier: der Webhook war schneller und hat bereits einen
+  // neueren Zustand geschrieben. Das Abo ist bezahlt und verifiziert, der
+  // Kauf gilt also trotzdem als erfolgreich.
+  if (angewendet === false) return true;
 
   revalidatePath("/profil");
   revalidatePath("/profil/einstellungen");

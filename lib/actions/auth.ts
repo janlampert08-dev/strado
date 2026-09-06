@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getOrigin, safeInternalPath } from "@/lib/utils/url";
 import { getClientIp, isRateLimitedByKey } from "@/lib/rateLimit";
+import { stripe } from "@/lib/stripe";
 
 export interface AuthFormState {
   error: string | null;
@@ -251,6 +252,64 @@ export interface DeleteAccountState {
 // (ConfirmDialog reicht dort), da eine unbeaufsichtigt offene Sitzung
 // (geteiltes Gerät, vergessene Abmeldung) sonst mit einem einzigen Klick
 // das ganze Konto unwiderruflich deaktivieren könnte.
+// Kündigt jedes noch abrechnungsfähige Abo des Nutzers bei Stripe. Gibt
+// false zurück, wenn das nicht sicher gelungen ist — der Aufrufer bricht die
+// Kontolöschung dann ab. Das ist bewusst die unbequemere Variante: ein Konto,
+// das sich gerade nicht löschen lässt, ist ärgerlich, ein gelöschtes Konto
+// mit weiterlaufender Belastung wäre schlimmer.
+//
+// Service-Role-Client, weil stripe_customer_id seit 0027 für
+// anon/authenticated nicht lesbar ist. userId stammt aus der oben bereits
+// per Passwort re-authentifizierten Session, nie aus einer Nutzereingabe.
+async function kuendigeStripeAbo(userId: string): Promise<boolean> {
+  const admin = createAdminClient();
+  const { data: profile, error } = await admin
+    .from("profiles")
+    .select("stripe_customer_id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) return false;
+  if (!profile?.stripe_customer_id) return true;
+
+  try {
+    // Bereits beendete Abos brauchen keine Kündigung; ein erneuter Aufruf
+    // darauf würde nur einen Fehler erzeugen.
+    const beendet = new Set(["canceled", "incomplete_expired"]);
+    // Automatische Paginierung: eine einzelne Seite würde bei einem Konto mit
+    // vielen beendeten Abos genau das übersehen, worum es hier geht — ein noch
+    // abrechenbares Abo hinter der Seitengrenze, das nach der Kontolöschung
+    // unsichtbar weiterbucht.
+    for await (const abo of stripe.subscriptions.list({
+      customer: profile.stripe_customer_id,
+      status: "all",
+      limit: 100,
+    })) {
+      if (beendet.has(abo.status)) continue;
+      await stripe.subscriptions.cancel(abo.id);
+    }
+  } catch (fehler) {
+    console.error("Stripe-Kündigung bei Kontolöschung fehlgeschlagen", { userId }, fehler);
+    return false;
+  }
+
+  // Die gespiegelte Zeile mitnehmen: nach der Anonymisierung zeigt sie auf
+  // einen Customer, den kein Profil mehr referenziert. Scheitert das, gilt
+  // die Löschung als nicht durchgeführt — sonst bliebe eine Abo-Zeile mit
+  // einer stripe_customer_id zurück, zu der es kein Profil mehr gibt, und der
+  // nächtliche Abgleich würde sie weiter anfassen.
+  const { error: loeschFehler } = await admin
+    .from("subscriptions")
+    .delete()
+    .eq("user_id", userId);
+  if (loeschFehler) {
+    console.error("Abo-Spiegelung bei Kontolöschung nicht gelöscht", { userId }, loeschFehler);
+    return false;
+  }
+
+  return true;
+}
+
 export async function deleteAccount(
   _prevState: DeleteAccountState,
   formData: FormData,
@@ -270,6 +329,19 @@ export async function deleteAccount(
     password,
   });
   if (reauthError) return { error: "Passwort ist falsch." };
+
+  // Laufendes Abo zuerst bei Stripe kündigen — zwingend VOR der
+  // Anonymisierung, denn die nullt stripe_customer_id (0058) und nimmt uns
+  // damit den einzigen Zeiger auf den Stripe-Kunden. Ohne diesen Schritt
+  // liefe das Abo nach der Kontolöschung unsichtbar weiter und bucht weiter
+  // ab, während der Webhook das zugehörige Profil nicht mehr fände.
+  const abgebrochen = await kuendigeStripeAbo(user.id);
+  if (!abgebrochen) {
+    return {
+      error:
+        "Das laufende Premium-Abo konnte nicht gekündigt werden. Das Konto wurde deshalb nicht gelöscht — bitte versuche es später erneut.",
+    };
+  }
 
   // Nullt Name, Avatar und Stripe-Kundenzuordnung des eigenen Profils,
   // schaltet die Sichtbarkeits- und Status-Flags ab (not null, deshalb false
