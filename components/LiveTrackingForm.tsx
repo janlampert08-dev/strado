@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { logTrackedCompletion, type CompletionFormState } from "@/lib/actions/completions";
 import { useRideRecorder } from "@/components/useRideRecorder";
 import {
@@ -97,15 +97,22 @@ export default function LiveTrackingForm({
   const belowCoverageThreshold =
     coveragePercent !== null && coveragePercent < COVERAGE_THRESHOLD_PERCENT;
 
-  // Nach erfolgreichem Speichern automatisch zurück zur normalen
-  // Streckenansicht — sonst wäre der Vollbild-Fazit-Screen eine Sackgasse
-  // ohne Ausweg.
+  // Nach erfolgreichem Speichern direkt auf die neue Fahrt — dort liegen
+  // Teilen, Kudos und die Fotogalerie, die vom Fazit-Screen aus sonst nicht
+  // erreichbar wären (gleiche Weiterleitung wie bei einer freien Fahrt,
+  // siehe FreeRideForm.tsx). Fehlt die completionId wider Erwarten, bleibt
+  // der bisherige Weg zurück zur Streckenansicht — der Vollbild-Fazit-Screen
+  // darf nie eine Sackgasse ohne Ausweg sein.
   useEffect(() => {
     if (submitted && !pending && !state.error) {
       clearSnapshot();
-      onExit();
+      if (state.completionId) {
+        router.push(`/fahrten/${state.completionId}`);
+      } else {
+        onExit();
+      }
     }
-  }, [submitted, pending, state.error, onExit, clearSnapshot]);
+  }, [submitted, pending, state.error, state.completionId, onExit, clearSnapshot, router]);
 
   function handleExit() {
     discard();

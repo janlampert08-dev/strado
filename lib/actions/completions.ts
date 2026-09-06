@@ -29,6 +29,11 @@ import { detectLaps, type DetectedLap, type RouteCandidate } from "@/lib/lapDete
 
 export interface CompletionFormState {
   error: string | null;
+  // Bei Erfolg die ID der neu angelegten Fahrt, damit der Client auf ihre
+  // Detailseite wechseln kann (Teilen, Kudos, Fotogalerie) statt den
+  // Fazit-Screen nur zu schliessen — dieselbe Weiterleitung wie bei einer
+  // freien Fahrt, siehe FreeRideFormState.
+  completionId?: string;
 }
 
 const ROUTE_PHOTOS_BUCKET = "route-photos";
@@ -325,7 +330,7 @@ export async function logTrackedCompletion(
   revalidatePath(`/strecken/${routeId}`);
   revalidatePath("/profil");
   revalidatePath("/leaderboards");
-  return { error: null };
+  return { error: null, completionId: inserted.id };
 }
 
 export interface FreeRideFormState {
