@@ -379,6 +379,15 @@ or a local stack first. A read-only `SELECT` still deserves question 5:
 an unbounded query against production is a load problem rather than a
 data problem, but it is still a problem.
 
+Two commands are exempt because they do not reach the database:
+`supabase migration new` (writes a file under `supabase/migrations/`) and
+`supabase migration list` (reads the ledger). Everything else that can
+apply schema — `apply_migration`, `execute_sql`, `supabase db push`,
+`supabase migration up|repair|squash|fetch`, `psql` — stays behind the
+prompt. The exemption is an allowlist in `.claude/`, not a relaxation of
+the rule: a subcommand nobody has vetted still prompts, and
+`.claude/hooks/sql-guard.test.ts` is the regression test for that.
+
 ## AI Agent Behavior
 
 When an AI agent (Claude Code or otherwise) works in this repository, it

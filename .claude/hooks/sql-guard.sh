@@ -30,13 +30,36 @@ fi
 # oder nach | ; & ( ` $( ), optional hinter Wrappern wie sudo/npx. So loest
 # das Wort "psql" in einer Commit-Message keinen Prompt aus.
 wrappers='((sudo|env|time|npx|bunx|pnpm|yarn|dlx)[[:space:]]+([^[:space:]|;&(]+[[:space:]]+){0,4})*'
+position="(^|[|;&(\`]|\\$\\()[[:space:]]*${wrappers}"
 clients='(psql|pg_dump|pg_restore)'
-pattern="(^|[|;&(\`]|\\$\\()[[:space:]]*${wrappers}${clients}([[:space:]]|$)"
-# Supabase-CLI: dieselbe Kommando-Position-Logik, aber nur die SQL-relevanten
-# Subkommandos (db, migration). "supabase functions list" bleibt unberuehrt.
-pattern="${pattern}|(^|[|;&(\`]|\\$\\()[[:space:]]*${wrappers}supabase[[:space:]]+(db|migration)([[:space:]]|$)"
 
-if printf '%s' "$cmd" | grep -Eqi "$pattern"; then
+client_pattern="${position}${clients}([[:space:]]|$)"
+# Supabase-CLI: dieselbe Kommando-Position-Logik. "supabase functions list"
+# bleibt unberuehrt, "supabase db push" spielt gegen Produktion ein.
+db_pattern="${position}supabase[[:space:]]+db([[:space:]]|$)"
+migration_pattern="${position}supabase[[:space:]]+migration([[:space:]]|$)"
+# Ausnahmen: "supabase migration new" legt nur eine Datei unter
+# supabase/migrations/ an, "supabase migration list" liest das Ledger. Beides
+# aendert nichts an der Datenbank und braucht daher keine Bestaetigung.
+# Bewusst als Ausnahmeliste, nicht als Positivliste der gefaehrlichen
+# Subkommandos: repair, up, squash, fetch -- und alles kuenftig dazukommende --
+# bleiben so automatisch bestaetigungspflichtig.
+migration_exempt="${position}supabase[[:space:]]+migration[[:space:]]+(new|list)([[:space:]]|$)"
+
+needs_ask=0
+
+if printf '%s' "$cmd" | grep -Eqi "$client_pattern" || printf '%s' "$cmd" | grep -Eqi "$db_pattern"; then
+  needs_ask=1
+else
+  # Ein Kommando kann mehrere "supabase migration"-Aufrufe verketten. Sobald
+  # mehr Aufrufe gefunden werden als ausgenommene, ist mindestens einer davon
+  # bestaetigungspflichtig.
+  total=$(printf '%s' "$cmd" | grep -oEi "$migration_pattern" | grep -c '')
+  exempt=$(printf '%s' "$cmd" | grep -oEi "$migration_exempt" | grep -c '')
+  [ "$total" -gt "$exempt" ] && needs_ask=1
+fi
+
+if [ "$needs_ask" -eq 1 ]; then
   printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"SQL-Ausfuehrung erkannt. Projektregel: SQL-Befehle immer vorher bestaetigen lassen."}}'
 fi
 
