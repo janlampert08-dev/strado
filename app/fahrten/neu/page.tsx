@@ -20,11 +20,14 @@ export const metadata = {
 export default async function NeueFahrtPage({
   searchParams,
 }: {
-  // ?fortsetzen=1 setzt allein das Anmelde-Gate im Fazit als Rücksprungziel
-  // (siehe FreeRideForm.tsx): erst dann darf die als Gast aufgezeichnete
-  // Fahrt an das nun angemeldete Konto übergeben werden. Ohne diesen
-  // Parameter bleibt eine liegengebliebene Gastaufzeichnung liegen, statt
-  // dem nächsten Konto auf demselben Gerät angeboten zu werden.
+  // ?fortsetzen=<token> trägt den Marker, den das Anmelde-Gate im Fazit einer
+  // Gastfahrt ausgestellt hat (siehe FreeRideForm.tsx) — nur mit ihm darf die
+  // als Gast aufgezeichnete Fahrt an das nun angemeldete Konto übergehen.
+  // Geprüft und eingelöst wird er ausschliesslich im Client gegen den
+  // gespeicherten Wert (adoptGuestTrackingSnapshot); hier ist er ein
+  // durchgereichter, nicht vertrauenswürdiger Query-Wert. Ohne gültigen
+  // Marker bleibt eine liegengebliebene Gastaufzeichnung liegen, statt dem
+  // nächsten Konto auf demselben Gerät angeboten zu werden.
   searchParams: Promise<{ fortsetzen?: string }>;
 }) {
   const { fortsetzen } = await searchParams;
@@ -59,7 +62,7 @@ export default async function NeueFahrtPage({
       userId={user?.id ?? null}
       vehicles={vehicles}
       routes={routes}
-      adoptGuestRide={!!user && fortsetzen === "1"}
+      guestContinuationToken={user ? (fortsetzen ?? null) : null}
     />
   );
 }

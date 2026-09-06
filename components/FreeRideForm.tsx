@@ -1,14 +1,17 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Route as RouteIcon } from "lucide-react";
 import { logFreeRide, type FreeRideFormState } from "@/lib/actions/completions";
 import { useRideRecorder } from "@/components/useRideRecorder";
 import { useLiveLapHint } from "@/components/useLiveLapHint";
-import { FREE_RIDE_STORAGE_KEY, GUEST_TRACKING_USER_ID } from "@/lib/trackingStorage";
+import {
+  FREE_RIDE_STORAGE_KEY,
+  GUEST_TRACKING_USER_ID,
+  issueGuestContinuationToken,
+} from "@/lib/trackingStorage";
 import RideSummaryForm from "@/components/RideSummaryForm";
 import { formatDuration } from "@/lib/format";
 import { movingSeconds, publicationBlockReason } from "@/lib/track";
@@ -27,12 +30,6 @@ const RouteMap = dynamic(() => import("@/components/RouteMap"), {
 const initialState: FreeRideFormState = { error: null };
 const MAX_TITEL_LENGTH = 80;
 
-// Rücksprungziel für das Anmelde-Gate im Fazit: zurück in den Recorder, mit
-// dem Hinweis, dass die als Gast aufgezeichnete Fahrt übernommen werden darf
-// (siehe app/fahrten/neu/page.tsx und adoptGuestTrackingSnapshot).
-const NACH_ANMELDUNG_ZURUECK = "/fahrten/neu?fortsetzen=1";
-const ANMELDEN_HREF = `/anmelden?next=${encodeURIComponent(NACH_ANMELDUNG_ZURUECK)}`;
-const REGISTRIEREN_HREF = `/registrieren?next=${encodeURIComponent(NACH_ANMELDUNG_ZURUECK)}`;
 
 // Aufzeichnung einer freien Fahrt: kein Streckenbezug, also kein
 // automatischer Start am Startpunkt, kein automatischer Stopp am Ziel und
@@ -43,7 +40,7 @@ export default function FreeRideForm({
   userId,
   vehicles,
   routes,
-  adoptGuestRide = false,
+  guestContinuationToken = null,
 }: {
   // Nur für den localStorage-Schlüssel der Wiederherstellung — die Fahrt
   // selbst wird serverseitig dem angemeldeten Nutzer zugeordnet.
@@ -59,10 +56,10 @@ export default function FreeRideForm({
   // eine freie Fahrt bleibt eine freie Fahrt, auch wenn sie zufällig über
   // eine kuratierte Strecke führt.
   routes: RouteGeoJSON[];
-  // Nur gesetzt, wenn dieser Nutzer sich gerade über das Anmelde-Gate unten
-  // angemeldet hat (?fortsetzen=1) — dann darf die als Gast aufgezeichnete
-  // Fahrt an sein Konto übergeben werden.
-  adoptGuestRide?: boolean;
+  // Der Marker aus ?fortsetzen=<token>, mit dem sich die Rückkehr aus dem
+  // Anmelde-Gate ausweist — nur damit darf die als Gast aufgezeichnete Fahrt
+  // an dieses Konto übergehen (siehe adoptGuestTrackingSnapshot).
+  guestContinuationToken?: string | null;
 }) {
   const router = useRouter();
   const istGast = userId === null;
@@ -70,7 +67,7 @@ export default function FreeRideForm({
   const recorder = useRideRecorder({
     userId: userId ?? GUEST_TRACKING_USER_ID,
     storageKey: FREE_RIDE_STORAGE_KEY,
-    adoptGuestSnapshot: adoptGuestRide,
+    guestContinuationToken,
   });
   const { phase, result, clearSnapshot, discard } = recorder;
 
@@ -126,6 +123,20 @@ export default function FreeRideForm({
     router.push("/");
   }
 
+  // Stellt den einmalig einlösbaren Marker genau im Moment des Gate-Klicks
+  // aus (statt beim Rendern) und hängt ihn ans Rücksprungziel: nur wer hier
+  // durchgegangen ist, kann die Gastfahrt nach der Anmeldung übernehmen.
+  // Bleibt der Marker aus (localStorage nicht schreibbar), führt der Weg
+  // trotzdem zur Anmeldung — dann existiert aus demselben Grund aber ohnehin
+  // kein Snapshot, der zu übernehmen wäre.
+  function goToAuth(ziel: "/anmelden" | "/registrieren") {
+    const token = issueGuestContinuationToken(FREE_RIDE_STORAGE_KEY);
+    const zurueck = token
+      ? `/fahrten/neu?fortsetzen=${encodeURIComponent(token)}`
+      : "/fahrten/neu";
+    router.push(`${ziel}?next=${encodeURIComponent(zurueck)}`);
+  }
+
   if (phase === "finished") {
     const avgKmh =
       result && result.seconds > 0 ? result.distanceKm / (result.seconds / 3600) : null;
@@ -173,18 +184,20 @@ export default function FreeRideForm({
                 Anmeldung übernommen.
               </p>
               <div className="flex flex-wrap gap-2">
-                <Link
-                  href={REGISTRIEREN_HREF}
+                <button
+                  type="button"
+                  onClick={() => goToAuth("/registrieren")}
                   className={buttonVariants({ variant: "accent", size: "sm" })}
                 >
                   Konto erstellen
-                </Link>
-                <Link
-                  href={ANMELDEN_HREF}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => goToAuth("/anmelden")}
                   className={buttonVariants({ variant: "secondary", size: "sm" })}
                 >
                   Ich habe ein Konto
-                </Link>
+                </button>
               </div>
               <button
                 type="button"
