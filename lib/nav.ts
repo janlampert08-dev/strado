@@ -31,15 +31,24 @@ export function getNavItems({
   // Ziel ist unverändert der Recorder unter /fahrten/neu.
   const fahrtStarten: NavItem = { href: "/fahrten/neu", label: "Fahrt starten", icon: RecordIcon };
 
-  // Abgemeldete Besucher sehen denselben Einstieg. Vorher führte für sie von
-  // der Startseite aus überhaupt kein Weg zu einer Fahrt — sie mussten erst
-  // von sich aus "Anmelden" wählen, ohne dass irgendwo stand, wofür. Der
-  // Klick ist trotzdem keine Sackgasse: /fahrten/neu leitet ohne Session auf
-  // /anmelden um (siehe app/fahrten/neu/page.tsx).
+  // Abgemeldete Besucher sehen denselben Einstieg — und seit dem Gast-
+  // Aufzeichnen führt er nicht mehr auf die Anmeldeseite, sondern direkt in
+  // den Recorder: aufzeichnen darf jeder, ein Konto braucht erst das
+  // Speichern (siehe app/fahrten/neu/page.tsx und FreeRideForm.tsx).
+  //
+  // Feed und Bestenlisten stehen hier ebenfalls, weil beide Seiten ohnehin
+  // öffentlich lesbar sind (public_fahrten bzw. die Leaderboard-Views sind
+  // an anon freigegeben) — sie fehlten in dieser Liste nur, wodurch es für
+  // Abgemeldete keinen Weg dorthin gab ausser über einen geteilten Link.
+  // Das ist genau der Teil des Produkts, der jemanden ohne Konto überzeugen
+  // kann. "Vorschlagen" und "Profil" bleiben weg: beide sind ohne Konto
+  // nichts als eine Umleitung auf /anmelden.
   if (!loggedIn) {
     return [
       { href: "/", label: "Strecken", icon: MapPinIcon },
+      { href: "/feed", label: "Feed", icon: FeedIcon },
       fahrtStarten,
+      { href: "/leaderboards", label: "Bestenlisten", icon: RankingIcon },
       { href: "/anmelden", label: "Anmelden", icon: PersonIcon },
     ];
   }

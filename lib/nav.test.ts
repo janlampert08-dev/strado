@@ -6,16 +6,32 @@ function hrefs(items: { href: string }[]): string[] {
 }
 
 describe("getNavItems", () => {
-  // Der Einstieg in eine Fahrt steht auch abgemeldeten Besuchern in der
-  // Navigation — vorher gab es für sie von der Startseite aus keinen Weg
-  // dorthin. /fahrten/neu leitet ohne Session selbst auf /anmelden um.
-  it("zeigt abgemeldeten Besuchern Strecken, Fahrt starten und Anmelden", () => {
+  // Alles, was ohne Konto benutzbar ist, steht auch für Abgemeldete in der
+  // Navigation: Strecken, Feed und Bestenlisten sind öffentlich lesbar, und
+  // aufzeichnen darf inzwischen jeder (das Konto verlangt erst das
+  // Speichern, siehe FreeRideForm.tsx). Vorher fehlten Feed und
+  // Bestenlisten hier, obwohl beide Seiten längst ohne Session
+  // funktionierten — erreichbar nur über einen geteilten Link.
+  it("zeigt abgemeldeten Besuchern alles ohne Konto Nutzbare", () => {
     for (const surface of ["header", "bottom"] as const) {
       expect(hrefs(getNavItems({ loggedIn: false, moderator: false, surface }))).toEqual([
         "/",
+        "/feed",
         "/fahrten/neu",
+        "/leaderboards",
         "/anmelden",
       ]);
+    }
+  });
+
+  // Der Gegentest zum obigen: was ohne Konto nur eine Umleitung auf
+  // /anmelden wäre, hat in der abgemeldeten Navigation nichts verloren.
+  it("führt für Abgemeldete weder Vorschlagen noch Profil noch Moderation", () => {
+    for (const surface of ["header", "bottom"] as const) {
+      const items = hrefs(getNavItems({ loggedIn: false, moderator: true, surface }));
+      expect(items).not.toContain("/strecken/neu");
+      expect(items).not.toContain("/profil");
+      expect(items).not.toContain("/moderation");
     }
   });
 

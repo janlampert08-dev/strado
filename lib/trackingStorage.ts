@@ -20,6 +20,15 @@ export interface TrackingSnapshot {
 // sich die beiden Arten nicht gegenseitig.
 export const FREE_RIDE_STORAGE_KEY = "frei";
 
+// Platzhalter-"Nutzer" für eine Aufzeichnung ohne Konto: abgemeldete
+// Besucher dürfen eine freie Fahrt aufzeichnen, gespeichert wird sie aber
+// erst nach der Anmeldung (siehe FreeRideForm.tsx). Bis dahin braucht der
+// Snapshot einen Schlüssel — und zwar einen eigenen, damit eine Gastfahrt
+// nicht den unterbrochenen Stand eines angemeldeten Kontos auf demselben
+// Browser überschreibt. Kollidiert nicht mit einer echten Nutzer-ID: die
+// sind UUIDs.
+export const GUEST_TRACKING_USER_ID = "gast";
+
 // Der Schlüssel enthält die Nutzer-ID. Ohne sie teilen sich alle Konten auf
 // demselben Browser denselben Eintrag: wer eine Aufzeichnung abbricht und
 // sich abmeldet, hinterlässt seinen vollständigen GPS-Verlauf für den
@@ -91,6 +100,33 @@ export function purgeLegacyTrackingSnapshots(): void {
   } catch {
     // Kein Zugriff auf localStorage — dann gibt es auch nichts aufzuräumen.
   }
+}
+
+// Übergibt eine als Gast aufgezeichnete Fahrt an das Konto, das sich
+// gerade dafür angemeldet hat (Rückkehr auf /fahrten/neu?fortsetzen=1 nach
+// dem Anmelde-Gate im Fazit-Screen). Ohne diesen Schritt wäre die Fahrt nach
+// der Anmeldung verloren: der Snapshot liegt unter dem Gast-Schlüssel, der
+// Recorder sucht aber unter der Nutzer-ID (siehe key()).
+//
+// Bewusst nicht automatisch bei jedem Mount: der Schlüssel enthält die
+// Nutzer-ID genau deshalb, weil ein liegengebliebener GPS-Verlauf auf einem
+// geteilten Gerät nicht dem nächsten Konto angeboten werden darf. Diese
+// Übergabe passiert nur auf ausdrückliche Anforderung des Aufrufers, und
+// gespeichert wird auch danach nichts von selbst — der Nutzer sieht das
+// Fazit und drückt "Fahrt speichern".
+//
+// Ein bereits vorhandener eigener Snapshot gewinnt: die unterbrochene
+// eigene Aufzeichnung ist die relevantere und wird nicht überschrieben.
+// Gibt zurück, ob übernommen wurde.
+export function adoptGuestTrackingSnapshot(userId: string, storageKey: string): boolean {
+  if (userId === GUEST_TRACKING_USER_ID) return false;
+  const guestSnapshot = loadTrackingSnapshot(GUEST_TRACKING_USER_ID, storageKey);
+  if (!guestSnapshot) return false;
+  if (loadTrackingSnapshot(userId, storageKey)) return false;
+
+  saveTrackingSnapshot(userId, storageKey, guestSnapshot);
+  clearTrackingSnapshot(GUEST_TRACKING_USER_ID, storageKey);
+  return true;
 }
 
 export function clearTrackingSnapshot(userId: string, storageKey: string): void {

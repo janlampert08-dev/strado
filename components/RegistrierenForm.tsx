@@ -9,13 +9,17 @@ import { LEGAL_URLS } from "@/lib/constants";
 
 const initialState: AuthFormState = { error: null };
 
-export default function RegistrierenForm() {
+export default function RegistrierenForm({ nextHref }: { nextHref?: string } = {}) {
   const [state, formAction, pending] = useActionState(signUp, initialState);
 
   return (
     <>
       <h1 className="text-display font-semibold">Registrieren</h1>
       <form action={formAction} className="flex flex-col gap-4">
+        {/* Optionales Rücksprungziel, wie in AnmeldenForm — signUp()
+            validiert den Wert erneut, bevor daraus ein Redirect bzw. ein
+            Bestätigungslink wird. */}
+        {nextHref && <input type="hidden" name="next" value={nextHref} />}
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           Benutzername
           <Input
@@ -73,7 +77,10 @@ export default function RegistrierenForm() {
       </p>
       <p className="text-sm text-muted">
         Schon ein Konto?{" "}
-        <Link href="/anmelden" className="font-medium text-accent hover:underline">
+        <Link
+          href={nextHref ? `/anmelden?next=${encodeURIComponent(nextHref)}` : "/anmelden"}
+          className="font-medium text-accent hover:underline"
+        >
           Anmelden
         </Link>
       </p>

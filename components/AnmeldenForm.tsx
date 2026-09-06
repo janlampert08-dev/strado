@@ -43,7 +43,10 @@ export default function AnmeldenForm({ nextHref }: { nextHref?: string } = {}) {
       </form>
       <p className="text-sm text-muted">
         Noch kein Konto?{" "}
-        <Link href="/registrieren" className="font-medium text-accent hover:underline">
+        <Link
+          href={nextHref ? `/registrieren?next=${encodeURIComponent(nextHref)}` : "/registrieren"}
+          className="font-medium text-accent hover:underline"
+        >
           Registrieren
         </Link>
       </p>

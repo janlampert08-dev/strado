@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   FREE_RIDE_STORAGE_KEY,
+  GUEST_TRACKING_USER_ID,
+  adoptGuestTrackingSnapshot,
   clearTrackingSnapshot,
   loadTrackingSnapshot,
   saveTrackingSnapshot,
@@ -84,6 +86,45 @@ describe("trackingStorage", () => {
     clearTrackingSnapshot(USER_A, FREE_RIDE_STORAGE_KEY);
     expect(loadTrackingSnapshot(USER_A, FREE_RIDE_STORAGE_KEY)).toBeNull();
     expect(loadTrackingSnapshot(USER_B, FREE_RIDE_STORAGE_KEY)).not.toBeNull();
+  });
+
+  // Eine als Gast aufgezeichnete Fahrt gehört bis zur Anmeldung niemandem —
+  // erst das Konto, das sich ausdrücklich dafür anmeldet, übernimmt sie.
+  it("hands a guest recording over to the account that signs in for it", () => {
+    saveTrackingSnapshot(GUEST_TRACKING_USER_ID, FREE_RIDE_STORAGE_KEY, snapshot({ distanceKm: 7 }));
+
+    expect(adoptGuestTrackingSnapshot(USER_A, FREE_RIDE_STORAGE_KEY)).toBe(true);
+    expect(loadTrackingSnapshot(USER_A, FREE_RIDE_STORAGE_KEY)?.distanceKm).toBe(7);
+    // Und liegt danach nicht mehr unter dem Gast-Schlüssel, wo sie dem
+    // nächsten Konto auf demselben Gerät angeboten werden könnte.
+    expect(loadTrackingSnapshot(GUEST_TRACKING_USER_ID, FREE_RIDE_STORAGE_KEY)).toBeNull();
+  });
+
+  it("has nothing to adopt when no guest recording exists", () => {
+    expect(adoptGuestTrackingSnapshot(USER_A, FREE_RIDE_STORAGE_KEY)).toBe(false);
+    expect(loadTrackingSnapshot(USER_A, FREE_RIDE_STORAGE_KEY)).toBeNull();
+  });
+
+  // Die eigene unterbrochene Aufzeichnung ist die relevantere — eine
+  // Gastfahrt darf sie nicht überschreiben.
+  it("keeps an own interrupted recording instead of overwriting it with a guest one", () => {
+    saveTrackingSnapshot(USER_A, FREE_RIDE_STORAGE_KEY, snapshot({ distanceKm: 42 }));
+    saveTrackingSnapshot(GUEST_TRACKING_USER_ID, FREE_RIDE_STORAGE_KEY, snapshot({ distanceKm: 7 }));
+
+    expect(adoptGuestTrackingSnapshot(USER_A, FREE_RIDE_STORAGE_KEY)).toBe(false);
+    expect(loadTrackingSnapshot(USER_A, FREE_RIDE_STORAGE_KEY)?.distanceKm).toBe(42);
+  });
+
+  it("does not revive an expired guest recording", () => {
+    const twoDaysAgo = Date.now() - 48 * 60 * 60 * 1000;
+    saveTrackingSnapshot(
+      GUEST_TRACKING_USER_ID,
+      FREE_RIDE_STORAGE_KEY,
+      snapshot({ savedAt: twoDaysAgo }),
+    );
+
+    expect(adoptGuestTrackingSnapshot(USER_A, FREE_RIDE_STORAGE_KEY)).toBe(false);
+    expect(loadTrackingSnapshot(USER_A, FREE_RIDE_STORAGE_KEY)).toBeNull();
   });
 
   it("survives a storage that throws (private browsing, quota)", () => {

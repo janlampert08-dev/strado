@@ -8,6 +8,7 @@ import {
   loadTrackingSnapshot,
   clearTrackingSnapshot,
   purgeLegacyTrackingSnapshots,
+  adoptGuestTrackingSnapshot,
   type TrackingSnapshot,
 } from "@/lib/trackingStorage";
 
@@ -98,6 +99,7 @@ export function useRideRecorder({
   userId,
   storageKey,
   gate = null,
+  adoptGuestSnapshot = false,
 }: {
   // Teil des localStorage-Schlüssels: eine abgebrochene Aufzeichnung darf
   // auf einem geteilten Gerät nicht dem nächsten angemeldeten Nutzer
@@ -105,6 +107,12 @@ export function useRideRecorder({
   userId: string;
   storageKey: string;
   gate?: RideGate | null;
+  // Übernimmt beim Mount einmalig einen als Gast aufgezeichneten Snapshot
+  // für diesen Nutzer (siehe adoptGuestTrackingSnapshot). Nur zu setzen,
+  // wenn der Nutzer sich gerade ausdrücklich zum Speichern dieser Fahrt
+  // angemeldet hat — sonst würde eine fremde Gastaufzeichnung auf einem
+  // geteilten Gerät dem nächsten Konto angeboten.
+  adoptGuestSnapshot?: boolean;
 }): RideRecorder {
   const [phase, setPhase] = useState<RecorderPhase>("idle");
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -155,6 +163,10 @@ export function useRideRecorder({
   const gateRef = useRef(gate);
   const storageKeyRef = useRef(storageKey);
   const userIdRef = useRef(userId);
+  // Nur der Wert beim Mount zählt — die Übernahme passiert einmalig im
+  // Wiederherstellungs-Effekt unten, ein späteres Umschalten der Prop hätte
+  // dort keine Wirkung mehr.
+  const adoptGuestSnapshotRef = useRef(adoptGuestSnapshot);
 
   useEffect(() => {
     gateRef.current = gate;
@@ -528,6 +540,12 @@ export function useRideRecorder({
     // Reste aus der Zeit vor der Nutzertrennung wegräumen, bevor irgendetwas
     // wiederhergestellt wird.
     purgeLegacyTrackingSnapshots();
+    // Vor dem Laden: eine Fahrt, die dieser Nutzer noch abgemeldet
+    // aufgezeichnet hat, liegt unter dem Gast-Schlüssel und würde sonst
+    // nicht gefunden.
+    if (adoptGuestSnapshotRef.current) {
+      adoptGuestTrackingSnapshot(userIdRef.current, storageKeyRef.current);
+    }
     const snapshot = loadTrackingSnapshot(userIdRef.current, storageKeyRef.current);
 
     const timeout = setTimeout(() => {

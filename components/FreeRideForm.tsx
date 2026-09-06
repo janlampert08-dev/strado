@@ -1,13 +1,14 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Route as RouteIcon } from "lucide-react";
 import { logFreeRide, type FreeRideFormState } from "@/lib/actions/completions";
 import { useRideRecorder } from "@/components/useRideRecorder";
 import { useLiveLapHint } from "@/components/useLiveLapHint";
-import { FREE_RIDE_STORAGE_KEY } from "@/lib/trackingStorage";
+import { FREE_RIDE_STORAGE_KEY, GUEST_TRACKING_USER_ID } from "@/lib/trackingStorage";
 import RideSummaryForm from "@/components/RideSummaryForm";
 import { formatDuration } from "@/lib/format";
 import { movingSeconds, publicationBlockReason } from "@/lib/track";
@@ -26,6 +27,13 @@ const RouteMap = dynamic(() => import("@/components/RouteMap"), {
 const initialState: FreeRideFormState = { error: null };
 const MAX_TITEL_LENGTH = 80;
 
+// Rücksprungziel für das Anmelde-Gate im Fazit: zurück in den Recorder, mit
+// dem Hinweis, dass die als Gast aufgezeichnete Fahrt übernommen werden darf
+// (siehe app/fahrten/neu/page.tsx und adoptGuestTrackingSnapshot).
+const NACH_ANMELDUNG_ZURUECK = "/fahrten/neu?fortsetzen=1";
+const ANMELDEN_HREF = `/anmelden?next=${encodeURIComponent(NACH_ANMELDUNG_ZURUECK)}`;
+const REGISTRIEREN_HREF = `/registrieren?next=${encodeURIComponent(NACH_ANMELDUNG_ZURUECK)}`;
+
 // Aufzeichnung einer freien Fahrt: kein Streckenbezug, also kein
 // automatischer Start am Startpunkt, kein automatischer Stopp am Ziel und
 // kein Deckungsgrad. Gestartet wird mit dem ersten GPS-Fix, beendet von
@@ -35,10 +43,15 @@ export default function FreeRideForm({
   userId,
   vehicles,
   routes,
+  adoptGuestRide = false,
 }: {
   // Nur für den localStorage-Schlüssel der Wiederherstellung — die Fahrt
   // selbst wird serverseitig dem angemeldeten Nutzer zugeordnet.
-  userId: string;
+  //
+  // null heisst: abgemeldeter Besucher. Aufzeichnen geht trotzdem, nur das
+  // Speichern am Ende verlangt ein Konto (Gate im Fazit weiter unten). Der
+  // Snapshot läuft dann unter GUEST_TRACKING_USER_ID.
+  userId: string | null;
   vehicles: Vehicle[];
   // Freigegebene Strecken als Orientierungshilfe auf der Karte: sichtbar,
   // aber weder anklickbar noch massgeblich für den Kartenausschnitt (die
@@ -46,10 +59,19 @@ export default function FreeRideForm({
   // eine freie Fahrt bleibt eine freie Fahrt, auch wenn sie zufällig über
   // eine kuratierte Strecke führt.
   routes: RouteGeoJSON[];
+  // Nur gesetzt, wenn dieser Nutzer sich gerade über das Anmelde-Gate unten
+  // angemeldet hat (?fortsetzen=1) — dann darf die als Gast aufgezeichnete
+  // Fahrt an sein Konto übergeben werden.
+  adoptGuestRide?: boolean;
 }) {
   const router = useRouter();
+  const istGast = userId === null;
   const [state, formAction, pending] = useActionState(logFreeRide, initialState);
-  const recorder = useRideRecorder({ userId, storageKey: FREE_RIDE_STORAGE_KEY });
+  const recorder = useRideRecorder({
+    userId: userId ?? GUEST_TRACKING_USER_ID,
+    storageKey: FREE_RIDE_STORAGE_KEY,
+    adoptGuestSnapshot: adoptGuestRide,
+  });
   const { phase, result, clearSnapshot, discard } = recorder;
 
   // Rein informativer Live-Hinweis während der Fahrt — siehe
@@ -132,12 +154,52 @@ export default function FreeRideForm({
             </div>
           </dl>
 
-          {/* Erst nach erfolgreichem Speichern relevant, siehe
-              hasUnacknowledgedPartial oben: hält kurz an, bevor es wie
-              gewohnt auf die neue Fahrt weitergeht — es gibt sonst keine
-              Seite, auf der dieser Hinweis später noch stehen könnte
-              (partialAttempts wird nicht gespeichert). */}
-          {state.completionId && hasUnacknowledgedPartial ? (
+          {/* Das Anmelde-Gate des Kernloops: aufzeichnen darf jeder, ein
+              Konto braucht erst das Speichern. Bewusst hier und nicht schon
+              beim Öffnen des Recorders — wer die Fahrt hinter sich hat und
+              sein Ergebnis vor sich sieht, hat einen Grund für ein Konto.
+              Die Aufzeichnung liegt bis dahin unter dem Gast-Schlüssel im
+              Browser und wird nach der Anmeldung übernommen
+              (adoptGuestTrackingSnapshot), geht hier also nicht verloren.
+              Serverseitig ändert das nichts: logFreeRide weist eine Fahrt
+              ohne Session unabhängig davon ab. */}
+          {istGast ? (
+            <Card surface className="flex flex-col gap-3 p-4 text-sm">
+              <p className="font-medium text-foreground">Fahrt aufgezeichnet.</p>
+              <p className="text-muted">
+                Zum Speichern brauchst du ein Konto — damit landet die Fahrt in deinem Profil,
+                zählt für die Bestenlisten und kann im Feed geteilt werden. Die Aufzeichnung
+                bleibt so lange in diesem Browser (bis zu 24 Stunden) und wird nach der
+                Anmeldung übernommen.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href={REGISTRIEREN_HREF}
+                  className={buttonVariants({ variant: "accent", size: "sm" })}
+                >
+                  Konto erstellen
+                </Link>
+                <Link
+                  href={ANMELDEN_HREF}
+                  className={buttonVariants({ variant: "secondary", size: "sm" })}
+                >
+                  Ich habe ein Konto
+                </Link>
+              </div>
+              <button
+                type="button"
+                onClick={handleExit}
+                className="self-start text-xs text-muted underline hover:text-foreground"
+              >
+                Fahrt verwerfen
+              </button>
+            </Card>
+          ) : // Erst nach erfolgreichem Speichern relevant, siehe
+            // hasUnacknowledgedPartial oben: hält kurz an, bevor es wie
+            // gewohnt auf die neue Fahrt weitergeht — es gibt sonst keine
+            // Seite, auf der dieser Hinweis später noch stehen könnte
+            // (partialAttempts wird nicht gespeichert).
+            state.completionId && hasUnacknowledgedPartial ? (
             <Card surface className="flex flex-col gap-3 p-4 text-sm">
               <p className="font-medium text-foreground">Fahrt gespeichert.</p>
               {state.partialAttempts!.map((p) => (
@@ -225,6 +287,15 @@ export default function FreeRideForm({
         <p className="text-xs font-semibold tracking-wide text-muted uppercase">
           {recorder.hasStarted ? "Aufzeichnung läuft" : "Warte auf GPS"}
         </p>
+        {/* Vorwarnung statt einer Überraschung am Ende: das Konto wird erst
+            beim Speichern verlangt, aber wer ohne eines losfährt, soll das
+            vor der Fahrt wissen und nicht erst im Fazit. */}
+        {istGast && (
+          <p className="text-xs text-muted">
+            Ohne Konto: aufzeichnen geht, zum Speichern der Fahrt brauchst du am Ende eine
+            Anmeldung.
+          </p>
+        )}
         <dl className="grid grid-cols-3 gap-3">
           <div>
             <dt className="text-xs text-muted">Distanz</dt>
