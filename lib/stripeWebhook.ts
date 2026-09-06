@@ -165,9 +165,26 @@ export async function ereignisAbschliessen(supabase: AdminClient, eventId: strin
 
 // Gibt den Anspruch nach einem Fehlschlag wieder frei, damit Stripes
 // Wiederholung sofort einen neuen Versuch bekommt statt auf den Ablauf von
-// ANSPRUCH_VERFAELLT_NACH_MS zu warten. Schlägt auch das fehl, ist das kein
-// Grund, den Fehlerpfad abzubrechen: der Anspruch verfällt dann eben über
-// die Zeit.
-export async function ereignisFreigeben(supabase: AdminClient, eventId: string): Promise<void> {
-  await supabase.from("stripe_webhook_events").delete().eq("id", eventId).eq("status", "in_arbeit");
+// ANSPRUCH_VERFAELLT_NACH_MS zu warten.
+//
+// Der Rückgabewert sagt, ob das gelungen ist. Er ist nicht dekorativ: bleibt
+// der Anspruch stehen, sieht die nächste Zustellung ihn als 'in_arbeit' — und
+// erst der 503 aus dem Handler sorgt dafür, dass Stripe es trotzdem weiter
+// versucht, bis der Anspruch verfällt. Ein still verschluckter Fehler hier
+// hätte genau diesen Zusammenhang unsichtbar gemacht.
+export async function ereignisFreigeben(
+  supabase: AdminClient,
+  eventId: string,
+): Promise<boolean> {
+  const { error } = await supabase
+    .from("stripe_webhook_events")
+    .delete()
+    .eq("id", eventId)
+    .eq("status", "in_arbeit");
+
+  if (error) {
+    console.error("Anspruch konnte nicht freigegeben werden", { eventId }, error);
+    return false;
+  }
+  return true;
 }

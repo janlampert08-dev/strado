@@ -110,25 +110,29 @@ export async function createSubscriptionIntent(
   // Ohne diese Prüfung legte jeder Aufruf ein neues Abo an: wer die
   // Kaufseite zweimal öffnet oder neu lädt, erzeugte zwei incomplete-Abos —
   // und wer beide bezahlt, zahlt doppelt für dasselbe Konto.
-  const vorhandene = await stripe.subscriptions.list({
-    customer: customerId,
-    status: "all",
-    limit: 20,
-    expand: ["data.latest_invoice.confirmation_secret"],
-  });
+  //
+  // Gezielt nach Status abfragen statt status "all" mit einer Seitengrenze:
+  // ein Konto mit vielen beendeten Abos hätte sonst genau das laufende aus
+  // der ersten Seite verdrängt, und daneben wäre ein zweites entstanden.
+  const [aktive, testphase, unbezahlte] = await Promise.all([
+    stripe.subscriptions.list({ customer: customerId, status: "active", limit: 1 }),
+    stripe.subscriptions.list({ customer: customerId, status: "trialing", limit: 1 }),
+    stripe.subscriptions.list({
+      customer: customerId,
+      status: "incomplete",
+      limit: 20,
+      expand: ["data.latest_invoice.confirmation_secret"],
+    }),
+  ]);
 
-  const laeuftBereits = vorhandene.data.find(
-    (abo) => abo.status === "active" || abo.status === "trialing",
-  );
-  if (laeuftBereits) {
+  if (aktive.data.length > 0 || testphase.data.length > 0) {
     return { ok: false, error: "Du hast bereits ein aktives Premium-Abo." };
   }
 
   // Ein noch unbezahltes Abo für denselben Plan wiederverwenden, statt
   // daneben ein zweites anzulegen.
-  const offen = vorhandene.data.find(
+  const offen = unbezahlte.data.find(
     (abo) =>
-      abo.status === "incomplete" &&
       abo.items.data.some((position) => position.price.id === preisId) &&
       clientSecretVon(abo) !== null,
   );

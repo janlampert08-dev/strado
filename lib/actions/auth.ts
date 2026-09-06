@@ -273,16 +273,18 @@ async function kuendigeStripeAbo(userId: string): Promise<boolean> {
   if (!profile?.stripe_customer_id) return true;
 
   try {
-    const abos = await stripe.subscriptions.list({
-      customer: profile.stripe_customer_id,
-      status: "all",
-      limit: 50,
-    });
-
     // Bereits beendete Abos brauchen keine Kündigung; ein erneuter Aufruf
     // darauf würde nur einen Fehler erzeugen.
     const beendet = new Set(["canceled", "incomplete_expired"]);
-    for (const abo of abos.data) {
+    // Automatische Paginierung: eine einzelne Seite würde bei einem Konto mit
+    // vielen beendeten Abos genau das übersehen, worum es hier geht — ein noch
+    // abrechenbares Abo hinter der Seitengrenze, das nach der Kontolöschung
+    // unsichtbar weiterbucht.
+    for await (const abo of stripe.subscriptions.list({
+      customer: profile.stripe_customer_id,
+      status: "all",
+      limit: 100,
+    })) {
       if (beendet.has(abo.status)) continue;
       await stripe.subscriptions.cancel(abo.id);
     }
@@ -292,8 +294,19 @@ async function kuendigeStripeAbo(userId: string): Promise<boolean> {
   }
 
   // Die gespiegelte Zeile mitnehmen: nach der Anonymisierung zeigt sie auf
-  // einen Customer, den kein Profil mehr referenziert.
-  await admin.from("subscriptions").delete().eq("user_id", userId);
+  // einen Customer, den kein Profil mehr referenziert. Scheitert das, gilt
+  // die Löschung als nicht durchgeführt — sonst bliebe eine Abo-Zeile mit
+  // einer stripe_customer_id zurück, zu der es kein Profil mehr gibt, und der
+  // nächtliche Abgleich würde sie weiter anfassen.
+  const { error: loeschFehler } = await admin
+    .from("subscriptions")
+    .delete()
+    .eq("user_id", userId);
+  if (loeschFehler) {
+    console.error("Abo-Spiegelung bei Kontolöschung nicht gelöscht", { userId }, loeschFehler);
+    return false;
+  }
+
   return true;
 }
 

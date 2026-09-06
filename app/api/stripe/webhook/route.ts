@@ -107,10 +107,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ received: true, duplicate: true });
   }
   if (anspruch.art === "in_arbeit") {
-    // Ein anderer Aufruf verarbeitet dasselbe Ereignis gerade. Nicht doppelt
-    // ausführen; scheitert jener, löst dessen eigene Wiederholung den
-    // nächsten Versuch aus.
-    return NextResponse.json({ received: true, in_progress: true });
+    // Ein anderer Aufruf hält den Anspruch gerade. Nicht doppelt ausführen —
+    // aber auch nicht mit 200 quittieren: von hier aus ist nicht
+    // unterscheidbar, ob dort wirklich noch jemand arbeitet oder ob ein
+    // gestorbener Aufruf den Anspruch nicht mehr freigeben konnte. Ein 200
+    // wäre für Stripe eine Bestätigung und würde die Zustellung beenden,
+    // obwohl der Seiteneffekt womöglich nie lief.
+    //
+    // 503 lässt Stripe es später erneut versuchen. Ist der andere Aufruf bis
+    // dahin fertig, sieht die Wiederholung 'erledigt' und quittiert sauber;
+    // ist er gestorben, ist der Anspruch inzwischen verfallen und wird
+    // übernommen. Der Preis sind ein paar zusätzliche Zustellversuche bei
+    // echter Gleichzeitigkeit — deutlich billiger als ein verlorenes Abo.
+    return NextResponse.json({ error: "Ereignis wird bereits verarbeitet" }, { status: 503 });
   }
 
   try {

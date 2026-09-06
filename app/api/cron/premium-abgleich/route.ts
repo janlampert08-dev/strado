@@ -54,8 +54,17 @@ export async function GET(req: Request) {
   const { data: ueberfaellig, error: leseFehler } = await supabase
     .from("subscriptions")
     .select("stripe_subscription_id")
-    .in("status", ["active", "trialing", "past_due"])
+    // incomplete gehört ausdrücklich dazu: geht ein invoice.paid verloren,
+    // steht das Abo bei Stripe längst auf active, während die Zeile hier auf
+    // incomplete stehen bleibt. Genau dieser Nutzer hat bezahlt und kein
+    // Premium — er darf nicht aus der Nachholliste fallen.
+    .in("status", ["active", "trialing", "past_due", "incomplete"])
     .lt("current_period_end", grenze)
+    // Ohne Sortierung wählt Postgres eine beliebige Teilmenge; bei mehr
+    // überfälligen Abos als MAX_NACHGEHOLTE_ABOS könnten dieselben Zeilen
+    // jede Nacht erneut drankommen und der Rest nie. Der am längsten nicht
+    // abgeglichene zuerst.
+    .order("updated_at", { ascending: true })
     .limit(MAX_NACHGEHOLTE_ABOS);
 
   if (leseFehler) {

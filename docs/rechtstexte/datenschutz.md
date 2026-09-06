@@ -200,16 +200,32 @@ Meldungen sind für die gemeldete Person nicht einsehbar.
 
 ### 3.9 Zahlungs- und Abodaten (nur bei Premium)
 
-Die Zahlungsabwicklung läuft vollständig über **Stripe**. Wir speichern in
-unserer Datenbank lediglich eine **Kunden-Kennung von Stripe** am Profil sowie
-den Abo-Status; **Karten- und Kontodaten erreichen unsere Systeme nicht**.
+Die Zahlungsabwicklung läuft vollständig über **Stripe**. **Karten- und
+Kontodaten erreichen unsere Systeme nicht.**
+
+In unserer Datenbank speichern wir am Profil die **Kunden-Kennung von Stripe**
+sowie eine gespiegelte Fassung des Abo-Zustands mit den folgenden Angaben:
+
+| Angabe | Zweck |
+| --- | --- |
+| Kennung des Abos bei Stripe | ordnet die Zeile dem Abo zu, aus dem sie stammt |
+| Kennung des gewählten Preises | unterscheidet Monats-, Jahres- und Gründerpreis-Abo |
+| Status des Abos | entscheidet über die Premium-Berechtigung |
+| Ende der laufenden Abrechnungsperiode | Anzeige „Premium bis …" und Erkennung ausgebliebener Meldungen |
+| Kennzeichen „zum Periodenende gekündigt" | Anzeige des Kündigungsstands |
+| Ende einer laufenden Kulanzfrist und die auslösende Rechnungsnummer | hält Premium nach einer fehlgeschlagenen Zahlung befristet aufrecht und verhindert, dass Wiederholungsversuche derselben Rechnung die Frist verlängern |
+| Zeitpunkt des letzten Abrufs bei Stripe und der letzten Änderung | Nachvollziehbarkeit und Erkennung veralteter Meldungen |
 
 An Stripe übermitteln wir die **E-Mail-Adresse** und die interne
 Benutzer-Kennung (als Metadatum zur Zuordnung). Stripe erhebt darüber hinaus
 selbst die Zahlungsmitteldaten, Rechnungs- und Transaktionsdaten sowie
-technische Daten des Zahlungsvorgangs. Zur Absicherung gegen doppelt
-zugestellte Zahlungsereignisse speichern wir zudem Kennungen der von Stripe
-gemeldeten Ereignisse.
+technische Daten des Zahlungsvorgangs.
+
+Zur Absicherung gegen doppelt zugestellte Zahlungsereignisse speichern wir zu
+jedem von Stripe gemeldeten Ereignis dessen **Kennung**, seinen **Typ**, den
+**Bearbeitungsstand** sowie den **Eingangs- und Abschlusszeitpunkt**. Diese
+Angaben enthalten keine Zahlungsdaten; sie dienen ausschliesslich dazu, ein
+mehrfach zugestelltes Ereignis nur einmal wirken zu lassen.
 
 ### 3.10 Technische Daten
 
@@ -391,7 +407,8 @@ den Privatzonen-Radius anpassen (was bereits geteilte Fahrten neu zuschneidet).
 | --- | --- |
 | Abgelehnte Streckenvorschläge | automatische Löschung 3 Tage nach der Ablehnung |
 | IP-Adressen zur Missbrauchsabwehr | flüchtig im Arbeitsspeicher, wenige Minuten, keine Datenbankablage |
-| Konto-, Profil-, Fahrten- und Community-Daten | bis zur Löschung durch die Nutzenden bzw. bis zur Kontolöschung |
+| Konto-, Profil-, Fahrten- und Community-Daten | bis zur Löschung durch die Nutzenden bzw. bis zur Kontolöschung — **mit den Ausnahmen aus Ziff. 9.4**: veröffentlichte Streckenfahrten, Bewertungen, Kudos, Follows, Meldungen, Fotos zu erhalten bleibenden Fahrten und ein technischer Löschvermerk bleiben ohne Namensbezug bestehen |
+| Abo-Zustand (Abschnitt 3.9) | bis zum Ende des Abos; bei der Kontolöschung wird die Zeile entfernt |
 | Rechnungs- und Zahlungsunterlagen | gesetzliche Aufbewahrungsfrist, in der Regel 10 Jahre (Art. 958f OR) — überwiegend bei Stripe |
 | Protokolldaten der Hosting-Anbieter | nach deren Aufbewahrungsfristen |
 
