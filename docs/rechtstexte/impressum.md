@@ -88,15 +88,20 @@ füllen und schon gar nicht mit dem Platzhalter zu belassen.
 
 ## Weitere Rechtstexte
 
-- Allgemeine Geschäftsbedingungen: `https://[[DOMAIN]]/agb`
-- Datenschutzerklärung: `https://[[DOMAIN]]/datenschutz`
+- Allgemeine Geschäftsbedingungen: `https://[[DOMAIN]]/legal/agb`
+- Datenschutzerklärung: `https://[[DOMAIN]]/legal/datenschutz`
 
-> **Technischer Hinweis (nicht Teil des veröffentlichten Impressums):** Die
-> App verlinkt diese drei Seiten über `LEGAL_URLS` in `lib/constants.ts`.
-> Dort steht heute die Platzhalter-Domain `https://xyz.ch/…`. Sobald die
-> Texte unter der echten Domain live sind, muss diese Konstante angepasst
-> werden — sonst zeigen alle Links in der App weiterhin ins Leere. Das ist
-> Blocker 1 aus `docs/premium-plan.md`, Abschnitt 8.
+> **Technischer Hinweis (nicht Teil des veröffentlichten Impressums):** Diese
+> drei Entwürfe sind am 2026-09-06 als HTML unter `legal/` im Repo
+> `janlampert08-dev/cornice.ch` veröffentlicht worden; `LEGAL_URLS` in
+> `lib/constants.ts` zeigt darauf. Die Entwürfe hier bleiben die Arbeitsfassung
+> — **wer den einen ändert, muss den anderen mitziehen.** Die Platzhalter
+> stehen in den HTML-Seiten als orange markierte `.todo`-Felder.
+>
+> Die Domain `cornice.ch` ist bei Vercel noch nicht eingetragen. Solange das
+> so ist, muss `NEXT_PUBLIC_LEGAL_BASE_URL` auf `https://cornice-ch.vercel.app`
+> gesetzt sein, sonst zeigen die Links in der App ins Leere. Das ist der Rest
+> von Blocker 1 aus `docs/premium-plan.md`, Abschnitt 8.
 
 ---
 

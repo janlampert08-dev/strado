@@ -113,3 +113,43 @@ beschrieben bisher ein Opt-out-Verhalten, das es in Produktion nicht gibt.
 `docs/rechtstexte/datenschutz.md` beschreibt jetzt den tatsächlichen Zustand.
 Vor dem Nachziehen von 0054 ist zu klären, ob die Umkehrung auf Opt-out
 datenschutzrechtlich haltbar ist — nicht umgekehrt.
+
+## Premium-Migrationen 0059–0062 (eingespielt 2026-09-06)
+
+| Datei | Ledger-Eintrag | Bemerkung |
+| --- | --- | --- |
+| `0059_premium_abo_zustand.sql` | `0059_premium_abo_zustand` | mit der oben beschriebenen `revoke`-Lücke |
+| `0060_premium_funktionen_execute_entziehen.sql` | `0060_premium_funktionen_execute_entziehen` | schliesst diese Lücke |
+| `0061_fahrt_fotos_privater_bucket.sql` | `0061_fahrt_fotos_privater_bucket` | **nach** dem Deploy von `ad1c301` eingespielt, siehe unten |
+| `0062_apply_subscription_state_identitaetspruefung.sql` | `0062_apply_subscription_state_identitaetspruefung` | ersetzt `apply_subscription_state` aus 0059 |
+
+Der Ledger ist damit nicht mehr lückenlos aufsteigend: 0062 trägt einen
+früheren Zeitstempel als 0061, weil 0061 auf den Produktions-Deploy warten
+musste. Der Ledger sortiert nach Zeitstempel, nicht nach Dateinummer — beim
+Abgleich mit dem Verzeichnis also nach Namen suchen, nicht nach Position.
+
+### 0061 ist die Ausnahme von der Reihenfolgenregel
+
+Sonst gilt: Migration vor oder mit dem Deploy. 0061 macht den Bucket
+`route-photos` privat und entwertet damit jede bereits ausgelieferte
+öffentliche Foto-URL. Eingespielt, solange der alte Code läuft, zeigt jede
+Fahrt sofort kaputte Bilder. Deshalb: erst der signierende Code
+(`lib/storageUrls.ts`), dann die Migration.
+
+Praktisch war das Risiko null — `storage.objects` enthielt zum Zeitpunkt der
+Einspielung **kein einziges** Objekt im Bucket und `completion_photos` keine
+Zeile. Der Bucket war also zu, bevor das erste Foto darin lag. Für künftige
+Migrationen mit derselben Eigenschaft bleibt die Regel trotzdem: erst Deploy,
+dann Einspielung, und vorher zählen, wie viele Objekte betroffen wären.
+
+Nach der Einspielung geprüft:
+
+```sql
+select id, public from storage.buckets;                 -- route-photos: false
+select policyname, cmd, roles::text from pg_policies
+where schemaname = 'storage' and tablename = 'objects'
+  and qual like '%route-photos%';
+-- nur noch "Nutzer lesen eigene Fahrt-Fotos" (SELECT, authenticated)
+-- und "Nutzer löschen eigene Fahrt-Fotos" (DELETE, authenticated);
+-- die bedingungslose Lesepolicy für {public} ist weg.
+```

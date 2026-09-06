@@ -570,7 +570,7 @@ start using them at the `.returns<>()` call sites per 3.6 — they are dead *bec
 duplication finding, so fixing 3.6 revives them.
 
 ### 5.3 TODO / FIXME / HACK — exactly one, and it ships to users
-**Severity: medium (user-facing / legal), trivially fixable**
+**Severity: medium (user-facing / legal), trivially fixable — fixed 2026-09-06**
 
 `lib/constants.ts:38`:
 ```ts
@@ -582,6 +582,17 @@ These placeholder URLs are rendered live on `app/anmelden/page.tsx:16,25`,
 — i.e. the Impressum, Datenschutz and AGB links a Swiss user sees at sign-up all point at
 `xyz.ch`. One constant to change; flagging it because a single TODO in 21 k LOC is easy to
 lose and this one has legal weight.
+
+**Resolved.** The three pages now exist under `/legal/impressum`,
+`/legal/datenschutz` and `/legal/agb` in the marketing repo
+(`janlampert08-dev/cornice.ch`), and `LEGAL_URLS` is derived from
+`NEXT_PUBLIC_LEGAL_BASE_URL` with `https://cornice.ch` as the default. One
+detail the original finding understated: `xyz.ch` is not merely a dead link but
+a domain that belongs to someone else and could serve anything, under a label
+that says "Impressum". Still open, and tracked as a launch blocker rather than
+here: the operator's identity and address are blank in the published texts, and
+`cornice.ch` is not yet attached at Vercel — until it is, the env var has to
+point at `cornice-ch.vercel.app`.
 
 ### 5.4 Unreachable branches
 None found. `lib/signature.ts:69-81` `formatSignature` has an exhaustive `switch` over a

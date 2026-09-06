@@ -28,9 +28,14 @@ Gründerpreis CHF 39.00/Jahr für die ersten 100 Abos, dauerhaft preisgebunden.
 Kein Gratis-Testzeitraum zum Start, dafür 14 Tage Geld-zurück auf Zuruf.
 Herleitung in Abschnitt 6.
 
-**Härtester Blocker:** `lib/constants.ts` verweist für Impressum/Datenschutz/AGB
-auf `https://xyz.ch/...`. Ohne echte Rechtstexte darf kein Geld eingezogen
-werden, und TWINT verlangt sie ausdrücklich für die Freischaltung.
+**Härtester Blocker:** *(Stand 2026-09-06 teilweise erledigt.)* Die Rechtstexte
+stehen im Repo `janlampert08-dev/cornice.ch` unter `legal/` und `LEGAL_URLS`
+zeigt darauf. Offen bleiben zwei Dinge, und beide sind echte Blocker: die
+Angaben zur Anbieterin — Firmenname, Rechtsform, Adresse, Telefon, UID,
+Gerichtsstand — fehlen weiterhin und können nicht erfunden werden, und die
+Domain `cornice.ch` ist bei Vercel noch nicht eingetragen. Ohne die Angaben
+gibt es keine TWINT-Freischaltung; ohne die Domain zeigen die Links ins Leere,
+solange `NEXT_PUBLIC_LEGAL_BASE_URL` nicht auf `cornice-ch.vercel.app` steht.
 
 ---
 
@@ -379,9 +384,21 @@ spielt sie ein, vor dem Deploy des Codes, der sie braucht.
 
 ### Phase 0 — Voraussetzungen (kein Anwendungscode)
 
-1. Rechtstexte veröffentlichen und `LEGAL_URLS` in `lib/constants.ts` auf die
-   echte Domain zeigen lassen. AGB brauchen mindestens: Laufzeit, automatische
-   Verlängerung, Kündigungsfrist, Preis inkl. MWST, Erstattungsregel.
+1. ~~Rechtstexte veröffentlichen und `LEGAL_URLS` in `lib/constants.ts` auf die
+   echte Domain zeigen lassen.~~ *Erledigt 2026-09-06:* Impressum,
+   Datenschutzerklärung und AGB liegen unter `/legal/…` im Repo
+   `janlampert08-dev/cornice.ch`; die AGB decken Laufzeit, automatische
+   Verlängerung, Kündigung ohne Frist, Preise inkl. MWST und die
+   Geld-zurück-Regel ab. **Zwei Restpunkte bleiben Blocker:**
+   1a. Die Angaben zur Anbieterin (Firmenname, Rechtsform, Adresse, Telefon,
+   vertretungsberechtigte Person, UID, Gerichtsstand) stehen als sichtbar
+   markierte Lücken im Text und müssen eingesetzt werden — sie sind zugleich
+   Pflichtangabe nach Art. 3 Abs. 1 lit. s UWG und Voraussetzung für TWINT.
+   1b. `cornice.ch` und `app.cornice.ch` sind bei Vercel noch nicht als Custom
+   Domain eingetragen. Bis dahin muss `NEXT_PUBLIC_LEGAL_BASE_URL` auf
+   `https://cornice-ch.vercel.app` stehen, sonst laufen die Links ins Leere.
+   1c. Anwaltliche Durchsicht der Texte (die offenen Punkte stehen am Ende
+   jeder Datei in `docs/rechtstexte/`).
 2. Stripe: Produkt „Cornice Premium“ mit drei Preisen (Monat 4.90, Jahr 49.00,
    Gründer 39.00, alle CHF, wiederkehrend). TWINT im Dashboard beantragen.
 3. Stripe-API-Version in `lib/stripe.ts` pinnen (siehe 3.7): mindestens

@@ -34,10 +34,26 @@ export const REPORT_REASONS = [
 ] as const;
 
 // Leben bewusst auf der Marketing-Domain statt als eigene Routen hier —
-// Erreichbarkeit per Link genügt, unabhängig vom Hosting-Ort.
-// TODO: Platzhalter-Domain durch die echte Marketing-Domain ersetzen.
+// Erreichbarkeit per Link genügt, unabhängig vom Hosting-Ort. Die Seiten
+// liegen im Repo janlampert08-dev/cornice.ch unter legal/.
+//
+// Die Basis ist überschreibbar, weil die Zieldomain und die heute erreichbare
+// Adresse noch auseinanderfallen: cornice.ch ist bei Vercel als Custom Domain
+// noch nicht eingetragen, die Seiten stehen bis dahin unter
+// cornice-ch.vercel.app. Bis die Domain hängt, gehört diese Adresse in
+// NEXT_PUBLIC_LEGAL_BASE_URL — sonst zeigen Anmelden, Registrieren und die
+// Einstellungen auf eine Domain, die noch nicht antwortet.
+//
+// Der frühere Wert war https://xyz.ch/… — eine erfundene Domain, die nicht
+// uns gehört. Das ist schlimmer als ein toter Link: sie könnte jederzeit
+// jemand anderem gehören und beliebige Inhalte ausliefern, während bei uns
+// „Impressum" darüber steht.
+const LEGAL_BASE_URL = (
+  process.env.NEXT_PUBLIC_LEGAL_BASE_URL ?? "https://cornice.ch"
+).replace(/\/+$/, "");
+
 export const LEGAL_URLS = {
-  impressum: "https://xyz.ch/impressum",
-  datenschutz: "https://xyz.ch/datenschutz",
-  agb: "https://xyz.ch/agb",
+  impressum: `${LEGAL_BASE_URL}/legal/impressum`,
+  datenschutz: `${LEGAL_BASE_URL}/legal/datenschutz`,
+  agb: `${LEGAL_BASE_URL}/legal/agb`,
 } as const;

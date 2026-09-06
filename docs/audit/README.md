@@ -235,10 +235,15 @@ with a missing variable — fails with an error that doesn't name the cause.
 - React 19 resets uncontrolled `<form action>` fields on error, wiping typed
   input across five forms. Worse in `MultiPhotoInput`: previews survive in
   state while `input.files` is empty, so a retry silently saves zero photos.
-- **Legal links point at `https://xyz.ch`** (`lib/constants.ts:38-42`) and ship
+- ~~**Legal links point at `https://xyz.ch`** (`lib/constants.ts:38-42`) and ship
   in the sign-up form and settings page. For a Swiss product handling location
-  data and payments this is a compliance exposure, not a cosmetic TODO.
-  **[verified]**
+  data and payments this is a compliance exposure, not a cosmetic TODO.~~
+  **[verified — fixed 2026-09-06]** The pages now exist under `/legal/…` in
+  `janlampert08-dev/cornice.ch` and `LEGAL_URLS` points at them, with
+  `NEXT_PUBLIC_LEGAL_BASE_URL` as the override while `cornice.ch` is still
+  unattached at Vercel. Two things the fix does *not* close: the operator's
+  identity and address are still blank in the published texts, and the texts
+  have not had legal review.
 
 **Performance**
 - `RouteMap.tsx:265-266` uses `trafficSegments = []` / `trail = []` as
