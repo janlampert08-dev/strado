@@ -24,10 +24,11 @@ export default function DeleteAccountSection() {
 
       <Dialog open={open} onClose={() => setOpen(false)} title="Konto endgültig löschen">
         <p className="mb-4 text-sm text-muted">
-          Dein Profil (Name, Foto) wird anonymisiert und du wirst abgemeldet — mit deinen
-          bisherigen Zugangsdaten kannst du dich danach nicht mehr anmelden. Fahrten und
-          Bewertungen bleiben anonym erhalten und zählen weiterhin für Leaderboards. Diese Aktion
-          kann nicht rückgängig gemacht werden.
+          Dein Profil wird geleert — Name, Foto, Fahrzeuge, deine aufgezeichneten GPS-Tracks und
+          alle Einstellungen werden entfernt — und du wirst abgemeldet; mit deinen bisherigen
+          Zugangsdaten kannst du dich danach nicht mehr anmelden. Fahrten und Bewertungen bleiben
+          anonym erhalten und zählen weiterhin für Leaderboards. Diese Aktion kann nicht rückgängig
+          gemacht werden.
         </p>
         <form action={formAction} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5 text-sm font-medium">
