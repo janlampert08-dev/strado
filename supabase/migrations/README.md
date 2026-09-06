@@ -75,3 +75,41 @@ direkt hält, ist keine Fehlermeldung, sondern eine stille No-Op** (nur eine
 das Recht kommt — von `PUBLIC`, von einem direkten Grant, oder von beidem.
 `0027` Abschnitt B ist an genau dieser Falle gescheitert und wurde erst durch
 `0047`/`0048` tatsächlich wirksam.
+
+Diese Falle hat 2026-09-06 erneut zugeschlagen, diesmal in der anderen
+Richtung: `0059_premium_abo_zustand.sql` entzog das Ausführungsrecht seiner
+drei neuen Funktionen mit `revoke ... from public`. Wirkungslos — `anon` und
+`authenticated` halten es bei Funktionen als **direkten** Grant aus Supabases
+Default-Privilegien, nicht über `PUBLIC`. Nach dem Einspielen war
+`apply_subscription_state` mit dem öffentlichen anon-Key aufrufbar, und die
+Funktion setzt `ist_premium` für die im ersten Parameter genannte
+`stripe_customer_id`: Gratis-Premium für jeden, der die Funktion aufruft.
+`0060_premium_funktionen_execute_entziehen.sql` hat es korrigiert.
+
+**Merksatz: bei Funktionen immer `revoke execute ... from anon, authenticated`
+schreiben — und danach nachsehen, ob es gewirkt hat.** Der Einzeiler dafür:
+
+```sql
+select p.proname, coalesce(a.grantee::regrole::text, 'PUBLIC') as grantee
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+cross join lateral aclexplode(p.proacl) a
+where n.nspname = 'public' and p.proname = 'DIE_FUNKTION';
+```
+
+## Stand der Einspielung (Prüfung 2026-09-06)
+
+Beim Einspielen von 0059 wurde der Ledger erneut mit den Dateien im Repo
+verglichen. Drei Migrationen sind **nicht** eingespielt:
+
+| Datei | Zustand in der Datenbank |
+| --- | --- |
+| `0042_account_deletion.sql` | bewusst nicht eingespielt (siehe oben) — Folge: die Spalte `profiles.geloescht_am` existiert nicht |
+| `0058_kontoloeschung_werte_nullen.sql` | nicht eingespielt; setzt `geloescht_am` voraus und scheitert deshalb, solange 0042 fehlt |
+| `0054_sichtbarkeit_standardmaessig_aktiv.sql` | nicht eingespielt — die Sichtbarkeits-Schalter stehen in der Produktionsdatenbank weiterhin auf `false` (Opt-in), nicht auf `true` |
+
+Die letzte Zeile ist die folgenreichste: der Code und die Rechtstexte
+beschrieben bisher ein Opt-out-Verhalten, das es in Produktion nicht gibt.
+`docs/rechtstexte/datenschutz.md` beschreibt jetzt den tatsächlichen Zustand.
+Vor dem Nachziehen von 0054 ist zu klären, ob die Umkehrung auf Opt-out
+datenschutzrechtlich haltbar ist — nicht umgekehrt.

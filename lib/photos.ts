@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { mitSigniertenFotoUrls } from "@/lib/storageUrls";
 import type { RoutePhoto } from "@/types/database";
 
 // Fotos für die Fotos-Sektion einer Streckenseite (app/strecken/[id]/page.tsx,
@@ -13,5 +14,12 @@ export async function getRoutePhotos(routeId: string): Promise<RoutePhoto[]> {
     .eq("route_id", routeId)
     .order("datum", { ascending: false });
 
-  return (data as RoutePhoto[]) ?? [];
+  // Der Bucket ist privat (0061) — die in foto_url gespeicherte frühere
+  // öffentliche URL ist nicht mehr abrufbar und dient nur noch als Pfad.
+  // Die View liefert ohnehin bereits ausschliesslich öffentliche Fahrten.
+  return mitSigniertenFotoUrls(
+    (data as RoutePhoto[]) ?? [],
+    (foto) => foto.foto_url,
+    (foto, foto_url) => ({ ...foto, foto_url }),
+  );
 }

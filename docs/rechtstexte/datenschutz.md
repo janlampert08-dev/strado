@@ -79,12 +79,11 @@ Höhenmeter, Distanz, Follower-Liste, Premium-Abzeichen). Beim Premium-Abo
 kommt eine Kunden-Kennung des Zahlungsdienstleisters hinzu (Abschnitt 3.9).
 
 > **Wichtig zu den Standardeinstellungen:** Bei neu angelegten Konten sind
-> diese Profil-Schalter **standardmässig eingeschaltet** — Profilbild,
+> diese Profil-Schalter **standardmässig ausgeschaltet** — Profilbild,
 > Fahrzeuge, Anzahl Pässe, Höhenmeter, Distanz und Follower-Liste erscheinen
-> also auf dem öffentlichen Profil, bis sie in den Einstellungen abgeschaltet
-> werden. Das Premium-Abzeichen ist demgegenüber standardmässig aus. Bereits
-> getroffene eigene Einstellungen bleiben von dieser Vorgabe unberührt.
-> Die Sichtbarkeit **einzelner Fahrten** ist davon unabhängig und
+> also erst auf dem öffentlichen Profil, wenn sie in den Einstellungen
+> eingeschaltet werden. Dasselbe gilt für das Premium-Abzeichen. Die
+> Sichtbarkeit **einzelner Fahrten** ist davon unabhängig und ebenfalls
 > standardmässig **aus** (Abschnitt 3.4).
 
 ### 3.3 Fahrzeugdaten
@@ -149,18 +148,27 @@ gespeichert**.
 Zu jeder Fahrt können Fotos hochgeladen werden; ausserdem kann ein Profilbild
 gesetzt werden.
 
-> **Wichtiger Hinweis zur Sichtbarkeit:** Fotos und Profilbilder werden in
-> einem **öffentlich lesbaren Speicher** abgelegt. Wer die vollständige URL
-> einer Datei kennt, kann sie abrufen — auch dann, wenn die zugehörige Fahrt
-> auf „privat" gestellt ist. Innerhalb der Anwendung werden Fotos privater
-> Fahrten nicht angezeigt, die Datei selbst ist über ihre Adresse aber
-> erreichbar.
+**Sichtbarkeit von Fahrt-Fotos.** Fahrt-Fotos liegen in einem **nicht
+öffentlich lesbaren Speicher**. Sie werden nur über zeitlich begrenzt gültige
+Links ausgeliefert, die der Server erzeugt, nachdem er geprüft hat, dass die
+zugehörige Fahrt öffentlich ist oder dass die abrufende Person die Fahrt
+selbst gefahren ist. Ein weitergegebener Link funktioniert deshalb nicht
+dauerhaft, und ein Foto einer wieder auf privat gestellten Fahrt ist nicht
+mehr abrufbar.
 
-> **Wichtiger Hinweis zu Metadaten:** Hochgeladene Bilder werden unverändert
-> übernommen. Enthält eine Bilddatei **EXIF-Metadaten** — insbesondere
-> Aufnahmeort und Aufnahmezeitpunkt —, bleiben diese in der gespeicherten
-> Datei erhalten. Wer das nicht möchte, sollte Metadaten vor dem Hochladen
-> entfernen.
+> **Hinweis zu Profilbildern:** Profilbilder liegen weiterhin in einem
+> **öffentlich lesbaren Speicher**. Wer die vollständige Adresse einer solchen
+> Datei kennt, kann sie abrufen — auch dann, wenn der Schalter „Profilbild
+> zeigen" ausgeschaltet ist. Der Schalter steuert die Anzeige im Profil, nicht
+> die Erreichbarkeit der Datei.
+
+**Metadaten in hochgeladenen Bildern.** Bevor ein Bild gespeichert wird,
+werden seine **Metadaten serverseitig entfernt** — insbesondere
+Aufnahmeort (GPS) und Aufnahmezeitpunkt aus dem EXIF-Block. Das gilt für
+Fahrt-Fotos und für Profilbilder. Erhalten bleibt einzig die Angabe zur
+Bildausrichtung, damit hochkant aufgenommene Fotos nicht gedreht erscheinen;
+sie enthält keine personenbezogene Information. Die Bilddaten selbst werden
+dabei nicht neu berechnet, die Bildqualität ändert sich also nicht.
 
 ### 3.6 Community-Funktionen
 
@@ -292,10 +300,10 @@ Bewertungstexte; Streckenvorschläge nach ihrer Freigabe.
 Fahrten — mit Datum, Strecke bzw. Titel, Distanz, Dauer, Höhenmeter, Fotos und
 Notiz sowie dem an den Enden gekappten Track; ausserdem das Premium-Abzeichen.
 
-**Standardmässig sichtbar, jederzeit abschaltbar:** Profilbild; Fahrzeuge;
-Anzahl gefahrener Pässe; gesammelte Höhenmeter; gefahrene Distanz;
+**Erst nach eigenem Einschalten sichtbar (Standard: aus):** Profilbild;
+Fahrzeuge; Anzahl gefahrener Pässe; gesammelte Höhenmeter; gefahrene Distanz;
 Follower-Liste. Diese sechs Schalter sind bei neuen Konten voreingestellt
-**an** und lassen sich in den Profileinstellungen einzeln abschalten.
+**aus** und lassen sich in den Profileinstellungen einzeln einschalten.
 
 **Nie für andere sichtbar:** der vollständige, ungekappte GPS-Track;
 Fahrten, die nicht öffentlich gestellt sind; Notizen privater Fahrten;
@@ -572,20 +580,24 @@ nach der Zeichenfolge `[[` zu suchen, um sicherzustellen, dass kein Platzhalter
    SMTP-Dienstleister konfiguriert, ist dieser in Abschnitt 7 zu ergänzen.
 9. **Aussagen zu Vercel Web Analytics** (Abschnitt 3.10) sind gegen die
    aktuelle Anbieterdokumentation zu verifizieren.
-10. **Öffentlich lesbarer Dateispeicher** (Abschnitt 3.5) — die Hinweise sind
-    korrekt, beschreiben aber einen Zustand, der bewusst bestätigt werden
-    sollte: Fotos privater Fahrten sind über ihre URL erreichbar. Wird das
-    geändert, ist der Abschnitt anzupassen.
-11. **EXIF-Metadaten in hochgeladenen Bildern** (Abschnitt 3.5) — der Hinweis
-    beschreibt den heutigen Stand. Ein serverseitiges Entfernen der Metadaten
-    wäre die datenschutzfreundlichere Lösung und würde diesen Hinweis
-    überflüssig machen.
-12. **Voreingestellt eingeschaltete Sichtbarkeits-Schalter** (Abschnitte 3.2
-    und 6) — die Umkehrung von Opt-in auf Opt-out war laut Migration
-    `0054_sichtbarkeit_standardmaessig_aktiv.sql` ein ausdrücklicher
-    Produktentscheid. Ob sich eine solche Voreinstellung auf eine
-    Einwilligung stützen lässt oder ob dafür ein anderes
-    Rechtfertigungselement nötig ist (Grundsatz „Datenschutz durch
-    Voreinstellung", Art. 7 DSG bzw. Art. 25 DSGVO), ist zu klären. Fällt die
-    Prüfung negativ aus, ist nicht dieser Text, sondern die Voreinstellung
-    zu ändern.
+10. **Profilbilder liegen weiterhin öffentlich** (Abschnitt 3.5) — für
+    Fahrt-Fotos ist der Speicher inzwischen privat und die Links sind
+    zeitlich begrenzt (Migration 0061), für Profilbilder bewusst noch nicht.
+    Ob das so bleiben soll, ist eine Produktentscheidung: die Umstellung
+    beträfe Bestenlisten, Feed, Folgen-Listen und Profilsuche, also Listen,
+    die pro Seitenaufruf viele Links signieren müssten.
+11. **Bildausrichtung als einzige verbleibende Metainformation**
+    (Abschnitt 3.5) — beim Entfernen der Metadaten wird die
+    Ausrichtungsangabe neu und minimal geschrieben, damit hochkant
+    aufgenommene Fotos nicht gedreht erscheinen. Sie enthält keine
+    personenbezogene Information; der Hinweis im Text sollte trotzdem
+    bestätigt werden.
+12. **Voreinstellung der Sichtbarkeits-Schalter** (Abschnitte 3.2 und 6) —
+    im Repository liegt mit `0054_sichtbarkeit_standardmaessig_aktiv.sql`
+    eine Migration, die diese Schalter von Opt-in auf Opt-out umstellen
+    würde. Sie ist in der Produktionsdatenbank **nicht eingespielt**, die
+    Schalter stehen dort weiterhin auf „aus"; dieser Text beschreibt den
+    tatsächlichen Zustand. Wird die Migration nachgezogen, ist der Text
+    zwingend mitzuändern — und vorher zu prüfen, ob sich eine solche
+    Voreinstellung auf eine Einwilligung stützen lässt (Grundsatz
+    „Datenschutz durch Voreinstellung", Art. 7 DSG bzw. Art. 25 DSGVO).

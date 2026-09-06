@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { throwOnQueryError } from "@/lib/queryError";
+import { mitSigniertenFotoUrls } from "@/lib/storageUrls";
 import type {
   CompletionPhoto,
   FahrtArt,
@@ -11,6 +12,20 @@ import type {
   PublicFahrt,
   PublicFahrtTrack,
 } from "@/types/database";
+
+// Fotozeilen (beide Quellen liefern dieselben zwei Felder) in die
+// Anzeigeform bringen und dabei signieren — der Bucket ist seit 0061 privat,
+// die gespeicherte URL allein ist nicht mehr abrufbar.
+async function signierteFotos(
+  zeilen: { id: string; foto_url: string }[],
+): Promise<CompletionPhotoItem[]> {
+  const signiert = await mitSigniertenFotoUrls(
+    zeilen,
+    (foto) => foto.foto_url,
+    (foto, foto_url) => ({ ...foto, foto_url }),
+  );
+  return signiert.map((foto) => ({ id: foto.id, fotoUrl: foto.foto_url }));
+}
 
 // Anzeigename einer freien Fahrt: der selbst vergebene Titel, sonst der
 // per Reverse-Geocoding ermittelte Startort, sonst ein neutraler Fallback.
@@ -263,10 +278,11 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
         : null,
       displayName: row.display_name,
       avatarUrl: row.avatar_url,
-      photos: ((photoRows as Pick<PublicCompletionPhoto, "id" | "foto_url">[]) ?? []).map((p) => ({
-        id: p.id,
-        fotoUrl: p.foto_url,
-      })),
+      // Signiert, weil der Bucket seit 0061 privat ist. Die View enthält nur
+      // öffentliche Fahrten, die Berechtigung ist also bereits geklärt.
+      photos: await signierteFotos(
+        (photoRows as Pick<PublicCompletionPhoto, "id" | "foto_url">[]) ?? [],
+      ),
       isOwner: viewerId === row.user_id,
       titel: row.titel,
       startOrt: row.start_ort,
@@ -368,10 +384,9 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
     vehicle: own.vehicles,
     displayName: profile?.display_name ?? null,
     avatarUrl: profile?.avatar_url ?? null,
-    photos: ((photoRows as Pick<CompletionPhoto, "id" | "foto_url">[]) ?? []).map((p) => ({
-      id: p.id,
-      fotoUrl: p.foto_url,
-    })),
+    // Eigene, ggf. private Fahrt: die Zeilen kommen unter RLS aus
+    // completion_photos, gehören also dem Betrachter selbst.
+    photos: await signierteFotos((photoRows as Pick<CompletionPhoto, "id" | "foto_url">[]) ?? []),
     isOwner: true,
     titel: own.titel,
     startOrt: own.start_ort,
