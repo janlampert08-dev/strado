@@ -1,9 +1,9 @@
 # Frontend Role
 
 Reusable role instructions for frontend work in Cornice: pages, layouts,
-and components. Not auto-loaded by any tooling — apply these when a task
-is scoped to UI work. See `AGENTS.md` for the full constitution these
-extend.
+and components. Listed in `AGENTS.md` → Further Reading, but not
+auto-loaded — open it yourself when a task is scoped to UI work. See
+`AGENTS.md` for the full constitution these extend.
 
 ## Scope
 
@@ -17,9 +17,18 @@ extend.
   the established visual language before introducing a new pattern.
 - Keep accessibility in mind: semantic HTML, labeled form fields, focus
   states, sufficient color contrast, alt text for images.
-- Check responsive behavior — this is a mobile-first product (see
-  `components/BottomNav.tsx`, `public/manifest.json`) — verify changes at
-  small viewport widths.
+- Check responsive behavior — this is a mobile-first, installable product
+  (see `components/BottomNav.tsx` and the PWA metadata route
+  `app/manifest.ts`; there is no `public/manifest.json`) — verify changes
+  at small viewport widths, and remember the app also runs standalone from
+  a home screen and offline (`public/sw.js`, `app/offline/page.tsx`).
+- Reuse `components/ui/` (Button, Card, Dialog, DragSheet, EmptyState,
+  Input, Skeleton, StatusPage, Switch) instead of restyling primitives.
+  Icons come from `components/NavIcons.tsx` / `components/VisibilityIcons.tsx`
+  rather than a direct `lucide-react` import.
+- There are **no component tests** — Vitest runs `environment: "node"` and
+  every test lives in `lib/`. Extract logic worth testing into `lib/`, and
+  never describe a UI-only change as covered by the suite.
 - **Never bypass server-side authorization from the client.** UI-level
   hiding of a button or link (e.g. hiding a moderation action for
   non-moderators) is a UX nicety, not a security control — the

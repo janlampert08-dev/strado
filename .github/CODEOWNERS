@@ -3,12 +3,31 @@
 # These paths are security- or infrastructure-sensitive (see "Protected
 # Areas" in AGENTS.md) and require review from the repository owner.
 
-/proxy.ts                @janlampert08-dev
-/lib/supabase/            @janlampert08-dev
-/supabase/migrations/     @janlampert08-dev
-/app/api/stripe/          @janlampert08-dev
-/lib/stripe*              @janlampert08-dev
-/lib/actions/billing.ts   @janlampert08-dev
-/.github/                 @janlampert08-dev
-/AGENTS.md                @janlampert08-dev
-/SECURITY.md              @janlampert08-dev
+# Keep this list in sync with "Protected Areas" in AGENTS.md — a path
+# protected there but missing here is protected by convention only.
+
+/proxy.ts                    @janlampert08-dev
+/lib/supabase/               @janlampert08-dev
+/supabase/migrations/        @janlampert08-dev
+/app/api/stripe/             @janlampert08-dev
+/app/api/strecken/           @janlampert08-dev
+/app/auth/                   @janlampert08-dev
+/lib/stripe*                 @janlampert08-dev
+/lib/actions/billing.ts      @janlampert08-dev
+/lib/actions/auth.ts         @janlampert08-dev
+/lib/actions/moderation.ts   @janlampert08-dev
+/lib/actions/reports.ts      @janlampert08-dev
+/lib/actions/completions.ts  @janlampert08-dev
+/lib/actions/profile.ts      @janlampert08-dev
+/lib/moderation.ts           @janlampert08-dev
+/lib/rateLimit.ts            @janlampert08-dev
+/lib/validation.ts           @janlampert08-dev
+/lib/publicTrack.ts          @janlampert08-dev
+/lib/track.ts                @janlampert08-dev
+/lib/utils/url.ts            @janlampert08-dev
+/.github/                    @janlampert08-dev
+/.claude/                    @janlampert08-dev
+/.agents/                    @janlampert08-dev
+/AGENTS.md                   @janlampert08-dev
+/CLAUDE.md                   @janlampert08-dev
+/SECURITY.md                 @janlampert08-dev

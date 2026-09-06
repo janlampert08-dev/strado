@@ -55,8 +55,42 @@ Track-Spalten wieder verlieren.
 
 Die beiden `0041_*`-Dateien teilen sich denselben Zahlenpräfix. Das ist eine
 Altlast aus zwei parallelen Branches; sie bleibt bestehen, weil eine
-eingespielte Migration nicht nachträglich umbenannt wird. Neue Dateien bekommen
-eine eindeutige, fortlaufende Nummer.
+eingespielte Migration nicht nachträglich umbenannt wird.
+
+## Doppelte Nummernpräfixe
+
+Der `0041`-Fall ist kein Einzelfall geblieben. Aktuell gibt es **vier**
+doppelt vergebene Präfixe, jeweils aus parallelen Branches, die unabhängig
+voneinander dieselbe nächste Nummer gezogen haben:
+
+| Präfix | Dateien |
+| --- | --- |
+| `0034` | `0034_profiles_column_grant_hardening.sql`, `0034_public_fahrten_foto.sql` |
+| `0041` | `0041_rating_cooldown_covers_edits.sql`, `0041_route_proposal_cooldown.sql` |
+| `0053` | `0053_gefolgt_von_feature.sql`, `0053_kudos_gesehen.sql` |
+| `0054` | `0054_leaderboard_user_totals.sql`, `0054_sichtbarkeit_standardmaessig_aktiv.sql` |
+
+Warum das zählt: `supabase_migrations.schema_migrations.version` ist ein
+Primary Key. Zwei Dateien mit demselben Präfix können dort **nicht beide**
+unter ihrer Nummer stehen — eine Hälfte wird entweder unter einem
+abweichenden `version`-Wert eingetragen (wie beim `0041`-Paar oben) oder gar
+nicht. Ein Ledger-Eintrag `0053` beweist deshalb nicht, dass beide
+`0053_*`-Dateien gelaufen sind. Beim Abgleich vor einem Deploy zählt bei
+diesen Präfixen ausschließlich, ob die **Objekte** beider Dateien existieren.
+
+**Vor dem Anlegen einer neuen Datei** die höchste Nummer nicht nur auf `main`
+prüfen, sondern auch in allen offenen PRs — dort entsteht die Kollision.
+Lässt sie sich nicht vermeiden, gehört sie im selben Commit in diese Tabelle.
+
+## Nicht eingespielt (Stand: 2026-09-06)
+
+`0059_fahrtstatistiken_serverseitig_erzwingen.sql` und
+`0060_private_strecken_aus_oeffentlichen_views.sql` sind nach `main` gemergt,
+aber **noch nirgends angewendet** — kein SQL ist im Rahmen des Audits gegen
+eine Datenbank gelaufen. Sie schließen zwei Audit-Befunde (A1 teilweise, A3
+vollständig, siehe `docs/audit/README.md`), solange sie nicht eingespielt
+sind, gilt in Produktion aber weiterhin der Zustand davor. Beide brauchen
+einen Lauf gegen einen Supabase-Branch, bevor sie an Produktion gehen.
 
 ## Was aus einer Migration heraus nicht geht
 

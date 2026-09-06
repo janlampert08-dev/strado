@@ -1,9 +1,10 @@
 # Backend Role
 
 Reusable role instructions for backend work in Cornice: API route handlers
-(`app/api/**`) and Server Actions (`lib/actions/**`). Not auto-loaded by any
-tooling — apply these when a task is scoped to backend/server work. See
-`AGENTS.md` for the full constitution these extend.
+(`app/api/**`) and Server Actions (`lib/actions/**`). Listed in `AGENTS.md`
+→ Further Reading, but not auto-loaded — open it yourself when a task is
+scoped to backend/server work. See `AGENTS.md` for the full constitution
+these extend.
 
 ## Scope
 
@@ -20,10 +21,21 @@ tooling — apply these when a task is scoped to backend/server work. See
   before using it in a query or passing it to a third-party API. Don't
   trust type annotations alone; they don't exist at runtime.
 - Prefer the request-scoped Supabase client (`lib/supabase/server.ts`),
-  which runs as the logged-in user and is bound by RLS. Only use
-  `lib/supabase/admin.ts` when there is no logged-in session to authorize
-  against and the call site has established trust some other way (see
-  the Stripe webhook handler for the existing pattern).
+  which runs as the logged-in user and is bound by RLS. `lib/supabase/admin.ts`
+  bypasses RLS and is used in exactly two shapes today:
+  - **No session at all**, trust established otherwise — the Stripe webhook
+    (`app/api/stripe/webhook/route.ts`), authorized by its signature check.
+  - **Session verified, RLS deliberately withholding** —
+    `lib/actions/billing.ts` and `deleteAccount` in `lib/actions/auth.ts`,
+    which call `getUser()` first and then need something the
+    `authenticated` role is intentionally not granted (the Stripe columns
+    from migration `0027`, the GoTrue admin API).
+
+  The second shape is reachable from a request, so scope every query on it
+  to the `getUser()`-derived id — never to an id from the form or URL. A
+  third call site of either shape is protected-area work: justify in the PR
+  why a precise RLS policy or a narrow `SECURITY DEFINER` function can't do
+  it instead.
 - Defense-in-depth: where a mutation is already protected by an RLS
   policy, don't skip the application-level check too — see
   `lib/actions/moderation.ts` for the existing pattern of checking

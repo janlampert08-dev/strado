@@ -22,6 +22,44 @@ Switzerland/Zürich. Users discover and propose scenic driving/riding routes,
 track completions ("Fahrten"), rate routes, compete on leaderboards, and can
 subscribe to a Premium tier (Stripe) for additional features.
 
+The UI, the code comments, and the migration filenames are **German**. Match
+that when adding to them; this document and the `.agents/` role files are the
+deliberate exception.
+
+## Current State
+
+Facts that are true right now and are expensive to rediscover. Anything
+here is a snapshot — if the code disagrees, the code wins, and this section
+is what should be corrected.
+
+- **Premium is disabled by commented-out source, not a feature flag.**
+  `components/PremiumCard.tsx`, `PremiumPurchaseView.tsx` and
+  `PremiumCheckoutForm.tsx` are commented out in full, `app/profil/premium/`
+  is a bare `redirect("/profil")`, and `lib/leaderboard.ts` hardcodes
+  `isPremiumBadge: false`. The backend — `lib/actions/billing.ts`, the
+  webhook, migrations `0021`/`0022`/`0026` — is live. Re-enabling it is the
+  active workstream (`docs/premium-plan.md`); don't "clean up" the commented
+  blocks or the seemingly unused billing code.
+- **`lib/constants.ts` `LEGAL_URLS` still points at placeholder
+  `https://xyz.ch/...`** and those links ship in the sign-up form. This is a
+  known launch blocker, not an oversight to fix incidentally.
+- **Migrations are applied by hand and the newest ones are not applied.**
+  Green CI means nothing about the live schema. See
+  `supabase/migrations/README.md` and `.agents/deployment.md`.
+- **Migration numbers are not unique.** `0034`, `0041`, `0053` and `0054`
+  each exist twice. Reconciling a deploy by version number alone is
+  ambiguous — check the objects.
+- **Open audit findings are tracked in
+  `docs/audit/README.md#remediation-status`**, not in GitHub issues. A1 is
+  partially fixed; A4, A5, A6 and everything in §B are open. Read that
+  table before concluding you have found something new.
+- **There are no component or E2E tests.** Vitest runs with
+  `environment: "node"` and every test file lives in `lib/`. A change
+  confined to `components/` or `app/` has no automated coverage — say so
+  rather than implying the suite covered it.
+- `types/database.ts` exports `Database = any`; the row types next to it are
+  hand-maintained and cover only some tables.
+
 ## Core User Loop
 
 This is the loop the product exists to keep turning. Any change that touches
@@ -33,18 +71,33 @@ handoff to the next isn't done.
    `components/ExploreSidebar.tsx` (explore/search), `app/strecken/[id]/page.tsx`
    (route detail).
 2. **Start a ride** — `components/GefahrenSection.tsx` ("Strecke starten" on a
-   route page, gated ride) or `app/fahrten/neu/page.tsx` (free ride, no
-   route) → `components/FreeRideForm.tsx` / `components/LiveTrackingForm.tsx`.
+   route page) or `app/fahrten/neu/page.tsx` (free ride, no route) →
+   `components/FreeRideForm.tsx` / `components/LiveTrackingForm.tsx`.
+   **Recording is open to signed-out visitors**; the account requirement sits
+   at the *save*, not at the start. `GefahrenSection` takes
+   `userId: string | null` plus a `guestContinuationToken`, so treat "no
+   session" as a supported state in this step, not an error path.
 3. **Drive** — the recording screen, live map via `components/RouteMap.tsx`.
 4. **GPS tracking** — `components/useRideRecorder.ts` (client recorder hook),
    `lib/tracking.ts` (start/end gate + proximity for route mode),
-   `lib/trackingStorage.ts` (snapshotting so a killed tab/app can resume),
+   `lib/trackingStorage.ts` (snapshotting so a killed tab/app can resume —
+   and the guest handoff: `GUEST_TRACKING_USER_ID`,
+   `issueGuestContinuationToken`, `adoptGuestTrackingSnapshot`, which carry
+   a signed-out recording across sign-up),
    `lib/geo.ts` (trail/distance math).
-5. **Result / route stats** — `components/RideSummaryForm.tsx` submits the raw
-   trail to `lib/actions/completions.ts`, which derives every stat
-   server-side (distance, coverage, laps, elevation) rather than trusting
-   client-sent numbers: `lib/routeCoverage.ts`, `lib/lapDetection.ts`,
-   `lib/elevation.ts`.
+5. **Result / route stats** — `components/RideSummaryForm.tsx` is the shared
+   presentational summary form; it receives a bound `formAction`
+   (`logTrackedCompletion` or `logFreeRide`) and posts the raw trail to
+   `lib/actions/completions.ts`, which derives the stats server-side rather
+   than trusting client-sent numbers: `lib/routeCoverage.ts`,
+   `lib/lapDetection.ts`, `lib/elevation.ts`.
+   **This derivation is not yet airtight** — see audit finding A1 in
+   `docs/audit/README.md#remediation-status`: `dauer_sekunden` is still a
+   client-supplied clock, coverage is direction-blind, and `INSERT` on
+   `route_completions` is still granted, so a direct PostgREST write
+   bypasses this action entirely. Migration `0059` bounds the values a
+   write may carry; it does not make them server-derived. Do not treat
+   these numbers as trusted when building on them (leaderboards especially).
 6. **Post the ride** — same `lib/actions/completions.ts` submission,
    `components/RideVisibilityToggle.tsx` for visibility, landing on
    `app/fahrten/[id]/page.tsx`.
@@ -52,7 +105,13 @@ handoff to the next isn't done.
    `lib/actions/kudos.ts` on the posted ride; `components/RatingSection.tsx` /
    `lib/actions/ratings.ts` on the route itself; moderation of reactions via
    `components/CompletionActionsMenu.tsx` / `lib/actions/reports.ts`.
-8. **Next ride** — `app/feed/page.tsx` (global/following feed) surfaces
+8. **The reaction gets back to the rider** — `app/aktivitaet/page.tsx`
+   (`lib/kudos.ts` → `getRecentKudosReceived`, `components/MarkKudosSeen.tsx`,
+   `components/ActivityKudosList.tsx`, seen-state from migration `0057`) plus
+   the unseen-kudos badge in `components/Header.tsx`. This is the step that
+   makes step 7 visible to the person who rode; a reaction nobody is told
+   about does not close the loop.
+9. **Next ride** — `app/feed/page.tsx` (global/following feed) surfaces
    others' rides and routes, closing the loop back to step 1.
 
 ## Stack
@@ -69,7 +128,12 @@ breaking changes from earlier versions (see the block at the top of this file).
 - **Stripe**: `stripe` ^22.6.0 (server), `@stripe/stripe-js` ^9.14.0 /
   `@stripe/react-stripe-js` ^6.8.2 (client, Payment Element)
 - **Mapbox GL** ^3.29.0 (routing/maps, `mapbox-gl` + `@types/mapbox-gl`)
-- **Vitest** ^4.1.11 (unit tests)
+- **lucide-react** ^1.38.0 (icons — wrapped in `components/NavIcons.tsx` /
+  `components/VisibilityIcons.tsx`, don't import it directly in new code)
+- **@vercel/analytics** ^2.0.1 (`<Analytics />` in `app/layout.tsx`; the only
+  telemetry in the app — there is no Sentry or other error reporting)
+- **Vitest** ^4.1.11 (unit tests, `environment: "node"` — there is no jsdom,
+  so component tests are not currently possible)
 - **ESLint** ^9 with `eslint-config-next`
 
 Node.js: Next.js 16 requires **Node >= 20.9**. CI and local development
@@ -77,11 +141,22 @@ should use a current LTS release (Node 22).
 
 ## Architecture
 
-- `app/` — Next.js App Router: routes, pages, layouts, and API route
-  handlers (`app/api/**`).
+- `app/` — Next.js App Router: routes, pages, layouts, and Route Handlers.
+  Route Handlers are **not** only under `app/api/**` — `app/auth/callback/`
+  (PKCE `exchangeCodeForSession`) and `app/auth/abmelden/` are handlers too,
+  and both are security-relevant. Metadata routes (`icon.tsx`,
+  `apple-icon.tsx`, `opengraph-image.tsx`, `manifest.ts`, `robots.ts`,
+  `sitemap.ts`) also live here — the PWA manifest is `app/manifest.ts`, there
+  is no `public/manifest.json`.
 - `components/` — reusable UI components (client and server).
+  `components/ui/` holds the shared design-system primitives (Button, Card,
+  Dialog, DragSheet, EmptyState, Input, Skeleton, StatusPage, Switch) — reuse
+  these rather than restyling from scratch.
 - `lib/` — business logic and third-party integrations (Mapbox, weather,
   GPX parsing, leaderboard math, etc.).
+- `lib/utils/` — small cross-cutting helpers: `cn.ts` (class merge) and
+  `url.ts`, which holds `safeInternalPath()` — the app's only open-redirect
+  guard, used by the auth callback and `signIn()`.
 - `lib/actions/` — Server Actions (`"use server"`): the primary path for
   authenticated mutations from forms/UI.
 - `lib/supabase/` — Supabase client factories:
@@ -89,13 +164,42 @@ should use a current LTS release (Node 22).
   - `server.ts` — server client bound to the request's cookies/session
     (respects RLS as the logged-in user).
   - `middleware.ts` — session refresh, invoked from `proxy.ts`.
-  - `admin.ts` — **service-role client. RLS bypass. Server-only.** See
-    Protected Areas below.
+  - `admin.ts` — **service-role client. RLS bypass. Server-only.** Used in
+    two distinct patterns, both deliberate (see Supabase Rules): (a) no
+    session at all, trust established otherwise — the Stripe webhook
+    (`app/api/stripe/webhook/route.ts`); (b) a verified session exists, but
+    RLS deliberately withholds what the call needs —
+    `lib/actions/billing.ts` (`stripe_customer_id` / `ist_premium` are not
+    granted to `authenticated` since migration `0027`) and
+    `lib/actions/auth.ts` (`deleteAccount` → GoTrue admin API). Pattern (b)
+    still owes an explicit application-level ownership check.
 - `types/` — shared TypeScript types, including `database.ts` which mirrors
   the SQL schema.
 - `supabase/migrations/` — version-controlled database schema, RLS
   policies, functions, and triggers. This is the only way the schema
   changes.
+
+## Further Reading — load these when the trigger applies
+
+Only this file is loaded automatically. The documents below are more
+detailed than it is and are the reason it can stay short — but nothing
+opens them for you. **Read the matching one before starting work in its
+area**; each is a few hundred lines at most.
+
+| Read this | Before working on |
+| --- | --- |
+| `.agents/backend.md` | Server Actions (`lib/actions/**`), Route Handlers |
+| `.agents/frontend.md` | `app/**` pages, `components/**` |
+| `.agents/database.md` | `supabase/migrations/**`, RLS, `types/database.ts` |
+| `.agents/payments.md` | Stripe: webhook, `lib/stripe*`, billing actions |
+| `.agents/security.md` | Any Protected Area; use as a pre-merge checklist |
+| `.agents/deployment.md` | Applying migrations, shipping to Vercel/Stripe |
+| `docs/audit/README.md` | Completions, leaderboards, RLS views, auth — check the remediation table before reporting a "new" finding |
+| `docs/premium-plan.md` | Anything premium, Stripe, or entitlement-shaped |
+| `supabase/migrations/README.md` | Whenever migration order or the applied/unapplied gap matters |
+
+`README.md` is the human setup guide and is not a substitute for any of
+these.
 
 ## Core Rules
 
@@ -155,17 +259,44 @@ additional care and review before merging changes to them:
 - `/lib/stripe*` — Stripe server/client SDK wrappers.
 - `/lib/actions/billing.ts` — subscription creation/confirmation, customer
   portal.
-- `/lib/actions/auth.ts` — sign-in/sign-up.
+- `/lib/actions/auth.ts` — sign-in/sign-up, password change, account
+  deletion (uses the service-role client for the GoTrue admin API).
+- `/app/auth/` — Route Handlers outside `app/api/`: `callback/route.ts`
+  performs the PKCE `exchangeCodeForSession` and redirects on a
+  user-supplied `?next=`; `abmelden/route.ts` ends the session.
+- `/lib/utils/url.ts` — `safeInternalPath()`, the app's only open-redirect
+  guard. Every `?next=` in the app depends on it.
 - `/lib/actions/moderation.ts` — route approval/rejection (moderator-only
   mutations).
 - `/lib/moderation.ts` — moderator-check helper.
-- `/lib/rateLimit.ts` — abuse-prevention cooldown checks.
+- `/lib/actions/reports.ts` — the user-facing side of moderation; what it
+  writes is what the moderation queue acts on.
+- `/lib/actions/completions.ts` — server-side stat derivation, the coverage
+  threshold that gates publication, and the ride photo upload path.
+- `/lib/actions/profile.ts` — granular visibility settings and avatar
+  upload (server-side file type/size validation).
+- `/lib/publicTrack.ts`, `/lib/track.ts` — privacy-zone cropping of shared
+  GPS tracks. This is the privacy boundary for every published ride: a
+  regression here exposes riders' home addresses.
+- `/app/api/strecken/` — three fully unauthenticated public endpoints,
+  protected only by IP rate limiting and `lib/validation.ts`.
+- `/lib/rateLimit.ts` — abuse-prevention cooldown checks (per-user, DB
+  backed) and the per-IP limiter the public API depends on.
+- `/lib/validation.ts` — `isValidUuid`, the input guard on those endpoints.
 - `/.github/` — CI/CD configuration.
+- `/.claude/` — `settings.json` (`permissions.ask`) and
+  `hooks/sql-guard.sh`. The "Think twice before executing SQL" rule below
+  leans on these; weakening them silently removes that checkpoint.
 - `/AGENTS.md`, `/SECURITY.md` — this constitution and the security policy.
 
 Changes to these paths should be minimal, explained in the PR description
 (what changed and why it's still safe), and — for anything touching auth,
 RLS, or payments — should include regression tests where practical.
+
+`.github/CODEOWNERS` should stay in sync with this list: a path that is
+protected here but has no owner rule there is protected by convention
+only, and a PR touching it can merge without the review this section
+asks for.
 
 ## Supabase Rules
 
@@ -173,8 +304,26 @@ RLS, or payments — should include regression tests where practical.
 the browser client or a Server Action running as the logged-in user is
 only as safe as its RLS policies. `lib/supabase/admin.ts` bypasses RLS
 entirely and must stay server-only, called only from contexts where
-authorization has already been established some other way (e.g. a
-verified Stripe webhook signature).
+authorization has already been established some other way.
+
+There are two such contexts in the codebase today, and they are not
+interchangeable:
+
+- **No session, trust from elsewhere.** `app/api/stripe/webhook/route.ts`
+  — the verified `stripe-signature` is the authorization. Nothing here is
+  user-controlled.
+- **Session verified, RLS deliberately withholding.**
+  `lib/actions/billing.ts` and `lib/actions/auth.ts` (`deleteAccount`)
+  call `getUser()` first, then use the admin client to reach something the
+  `authenticated` role is intentionally not granted — the Stripe columns
+  locked down in migration `0027`, and the GoTrue admin API.
+
+The second pattern is the dangerous one, because a request path *does*
+reach it. Anything on that path must scope every query to the
+`getUser()`-derived id and never to an id from the request. Adding a
+third call site is protected-area work: justify why a more precise RLS
+policy or a narrowly-scoped `SECURITY DEFINER` function can't do the job
+instead, and say so in the PR description.
 
 Before changing a table, in this order:
 

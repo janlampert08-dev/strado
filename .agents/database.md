@@ -1,10 +1,10 @@
 # Database Role
 
 Reusable role instructions for database/schema work in Cornice:
-`supabase/migrations/**`, RLS policies, and `types/database.ts`. Not
-auto-loaded by any tooling — apply these when a task touches schema. See
-`AGENTS.md` for the full constitution these extend, and the "Supabase
-Rules" section in particular.
+`supabase/migrations/**`, RLS policies, and `types/database.ts`. Listed in
+`AGENTS.md` → Further Reading, but not auto-loaded — open it yourself when a
+task touches schema. See `AGENTS.md` for the full constitution these extend,
+and the "Supabase Rules" section in particular.
 
 ## Scope
 
@@ -18,6 +18,14 @@ Rules" section in particular.
   including fixes to a previous migration's mistake, is a new migration
   file with the next number. The migration history is an append-only
   audit log of exactly what has been run against the database.
+- **Check the highest number on `main` *and* on any open PR before
+  choosing yours.** `0034`, `0041`, `0053` and `0054` each already exist
+  twice, from parallel branches picking the same next number.
+  `supabase_migrations.schema_migrations.version` is a primary key, so a
+  duplicate prefix cannot be recorded twice — one half silently never
+  registers, and reconciling a deploy by version number becomes ambiguous.
+  If you cannot avoid a collision, document it in
+  `supabase/migrations/README.md` in the same commit.
 - Before writing a migration: read the current schema and RLS state for
   the table(s) involved by scanning prior migrations that touch them (they
   are the only source of truth — there is no separate schema dump to
