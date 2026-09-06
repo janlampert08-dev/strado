@@ -14,9 +14,14 @@ these extend.
 
 ## Rules
 
-- Every mutation must authenticate the caller (`supabase.auth.getUser()`)
-  before doing anything, and check authorization for the specific
-  resource/action — don't rely on the client to only call it correctly.
+- Every session-backed mutation must authenticate the caller
+  (`supabase.auth.getUser()`) before doing anything, and check
+  authorization for the specific resource/action — don't rely on the
+  client to only call it correctly.
+  The one exception is a mutation with no Supabase session by design: the
+  Stripe webhook, where the verified `stripe-signature` replaces
+  `getUser()` as the authentication step. Its payload is still external
+  input and must be validated on its own (see `.agents/payments.md`).
 - Validate all external input (form data, request bodies, path params)
   before using it in a query or passing it to a third-party API. Don't
   trust type annotations alone; they don't exist at runtime.

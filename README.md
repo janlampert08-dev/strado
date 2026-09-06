@@ -11,9 +11,14 @@ Kuratierte Auto-/Motorrad-Fahrstrecken — primär Raum Zürich/Schweiz.
      `supabase start` würde Docker voraussetzen, das hier nicht verfügbar ist —
      daher direkt gegen ein Cloud-Projekt (supabase.com) entwickeln.
    - `NEXT_PUBLIC_MAPBOX_TOKEN` von account.mapbox.com/access-tokens.
-3. Schema anlegen: Inhalt von `supabase/migrations/0001_init.sql` im Supabase
-   SQL Editor ausführen (oder via `npx supabase db push`, sobald das Projekt
-   mit `npx supabase link` verknüpft ist).
+3. Schema anlegen: **alle** Dateien in `supabase/migrations/` der Reihe nach
+   anwenden, nicht nur `0001_init.sql` — das aktuelle Schema entsteht erst
+   aus dem vollständigen Satz (Dauer/Distanz kommen z. B. erst mit `0008`).
+   Am einfachsten via `npx supabase db push`, sobald das Projekt mit
+   `npx supabase link` verknüpft ist; sonst jede Datei einzeln in
+   aufsteigender Reihenfolge im Supabase SQL Editor ausführen.
+   `supabase/migrations/README.md` lesen — dort stehen die doppelten
+   Nummernpräfixe und welche Migrationen bewusst übersprungen wurden.
 4. `npm run dev` und `http://localhost:3000` öffnen.
 
 ## Projektstruktur
@@ -26,7 +31,9 @@ Kuratierte Auto-/Motorrad-Fahrstrecken — primär Raum Zürich/Schweiz.
 - `lib/actions/` — Server Actions (`"use server"`), der Weg für Mutationen
 - `lib/supabase/` — Client-Factories (`client`, `server`, `middleware`, `admin`)
 - `lib/utils/` — `cn.ts` und `url.ts` (`safeInternalPath`, Open-Redirect-Schutz)
-- `types/` — Geteilte TypeScript-Typen (`database.ts` spiegelt das SQL-Schema)
+- `types/` — Geteilte TypeScript-Typen. `database.ts` ist von Hand gepflegt
+  und deckt das SQL-Schema nur teilweise ab (`Database` ist `any`) — siehe
+  „Bewusste Einschränkungen“ unten
 - `supabase/migrations/` — SQL-Schema inkl. PostGIS und Row Level Security
 - `docs/` — Audit-Berichte (`docs/audit/`) und der Premium-Plan
 - `.agents/`, `AGENTS.md` — Regeln für Menschen und KI-Agenten in diesem Repo
@@ -61,7 +68,7 @@ Skeleton, StatusPage) liegen in `components/ui/`.
   werden von Hand gepflegt und decken nur einen Teil der Tabellen ab.
 
 Historisch: `0001_init.sql` kommentiert `route_completions` mit „Bewusst
-KEINE Zeitmessung/Dauer pro Fahrt". Das gilt **nicht mehr** — `0008` führte
+KEINE Zeitmessung/Dauer pro Fahrt“. Das gilt **nicht mehr** — `0008` führte
 Dauer und Distanz ein, `0032` machte die Dauer öffentlich, und die
 Bestenlisten ranken danach. Der Kommentar in der Migration bleibt stehen,
 weil eingespielte Migrationen nicht nachträglich geändert werden

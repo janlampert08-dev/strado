@@ -75,8 +75,18 @@ Primary Key. Zwei Dateien mit demselben Präfix können dort **nicht beide**
 unter ihrer Nummer stehen — eine Hälfte wird entweder unter einem
 abweichenden `version`-Wert eingetragen (wie beim `0041`-Paar oben) oder gar
 nicht. Ein Ledger-Eintrag `0053` beweist deshalb nicht, dass beide
-`0053_*`-Dateien gelaufen sind. Beim Abgleich vor einem Deploy zählt bei
-diesen Präfixen ausschließlich, ob die **Objekte** beider Dateien existieren.
+`0053_*`-Dateien gelaufen sind.
+
+Beim Abgleich vor einem Deploy zählt bei diesen Präfixen deshalb der
+tatsächliche **Effekt** jeder einzelnen Datei — und blosse Existenz eines
+Objekts reicht dafür nicht, denn die betroffenen Dateien ändern unter
+anderem Grants, View- und Funktionsdefinitionen, Trigger und
+Spalten-Defaults. Pro Datei prüfen: aktuelle Definition zurücklesen
+(`pg_get_viewdef`, `pg_get_functiondef`, `pg_policies`), Grants über
+`aclexplode(...)`, Trigger und Constraints, Spalten-Defaults, und bei
+einem Backfill die Daten selbst. Das ist dieselbe Anforderung wie in
+`.agents/deployment.md` — bei doppelten Präfixen gilt sie nur zwingend
+für beide Hälften einzeln.
 
 **Vor dem Anlegen einer neuen Datei** die höchste Nummer nicht nur auf `main`
 prüfen, sondern auch in allen offenen PRs — dort entsteht die Kollision.

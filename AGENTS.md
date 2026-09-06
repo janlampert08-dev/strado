@@ -171,8 +171,9 @@ should use a current LTS release (Node 22).
     RLS deliberately withholds what the call needs —
     `lib/actions/billing.ts` (`stripe_customer_id` / `ist_premium` are not
     granted to `authenticated` since migration `0027`) and
-    `lib/actions/auth.ts` (`deleteAccount` → GoTrue admin API). Pattern (b)
-    still owes an explicit application-level ownership check.
+    `lib/actions/auth.ts` (`deleteAccount` → GoTrue admin API). Both of
+    those scope every admin query to the `getUser()`-derived id, which is
+    what makes pattern (b) safe — any new call site owes the same check.
 - `types/` — shared TypeScript types, including `database.ts` which mirrors
   the SQL schema.
 - `supabase/migrations/` — version-controlled database schema, RLS
@@ -310,8 +311,11 @@ There are two such contexts in the codebase today, and they are not
 interchangeable:
 
 - **No session, trust from elsewhere.** `app/api/stripe/webhook/route.ts`
-  — the verified `stripe-signature` is the authorization. Nothing here is
-  user-controlled.
+  — the verified `stripe-signature` authenticates the *request*: it proves
+  Stripe sent it. It does not make the *payload* trusted. `event.data.object`
+  is still external input, so a handler must check the event type and
+  validate the shape and business invariants of every field it writes from.
+  The current handler does; a new `case` must too.
 - **Session verified, RLS deliberately withholding.**
   `lib/actions/billing.ts` and `lib/actions/auth.ts` (`deleteAccount`)
   call `getUser()` first, then use the admin client to reach something the
