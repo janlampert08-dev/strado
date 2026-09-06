@@ -50,11 +50,16 @@ the load-bearing part of this list, not paperwork.
       database, verified against the ledger rather than assumed:
       ```sql
       select version, name from supabase_migrations.schema_migrations
-      order by version desc limit 15;
+      order by version desc;
       ```
-      Names in the ledger are historically inconsistent — what counts is
-      whether the **objects** (tables, columns, policies, functions)
-      exist.
+      Reconcile every migration version in this deploy against that list —
+      do not cut the query short, an unapplied migration can sit far below
+      the most recent rows. Names in the ledger are historically
+      inconsistent, so they prove nothing; the objects do. And for a
+      migration that *changes* something — a policy, a function body, an
+      index, a constraint, a backfill — existence is not enough either:
+      read back the current definition, and check the data the migration
+      was supposed to move.
 - [ ] Schema goes first, code second. Every migration in a deploy is
       backwards compatible with the code currently running, so the
       moments before and after the deploy are both valid states. Anything
@@ -72,7 +77,10 @@ the load-bearing part of this list, not paperwork.
 - [ ] `NEXT_PUBLIC_SITE_URL` is set explicitly for the target
       environment. Unset, `lib/actions/billing.ts` falls back to
       `http://localhost:3000` and Stripe Customer Portal return links
-      point at the developer's machine.
+      resolve in whatever browser follows them — the user's own machine,
+      not a developer's. With nothing listening there the return flow just
+      fails; with something listening it hands them an unrelated local
+      app.
 - [ ] Any new Supabase Storage bucket exists in the production project
       with its access policies, and `next.config.ts` → `images.
       remotePatterns` still covers the host serving those files.
@@ -95,8 +103,13 @@ does, these are not optional (`AGENTS.md` → Protected Areas).
       reaches a Client Component. A leak here is unrecoverable without a
       key rotation.
 - [ ] **Migrations/RLS** (`supabase/migrations/**`): every new table has
-      RLS enabled with policies scoped no wider than required, and any
-      new `SECURITY DEFINER` function is justified and does not trust
+      RLS enabled with policies scoped no wider than required — and so
+      does every table whose policies this deploy *changes*. A migration
+      can leave RLS switched on and still widen an existing policy, which
+      reads as a normal query and returns other users' rows; check the
+      scope of each changed policy, both that the intended access still
+      works and that the unintended access is still refused. Any new
+      `SECURITY DEFINER` function is justified and does not trust
       unauthenticated input. Run the Supabase advisors after applying and
       compare against the known baseline — `public.spatial_ref_sys`
       reporting `rls_disabled_in_public` is a permanent, documented
@@ -141,6 +154,12 @@ Verification runs against the deployed URL, not localhost.
 - [ ] Destructive migrations therefore have their inverse written down
       (or are split into the two-step sequence in section 1) *before*
       being applied — "we can roll back" is only true for the code half.
+- [ ] For anything that destroys **values** rather than shape — `drop`,
+      a rewriting `update`, a `delete` — the inverse migration is not a
+      recovery plan. It restores the column, not what was in it, and the
+      two-step sequence buys compatibility, not recoverability. Before
+      applying one: a restore path that has actually been verified, or a
+      forward-recovery plan that has actually been tested.
 - [ ] If a rollback happens: say so explicitly, record what was rolled
       back and what schema state the database was left in, and treat the
       re-deploy as a new pass through this list.
@@ -148,9 +167,12 @@ Verification runs against the deployed URL, not localhost.
 ### 5. Record
 
 - [ ] `supabase/migrations/README.md` is updated whenever migrations are
-      applied out of order, skipped deliberately, or backfilled — that
-      file is the only trace of what is really in the database versus
-      what is in the repo.
+      applied out of order, skipped deliberately, or backfilled. The
+      ledger records *that* a migration ran and the live schema shows
+      what exists; the README is the only place the **why** survives —
+      which is what makes the three reconcilable later. An exception that
+      is not written down there becomes an unexplained gap between repo
+      and database.
 - [ ] Anything discovered during the deploy that this list did not catch
       is added to it. A checklist that does not grow after an incident is
       the reason the next incident looks the same.
