@@ -119,13 +119,26 @@ export async function signUp(
     return { error: "Dieser Benutzername ist bereits vergeben." };
   }
 
+  // Optionales verstecktes Feld "next" (siehe RegistrierenForm.tsx): wohin
+  // es nach der Bestätigung weitergeht, z.B. zurück in den Recorder, wenn
+  // das Konto nur angelegt wurde, um eine als Gast aufgezeichnete Fahrt zu
+  // speichern (FreeRideForm.tsx). FormData ist vollständig
+  // client-kontrolliert, der Wert läuft deshalb durch safeInternalPath —
+  // sonst würde daraus ein Open-Redirect, hier sogar einer, der als Link in
+  // einer echten Bestätigungsmail landet. Der Callback prüft den Wert
+  // unabhängig davon ein zweites Mal (app/auth/callback/route.ts).
   const origin = await getOrigin();
+  const next = safeInternalPath(formData.get("next"));
+  const emailRedirectTo = next
+    ? `${origin}/auth/callback?next=${encodeURIComponent(next)}`
+    : `${origin}/auth/callback`;
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: { display_name: displayName },
-      emailRedirectTo: `${origin}/auth/callback`,
+      emailRedirectTo,
     },
   });
 
@@ -147,9 +160,10 @@ export async function signUp(
   // Ist "Confirm email" im Supabase-Projekt deaktiviert, liefert signUp
   // bereits eine aktive Session — dann direkt einloggen statt auf eine
   // (nie versendete) Bestätigungsmail zu verweisen. Führt wie der
-  // E-Mail-Bestätigungslink (app/auth/callback/route.ts) zur Startseite.
+  // E-Mail-Bestätigungslink (app/auth/callback/route.ts) zum next-Ziel,
+  // sonst unverändert zur Startseite.
   if (data.session) {
-    redirect("/");
+    redirect(next ?? "/");
   }
 
   redirect("/registrieren/bestaetigen");
