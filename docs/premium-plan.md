@@ -134,10 +134,27 @@ und `.deleted`. Es fehlen `customer.subscription.created`, `invoice.paid`,
 `invoice.payment_failed` gibt es keine Kulanzfrist und keine Mahnlogik — und
 ohne `invoice.paid` keinen ausdrücklichen Weg zurück aus ihr heraus.
 
-**3.7 Keine API-Version gepinnt.**
-`lib/stripe.ts` nutzt die Dashboard-Standardversion. `confirmation_secret` (statt
-des früheren `payment_intent`) hängt genau an dieser Version — eine
-Versionsumstellung im Dashboard bricht den Checkout ohne Deploy. → Pinnen.
+**3.7 Keine API-Version gepinnt — und der Kommentar dazu stimmt nicht.**
+`lib/stripe.ts` setzt kein `apiVersion` und der Kommentar dort behauptet,
+damit gelte die im Dashboard hinterlegte Standardversion des Kontos. Das trifft
+für stripe-node ab v12 nicht mehr zu: die Bibliothek pinnt selbst
+(`stripe.core.js`: `props.apiVersion || DEFAULT_API_VERSION`), und in der
+installierten Fassung 22.6.0 ist dieser Vorgabewert `2026-08-26.dahlia`.
+
+Das Risiko ist damit ein anderes als gedacht, aber nicht kleiner: nicht eine
+Umstellung im Dashboard bricht den Checkout, sondern ein `npm update` der
+`stripe`-Abhängigkeit — es verschiebt die API-Version still, ohne dass eine
+Zeile Anwendungscode sich ändert.
+
+Die Version ist auch nicht beliebig wählbar: `lib/actions/billing.ts` liest
+`latest_invoice.confirmation_secret`, und dieses Feld existiert erst ab
+**`2025-03-31.basil`** (davor lag das Client-Secret unter
+`invoice.payment_intent`). Eine tiefere Version zu pinnen — etwa die für
+dynamische Zahlungsmethoden nötige Untergrenze `2023-08-16` — würde den
+Checkout brechen.
+
+→ In `lib/stripe.ts` ausdrücklich pinnen, mindestens `2025-03-31.basil`, und
+den irreführenden Kommentar mit korrigieren.
 
 ---
 
@@ -330,7 +347,7 @@ belasten. Der Ablauf für einen Geld-zurück-Fall ist deshalb festgeschrieben:
 3. Beide Schritte erzeugen Webhook-Ereignisse; der Handler schreibt daraus
    `subscriptions` und `ist_premium` fort. Kein Handeingriff in der Datenbank.
 4. Nur wenn nach wenigen Minuten kein Ereignis eintraf, den Zustand über den
-   Abgleich aus Phase 6 nachziehen.
+   Abgleich aus Phase 1 nachziehen.
 
 Kündigung zuerst: bricht Schritt 2 ab, ist der Nutzer erstattungsberechtigt,
 aber wenigstens nicht weiter belastet — umgekehrt liefe die Belastung weiter.
@@ -367,8 +384,10 @@ spielt sie ein, vor dem Deploy des Codes, der sie braucht.
    Verlängerung, Kündigungsfrist, Preis inkl. MWST, Erstattungsregel.
 2. Stripe: Produkt „Cornice Premium“ mit drei Preisen (Monat 4.90, Jahr 49.00,
    Gründer 39.00, alle CHF, wiederkehrend). TWINT im Dashboard beantragen.
-3. Stripe-API-Version pinnen (siehe 3.7) — mindestens `2023-08-16`, sonst
-   greifen die im Dashboard aktivierten Zahlungsmethoden nicht.
+3. Stripe-API-Version in `lib/stripe.ts` pinnen (siehe 3.7): mindestens
+   `2025-03-31.basil`, weil `confirmation_secret` erst ab dort existiert. Das
+   deckt zugleich die Untergrenze `2023-08-16` ab, ab der die im Dashboard
+   aktivierten Zahlungsmethoden überhaupt greifen.
 4. Vercel auf Pro heben, bevor der Verkauf aktiviert wird (Hobby ist auf
    nichtkommerzielle Nutzung beschränkt, siehe 5.1).
 5. Open-Meteo-Lizenzfrage klären (5.4).
@@ -390,7 +409,8 @@ create table public.subscriptions (
   kulanz_bis timestamptz,            -- gesetzt bei past_due, siehe unten
   kulanz_invoice_id text,            -- Rechnung, die die Frist ausgelöst hat:
                                      -- verhindert, dass Smart Retries sie verlängern
-  stripe_updated_at timestamptz not null,  -- Schutz gegen Events ausser der Reihe
+  stripe_updated_at timestamptz not null,  -- nur Nachvollziehbarkeit, KEIN
+                                     -- Reihenfolgenkriterium (siehe 3.3)
   updated_at timestamptz not null default now()
 );
 alter table public.subscriptions enable row level security;
@@ -407,6 +427,20 @@ ausdrücklich nur noch eine **Projektion** der `subscriptions`-Zeile:
 ist_premium = status in ('active','trialing')
            or (status = 'past_due' and now() < kulanz_bis)
 ```
+
+**Achtung: `ist_premium` ist ein gespeicherter Wert, keine laufende
+Auswertung.** Die Bedingung `now() < kulanz_bis` wird nur in dem Moment
+geprüft, in dem jemand die Zeile schreibt. Kommt nach dem Ablauf der sieben
+Tage weder eine Zahlung noch ein weiteres Stripe-Ereignis, bleibt der Boolean
+auf `true` — und die Views und Policies, die ihn lesen, gewähren dauerhaft
+Premium ohne Zahlung. Der Ablauf braucht deshalb einen eigenen Auslöser:
+
+- Ein Abgleich (Cron/Scheduled Function) läuft mindestens täglich über alle
+  Zeilen mit `kulanz_bis < now()` und `ist_premium = true` und schreibt die
+  Projektion neu. Derselbe Lauf deckt auch `current_period_end` in der
+  Vergangenheit ohne Folgeereignis ab (verpasste oder verlorene Webhooks).
+- Der Abgleich ist damit kein Beiwerk der Beobachtbarkeit, sondern Teil der
+  Berechtigungslogik und gehört zu Phase 1, nicht erst zu Phase 6.
 
 Daraus folgt eine Regel für jeden Schreibpfad: Wer `ist_premium` setzt, muss
 im selben Vorgang die `subscriptions`-Zeile setzen. Das betrifft nicht nur den
@@ -433,9 +467,14 @@ Migration: die Daten liegen bei Stripe, nicht in der Datenbank.
   Zustandsübergang ohne Netzwerk oder Datenbank testbar.
 - Bei jedem Abo-Ereignis den Zustand frisch von Stripe holen statt der Nutzlast
   zu vertrauen (behebt 3.3).
-- Schreibvorgänge pro `stripe_subscription_id` serialisieren (bedingtes
-  `UPDATE`/Zeilensperre), damit gleichzeitig verarbeitete Ereignisse
-  deterministisch enden. `stripe_updated_at` dient der Nachvollziehbarkeit,
+- **Reihenfolge: erst sperren, dann holen, dann schreiben — alles in derselben
+  Transaktion.** Wird `subscriptions.retrieve` vor der Zeilensperre
+  ausgeführt, nützt die Serialisierung des Schreibvorgangs nichts: Worker A
+  liest einen älteren Zustand, wartet auf die Sperre, Worker B liest und
+  schreibt den neueren — und A überschreibt ihn anschliessend mit seinem
+  veralteten Stand. Also `select … for update` auf die Zeile (bzw. ein
+  Vorschalt-Insert für den ersten Fall), danach der Stripe-Abruf, danach der
+  Schreibvorgang. `stripe_updated_at` dient nur der Nachvollziehbarkeit,
   **nicht** als Reihenfolgenkriterium (siehe 3.3).
 - Idempotenz zweiphasig (behebt 3.1); `500` bei Schreibfehler (behebt 3.2).
 - Ereignisse ergänzen (3.6):
@@ -444,25 +483,32 @@ Migration: die Daten liegen bei Stripe, nicht in der Datenbank.
     dieselbe Rechnung mehrere solche Ereignisse aus; jedes weitere darf die
     Frist nicht verlängern. Dafür die auslösende `invoice_id` mitschreiben und
     `kulanz_bis` nur setzen, wenn für diese Rechnung noch keine Frist läuft.
-  - `invoice.paid` beendet die Kulanzfrist ausdrücklich (`kulanz_bis = null`)
-    und schreibt den frisch geholten Abo-Zustand — idempotent, mehrfach
-    zustellbar ohne Wirkungsunterschied. Sich allein auf
+  - `invoice.paid` beendet die Kulanzfrist und schreibt den frisch geholten
+    Abo-Zustand — idempotent, mehrfach zustellbar ohne Wirkungsunterschied.
+    `kulanz_bis` wird dabei **nur geleert, wenn die Rechnungs-ID des
+    Ereignisses `kulanz_invoice_id` entspricht**: ein verspätetes
+    `invoice.paid` einer älteren Rechnung darf die laufende Frist einer
+    neueren, noch offenen Rechnung nicht vorzeitig beenden. Sich allein auf
     `customer.subscription.updated` zu verlassen, wäre eine Wette darauf, dass
     dieses Ereignis in jedem Erholungsfall kommt und zuerst ankommt.
 - `checkout.session.completed` **nicht sofort entfernen**: der Fluss wird zwar
-  nicht mehr ausgelöst, aber Stripe wiederholt unzugestellte Ereignisse bis zu
-  drei Tage lang. Ein entfernter Zweig würde eine solche Wiederholung nur als
-  verarbeitet markieren, ohne Premium zu setzen. Erst entfernen, wenn das
-  Ereignisprotokoll im Dashboard über mehr als drei Tage keinen einzigen
-  Eintrag dieses Typs mehr zeigt — bis dahin bleibt der bestehende Zweig
-  unverändert stehen.
+  nicht mehr ausgelöst, aber ein solches Ereignis kann noch lange nachträglich
+  eintreffen — Stripe wiederholt automatisch bis zu drei Tage, und ein Mensch
+  kann darüber hinaus von Hand erneut zustellen: bis 15 Tage nach Entstehung
+  über das Dashboard, bis 30 Tage über die CLI. Ein entfernter Zweig würde eine
+  solche Zustellung nur als verarbeitet markieren, ohne Premium zu setzen.
+  Deshalb frühestens 30 Tage nach dem letzten möglichen Alt-Ereignis entfernen —
+  oder vorher die betroffenen Ereignisse gezielt abgleichen.
 
 **Tests (`lib/stripeWebhook.test.ts` erweitern):** Reducer je Status;
 Wiederholung desselben Events; verspätet zugestelltes Ereignis; zwei Ereignisse
 mit identischem `created`-Zeitstempel; zwei gleichzeitig verarbeitete
 Ereignisse für dasselbe Abo; wiederholtes `invoice.payment_failed` derselben
 Rechnung verlängert `kulanz_bis` nicht; `invoice.paid` beendet die Frist;
-`past_due` innerhalb und ausserhalb der Kulanzfrist; Schreibfehler → `500`.
+verspätetes `invoice.paid` einer älteren Rechnung lässt die Frist einer
+zweiten, noch offenen Rechnung unangetastet; abgelaufene `kulanz_bis` ohne
+Folgeereignis führt im Abgleich zu `ist_premium = false`; `past_due` innerhalb
+und ausserhalb der Kulanzfrist; Schreibfehler → `500`.
 
 ### Phase 2 — Berechtigungsschicht
 
@@ -493,13 +539,13 @@ nicht verstreut in Komponenten.
   Client übergebene Price-ID verwenden.
 - Doppelte Abos verhindern (3.4).
 - TWINT und Wallets über das Payment Element aktivieren. Dashboard-seitig und
-  ohne Codeänderung geht das nur mit einer Stripe-API-Version ab
-  `2023-08-16` — seither sind dynamische Zahlungsmethoden der Standard. Auf
-  einer älteren Version bliebe trotz Dashboard-Freischaltung allein die
-  Kartenzahlung übrig. Also zuerst die gepinnte Version aus Phase 0 prüfen
-  (siehe 3.7); ist sie älter, im Abo-Aufruf `automatic_payment_methods`
-  ausdrücklich setzen. Der bestehende `clientSecret`-/`PaymentElement`-Fluss
-  bleibt davon unberührt.
+  ohne Codeänderung geht das erst ab Stripe-API-Version `2023-08-16` — seither
+  sind dynamische Zahlungsmethoden der Standard; davor bliebe trotz
+  Dashboard-Freischaltung allein die Kartenzahlung übrig. Die in Phase 0
+  gepinnte Version (`2025-03-31.basil` oder neuer, siehe 3.7) erfüllt das
+  ohnehin; wird abweichend tiefer gepinnt, im Abo-Aufruf
+  `automatic_payment_methods` ausdrücklich setzen. Der bestehende
+  `clientSecret`-/`PaymentElement`-Fluss bleibt davon unberührt.
 - Erfolgszustand hängt an `confirmSubscription()` (existiert bereits), nicht am
   Webhook: der Nutzer sieht Premium sofort, auch wenn das Ereignis Sekunden
   später eintrifft.
