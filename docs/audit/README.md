@@ -22,14 +22,24 @@ found. What changed since is tracked here instead, and only here.
 | A3 — private routes in anon-readable views | **Fixed** | migration `0060` |
 | A4, A5, A6 and everything in §B | Open | — |
 
-A1 is deliberately marked partial. Migration `0059` adds a validating trigger
-and four `NOT VALID` bounds, and blocks a trackless free ride from ever being
-public. It does **not** revoke direct `INSERT`, and it cannot recompute every
-statistic. Two of the three attack legs survive: `dauer_sekunden` is still a
-client-supplied clock (there are no timestamps in the stored track to derive it
-from, so closing it needs a server-recorded ride start — a product change), and
-a hand-drawn but plausible track is still accepted. The migration enumerates
-both at its end.
+A1 is deliberately marked partial, and it is worth being precise about how
+partial. Migration `0059` adds a validating trigger, four `NOT VALID` bounds,
+and a rule that stops a trackless free ride from ever being public. It
+**constrains the values a write may carry; it does not make any statistic
+server-derived**, and it does not close the write path itself. Taking A1's
+three legs in turn:
+
+| A1 leg | After `0059` |
+| --- | --- |
+| No write authorization on the stat columns | **Narrowed, not closed.** `INSERT` on `route_completions` is still granted, so a direct PostgREST write still bypasses every check in `lib/actions/completions.ts`. What changed is that the values it can carry are now bounded, cross-checked against the stored geometry, and — for a free ride with no track — forced private. |
+| `dauer_sekunden` is a client-supplied clock | **Untouched.** There are no timestamps in the stored track to derive it from, so closing this needs a server-recorded ride start: a product change, not a migration. |
+| Coverage ignores direction | **Untouched.** `computeRouteCoverage` still asks only whether *any* trail point is near each sample, so an out-and-back route driven one way still scores 100% — confirmed by executing the function, see [`verification.md`](./verification.md). `0059` does not address this and no other change in this PR does either. |
+
+Deriving `distanz_km` server-side is not available as a fix here: the stored
+track is Douglas-Peucker simplified and `lib/track.ts:93` states that
+simplification must never alter a metric, so `st_length(track)` would shorten
+every recorded distance. Hence a validating band rather than a derivation. The
+migration enumerates the same residual risks at its end.
 
 Neither migration has been applied. No SQL was executed against any database at
 any point in this audit or its follow-up work, so both still need a run against
