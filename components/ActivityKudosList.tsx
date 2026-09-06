@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Heart } from "lucide-react";
+import { Flame } from "lucide-react";
 import Avatar from "@/components/Avatar";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
@@ -24,7 +24,7 @@ export default function ActivityKudosList({
   const [kudosList] = useState(initialKudosList);
 
   if (kudosList.length === 0) {
-    return <EmptyState icon={Heart} title="Noch keine Kudos erhalten." />;
+    return <EmptyState icon={Flame} title="Noch keine Kudos erhalten." />;
   }
 
   return (

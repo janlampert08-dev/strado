@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Heart } from "lucide-react";
+import { Flame } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { isModerator } from "@/lib/moderation";
 import { getUnseenKudosCount } from "@/lib/kudos";
@@ -16,7 +16,7 @@ export default async function Header({ back }: { back?: string } = {}) {
   const moderator = user ? await isModerator(user.id) : false;
   // Rückkanal für "Community reagiert" im Kernloop (siehe AGENTS.md, "Core
   // User Loop") — ohne diesen Zähler erfährt der Fahrer sonst nie aktiv,
-  // dass eine geteilte Fahrt Kudos bekommen hat. Zeigt sich am Herz-Icon
+  // dass eine geteilte Fahrt Kudos bekommen hat. Zeigt sich am Flammen-Icon
   // unten, das auf jeder Bildschirmgrösse sichtbar ist (anders als die
   // reine Text-Nav, die auf Mobile hinter BottomNav zurücktritt) — deshalb
   // hier zentral berechnet statt separat je Surface.
@@ -51,7 +51,7 @@ export default async function Header({ back }: { back?: string } = {}) {
               aria-label="Aktivität"
               className="relative flex items-center justify-center rounded-full p-1.5 text-foreground transition-colors duration-fast hover:text-accent"
             >
-              <Heart className="h-5 w-5" aria-hidden="true" />
+              <Flame className="h-5 w-5" aria-hidden="true" />
               {unseenKudosCount > 0 && (
                 <span className="absolute top-0 right-0 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-1 text-[9px] font-semibold text-background">
                   {unseenKudosCount > 9 ? "9+" : unseenKudosCount}
