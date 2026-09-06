@@ -18,7 +18,12 @@ export default async function NeueFahrtPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/anmelden");
+  // Rücksprungziel mitgeben, statt nach der Anmeldung auf /profil zu landen:
+  // Abgemeldete erreichen diese Seite über den Navigationseintrag "Fahrt
+  // starten" (lib/nav.ts) und wollen danach hierher, nicht ins Profil. Der
+  // Wert wird beim Zurückleiten erneut validiert (siehe signIn in
+  // lib/actions/auth.ts), nicht blind übernommen.
+  if (!user) redirect(`/anmelden?next=${encodeURIComponent("/fahrten/neu")}`);
 
   // Die freigegebenen Strecken dienen auf der Aufzeichnungskarte nur der
   // Orientierung ("fahre ich gerade auf einer kuratierten Strecke?") — sie
