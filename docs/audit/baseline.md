@@ -17,5 +17,6 @@ Env: Node v22.22.2, npm 10.9.7, clean `npm ci` (421 packages, 0 vulnerabilities)
 - Next largest: 261 KB, 224 KB, 126 KB, 110 KB.
 
 ## Route rendering modes
-33 of 35 routes are `ƒ` (dynamic, server-rendered on demand). Only `/offline`,
-`/profil/premium`, `/_not-found` and the icon/manifest routes are static.
+28 of 35 routes are `ƒ` (dynamic, server-rendered on demand). The 7 static
+ones are `/offline`, `/profil/premium`, `/_not-found` and the four metadata
+routes `/icon`, `/apple-icon`, `/opengraph-image` and `/manifest.webmanifest`.

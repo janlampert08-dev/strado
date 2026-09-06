@@ -30,7 +30,9 @@ The findings below are concentrated in one structural gap and a handful of small
 | 14 | **Info** | Unauthenticated `POST /auth/abmelden` (forced-logout CSRF) |
 | 15 | **Info** | `NEXT_PUBLIC_MAPBOX_TOKEN` also used server-side |
 
-**Nothing was found in these categories:** open redirect, IDOR on any Server Action, RLS bypass reachable from a user-controlled path, secret leaked into a client bundle, SSRF, XSS, SQL/PostgREST filter injection, private-route or private-ride disclosure. Details in *What is done well*.
+**Nothing was found in these categories** *(within this audit's scope — the application layer at commit `330ed1d`)*: open redirect, IDOR on any Server Action, RLS bypass reachable from a user-controlled path, secret leaked into a client bundle, SSRF, XSS, SQL/PostgREST filter injection. Details in *What is done well*.
+
+**Not a clean category:** private-route disclosure. This audit found none from the application layer, but the parallel database audit found two — `route_leaderboard` and `route_photos`, both granted to `anon`, both missing the `routes` join that would exclude private and unmoderated routes (see [`database.md`](./database.md) §1-2 and A3 in the [index](./README.md)). They are unreachable through the UI, which is why an application-layer sweep missed them, and reachable through a direct PostgREST call. Fixed by migration `0060` in this PR. Migration `0059`, in the same PR, is about ride-statistic validation and does not bear on this.
 
 ---
 
@@ -270,8 +272,9 @@ Recording these explicitly, both for balance and so a future change does not und
 **Input handling & injection**
 - `escapeLikePattern` / the inline equivalent in `searchProfiles` escape `%`, `_` and `\` before they reach PostgREST `ilike` — a genuinely easy one to miss.
 - `listRouteDetectionCandidates` validates `viewerId` as a UUID *because* it is interpolated into a PostgREST `.or()` filter string, with the reason in a comment (`lib/routes.ts:78-82`).
-- `isValidUuid` gates every id-taking action before it reaches the DB.
-- All outbound fetches (`mapboxDirections`, `weather`, `geocoding`, `elevation`) use hardcoded hosts with only numeric interpolation, or `URLSearchParams`. **No SSRF.** All have timeouts and fail closed to `null`.
+- `isValidUuid` gates the id-taking actions in `kudos`, `favorites`, `follows`, `ratings` and `reports` before the id reaches the DB (verified call sites; 5 of the 12 files in `lib/actions/`). It is *not* applied in `completions`, `routes`, `vehicles`, `moderation`, `profile` or `billing` — those rely on RLS and an ownership predicate instead, which holds, but means the guard is a local habit rather than a codebase-wide one. See `quality.md` §duplication for the same observation from the other direction.
+- All outbound fetches (`mapboxDirections`, `weather`, `geocoding`, `elevation`) use hardcoded hosts with only numeric interpolation, or `URLSearchParams`. **No SSRF.** All fail closed to `null`.
+- Timeouts, however, are only on half of them: `geocoding.ts:55` and `elevation.ts:51` pass an `AbortSignal.timeout(...)`; `mapboxDirections.ts:76` (`await fetch(url)`) and `weather.ts:34` pass none, so either can hang for the platform's default. `performance.md` reaches the same conclusion for the weather call from the render-blocking side.
 - One `dangerouslySetInnerHTML`, containing a static module constant. **No XSS found.**
 
 **Abuse resistance**

@@ -46,6 +46,33 @@ declare
   v_track_km numeric;
   v_kmh numeric;
 begin
+  -- A. Eine freie Fahrt ohne Track kann nichts belegen und darf deshalb nie
+  --    öffentlich sein. Gegenstück zu 0052, das für Streckenfahrten genau
+  --    dasselbe tut (kein Track -> abdeckung 0, nicht öffentlich); freie
+  --    Fahrten fielen dort durch das frühe return bei art <> 'strecke'.
+  --
+  --    Ohne diese Regel bleibt trotz der Prüfungen unten ein Weg offen: ein
+  --    direkter PostgREST-INSERT mit track = null, distanz_km = 2000 und
+  --    dauer_sekunden = 36000 trifft exakt 200 km/h, reisst also keine der
+  --    Grenzen, und landet als öffentliche freie Fahrt in
+  --    leaderboard_completions (seit 0056 zählen freie Fahrten dort mit).
+  --
+  --    Für die App ändert das nichts: logFreeRide bricht schon vorher mit
+  --    "Ungültige Tracking-Daten" ab, wenn sich aus dem Trail keine
+  --    Geometrie bauen lässt (lib/actions/completions.ts) — eine echte freie
+  --    Fahrt hat also immer einen Track.
+  --
+  --    Steht bewusst VOR dem frühen return unten: 0046 vergibt UPDATE auf
+  --    ist_oeffentlich an authenticated. Ohne diese Reihenfolge liesse sich
+  --    die Regel mit "erst privat einfügen, dann öffentlich schalten"
+  --    umgehen, weil dabei keine Statistikspalte anfasst wird.
+  --
+  --    Setzt still auf privat statt zu werfen — dieselbe fail-closed-Linie
+  --    wie 0052, damit ein Grenzfall eine Fahrt nie unspeicherbar macht.
+  if new.art = 'frei' and new.track is null and new.ist_oeffentlich then
+    new.ist_oeffentlich := false;
+  end if;
+
   -- 0. Bei einem UPDATE, das keine der drei Statistikspalten anfasst, gibt es
   --    nichts zu prüfen — unverändert durchlassen. Dieselbe Disziplin wie in
   --    0052 (dort Fall 4).
@@ -181,11 +208,12 @@ alter table public.route_completions
 --    eine serverseitig gestartete Fahrt (Startzeitpunkt in der DB), also eine
 --    Produktänderung, keine Migration.
 --
--- 2. Ein INSERT ohne Track umgeht das Band aus Schritt 2 komplett — es gibt
---    dann keine Geometrie, gegen die geprüft werden könnte. Übrig bleiben die
---    absoluten Obergrenzen unten und, für art = 'strecke', 0052 (kein Track
---    -> abdeckung 0, nicht öffentlich). Eine freie Fahrt ohne Track mit
---    plausibler Distanz bleibt damit anlegbar.
+-- 2. Ein INSERT ohne Track umgeht das Distanzband komplett — es gibt dann
+--    keine Geometrie, gegen die geprüft werden könnte. Übrig bleiben die
+--    absoluten Obergrenzen unten. Öffentlich werden kann eine solche Zeile
+--    aber nicht mehr: für art = 'strecke' verhindert das 0052 (kein Track
+--    -> abdeckung 0, nicht öffentlich), für art = 'frei' Schritt A oben.
+--    Sie bleibt also als private Zeile anlegbar und zählt nirgends mit.
 --
 -- 3. Ein frei gezeichneter, plausibler Track bleibt möglich. Das ist
 --    dasselbe Restrisiko, das 0052 für die Abdeckung schon benennt.

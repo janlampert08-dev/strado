@@ -370,7 +370,7 @@ this audit describes *the files*; the live database may differ (0042 is explicit
 applied). **Recommendation:** add a CI check that fails on a duplicate 4-digit prefix, and a
 lightweight drift check that compares `information_schema` objects against an expected list.
 
-**Do not renumber the existing files** (Core Rule 9). Future files should simply continue from 0058.
+**Do not renumber the existing files** (Core Rule 9). Future files continue from **0061** — 0058 landed on `main` (account deletion) while this audit was open, and 0059/0060 were added by this PR, so the numbering advice below was written against a lower high-water mark.
 
 ---
 
@@ -771,15 +771,19 @@ These are not filler; they are patterns a future change should be measured again
 
 Each item is a **new** migration (Core Rule 9 — nothing already applied gets edited).
 
-| Order | Migration | Addresses |
-|---|---|---|
-| 1 | `0058_route_leaderboard_und_route_photos_streckensichtbarkeit.sql` — add the `routes` join + `status_ok`/`ist_privat` filter to both views | F1, F2 |
-| 2 | `0059_public_completion_photos_freie_fahrten.sql` — LEFT JOIN + `art` coupling | F4 |
-| 3 | `0060_avatar_opt_in_erzwingen.sql` — revoke `select (avatar_url)`, add a gated accessor | F3 |
-| 4 | `0061_recent_kudos_avatar_opt_in.sql` — wrap `avatar_url` in the `zeigt_avatar` case | F9 |
-| 5 | `0062_feed_und_report_indizes.sql` — partial `(datum desc, id desc)` index + the six FK indexes | F6, F13 |
-| 6 | `0063_fahrzeug_besitz_erzwingen.sql` — ownership trigger | F8 |
-| 7 | `0064_abdeckungs_trigger_nur_bei_relevanter_aenderung.sql` — narrow the recompute | F10 |
+Numbers below are **updated from the original draft**: 0058 was taken by `main`
+(account deletion) and 0059/0060 by this PR, so item 1 shipped as `0060` and the
+rest start at 0061.
+
+| Order | Migration | Addresses | Status |
+|---|---|---|---|
+| 1 | `0060_private_strecken_aus_oeffentlichen_views.sql` — add the `routes` join + `status_ok`/`ist_privat` filter to both views | F1, F2 | **Done** in this PR (also covers `leaderboard_completions`) |
+| 2 | `0061_public_completion_photos_freie_fahrten.sql` — LEFT JOIN + `art` coupling | F4 | Open |
+| 3 | `0062_avatar_opt_in_erzwingen.sql` — revoke `select (avatar_url)`, add a gated accessor | F3 | Open |
+| 4 | `0063_recent_kudos_avatar_opt_in.sql` — wrap `avatar_url` in the `zeigt_avatar` case | F9 | Open |
+| 5 | `0064_feed_und_report_indizes.sql` — partial `(datum desc, id desc)` index + the six FK indexes | F6, F13 | Open |
+| 6 | `0065_fahrzeug_besitz_erzwingen.sql` — ownership trigger | F8 | Open |
+| 7 | `0066_abdeckungs_trigger_nur_bei_relevanter_aenderung.sql` — narrow the recompute | F10 | Open |
 | 8 | `0065_bewertungen_an_streckensichtbarkeit_koppeln.sql` | F11 |
 | 9 | `0066_cron_loescht_keine_befahrenen_strecken.sql` | F12 |
 | — | Not a migration: regenerate `types/database.ts`, replace `Database = any` | F7 |

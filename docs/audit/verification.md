@@ -1,5 +1,12 @@
 # Orchestrator re-verification of agent findings
 
+**Every entry below records the state at commit `330ed1d`, the audited
+snapshot, and is left as written.** Three of these findings have since been
+acted on in this PR — A1 partially, A2 and A3 fully. The
+[remediation status table](./README.md#remediation-status) is the single place
+that tracks what is fixed; these entries stay as the evidence of what was
+originally confirmed, not as a current-state report.
+
 ## CONFIRMED — Forgeable ride stats (security agent #1)
 - `supabase/migrations/0001_init.sql:183` — policy `"Nutzer verwalten eigene Fahrten" ... for all
   using (auth.uid() = user_id) with check (auth.uid() = user_id)`. The WITH CHECK constrains

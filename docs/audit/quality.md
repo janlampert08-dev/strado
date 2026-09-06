@@ -721,11 +721,19 @@ purely by filename — apply order is not deterministic from the number alone.
 
 **Fix:** a 5-line CI step:
 ```bash
-ls supabase/migrations/*.sql | xargs -n1 basename | cut -c1-4 | sort | uniq -d \
-  | grep . && { echo "Duplicate migration prefix"; exit 1; } || true
+# The four pairs below are already applied and must not be renamed (rule 9).
+known="0034 0041 0053 0054"
+dupes=$(ls supabase/migrations/*.sql | xargs -n1 basename | cut -c1-4 | sort | uniq -d)
+for d in $dupes; do
+  case " $known " in
+    *" $d "*) ;;
+    *) echo "New duplicate migration prefix: $d"; exit 1 ;;
+  esac
+done
 ```
-Existing duplicates are already applied and must not be renamed (rule 9), so seed the check
-with an allowlist of the four known pairs and fail on anything new.
+Note the shape: an earlier draft of this snippet ended in `|| true`, which swallows the
+`exit 1` and makes the step pass on exactly the failure it exists to catch. The loop above
+fails on anything outside the allowlist and says nothing when the set is clean.
 
 ### 7.4 `scripts/` — undocumented and unreferenced
 **Severity: low.** Seven `.mjs` data-pipeline scripts (Overpass/OSM fetch, swisstopo
@@ -781,9 +789,17 @@ Also: `README.md`'s final section is **truncated mid-sentence**:
 ```
 The heading has no content — the sentence begins with a stray space and " siehe".
 
-**Fix:** replace step 3 with `npx supabase link && npx supabase db push` (and a pointer to
-`supabase/migrations/README.md`), add a "Befehle" section listing dev/build/lint/test, and
-either restore or delete the truncated section. The env-var list in the README matches
+**Fix:** replace step 3 with a pointer to `supabase/migrations/README.md` as the single
+source of truth for applying the schema, add a "Befehle" section listing dev/build/lint/test,
+and either restore or delete the truncated section.
+
+Deliberately *not* `npx supabase db push` on its own: §7.3 above and
+[`database.md`](./database.md) both show that the four duplicate prefixes make
+`schema_migrations.version` — a primary key — unable to record both halves of a pair, so the
+push is not reliably repeatable and a fresh schema can end up differing from production. The
+README already documents hand-applying the 0041 pair as one entry. Recommending the command
+before those prefixes are reconciled would contradict this report's own findings; the
+ordered/manual procedure in the migrations README is the honest instruction until then. The env-var list in the README matches
 `.env.local.example` correctly — that part is fine.
 
 ---

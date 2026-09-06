@@ -1,12 +1,39 @@
 # Cornice — Full Application Audit
 
-Date: 2026-09-06 · Commit base: `claude/full-app-audit-k0cmkh`
+Date: 2026-09-06 · Audited commit: `330ed1d` (branch `claude/full-app-audit-k0cmkh`)
 
 Six parallel audits covering security, database/RLS, backend logic, UI/UX,
 performance, and code quality. Each detailed report is a sibling file in this
 directory. Findings marked **[verified]** below were independently re-checked
 against the source or executed after the originating audit produced them; the
 evidence is in [`verification.md`](./verification.md).
+
+## Remediation status
+
+**These reports are a snapshot of commit `330ed1d`.** Every finding below
+describes what was true at that commit and is left as written — an audit that
+edits its own findings once they are fixed stops being a record of what was
+found. What changed since is tracked here instead, and only here.
+
+| Finding | Status | Where |
+| --- | --- | --- |
+| A1 — forgeable ride statistics | **Partially fixed** | migration `0059` |
+| A2 — route ride has no post-save destination | **Fixed** | `logTrackedCompletion` returns `completionId`; `LiveTrackingForm` navigates to `/fahrten/[id]` |
+| A3 — private routes in anon-readable views | **Fixed** | migration `0060` |
+| A4, A5, A6 and everything in §B | Open | — |
+
+A1 is deliberately marked partial. Migration `0059` adds a validating trigger
+and four `NOT VALID` bounds, and blocks a trackless free ride from ever being
+public. It does **not** revoke direct `INSERT`, and it cannot recompute every
+statistic. Two of the three attack legs survive: `dauer_sekunden` is still a
+client-supplied clock (there are no timestamps in the stored track to derive it
+from, so closing it needs a server-recorded ride start — a product change), and
+a hand-drawn but plausible track is still accepted. The migration enumerates
+both at its end.
+
+Neither migration has been applied. No SQL was executed against any database at
+any point in this audit or its follow-up work, so both still need a run against
+a Supabase branch before they go anywhere near production.
 
 | Report | Scope |
 | --- | --- |
@@ -35,7 +62,15 @@ enabled on every table, all 12 `SECURITY DEFINER` functions pin `search_path`
 and bind to `auth.uid()`, `getUser()` is used at all 57 auth checkpoints and
 `getSession()` nowhere, and the raw GPS `track` column is deliberately kept out
 of every RLS-bypassing view. No open redirect, IDOR, XSS, SSRF, injection, or
-client-side secret leak was found.
+client-side secret leak was found — `app/auth/callback/route.ts` builds its
+redirect from `request.url` and puts `next` through `safeInternalPath`.
+
+That conclusion is about redirects. It is separate from the `getOrigin()`
+finding in §B, which is not an open redirect: `getOrigin()` only builds the
+absolute URL Supabase embeds in confirmation and reset emails. If — and only
+if — the Supabase Redirect URL allow-list is permissive, a forged
+`X-Forwarded-Host` could poison those links. The allow-list was not readable
+from here, so that one stays conditional and unverified.
 
 The problems cluster elsewhere, and they share one shape: **a rule enforced in
 one place was not carried across to its siblings.** The leaderboard trusts
