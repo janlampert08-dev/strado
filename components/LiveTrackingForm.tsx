@@ -1,15 +1,21 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { logTrackedCompletion, type CompletionFormState } from "@/lib/actions/completions";
 import { useRideRecorder } from "@/components/useRideRecorder";
+import {
+  GUEST_TRACKING_USER_ID,
+  issueGuestContinuationToken,
+} from "@/lib/trackingStorage";
 import { interpolateElevation } from "@/lib/elevation";
 import { computeRouteCoverage, COVERAGE_THRESHOLD_PERCENT } from "@/lib/routeCoverage";
 import { formatDuration } from "@/lib/format";
 import RideSummaryForm from "@/components/RideSummaryForm";
 import type { RouteGeoJSON, Vehicle } from "@/types/database";
 import { buttonVariants } from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
 import Skeleton from "@/components/ui/Skeleton";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
@@ -30,16 +36,26 @@ export default function LiveTrackingForm({
   userId,
   vehicles,
   personalBestSeconds,
+  guestContinuationToken = null,
   onExit,
 }: {
   route: RouteGeoJSON;
   // Nur für den localStorage-Schlüssel der Wiederherstellung — die Fahrt
   // selbst wird serverseitig dem angemeldeten Nutzer zugeordnet.
-  userId: string;
+  //
+  // null heisst: abgemeldeter Besucher. Aufzeichnen geht trotzdem, nur das
+  // Speichern am Ende verlangt ein Konto (Gate im Fazit weiter unten) —
+  // dieselbe Regel wie bei der freien Fahrt (FreeRideForm.tsx).
+  userId: string | null;
   vehicles: Vehicle[];
   personalBestSeconds: number | null;
+  // Marker aus ?fortsetzen=<token>, mit dem sich die Rückkehr aus dem
+  // Anmelde-Gate ausweist (siehe adoptGuestTrackingSnapshot).
+  guestContinuationToken?: string | null;
   onExit: () => void;
 }) {
+  const router = useRouter();
+  const istGast = userId === null;
   const action = logTrackedCompletion.bind(null, route.id);
   const [state, formAction, pending] = useActionState(action, initialState);
 
@@ -56,7 +72,15 @@ export default function LiveTrackingForm({
     [route],
   );
 
-  const recorder = useRideRecorder({ userId, storageKey: route.id, gate });
+  // Der Schlüssel ist die Strecken-ID: eine Gastfahrt auf dieser Strecke
+  // landet damit unter cornice:tracking:gast:<strecke> und kollidiert weder
+  // mit einer freien Fahrt noch mit einer anderen Strecke.
+  const recorder = useRideRecorder({
+    userId: userId ?? GUEST_TRACKING_USER_ID,
+    storageKey: route.id,
+    gate,
+    guestContinuationToken,
+  });
   const { phase, result, finishedTrail, clearSnapshot, discard } = recorder;
 
   const [isPublic, setIsPublic] = useState(false);
@@ -86,6 +110,18 @@ export default function LiveTrackingForm({
   function handleExit() {
     discard();
     onExit();
+  }
+
+  // Wie in FreeRideForm: der einmalig einlösbare Marker entsteht im Moment
+  // des Gate-Klicks, nicht beim Rendern. Rücksprungziel ist diese
+  // Streckenseite — GefahrenSection klappt dort anhand des Markers von
+  // selbst wieder auf, damit die Fahrt zum Speichern bereitsteht.
+  function goToAuth(ziel: "/anmelden" | "/registrieren") {
+    const token = issueGuestContinuationToken(route.id);
+    const zurueck = token
+      ? `/strecken/${route.id}?fortsetzen=${encodeURIComponent(token)}`
+      : `/strecken/${route.id}`;
+    router.push(`${ziel}?next=${encodeURIComponent(zurueck)}`);
   }
 
   if (phase === "idle") {
@@ -200,6 +236,14 @@ export default function LiveTrackingForm({
             </p>
           )}
           {recorder.locationError && <p className="text-sm text-danger">{recorder.locationError}</p>}
+          {/* Vorwarnung statt einer Überraschung am Ziel — siehe
+              FreeRideForm.tsx. */}
+          {istGast && (
+            <p className="text-xs text-muted">
+              Ohne Konto: aufzeichnen geht, zum Speichern der Fahrt brauchst du am Ende eine
+              Anmeldung.
+            </p>
+          )}
           <div className="flex flex-wrap items-center justify-between gap-3">
             {recorder.hasStarted ? (
               <button
@@ -262,37 +306,82 @@ export default function LiveTrackingForm({
           </div>
         </dl>
 
-        {isNewBest ? (
-          <p className="rounded-lg border border-accent bg-accent/5 px-3 py-2 text-sm font-medium text-accent">
-            {personalBestSeconds === null
-              ? "Erste erfasste Zeit für diese Strecke."
-              : `Neue persönliche Bestzeit — bisher ${formatDuration(personalBestSeconds)}.`}
-          </p>
-        ) : (
-          <p className="text-sm text-muted">
-            Bisherige Bestzeit: {formatDuration(personalBestSeconds ?? 0)}
-          </p>
-        )}
+        {/* Ohne Konto gibt es keine Historie, gegen die sich eine Bestzeit
+            vergleichen liesse — "Erste erfasste Zeit für diese Strecke"
+            wäre für einen Gast eine Aussage über ein Konto, das es noch
+            nicht gibt. */}
+        {!istGast &&
+          (isNewBest ? (
+            <p className="rounded-lg border border-accent bg-accent/5 px-3 py-2 text-sm font-medium text-accent">
+              {personalBestSeconds === null
+                ? "Erste erfasste Zeit für diese Strecke."
+                : `Neue persönliche Bestzeit — bisher ${formatDuration(personalBestSeconds)}.`}
+            </p>
+          ) : (
+            <p className="text-sm text-muted">
+              Bisherige Bestzeit: {formatDuration(personalBestSeconds ?? 0)}
+            </p>
+          ))}
 
-        <RideSummaryForm
-          formAction={formAction}
-          pending={pending}
-          error={state.error}
-          vehicles={vehicles}
-          trailJson={recorder.trailJson}
-          isPublic={isPublic}
-          onIsPublicChange={setIsPublic}
-          onSubmit={() => setSubmitted(true)}
-          onDiscard={handleExit}
-          visibility={{
-            publicDisabled: belowCoverageThreshold,
-            publicDisabledHint: `Diese Fahrt deckt nur ${coveragePercent}% der offiziellen Strecke ab — evtl. abgekürzt oder am falschen Punkt gestartet/beendet. Sie bleibt privat gespeichert, kann aber nicht öffentlich geteilt werden.`,
-            publicHint:
-              "Öffentlich: erscheint auf Bestenlisten und deinem öffentlichen Profil. Später jederzeit umschaltbar.",
-            privateHint:
-              "Privat: nur du siehst diese Fahrt in deinem Profil, für andere bleibt sie unsichtbar. Später jederzeit umschaltbar.",
-          }}
-        />
+        {/* Dasselbe Anmelde-Gate wie bei der freien Fahrt: aufzeichnen darf
+            jeder, ein Konto braucht erst das Speichern. Die Aufzeichnung
+            liegt bis dahin unter dem Gast-Schlüssel im Browser und wird nach
+            der Anmeldung übernommen (adoptGuestTrackingSnapshot).
+            Serverseitig ändert das nichts — logTrackedCompletion weist eine
+            Fahrt ohne Session unabhängig davon ab. */}
+        {istGast ? (
+          <Card surface className="flex flex-col gap-3 p-4 text-sm">
+            <p className="font-medium text-foreground">Strecke gefahren.</p>
+            <p className="text-muted">
+              Zum Speichern brauchst du ein Konto — damit zählt die Fahrt für deine Bestzeit auf
+              dieser Strecke, für die Bestenlisten und dein Profil. Die Aufzeichnung bleibt so
+              lange in diesem Browser (bis zu 24 Stunden) und wird nach der Anmeldung übernommen.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => goToAuth("/registrieren")}
+                className={buttonVariants({ variant: "accent", size: "sm" })}
+              >
+                Konto erstellen
+              </button>
+              <button
+                type="button"
+                onClick={() => goToAuth("/anmelden")}
+                className={buttonVariants({ variant: "secondary", size: "sm" })}
+              >
+                Ich habe ein Konto
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={handleExit}
+              className="self-start text-xs text-muted underline hover:text-foreground"
+            >
+              Fahrt verwerfen
+            </button>
+          </Card>
+        ) : (
+          <RideSummaryForm
+            formAction={formAction}
+            pending={pending}
+            error={state.error}
+            vehicles={vehicles}
+            trailJson={recorder.trailJson}
+            isPublic={isPublic}
+            onIsPublicChange={setIsPublic}
+            onSubmit={() => setSubmitted(true)}
+            onDiscard={handleExit}
+            visibility={{
+              publicDisabled: belowCoverageThreshold,
+              publicDisabledHint: `Diese Fahrt deckt nur ${coveragePercent}% der offiziellen Strecke ab — evtl. abgekürzt oder am falschen Punkt gestartet/beendet. Sie bleibt privat gespeichert, kann aber nicht öffentlich geteilt werden.`,
+              publicHint:
+                "Öffentlich: erscheint auf Bestenlisten und deinem öffentlichen Profil. Später jederzeit umschaltbar.",
+              privateHint:
+                "Privat: nur du siehst diese Fahrt in deinem Profil, für andere bleibt sie unsichtbar. Später jederzeit umschaltbar.",
+            }}
+          />
+        )}
       </div>
     </div>
   );

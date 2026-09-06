@@ -57,10 +57,19 @@ export async function generateMetadata({
 
 export default async function StreckeDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  // ?fortsetzen=<token> trägt den Marker aus dem Anmelde-Gate einer als Gast
+  // gefahrenen Strecke (siehe LiveTrackingForm.tsx) — nur mit ihm darf die
+  // Aufzeichnung an das nun angemeldete Konto übergehen. Geprüft und
+  // eingelöst wird er ausschliesslich im Client gegen den gespeicherten Wert
+  // (adoptGuestTrackingSnapshot); hier ist er ein durchgereichter, nicht
+  // vertrauenswürdiger Query-Wert.
+  searchParams: Promise<{ fortsetzen?: string }>;
 }) {
   const { id } = await params;
+  const { fortsetzen } = await searchParams;
   const supabase = await createClient();
 
   // getRoute() und auth.getUser() sind voneinander unabhängig (Routenabruf
@@ -148,18 +157,20 @@ export default async function StreckeDetailPage({
           )}
         </div>
 
-        {user ? (
-          <GefahrenSection
-            route={route}
-            userId={user.id}
-            vehicles={vehicles}
-            personalBestSeconds={personalBestSeconds}
-          />
-        ) : (
-          <p className="border-t border-border pt-6 text-sm text-muted">
-            Melde dich an, um diese Strecke als gefahren einzutragen und zu bewerten.
-          </p>
-        )}
+        {/* Auch ohne Konto: aufzeichnen darf jeder, das Konto verlangt erst
+            das Speichern (Gate im Fazit, siehe LiveTrackingForm.tsx).
+            Vorher stand hier für Abgemeldete nur ein Hinweistext — auf der
+            Seite, auf der ein geteilter Link landet, also ausgerechnet dort,
+            wo ein Besucher ohne Konto zuerst ankommt. Der Kommentar-Teil des
+            alten Hinweises lebt jetzt in RatingSection weiter, wo er
+            hingehört. */}
+        <GefahrenSection
+          route={route}
+          userId={user?.id ?? null}
+          vehicles={vehicles}
+          personalBestSeconds={personalBestSeconds}
+          guestContinuationToken={fortsetzen ?? null}
+        />
 
         {route.hoehenprofil && route.hoehenprofil.length > 1 && (
           <ElevationProfile punkte={route.hoehenprofil} />
