@@ -38,13 +38,16 @@ client_pattern="${position}${clients}([[:space:]]|$)"
 # bleibt unberuehrt, "supabase db push" spielt gegen Produktion ein.
 db_pattern="${position}supabase[[:space:]]+db([[:space:]]|$)"
 migration_pattern="${position}supabase[[:space:]]+migration([[:space:]]|$)"
-# Ausnahmen: "supabase migration new" legt nur eine Datei unter
-# supabase/migrations/ an, "supabase migration list" liest das Ledger. Beides
-# aendert nichts an der Datenbank und braucht daher keine Bestaetigung.
+# Einzige Ausnahme: "supabase migration new" legt nur eine Datei unter
+# supabase/migrations/ an und erreicht die Datenbank ueberhaupt nicht.
+# "migration list" ist bewusst NICHT ausgenommen: es liest mit --linked bzw.
+# --db-url die Ledger-Tabelle supabase_migrations.schema_migrations auf der
+# Remote-Datenbank, faellt also unter die AGENTS.md-Regel fuer Statements, die
+# die Datenbank erreichen.
 # Bewusst als Ausnahmeliste, nicht als Positivliste der gefaehrlichen
 # Subkommandos: repair, up, squash, fetch -- und alles kuenftig dazukommende --
 # bleiben so automatisch bestaetigungspflichtig.
-migration_exempt="${position}supabase[[:space:]]+migration[[:space:]]+(new|list)([[:space:]]|$)"
+migration_exempt="${position}supabase[[:space:]]+migration[[:space:]]+new([[:space:]]|$)"
 
 needs_ask=0
 

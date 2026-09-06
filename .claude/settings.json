@@ -1,8 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(supabase migration new*)",
-      "Bash(supabase migration list*)"
+      "Bash(supabase migration new*)"
     ],
     "ask": [
       "mcp__Supabase__execute_sql",
@@ -30,6 +29,7 @@
       "mcp__Vercel__buy_pro",
       "Bash(psql *)",
       "Bash(supabase db *)",
+      "Bash(supabase migration list*)",
       "Bash(supabase migration up*)",
       "Bash(supabase migration repair*)",
       "Bash(supabase migration squash*)",
