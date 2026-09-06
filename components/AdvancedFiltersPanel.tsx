@@ -10,10 +10,17 @@ function toNullableNumber(raw: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+// Zurzeit von keiner Seite eingebunden: die Startseite zeigt seit der
+// Verschlankung der Explore-Ansicht nur noch Suchtext und Standort
+// (components/ExploreView.tsx). Bewusst als Modul behalten statt gelöscht —
+// km-/Höhen-/Saison-Filter lohnen sich wieder, sobald der kuratierte
+// Streckenbestand gross genug ist, um ihn eingrenzen zu müssen; bis dahin
+// halten die Tests in lib/exploreFilters.test.ts die Logik lauffähig.
+//
 // Natives <details> statt eigenem useState fürs Auf-/Zuklappen — der Browser
 // übernimmt Zustand und Tastatursteuerung, die Filterwerte selbst müssen
-// trotzdem kontrolliert sein (siehe ExploreView.tsx), da sie in die
-// Streckenliste einfliessen.
+// trotzdem kontrolliert sein, da sie beim Einhängen in eine Streckenliste
+// einfliessen.
 export default function AdvancedFiltersPanel({
   filters,
   onChange,

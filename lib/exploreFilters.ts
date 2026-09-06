@@ -1,3 +1,9 @@
+// Filterzustand der Explore-Ansicht. Zurzeit nur noch von
+// components/AdvancedFiltersPanel.tsx genutzt, das selbst geparkt ist: die
+// Startseite filtert seit der Verschlankung nur noch über den Suchtext
+// (components/ExploreView.tsx, das ?q= direkt liest und schreibt). Modul und
+// Tests bleiben bestehen, damit die Filter wieder eingehängt werden können,
+// ohne sie neu zu schreiben.
 import { KATEGORIEN } from "@/lib/constants";
 import type { Kategorie, RouteGeoJSON } from "@/types/database";
 
