@@ -1,8 +1,19 @@
 name: CI
 
 on:
+  # Bewusst ohne branches-Filter: der Filter gilt für den ZIEL-Branch eines
+  # Pull Requests, nicht für den Quell-Branch. Mit `branches: [main]` lief
+  # auf einem PR, der auf einen anderen Branch zeigt, überhaupt keine CI —
+  # ein gestapelter PR (Folgearbeit, die auf einem noch offenen PR aufbaut)
+  # war damit still ungeprüft, und das nachträgliche Umhängen auf main holt
+  # den Lauf nicht nach: das erzeugt nur ein `edited`-Event, das den
+  # Workflow nicht auslöst. Genau so ist #113 ohne CI gemergt worden.
+  # Jeder PR wird geprüft, egal wohin er zeigt.
   pull_request:
-    branches: [main]
+  # Hier bleibt der Filter richtig: gemeint ist der Branch, auf den
+  # geschoben wurde. Nur main soll einen eigenen Lauf ausserhalb von PRs
+  # bekommen — Pushes auf Feature-Branches sind bereits über deren PR
+  # abgedeckt.
   push:
     branches: [main]
 
