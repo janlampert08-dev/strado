@@ -62,18 +62,30 @@ is what should be corrected.
     references (`impressum.md`, every `/legal/…` link) name `strado.ch`.
     The remaining placeholders there are the company's own particulars.
 
-- **The published legal pages still carry the old product name.** The
-  addresses are fixed, the branding is not: `janlampert08-dev/stradoinfo`
-  still says "Cornice" in its titles, logos and body text, including inside
-  the three legal pages, while this app was renamed to Strado. Those pages
-  are linked from the sign-up form, so this remains a launch blocker — and
-  it is a rename, not a link fix, so it needs its own change.
+- **The published pages now say Strado, and name `contact@strado.ch`.**
+  `janlampert08-dev/stradoinfo` was renamed and merged on 2026-09-07, so
+  the three legal pages linked from the sign-up form no longer carry the
+  old product name. One thing was *not* verified before that went live:
+  whether `contact@strado.ch` actually receives mail. It is the contact
+  channel the impressum names, which Art. 3 Abs. 1 lit. s UWG requires, so
+  confirm it accepts mail rather than assuming it.
 
-- **`NEXT_PUBLIC_SITE_URL` is still unset in production.** It backs the
-  Stripe customer-portal return link (`lib/actions/billing.ts`) and falls
-  back to `http://localhost:3000`, which would send a paying customer to
-  their own machine. It is a Vercel environment variable and cannot be
-  fixed in the repo; set it to `https://app.strado.ch`.
+- **`NEXT_PUBLIC_SITE_URL` is set in Vercel, but a value set there does not
+  reach a build that already happened.** Next.js inlines every
+  `NEXT_PUBLIC_*` variable at build time — server code included, not just
+  the client bundle (`node_modules/next/dist/docs/01-app/02-guides/environment-variables.md`,
+  "After being built, your app will no longer respond to changes to these
+  environment variables"). Changing one in the dashboard therefore does
+  nothing until the next deployment. This is the trap to remember for any
+  `NEXT_PUBLIC_*` value: setting it is only half the change.
+  - `siteUrl()` in `lib/siteUrl.ts` resolves
+    `NEXT_PUBLIC_SITE_URL` → `VERCEL_PROJECT_PRODUCTION_URL` → localhost.
+    The middle one carries no `NEXT_PUBLIC_` prefix, so it *is* read at
+    runtime — which is what keeps a stale build off `localhost`.
+  - Because the function is only ever called server-side, the
+    `NEXT_PUBLIC_` prefix buys nothing and costs this freezing. Renaming it
+    to `SITE_URL` would make it a true runtime value; that needs the repo
+    and the Vercel dashboard changed together, so it has not been done.
 - **Migrations are applied by hand and the newest ones are not applied.**
   Green CI means nothing about the live schema. See
   `supabase/migrations/README.md` and `.agents/deployment.md`.
