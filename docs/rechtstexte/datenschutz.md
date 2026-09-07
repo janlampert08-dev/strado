@@ -13,7 +13,7 @@
 > müssen.
 >
 > Der Text beschreibt den Stand der Datenbearbeitung, wie er sich aus dem
-> Quellcode dieses Repositories ergibt (Stand des Entwurfs: 2026-09-06).
+> Quellcode dieses Repositories ergibt (Stand des Entwurfs: 2026-09-07).
 > **Ändert sich der Code, muss dieser Text mitgeändert werden.** Am Ende
 > stehen ausserdem Punkte, die vor der Veröffentlichung fachlich geklärt
 > werden müssen.
@@ -79,20 +79,26 @@ Höhenmeter, Distanz, Follower-Liste, Premium-Abzeichen). Beim Premium-Abo
 kommt eine Kunden-Kennung des Zahlungsdienstleisters hinzu (Abschnitt 3.9).
 
 > **Wichtig zu den Standardeinstellungen:** Bei neu angelegten Konten sind
-> diese Profil-Schalter **standardmässig ausgeschaltet** — Profilbild,
+> sechs dieser Profil-Schalter **standardmässig eingeschaltet** — Profilbild,
 > Fahrzeuge, Anzahl Pässe, Höhenmeter, Distanz und Follower-Liste erscheinen
-> also erst auf dem öffentlichen Profil, wenn sie in den Einstellungen
-> eingeschaltet werden. Dasselbe gilt für das Premium-Abzeichen. Die
-> Sichtbarkeit **einzelner Fahrten** ist davon unabhängig und ebenfalls
-> standardmässig **aus** (Abschnitt 3.4).
+> also von Anfang an auf dem öffentlichen Profil und müssen in den
+> Einstellungen einzeln **ausgeschaltet** werden, wenn sie nicht sichtbar sein
+> sollen. Es handelt sich damit um eine Opt-out- und nicht um eine
+> Opt-in-Voreinstellung; die Anwendung weist in den Profileinstellungen
+> ausdrücklich darauf hin („Standardmässig ist alles an").
+>
+> Zwei Einstellungen sind davon ausgenommen und bleiben **standardmässig aus**:
+> das **Premium-Abzeichen** (Abschnitt 3.9) und die Sichtbarkeit
+> **einzelner Fahrten**, über die pro Fahrt entschieden wird (Abschnitt 3.4).
 
 ### 3.3 Fahrzeugdaten
 
 Optional angelegte Fahrzeuge mit Typ (Auto/Motorrad), Marke, Modell,
-Getriebeart und Baujahr. Fahrzeuge sind grundsätzlich nur für die Eigentümerin
-oder den Eigentümer sichtbar. Erst wenn der Schalter „Fahrzeuge zeigen"
-aktiviert wird, erscheinen Typ, Marke und Modell neben veröffentlichten
-Fahrten.
+Getriebeart und Baujahr. Der Schalter „Fahrzeuge zeigen" ist bei neuen Konten
+**standardmässig an** (Abschnitt 3.2). Solange er nicht ausgeschaltet wird,
+erscheinen deshalb Typ, Marke und Modell neben veröffentlichten Fahrten und die
+**vollständige Fahrzeugliste** — inklusive Getriebeart und Baujahr — auf dem
+öffentlichen Profil.
 
 ### 3.4 Fahrten und GPS-Standortdaten
 
@@ -176,7 +182,8 @@ dabei nicht neu berechnet, die Bildqualität ändert sich also nicht.
   mit dem Anzeigenamen.
 - **Kudos** auf öffentliche Fahrten anderer.
 - **Folgen** anderer Nutzender (Follows). Ob die eigene Follower-Liste
-  öffentlich ist, steuert ein eigener Schalter.
+  öffentlich ist, steuert ein eigener Schalter — standardmässig **an**
+  (Abschnitt 3.2).
 - **Favoriten** (gemerkte Strecken) — nur für die eigene Person sichtbar.
 - **Bestenlisten und Statistiken**, die aus öffentlich gestellten Fahrten
   berechnet werden.
@@ -285,8 +292,17 @@ widerrechtlich verletzt wird. Wo eine Rechtfertigung nötig ist, stützen wir un
 auf Art. 31 DSG: **Vertragserfüllung** (Konto, Fahrten, Abo),
 **überwiegendes privates Interesse** (Sicherheit, Missbrauchsabwehr,
 Reichweitenmessung, Weiterentwicklung), **Einwilligung** (Standortzugriff,
-Veröffentlichen einzelner Fahrten, optionale Profilangaben) und **gesetzliche
+Veröffentlichen einzelner Fahrten, Premium-Abzeichen) und **gesetzliche
 Pflicht** (Aufbewahrung).
+
+Die sechs voreingestellt eingeschalteten Profil-Schalter (Abschnitt 3.2)
+lassen sich **nicht** auf eine Einwilligung stützen, weil ihnen keine aktive
+Wahl vorausgeht. Wir stützen sie auf die Vertragserfüllung — ein öffentliches
+Fahrerprofil ist Teil der Plattformfunktion — und auf unser überwiegendes
+Interesse am Betrieb einer öffentlichen Community; jeder Schalter lässt sich
+jederzeit abschalten. Ob diese Voreinstellung mit dem Grundsatz „Datenschutz
+durch Voreinstellung" (Art. 7 DSG, Art. 25 DSGVO) vereinbar ist, ist vor der
+Veröffentlichung anwaltlich zu prüfen — siehe offenen Punkt 12.
 
 **5.2 DSGVO, soweit anwendbar.** Für Nutzende, auf die die DSGVO anwendbar
 ist, gilt zusätzlich:
@@ -294,15 +310,17 @@ ist, gilt zusätzlich:
 | Bearbeitung | Rechtsgrundlage DSGVO |
 | --- | --- |
 | Konto, Fahrten, Abo, Zahlungsabwicklung | Art. 6 Abs. 1 lit. b (Vertrag) |
-| Standortzugriff, Veröffentlichen einzelner Fahrten, Profilbild, Premium-Abzeichen | Art. 6 Abs. 1 lit. a (Einwilligung) |
+| Standortzugriff, Veröffentlichen einzelner Fahrten, Premium-Abzeichen | Art. 6 Abs. 1 lit. a (Einwilligung) |
 | Voreingestellt sichtbare Profilangaben (Abschnitt 6) | Art. 6 Abs. 1 lit. b und f — siehe offenen Punkt 12 |
 | Sicherheit, Missbrauchsabwehr, Reichweitenmessung, Moderation | Art. 6 Abs. 1 lit. f (berechtigtes Interesse) |
 | Aufbewahrung von Rechnungsunterlagen | Art. 6 Abs. 1 lit. c (rechtliche Verpflichtung) |
 
 Eine Einwilligung kann jederzeit mit Wirkung für die Zukunft widerrufen
 werden — beim Standortzugriff über die Browsereinstellungen, bei der
-Sichtbarkeit von Fahrten und Profilangaben über die entsprechenden Schalter in
-der Anwendung.
+Sichtbarkeit von Fahrten und beim Premium-Abzeichen über die entsprechenden
+Schalter in der Anwendung. Die voreingestellt eingeschalteten Profilangaben
+beruhen nicht auf einer Einwilligung; sie lassen sich über dieselben Schalter
+jederzeit abschalten, und ein Widerspruch nach Abschnitt 11 bleibt möglich.
 
 ## 6. Sichtbarkeit gegenüber anderen Nutzenden
 
@@ -316,10 +334,11 @@ Bewertungstexte; Streckenvorschläge nach ihrer Freigabe.
 Fahrten — mit Datum, Strecke bzw. Titel, Distanz, Dauer, Höhenmeter, Fotos und
 Notiz sowie dem an den Enden gekappten Track; ausserdem das Premium-Abzeichen.
 
-**Erst nach eigenem Einschalten sichtbar (Standard: aus):** Profilbild;
-Fahrzeuge; Anzahl gefahrener Pässe; gesammelte Höhenmeter; gefahrene Distanz;
-Follower-Liste. Diese sechs Schalter sind bei neuen Konten voreingestellt
-**aus** und lassen sich in den Profileinstellungen einzeln einschalten.
+**Voreingestellt sichtbar, bis es abgeschaltet wird (Standard: an):**
+Profilbild; Fahrzeuge; Anzahl gefahrener Pässe; gesammelte Höhenmeter;
+gefahrene Distanz; Follower-Liste. Diese sechs Schalter sind bei neuen Konten
+voreingestellt **an** und lassen sich in den Profileinstellungen einzeln
+ausschalten. Wer nichts davon zeigen will, muss also aktiv werden.
 
 **Nie für andere sichtbar:** der vollständige, ungekappte GPS-Track;
 Fahrten, die nicht öffentlich gestellt sind; Notizen privater Fahrten;
@@ -609,12 +628,23 @@ nach der Zeichenfolge `[[` zu suchen, um sicherzustellen, dass kein Platzhalter
     aufgenommene Fotos nicht gedreht erscheinen. Sie enthält keine
     personenbezogene Information; der Hinweis im Text sollte trotzdem
     bestätigt werden.
-12. **Voreinstellung der Sichtbarkeits-Schalter** (Abschnitte 3.2 und 6) —
-    im Repository liegt mit `0054_sichtbarkeit_standardmaessig_aktiv.sql`
-    eine Migration, die diese Schalter von Opt-in auf Opt-out umstellen
-    würde. Sie ist in der Produktionsdatenbank **nicht eingespielt**, die
-    Schalter stehen dort weiterhin auf „aus"; dieser Text beschreibt den
-    tatsächlichen Zustand. Wird die Migration nachgezogen, ist der Text
-    zwingend mitzuändern — und vorher zu prüfen, ob sich eine solche
-    Voreinstellung auf eine Einwilligung stützen lässt (Grundsatz
-    „Datenschutz durch Voreinstellung", Art. 7 DSG bzw. Art. 25 DSGVO).
+12. **Voreinstellung der Sichtbarkeits-Schalter** (Abschnitte 3.2, 5 und 6) —
+    dieser Text beschreibt den Zustand, den der Quellcode vorgibt: die sechs
+    Profil-Schalter stehen auf **an** (`0054_sichtbarkeit_standardmaessig_aktiv.sql`,
+    Fallback `?? true` in `app/profil/einstellungen/page.tsx`). Zwei Punkte
+    sind offen:
+
+    a) **Rechtlich:** Eine voreingestellt eingeschaltete Sichtbarkeit ist
+       keine Einwilligung und steht in Spannung zum Grundsatz „Datenschutz
+       durch Voreinstellung" (Art. 7 DSG, Art. 25 DSGVO). Die in Abschnitt
+       5.1 gewählte Stützung auf Vertragserfüllung und überwiegendes
+       Interesse muss geprüft und bestätigt werden — sie ist der Kern dieses
+       Punktes und nicht bloss eine Formulierungsfrage.
+
+    b) **Tatsächlich:** Migration `0054` ist in der Produktionsdatenbank
+       **noch nicht eingespielt** (siehe `supabase/migrations/README.md`);
+       dort stehen die Schalter bei neuen Konten weiterhin auf „aus". Bis
+       zum Einspielen beschreibt dieser Text also eine weitergehende
+       Sichtbarkeit als tatsächlich stattfindet. Der Text darf erst
+       zusammen mit der eingespielten Migration veröffentlicht werden —
+       oder die Migration muss vorher eingespielt sein.

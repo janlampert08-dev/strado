@@ -152,11 +152,16 @@ verglichen. Drei Migrationen sind **nicht** eingespielt:
 | `0058_kontoloeschung_werte_nullen.sql` | nicht eingespielt; setzt `geloescht_am` voraus und scheitert deshalb, solange 0042 fehlt |
 | `0054_sichtbarkeit_standardmaessig_aktiv.sql` | nicht eingespielt — die Sichtbarkeits-Schalter stehen in der Produktionsdatenbank weiterhin auf `false` (Opt-in), nicht auf `true` |
 
-Die letzte Zeile ist die folgenreichste: der Code und die Rechtstexte
-beschrieben bisher ein Opt-out-Verhalten, das es in Produktion nicht gibt.
-`docs/rechtstexte/datenschutz.md` beschreibt jetzt den tatsächlichen Zustand.
-Vor dem Nachziehen von 0054 ist zu klären, ob die Umkehrung auf Opt-out
-datenschutzrechtlich haltbar ist — nicht umgekehrt.
+Die letzte Zeile ist die folgenreichste: der Code beschreibt ein
+Opt-out-Verhalten, das es in Produktion nicht gibt. Auf Produktentscheid
+beschreiben die Rechtstexte seit `docs/rechtstexte/datenschutz.md` (Stand
+2026-09-07) **den Zustand des Codes**, also Opt-out — nicht mehr den der
+Produktionsdatenbank. Damit gilt: **0054 muss eingespielt sein, bevor die
+Rechtstexte in dieser Fassung veröffentlicht werden**, sonst behaupten sie
+eine weitergehende Sichtbarkeit als tatsächlich stattfindet. Die
+datenschutzrechtliche Prüfung der Umkehrung auf Opt-out (Art. 7 DSG,
+Art. 25 DSGVO) steht weiterhin aus und ist als offener Punkt 12 in der
+Datenschutzerklärung vermerkt.
 
 ## Premium-Migrationen 0059–0062 (eingespielt 2026-09-06)
 
