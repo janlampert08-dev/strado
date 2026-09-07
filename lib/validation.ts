@@ -12,12 +12,17 @@ export function isValidUuid(value: string): boolean {
 // storage.buckets.allowed_mime_types aus
 // 0033_route_length_and_upload_mime_hardening.sql — die Datenbank ist die
 // eigentliche Sperre, diese Liste hält die App-Seite damit im Gleichklang.
-const BILD_MIME_ZU_ENDUNG: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/gif": "gif",
-};
+// Bewusst eine Map und kein Objekt-Literal: bei einem Objekt liegt die
+// gesamte Object.prototype-Kette im Lookup, und foto.type ist
+// client-kontrolliert. Ein Upload mit Content-Type "constructor" oder
+// "toString" liefert dort einen geerbten Wert statt undefined, das ?? null
+// unten greift nicht, und die geratene "Endung" landet im Storage-Key.
+const BILD_MIME_ZU_ENDUNG = new Map<string, string>([
+  ["image/jpeg", "jpg"],
+  ["image/png", "png"],
+  ["image/webp", "webp"],
+  ["image/gif", "gif"],
+]);
 
 // Liefert die Dateiendung für einen Storage-Key aus dem gemeldeten
 // Content-Type statt aus foto.name.
@@ -36,5 +41,5 @@ const BILD_MIME_ZU_ENDUNG: Record<string, string> = {
 // Ein unbekannter Typ ergibt null; der Aufrufer weist den Upload dann ab,
 // statt ihn unter einer geratenen Endung zu speichern.
 export function bildEndungFuerMime(mimeType: string): string | null {
-  return BILD_MIME_ZU_ENDUNG[mimeType.toLowerCase()] ?? null;
+  return BILD_MIME_ZU_ENDUNG.get(mimeType.toLowerCase()) ?? null;
 }

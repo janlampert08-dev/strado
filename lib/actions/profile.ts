@@ -150,8 +150,14 @@ export async function uploadAvatar(
 
   if (!user) return { error: "Bitte melde dich zuerst an." };
 
-  const foto = formData.get("avatar") as File | null;
-  if (!foto || foto.size === 0) return { error: "Bitte ein Foto auswählen." };
+  // instanceof statt eines Casts: formData.get() liefert bei einem
+  // gleichnamigen Textfeld einen String, und der hat weder .size noch .type.
+  // Der Cast hätte das durchgereicht, foto.type wäre undefined und
+  // bildEndungFuerMime() unten mit einem TypeError abgebrochen — also ein
+  // 500er statt der Fehlermeldung, die hier schon steht. Dieselbe Prüfung
+  // macht lib/actions/completions.ts beim Fahrt-Foto bereits.
+  const foto = formData.get("avatar");
+  if (!(foto instanceof File) || foto.size === 0) return { error: "Bitte ein Foto auswählen." };
   if (foto.size > MAX_AVATAR_BYTES) return { error: "Foto ist zu gross (max. 4 MB)." };
 
   // Endung aus dem Content-Type statt aus foto.name — Begründung in

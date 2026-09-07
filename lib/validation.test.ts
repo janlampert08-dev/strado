@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isValidUuid } from "@/lib/validation";
+import { bildEndungFuerMime, isValidUuid } from "@/lib/validation";
 
 describe("isValidUuid", () => {
   it("accepts a well-formed v4 uuid", () => {
@@ -24,5 +24,34 @@ describe("isValidUuid", () => {
 
   it("rejects a uuid missing a segment", () => {
     expect(isValidUuid("550e8400-e29b-41d4-a716")).toBe(false);
+  });
+});
+
+describe("bildEndungFuerMime", () => {
+  it("maps every MIME type of the bucket allowlist", () => {
+    expect(bildEndungFuerMime("image/jpeg")).toBe("jpg");
+    expect(bildEndungFuerMime("image/png")).toBe("png");
+    expect(bildEndungFuerMime("image/webp")).toBe("webp");
+    expect(bildEndungFuerMime("image/gif")).toBe("gif");
+  });
+
+  it("normalises the case of the reported content type", () => {
+    expect(bildEndungFuerMime("IMAGE/JPEG")).toBe("jpg");
+  });
+
+  it("rejects a type the bucket allowlist does not carry", () => {
+    expect(bildEndungFuerMime("image/svg+xml")).toBeNull();
+    expect(bildEndungFuerMime("application/pdf")).toBeNull();
+    expect(bildEndungFuerMime("")).toBeNull();
+  });
+
+  it("rejects prototype keys instead of returning an inherited member", () => {
+    // foto.type ist client-kontrolliert. Ohne prototypenfreies Nachschlagen
+    // liefern diese Keys Object.prototype-Member statt undefined — der
+    // truthy Wert landete dann als geratene Endung im Storage-Key.
+    expect(bildEndungFuerMime("constructor")).toBeNull();
+    expect(bildEndungFuerMime("toString")).toBeNull();
+    expect(bildEndungFuerMime("__proto__")).toBeNull();
+    expect(bildEndungFuerMime("hasOwnProperty")).toBeNull();
   });
 });
