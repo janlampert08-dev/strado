@@ -9,6 +9,8 @@ import { getPremiumStatus } from "@/lib/premium";
 // geänderter Preis darf nicht als zwischengespeicherte Zahl weiterlaufen.
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Premium – Cornice" };
+
 export default async function PremiumPage() {
   const supabase = await createClient();
   const {
@@ -29,7 +31,13 @@ export default async function PremiumPage() {
   return (
     <div className="flex h-dvh flex-col">
       <Header back="/profil" />
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 overflow-y-auto px-5 py-8 sm:px-6">
+      {/* Kein justify-center: der Inhalt dieser Seite ist höher als ein
+          Telefonbildschirm, und ein zentrierter Flex-Inhalt in einem
+          scrollenden Container lässt sich am oberen Rand nicht mehr
+          erreichen — die Überschrift wäre abgeschnitten und unerreichbar.
+          Etwas breiter als die Formularseiten, weil die Planauswahl Preis,
+          Abzeichen und Zusatzzeile nebeneinander trägt. */}
+      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 overflow-y-auto px-5 py-8 sm:px-6">
         <PremiumPurchaseView angebot={angebot} />
       </main>
     </div>

@@ -1,37 +1,79 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useSyncExternalStore, type FormEvent } from "react";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import type { StripeElementsOptions } from "@stripe/stripe-js";
 import { getStripe } from "@/lib/stripeClient";
+import Button from "@/components/ui/Button";
+import Skeleton from "@/components/ui/Skeleton";
 import { createSubscriptionIntent, confirmSubscription } from "@/lib/actions/billing";
+import { isDarkTheme, subscribeToThemeChange } from "@/lib/theme";
+import { betragText } from "@/lib/premiumAngebot";
 import type { AboPlan, VergebenerPreis } from "@/lib/premiumLimits";
 
-const APPEARANCE: StripeElementsOptions["appearance"] = {
-  theme: "flat",
-  variables: {
-    colorPrimary: "#3D5AFE",
-    colorBackground: "#FAFAFA",
-    colorText: "#131316",
-    colorTextSecondary: "#8A8F98",
-    colorDanger: "#DC2626",
-    fontFamily: "'Inter', sans-serif",
-    fontSizeBase: "14px",
-    borderRadius: "12px",
-    spacingUnit: "4px",
-  },
-  rules: {
-    ".Input": { border: "1px solid rgba(19,19,22,0.3)", boxShadow: "none" },
-    ".Input:focus": { border: "1px solid #3D5AFE", boxShadow: "none" },
-    ".Label": { color: "#8A8F98", fontSize: "12px" },
-    ".Tab": { border: "1px solid rgba(19,19,22,0.3)", borderRadius: "12px" },
-    ".Tab--selected": { border: "1px solid #3D5AFE", boxShadow: "none" },
-  },
-};
+// Das Payment Element rendert in einem Stripe-eigenen iframe und erbt weder
+// die CSS-Variablen aus app/globals.css noch das Farbschema der Seite — die
+// Farben müssen ihm als feste Werte mitgegeben werden. Deshalb stehen die
+// Token-Werte aus globals.css hier ein zweites Mal, je einmal pro Schema:
+// ohne den dunklen Satz stand mitten auf einer dunklen Seite ein hellgraues
+// Formular.
+//
+// Wer die Farben in globals.css ändert, muss sie hier mitziehen. Eine
+// Ableitung zur Laufzeit (getComputedStyle) wäre möglich, brächte aber
+// color-mix()-Ergebnisse in unklaren Farbräumen an eine fremde Bibliothek —
+// zwei gepflegte Paletten sind der ehrlichere Weg.
+function appearance(dunkel: boolean): StripeElementsOptions["appearance"] {
+  const farben = dunkel
+    ? {
+        background: "#0B0B0D",
+        text: "#F2F2F4",
+        textSecondary: "#8F95A3",
+        accent: "#6B83FF",
+        border: "rgba(242,242,244,0.32)",
+      }
+    : {
+        background: "#FAFAFA",
+        text: "#131316",
+        textSecondary: "#8A8F98",
+        accent: "#3D5AFE",
+        border: "rgba(19,19,22,0.3)",
+      };
+
+  return {
+    theme: "flat",
+    variables: {
+      colorPrimary: farben.accent,
+      colorBackground: farben.background,
+      colorText: farben.text,
+      colorTextSecondary: farben.textSecondary,
+      colorDanger: "#DC2626",
+      fontFamily: "'Inter', sans-serif",
+      fontSizeBase: "14px",
+      borderRadius: "12px",
+      spacingUnit: "4px",
+    },
+    rules: {
+      ".Input": { border: `1px solid ${farben.border}`, boxShadow: "none" },
+      ".Input:focus": { border: `1px solid ${farben.accent}`, boxShadow: "none" },
+      ".Label": { color: farben.textSecondary, fontSize: "12px" },
+      ".Tab": { border: `1px solid ${farben.border}`, borderRadius: "12px" },
+      ".Tab--selected": { border: `1px solid ${farben.accent}`, boxShadow: "none" },
+    },
+  };
+}
 
 const FONTS: NonNullable<StripeElementsOptions["fonts"]> = [
   { cssSrc: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" },
 ];
+
+// Liest das wirksame Farbschema und folgt jedem Wechsel — der manuellen Wahl
+// (ThemeToggle) genauso wie einer umgestellten Systemeinstellung. Der
+// Server-Snapshot ist "hell": auf dem Server gibt es kein Farbschema, und
+// react-stripe-js aktualisiert das Erscheinungsbild ohnehin, sobald der
+// Client den echten Wert kennt.
+function useDunklesSchema(): boolean {
+  return useSyncExternalStore(subscribeToThemeChange, isDarkTheme, () => false);
+}
 
 // Stripe-Fehlercodes in Sätze übersetzen, die sagen, was jetzt zu tun ist.
 // Die Meldungen von Stripe sind englisch und technisch ("Your card was
@@ -65,11 +107,8 @@ function fehlertext(code: string | undefined, declineCode: string | undefined): 
   }
 }
 
-function betragText(preis: VergebenerPreis): string {
-  return new Intl.NumberFormat("de-CH", {
-    style: "currency",
-    currency: preis.waehrung.toUpperCase(),
-  }).format(preis.betragRappen / 100);
+function preisText(preis: VergebenerPreis): string {
+  return betragText(preis.betragRappen, preis.waehrung);
 }
 
 function CheckoutInner({
@@ -195,22 +234,22 @@ function CheckoutInner({
         </p>
       )}
       {bezahlt ? (
-        <button
-          type="button"
-          onClick={nochmalPruefen}
-          disabled={pruefen}
-          className="self-start rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:border-border-strong disabled:opacity-50"
-        >
+        <Button type="button" variant="secondary" onClick={nochmalPruefen} disabled={pruefen}>
           {pruefen ? "Wird geprüft…" : "Erneut prüfen"}
-        </button>
+        </Button>
       ) : (
-        <button
-          type="submit"
-          disabled={!stripe || submitting}
-          className="self-start rounded-full border border-foreground bg-foreground px-4 py-2 text-sm font-medium text-background transition-transform duration-fast active:scale-95 hover:opacity-90 disabled:opacity-50"
-        >
-          {submitting ? "Wird verarbeitet…" : `Zahlungspflichtig abonnieren — ${betragText(preis)}`}
-        </button>
+        <>
+          {/* Volle Breite und der Betrag auf der Schaltfläche selbst: das
+              hier ist der Moment, in dem die Zahlungspflicht ausgelöst wird,
+              und der Betrag darf dafür nicht weiter oben auf der Seite
+              stehen bleiben. */}
+          <Button type="submit" disabled={!stripe || submitting} aria-busy={submitting}>
+            {submitting ? "Wird verarbeitet…" : `Zahlungspflichtig abonnieren — ${preisText(preis)}`}
+          </Button>
+          <p className="text-center text-xs text-muted">
+            Zahlungsdaten gehen direkt an Stripe — Cornice sieht und speichert sie nie.
+          </p>
+        </>
       )}
     </form>
   );
@@ -237,6 +276,7 @@ export default function PremiumCheckoutForm({
   onSuccess: () => void;
 }) {
   const [state, setState] = useState<IntentState>({ status: "bereitzustarten" });
+  const dunkel = useDunklesSchema();
 
   // Das Abo wird erst angelegt, wenn ausdrücklich bezahlt werden soll —
   // nicht beim Öffnen der Seite. Beim Jahresplan beansprucht der Aufruf
@@ -244,6 +284,10 @@ export default function PremiumCheckoutForm({
   // Seitenaufruf anzulegen hiesse, Plätze fürs blosse Hinschauen zu
   // verbrennen und bei Stripe unbezahlte Abos zu stapeln.
   async function starten() {
+    // Aus demselben Grund kein zweiter Aufruf, solange der erste läuft: ein
+    // hektischer Doppelklick würde sonst zwei Abos anlegen und beim
+    // Jahresplan zwei Gründerplätze beanspruchen.
+    if (state.status === "laedt") return;
     setState({ status: "laedt" });
     const result = await createSubscriptionIntent(plan);
     setState(
@@ -260,33 +304,38 @@ export default function PremiumCheckoutForm({
 
   if (state.status === "bereitzustarten") {
     return (
-      <button
-        type="button"
-        onClick={starten}
-        className="self-start rounded-full border border-foreground bg-foreground px-4 py-2 text-sm font-medium text-background transition-transform duration-fast active:scale-95 hover:opacity-90"
-      >
+      <Button type="button" onClick={starten}>
         Weiter zur Zahlung
-      </button>
+      </Button>
     );
   }
 
   if (state.status === "laedt") {
-    return <p className="text-sm text-muted">Zahlung wird vorbereitet…</p>;
+    // Platzhalter in der Form, die das Payment Element gleich einnimmt: der
+    // frühere einzeilige Hinweis liess die Seite in dem Moment springen, in
+    // dem das Formular erschien. aria-live meldet den Zustand denen, die den
+    // Sprung ohnehin nicht sehen.
+    return (
+      <div className="flex flex-col gap-3" aria-busy="true">
+        <p role="status" aria-live="polite" className="text-sm text-muted">
+          Zahlung wird vorbereitet…
+        </p>
+        <Skeleton className="h-11 rounded-md" />
+        <Skeleton className="h-11 rounded-md" />
+        <Skeleton className="h-10 w-full rounded-full" />
+      </div>
+    );
   }
 
   if (state.status === "fehler") {
     return (
-      <div className="flex flex-col items-start gap-3">
+      <div className="flex flex-col gap-3">
         <p role="alert" className="text-sm text-danger">
           {state.text}
         </p>
-        <button
-          type="button"
-          onClick={starten}
-          className="rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:border-border-strong"
-        >
+        <Button type="button" variant="secondary" onClick={starten}>
           Noch einmal versuchen
-        </button>
+        </Button>
       </div>
     );
   }
@@ -301,15 +350,19 @@ export default function PremiumCheckoutForm({
   return (
     <div className="flex flex-col gap-3">
       {preisWeichtAb && (
-        <p role="alert" className="text-sm text-danger">
-          Hinweis: Für dieses Abo gilt {betragText(state.preis)} statt des zuvor angezeigten
+        <p role="alert" className="rounded-lg border border-danger/40 px-4 py-3 text-sm text-danger">
+          Hinweis: Für dieses Abo gilt {preisText(state.preis)} statt des zuvor angezeigten
           Betrags — der letzte Gründerplatz war inzwischen vergeben. Der Betrag unten auf dem
           Button ist der, der abgebucht wird.
         </p>
       )}
+      {/* Kein key auf dem Schema: react-stripe-js reicht ein geändertes
+          appearance an elements.update() weiter. Ein Neuaufbau würde beim
+          Wechsel auf Dunkel — automatisch etwa bei Sonnenuntergang — mitten
+          im Bezahlen die bereits eingetippten Kartendaten verwerfen. */}
       <Elements
         stripe={getStripe()}
-        options={{ clientSecret: state.clientSecret, appearance: APPEARANCE, fonts: FONTS }}
+        options={{ clientSecret: state.clientSecret, appearance: appearance(dunkel), fonts: FONTS }}
       >
         <CheckoutInner
           subscriptionId={state.subscriptionId}
