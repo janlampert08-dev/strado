@@ -37,19 +37,25 @@ export const REPORT_REASONS = [
 // Erreichbarkeit per Link genügt, unabhängig vom Hosting-Ort. Die Seiten
 // liegen im Repo janlampert08-dev/cornice.ch unter legal/.
 //
-// Die Basis ist überschreibbar, weil die Zieldomain und die heute erreichbare
-// Adresse noch auseinanderfallen: cornice.ch ist bei Vercel als Custom Domain
-// noch nicht eingetragen, die Seiten stehen bis dahin unter
-// cornice-ch.vercel.app. Bis die Domain hängt, gehört diese Adresse in
-// NEXT_PUBLIC_LEGAL_BASE_URL — sonst zeigen Anmelden, Registrieren und die
-// Einstellungen auf eine Domain, die noch nicht antwortet.
+// Der Standard ist die Adresse, unter der die Seiten HEUTE tatsächlich
+// stehen, nicht die Wunschdomain. Das ist der Kern der Sache: der frühere
+// Wert war https://xyz.ch/… — eine Domain, die uns nicht gehört. Das ist
+// schlimmer als ein toter Link, denn sie kann jederzeit jemand anderem
+// gehören und beliebige Inhalte ausliefern, während bei uns „Impressum"
+// darübersteht. Eine noch nicht gekaufte Wunschdomain als Standard hätte
+// genau dieselbe Eigenschaft.
 //
-// Der frühere Wert war https://xyz.ch/… — eine erfundene Domain, die nicht
-// uns gehört. Das ist schlimmer als ein toter Link: sie könnte jederzeit
-// jemand anderem gehören und beliebige Inhalte ausliefern, während bei uns
-// „Impressum" darüber steht.
+// Sobald eine eigene Domain registriert und bei Vercel eingetragen ist,
+// gehört sie in NEXT_PUBLIC_LEGAL_BASE_URL — und erst dann, wenn sie
+// wirklich antwortet, kann sie hier zum Standard werden.
+//
+// Ein leerer Wert zählt als nicht gesetzt: .env.local.example führt die
+// Variable ohne Wert, und eine daraus kopierte Datei liefert einen leeren
+// String. Mit ?? bliebe der erhalten, LEGAL_BASE_URL wäre "" und aus den
+// Links würden relative Pfade — die dann auf die App-Domain zeigen und dort
+// ins Leere laufen, statt auf die Rechtstexte.
 const LEGAL_BASE_URL = (
-  process.env.NEXT_PUBLIC_LEGAL_BASE_URL ?? "https://cornice.ch"
+  process.env.NEXT_PUBLIC_LEGAL_BASE_URL?.trim() || "https://cornice-ch.vercel.app"
 ).replace(/\/+$/, "");
 
 export const LEGAL_URLS = {

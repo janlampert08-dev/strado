@@ -28,8 +28,9 @@ export async function getRatings(routeId: string): Promise<RatingWithAuthor[]> {
     return {
       ...r,
       display_name: profile?.display_name ?? null,
-      // Premium-Feature (Gold-Badge) vorerst deaktiviert.
-      is_premium_badge: false,
+      // Laufendes Abo UND eigenes Opt-in — dieselbe Regel wie in
+      // lib/leaderboard.ts und lib/profile.ts.
+      is_premium_badge: profile?.ist_premium === true && profile?.zeigt_premium_badge === true,
     };
   });
 }

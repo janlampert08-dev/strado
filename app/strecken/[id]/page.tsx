@@ -20,6 +20,7 @@ import { getPersonalBestSeconds } from "@/lib/completions";
 import { getRoutePhotos } from "@/lib/photos";
 import { isFavorite } from "@/lib/favorites";
 import { isModerator } from "@/lib/moderation";
+import { getPremiumStatus, maxFotosProFahrt } from "@/lib/premium";
 import { getRouteLeaderboard } from "@/lib/leaderboard";
 import { fetchCurrentWeather } from "@/lib/weather";
 import { createClient } from "@/lib/supabase/server";
@@ -81,7 +82,7 @@ export default async function StreckeDetailPage({
 
   if (!route) notFound();
 
-  const [ratings, ownRating, favorite, vehicles, personalBestSeconds, photos, leaderboard, weather, moderator] =
+  const [ratings, ownRating, favorite, vehicles, personalBestSeconds, photos, leaderboard, weather, moderator, premiumStatus] =
     await Promise.all([
       getRatings(id),
       user ? getOwnRating(id, user.id) : Promise.resolve(null),
@@ -98,6 +99,7 @@ export default async function StreckeDetailPage({
       getRouteLeaderboard(id),
       fetchCurrentWeather(route.start_geojson.coordinates as [number, number]),
       user ? isModerator(user.id) : Promise.resolve(false),
+      getPremiumStatus(),
     ]);
 
   return (
@@ -140,12 +142,14 @@ export default async function StreckeDetailPage({
               geometryCoordinates: route.geometry_geojson.coordinates as [number, number][],
               gespeichertAm: new Date().toISOString(),
             }}
+            istPremium={premiumStatus.aktiv}
           />
           <RouteActionsMenu
             route={route}
             moderator={moderator}
             isOwner={!moderator && user?.id === route.erstellt_von && !route.status_ok}
             canReport={!!user && user.id !== route.erstellt_von}
+            istPremium={premiumStatus.aktiv}
           />
           {!moderator && user?.id === route.erstellt_von && !route.status_ok && (
             <Link
@@ -170,6 +174,7 @@ export default async function StreckeDetailPage({
           vehicles={vehicles}
           personalBestSeconds={personalBestSeconds}
           guestContinuationToken={fortsetzen ?? null}
+          maxPhotos={maxFotosProFahrt(premiumStatus.aktiv)}
         />
 
         {route.hoehenprofil && route.hoehenprofil.length > 1 && (

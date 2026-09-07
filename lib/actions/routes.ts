@@ -12,6 +12,7 @@ import {
   fetchElevationProfile,
 } from "@/lib/elevation";
 import { deriveRouteLocations } from "@/lib/geocoding";
+import { privateStreckenKontingent } from "@/lib/premium";
 import type { GeoLineString, Kategorie, TempolimitSegment } from "@/types/database";
 
 export interface ProposeRouteState {
@@ -216,11 +217,24 @@ export async function proposeRoute(
     return { error: "Strecke konnte nicht gespeichert werden." };
   }
 
-  // Premium-Gating vorerst deaktiviert — private Strecken ohne
-  // Moderationspflicht stehen allen Nutzern offen, siehe
-  // components/PremiumCard.tsx.
+  // Private Strecken sind das einzige Premium-Feature mit Mengenbegrenzung
+  // (docs/premium-plan.md, Abschnitt 4; AGB Ziff. 3.2). Die Entscheidung
+  // fällt in der Datenbank — darf_private_strecke_anlegen() zählt und prüft
+  // in einem Aufruf, statt hier zu zählen und danach zu schreiben.
+  //
+  // Die Prüfung steht bewusst NACH dem Anlegen: propose_route_full erzeugt
+  // die Zeile, und erst danach lässt sich sagen, ob sie privat sein darf.
+  // Wird das Kontingent überschritten, bleibt die Strecke bestehen — sie
+  // geht dann als normaler Vorschlag in die Moderation, statt verloren zu
+  // sein. Ein stiller Verlust der gerade gezeichneten Route wäre die
+  // schlechtere Antwort auf ein erschöpftes Kontingent.
   if (requestedPrivat) {
-    await supabase.from("routes").update({ ist_privat: true }).eq("id", data);
+    const kontingent = await privateStreckenKontingent();
+    if (kontingent.erlaubt) {
+      await supabase.from("routes").update({ ist_privat: true }).eq("id", data);
+    } else {
+      redirect(`/strecken/${data}?privat=kontingent`);
+    }
   }
 
   redirect(`/strecken/${data}`);

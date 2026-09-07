@@ -8,6 +8,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import DeleteProposalButton from "@/components/DeleteProposalButton";
 import DeleteAccountSection from "@/components/DeleteAccountSection";
 import { createClient } from "@/lib/supabase/server";
+import { getPremiumStatus } from "@/lib/premium";
 import Card from "@/components/ui/Card";
 import Button, { buttonVariants } from "@/components/ui/Button";
 import { LEGAL_URLS } from "@/lib/constants";
@@ -31,11 +32,11 @@ export default async function EinstellungenPage() {
 
   if (!user) redirect("/anmelden");
 
-  const [{ data: profile }, { data: ownRoutes }] = await Promise.all([
+  const [{ data: profile }, { data: ownRoutes }, premiumStatus] = await Promise.all([
     supabase
       .from("profiles")
       .select(
-        "zeigt_fahrzeuge, zeigt_avatar, zeigt_paesse, zeigt_hoehenmeter, zeigt_distanz, zeigt_follower_liste, privatzone_radius_m",
+        "zeigt_fahrzeuge, zeigt_avatar, zeigt_paesse, zeigt_hoehenmeter, zeigt_distanz, zeigt_follower_liste, zeigt_premium_badge, privatzone_radius_m",
       )
       .eq("id", user.id)
       .single(),
@@ -53,6 +54,7 @@ export default async function EinstellungenPage() {
           ist_privat: boolean;
         }[]
       >(),
+    getPremiumStatus(),
   ]);
 
   return (
@@ -81,6 +83,8 @@ export default async function EinstellungenPage() {
               zeigtDistanz={profile?.zeigt_distanz ?? true}
               zeigtFollowerListe={profile?.zeigt_follower_liste ?? true}
               privatzoneRadiusM={profile?.privatzone_radius_m ?? DEFAULT_PRIVACY_RADIUS_M}
+              istPremium={premiumStatus.aktiv}
+              zeigtPremiumBadge={profile?.zeigt_premium_badge ?? false}
             />
           </section>
 

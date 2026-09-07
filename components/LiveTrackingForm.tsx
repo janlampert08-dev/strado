@@ -37,6 +37,7 @@ export default function LiveTrackingForm({
   vehicles,
   personalBestSeconds,
   guestContinuationToken = null,
+  maxPhotos,
   onExit,
 }: {
   route: RouteGeoJSON;
@@ -52,6 +53,8 @@ export default function LiveTrackingForm({
   // Marker aus ?fortsetzen=<token>, mit dem sich die Rückkehr aus dem
   // Anmelde-Gate ausweist (siehe adoptGuestTrackingSnapshot).
   guestContinuationToken?: string | null;
+  /** Fotos pro Fahrt, aus dem Abo-Zustand (lib/premium.ts). */
+  maxPhotos: number;
   onExit: () => void;
 }) {
   const router = useRouter();
@@ -370,6 +373,7 @@ export default function LiveTrackingForm({
           </Card>
         ) : (
           <RideSummaryForm
+            maxPhotos={maxPhotos}
             formAction={formAction}
             pending={pending}
             error={state.error}

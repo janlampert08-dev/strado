@@ -98,10 +98,15 @@ füllen und schon gar nicht mit dem Platzhalter zu belassen.
 > — **wer den einen ändert, muss den anderen mitziehen.** Die Platzhalter
 > stehen in den HTML-Seiten als orange markierte `.todo`-Felder.
 >
-> Die Domain `cornice.ch` ist bei Vercel noch nicht eingetragen. Solange das
-> so ist, muss `NEXT_PUBLIC_LEGAL_BASE_URL` auf `https://cornice-ch.vercel.app`
-> gesetzt sein, sonst zeigen die Links in der App ins Leere. Das ist der Rest
-> von Blocker 1 aus `docs/premium-plan.md`, Abschnitt 8.
+> **Eine eigene Domain ist noch nicht registriert.** `LEGAL_URLS` fällt
+> deshalb auf `https://cornice-ch.vercel.app` zurück — die Adresse, unter der
+> die Seiten heute erreichbar sind. Eine noch nicht gekaufte Wunschdomain als
+> Vorgabe wäre derselbe Fehler wie das frühere `xyz.ch`: sie kann jederzeit
+> jemand anderem gehören. Sobald eine Domain registriert und bei Vercel
+> eingetragen ist, gehört sie in `NEXT_PUBLIC_LEGAL_BASE_URL`; die
+> vollständige Liste der mitzuziehenden Stellen steht im README des Repos
+> `janlampert08-dev/cornice.ch`. Das ist der Rest von Blocker 1 aus
+> `docs/premium-plan.md`, Abschnitt 8.
 
 ---
 

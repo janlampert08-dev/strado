@@ -33,9 +33,10 @@ stehen im Repo `janlampert08-dev/cornice.ch` unter `legal/` und `LEGAL_URLS`
 zeigt darauf. Offen bleiben zwei Dinge, und beide sind echte Blocker: die
 Angaben zur Anbieterin — Firmenname, Rechtsform, Adresse, Telefon, UID,
 Gerichtsstand — fehlen weiterhin und können nicht erfunden werden, und die
-Domain `cornice.ch` ist bei Vercel noch nicht eingetragen. Ohne die Angaben
-gibt es keine TWINT-Freischaltung; ohne die Domain zeigen die Links ins Leere,
-solange `NEXT_PUBLIC_LEGAL_BASE_URL` nicht auf `cornice-ch.vercel.app` steht.
+es ist noch **keine eigene Domain registriert**. Ohne die Angaben gibt es
+keine TWINT-Freischaltung. Die Domain blockiert die Links dagegen nicht:
+`LEGAL_URLS` zeigt standardmässig auf `cornice-ch.vercel.app`, wo die Texte
+tatsächlich stehen.
 
 ---
 
@@ -394,9 +395,10 @@ spielt sie ein, vor dem Deploy des Codes, der sie braucht.
    vertretungsberechtigte Person, UID, Gerichtsstand) stehen als sichtbar
    markierte Lücken im Text und müssen eingesetzt werden — sie sind zugleich
    Pflichtangabe nach Art. 3 Abs. 1 lit. s UWG und Voraussetzung für TWINT.
-   1b. `cornice.ch` und `app.cornice.ch` sind bei Vercel noch nicht als Custom
-   Domain eingetragen. Bis dahin muss `NEXT_PUBLIC_LEGAL_BASE_URL` auf
-   `https://cornice-ch.vercel.app` stehen, sonst laufen die Links ins Leere.
+   1b. Eine eigene Domain ist noch nicht registriert. Das blockiert nichts:
+   `LEGAL_URLS` zeigt standardmässig auf `https://cornice-ch.vercel.app`.
+   Beim Kauf einer Domain sind vier Stellen mitzuziehen — die Liste steht im
+   README von `janlampert08-dev/cornice.ch`, Abschnitt „Domains".
    1c. Anwaltliche Durchsicht der Texte (die offenen Punkte stehen am Ende
    jeder Datei in `docs/rechtstexte/`).
 2. Stripe: Produkt „Cornice Premium“ mit drei Preisen (Monat 4.90, Jahr 49.00,
@@ -527,6 +529,13 @@ zweiten, noch offenen Rechnung unangetastet; abgelaufene `kulanz_bis` ohne
 Folgeereignis führt im Abgleich zu `ist_premium = false`; `past_due` innerhalb
 und ausserhalb der Kulanzfrist; Schreibfehler → `500`.
 
+> **Stand 2026-09-06: Phasen 2 bis 5 sind umgesetzt.** Was davon abweicht,
+> steht bei der jeweiligen Phase. Offen bleiben die erweiterten Filter und der
+> Jahresvergleich in den Statistiken — beides braucht neue Oberfläche und
+> nicht nur ein Gate, deshalb bewusst nicht mitgenommen. Ebenso offen: Phase 6
+> (Ereignisse mit der Stripe-CLI durchspielen, Kennzahlen) und die Blocker aus
+> Abschnitt 8.
+
 ### Phase 2 — Berechtigungsschicht
 
 Neu: `lib/premium.ts` als einzige Antwort auf „darf dieser Nutzer X?“.
@@ -546,6 +555,29 @@ Kein Aufrufer prüft `ist_premium` direkt. Grenzwerte (1 private Strecke, 3
 Offline-Strecken, 6 Fotos) liegen als benannte Konstanten in `lib/premium.ts`,
 nicht verstreut in Komponenten.
 
+**Umgesetzt, mit drei Abweichungen vom Entwurf oben:**
+
+1. `getPremiumStatus()` nimmt **kein** `userId` entgegen. Es liest die Session
+   selbst — ein Parameter hätte suggeriert, man dürfe nach fremdem Premium
+   fragen, und genau das soll nicht möglich sein. `requirePremium` heisst
+   `istPremium()` und gibt ein blankes Boolean zurück.
+2. Der Status enthält zusätzlich `periodeEndetAm` und `kulanzBis`, damit die
+   Profilkarte „verlängert sich am …" und die laufende Kulanzfrist anzeigen
+   kann, ohne ein zweites Mal zu lesen.
+3. Die Grenzwerte und Typen liegen in **`lib/premiumLimits.ts`**, nicht in
+   `lib/premium.ts`. Der Grund ist Next.js: `lib/premium.ts` zieht über
+   `lib/supabase/server.ts` auch `next/headers` herein, und eine Client
+   Component, die von dort eine Konstante importiert, bricht den Build.
+   `lib/premium.ts` reexportiert alles, Server-Code braucht also weiterhin nur
+   einen Import.
+
+Dazu nötig: Migration `0063_eigene_abozeile_lesbar.sql`. `subscriptions` war
+seit 0059 vollständig verschlossen; die Berechtigungsschicht liest über den an
+die Session gebundenen Client und braucht deshalb eine Policy auf die eigene
+Zeile plus Spalten-Grants ohne die Stripe-Kennungen. Ein Service-Role-Client
+wäre der falsche Weg gewesen — eine Berechtigungsfrage über den RLS-Bypass zu
+beantworten gibt die Schranke genau dort auf, wo sie zählt.
+
 ### Phase 3 — Kauf-Oberfläche
 
 - `components/PremiumCard.tsx`, `PremiumPurchaseView.tsx`,
@@ -554,6 +586,19 @@ nicht verstreut in Komponenten.
 - Planwahl (Monat/Jahr) ergänzen; `createSubscriptionIntent(plan)` nimmt die
   Price-ID aus einer serverseitigen Zuordnung entgegen — **nie** eine vom
   Client übergebene Price-ID verwenden.
+- **Gründerpreis umgesetzt** (Migration `0065_gruenderplaetze.sql`): ein
+  eigenes Verzeichnis der vergebenen Plätze, das nur wächst. Eine Zählung über
+  `subscriptions` wäre falsch gewesen — dort verschwindet die Zeile mit dem
+  Konto, und aus „die ersten 100" würden über die Zeit beliebig viele. Die
+  Vergabe läuft unter einem Advisory Lock, sonst sähen zwei gleichzeitige
+  Käufe beide die 99. Der Preis ist keine Wahl des Clients, sondern eine
+  Eigenschaft des Jahresplans, die der Server vergibt.
+- **Preise kommen aus Stripe**, nicht aus einer zweiten Liste im Code: die
+  Kaufseite liest `stripe.prices.retrieve`. Eine im Dashboard geänderte Zahl
+  darf nicht stillschweigend von der beworbenen abweichen.
+- Die Pflichtangaben (automatische Verlängerung, Kündigungsweg, 14 Tage Geld
+  zurück als freiwillige Zusage) stehen **auf der Kaufseite selbst**, nicht
+  nur im verlinkten AGB-Dokument.
 - Doppelte Abos verhindern (3.4).
 - TWINT und Wallets über das Payment Element aktivieren. Dashboard-seitig und
   ohne Codeänderung geht das erst ab Stripe-API-Version `2023-08-16` — seither
@@ -572,14 +617,28 @@ nicht verstreut in Komponenten.
 ### Phase 4 — Feature-Gating (Geschäftsregeln, explizit)
 
 - `lib/actions/routes.ts`: Premium-Prüfung wieder einschalten, mit Freikontingent
-  1 und Bestandsschutz (Migration `0060_private_strecken_bestandsschutz.sql`
-  markiert Konten mit ≥ 1 privaten Strecke zum Stichtag).
+  1 und Bestandsschutz. **Umgesetzt als `0064_private_strecken_bestandsschutz.sql`**
+  (nicht 0060, die Nummer war vergeben). Die Markierung liegt in einer eigenen
+  Tabelle statt als Spalte an `profiles`: `profiles` ist für jeden lesbar, eine
+  Spalte dort wäre entweder öffentlich oder bräuchte eine
+  `SECURITY DEFINER`-Funktion, um sie zu verbergen. Eine eigene Tabelle mit
+  einer Policy auf die eigene Zeile kommt ohne beides aus.
+  Wird das Kontingent beim Anlegen überschritten, geht die Strecke als
+  normaler Vorschlag in die Moderation, statt verloren zu sein.
 - `lib/leaderboard.ts`: `isPremiumBadge` aus der View lesen statt `false`.
 - `lib/actions/profile.ts`: `zeigt_premium_badge` wieder aus dem Formular
   übernehmen, serverseitig gegen `ist_premium` geprüft.
-- Offline-, Foto- und Filtergrenzen aus `lib/premium.ts`.
+- Offline- und Fotogrenzen aus `lib/premiumLimits.ts`. Die **erweiterten
+  Filter** sind nicht mitgenommen: `AdvancedFiltersPanel.tsx` ist heute
+  nirgends eingebunden, ein Gate davor wäre ein Gate vor nichts. Sie gehören
+  zusammen mit dem Einhängen in die Explore-Ansicht gemacht.
 - **Alle Grenzen serverseitig durchsetzen.** Ein Clientlimit ist eine
-  Anzeigehilfe, keine Schranke.
+  Anzeigehilfe, keine Schranke. **Eine begründete Ausnahme:** offline
+  gespeicherte Strecken liegen ausschliesslich in der IndexedDB des eigenen
+  Browsers. Es gibt keine Serverseite, auf der sich etwas durchsetzen liesse,
+  und nichts zu schützen — wer die Grenze umgeht, füllt seinen eigenen
+  Gerätespeicher. Das steht als Kommentar an der Stelle, damit sie nicht als
+  vergessene Prüfung gelesen wird.
 
 ### Phase 5 — Lebenszyklus
 

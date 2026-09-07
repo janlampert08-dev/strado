@@ -37,10 +37,14 @@ export default function RideSummaryForm({
   onIsPublicChange,
   onSubmit,
   onDiscard,
+  maxPhotos,
   children,
 }: {
   formAction: (formData: FormData) => void;
   pending: boolean;
+  /** Fotos pro Fahrt: 6 kostenlos, 12 mit Premium (lib/premium.ts). Kommt
+   *  von der Seite, weil der Abo-Zustand nur serverseitig bekannt ist. */
+  maxPhotos: number;
   error: string | null;
   vehicles: Vehicle[];
   trailJson: string;
@@ -327,7 +331,7 @@ export default function RideSummaryForm({
       </div>
 
       <div className="border-t border-border pt-4">
-        <MultiPhotoInput name="foto" id="tracking-foto" />
+        <MultiPhotoInput name="foto" id="tracking-foto" maxPhotos={maxPhotos} />
       </div>
 
       {!isOnline && (

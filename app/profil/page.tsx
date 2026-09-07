@@ -20,8 +20,9 @@ import AchievementBadges from "@/components/AchievementBadges";
 import ActivityHeatmap from "@/components/ActivityHeatmap";
 import CountUp from "@/components/CountUp";
 import FollowCounts from "@/components/FollowCounts";
-// Premium-Feature vorerst deaktiviert, siehe components/PremiumCard.tsx.
+import PremiumCard from "@/components/PremiumCard";
 import { createClient } from "@/lib/supabase/server";
+import { getPremiumStatus } from "@/lib/premium";
 import { getFollowCounts, getFollowerProfiles, getFollowingProfiles } from "@/lib/follows";
 import { formatDuration, formatKm } from "@/lib/format";
 import { freieFahrtTitel } from "@/lib/completions";
@@ -85,6 +86,7 @@ export default async function ProfilPage() {
     followCounts,
     followers,
     following,
+    premiumStatus,
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -159,6 +161,7 @@ export default async function ProfilPage() {
     getFollowCounts(user.id),
     getFollowerProfiles(user.id),
     getFollowingProfiles(user.id),
+    getPremiumStatus(),
   ]);
 
   // Pro Strecke nur einmal zählen (auch bei mehrfacher Befahrung) — sonst
@@ -452,6 +455,13 @@ export default async function ProfilPage() {
             </div>
             <VehicleGrid vehicles={(vehicles as Vehicle[]) ?? []} />
           </section>
+
+          {/* Zuunterst und ohne Unterbrechung der Kernschleife: die Karte
+              zeigt den Abo-Zustand und, ohne Abo, einen einzelnen Hinweis.
+              Kein Banner über den Fahrten, kein Einschub zwischen Strecke
+              und Aufzeichnung — was zahlende Nutzer erst hervorbringt, ist
+              die Nutzung selbst. */}
+          <PremiumCard status={premiumStatus} />
         </div>
         </main>
       </div>

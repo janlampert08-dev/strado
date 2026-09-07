@@ -41,6 +41,7 @@ export default function FreeRideForm({
   vehicles,
   routes,
   guestContinuationToken = null,
+  maxPhotos,
 }: {
   // Nur für den localStorage-Schlüssel der Wiederherstellung — die Fahrt
   // selbst wird serverseitig dem angemeldeten Nutzer zugeordnet.
@@ -60,6 +61,8 @@ export default function FreeRideForm({
   // Anmelde-Gate ausweist — nur damit darf die als Gast aufgezeichnete Fahrt
   // an dieses Konto übergehen (siehe adoptGuestTrackingSnapshot).
   guestContinuationToken?: string | null;
+  /** Fotos pro Fahrt, aus dem Abo-Zustand (lib/premium.ts). */
+  maxPhotos: number;
 }) {
   const router = useRouter();
   const istGast = userId === null;
@@ -231,6 +234,7 @@ export default function FreeRideForm({
             </Card>
           ) : (
             <RideSummaryForm
+              maxPhotos={maxPhotos}
               formAction={formAction}
               pending={pending}
               error={state.error}

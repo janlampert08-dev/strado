@@ -586,13 +586,15 @@ lose and this one has legal weight.
 **Resolved.** The three pages now exist under `/legal/impressum`,
 `/legal/datenschutz` and `/legal/agb` in the marketing repo
 (`janlampert08-dev/cornice.ch`), and `LEGAL_URLS` is derived from
-`NEXT_PUBLIC_LEGAL_BASE_URL` with `https://cornice.ch` as the default. One
+`NEXT_PUBLIC_LEGAL_BASE_URL`, defaulting to `https://cornice-ch.vercel.app` —
+the address the pages actually answer on. One
 detail the original finding understated: `xyz.ch` is not merely a dead link but
 a domain that belongs to someone else and could serve anything, under a label
 that says "Impressum". Still open, and tracked as a launch blocker rather than
 here: the operator's identity and address are blank in the published texts, and
-`cornice.ch` is not yet attached at Vercel — until it is, the env var has to
-point at `cornice-ch.vercel.app`.
+**no domain has been registered at all**, so the default deliberately names
+the vercel.app address rather than a wished-for one. Defaulting to a domain
+nobody owns would be the same defect as `xyz.ch`, only harder to spot.
 
 ### 5.4 Unreachable branches
 None found. `lib/signature.ts:69-81` `formatSignature` has an exhaustive `switch` over a

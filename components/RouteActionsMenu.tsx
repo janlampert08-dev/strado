@@ -26,12 +26,17 @@ export default function RouteActionsMenu({
   moderator = false,
   isOwner = false,
   canReport = false,
+  istPremium = false,
 }: {
   route: RouteGeoJSON;
   moderator?: boolean;
   isOwner?: boolean;
   /** Angemeldet und nicht der Ersteller selbst — siehe app/strecken/[id]/page.tsx. */
   canReport?: boolean;
+  /** Der GPX-Export kuratierter Strecken gehört zum Abo (AGB Ziff. 3.2).
+   *  Eigene Fahrten lassen sich unabhängig davon immer exportieren — das
+   *  ist Datenherausgabe nach Art. 28 DSG und darf nichts kosten. */
+  istPremium?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -113,8 +118,18 @@ export default function RouteActionsMenu({
           >
             In Google Maps öffnen ↗
           </a>
-          <button type="button" onClick={handleGpxExport} className={ITEM_CLASS}>
-            GPX exportieren
+          <button
+            type="button"
+            onClick={istPremium || isOwner ? handleGpxExport : undefined}
+            disabled={!istPremium && !isOwner}
+            title={
+              istPremium || isOwner
+                ? undefined
+                : "GPX-Export kuratierter Strecken gehört zu Premium. Eigene Fahrten kannst du immer exportieren."
+            }
+            className={`${ITEM_CLASS} disabled:cursor-not-allowed disabled:text-muted`}
+          >
+            {istPremium || isOwner ? "GPX exportieren" : "GPX exportieren (Premium)"}
           </button>
           {route.saison_status === "saisonal" && (
             <a

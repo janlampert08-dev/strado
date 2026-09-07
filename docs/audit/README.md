@@ -239,9 +239,10 @@ with a missing variable — fails with an error that doesn't name the cause.
   in the sign-up form and settings page. For a Swiss product handling location
   data and payments this is a compliance exposure, not a cosmetic TODO.~~
   **[verified — fixed 2026-09-06]** The pages now exist under `/legal/…` in
-  `janlampert08-dev/cornice.ch` and `LEGAL_URLS` points at them, with
-  `NEXT_PUBLIC_LEGAL_BASE_URL` as the override while `cornice.ch` is still
-  unattached at Vercel. Two things the fix does *not* close: the operator's
+  `janlampert08-dev/cornice.ch` and `LEGAL_URLS` points at them, defaulting
+  to `cornice-ch.vercel.app` with `NEXT_PUBLIC_LEGAL_BASE_URL` as the
+  override. No own domain is registered yet, so the default names the address
+  that answers today rather than one nobody owns. Two things the fix does *not* close: the operator's
   identity and address are still blank in the published texts, and the texts
   have not had legal review.
 

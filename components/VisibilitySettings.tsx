@@ -21,6 +21,9 @@ export interface VisibilityFlags {
 
 export interface VisibilitySettingsProps extends VisibilityFlags {
   privatzoneRadiusM: number;
+  /** Läuft ein Abo? Entscheidet, ob die Abzeichen-Zeile überhaupt erscheint. */
+  istPremium: boolean;
+  zeigtPremiumBadge: boolean;
 }
 
 const PRIVACY_RADIUS_LABELS: Record<number, string> = {
@@ -57,6 +60,8 @@ const FIELDS: {
 // einen "Speichern"-Button unten statt pro Zeile automatisch zu sichern.
 export default function VisibilitySettings({
   privatzoneRadiusM,
+  istPremium,
+  zeigtPremiumBadge,
   ...flags
 }: VisibilitySettingsProps) {
   const [state, formAction, pending] = useActionState(updateVisibilitySettings, initialState);
@@ -105,8 +110,26 @@ export default function VisibilitySettings({
         </p>
       </Card>
 
-      {/* Premium-Symbol-Einstellung vorerst deaktiviert, siehe
-          components/PremiumCard.tsx. */}
+      {/* Das Gold-Abzeichen ist ein Opt-in und keine Folge des Abos: wer
+          zahlt, aber nicht auffallen will, lässt es aus. Ohne laufendes Abo
+          erscheint die Zeile gar nicht — ein dauerhaft sichtbarer, aber
+          wirkungsloser Schalter wäre nur ein Werbeplatz in einer
+          Einstellungsmaske.
+
+          Das Ausblenden ist Darstellung, keine Schranke: die Prüfung sitzt
+          serverseitig in updateVisibilitySettings, wo der Wunsch mit
+          ist_premium verrechnet wird. */}
+      {istPremium && (
+        <Card className="flex flex-col px-4">
+          <Switch
+            name="zeigt_premium_badge"
+            value="true"
+            defaultChecked={zeigtPremiumBadge}
+            label="Gold-Abzeichen neben meinem Namen zeigen"
+            description="Erscheint in Bestenlisten, im Feed und bei deinen Bewertungen. Endet dein Abo, verschwindet es von selbst."
+          />
+        </Card>
+      )}
 
       {state.error && (
         <p role="alert" className="text-sm text-danger">

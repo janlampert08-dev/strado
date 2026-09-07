@@ -172,6 +172,59 @@ früheren Zeitstempel als 0061, weil 0061 auf den Produktions-Deploy warten
 musste. Der Ledger sortiert nach Zeitstempel, nicht nach Dateinummer — beim
 Abgleich mit dem Verzeichnis also nach Namen suchen, nicht nach Position.
 
+## Premium-Migrationen 0063–0065 (eingespielt 2026-09-06)
+
+| Datei | Was sie tut |
+| --- | --- |
+| `0063_eigene_abozeile_lesbar.sql` | gibt die **eigene** Zeile in `subscriptions` für `authenticated` frei — Policy auf `user_id = auth.uid()` plus Spalten-Grant ohne die Stripe-Kennungen |
+| `0064_private_strecken_bestandsschutz.sql` | Freikontingent 1 private Strecke, Bestandsschutz-Tabelle, `darf_private_strecke_anlegen()` |
+| `0065_gruenderplaetze.sql` | Verzeichnis der vergebenen Gründerpreis-Plätze, `gruenderplatz_beanspruchen()` und `gruenderplaetze_frei()` |
+
+Alle drei liefen gegen eine praktisch leere Produktionsdatenbank: 0 Abos,
+0 private Strecken, 0 Premium-Konten. Der Bestandsschutz-Backfill in 0064 hat
+entsprechend **0 Zeilen** geschrieben.
+
+### Warum 0063 überhaupt sein muss
+
+`lib/premium.ts` beantwortet "darf diese Person X?" über den an die Session
+gebundenen Client, nicht über den Service-Role-Client. Der Admin-Client
+umgeht RLS vollständig; ihn für eine *Berechtigungsfrage* in einem
+nutzerseitigen Pfad zu verwenden hiesse, die Schranke genau dort aufzugeben,
+wo sie zählt. Statt eines Umwegs also eine genauere Policy — so verlangt es
+der Abschnitt „Supabase Rules" in `AGENTS.md`.
+
+Nach dem Einspielen als Rolle `authenticated` gegengeprüft, nicht nur als
+`postgres`:
+
+| Prüfung | Ergebnis |
+| --- | --- |
+| `subscriptions.status` lesen | erlaubt |
+| `subscriptions.stripe_customer_id` lesen | **verweigert** |
+| `subscriptions.stripe_subscription_id` lesen | **verweigert** |
+| `update subscriptions` | **verweigert** |
+| eigenen Bestandsschutz eintragen | **verweigert** |
+| fremde Abo-Zeilen | 0 Zeilen (RLS filtert) |
+| `darf_private_strecke_anlegen()` | `erlaubt=t vorhanden=0 grenze=1 grund=kontingent_frei` |
+
+Der Einzeiler dafür steht als `do $$ … set local role authenticated … $$`
+im PR zu diesen Migrationen. **Rechte immer als die betroffene Rolle prüfen,
+nicht als `postgres`** — als Superuser sieht jede Schranke offen aus.
+
+### Funktionsrechte auf einen Blick
+
+```sql
+select p.proname, coalesce(string_agg(distinct a.grantee::regrole::text, ', '), '(niemand)')
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+left join lateral aclexplode(p.proacl) a on a.privilege_type = 'EXECUTE'
+where n.nspname = 'public' group by p.proname;
+```
+
+Soll-Zustand: `darf_private_strecke_anlegen` bei `authenticated` (die
+angemeldete Person fragt ihr eigenes Kontingent ab, die Funktion nimmt keine
+Parameter); `gruenderplatz_beanspruchen`, `gruenderplaetze_frei`,
+`apply_subscription_state`, `subscription_ist_premium` und `premium_abgleich`
+**nur** bei `service_role`.
+
 ### 0061 ist die Ausnahme von der Reihenfolgenregel
 
 Sonst gilt: Migration vor oder mit dem Deploy. 0061 macht den Bucket
@@ -190,10 +243,18 @@ Nach der Einspielung geprüft:
 
 ```sql
 select id, public from storage.buckets;                 -- route-photos: false
-select policyname, cmd, roles::text from pg_policies
+-- qual traegt die USING-Bedingung, with_check die von INSERT/UPDATE. Nur
+-- qual abzufragen liesse eine Schreibpolicy uebersehen, die den Bucket
+-- ausschliesslich ueber with_check einschraenkt — coalesce, weil die
+-- jeweils andere Spalte null ist und `null like ...` nichts trifft.
+select policyname, cmd, roles::text, qual, with_check
+from pg_policies
 where schemaname = 'storage' and tablename = 'objects'
-  and qual like '%route-photos%';
--- nur noch "Nutzer lesen eigene Fahrt-Fotos" (SELECT, authenticated)
--- und "Nutzer löschen eigene Fahrt-Fotos" (DELETE, authenticated);
--- die bedingungslose Lesepolicy für {public} ist weg.
+  and (coalesce(qual, '') like '%route-photos%'
+    or coalesce(with_check, '') like '%route-photos%');
+-- Erwartet: "Nutzer lesen eigene Fahrt-Fotos" (SELECT, authenticated),
+-- "Nutzer löschen eigene Fahrt-Fotos" (DELETE, authenticated) und
+-- "Nutzer laden Fotos in eigenen Ordner hoch" (INSERT, authenticated —
+-- diese steht nur in with_check). Die bedingungslose Lesepolicy für
+-- {public} ist weg.
 ```

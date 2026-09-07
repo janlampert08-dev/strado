@@ -17,6 +17,7 @@ import {
   toEwktLineString,
 } from "@/lib/track";
 import { metadatenEntfernen } from "@/lib/imageMetadata";
+import { istPremium, maxFotosProFahrt } from "@/lib/premium";
 import { publicTrackEwkt } from "@/lib/publicTrack";
 import { buildHoehenprofil, computeAscentM, fetchElevationProfile } from "@/lib/elevation";
 import { reverseGeocode } from "@/lib/geocoding";
@@ -44,10 +45,17 @@ const MAX_NOTIZ_LENGTH = 280;
 // Gleiche Grenze wie der CHECK auf route_completions.titel (0044).
 const MAX_TITEL_LENGTH = 80;
 const MIN_TRAIL_POINTS = 5;
-// Grosszügig genug für eine echte Fahrt (mehrere Stopps unterwegs), aber
-// begrenzt genug um Storage-Missbrauch über ein einzelnes Formular zu
-// verhindern — siehe MAX_FOTO_BYTES für dieselbe Überlegung pro Datei.
-const MAX_PHOTOS_PER_COMPLETION = 6;
+// Fotos pro Fahrt: 6 kostenlos, 12 mit Premium — die Werte stehen als
+// benannte Konstanten in lib/premium.ts, nicht hier. Grosszügig genug für
+// eine echte Fahrt (mehrere Stopps unterwegs), aber begrenzt genug um
+// Storage-Missbrauch über ein einzelnes Formular zu verhindern; siehe
+// MAX_FOTO_BYTES für dieselbe Überlegung pro Datei.
+//
+// Die Grenze wird HIER durchgesetzt, nicht im Formular. MultiPhotoInput
+// zeigt dieselbe Zahl an, aber eine Clientgrenze ist eine Anzeigehilfe:
+// wer das Formular selbst zusammenbaut, schickt so viele Dateien, wie er
+// will. Der slice() unten ist die Schranke.
+
 // Grosszügige Obergrenze für die aus Distanz/Dauer abgeleitete
 // Durchschnittsgeschwindigkeit — auch auf einer freigegebenen Passstrasse
 // unrealistisch, deckt aber jede legitime Fahrt ab. Fängt grob gefälschte
@@ -249,7 +257,7 @@ export async function logTrackedCompletion(
   const fotos = formData
     .getAll("foto")
     .filter((f): f is File => f instanceof File && f.size > 0)
-    .slice(0, MAX_PHOTOS_PER_COMPLETION);
+    .slice(0, maxFotosProFahrt(await istPremium()));
 
   // distanz_km/dauer_sekunden/abdeckung_prozent kommen NICHT vom Client —
   // die liessen sich beliebig fälschen (z.B. abdeckung_prozent=100,
@@ -531,7 +539,7 @@ export async function logFreeRide(
   const fotos = formData
     .getAll("foto")
     .filter((f): f is File => f instanceof File && f.size > 0)
-    .slice(0, MAX_PHOTOS_PER_COMPLETION);
+    .slice(0, maxFotosProFahrt(await istPremium()));
 
   // Einmal berechnet, für die gespeicherte Track-Geometrie und die
   // Streckenerkennung weiter unten gemeinsam genutzt — Douglas-Peucker auf

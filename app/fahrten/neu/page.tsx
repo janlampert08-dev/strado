@@ -1,6 +1,7 @@
 import FreeRideForm from "@/components/FreeRideForm";
 import { createClient } from "@/lib/supabase/server";
 import { getRoutes } from "@/lib/routes";
+import { getPremiumStatus, maxFotosProFahrt } from "@/lib/premium";
 import type { Vehicle } from "@/types/database";
 
 export const metadata = {
@@ -57,12 +58,17 @@ export default async function NeueFahrtPage({
     getRoutes(),
   ]);
 
+  // Abgemeldete Besucher dürfen aufzeichnen, aber nicht speichern — für sie
+  // gilt die Gratisgrenze. Der Server begrenzt ohnehin erneut.
+  const premiumStatus = await getPremiumStatus();
+
   return (
     <FreeRideForm
       userId={user?.id ?? null}
       vehicles={vehicles}
       routes={routes}
       guestContinuationToken={user ? (fortsetzen ?? null) : null}
+      maxPhotos={maxFotosProFahrt(premiumStatus.aktiv)}
     />
   );
 }
