@@ -74,10 +74,20 @@ export type SubscriptionIntentResult =
 // Importeur statt auf die Ursache zeigt. Dieselbe Falle steht in
 // lib/constants.ts für REPORT_REASONS beschrieben.
 
-function monatsPreisId(): string | undefined {
+// Welche Umgebungsvariable einen Plan trägt. Der Name wird mitgeführt, weil
+// betrag() unten ihn in die Fehlermeldung schreibt — "Preis fehlt" ohne die
+// Variable ist genau die Meldung, die niemand nachschlagen kann.
+function monatsPreis(): { variable: string; preisId: string | undefined } {
   // Fallback auf die alte, einzelne Variable, damit bestehende
   // .env.local-Dateien ohne Anpassung weiterlaufen.
-  return process.env.STRIPE_PREMIUM_PRICE_ID_MONAT ?? process.env.STRIPE_PREMIUM_PRICE_ID;
+  if (process.env.STRIPE_PREMIUM_PRICE_ID_MONAT) {
+    return { variable: "STRIPE_PREMIUM_PRICE_ID_MONAT", preisId: process.env.STRIPE_PREMIUM_PRICE_ID_MONAT };
+  }
+  return { variable: "STRIPE_PREMIUM_PRICE_ID", preisId: process.env.STRIPE_PREMIUM_PRICE_ID };
+}
+
+function jahresPreis(): { variable: string; preisId: string | undefined } {
+  return { variable: "STRIPE_PREMIUM_PRICE_ID_JAHR", preisId: process.env.STRIPE_PREMIUM_PRICE_ID_JAHR };
 }
 
 // Preis-IDs kommen ausschliesslich aus dieser serverseitigen Zuordnung. Eine
@@ -91,7 +101,7 @@ function monatsPreisId(): string | undefined {
 // aufgerufen. Bestehende Gründer-Abos laufen bei Stripe unter ihrer alten
 // Preis-ID weiter und brauchen von hier nichts.
 function preisIdFuer(plan: AboPlan): string | undefined {
-  return plan === "monat" ? monatsPreisId() : process.env.STRIPE_PREMIUM_PRICE_ID_JAHR;
+  return plan === "monat" ? monatsPreis().preisId : jahresPreis().preisId;
 }
 
 // Preise kommen aus Stripe, nicht aus einer zweiten Liste im Code — eine im
@@ -99,13 +109,30 @@ function preisIdFuer(plan: AboPlan): string | undefined {
 // hartcodierten abweichen, sonst bewirbt die Seite einen Preis, der beim
 // Abbuchen ein anderer ist (Preisbekanntgabeverordnung und, schlichter,
 // Vertrauen).
-async function betrag(preisId: string | undefined): Promise<{ rappen: number; waehrung: string } | null> {
-  if (!preisId) return null;
+//
+// null heisst "diesen Plan nicht anbieten" — die Kaufseite lässt ihn dann
+// weg und funktioniert mit dem Rest. Das bleibt so, aber nicht mehr still:
+// bis hierhin schluckte diese Funktion jeden Fehler, und der Monatsplan
+// verschwand tagelang von der Kaufseite, ohne dass irgendwo stand, warum
+// (eine fehlende Variable sieht von aussen genauso aus wie ein Stripe-
+// Ausfall). Jetzt steht die Ursache samt Variablenname im Log.
+async function betrag(
+  quelle: { variable: string; preisId: string | undefined },
+): Promise<{ rappen: number; waehrung: string } | null> {
+  const { variable, preisId } = quelle;
+  if (!preisId) {
+    console.warn(`Premium-Preis nicht konfiguriert: ${variable} ist leer — Plan wird nicht angeboten`);
+    return null;
+  }
   try {
     const preis = await stripe.prices.retrieve(preisId);
-    if (typeof preis.unit_amount !== "number") return null;
+    if (typeof preis.unit_amount !== "number") {
+      console.error("Premium-Preis konnte nicht geladen werden", { variable, preisId }, "unit_amount fehlt");
+      return null;
+    }
     return { rappen: preis.unit_amount, waehrung: preis.currency };
-  } catch {
+  } catch (err) {
+    console.error("Premium-Preis konnte nicht geladen werden", { variable, preisId }, err);
     return null;
   }
 }
@@ -114,14 +141,16 @@ async function betrag(preisId: string | undefined): Promise<{ rappen: number; wa
 // bei Stripe etwas entsteht; ein Abo wird erst in createSubscriptionIntent
 // angelegt.
 export async function getPremiumAngebot(): Promise<PremiumAngebot> {
-  const [monat, jahr] = await Promise.all([
-    betrag(monatsPreisId()),
-    betrag(process.env.STRIPE_PREMIUM_PRICE_ID_JAHR),
-  ]);
+  const [monat, jahr] = await Promise.all([betrag(monatsPreis()), betrag(jahresPreis())]);
 
   const plaene: PlanAngebot[] = [];
   if (monat) plaene.push({ plan: "monat", betragRappen: monat.rappen, waehrung: monat.waehrung });
   if (jahr) plaene.push({ plan: "jahr", betragRappen: jahr.rappen, waehrung: jahr.waehrung });
+
+  // Ein fehlender Plan ist auf der Seite unsichtbar — dort steht dann nur
+  // der andere, und das sieht aus wie Absicht. Hier steht, welcher fehlt.
+  if (!monat) console.warn("Premium-Angebot ohne Monatsplan");
+  if (!jahr) console.warn("Premium-Angebot ohne Jahresplan");
 
   return { plaene };
 }
@@ -185,7 +214,7 @@ export async function createSubscriptionIntent(
   // Den tatsächlich geltenden Betrag mitliefern. Ohne ihn bestätigt jemand
   // eine Zahlung über die Zahl, die beim Öffnen der Seite galt — und wenn
   // der Preis bei Stripe inzwischen ein anderer ist, ist das die falsche.
-  const vergeben = await betrag(preisId);
+  const vergeben = await betrag(plan === "monat" ? monatsPreis() : jahresPreis());
   const preis: VergebenerPreis = {
     betragRappen: vergeben?.rappen ?? 0,
     waehrung: vergeben?.waehrung ?? "chf",
