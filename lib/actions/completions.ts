@@ -28,6 +28,7 @@ import {
 } from "@/lib/routes";
 import { todayInZurich } from "@/lib/format";
 import { detectLaps, type DetectedLap, type RouteCandidate } from "@/lib/lapDetection";
+import { bildEndungFuerMime } from "@/lib/validation";
 
 export interface CompletionFormState {
   error: string | null;
@@ -125,14 +126,17 @@ async function uploadFoto(
   userId: string,
   foto: File,
 ): Promise<{ url: string } | { error: string }> {
-  if (!foto.type.startsWith("image/")) {
-    return { error: "Nur Bilddateien sind erlaubt." };
-  }
   if (foto.size > MAX_FOTO_BYTES) {
     return { error: "Foto ist zu gross (max. 8 MB)." };
   }
 
-  const ext = foto.name.split(".").pop() ?? "jpg";
+  // Endung aus dem Content-Type statt aus foto.name — Begründung in
+  // lib/validation.ts. Ersetzt zugleich die alte
+  // type.startsWith("image/")-Prüfung, die image/svg+xml durchgelassen hat.
+  const ext = bildEndungFuerMime(foto.type);
+  if (!ext) {
+    return { error: "Nur JPG-, PNG-, WebP- oder GIF-Bilder sind erlaubt." };
+  }
   const path = `${userId}/${crypto.randomUUID()}.${ext}`;
 
   // Metadaten entfernen, bevor die Datei den Server verlässt. Ein Foto vom

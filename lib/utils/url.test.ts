@@ -61,4 +61,45 @@ describe("safeInternalPath", () => {
     expect(safeInternalPath("fahrten/neu")).toBeNull();
     expect(safeInternalPath("../fahrten/neu")).toBeNull();
   });
+  // Der Grund, warum Steuerzeichen komplett abgewiesen werden: Der
+  // URL-Parser streicht Tab, CR und LF aus einer URL, BEVOR er sie zerlegt
+  // (WHATWG URL Standard, "URL parsing" — gilt in Browsern wie in Node).
+  // Eine Prüfung, die nur die ersten beiden Zeichen ansieht, sieht bei
+  // "/<TAB>/evil.example" ein einzelnes "/" und lässt durch; aufgelöst wird
+  // daraus "//evil.example". Der Wert landet über BackButton (router.push)
+  // und signIn (redirect) genau dort, wo er als relative URL verwendet wird.
+  it("weist Tab, CR und LF ab, die der URL-Parser sonst entfernt", () => {
+    expect(safeInternalPath("/\t/evil.example")).toBeNull();
+    expect(safeInternalPath("/\n/evil.example")).toBeNull();
+    expect(safeInternalPath("/\r/evil.example")).toBeNull();
+    expect(safeInternalPath("/\t\\evil.example")).toBeNull();
+  });
+
+  // Gegenprobe zur obigen Regel: nach dem Entfernen der Steuerzeichen
+  // ergäbe sich tatsächlich eine fremde Origin. Schlägt dieser Test fehl,
+  // ist die Annahme über den Parser falsch — nicht der Guard.
+  it("belegt, dass die abgewiesenen Formen sonst die Origin verlassen würden", () => {
+    const basis = "https://cornice.example";
+    expect(new URL("/\t/evil.example", basis).origin).toBe("https://evil.example");
+    expect(new URL("/\n/evil.example", basis).origin).toBe("https://evil.example");
+    expect(new URL("/\r/evil.example", basis).origin).toBe("https://evil.example");
+  });
+
+  // Prozentkodiert kommt der Wert aus einem Query-Parameter an; Next.js
+  // dekodiert searchParams, bevor die Seite ihn sieht. Der Guard bekommt
+  // also das echte Steuerzeichen und nicht die %09-Schreibweise — die
+  // rohe Form bleibt ein harmloser interner Pfad.
+  it("behandelt die dekodierte Form als Steuerzeichen, die rohe als Pfad", () => {
+    expect(safeInternalPath(decodeURIComponent("/%09/evil.example"))).toBeNull();
+    expect(safeInternalPath("/%09/evil.example")).toBe("/%09/evil.example");
+  });
+
+  // Weitere Steuerzeichen, die der Parser zwar nicht streicht, in einem
+  // Rücksprungpfad aber nichts zu suchen haben: NUL und DEL. Beide würden
+  // sonst bis in redirect() durchlaufen, wo Node einen Header mit
+  // Steuerzeichen ablehnt — aus einem Angriffsversuch würde ein 500er.
+  it("weist NUL und DEL ab", () => {
+    expect(safeInternalPath("/profil\u0000")).toBeNull();
+    expect(safeInternalPath("/profil\u007F")).toBeNull();
+  });
 });

@@ -7,7 +7,7 @@ import { isValidUuid } from "@/lib/validation";
 // Strecken-Chooser auf /leaderboards, damit dieser nicht bei jedem Wechsel
 // eine volle Serverkomponenten-Neuberechnung der ganzen Seite auslösen muss.
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (isRateLimitedByKey(`api:strecken:${getClientIp(request.headers)}`, 60, 60_000)) {
+  if (isRateLimitedByKey(`api:strecken:leaderboard:${getClientIp(request.headers)}`, 60, 60_000)) {
     return NextResponse.json({ error: "Zu viele Anfragen." }, { status: 429 });
   }
 
