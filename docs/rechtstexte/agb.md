@@ -345,9 +345,11 @@ den Nutzenden.
 **10.1.1 Voreingestellte Sichtbarkeit von Profilangaben.** Einzelne Fahrten
 sind **standardmässig privat** und werden nur öffentlich, wenn dies pro Fahrt
 aktiv gewählt wird. Die Profilangaben Profilbild, Fahrzeuge, Anzahl Pässe,
-Höhenmeter, Distanz und Follower-Liste sind demgegenüber auf dem öffentlichen
-Profil **voreingestellt sichtbar** und lassen sich in den Profileinstellungen
-jederzeit einzeln abschalten. Einzelheiten regelt die Datenschutzerklärung.
+Höhenmeter, Distanz und Follower-Liste sind demgegenüber bei **neu angelegten
+Konten** auf dem öffentlichen Profil **voreingestellt sichtbar** und lassen
+sich in den Profileinstellungen jederzeit einzeln abschalten. Bei bestehenden
+Konten bleibt die dort gespeicherte Einstellung unverändert. Einzelheiten
+regelt die Datenschutzerklärung.
 
 **10.2 Rechteeinräumung.** Nutzende räumen der Anbieterin an den von ihnen
 **veröffentlichten** Inhalten ein räumlich und zeitlich unbeschränktes, nicht

@@ -94,11 +94,11 @@ kommt eine Kunden-Kennung des Zahlungsdienstleisters hinzu (Abschnitt 3.9).
 ### 3.3 Fahrzeugdaten
 
 Optional angelegte Fahrzeuge mit Typ (Auto/Motorrad), Marke, Modell,
-Getriebeart und Baujahr. Der Schalter „Fahrzeuge zeigen" ist
-**standardmässig an**. Solange er nicht ausgeschaltet wird, erscheinen deshalb
-Typ, Marke und Modell neben veröffentlichten Fahrten und die **vollständige
-Fahrzeugliste** — inklusive Getriebeart und Baujahr — auf dem öffentlichen
-Profil.
+Getriebeart und Baujahr. Der Schalter „Fahrzeuge zeigen" ist bei neuen Konten
+**standardmässig an** (Abschnitt 3.2). Solange er nicht ausgeschaltet wird,
+erscheinen deshalb Typ, Marke und Modell neben veröffentlichten Fahrten und die
+**vollständige Fahrzeugliste** — inklusive Getriebeart und Baujahr — auf dem
+öffentlichen Profil.
 
 ### 3.4 Fahrten und GPS-Standortdaten
 
