@@ -59,6 +59,12 @@ jobs:
       - name: Audit dependencies
         run: npm audit --audit-level=high
 
+      - name: Migrationspräfixe prüfen
+        # Läuft vor Lint/Test/Build, weil eine Kollision unabhängig vom
+        # Anwendungscode ist und der Fehler sonst hinter einem langen
+        # Build-Log verschwindet.
+        run: node scripts/check-migration-prefixes.mjs
+
       - name: Lint
         run: npm run lint
 

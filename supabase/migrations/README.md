@@ -59,7 +59,7 @@ eingespielte Migration nicht nachträglich umbenannt wird.
 
 ## Doppelte Nummernpräfixe
 
-Der `0041`-Fall ist kein Einzelfall geblieben. Aktuell gibt es **vier**
+Der `0041`-Fall ist kein Einzelfall geblieben. Aktuell gibt es **sechs**
 doppelt vergebene Präfixe, jeweils aus parallelen Branches, die unabhängig
 voneinander dieselbe nächste Nummer gezogen haben:
 
@@ -69,6 +69,19 @@ voneinander dieselbe nächste Nummer gezogen haben:
 | `0041` | `0041_rating_cooldown_covers_edits.sql`, `0041_route_proposal_cooldown.sql` |
 | `0053` | `0053_gefolgt_von_feature.sql`, `0053_kudos_gesehen.sql` |
 | `0054` | `0054_leaderboard_user_totals.sql`, `0054_sichtbarkeit_standardmaessig_aktiv.sql` |
+| `0059` | `0059_fahrtstatistiken_serverseitig_erzwingen.sql`, `0059_premium_abo_zustand.sql` |
+| `0060` | `0060_premium_funktionen_execute_entziehen.sql`, `0060_private_strecken_aus_oeffentlichen_views.sql` |
+
+Die beiden letzten Paare sind der unangenehmste Fall dieser Liste: Bei
+`0059` wie bei `0060` liegt jeweils die **Sicherheitsmigration** auf der
+Seite, die nicht eingespielt ist — `0059_fahrtstatistiken…` ist der Fix zu
+Audit-Befund A1, `0060_private_strecken…` der zu A3. Beide sind nach `main`
+gemergt und warten seither.
+
+Seit `scripts/check-migration-prefixes.mjs` (in CI vor Lint/Test/Build)
+kann kein siebtes Paar mehr unbemerkt dazukommen. Die sechs bestehenden
+stehen dort als Altbestand und sind vom Fehlschlag ausgenommen; die Liste
+darf nur kürzer werden.
 
 Warum das zählt: `supabase_migrations.schema_migrations.version` ist ein
 Primary Key. Zwei Dateien mit demselben Präfix können dort **nicht beide**
