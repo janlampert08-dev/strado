@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { getRoute } from "@/lib/routes";
+import { WORTMARKE, wortmarkeDataUri } from "@/lib/marke";
 
 export const alt = "Strecke auf Strado";
 export const size = { width: 1200, height: 630 };
@@ -11,6 +12,10 @@ export const contentType = "image/png";
 // statt die Bildgenerierung scheitern zu lassen (notFound() ist hier keine
 // Option, das ist kein Page-Response). Satori/ImageResponse versteht kein
 // Tailwind — deshalb zwangsläufig inline styles statt Klassennamen.
+//
+// Die Wortmarke ist eine Kontur (lib/marke.ts) und kommt als <img>
+// herein: als Text gesetzt bräuchte Satori die Schriftdatei, die die
+// App sonst nirgends lädt.
 export default async function Image({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const route = await getRoute(id).catch(() => null);
@@ -26,12 +31,14 @@ export default async function Image({ params }: { params: Promise<{ id: string }
             alignItems: "center",
             justifyContent: "center",
             background: "#fafafa",
-            fontSize: 88,
-            fontWeight: 600,
-            color: "#131316",
           }}
         >
-          Strado
+          <img
+            src={wortmarkeDataUri("#131316")}
+            width={Math.round(84 * WORTMARKE.seitenverhaeltnis)}
+            height={84}
+            alt="Strado"
+          />
         </div>
       ),
       { ...size },
@@ -56,9 +63,12 @@ export default async function Image({ params }: { params: Promise<{ id: string }
           background: "#fafafa",
         }}
       >
-        <div style={{ display: "flex", fontSize: 32, fontWeight: 600, color: "#3d5afe" }}>
-          STRADO
-        </div>
+        <img
+          src={wortmarkeDataUri("#3d5afe")}
+          width={Math.round(34 * WORTMARKE.seitenverhaeltnis)}
+          height={34}
+          alt="Strado"
+        />
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{ display: "flex", fontSize: 72, fontWeight: 600, color: "#131316" }}>
             {route.name}

@@ -21,19 +21,21 @@ afterEach(() => {
 
 describe("LEGAL_URLS", () => {
   it("zeigt ohne Umgebungsvariable auf die heute erreichbare Adresse", async () => {
-    // Bewusst die vercel.app-Adresse und keine Wunschdomain: eine noch nicht
-    // registrierte Domain als Standard wäre derselbe Fehler wie das frühere
-    // xyz.ch — sie kann jemand anderem gehören.
+    // Die eigene Domain, nicht eine Wunschdomain: strado.ch ist registriert
+    // und liefert die Rechtstexte aus. Apex-Form ohne www, wie im ganzen
+    // Projekt. Was hier NICHT stehen darf, ist eine Adresse, die uns nicht
+    // gehört — sie kann jederzeit jemand anderem gehören und beliebige
+    // Inhalte unter der Überschrift „Impressum" ausliefern.
     expect(await legalUrls(undefined)).toEqual({
-      impressum: "https://cornice-ch.vercel.app/legal/impressum",
-      datenschutz: "https://cornice-ch.vercel.app/legal/datenschutz",
-      agb: "https://cornice-ch.vercel.app/legal/agb",
+      impressum: "https://strado.ch/legal/impressum",
+      datenschutz: "https://strado.ch/legal/datenschutz",
+      agb: "https://strado.ch/legal/agb",
     });
   });
 
   it("übernimmt eine gesetzte Basis-URL", async () => {
-    const urls = await legalUrls("https://cornice.ch");
-    expect(urls.agb).toBe("https://cornice.ch/legal/agb");
+    const urls = await legalUrls("https://beispiel.test");
+    expect(urls.agb).toBe("https://beispiel.test/legal/agb");
   });
 
   // .env.local.example führt NEXT_PUBLIC_LEGAL_BASE_URL ohne Wert. Eine
@@ -42,25 +44,25 @@ describe("LEGAL_URLS", () => {
   // Pfade. Die zeigen dann auf die App-Domain, wo es keine Rechtstexte gibt.
   it("behandelt einen leeren Wert wie eine nicht gesetzte Variable", async () => {
     const urls = await legalUrls("");
-    expect(urls.impressum).toBe("https://cornice-ch.vercel.app/legal/impressum");
+    expect(urls.impressum).toBe("https://strado.ch/legal/impressum");
   });
 
   it("behandelt auch reinen Leerraum wie nicht gesetzt", async () => {
     const urls = await legalUrls("   ");
-    expect(urls.impressum).toBe("https://cornice-ch.vercel.app/legal/impressum");
+    expect(urls.impressum).toBe("https://strado.ch/legal/impressum");
   });
 
   // Ein http-Wert würde auf unverschlüsselt ausgelieferte Rechtstexte
   // zeigen. Fällt auf den Standard zurück statt zu werfen — diese Datei wird
   // beim Modulladen ausgewertet, eine Ausnahme nähme die Anwendung mit.
   it("weist eine http-Basis zurück und nimmt den Standard", async () => {
-    const urls = await legalUrls("http://cornice-ch.vercel.app");
-    expect(urls.agb).toBe("https://cornice-ch.vercel.app/legal/agb");
+    const urls = await legalUrls("http://www.strado.ch");
+    expect(urls.agb).toBe("https://strado.ch/legal/agb");
   });
 
   it("weist eine unbrauchbare Basis zurück und nimmt den Standard", async () => {
     const urls = await legalUrls("nicht-mal-eine-url");
-    expect(urls.agb).toBe("https://cornice-ch.vercel.app/legal/agb");
+    expect(urls.agb).toBe("https://strado.ch/legal/agb");
   });
 
   // Die eigentliche Zusicherung hinter allen Fällen oben: die Links sind
@@ -86,8 +88,8 @@ describe("LEGAL_URLS", () => {
   // Ein versehentlicher Schrägstrich am Ende hätte sonst "//legal/agb"
   // ergeben — auf manchen Hosts eine andere Ressource, auf anderen ein 404.
   it("verträgt einen abschliessenden Schrägstrich in der Basis-URL", async () => {
-    const urls = await legalUrls("https://cornice-ch.vercel.app///");
-    expect(urls.impressum).toBe("https://cornice-ch.vercel.app/legal/impressum");
+    const urls = await legalUrls("https://strado.ch///");
+    expect(urls.impressum).toBe("https://strado.ch/legal/impressum");
   });
 
   // Der frühere Wert war https://xyz.ch/… — eine Domain, die uns nicht

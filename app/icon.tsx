@@ -1,13 +1,15 @@
 import { ImageResponse } from "next/og";
+import { signetDataUri } from "@/lib/marke";
 
 export const size = { width: 512, height: 512 };
 export const contentType = "image/png";
 
-// Platzhalter-Marke im dokumentierten Design (siehe README, globals.css) —
-// bis ein eigenes Logo-Asset vorliegt. Bewusst schlicht: Akzentfarbe als
-// Fläche, Wordmark-Initiale in Weiss. Kein eigenes borderRadius — Browser/
-// OS wenden ihre eigene Icon-Maskierung an (v.a. relevant für apple-icon.tsx,
-// wo iOS sonst doppelt rundet).
+// Das "s" der Wortmarke, freigestellt auf der Akzentfläche — dieselbe Kontur
+// wie in components/Wortmarke.tsx (siehe lib/marke.ts). Als <img> mit
+// data:-URI statt als Inline-SVG, weil Satori Pfade darüber zuverlässig
+// rastert. Kein eigenes borderRadius — Browser und Betriebssysteme maskieren
+// Icons selbst (v.a. relevant für apple-icon.tsx, wo iOS sonst doppelt
+// rundet).
 export default function Icon() {
   return new ImageResponse(
     (
@@ -19,12 +21,9 @@ export default function Icon() {
           alignItems: "center",
           justifyContent: "center",
           background: "#3d5afe",
-          color: "#fafafa",
-          fontSize: 320,
-          fontWeight: 600,
         }}
       >
-        C
+        <img src={signetDataUri("#fafafa")} width={300} height={300} alt="Strado" />
       </div>
     ),
     { ...size },

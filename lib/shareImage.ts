@@ -1,4 +1,5 @@
 import { formatDuration } from "@/lib/format";
+import { WORTMARKE } from "@/lib/marke";
 
 export interface ShareRideData {
   routeName: string;
@@ -127,27 +128,23 @@ export function renderShareImage(data: ShareRideData): Promise<Blob> {
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-  // Markenzeichen: dieselbe "S"-Wortmarke wie app/opengraph-image.tsx, hier
-  // als runder Chip statt eckig, passend zu den Pill-Elementen weiter unten.
-  const markSize = 52;
-  roundedRect(ctx, PAD, 64, markSize, markSize, 16);
+  // Wortmarke: dieselbe Kontur wie Kopfleiste und Freigabebilder
+  // (lib/marke.ts), hier über Path2D gezogen. Als Text ginge sie nicht — die
+  // Marke ist in Familjen Grotesk gesetzt, die die App nirgends lädt, und
+  // system-ui hätte je nach Gerät eine andere Form ergeben.
+  const MARKE_HOEHE = 34;
+  ctx.save();
+  ctx.translate(PAD, 64);
+  ctx.scale(MARKE_HOEHE / WORTMARKE.hoehe, MARKE_HOEHE / WORTMARKE.hoehe);
   ctx.fillStyle = ACCENT;
-  ctx.fill();
-  ctx.fillStyle = "#0b0b0d";
-  ctx.font = "700 28px system-ui, sans-serif";
-  ctx.textBaseline = "middle";
-  ctx.fillText("S", PAD + markSize / 2 - 9, 64 + markSize / 2 + 2);
-  ctx.textBaseline = "alphabetic";
-
-  ctx.fillStyle = MUTED;
-  ctx.font = "600 24px system-ui, sans-serif";
-  ctx.fillText("STRADO", PAD + markSize + 18, 64 + markSize / 2 + 8);
+  ctx.fill(new Path2D(WORTMARKE.pfad));
+  ctx.restore();
 
   // Meilenstein-Chip rechtsbündig in derselben Kopfzeile, falls vorhanden.
   if (data.milestoneLabel) {
     ctx.font = "600 26px system-ui, sans-serif";
     const chipW = ctx.measureText(data.milestoneLabel).width + 40;
-    drawPill(ctx, data.milestoneLabel, WIDTH - PAD - chipW, 68, {
+    drawPill(ctx, data.milestoneLabel, WIDTH - PAD - chipW, 60, {
       font: "600 26px system-ui, sans-serif",
       color: ACCENT,
       bg: ACCENT_SOFT,

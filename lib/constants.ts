@@ -35,7 +35,7 @@ export const REPORT_REASONS = [
 
 // Leben bewusst auf der Marketing-Domain statt als eigene Routen hier —
 // Erreichbarkeit per Link genügt, unabhängig vom Hosting-Ort. Die Seiten
-// liegen im Repo janlampert08-dev/cornice.ch unter legal/.
+// liegen im Repo janlampert08-dev/stradoinfo unter legal/.
 //
 // Der Standard ist die Adresse, unter der die Seiten HEUTE tatsächlich
 // stehen, nicht die Wunschdomain. Das ist der Kern der Sache: der frühere
@@ -45,16 +45,28 @@ export const REPORT_REASONS = [
 // darübersteht. Eine noch nicht gekaufte Wunschdomain als Standard hätte
 // genau dieselbe Eigenschaft.
 //
-// Sobald eine eigene Domain registriert und bei Vercel eingetragen ist,
-// gehört sie in NEXT_PUBLIC_LEGAL_BASE_URL — und erst dann, wenn sie
-// wirklich antwortet, kann sie hier zum Standard werden.
+// Genau dieser Fall ist inzwischen eingetreten: strado.ch ist registriert,
+// bei Vercel auf das Projekt stradoinfo eingetragen und liefert die
+// Rechtstexte aus (nachgeprüft: /legal/impressum, /legal/datenschutz und
+// /legal/agb antworten mit 200). Der README von stradoinfo führte diese
+// Umstellung bereits als erledigt auf — hier stand aber weiter die alte
+// vercel.app-Adresse.
+//
+// Apex-Form ohne www, wie im ganzen Projekt: strado.ch antwortet mit einer
+// permanenten Weiterleitung (308) auf www.strado.ch und behält den Pfad
+// dabei. Der eine Sprung ist der Preis dafür, dass überall dieselbe Adresse
+// steht wie in den Rechtstexten; wer ihn sparen will, stellt bei Vercel die
+// Apex-Domain als primäre Domain ein, ohne dass hier etwas zu ändern wäre.
+//
+// NEXT_PUBLIC_LEGAL_BASE_URL bleibt der Weg, davon abzuweichen (Vorschau-
+// Deployments, ein späterer Domainwechsel).
 //
 // Ein leerer Wert zählt als nicht gesetzt: .env.local.example führt die
 // Variable ohne Wert, und eine daraus kopierte Datei liefert einen leeren
 // String. Mit ?? bliebe der erhalten, LEGAL_BASE_URL wäre "" und aus den
 // Links würden relative Pfade — die dann auf die App-Domain zeigen und dort
 // ins Leere laufen, statt auf die Rechtstexte.
-const LEGAL_BASE_URL_STANDARD = "https://cornice-ch.vercel.app";
+const LEGAL_BASE_URL_STANDARD = "https://strado.ch";
 
 // Nur https. Ein http://-Wert würde Nutzende auf unverschlüsselt
 // ausgelieferte Rechtstexte schicken — bei einem Dokument, dessen ganzer
