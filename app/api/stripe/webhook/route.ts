@@ -78,8 +78,19 @@ async function schreibeAboZustand(
     const { error: platzFehler } = await supabase.rpc("gruenderplatz_bestaetigen_fuer_customer", {
       p_stripe_customer_id: zustand.stripeCustomerId,
     });
+    // Werfen, nicht nur loggen: sonst quittiert die Route mit 200, Stripe
+    // stellt nie wieder zu, und der Platz bliebe für immer unbestätigt.
+    // Genau das ist der teure Ausgang — die Person hat den Gründerpreis
+    // bezahlt, das Verzeichnis weiss nichts davon, die Reservierung läuft ab
+    // und derselbe Platz wird ein zweites Mal vergeben.
+    //
+    // Die Wiederholung ist ungefährlich: apply_subscription_state ist oben
+    // bereits durchgelaufen (Premium steht also), und beide Aufrufe sind
+    // idempotent. Ein erneuter Zustellversuch schreibt denselben Zustand und
+    // bestätigt denselben Platz.
     if (platzFehler) {
       console.error("Gründerplatz konnte nicht bestätigt werden", { subscriptionId }, platzFehler);
+      throw platzFehler;
     }
   }
 

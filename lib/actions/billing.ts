@@ -127,10 +127,19 @@ async function preisIdFuer(
   return { preisId: process.env.STRIPE_PREMIUM_PRICE_ID_JAHR, istGruenderpreis: false };
 }
 
-// Wie lange eine Reservierung gilt. Grosszügig genug für einen Checkout mit
-// 3-D-Secure oder TWINT-Umweg über die Banking-App, kurz genug, dass ein
-// abgebrochener Versuch den Platz nicht lange blockiert.
-const GRUENDER_RESERVIERUNG_MINUTEN = 60;
+// Wie lange eine Reservierung gilt: 24 Stunden (Migration 0069).
+//
+// Massgeblich ist nicht, wie lange ein Checkout dauert, sondern wie lange
+// Stripe die Zahlung noch annimmt. Der Gründerpreis steht fest, sobald das
+// Abo angelegt ist; ein Abo im Status `incomplete` bleibt danach rund 23
+// Stunden bezahlbar. Mit der früheren Stunde konnte die Reservierung ablaufen,
+// jemand anders den letzten Platz nehmen — und die erste Zahlung trotzdem noch
+// zum Gründerpreis durchgehen. Dann zahlen 101 Leute den Preis für 100 Plätze.
+//
+// Die Frist endet jetzt erst, wenn Stripe das Abo selbst aufgegeben hat und
+// keine Abbuchung mehr kommen kann. Kostet: ein abgebrochener Versuch
+// blockiert den Platz einen Tag statt eine Stunde.
+const GRUENDER_RESERVIERUNG_MINUTEN = 24 * 60;
 
 // Macht aus der Reservierung einen dauerhaften Platz — aber nur, wenn das
 // bezahlte Abo wirklich auf dem Gründerpreis läuft. Ein Monats- oder
@@ -394,10 +403,15 @@ export async function confirmSubscription(subscriptionId: string): Promise<boole
   // Reservierung ein dauerhafter Gründerplatz (Migration 0066). Vorher
   // hätte ein abgebrochener Checkout den Platz behalten.
   //
-  // Idempotent und bewusst ohne Fehlerbehandlung nach aussen: schlägt es
-  // fehl, läuft die Reservierung ab und der Platz wird wieder frei. Das ist
-  // der harmlosere Ausgang — ein zu grosszügiges Kontingent wäre schlimmer
-  // als ein verlorener Platz.
+  // Idempotent und bewusst ohne Fehlerbehandlung nach aussen: der Kauf ist
+  // an dieser Stelle gelungen, und ihn wegen des Verzeichniseintrags
+  // scheitern zu lassen wäre für die zahlende Person das schlechtere
+  // Ergebnis.
+  //
+  // Dass der Eintrag verloren geht, fängt der Webhook auf — er ruft dieselbe
+  // Bestätigung und wird von Stripe wiederholt, bis sie durchläuft
+  // (app/api/stripe/webhook/route.ts wirft dafür bewusst). Dieser Weg hier
+  // ist der schnelle, jener der verlässliche.
   await gruenderplatzBestaetigen(zustand.priceId, user.id);
 
   // false heisst hier: der Webhook war schneller und hat bereits einen

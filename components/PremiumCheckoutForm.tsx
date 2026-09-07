@@ -96,19 +96,34 @@ function CheckoutInner({
   // Erneut nachfragen, ob das Abo inzwischen aktiv ist. Der Weg für den
   // Fall, dass die Zahlung durch ist, die Bestätigung bei Stripe aber noch
   // ein paar Sekunden braucht — bei TWINT der Normalfall.
+  //
+  // try/finally, weil confirmSubscription eine Server Action ist und nicht
+  // nur false zurückgeben, sondern auch werfen kann (Netzabbruch, Fehler in
+  // der Action selbst). Ohne finally bliebe `pruefen` dann auf true und die
+  // Schaltfläche für immer deaktiviert — ausgerechnet auf dem Bildschirm, wo
+  // bereits bezahlt wurde und der Bezahl-Button absichtlich gesperrt ist. Es
+  // gäbe keinen Weg mehr nach vorn.
   async function nochmalPruefen() {
     setPruefen(true);
     setError(null);
-    const bestaetigt = await confirmSubscription(subscriptionId);
-    if (bestaetigt) {
-      onSuccess();
-      return;
+    try {
+      const bestaetigt = await confirmSubscription(subscriptionId);
+      if (bestaetigt) {
+        onSuccess();
+        return;
+      }
+      setError(
+        "Die Zahlung ist noch nicht bestätigt. Warte einen Moment und versuch es noch einmal — " +
+          "abgebucht wird nichts doppelt.",
+      );
+    } catch {
+      setError(
+        "Die Bestätigung liess sich gerade nicht prüfen. Versuch es noch einmal — " +
+          "abgebucht wird nichts doppelt.",
+      );
+    } finally {
+      setPruefen(false);
     }
-    setError(
-      "Die Zahlung ist noch nicht bestätigt. Warte einen Moment und versuch es noch einmal — " +
-        "abgebucht wird nichts doppelt.",
-    );
-    setPruefen(false);
   }
 
   async function handleSubmit(e: FormEvent) {

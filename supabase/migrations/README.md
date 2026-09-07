@@ -212,6 +212,52 @@ gepinnt, die Funktion nimmt keine Parameter und entscheidet nur anhand von
 `new.erstellt_von`, das die Schreib-Policy ohnehin auf das eigene Konto
 begrenzt hat.
 
+## Premium-Migration 0069 (eingespielt 2026-09-07)
+
+`0069_gruenderplatz_reservierung_dicht_machen.sql` schliesst zwei Lücken in
+0066 — beide aus einem CodeRabbit-Befund zu PR #123.
+
+1. **Die abgelaufene eigene Zeile umging die Kontingentprüfung.**
+   `gruenderplatz_beanspruchen` prüfte mit `if found then` nur, ob eine Zeile
+   für das Konto existiert, nicht ob deren Frist noch läuft. Eine abgelaufene
+   Zeile bekam eine frische Frist, ohne dass nachgezählt wurde. Die Begründung
+   in 0066 („für dieses Konto ist der Platz schon gezählt") gilt nur, solange
+   die Reservierung **läuft** — genau diese Bedingung fehlte.
+2. **Bestätigen nahm den Advisory Lock nicht,** Reservieren schon. Beide
+   nehmen ihn jetzt.
+
+Die Frist gilt neu **24 Stunden statt einer**. Massgeblich ist nicht die Dauer
+des Checkouts, sondern wie lange Stripe die Zahlung noch annimmt: der
+Gründerpreis steht fest, sobald das Abo entsteht, und ein Abo im Status
+`incomplete` bleibt rund 23 Stunden bezahlbar. Mit einer Stunde konnte die
+Reservierung ablaufen, jemand anders den letzten Platz nehmen — und die erste
+Zahlung trotzdem noch zum Gründerpreis durchgehen.
+
+Bewusst **nicht** umgesetzt: die Bestätigung abzulehnen, wenn die Reservierung
+abgelaufen oder das Kontingent voll ist. Sie läuft erst, nachdem Stripe die
+Zahlung bestätigt hat — der Preis ist dann abgebucht. Die Zeile zu verweigern
+macht die Abbuchung nicht rückgängig, sie versteckt sie: das Verzeichnis
+zählte 100, während 101 Leute den Gründerpreis zahlen. Die Schranke gehört an
+den Anfang des Kaufs.
+
+Gegen die Produktionsdatenbank in einer Transaktion mit `rollback` geprüft,
+`p_maximum = 1`:
+
+| Schritt | Ergebnis |
+| --- | --- |
+| A reserviert mit Frist 0 min | `true` |
+| B nimmt den einzigen Platz | `true` |
+| A erneut, Frist abgelaufen | **`false`** (vor 0069: `true`) |
+| B verlängert seine laufende Frist | `true` (keine Regression) |
+| B bestätigt nach Zahlung | `true`, belegt=1 |
+| A nach B's Bestätigung | **`false`** |
+
+Danach: 0 Zeilen, belegt=0, frei=100 — der Rollback hat gegriffen, es liegen
+keine Testdaten in der Tabelle. Die Ausführungsrechte haben das
+`create or replace` überstanden: alle fünf Gründerplatz-Funktionen stehen
+weiterhin nur `postgres` und `service_role` offen, nicht `anon` oder
+`authenticated`.
+
 ### Warum 0063 überhaupt sein muss
 
 `lib/premium.ts` beantwortet "darf diese Person X?" über den an die Session
