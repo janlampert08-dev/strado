@@ -28,15 +28,13 @@ Gründerpreis CHF 39.00/Jahr für die ersten 100 Abos, dauerhaft preisgebunden.
 Kein Gratis-Testzeitraum zum Start, dafür 14 Tage Geld-zurück auf Zuruf.
 Herleitung in Abschnitt 6.
 
-**Härtester Blocker:** *(Stand 2026-09-06 teilweise erledigt.)* Die Rechtstexte
-stehen im Repo `janlampert08-dev/cornice.ch` unter `legal/` und `LEGAL_URLS`
-zeigt darauf. Offen bleiben zwei Dinge, und beide sind echte Blocker: die
-Angaben zur Anbieterin — Firmenname, Rechtsform, Adresse, Telefon, UID,
-Gerichtsstand — fehlen weiterhin und können nicht erfunden werden, und die
-es ist noch **keine eigene Domain registriert**. Ohne die Angaben gibt es
-keine TWINT-Freischaltung. Die Domain blockiert die Links dagegen nicht:
-`LEGAL_URLS` zeigt standardmässig auf `cornice-ch.vercel.app`, wo die Texte
-tatsächlich stehen.
+**Härtester Blocker:** *(Stand 2026-09-07 grösstenteils erledigt.)* Die
+Rechtstexte stehen im Repo `janlampert08-dev/stradoinfo` unter `legal/`,
+sind unter `strado.ch/legal/…` erreichbar, und `LEGAL_URLS` zeigt
+standardmässig genau dorthin. Die Domainfrage ist damit erledigt. Echter
+Blocker bleibt einer: die Angaben zur Anbieterin — Firmenname, Rechtsform,
+Adresse, Telefon, UID, Gerichtsstand — fehlen weiterhin und können nicht
+erfunden werden. Ohne sie gibt es keine TWINT-Freischaltung.
 
 ---
 
@@ -388,17 +386,23 @@ spielt sie ein, vor dem Deploy des Codes, der sie braucht.
 1. ~~Rechtstexte veröffentlichen und `LEGAL_URLS` in `lib/constants.ts` auf die
    echte Domain zeigen lassen.~~ *Erledigt 2026-09-06:* Impressum,
    Datenschutzerklärung und AGB liegen unter `/legal/…` im Repo
-   `janlampert08-dev/cornice.ch`; die AGB decken Laufzeit, automatische
+   `janlampert08-dev/stradoinfo`; die AGB decken Laufzeit, automatische
    Verlängerung, Kündigung ohne Frist, Preise inkl. MWST und die
    Geld-zurück-Regel ab. **Zwei Restpunkte bleiben Blocker:**
    1a. Die Angaben zur Anbieterin (Firmenname, Rechtsform, Adresse, Telefon,
    vertretungsberechtigte Person, UID, Gerichtsstand) stehen als sichtbar
    markierte Lücken im Text und müssen eingesetzt werden — sie sind zugleich
    Pflichtangabe nach Art. 3 Abs. 1 lit. s UWG und Voraussetzung für TWINT.
-   1b. Eine eigene Domain ist noch nicht registriert. Das blockiert nichts:
-   `LEGAL_URLS` zeigt standardmässig auf `https://cornice-ch.vercel.app`.
-   Beim Kauf einer Domain sind vier Stellen mitzuziehen — die Liste steht im
-   README von `janlampert08-dev/cornice.ch`, Abschnitt „Domains".
+   1b. ~~Eine eigene Domain ist noch nicht registriert.~~ *Erledigt
+   2026-09-07:* `strado.ch` liefert die Rechtstexte unter `/legal/…` aus,
+   `app.strado.ch` die Anwendung. `LEGAL_URLS` zeigt standardmässig auf
+   `https://strado.ch`; `NEXT_PUBLIC_LEGAL_BASE_URL` muss in Production
+   nicht mehr gesetzt werden. Offen ist hier nur noch
+   `NEXT_PUBLIC_SITE_URL`: sie steuert den Rückkehr-Link aus dem
+   Stripe-Kundenportal und gehört bei Vercel auf `https://app.strado.ch`.
+   Die Auflösung ist seit `lib/siteUrl.ts` abgesichert — ohne die Variable
+   greift `VERCEL_PROJECT_PRODUCTION_URL`, erst danach localhost —, der
+   ausdrückliche Wert bleibt trotzdem der richtige.
    1c. Anwaltliche Durchsicht der Texte (die offenen Punkte stehen am Ende
    jeder Datei in `docs/rechtstexte/`).
 2. Stripe: Produkt „Strado Premium“ mit drei Preisen (Monat 4.90, Jahr 49.00,
@@ -672,8 +676,11 @@ beantworten gibt die Schranke genau dort auf, wo sie zählt.
 
 **Blocker (verhindern den Launch, nicht die Entwicklung):**
 
-1. Rechtstexte unter der echten Domain — Voraussetzung für TWINT und für den
-   Verkauf an Verbraucher überhaupt.
+1. Angaben zur Anbieterin in den Rechtstexten (Firmenname, Rechtsform,
+   Adresse, Telefon, vertretungsberechtigte Person, UID, Gerichtsstand) —
+   Voraussetzung für TWINT und für den Verkauf an Verbraucher überhaupt.
+   Die Texte selbst stehen seit 2026-09-07 unter der echten Domain
+   (`strado.ch/legal/…`); offen sind nur noch diese Pflichtangaben.
 2. Open-Meteo-Lizenz für kommerzielle Nutzung geklärt.
 3. Vercel Pro (Lizenzpflicht ab Umsatz).
 

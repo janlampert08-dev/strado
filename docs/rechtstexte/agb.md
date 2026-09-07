@@ -42,7 +42,8 @@
 
 **1.1** Diese Allgemeinen Geschäftsbedingungen (nachfolgend „AGB") regeln die
 Nutzung der Plattform Strado (Website und Webanwendung, nachfolgend „Strado"
-oder „Plattform"), die unter `https://[[DOMAIN]]` erreichbar ist.
+oder „Plattform"), die unter `https://strado.ch` (Website mit den
+Rechtstexten) und `https://app.strado.ch` (Webanwendung) erreichbar ist.
 
 **1.2** Anbieterin und Vertragspartnerin ist:
 
@@ -51,7 +52,7 @@ oder „Plattform"), die unter `https://[[DOMAIN]]` erreichbar ist.
 E-Mail: contact@strado.ch
 
 (nachfolgend „Anbieterin"). Weitere Angaben finden sich im Impressum unter
-`https://[[DOMAIN]]/impressum`.
+`https://strado.ch/legal/impressum`.
 
 **1.3** Strado ist eine kuratierte Plattform für Auto- und Motorradstrecken
 mit Schwerpunkt Schweiz, vorerst Raum Zürich. Nutzende können Strecken
@@ -492,7 +493,7 @@ ausgenommen, solange das Abo ununterbrochen besteht.
 
 Wie personenbezogene Daten bearbeitet werden — insbesondere GPS-Standortdaten,
 Fotos und Zahlungsdaten —, ist in der Datenschutzerklärung unter
-`https://[[DOMAIN]]/datenschutz` beschrieben. Sie ist nicht Bestandteil dieser
+`https://strado.ch/legal/datenschutz` beschrieben. Sie ist nicht Bestandteil dieser
 AGB, sondern eine Information nach dem Datenschutzgesetz.
 
 ## 16. Schlussbestimmungen
@@ -531,11 +532,10 @@ verzichten.
 | `[[RECHTSFORM]]` | Rechtsform (z. B. Einzelunternehmen, GmbH, AG) | Ziff. 1.2 |
 | `[[STRASSE_NR]]` | Strasse und Hausnummer des Geschäftssitzes | Ziff. 1.2 |
 | `[[PLZ_ORT]]` | Postleitzahl und Ort des Geschäftssitzes | Ziff. 1.2 |
-| `[[DOMAIN]]` | Echte Domain, unter der Strado und die Rechtstexte erreichbar sind | Ziff. 1.1, 1.2, 15 |
 | `[[GERICHTSSTAND]]` | Ort des vereinbarten Gerichtsstands (in der Regel der Sitz der Anbieterin) | Ziff. 16.4 |
 | `[[STAND_DATUM]]` | Datum, ab dem diese AGB-Fassung gilt | Kopfzeile |
 
-Insgesamt **7 Platzhalter**. Vor der Veröffentlichung ist im gesamten Dokument
+Insgesamt **6 Platzhalter**. Vor der Veröffentlichung ist im gesamten Dokument
 nach der Zeichenfolge `[[` zu suchen, um sicherzustellen, dass kein Platzhalter
 übrig geblieben ist.
 
