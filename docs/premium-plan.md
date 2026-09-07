@@ -398,11 +398,11 @@ spielt sie ein, vor dem Deploy des Codes, der sie braucht.
    `app.strado.ch` die Anwendung. `LEGAL_URLS` zeigt standardmässig auf
    `https://strado.ch`; `NEXT_PUBLIC_LEGAL_BASE_URL` muss in Production
    nicht mehr gesetzt werden. Offen ist hier nur noch
-   `NEXT_PUBLIC_SITE_URL` — sie steuert den Rückkehr-Link aus dem
-   Stripe-Kundenportal und fällt ohne Angabe auf `http://localhost:3000`
-   zurück; sie gehört bei Vercel auf `https://app.strado.ch` gesetzt.
-   Ebenfalls offen, aber kein Domainthema: die veröffentlichten Seiten in
-   `janlampert08-dev/stradoinfo` tragen noch den alten Produktnamen.
+   `NEXT_PUBLIC_SITE_URL`: sie steuert den Rückkehr-Link aus dem
+   Stripe-Kundenportal und gehört bei Vercel auf `https://app.strado.ch`.
+   Die Auflösung ist seit `lib/siteUrl.ts` abgesichert — ohne die Variable
+   greift `VERCEL_PROJECT_PRODUCTION_URL`, erst danach localhost —, der
+   ausdrückliche Wert bleibt trotzdem der richtige.
    1c. Anwaltliche Durchsicht der Texte (die offenen Punkte stehen am Ende
    jeder Datei in `docs/rechtstexte/`).
 2. Stripe: Produkt „Strado Premium“ mit drei Preisen (Monat 4.90, Jahr 49.00,
@@ -676,8 +676,11 @@ beantworten gibt die Schranke genau dort auf, wo sie zählt.
 
 **Blocker (verhindern den Launch, nicht die Entwicklung):**
 
-1. Rechtstexte unter der echten Domain — Voraussetzung für TWINT und für den
-   Verkauf an Verbraucher überhaupt.
+1. Angaben zur Anbieterin in den Rechtstexten (Firmenname, Rechtsform,
+   Adresse, Telefon, vertretungsberechtigte Person, UID, Gerichtsstand) —
+   Voraussetzung für TWINT und für den Verkauf an Verbraucher überhaupt.
+   Die Texte selbst stehen seit 2026-09-07 unter der echten Domain
+   (`strado.ch/legal/…`); offen sind nur noch diese Pflichtangaben.
 2. Open-Meteo-Lizenz für kommerzielle Nutzung geklärt.
 3. Vercel Pro (Lizenzpflicht ab Umsatz).
 
