@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { Check } from "lucide-react";
-import RoutePicker from "@/components/RoutePicker";
 import BackButton from "@/components/BackButton";
 import DragSheet from "@/components/ui/DragSheet";
 import { ConfirmDialog } from "@/components/ui/Dialog";
@@ -14,6 +14,18 @@ import { proposeRoute, type ProposeRouteState } from "@/lib/actions/routes";
 import { Input, Textarea } from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import Skeleton from "@/components/ui/Skeleton";
+
+// Gleiche Begründung wie bei RouteMap (ExploreView.tsx): mapbox-gl ist eine
+// schwere Abhängigkeit (WebGL, eigenes CSS), und RoutePicker importiert sie
+// statisch. Ohne dynamischen Import landet die ganze Bibliothek im First Load
+// dieser Seite, statt erst mit der Karte nachgeladen zu werden — RoutePicker
+// geht nicht über RouteMap, wurde bei dessen Umstellung also übersehen.
+// ssr:false, da mapbox-gl direkten DOM-/WebGL-Zugriff braucht.
+const RoutePicker = dynamic(() => import("@/components/RoutePicker"), {
+  ssr: false,
+  loading: () => <Skeleton className="h-full w-full" />,
+});
 
 const initialState: ProposeRouteState = { error: null };
 
