@@ -6,16 +6,22 @@ export const alt = "Strecke auf Strado";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-// Nutzt dieselbe (React cache()-memoisierte) getRoute() wie
-// generateMetadata und die Page selbst — siehe lib/routes.ts. Fällt bei
-// fehlender/ungültiger Route auf eine generische Marken-Karte zurück,
-// statt die Bildgenerierung scheitern zu lassen (notFound() ist hier keine
-// Option, das ist kein Page-Response). Satori/ImageResponse versteht kein
-// Tailwind — deshalb zwangsläufig inline styles statt Klassennamen.
-//
-// Die Wortmarke ist eine Kontur (lib/marke.ts) und kommt als <img>
-// herein: als Text gesetzt bräuchte Satori die Schriftdatei, die die
-// App sonst nirgends lädt.
+/**
+ * Freigabebild einer einzelnen Strecke.
+ *
+ * Nutzt dieselbe (React cache()-memoisierte) getRoute() wie generateMetadata
+ * und die Page selbst — siehe lib/routes.ts. Fällt bei fehlender oder
+ * ungültiger Route auf eine generische Marken-Karte zurück, statt die
+ * Bildgenerierung scheitern zu lassen: notFound() ist hier keine Option, das
+ * ist kein Page-Response.
+ *
+ * Satori/ImageResponse versteht kein Tailwind — deshalb zwangsläufig inline
+ * styles statt Klassennamen. Die Wortmarke ist eine Kontur (lib/marke.ts) und
+ * kommt als <img> herein: als Text gesetzt bräuchte Satori die Schriftdatei,
+ * die die App sonst nirgends lädt.
+ *
+ * @param params Route-Parameter der Seite; enthält die Strecken-ID.
+ */
 export default async function Image({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const route = await getRoute(id).catch(() => null);
