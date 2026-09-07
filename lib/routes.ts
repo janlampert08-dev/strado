@@ -20,6 +20,70 @@ export async function getRoutes(): Promise<{ routes: RouteGeoJSON[]; error: bool
   return { routes: (data as RouteGeoJSON[]) ?? [], error: false };
 }
 
+// Nur was die Sitemap braucht. getRoutes() liefert sonst für jede Strecke
+// Geometrie, Höhenprofil, Tempolimits und Charaktertext mit — bei einem
+// Aufruf, der davon ausschliesslich id und created_at verwendet.
+export interface RouteSitemapEintrag {
+  id: string;
+  created_at: string;
+}
+
+export async function listRoutesForSitemap(): Promise<RouteSitemapEintrag[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("routes_geojson")
+    .select("id, created_at")
+    .eq("status_ok", true)
+    .order("name");
+
+  if (error) {
+    console.error("Sitemap-Strecken konnten nicht geladen werden:", error.message);
+    return [];
+  }
+
+  return (data as RouteSitemapEintrag[]) ?? [];
+}
+
+// Genau die Spalten, die der öffentliche Endpunkt ausgibt (siehe
+// app/api/strecken/route.ts). Vorher lief er über getRoutes() und lud
+// Geometrie und Höhenprofil, die er anschliessend verwarf — bei einem
+// unauthentifizierten, nur per IP begrenzten Endpunkt der teuerste Teil
+// der Anfrage.
+export type RouteApiZeile = Pick<
+  RouteGeoJSON,
+  | "id"
+  | "name"
+  | "region"
+  | "start_ort"
+  | "ziel_ort"
+  | "ist_rundfahrt"
+  | "laenge_km"
+  | "hoehe_m"
+  | "max_steigung_prozent"
+  | "kehren"
+  | "kategorien"
+  | "saison_status"
+  | "tempolimits"
+>;
+
+export async function listRoutesForApi(): Promise<RouteApiZeile[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("routes_geojson")
+    .select(
+      "id, name, region, start_ort, ziel_ort, ist_rundfahrt, laenge_km, hoehe_m, max_steigung_prozent, kehren, kategorien, saison_status, tempolimits",
+    )
+    .eq("status_ok", true)
+    .order("name");
+
+  if (error) {
+    console.error("Strecken konnten nicht geladen werden:", error.message);
+    return [];
+  }
+
+  return (data as RouteApiZeile[]) ?? [];
+}
+
 // Für die Streckenauswahl in TrackLeaderboardChooser (app/leaderboards) —
 // die dortige Karte braucht nur id+name, kein select("*") mit voller
 // Geometrie/Höhenprofil/Tempolimits wie getRoutes() oben.

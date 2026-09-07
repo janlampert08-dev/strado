@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getOrigin } from "@/lib/utils/url";
-import { getRoutes } from "@/lib/routes";
+import { listRoutesForSitemap } from "@/lib/routes";
 
 // Fahrer-Profile sind bewusst ausgeschlossen — Privatsphäre-Konsistenz mit
 // den bestehenden Sichtbarkeits-Flags (siehe lib/profile.ts): ob ein Profil
@@ -8,7 +8,7 @@ import { getRoutes } from "@/lib/routes";
 // unabhängig davon per Sitemap crawlbar gemacht werden.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const origin = await getOrigin();
-  const { routes } = await getRoutes();
+  const routes = await listRoutesForSitemap();
 
   return [
     { url: origin, changeFrequency: "weekly", priority: 1 },

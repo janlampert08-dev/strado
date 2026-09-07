@@ -65,7 +65,8 @@ export default async function FahrerPage({
   // Betrachter — dieselbe Bedingung wie beim Kudos-Button oben.
   const showFollow = !!viewer && !isOwnProfile;
 
-  const [kudosByCompletion, followers, following, mutualFollowers] = await Promise.all([
+  const [kudosByCompletion, followers, following, mutualFollowers, alreadyFollowing] =
+    await Promise.all([
     getKudosForCompletions(
       profile.fahrten.map((f) => f.completion_id),
       viewer?.id ?? null,
@@ -78,9 +79,10 @@ export default async function FahrerPage({
     showFollow
       ? getMutualFollowers(viewer!.id, id)
       : Promise.resolve({ preview: [], totalCount: 0 }),
+    // Hing von nichts aus diesem Block ab und lief trotzdem als eigener,
+    // nachgelagerter Roundtrip — showFollow steht schon weiter oben fest.
+    showFollow ? isFollowing(viewer!.id, id) : Promise.resolve(false),
   ]);
-
-  const alreadyFollowing = showFollow ? await isFollowing(viewer!.id, id) : false;
 
   const zeigtStatistiken = profile.zeigtPaesse || profile.zeigtHoehenmeter || profile.zeigtDistanz;
   const istPrivat =

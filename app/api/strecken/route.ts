@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getRoutes } from "@/lib/routes";
+import { listRoutesForApi } from "@/lib/routes";
 import { averageTempolimit, estimateRouteDurationMinutes } from "@/lib/geo";
 import { getClientIp, isRateLimitedByKey } from "@/lib/rateLimit";
 
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Zu viele Anfragen." }, { status: 429 });
   }
 
-  const { routes } = await getRoutes();
+  const routes = await listRoutesForApi();
 
   const data = routes.map((r) => ({
     id: r.id,

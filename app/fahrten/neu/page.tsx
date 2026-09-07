@@ -46,7 +46,7 @@ export default async function NeueFahrtPage({
   // Fahrzeuge gibt es nur für angemeldete Nutzer — ein Gast sieht die
   // Fahrzeugauswahl ohnehin nicht, weil er statt des Speichern-Formulars
   // das Anmelde-Gate bekommt.
-  const [vehicles, { routes }] = await Promise.all([
+  const [vehicles, { routes }, premiumStatus] = await Promise.all([
     user
       ? supabase
           .from("vehicles")
@@ -56,11 +56,13 @@ export default async function NeueFahrtPage({
           .then(({ data }) => (data as Vehicle[] | null) ?? [])
       : Promise.resolve([] as Vehicle[]),
     getRoutes(),
+    // Nimmt keine Argumente und hängt an nichts aus diesem Block — lief
+    // trotzdem als eigener Roundtrip nach dem Promise.all.
+    getPremiumStatus(),
   ]);
 
   // Abgemeldete Besucher dürfen aufzeichnen, aber nicht speichern — für sie
   // gilt die Gratisgrenze. Der Server begrenzt ohnehin erneut.
-  const premiumStatus = await getPremiumStatus();
 
   return (
     <FreeRideForm
