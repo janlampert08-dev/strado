@@ -8,7 +8,7 @@ import { getClientIp, isRateLimitedByKey } from "@/lib/rateLimit";
 // direkt auf die Datenbank zuzugreifen. Komplett unauthentifiziert — daher
 // IP-basiertes Rate Limiting statt des nutzergebundenen isRateLimited.
 export async function GET(request: Request) {
-  if (isRateLimitedByKey(`api:strecken:${getClientIp(request.headers)}`, 60, 60_000)) {
+  if (isRateLimitedByKey(`api:strecken:liste:${getClientIp(request.headers)}`, 60, 60_000)) {
     return NextResponse.json({ error: "Zu viele Anfragen." }, { status: 429 });
   }
 

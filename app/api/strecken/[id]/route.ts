@@ -5,7 +5,7 @@ import { getClientIp, isRateLimitedByKey } from "@/lib/rateLimit";
 import { isValidUuid } from "@/lib/validation";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (isRateLimitedByKey(`api:strecken:${getClientIp(request.headers)}`, 60, 60_000)) {
+  if (isRateLimitedByKey(`api:strecken:detail:${getClientIp(request.headers)}`, 60, 60_000)) {
     return NextResponse.json({ error: "Zu viele Anfragen." }, { status: 429 });
   }
 

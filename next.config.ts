@@ -24,6 +24,64 @@ const nextConfig: NextConfig = {
     // werden — kein Leak-Risiko, nur etwas grösserer/langsamerer Build.
     serverSourceMaps: true,
   },
+  // Sicherheits-Header. Bis auf die CSP alle scharf; die CSP läuft
+  // absichtlich zunächst nur im Report-Only-Modus, siehe unten.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          // Clickjacking. Besonders relevant, weil /anmelden über ?next=
+          // gezielt ansteuerbar ist: ohne frame-ancestors liesse sich das
+          // Anmeldeformular in einem fremden Rahmen unterschieben.
+          { key: "X-Frame-Options", value: "DENY" },
+          // Kein MIME-Sniffing auf ausgelieferte Antworten.
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          // Die Fahrtseite trägt signierte Supabase-Storage-URLs mit
+          // ?token=… im DOM (lib/storageUrls.ts, 1 h gültig). Ohne
+          // Referrer-Policy ginge die vollständige URL beim Klick auf einen
+          // externen Link als Referer mit — inklusive Token.
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          // Keine der drei Berechtigungen wird gebraucht. Geolocation
+          // ausdrücklich NICHT gesperrt: die Fahrtaufzeichnung lebt davon.
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), payment=()",
+          },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
+          },
+          // Report-Only: Mapbox GL (Worker + WebGL), Stripe Elements
+          // (Iframe + eigenes Skript) und Supabase Storage hängen an
+          // mehreren Fremd-Origins. Scharf geschaltet würde ein
+          // übersehener Origin die Karte oder die Bezahlseite lautlos
+          // brechen — und beides lässt sich hier nicht gegen eine laufende
+          // Anwendung prüfen. Erst beobachten, dann durchsetzen.
+          {
+            key: "Content-Security-Policy-Report-Only",
+            value: [
+              "default-src 'self'",
+              // 'unsafe-inline'/'unsafe-eval': Next injiziert Inline-Skripte,
+              // Mapbox GL erzeugt Worker aus Blobs. Beim Scharfschalten
+              // durch Nonces ersetzen.
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
+              "worker-src 'self' blob:",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "font-src 'self' data: https://fonts.gstatic.com",
+              "img-src 'self' data: blob: https://*.supabase.co https://*.mapbox.com",
+              "connect-src 'self' https://*.supabase.co https://*.mapbox.com https://api.open-meteo.com https://api.stripe.com",
+              "frame-src https://js.stripe.com https://hooks.stripe.com",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "object-src 'none'",
+            ].join("; "),
+          },
+        ],
+      },
+    ];
+  },
   images: {
     // Hochgeladene Fotos/Avatare liegen in Supabase Storage — auf den
     // Storage-Pfad eingeschränkt statt den ganzen Host freizugeben.

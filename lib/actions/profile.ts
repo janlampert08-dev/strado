@@ -1,11 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { metadatenEntfernen } from "@/lib/imageMetadata";
 import { recomputePublicTracks } from "@/lib/publicTrack";
 import { istPremium } from "@/lib/premium";
 import { DEFAULT_PRIVACY_RADIUS_M, PRIVACY_RADIUS_OPTIONS } from "@/lib/track";
+import { getClientIp, isRateLimitedByKey } from "@/lib/rateLimit";
+import { bildEndungFuerMime } from "@/lib/validation";
 
 export interface ProfileActionState {
   error: string | null;
@@ -24,9 +27,19 @@ export interface ProfileSearchResult {
 // 0034_profiles_column_grant_hardening.sql) — dieselben Daten, die z. B. in
 // Follower-Listen und Bestenlisten ohnehin für jeden sichtbar sind, hier nur
 // zusätzlich per Namenssuche auffindbar statt nur beim Durchblättern.
+//
+// Ohne Session aufrufbar: die Funktion ist aus einer "use server"-Datei
+// exportiert und damit von aussen erreichbar, auch ohne die UI. Deshalb ein
+// IP-Limit wie bei den öffentlichen Endpunkten unter app/api/strecken —
+// sonst liesse sich der gesamte display_name-Bestand per Präfix-Sweep
+// abziehen, und jeder Aufruf erzeugt einen ilike-'%…%'-Scan ohne nutzbaren
+// Index. Grosszügig bemessen, weil die Suche bei jedem Tastendruck feuert.
 export async function searchProfiles(query: string): Promise<ProfileSearchResult[]> {
   const trimmed = query.trim();
   if (trimmed.length < 2) return [];
+
+  const ip = getClientIp(await headers());
+  if (isRateLimitedByKey(`profilsuche:${ip}`, 120, 60_000)) return [];
 
   const supabase = await createClient();
   // ilike-Sonderzeichen im Nutzer-Input escapen, sonst könnten "%"/"_" selbst
@@ -139,10 +152,17 @@ export async function uploadAvatar(
 
   const foto = formData.get("avatar") as File | null;
   if (!foto || foto.size === 0) return { error: "Bitte ein Foto auswählen." };
-  if (!foto.type.startsWith("image/")) return { error: "Nur Bilddateien sind erlaubt." };
   if (foto.size > MAX_AVATAR_BYTES) return { error: "Foto ist zu gross (max. 4 MB)." };
 
-  const ext = foto.name.split(".").pop() ?? "jpg";
+  // Endung aus dem Content-Type statt aus foto.name — Begründung in
+  // lib/validation.ts. Ersetzt zugleich die alte
+  // type.startsWith("image/")-Prüfung: die liess image/svg+xml durch, das
+  // die Bucket-Allowlist aus 0033 zwar abweist, aber erst eine Ebene
+  // tiefer und mit einer rohen Storage-Fehlermeldung.
+  const ext = bildEndungFuerMime(foto.type);
+  if (!ext) {
+    return { error: "Nur JPG-, PNG-, WebP- oder GIF-Bilder sind erlaubt." };
+  }
   const path = `${user.id}/avatar.${ext}`;
 
   // Wie beim Fahrt-Foto: EXIF-Metadaten raus, bevor die Datei gespeichert
