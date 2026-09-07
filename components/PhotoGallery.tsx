@@ -116,7 +116,7 @@ export default function PhotoGallery({ photos }: { photos: RoutePhoto[] }) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={openPhoto.foto_url}
-                alt={`Foto von ${openPhoto.display_name ?? "einem Fahrer"}`}
+                alt={`Foto von ${openPhoto.display_name ?? "Nutzer"}`}
                 className="max-h-[80vh] max-w-[90vw] object-contain"
                 onClick={(e) => e.stopPropagation()}
               />
