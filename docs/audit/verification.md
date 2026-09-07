@@ -103,6 +103,20 @@ originally confirmed, not as a current-state report.
 ## Orchestrator build measurements corroborate the performance agent's bundle claim
 The performance audit could not run `next build` (its `node_modules` was reinstalled mid-run),
 so its bundle numbers are marked `[measured]`/`[computed]`/`[estimated]` in its own report. An
-independent build confirms its central positive finding: the 1785 KB mapbox chunk appears in
-`react-loadable-manifest.json`, i.e. it is behind `next/dynamic` and out of the shared entry.
-Full figures in [`baseline.md`](./baseline.md).
+independent build corroborates its central positive finding — mapbox-gl is code-split — but the
+claim has two halves, and each rests on a different artifact:
+
+- **Loaded through `next/dynamic`.** The mapbox chunk (`15sq2-ftgsxmt.js`, 1.8 MB on disk) is
+  listed in `react-loadable-manifest.json` for four route groups: `/`, `/fahrten/[id]`,
+  `/fahrten/neu` and `/strecken/[id]`. Separately, `grep` finds exactly five call sites using
+  `dynamic(() => import("@/components/RouteMap"))` — `CompletionMap`, `ExploreView`,
+  `FreeRideForm`, `LiveTrackingForm` and `RouteDetailMap` — all on the same specifier, which is
+  what makes it one shared chunk rather than five.
+- **Absent from the shared entry.** The loadable manifest does *not* show this; it only maps
+  loadable chunks. The supporting artifact is `build-manifest.json`, where the chunk appears in
+  no entry list at all — not in `rootMainFiles` (6 entries), not in any per-page list, and not
+  in `fallback-build-manifest.json` either.
+
+An earlier draft of this entry cited the loadable manifest for both halves. The conclusion was
+right, the citation was not — flagged in review on PR #122 and corrected by re-measuring rather
+than by softening the wording. Full figures in [`baseline.md`](./baseline.md).
