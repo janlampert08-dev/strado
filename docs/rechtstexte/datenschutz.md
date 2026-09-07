@@ -621,8 +621,8 @@ Dokument muss leer bleiben und ist Teil der Prüfung vor jeder weiteren
 12. **Voreinstellung der Sichtbarkeits-Schalter** (Abschnitte 3.2, 5 und 6) —
     dieser Text beschreibt den Zustand, den der Quellcode vorgibt: die sechs
     Profil-Schalter stehen auf **an** (`0054_sichtbarkeit_standardmaessig_aktiv.sql`,
-    Fallback `?? true` in `app/profil/einstellungen/page.tsx`). Zwei Punkte
-    sind offen:
+    Fallback `?? true` in `app/profil/einstellungen/page.tsx`). Offen ist
+    davon noch ein Punkt:
 
     a) **Rechtlich:** Eine voreingestellt eingeschaltete Sichtbarkeit ist
        keine Einwilligung und steht in Spannung zum Grundsatz „Datenschutz
@@ -631,10 +631,10 @@ Dokument muss leer bleiben und ist Teil der Prüfung vor jeder weiteren
        Interesse muss geprüft und bestätigt werden — sie ist der Kern dieses
        Punktes und nicht bloss eine Formulierungsfrage.
 
-    b) **Tatsächlich:** Migration `0054` ist in der Produktionsdatenbank
-       **noch nicht eingespielt** (siehe `supabase/migrations/README.md`);
-       dort stehen die Schalter bei neuen Konten weiterhin auf „aus". Bis
-       zum Einspielen beschreibt dieser Text also eine weitergehende
-       Sichtbarkeit als tatsächlich stattfindet. Der Text darf erst
-       zusammen mit der eingespielten Migration veröffentlicht werden —
-       oder die Migration muss vorher eingespielt sein.
+    b) ~~**Tatsächlich:** Migration `0054` ist in der Produktionsdatenbank
+       noch nicht eingespielt.~~ — erledigt 2026-09-07: `0054` ist
+       eingespielt und an den Spaltenvorgaben verifiziert (siehe
+       `supabase/migrations/README.md`, „Stand der Einspielung"). Code,
+       Produktionsdatenbank und dieser Text beschreiben seither denselben
+       Opt-out-Zustand; die veröffentlichte HTML-Fassung ist am selben Tag
+       nachgezogen.

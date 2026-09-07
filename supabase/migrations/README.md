@@ -157,24 +157,27 @@ where n.nspname = 'public' and p.proname = 'DIE_FUNKTION';
 ## Stand der Einspielung (Prüfung 2026-09-06)
 
 Beim Einspielen von 0059 wurde der Ledger erneut mit den Dateien im Repo
-verglichen. Drei Migrationen sind **nicht** eingespielt:
+verglichen. Drei Migrationen waren damals **nicht** eingespielt; eine davon
+ist seit 2026-09-07 nachgezogen:
 
 | Datei | Zustand in der Datenbank |
 | --- | --- |
 | `0042_account_deletion.sql` | bewusst nicht eingespielt (siehe oben) — Folge: die Spalte `profiles.geloescht_am` existiert nicht |
 | `0058_kontoloeschung_werte_nullen.sql` | nicht eingespielt; setzt `geloescht_am` voraus und scheitert deshalb, solange 0042 fehlt |
-| `0054_sichtbarkeit_standardmaessig_aktiv.sql` | nicht eingespielt — die Sichtbarkeits-Schalter stehen in der Produktionsdatenbank weiterhin auf `false` (Opt-in), nicht auf `true` |
+| `0054_sichtbarkeit_standardmaessig_aktiv.sql` | **eingespielt am 2026-09-07** — die sechs Sichtbarkeits-Schalter stehen in der Produktionsdatenbank bei neuen Konten auf `true` (Opt-out) |
 
-Die letzte Zeile ist die folgenreichste: der Code beschreibt ein
-Opt-out-Verhalten, das es in Produktion nicht gibt. Auf Produktentscheid
-beschreiben die Rechtstexte seit `docs/rechtstexte/datenschutz.md` (Stand
-2026-09-07) **den Zustand des Codes**, also Opt-out — nicht mehr den der
-Produktionsdatenbank. Damit gilt: **0054 muss eingespielt sein, bevor die
-Rechtstexte in dieser Fassung veröffentlicht werden**, sonst behaupten sie
-eine weitergehende Sichtbarkeit als tatsächlich stattfindet. Die
-datenschutzrechtliche Prüfung der Umkehrung auf Opt-out (Art. 7 DSG,
-Art. 25 DSGVO) steht weiterhin aus und ist als offener Punkt 12 in der
-Datenschutzerklärung vermerkt.
+Zu 0054 ein Vorbehalt beim Nachprüfen: die Nummer ist doppelt vergeben
+(`0054_leaderboard_user_totals.sql` trägt sie auch), der Ledger allein
+beweist deshalb nicht, welche Hälfte eingespielt ist. Verifiziert wurde am
+2026-09-07 an den Objekten — die Spaltenvorgaben in `pg_attrdef` für
+`zeigt_fahrzeuge`, `zeigt_avatar`, `zeigt_paesse`, `zeigt_hoehenmeter`,
+`zeigt_distanz` und `zeigt_follower_liste` stehen auf `true`. Damit
+beschreiben Code, Produktionsdatenbank und Rechtstexte
+(`docs/rechtstexte/datenschutz.md` und die veröffentlichte Fassung unter
+`strado.ch/legal/datenschutz`, beide Stand 2026-09-07) denselben
+Opt-out-Zustand. Die datenschutzrechtliche Prüfung der Umkehrung auf
+Opt-out (Art. 7 DSG, Art. 25 DSGVO) steht weiterhin aus und ist als
+offener Punkt 12 in der Datenschutzerklärung vermerkt.
 
 ## Premium-Migrationen 0059–0062 (eingespielt 2026-09-06)
 
