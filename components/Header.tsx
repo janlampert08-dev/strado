@@ -5,6 +5,7 @@ import { isModerator } from "@/lib/moderation";
 import { getUnseenKudosCount } from "@/lib/kudos";
 import { getNavItems } from "@/lib/nav";
 import BackButton from "@/components/BackButton";
+import Wortmarke from "@/components/Wortmarke";
 import BottomNav from "@/components/BottomNav";
 import { buttonVariants } from "@/components/ui/Button";
 
@@ -40,8 +41,13 @@ export default async function Header({ back }: { back?: string } = {}) {
       <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border bg-background/85 px-4 py-3 backdrop-blur-xl sm:px-6 sm:py-4">
         <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           {back && <BackButton fallbackHref={back} />}
-          <Link href="/" className="shrink-0 text-lg font-semibold tracking-tight">
-            Strado
+          {/* Die Wortmarke ist eine Kontur (lib/marke.ts), kein gesetzter
+              Text — h-[18px] entspricht der Höhe, die der frühere Textlink
+              in text-lg hatte, w-auto lässt den viewBox die Breite bestimmen.
+              text-foreground fixiert die Farbe, damit die Marke keine
+              Hover-Farbe der Leiste erbt. */}
+          <Link href="/" className="shrink-0 text-foreground" aria-label="Strado, zur Startseite">
+            <Wortmarke className="h-[18px] w-auto" />
           </Link>
         </div>
         <div className="flex shrink-0 items-center gap-3 sm:gap-4">

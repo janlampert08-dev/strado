@@ -105,6 +105,14 @@ is what should be corrected.
   written without adding that first) and every test file lives in `lib/`. A change
   confined to `components/` or `app/` has no automated coverage — say so
   rather than implying the suite covered it.
+- **The brand is one outline, not a font.** `lib/marke.ts` holds the "strado"
+  wordmark and the "s" signet as SVG path data (Familjen Grotesk Bold, SIL
+  OFL, converted to outlines). `components/Wortmarke.tsx`, `app/icon.tsx`,
+  `app/apple-icon.tsx`, both `opengraph-image.tsx` files and the canvas in
+  `lib/shareImage.ts` all draw from it, so the mark survives Satori and
+  Canvas, which cannot use a CSS webfont. The app still loads only Inter and
+  IBM Plex Mono — do not add a third font to render the logo. Note the
+  wordmark is set lowercase while running copy says "Strado".
 - `types/database.ts` exports `Database = any`; the row types next to it are
   hand-maintained and cover only some tables.
 

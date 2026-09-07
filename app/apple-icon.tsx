@@ -1,11 +1,16 @@
 import { ImageResponse } from "next/og";
+import { signetDataUri } from "@/lib/marke";
 
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
-// Siehe app/icon.tsx — gleiche Platzhalter-Marke, aber in Apples
-// empfohlener Touch-Icon-Grösse (180x180) und ohne eigenes Rounding
-// (iOS maskiert Home-Bildschirm-Icons selbst).
+/**
+ * Das Touch-Icon für iOS.
+ *
+ * Siehe app/icon.tsx — dieselbe Marke, aber in Apples empfohlener Grösse
+ * (180x180) und ohne eigenes Rounding, weil iOS Home-Bildschirm-Icons selbst
+ * maskiert.
+ */
 export default function AppleIcon() {
   return new ImageResponse(
     (
@@ -17,12 +22,9 @@ export default function AppleIcon() {
           alignItems: "center",
           justifyContent: "center",
           background: "#3d5afe",
-          color: "#fafafa",
-          fontSize: 112,
-          fontWeight: 600,
         }}
       >
-        C
+        <img src={signetDataUri("#fafafa")} width={106} height={106} alt="Strado" />
       </div>
     ),
     { ...size },
