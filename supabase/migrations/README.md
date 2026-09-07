@@ -176,6 +176,40 @@ datenschutzrechtliche Prüfung der Umkehrung auf Opt-out (Art. 7 DSG,
 Art. 25 DSGVO) steht weiterhin aus und ist als offener Punkt 12 in der
 Datenschutzerklärung vermerkt.
 
+## Nicht eingespielt: 0077 (Stand: 2026-09-07)
+
+`0077_strecken_erstellen_premium.sql` ist mit dem Code in diesem Branch
+entstanden und **noch nicht eingespielt**. Sie zieht die INSERT-Policy auf
+`routes` auf `ist_premium or is_moderator` zusammen — eigene Strecken
+anlegen wird damit Premium (Produktentscheid 2026-09-07, bewusster Bruch
+mit dem additiven Gating aus `docs/premium-plan.md` Abschnitt 4; die AGB
+ziehen in einem eigenen PR nach).
+
+**Vor dem Deploy dieses Codes einspielen, oder zusammen damit — nicht
+vorher allein.** Die Policy wirkt sofort und unabhängig davon, welcher
+Code läuft: eingespielt, solange der alte Code ausgeliefert ist, sehen
+kostenlose Konten weiterhin das Formular, und das Speichern scheitert mit
+„Strecke konnte nicht gespeichert werden" statt mit dem Premium-Hinweis,
+den erst der neue Code zeigt. Umgekehrt (Code ohne Migration) bleibt der
+Direktweg über PostgREST für kostenlose Konten offen — die Server Action
+allein ist nur die höfliche Hälfte der Schranke.
+
+Nach dem Einspielen als `authenticated` prüfen, nicht als `postgres`:
+
+```sql
+select policyname, cmd, with_check
+from pg_policies
+where schemaname = 'public' and tablename = 'routes'
+  and policyname = 'Angemeldete Nutzer können Strecken vorschlagen';
+-- with_check muss den exists(...)-Teil auf profiles tragen.
+```
+
+Erwartung: ein Konto ohne `ist_premium` und ohne `is_moderator` bekommt
+auf `insert into routes` wie auf `rpc/propose_route_full` den Fehler
+`new row violates row-level security policy`; ein Premium- oder
+Moderatorkonto legt wie bisher an. UPDATE/DELETE-Policies auf `routes`
+sind unverändert — bestehende Strecken bleiben bearbeitbar.
+
 ## Premium-Migrationen 0059–0062 (eingespielt 2026-09-06)
 
 | Datei | Ledger-Eintrag | Bemerkung |
@@ -197,6 +231,11 @@ Abgleich mit dem Verzeichnis also nach Namen suchen, nicht nach Position.
 | `0063_eigene_abozeile_lesbar.sql` | gibt die **eigene** Zeile in `subscriptions` für `authenticated` frei — Policy auf `user_id = auth.uid()` plus Spalten-Grant ohne die Stripe-Kennungen |
 | `0064_private_strecken_bestandsschutz.sql` | Freikontingent 1 private Strecke, Bestandsschutz-Tabelle, `darf_private_strecke_anlegen()` |
 | `0065_gruenderplaetze.sql` | Verzeichnis der vergebenen Gründerpreis-Plätze, `gruenderplatz_beanspruchen()` und `gruenderplaetze_frei()` |
+
+Der Gründerpreis wird seit 2026-09-07 nicht mehr verkauft. Die Tabelle und
+die Funktionen aus 0065–0069 bleiben als Bestand stehen (sie benennen die
+bereits vergebenen Plätze), werden aber von der Anwendung nicht mehr
+aufgerufen — `lib/actions/billing.ts` und der Webhook kennen sie nicht mehr.
 
 Alle drei liefen gegen eine praktisch leere Produktionsdatenbank: 0 Abos,
 0 private Strecken, 0 Premium-Konten. Der Bestandsschutz-Backfill in 0064 hat
@@ -233,7 +272,9 @@ begrenzt hat.
 ## Premium-Migration 0069 (eingespielt 2026-09-07)
 
 `0069_gruenderplatz_reservierung_dicht_machen.sql` schliesst zwei Lücken in
-0066 — beide aus einem CodeRabbit-Befund zu PR #123.
+0066 — beide aus einem CodeRabbit-Befund zu PR #123. Wie 0065–0068 ist sie
+seit dem Ende des Gründerpreises (2026-09-07) nur noch Bestand: die
+Funktionen existieren, kein Code ruft sie mehr auf.
 
 1. **Die abgelaufene eigene Zeile umging die Kontingentprüfung.**
    `gruenderplatz_beanspruchen` prüfte mit `if found then` nur, ob eine Zeile

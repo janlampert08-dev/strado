@@ -30,6 +30,11 @@
 // hebt Obergrenzen an, es nimmt keine weg. Deshalb stehen die
 // Gratis-Obergrenzen hier auf genau den Werten, die vorher galten.
 //
+// Eine Ausnahme ist seit 2026-09-07 ausgesprochen: eigene Strecken anlegen
+// ist Premium (INSERT-Policy auf routes, Migration 0077). Das ist kein
+// Grenzwert, sondern ein Ja/Nein, und steht deshalb nicht hier — aber wer
+// diese Datei liest, um die Regel zu verstehen, soll die Ausnahme kennen.
+//
 // Jeder dieser Werte steht so in den veröffentlichten AGB (Ziff. 3.2). Ihn
 // zu ändern heisst, eine zugesagte Vertragsleistung zu ändern — Kernregel 16
 // verbietet, das nebenbei zu tun.
@@ -48,8 +53,9 @@ export const MAX_FOTOS_PREMIUM = 12;
 export const MAX_OFFLINE_STRECKEN_GRATIS = 3;
 
 /**
- * Private Strecken ohne Abo. Die EINZIGE Stelle, an der Premium etwas
- * einschränkt, was heute offen ist — entsprechend vorsichtig:
+ * Private Strecken ohne Abo. Seit eigene Strecken selbst Premium sind
+ * (0077), erreicht diese Grenze ohne Abo praktisch nur noch die Moderation;
+ * sie bleibt, weil der Bestandsschutz an ihr hängt:
  *
  * - Eine statt null, damit die Funktion ohne Abo erlebbar bleibt und nicht
  *   bloss als gesperrtes Symbol erscheint.
