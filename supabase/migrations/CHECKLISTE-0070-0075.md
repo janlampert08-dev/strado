@@ -115,10 +115,30 @@ select count(*) from public.public_fahrten where fahrzeug_typ is not null;
 reset role;
 ```
 
+Was dieser Ausgangswert überhaupt enthält, hängt daran, welche Fassung
+der View gerade eingespielt IST — und das entscheidet über beide
+Vergleichszahlen. Die Fassung aus `0045` zeigt `v.typ` ohne Rücksicht auf
+`zeigt_fahrzeuge` (genau der Defekt, den `0070` behebt); die aus `0038`
+hatte die Klammer noch. Vor dem Rechnen also nachsehen:
+
+```sql
+select pg_get_viewdef('public.public_fahrten'::regclass, true);
+```
+
+Steht dort `zeigt_fahrzeuge` bereits im `case` für `fahrzeug_typ`, waren
+die Zeilen aus (2) schon vorher maskiert — dann ist ihr Anteil am
+Rückgang 0, und (3) braucht die auskommentierte Zeile unten. Steht `v.typ`
+ungeklammert da, gilt die Rechnung wie beschrieben.
+
 ```sql
 -- (3) Der zweite Anteil am Rückgang: Fahrten auf privaten Strecken, die
 --     aus der View fallen (Menge 1) und dabei ein sichtbares Fahrzeug
 --     hatten. Laut 0060 erwartet: 0.
+--
+--     Die auskommentierte Zeile gehört dazu, WENN die eingespielte View
+--     zeigt_fahrzeuge bereits berücksichtigt (0038-Fassung). Zeigt sie
+--     v.typ ungeklammert (0045-Fassung), bleibt sie draussen — sonst
+--     fehlen dem Vorher-Wert genau die Zeilen, die er mitgezählt hat.
 select count(*) from public.route_completions rc
   join public.profiles p on p.id = rc.user_id
   join public.routes r on r.id = rc.route_id
@@ -127,11 +147,14 @@ select count(*) from public.route_completions rc
    and rc.art = 'strecke'
    and r.status_ok = true
    and r.ist_privat = true
+   -- and p.zeigt_fahrzeuge = true
    and v.typ is not null;
 ```
 
 **Danach prüfen**, dass die Klammer wirkt — dieselbe `anon`-Zählung
-erneut. Sie muss um genau **(2) + (3)** kleiner sein als vorher: (2) sind
+erneut. Bei der `0045`-Fassung als Ausgangspunkt muss sie um genau
+**(2) + (3)** kleiner sein als vorher, bei der `0038`-Fassung nur um (3):
+(2) sind
 die Fahrten, die in der View bleiben und nur ihr Fahrzeug verlieren, (3)
 die, die ganz herausfallen und dabei eines mitgenommen haben. Erwartung
 für (3) ist 0; ist sie es, ist der Rückgang genau (2).
@@ -293,8 +316,14 @@ Der Weg zurück ist ein Backup: `left()` und der Deckel sind nicht
 umkehrbar. Auf einer Datenbank mit nennenswertem Bestand deshalb vorher
 sichern — mindestens die betroffenen Zeilen:
 
+Bewusst **ohne** `if not exists`: Existiert die Tabelle schon — etwa aus
+einem abgebrochenen ersten Anlauf —, soll dieser Befehl scheitern statt
+stillschweigend die alte, womöglich leere Sicherung stehen zu lassen. Wer
+sie behalten will, hängt ein Datum an den Namen und zieht die
+Rückweg-Abfrage darunter nach.
+
 ```sql
-create table if not exists public.fahrt_werte_vor_0074 as
+create table public.fahrt_werte_vor_0074 as
 select id, start_ort, region, bewegte_zeit_sekunden, dauer_sekunden
   from public.route_completions
  where char_length(start_ort) > 120
@@ -303,6 +332,20 @@ select id, start_ort, region, bewegte_zeit_sekunden, dauer_sekunden
     or (dauer_sekunden is not null
         and bewegte_zeit_sekunden > dauer_sekunden);
 ```
+
+Der Weg zurück aus dieser Sicherung:
+
+```sql
+update public.route_completions rc
+   set start_ort = b.start_ort,
+       region = b.region,
+       bewegte_zeit_sekunden = b.bewegte_zeit_sekunden
+  from public.fahrt_werte_vor_0074 b
+ where b.id = rc.id;
+```
+
+Er setzt voraus, dass die Constraints vorher wieder fallen — sie weisen
+genau diese Werte ab.
 
 **Danach** muss dieselbe Zählung oben überall 0 ergeben; erst dann ist
 ein `VALIDATE CONSTRAINT` gefahrlos.
