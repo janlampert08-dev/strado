@@ -199,7 +199,7 @@ export default async function ProfilPage() {
           <div className="flex items-start justify-between gap-4">
             <AvatarUpload avatarUrl={profile?.avatar_url ?? null} name={profile?.display_name ?? null} />
             {/* Ersetzt den vorherigen "Abmelden"-Textlink an dieser Stelle —
-                Abmelden ist jetzt Teil des Konto-Tabs in den Einstellungen
+                Abmelden ist jetzt der Abschnitt "Sitzung" in den Einstellungen
                 (app/profil/einstellungen), dafür hier ein unauffälliger
                 Zugang zu den Einstellungen selbst statt eines zweiten,
                 redundanten Links weiter unten. */}

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { KeyRound, Lock, MapPin, Palette, Scale } from "lucide-react";
+import { KeyRound, Lock, LogOut, MapPin, Palette, Scale } from "lucide-react";
 import Header from "@/components/Header";
 import VisibilitySettings from "@/components/VisibilitySettings";
 import { DEFAULT_PRIVACY_RADIUS_M } from "@/lib/track";
@@ -16,8 +16,9 @@ import { LEGAL_URLS } from "@/lib/constants";
 // (bisher app/profil/privatsphaere, hierher verschoben), Darstellung
 // (Hell/Dunkel — bisher nur im Header erreichbar, hier zusätzlich für
 // Auffindbarkeit), Streckenvorschläge (bisher Teil der "Verwaltung"-Gruppe
-// auf der Profilseite) und Konto (Passwort ändern/Abmelden — bisher ohne
-// jeden Einstieg aus der UI ausser dem Passwort-Reset-Link).
+// auf der Profilseite), Sitzung (Abmelden) und Konto (Passwort ändern,
+// Konto löschen — bisher ohne jeden Einstieg aus der UI ausser dem
+// Passwort-Reset-Link).
 //
 // Vormals ein Tab-Widget (SettingsTabs.tsx, seither entfernt): gestapelte
 // Sections mit eigener Card statt Tabs, dasselbe Muster wie die Profilseite
@@ -68,10 +69,8 @@ export default async function EinstellungenPage() {
               Privatsphäre
             </h2>
             <p className="text-sm text-muted">
-              Legt fest, was andere Nutzer auf deinem öffentlichen Profil sehen. Standardmässig ist
-              alles an. Ob eine einzelne Fahrt öffentlich ist, entscheidest du separat im
-              Fazit-Screen beim Speichern oder per Symbol bei &bdquo;Getrackte Fahrten&ldquo; in
-              deinem Profil.
+              Legt fest, was andere auf deinem Profil sehen. Ob eine einzelne Fahrt öffentlich
+              ist, entscheidest du beim Speichern oder in &bdquo;Getrackte Fahrten&ldquo;.
             </p>
             <VisibilitySettings
               zeigtFahrzeuge={profile?.zeigt_fahrzeuge ?? true}
@@ -144,27 +143,41 @@ export default async function EinstellungenPage() {
             )}
           </section>
 
+          {/* Abmelden als eigener Abschnitt, bewusst getrennt von "Konto
+              löschen": vorher stand die alltägliche Aktion eine Zeile über
+              der unumkehrbaren, in derselben Card. Wer schnell abmelden
+              will, soll dabei nichts Endgültiges streifen. */}
+          <section className="flex flex-col gap-3">
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold tracking-wide text-muted uppercase">
+              <LogOut className="h-4 w-4" aria-hidden="true" />
+              Sitzung
+            </h2>
+            <Card className="flex flex-col gap-3 p-4">
+              <p className="text-sm text-muted">Du bist auf diesem Gerät angemeldet.</p>
+              <form action="/auth/abmelden" method="post">
+                <Button type="submit" variant="secondary" size="sm" className="self-start">
+                  Abmelden
+                </Button>
+              </form>
+            </Card>
+          </section>
+
           <section className="flex flex-col gap-3">
             <h2 className="flex items-center gap-1.5 text-sm font-semibold tracking-wide text-muted uppercase">
               <KeyRound className="h-4 w-4" aria-hidden="true" />
               Konto
             </h2>
             <Card className="flex flex-col gap-3 p-4">
-              <p className="text-sm text-muted">{user.email}</p>
+              <p className="text-sm">
+                <span className="text-muted">E-Mail:</span>{" "}
+                <span className="text-foreground">{user.email}</span>
+              </p>
               <Link
                 href="/profil/passwort-aendern"
                 className={buttonVariants({ variant: "secondary", size: "sm", className: "self-start" })}
               >
                 Passwort ändern
               </Link>
-              {/* Von der Profilseite hierher verschoben (stand vorher oben
-                  neben dem Avatar) — gehört inhaltlich zu "Konto" statt als
-                  isolierte Aktion neben dem Profilbild zu stehen. */}
-              <form action="/auth/abmelden" method="post" className="mt-2 border-t border-border pt-3">
-                <Button type="submit" variant="secondary" size="sm" className="self-start">
-                  Abmelden
-                </Button>
-              </form>
               <DeleteAccountSection />
             </Card>
           </section>
