@@ -172,10 +172,10 @@ export default function NeueStreckeForm() {
           <BackButton fallbackHref="/" />
 
           <div>
-            <h1 className="text-display font-semibold">Strecke vorschlagen</h1>
+            <h1 className="text-display font-semibold">Strecke erstellen</h1>
             <p className="mt-1 text-sm text-muted">
               Setze nacheinander Wegpunkte auf der Karte — die Route wird automatisch entlang
-              echter Strassen berechnet. Öffentliche Vorschläge prüft ein Moderator, bevor sie
+              echter Strassen berechnet. Öffentliche Strecken prüft ein Moderator, bevor sie
               sichtbar werden.
             </p>
           </div>
@@ -390,7 +390,7 @@ export default function NeueStreckeForm() {
                   </p>
                 )}
                 <Button type="submit" disabled={pending || !activeDirections} className="w-full">
-                  {pending ? "Speichern…" : istPrivat ? "Privat speichern" : "Vorschlagen"}
+                  {pending ? "Speichern…" : istPrivat ? "Privat speichern" : "Zur Prüfung einreichen"}
                 </Button>
               </div>
             </>

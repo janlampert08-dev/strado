@@ -12,9 +12,9 @@ export interface NavItem {
 //
 // Ein Unterschied bleibt seit dem Aufzeichnen freier Fahrten: die mobile
 // Leiste trägt an der mittleren, am leichtesten erreichbaren Position
-// "Fahrt starten" und dafür nicht mehr "Vorschlagen" (sechs Tabs wären auf
-// schmalen Geräten zu eng, und der Weg zum Streckenvorschlag steht ohnehin
-// prominent auf /profil). Der Header ist eine reine Textleiste mit
+// "Fahrt starten" und dafür nicht mehr "Erstellen" (sechs Tabs wären auf
+// schmalen Geräten zu eng, und der Weg zum Erstellen einer Strecke steht
+// ohnehin prominent auf /profil). Der Header ist eine reine Textleiste mit
 // horizontalem Überlauf — dort ist Platz für beides, also stehen dort auch
 // beide.
 export function getNavItems({
@@ -41,7 +41,7 @@ export function getNavItems({
   // an anon freigegeben) — sie fehlten in dieser Liste nur, wodurch es für
   // Abgemeldete keinen Weg dorthin gab ausser über einen geteilten Link.
   // Das ist genau der Teil des Produkts, der jemanden ohne Konto überzeugen
-  // kann. "Vorschlagen" und "Profil" bleiben weg: beide sind ohne Konto
+  // kann. "Erstellen" und "Profil" bleiben weg: beide sind ohne Konto
   // nichts als eine Umleitung auf /anmelden.
   if (!loggedIn) {
     return [
@@ -53,7 +53,12 @@ export function getNavItems({
     ];
   }
 
-  const vorschlagen: NavItem = { href: "/strecken/neu", label: "Vorschlagen", icon: PlusIcon };
+  // Heisst "Erstellen", nicht mehr "Vorschlagen": seit eigene Strecken
+  // Premium sind, ist das Wort für das, was man dort tut — eine private
+  // Strecke entsteht ohne jede Prüfung, nur die öffentliche geht noch durch
+  // die Moderation. Der Bezeichner bleibt, damit die Tests und der Rest des
+  // Codes nicht mitwandern müssen.
+  const vorschlagen: NavItem = { href: "/strecken/neu", label: "Erstellen", icon: PlusIcon };
   const mittlereAktionen: NavItem[] =
     surface === "bottom" ? [fahrtStarten] : [fahrtStarten, vorschlagen];
 
