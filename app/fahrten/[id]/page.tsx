@@ -44,12 +44,39 @@ export async function generateMetadata({
   if (!completion) return { title: "Fahrt – Cornice" };
 
   const fahrer = completion.displayName ?? "Fahrer";
+
+  // Ohne description bestimmt der Crawler das Snippet aus beliebigem
+  // Seitentext — bei einer Fahrtseite landet dort im Zweifel
+  // "Kudos geben · Melden · Löschen". Die Kennzahlen stehen ohnehin schon
+  // geladen bereit.
+  const kennzahlen = [
+    completion.distanzKm != null ? `${completion.distanzKm.toFixed(0)} km` : null,
+    completion.dauerSekunden ? formatDuration(completion.dauerSekunden) : null,
+  ]
+    .filter(Boolean)
+    .join(" in ");
+
   if (completion.art === "frei") {
-    return { title: `${freieFahrtTitel(completion.titel, completion.startOrt)} – Fahrt von ${fahrer} – Cornice` };
+    const titel = freieFahrtTitel(completion.titel, completion.startOrt);
+    return {
+      title: `${titel} – Fahrt von ${fahrer} – Cornice`,
+      description: kennzahlen
+        ? `${fahrer} ist ${kennzahlen} gefahren — ${titel}. Auf Cornice ansehen.`
+        : `Freie Fahrt von ${fahrer} auf Cornice.`,
+      openGraph: { type: "article", title: `${titel} – Fahrt von ${fahrer}` },
+    };
   }
 
   const route = completion.routeId ? await getRoute(completion.routeId) : null;
-  return { title: route ? `${route.name} – Fahrt von ${fahrer} – Cornice` : "Fahrt – Cornice" };
+  if (!route) return { title: "Fahrt – Cornice" };
+
+  return {
+    title: `${route.name} – Fahrt von ${fahrer} – Cornice`,
+    description: kennzahlen
+      ? `${fahrer} ist ${kennzahlen} auf der Strecke ${route.name} gefahren. Auf Cornice ansehen.`
+      : `Fahrt von ${fahrer} auf der Strecke ${route.name}. Auf Cornice ansehen.`,
+    openGraph: { type: "article", title: `${route.name} – Fahrt von ${fahrer}` },
+  };
 }
 
 // Custom Detailseite pro Aufzeichnung (Strava-artig: Strecke + Stats +

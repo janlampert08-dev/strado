@@ -30,7 +30,16 @@ export async function generateMetadata({
   const { id } = await params;
   const profile = await getPublicProfile(id);
   if (!profile) return { title: "Fahrer – Cornice" };
-  return { title: `${profile.displayName ?? "Fahrer"} – Cornice` };
+  const name = profile.displayName ?? "Ein Fahrer";
+  return {
+    title: `${name} – Cornice`,
+    // Kurz und ohne Kennzahlen: Welche davon überhaupt sichtbar sind,
+    // entscheiden die zeigt_*-Schalter des Nutzers (lib/profile.ts). Sie in
+    // die Beschreibung zu ziehen würde diese Entscheidung an Suchmaschinen
+    // vorbei aushebeln — deshalb bewusst nur der Name.
+    description: `Profil von ${name} auf Cornice: gefahrene Strecken und Touren.`,
+    openGraph: { type: "profile", title: `${name} – Cornice` },
+  };
 }
 
 export default async function FahrerPage({
