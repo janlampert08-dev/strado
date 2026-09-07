@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useState } from "react";
+import { ConfirmDialog } from "@/components/ui/Dialog";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Route as RouteIcon } from "lucide-react";
@@ -20,6 +21,7 @@ import { fieldClassName } from "@/components/ui/Input";
 import { buttonVariants } from "@/components/ui/Button";
 import Skeleton from "@/components/ui/Skeleton";
 import Card from "@/components/ui/Card";
+import FullscreenDialog from "@/components/ui/FullscreenDialog";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
@@ -81,6 +83,12 @@ export default function FreeRideForm({
   const liveLapHint = useLiveLapHint(phase === "tracking", recorder.liveTrailPoints, routes);
 
   const [titel, setTitel] = useState("");
+  // Dieselbe Rückfrage wie im angemeldeten Pfad (RideSummaryForm).
+  // Vorher verwarf ein einzelner Tap hier eine bereits FERTIGE
+  // Aufzeichnung sofort und endgültig — ausgerechnet im Gast-Fall,
+  // wo serverseitig noch nichts liegt und der lokale Snapshot die
+  // einzige Kopie der Fahrt ist.
+  const [gastVerwerfenOffen, setGastVerwerfenOffen] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   // Hält die automatische Weiterleitung an, solange es noch etwas
@@ -140,12 +148,57 @@ export default function FreeRideForm({
     router.push(`${ziel}?next=${encodeURIComponent(zurueck)}`);
   }
 
+  // Gast-Übernahme fehlgeschlagen: Es lag ein ?fortsetzen=-Token vor, die
+  // damit angekündigte Aufzeichnung war aber nicht mehr auffindbar (Token
+  // älter als 2 h, anderer Browser, gesperrter Speicher). Der Recorder
+  // startet dann bewusst nicht — hier steht, was passiert ist, statt dass
+  // der Nutzer in einer leeren Aufzeichnung landet und glaubt, seine Fahrt
+  // sei einfach verschwunden.
+  if (recorder.uebernahmeGescheitert) {
+    return (
+      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)]">
+        <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-5 py-8 sm:px-6 sm:py-10">
+          <Card surface className="flex flex-col gap-3 p-4 text-sm">
+            <p className="font-medium text-foreground">
+              Die aufgezeichnete Fahrt konnte nicht übernommen werden.
+            </p>
+            <p className="text-muted">
+              Aufzeichnungen liegen nur in dem Browser, in dem sie entstanden sind. Wurde der
+              Bestätigungslink auf einem anderen Gerät oder in einer anderen App geöffnet, oder ist
+              zu viel Zeit vergangen, lässt sich die Fahrt nicht mehr zuordnen. Dein Konto ist
+              angelegt — die Fahrt selbst ist leider verloren.
+            </p>
+            {/* Nicht router.push("/fahrten/neu"): Dieser Bildschirm liegt
+                selbst auf /fahrten/neu, nur mit einem ?fortsetzen=-Marker in
+                der URL. Eine Client-Navigation auf dieselbe Route hängt die
+                Komponente nicht aus — uebernahmeGescheitert bliebe stehen
+                und der Knopf zeigte wieder genau diesen Bildschirm.
+                Stattdessen das Flag zurücksetzen (der Recorder steht ohnehin
+                auf "idle", die Übernahme ist vor jedem Start abgebrochen)
+                und den verbrauchten Marker per replace aus der URL nehmen,
+                damit ein Neuladen nicht wieder hier landet. */}
+            <button
+              type="button"
+              onClick={() => {
+                recorder.uebernahmeFehlerVerwerfen();
+                router.replace("/fahrten/neu");
+              }}
+              className={buttonVariants({ variant: "accent", size: "sm", className: "self-start" })}
+            >
+              Neue Fahrt aufzeichnen
+            </button>
+          </Card>
+        </div>
+      </FullscreenDialog>
+    );
+  }
+
   if (phase === "finished") {
     const avgKmh =
       result && result.seconds > 0 ? result.distanceKm / (result.seconds / 3600) : null;
 
     return (
-      <div className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)]">
+      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)]">
         <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-5 py-8 sm:px-6 sm:py-10">
           <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">Fazit</h2>
 
@@ -178,6 +231,7 @@ export default function FreeRideForm({
               Serverseitig ändert das nichts: logFreeRide weist eine Fahrt
               ohne Session unabhängig davon ab. */}
           {istGast ? (
+          <>
             <Card surface className="flex flex-col gap-3 p-4 text-sm">
               <p className="font-medium text-foreground">Fahrt aufgezeichnet.</p>
               <p className="text-muted">
@@ -204,12 +258,22 @@ export default function FreeRideForm({
               </div>
               <button
                 type="button"
-                onClick={handleExit}
+                onClick={() => setGastVerwerfenOffen(true)}
                 className="self-start text-xs text-muted underline hover:text-foreground"
               >
                 Fahrt verwerfen
               </button>
             </Card>
+            <ConfirmDialog
+              open={gastVerwerfenOffen}
+              title="Fahrt verwerfen?"
+              description="Die aufgezeichnete Fahrt wurde noch nicht gespeichert und geht dabei endgültig verloren."
+              confirmLabel="Verwerfen"
+              variant="danger"
+              onConfirm={handleExit}
+              onCancel={() => setGastVerwerfenOffen(false)}
+            />
+          </>
           ) : // Erst nach erfolgreichem Speichern relevant, siehe
             // hasUnacknowledgedPartial oben: hält kurz an, bevor es wie
             // gewohnt auf die neue Fahrt weitergeht — es gibt sonst keine
@@ -279,14 +343,14 @@ export default function FreeRideForm({
             </RideSummaryForm>
           )}
         </div>
-      </div>
+      </FullscreenDialog>
     );
   }
 
   // phase "idle" und "tracking" teilen sich denselben Vollbild-Screen: die
   // Aufzeichnung läuft ab dem ersten Fix, bis dahin steht nur die Karte da.
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+    <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col bg-background">
       <div className="min-h-0 flex-1">
         <RouteMap
           routes={routes}
@@ -342,7 +406,7 @@ export default function FreeRideForm({
               : `„${liveLapHint.routeName}" wird erkannt · ${Math.round(liveLapHint.fraction * 100)}%`}
           </p>
         )}
-        {recorder.locationError && <p className="text-sm text-danger">{recorder.locationError}</p>}
+        {recorder.locationError && <p role="alert" className="text-sm text-danger">{recorder.locationError}</p>}
         <div className="flex flex-wrap items-center justify-between gap-3">
           {recorder.hasStarted ? (
             <button
@@ -366,6 +430,6 @@ export default function FreeRideForm({
           </p>
         </div>
       </div>
-    </div>
+    </FullscreenDialog>
   );
 }

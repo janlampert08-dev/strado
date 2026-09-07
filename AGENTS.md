@@ -32,14 +32,15 @@ Facts that are true right now and are expensive to rediscover. Anything
 here is a snapshot — if the code disagrees, the code wins, and this section
 is what should be corrected.
 
-- **Premium is disabled by commented-out source, not a feature flag.**
-  `components/PremiumCard.tsx`, `PremiumPurchaseView.tsx` and
-  `PremiumCheckoutForm.tsx` are commented out in full, `app/profil/premium/`
-  is a bare `redirect("/profil")`, and `lib/leaderboard.ts` hardcodes
-  `isPremiumBadge: false`. The backend — `lib/actions/billing.ts`, the
-  webhook, migrations `0021`/`0022`/`0026` — is live. Re-enabling it is the
-  active workstream (`docs/premium-plan.md`); don't "clean up" the commented
-  blocks or the seemingly unused billing code.
+- **Premium is live.** The purchase page, Payment Element, customer portal,
+  founder seats, the `subscriptions` table and the nightly reconciliation cron
+  all ship. `lib/leaderboard.ts` evaluates `ist_premium && zeigt_premium_badge`
+  for the badge. This section previously said the opposite — that the Premium
+  components were commented out and re-enabling them was the active workstream
+  — which is why the paid path went unaudited until 2026-09-07: a security
+  pass scoped from this file skipped it as not-yet-shipped. Treat everything
+  under `app/profil/premium/`, `lib/actions/billing.ts`, `lib/stripe*` and the
+  webhook as production code.
 - **`lib/constants.ts` `LEGAL_URLS` points at
   `https://cornice-ch.vercel.app`** — the address where the pages actually
   stand today. The earlier `https://xyz.ch/...` placeholder is long gone; this
@@ -65,15 +66,20 @@ is what should be corrected.
 - **Migrations are applied by hand and the newest ones are not applied.**
   Green CI means nothing about the live schema. See
   `supabase/migrations/README.md` and `.agents/deployment.md`.
-- **Migration numbers are not unique.** `0034`, `0041`, `0053` and `0054`
-  each exist twice. Reconciling a deploy by version number alone is
-  ambiguous — check the objects.
+- **Migration numbers are not unique.** `0034`, `0041`, `0053`, `0054`, `0059`
+  and `0060` each exist twice — six pairs, not four. Reconciling a deploy by
+  version number alone is ambiguous, so check the objects. In the `0059` and
+  `0060` pairs the un-applied half is the security migration (the fixes for
+  audit findings A1 and A3). `scripts/check-migration-prefixes.mjs` runs in CI
+  and fails on a *new* collision; the six existing pairs are listed there as
+  legacy.
 - **Open audit findings are tracked in
   `docs/audit/README.md#remediation-status`**, not in GitHub issues. A1 is
   partially fixed; A4, A5, A6 and everything in §B are open. Read that
   table before concluding you have found something new.
 - **There are no component or E2E tests.** Vitest runs with
-  `environment: "node"` and every test file lives in `lib/`. A change
+  `environment: "node"` (no jsdom installed, so a component test cannot be
+  written without adding that first) and every test file lives in `lib/`. A change
   confined to `components/` or `app/` has no automated coverage — say so
   rather than implying the suite covered it.
 - `types/database.ts` exports `Database = any`; the row types next to it are

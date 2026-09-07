@@ -18,7 +18,7 @@ import {
   getFollowingProfiles,
   getMutualFollowers,
 } from "@/lib/follows";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/server";
 import Card from "@/components/ui/Card";
 import { freieFahrtTitel } from "@/lib/completions";
 
@@ -30,7 +30,27 @@ export async function generateMetadata({
   const { id } = await params;
   const profile = await getPublicProfile(id);
   if (!profile) return { title: "Fahrer – Strado" };
-  return { title: `${profile.displayName ?? "Fahrer"} – Strado` };
+  const name = profile.displayName ?? "Ein Fahrer";
+  // Kurz und ohne Kennzahlen: Welche davon überhaupt sichtbar sind,
+  // entscheiden die zeigt_*-Schalter des Nutzers (lib/profile.ts). Sie in
+  // die Beschreibung zu ziehen würde diese Entscheidung an Suchmaschinen
+  // vorbei aushebeln — deshalb bewusst nur der Name.
+  const beschreibung = `Profil von ${name} auf Strado: gefahrene Strecken und Touren.`;
+  return {
+    title: `${name} – Strado`,
+    description: beschreibung,
+    // description muss im openGraph-Block wiederholt werden — Next zieht
+    // sie nicht automatisch nach, sobald der Block eigene Felder hat.
+    openGraph: { type: "profile", title: `${name} – Strado`, description: beschreibung },
+    // noindex statt eines Disallow in robots.ts: app/sitemap.ts lässt
+    // Fahrer-Profile aus Datenschutzgründen aus, aber /feed verlinkt jedes
+    // von ihnen. Ein Disallow verbietet nur das ABRUFEN — die URL kann über
+    // solche Links trotzdem im Index landen, dann eben ohne Inhalt, und der
+    // Crawler bekommt diese Anweisung hier nie zu sehen, weil er die Seite
+    // gar nicht erst holen darf. Genau umgekehrt wirkt es: crawlen lassen,
+    // damit das noindex ankommt.
+    robots: { index: false, follow: true },
+  };
 }
 
 export default async function FahrerPage({
@@ -39,17 +59,19 @@ export default async function FahrerPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
 
-  // getPublicProfile() und auth.getUser() sind voneinander unabhängig
-  // (das Profil selbst braucht den Betrachter nicht) — parallel gestartet.
+  // getPublicProfile() und der Betrachter sind voneinander unabhängig (das
+  // Profil selbst braucht ihn nicht) — parallel gestartet.
   // Follower-/Following-LISTEN (nicht die Zahlen) folgen erst danach, weil
   // ob sie überhaupt geladen werden von profile.zeigtFollowerListe abhängt.
-  const [profile, {
-    data: { user: viewer },
-  }, followCounts] = await Promise.all([
+  //
+  // getCurrentUser() statt eines eigenen Clients mit auth.getUser(): der
+  // Header rendert auf derselben Anfrage und holt denselben Nutzer aus dem
+  // request-weiten Cache. Ein zweiter Supabase-Client wird hier sonst
+  // nirgends gebraucht.
+  const [profile, viewer, followCounts] = await Promise.all([
     getPublicProfile(id),
-    supabase.auth.getUser(),
+    getCurrentUser(),
     getFollowCounts(id),
   ]);
 
@@ -65,7 +87,8 @@ export default async function FahrerPage({
   // Betrachter — dieselbe Bedingung wie beim Kudos-Button oben.
   const showFollow = !!viewer && !isOwnProfile;
 
-  const [kudosByCompletion, followers, following, mutualFollowers] = await Promise.all([
+  const [kudosByCompletion, followers, following, mutualFollowers, alreadyFollowing] =
+    await Promise.all([
     getKudosForCompletions(
       profile.fahrten.map((f) => f.completion_id),
       viewer?.id ?? null,
@@ -78,9 +101,10 @@ export default async function FahrerPage({
     showFollow
       ? getMutualFollowers(viewer!.id, id)
       : Promise.resolve({ preview: [], totalCount: 0 }),
+    // Hing von nichts aus diesem Block ab und lief trotzdem als eigener,
+    // nachgelagerter Roundtrip — showFollow steht schon weiter oben fest.
+    showFollow ? isFollowing(viewer!.id, id) : Promise.resolve(false),
   ]);
-
-  const alreadyFollowing = showFollow ? await isFollowing(viewer!.id, id) : false;
 
   const zeigtStatistiken = profile.zeigtPaesse || profile.zeigtHoehenmeter || profile.zeigtDistanz;
   const istPrivat =

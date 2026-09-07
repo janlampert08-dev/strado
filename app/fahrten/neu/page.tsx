@@ -1,5 +1,5 @@
 import FreeRideForm from "@/components/FreeRideForm";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getRoutes } from "@/lib/routes";
 import { getPremiumStatus, maxFotosProFahrt } from "@/lib/premium";
 import type { Vehicle } from "@/types/database";
@@ -33,9 +33,12 @@ export default async function NeueFahrtPage({
 }) {
   const { fortsetzen } = await searchParams;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getCurrentUser() statt supabase.auth.getUser(): getPremiumStatus() weiter
+  // unten und der Header holen denselben Nutzer über den request-weiten
+  // Cache. Ein direkter Aufruf hier wäre ein zusätzlicher /auth/v1/user-
+  // Roundtrip für dieselbe Antwort. Der Client bleibt für die
+  // Fahrzeug-Abfrage.
+  const user = await getCurrentUser();
 
   // Die freigegebenen Strecken dienen auf der Aufzeichnungskarte nur der
   // Orientierung ("fahre ich gerade auf einer kuratierten Strecke?") — sie
@@ -46,7 +49,7 @@ export default async function NeueFahrtPage({
   // Fahrzeuge gibt es nur für angemeldete Nutzer — ein Gast sieht die
   // Fahrzeugauswahl ohnehin nicht, weil er statt des Speichern-Formulars
   // das Anmelde-Gate bekommt.
-  const [vehicles, { routes }] = await Promise.all([
+  const [vehicles, { routes }, premiumStatus] = await Promise.all([
     user
       ? supabase
           .from("vehicles")
@@ -56,11 +59,13 @@ export default async function NeueFahrtPage({
           .then(({ data }) => (data as Vehicle[] | null) ?? [])
       : Promise.resolve([] as Vehicle[]),
     getRoutes(),
+    // Nimmt keine Argumente und hängt an nichts aus diesem Block — lief
+    // trotzdem als eigener Roundtrip nach dem Promise.all.
+    getPremiumStatus(),
   ]);
 
   // Abgemeldete Besucher dürfen aufzeichnen, aber nicht speichern — für sie
   // gilt die Gratisgrenze. Der Server begrenzt ohnehin erneut.
-  const premiumStatus = await getPremiumStatus();
 
   return (
     <FreeRideForm

@@ -331,7 +331,7 @@ export async function deleteAccount(
   if (reauthError) return { error: "Passwort ist falsch." };
 
   // Laufendes Abo zuerst bei Stripe kündigen — zwingend VOR der
-  // Anonymisierung, denn die nullt stripe_customer_id (0058) und nimmt uns
+  // Anonymisierung, denn die nullt stripe_customer_id (0076) und nimmt uns
   // damit den einzigen Zeiger auf den Stripe-Kunden. Ohne diesen Schritt
   // liefe das Abo nach der Kontolöschung unsichtbar weiter und bucht weiter
   // ab, während der Webhook das zugehörige Profil nicht mehr fände.
@@ -343,15 +343,32 @@ export async function deleteAccount(
     };
   }
 
-  // Nullt Name, Avatar und Stripe-Kundenzuordnung des eigenen Profils,
-  // schaltet die Sichtbarkeits- und Status-Flags ab (not null, deshalb false
-  // statt null), setzt geloescht_am, entfernt die GPS-Tracks und löscht eigene
-  // Fahrzeuge. Unberührt bleiben id/created_at, privatzone_radius_m und
-  // kudos_gesehen_am, jeweils mit Begründung in 0058. Läuft über die normale,
-  // session-gebundene Verbindung (kein user.id-Parameter nötig/möglich,
-  // anonymize_own_account() bindet sich selbst über auth.uid()), siehe
-  // 0042/0045/0058 für die Details.
-  const { error: anonymizeError } = await supabase.rpc("anonymize_own_account");
+  // Admin-Client bewusst HIER, vor der Anonymisierung — er wird für beide
+  // folgenden Schritte gebraucht. Vorher stand er weiter unten, und der
+  // Anonymisierungs-Aufruf lief über den session-gebundenen Client.
+  const admin = createAdminClient();
+
+  // Nullt Name und Avatar des Profils, schaltet die Sichtbarkeits- und
+  // Status-Flags ab (not null, deshalb false statt null), entfernt die
+  // GPS-Tracks, löscht eigene Fahrzeuge und seit 0076 die Abo-Zeile —
+  // ohne Letzteres stellt premium_abgleich() (0059, per Cron) ist_premium
+  // nachts aus der stehengebliebenen Zeile wieder her. Unberührt bleiben
+  // id/created_at, privatzone_radius_m und kudos_gesehen_am.
+  //
+  // Über den Admin-Client und mit expliziter ID, seit 0076 die
+  // parametrisierte Fassung existiert. Die parameterlose
+  // anonymize_own_account() bindet sich über auth.uid() und ist an
+  // authenticated gegrantet — sie ist damit auch direkt per PostgREST
+  // aufrufbar und umgeht dabei die Passwort-Neueingabe oben UND die
+  // Stripe-Kündigung. anonymize_account(uuid) ist auf service_role
+  // beschränkt und schliesst diesen zweiten Eingang.
+  //
+  // user.id stammt aus der gerade per Passwort re-authentifizierten
+  // Session, nie aus einer Nutzereingabe — dieselbe Regel, der
+  // kuendigeStripeAbo() oben schon folgt (siehe AGENTS.md, admin.ts).
+  const { error: anonymizeError } = await admin.rpc("anonymize_account", {
+    p_user_id: user.id,
+  });
   if (anonymizeError) return { error: "Konto konnte nicht gelöscht werden." };
 
   // Zugangsdaten entwerten: nur über den Admin-Client möglich (Supabase Auth
@@ -369,7 +386,6 @@ export async function deleteAccount(
   // also als Kopie in auth.users. Ein null-Wert entfernt den Schlüssel aus
   // den Metadaten (GoTrue löscht bei einem Merge genau die Schlüssel, deren
   // Wert null ist), statt ihn nur zu überschreiben.
-  const admin = createAdminClient();
   const { error: revokeError } = await admin.auth.admin.updateUserById(user.id, {
     email: `geloescht-${user.id}@geloescht.cornice.invalid`,
     password: crypto.randomUUID() + crypto.randomUUID(),

@@ -94,8 +94,16 @@ export default function OfflineRouteButton({
         setAnzahl((n) => n + 1);
       }
     } catch {
-      // Speicher voll o.ä. — Zustand unverändert lassen, Button bleibt
-      // bedienbar für einen erneuten Versuch.
+      // Zustand unverändert lassen, der Button bleibt für einen erneuten
+      // Versuch bedienbar — aber nicht mehr stumm: Der wahrscheinlichste
+      // Auslöser ist ein QuotaExceededError bei vollem Gerätespeicher, und
+      // genau dann scheitert ein zweiter Versuch garantiert wieder. Ohne
+      // Meldung sah der Nutzer den Button nur kurz ausgrauen und
+      // zurückspringen. Der Kontingent-Zweig oben nutzt dieselbe Mechanik.
+      setHinweis(
+        "Speichern nicht möglich — vermutlich ist der Speicher dieses Geräts voll. " +
+          "Entferne eine andere Offline-Strecke und versuche es erneut.",
+      );
     } finally {
       setPending(false);
     }
@@ -115,7 +123,15 @@ export default function OfflineRouteButton({
         ) : (
           <Download className="h-3.5 w-3.5" aria-hidden="true" />
         )}
-        {saved ? "Offline entfernen" : kontingentKnapp ? "Offline download (Premium)" : "Offline download"}
+        {/* "Offline download" war der einzige englische UI-String im
+            gesamten Projekt — und klein geschrieben, wo das Deutsche ein
+            Substantiv gross schreibt. "speichern" benennt zudem die
+            Aktion; "download" beschreibt nur den Transport. */}
+        {saved
+          ? "Offline entfernen"
+          : kontingentKnapp
+            ? "Offline speichern (Premium)"
+            : "Offline speichern"}
       </button>
       {hinweis && (
         <p role="status" className="text-xs text-muted">

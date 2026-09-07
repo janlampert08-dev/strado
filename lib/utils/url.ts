@@ -24,11 +24,21 @@ export async function getOrigin(): Promise<string> {
 // liefern kann, wenn ein Client ein Feld dieses Namens als Datei sendet —
 // ohne die typeof-Prüfung würde .startsWith() darauf werfen, bei der
 // Anmeldung also direkt nach erfolgreicher Passworteingabe.
+//
+// Steuerzeichen werden vorab komplett abgewiesen und nicht etwa entfernt:
+// Der URL-Parser (Browser wie Node) streicht Tab, CR und LF aus einer URL,
+// BEVOR er sie zerlegt. Eine Prüfung, die nur die ersten beiden Zeichen
+// ansieht, lässt "/\t/evil.example" deshalb durch — daraus wird beim
+// Auflösen "//evil.example" und damit genau die protokollrelative externe
+// URL, die zwei Zeilen tiefer abgewiesen wird. Verwerfen statt bereinigen,
+// weil ein Pfad mit Steuerzeichen ohnehin kein legitimer Rücksprung ist und
+// jede Normalisierung nur eine neue Umgehung einlädt.
 export function safeInternalPath(
   raw: FormDataEntryValue | null | undefined,
 ): string | null {
   if (typeof raw !== "string") return null;
   if (!raw) return null;
+  if (/[\u0000-\u001F\u007F]/.test(raw)) return null;
   if (!raw.startsWith("/")) return null;
   if (raw.startsWith("//") || raw.startsWith("/\\")) return null;
   return raw;

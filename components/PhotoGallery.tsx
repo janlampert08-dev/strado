@@ -57,7 +57,7 @@ export default function PhotoGallery({ photos }: { photos: RoutePhoto[] }) {
             >
               <Image
                 src={photo.foto_url}
-                alt={`Foto von ${photo.display_name ?? "Nutzer"}`}
+                alt={`Foto von ${photo.display_name ?? "einem Fahrer"}`}
                 fill
                 sizes="33vw"
                 className="object-cover"
@@ -113,11 +113,23 @@ export default function PhotoGallery({ photos }: { photos: RoutePhoto[] }) {
             )}
 
             <figure className="flex max-h-full max-w-full flex-col items-center gap-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              {/* next/image statt <img>: Die Thumbnails oben laufen bereits
+                  darüber, die Lightbox lud dagegen die unbearbeitete
+                  Originaldatei — bis 8 MB, so viel lässt
+                  logTrackedCompletion() pro Foto zu. Ein Klick auf ein
+                  Vorschaubild zog damit im Zweifel mehr nach als die
+                  gesamte übrige Seite.
+
+                  sizes="90vw" passt zu max-w-[90vw]; width/height sind nur
+                  das Seitenverhältnis für den Optimizer, die tatsächliche
+                  Grösse macht object-contain. */}
+              <Image
                 src={openPhoto.foto_url}
-                alt={`Foto von ${openPhoto.display_name ?? "Nutzer"}`}
-                className="max-h-[80vh] max-w-[90vw] object-contain"
+                alt={`Foto von ${openPhoto.display_name ?? "einem Fahrer"}`}
+                width={1600}
+                height={1200}
+                sizes="90vw"
+                className="max-h-[80vh] w-auto max-w-[90vw] object-contain"
                 onClick={(e) => e.stopPropagation()}
               />
               <figcaption className="text-sm text-background/70">

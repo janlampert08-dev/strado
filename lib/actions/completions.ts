@@ -28,6 +28,7 @@ import {
 } from "@/lib/routes";
 import { todayInZurich } from "@/lib/format";
 import { detectLaps, type DetectedLap, type RouteCandidate } from "@/lib/lapDetection";
+import { bildEndungFuerMime } from "@/lib/validation";
 
 export interface CompletionFormState {
   error: string | null;
@@ -94,6 +95,21 @@ function parseTrail(formData: FormData): { trail: TrailPoint[] } | { error: stri
     return { error: "Die Aufzeichnung enthält zu viele Punkte." };
   }
 
+  // Die Zeitstempel müssen aufsteigen. Ein rückwärts laufender Punkt ist
+  // aus einer echten Aufzeichnung nicht zu erklären, für die abgeleiteten
+  // Kennzahlen aber folgenreich: movingSeconds summiert die Differenzen
+  // zwischen benachbarten Punkten, ein negativer Schritt zieht die
+  // Bewegtzeit also nach unten und im Extremfall unter null. Genau das
+  // verbietet der Constraint fahrt_bewegtzeit_plausibel (0074) — ohne
+  // diese Prüfung bekäme der Nutzer dafür einen rohen Datenbankfehler
+  // statt einer Erklärung, und ein Direktschreiber liesse sich davon
+  // ohnehin nicht beeindrucken.
+  for (let i = 1; i < parsed.length; i++) {
+    if (parsed[i].t < parsed[i - 1].t) {
+      return { error: "Die Aufzeichnung enthält Zeitsprünge rückwärts." };
+    }
+  }
+
   return { trail: parsed as TrailPoint[] };
 }
 
@@ -125,14 +141,17 @@ async function uploadFoto(
   userId: string,
   foto: File,
 ): Promise<{ url: string } | { error: string }> {
-  if (!foto.type.startsWith("image/")) {
-    return { error: "Nur Bilddateien sind erlaubt." };
-  }
   if (foto.size > MAX_FOTO_BYTES) {
     return { error: "Foto ist zu gross (max. 8 MB)." };
   }
 
-  const ext = foto.name.split(".").pop() ?? "jpg";
+  // Endung aus dem Content-Type statt aus foto.name — Begründung in
+  // lib/validation.ts. Ersetzt zugleich die alte
+  // type.startsWith("image/")-Prüfung, die image/svg+xml durchgelassen hat.
+  const ext = bildEndungFuerMime(foto.type);
+  if (!ext) {
+    return { error: "Nur JPG-, PNG-, WebP- oder GIF-Bilder sind erlaubt." };
+  }
   const path = `${userId}/${crypto.randomUUID()}.${ext}`;
 
   // Metadaten entfernen, bevor die Datei den Server verlässt. Ein Foto vom

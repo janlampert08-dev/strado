@@ -102,8 +102,50 @@ export default async function StreckeDetailPage({
       getPremiumStatus(),
     ]);
 
+  // Strukturierte Daten für die Streckenseite — der einzige öffentlich
+  // indexierbare Evergreen-Inhalt der Plattform (app/sitemap.ts listet
+  // Strecken mit priority 0.8, Profile bewusst gar nicht).
+  //
+  // Bewusst OHNE aggregateRating: route_ratings sind seit 0025 Kommentare
+  // ohne Sternewert. Eine Bewertungszahl zu erfinden, nur damit Google
+  // Sterne anzeigt, wäre genau die Sorte strukturierter Daten, für die
+  // Seiten abgestraft werden.
+  const strukturierteDaten = {
+    "@context": "https://schema.org",
+    "@type": "TouristTrip",
+    inLanguage: "de-CH",
+    name: route.name,
+    ...(route.charakter_text ? { description: route.charakter_text } : {}),
+    ...(route.laenge_km
+      ? { distance: `${route.laenge_km.toFixed(1)} km` }
+      : {}),
+    itinerary: {
+      "@type": "ItemList",
+      itemListElement: [
+        { "@type": "Place", name: route.start_ort },
+        { "@type": "Place", name: route.ziel_ort },
+      ],
+    },
+  };
+
   return (
     <div className="flex h-dvh flex-col">
+      {/* charakter_text, name und die Ortsnamen stammen aus einem
+          Streckenvorschlag, sind also Nutzerinput. JSON.stringify escaped
+          Anführungszeichen, aber NICHT "<" — ein "</script>" im Text würde
+          den Block hier beenden und den Rest als Markup ausliefern. Die
+          drei ersetzten Zeichen sind innerhalb eines JSON-Strings
+          gleichwertige Unicode-Escapes, der geparste Wert bleibt also
+          identisch. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(strukturierteDaten)
+            .replace(/</g, "\\u003c")
+            .replace(/>/g, "\\u003e")
+            .replace(/&/g, "\\u0026"),
+        }}
+      />
       <Header back="/" />
       <RouteDetailLayout map={<RouteDetailMap route={route} key={route.id} />}>
         <div>

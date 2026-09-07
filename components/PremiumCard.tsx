@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SubmitButton from "@/components/ui/SubmitButton";
 import { createPortalSession } from "@/lib/actions/billing";
 import type { PremiumStatus } from "@/lib/premiumLimits";
 
@@ -53,13 +54,16 @@ export default function PremiumCard({ status }: { status: PremiumStatus }) {
             )
           )}
 
+          {/* Einziges Formular der App, das eine Server Action direkt bindet
+              statt über useActionState — der Pending-Zustand kam deshalb
+              nirgends her. createPortalSession legt eine Stripe-Portal-Sitzung
+              an und leitet weiter; in dieser Zeit blieb der Button bedienbar,
+              und ein zweiter Klick erzeugte eine zweite Sitzung. Ausgerechnet
+              im Bezahlbereich. */}
           <form action={createPortalSession}>
-            <button
-              type="submit"
-              className="self-start rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:border-border-strong"
-            >
+            <SubmitButton pendingLabel="Wird geöffnet…" className="self-start">
               Abo verwalten
-            </button>
+            </SubmitButton>
           </form>
         </>
       ) : (

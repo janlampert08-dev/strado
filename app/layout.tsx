@@ -28,8 +28,28 @@ const metadataBase = new URL(
 
 export const metadata: Metadata = {
   metadataBase,
+  // Der Titel der Startseite kommt aus app/page.tsx; dieser hier greift für
+  // alle Seiten ohne eigenes generateMetadata.
   title: "Strado",
-  description: "Kuratierte Fahrstrecken für Auto und Motorrad",
+  description:
+    "Kuratierte Kurven-, Pass- und Aussichtsstrecken in der Schweiz. Fahrten per GPS aufzeichnen, Bestzeiten vergleichen, Touren teilen.",
+  // Bis hierher gab es im ganzen Projekt kein einziges openGraph- oder
+  // twitter-Feld (grep über app/**). Die App hat aber einen ausdrücklichen
+  // Teilen-Knopf und öffentliche Fahrt-URLs — geteilte Links rendern in
+  // WhatsApp, Slack oder X sonst ohne Karte, ohne Sprachangabe und ohne
+  // Absender. Die dateibasierten opengraph-image.tsx liefern das Bild, die
+  // Metadaten drumherum fehlten.
+  openGraph: {
+    type: "website",
+    locale: "de_CH",
+    siteName: "Strado",
+    title: "Strado — kuratierte Fahrstrecken für Auto und Motorrad",
+    description:
+      "Handverlesene Kurven- und Passstrecken in der Schweiz. Aufzeichnen, vergleichen, teilen.",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
   appleWebApp: {
     // "standalone" entfernt die Safari-Chrome, sobald die Seite via
     // "Zum Home-Bildschirm" installiert ist — Grundvoraussetzung dafür,

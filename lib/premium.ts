@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import {
   MAX_PRIVATE_STRECKEN_GRATIS,
   type AboPlanKennung,
@@ -77,9 +77,7 @@ function statusIstLaufend(status: string): boolean {
 // Schranke genau dort aufzugeben, wo sie zählt.
 export const getPremiumStatus = cache(async function getPremiumStatus(): Promise<PremiumStatus> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) return KEIN_PREMIUM;
 
