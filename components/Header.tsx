@@ -54,12 +54,19 @@ export default async function Header({ back }: { back?: string } = {}) {
           {user && (
             <Link
               href="/aktivitaet"
-              aria-label="Aktivität"
+              // aria-label ersetzt den Inhalt vollständig — mit dem festen Text
+              // "Aktivität" war der Zähler für Screenreader nicht vorhanden.
+              // Genau dieser Zähler ist Schritt 8 des Kernloops.
+              aria-label={
+                unseenKudosCount > 0
+                  ? `Aktivität, ${unseenKudosCount} ${unseenKudosCount === 1 ? "neues Kudo" : "neue Kudos"}`
+                  : "Aktivität"
+              }
               className="relative flex items-center justify-center rounded-full p-1.5 text-foreground transition-colors duration-fast hover:text-accent"
             >
               <Flame className="h-5 w-5" aria-hidden="true" />
               {unseenKudosCount > 0 && (
-                <span className="absolute top-0 right-0 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-1 text-[9px] font-semibold text-background">
+                <span aria-hidden="true" className="absolute top-0 right-0 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-1 text-[9px] font-semibold text-background">
                   {unseenKudosCount > 9 ? "9+" : unseenKudosCount}
                 </span>
               )}
