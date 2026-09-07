@@ -20,19 +20,25 @@
 --    Datum nicht definiert, was beim Blättern Zeilen doppelt oder gar
 --    nicht zeigt.
 --
---    Damit der Index vollständig greift, muss die Abfrage in
---    lib/feed.ts zusätzlich nach id sortieren:
---
---      .order("datum", { ascending: false })
---      .order("id", { ascending: false })
---
---    Das ist eine App-Änderung und gehört nicht in diese Migration.
---    Der Index ist auch ohne sie nützlich, nur eben nicht als
---    vollständige Sortierquelle.
+--    Damit der Index vollständig greift, sortiert lib/feed.ts jetzt
+--    ebenfalls nach id — die Änderung liegt im selben PR, weil der
+--    Index sonst nicht als vollständige Sortierquelle taugt und die
+--    Reihenfolge bei gleichem Datum weiterhin dem Zufall überlassen
+--    bliebe.
 --
 -- pg_trgm liegt bewusst in extensions, nicht in public: Supabase legt
 -- Erweiterungen dort ab, und ein Objekt im public-Schema wäre über
 -- PostgREST sichtbar.
+--
+-- "create extension if not exists ... with schema extensions" allein
+-- genügt dafür nicht: liegt pg_trgm bereits woanders (auf einer älteren
+-- Supabase-Instanz typischerweise in public), ist das ein stilles
+-- No-op, das schema-Argument wird ignoriert, und der Indexaufbau
+-- darunter scheitert an "extensions.gin_trgm_ops existiert nicht". Der
+-- DO-Block unten zieht diesen Fall nach, statt die Migration auf einer
+-- solchen Instanz auflaufen zu lassen. Bestehende Trigramm-Indizes
+-- überstehen den Umzug: sie verweisen per OID auf die Opklasse, nicht
+-- per Name.
 --
 -- Risiko: CREATE INDEX ohne CONCURRENTLY sperrt die Tabelle für
 -- Schreibvorgänge. Bei der heutigen Datenmenge (die Migrations-README
@@ -42,7 +48,23 @@
 -- geht in einer Migration nicht.
 -- =====================================================================
 
-create extension if not exists pg_trgm with schema extensions;
+create schema if not exists extensions;
+
+do $$
+declare v_schema name;
+begin
+  select n.nspname into v_schema
+  from pg_extension e
+  join pg_namespace n on n.oid = e.extnamespace
+  where e.extname = 'pg_trgm';
+
+  if v_schema is null then
+    execute 'create extension pg_trgm with schema extensions';
+  elsif v_schema <> 'extensions' then
+    execute 'alter extension pg_trgm set schema extensions';
+  end if;
+end;
+$$;
 
 create index if not exists profiles_display_name_trgm_idx
   on public.profiles
@@ -57,4 +79,4 @@ create index if not exists route_completions_oeffentlich_datum_idx
   where ist_oeffentlich = true;
 
 comment on index public.route_completions_oeffentlich_datum_idx is
-  'Deckt die Feed-Abfrage (lib/feed.ts, order by datum desc limit 30) ab. id als zweite Spalte macht die Sortierung eindeutig — sonst ist die Reihenfolge bei gleichem Datum undefiniert und das Blaettern zeigt Zeilen doppelt oder gar nicht. Voll wirksam erst, wenn die Abfrage ebenfalls nach id sortiert (0075).';
+  'Deckt die Feed-Abfrage (lib/feed.ts, order by datum desc limit 30) ab. id als zweite Spalte macht die Sortierung eindeutig — sonst ist die Reihenfolge bei gleichem Datum undefiniert und das Blaettern zeigt Zeilen doppelt oder gar nicht. lib/feed.ts sortiert im selben Zug ebenfalls nach id, sonst waere der Index keine vollstaendige Sortierquelle (0075).';

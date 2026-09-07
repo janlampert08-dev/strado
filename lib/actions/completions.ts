@@ -94,6 +94,21 @@ function parseTrail(formData: FormData): { trail: TrailPoint[] } | { error: stri
     return { error: "Die Aufzeichnung enthält zu viele Punkte." };
   }
 
+  // Die Zeitstempel müssen aufsteigen. Ein rückwärts laufender Punkt ist
+  // aus einer echten Aufzeichnung nicht zu erklären, für die abgeleiteten
+  // Kennzahlen aber folgenreich: movingSeconds summiert die Differenzen
+  // zwischen benachbarten Punkten, ein negativer Schritt zieht die
+  // Bewegtzeit also nach unten und im Extremfall unter null. Genau das
+  // verbietet der Constraint fahrt_bewegtzeit_plausibel (0074) — ohne
+  // diese Prüfung bekäme der Nutzer dafür einen rohen Datenbankfehler
+  // statt einer Erklärung, und ein Direktschreiber liesse sich davon
+  // ohnehin nicht beeindrucken.
+  for (let i = 1; i < parsed.length; i++) {
+    if (parsed[i].t < parsed[i - 1].t) {
+      return { error: "Die Aufzeichnung enthält Zeitsprünge rückwärts." };
+    }
+  }
+
   return { trail: parsed as TrailPoint[] };
 }
 

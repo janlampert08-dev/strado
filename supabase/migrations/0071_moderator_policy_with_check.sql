@@ -67,3 +67,60 @@ create policy "Moderatoren können Fahrten entöffentlichen"
 comment on policy "Moderatoren können Fahrten entöffentlichen"
   on public.route_completions is
   'Moderation darf eine gemeldete Fahrt aus der Oeffentlichkeit nehmen — und nur das. Das WITH CHECK ist die eigentliche Schranke: ohne es verwendet Postgres die USING-Bedingung als Check, und die prueft nur den Aufrufer, nicht die Zeile, ist als Check also unbedingt wahr. Mit dem Spalten-Grant aus 0046 haette ein Moderator damit fremde Fahrten veroeffentlichen und deren private notiz ueberschreiben koennen (0071).';
+
+-- =====================================================================
+-- Nachtrag: notiz bleibt dem Besitzer.
+--
+-- Das WITH CHECK oben deckt ist_oeffentlich und track_oeffentlich ab —
+-- mehr kann es nicht. Eine Policy sieht nur die NEUE Zeile; ob eine
+-- Spalte gegenüber dem Vorzustand verändert wurde, lässt sich darin
+-- nicht ausdrücken. Der Spalten-Grant aus 0046 umfasst aber auch notiz,
+-- und die ist der private Text des Fahrers. Ein Moderator könnte ihn
+-- also weiterhin überschreiben, solange er im selben UPDATE
+-- ist_oeffentlich = false setzt.
+--
+-- Den Grant zu entziehen ist keine Option: er gilt für die Rolle
+-- authenticated, und der Besitzer braucht ihn für die eigene Fahrt.
+-- OLD/NEW gibt es nur im Trigger — deshalb hier einer.
+--
+-- auth.uid() is null wird bewusst durchgelassen: das ist der
+-- Service-Role-Pfad (lib/supabase/admin.ts, Stripe-Webhook) und
+-- SECURITY DEFINER-Funktionen wie anonymize_account. Ein anonymer
+-- PostgREST-Zugriff hätte ebenfalls null, kommt aber gar nicht so weit —
+-- für anon existiert auf dieser Tabelle keine UPDATE-Policy.
+-- =====================================================================
+
+create or replace function public.fahrt_notiz_nur_vom_besitzer()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+begin
+  if new.notiz is distinct from old.notiz
+     and (select auth.uid()) is not null
+     and (select auth.uid()) <> old.user_id then
+    raise exception 'notiz darf nur vom Besitzer der Fahrt geaendert werden'
+      using errcode = 'insufficient_privilege';
+  end if;
+  return new;
+end;
+$$;
+
+comment on function public.fahrt_notiz_nur_vom_besitzer() is
+  'Haelt die private notiz einer Fahrt beim Besitzer. Die Moderator-Policy aus 0046/0071 laesst Fremd-UPDATEs zu und der Spalten-Grant aus 0046 umfasst notiz; eine Policy kann OLD nicht sehen, ein Trigger schon (0071).';
+
+drop trigger if exists fahrt_notiz_nur_vom_besitzer_trg on public.route_completions;
+
+create trigger fahrt_notiz_nur_vom_besitzer_trg
+  before update of notiz on public.route_completions
+  for each row execute function public.fahrt_notiz_nur_vom_besitzer();
+
+-- EXECUTE liegt bei einer neuen Funktion standardmässig bei PUBLIC. Für
+-- eine Trigger-Funktion ist das folgenlos (sie ist ohne Trigger-Kontext
+-- nicht aufrufbar), aber 0047/0048 haben genau diese Grants für alle
+-- übrigen Funktionen entzogen — hier dieselbe Linie, damit die
+-- Bestandsaufnahme in der Checkliste keine Ausnahme kennt.
+revoke execute on function public.fahrt_notiz_nur_vom_besitzer() from public;
+revoke execute on function public.fahrt_notiz_nur_vom_besitzer() from anon;
+revoke execute on function public.fahrt_notiz_nur_vom_besitzer() from authenticated;
