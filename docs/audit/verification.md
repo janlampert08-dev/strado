@@ -100,11 +100,13 @@ originally confirmed, not as a current-state report.
   not applied in `RouteMap`.
 - **Still open** — §B performance item, not addressed by PR #109.
 
-## Orchestrator build measurements corroborate the performance agent's bundle claim
+## Orchestrator build measurements — mapbox is lazy on four routes and eager on a fifth
 The performance audit could not run `next build` (its `node_modules` was reinstalled mid-run),
 so its bundle numbers are marked `[measured]`/`[computed]`/`[estimated]` in its own report. An
-independent build corroborates its central positive finding — mapbox-gl is code-split — but the
-claim has two halves, and each rests on a different artifact:
+independent build **partly corroborates and partly refutes** its central positive finding
+("mapbox-gl is code-split"): the library is lazy on the four routes that render `RouteMap`, and
+eagerly bundled on `/strecken/neu`, which does not use `RouteMap` at all. The claim has two
+halves and each rests on a different artifact:
 
 - **Loaded through `next/dynamic`.** The mapbox chunk (`15sq2-ftgsxmt.js`, 1.8 MB on disk) is
   listed in `react-loadable-manifest.json` for four route groups: `/`, `/fahrten/[id]`,
