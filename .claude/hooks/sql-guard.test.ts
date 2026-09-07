@@ -45,6 +45,7 @@ describe("sql-guard: supabase migration", () => {
     // erreicht damit die Datenbank -- bleibt bestaetigungspflichtig.
     "supabase migration list",
     "supabase migration list --linked",
+    "supabase migration list --db-url postgresql://example.invalid/db",
   ])("fordert Bestaetigung fuer %s", (command) => {
     expect(fordertBestaetigung(command)).toBe(true);
   });
