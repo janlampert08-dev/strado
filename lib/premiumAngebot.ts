@@ -33,7 +33,7 @@ export function betragText(betrag: number, waehrung: string): string {
   // ?? 2, weil die Typdefinition die Angabe als optional führt. Praktisch
   // liefert jede Laufzeit mit vollständigen Locale-Daten sie; bleibt sie
   // einmal aus, ist der Zweistellen-Fall der richtige Rückfall — er trifft
-  // CHF, die einzige Währung, in der Cornice heute Preise führt.
+  // CHF, die einzige Währung, in der Strado heute Preise führt.
   const stellen = format.resolvedOptions().maximumFractionDigits ?? 2;
   return format.format(betrag / 10 ** stellen);
 }

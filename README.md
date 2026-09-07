@@ -1,4 +1,4 @@
-# Cornice
+# Strado
 
 Kuratierte Auto-/Motorrad-Fahrstrecken — primär Raum Zürich/Schweiz.
 

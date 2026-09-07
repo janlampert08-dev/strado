@@ -1,6 +1,6 @@
 # Backend Role
 
-Reusable role instructions for backend work in Cornice: API route handlers
+Reusable role instructions for backend work in Strado: API route handlers
 (`app/api/**`) and Server Actions (`lib/actions/**`). Listed in `AGENTS.md`
 → Further Reading, but not auto-loaded — open it yourself when a task is
 scoped to backend/server work. See `AGENTS.md` for the full constitution

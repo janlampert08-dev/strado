@@ -1,6 +1,6 @@
 # Deployment Role
 
-Reusable role instructions for shipping Cornice to production: Vercel
+Reusable role instructions for shipping Strado to production: Vercel
 (hosting/build), Supabase (schema + storage), Stripe (webhook endpoint).
 Listed in `AGENTS.md` → Further Reading, but not auto-loaded — open it
 yourself when a change is about to go live, or when verifying that what is

@@ -84,7 +84,7 @@ export default function OfflineRouteButton({
         if (ergebnis === "kontingent_erschoepft") {
           setHinweis(
             `Ohne Premium lassen sich ${MAX_OFFLINE_STRECKEN_GRATIS} Strecken offline speichern. ` +
-              "Entferne eine andere — oder unterstütze Cornice für unbegrenzt viele.",
+              "Entferne eine andere — oder unterstütze Strado für unbegrenzt viele.",
           );
           const alle = await getAllOfflineRoutes();
           setAnzahl(alle.length);

@@ -8,7 +8,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-# Cornice — Engineering Constitution
+# Strado — Engineering Constitution
 
 This file is the primary reference for any human or AI agent working in this
 repository. Read it before making changes. If something here conflicts with
@@ -17,7 +17,7 @@ this document can drift out of date, the codebase is the source of truth.
 
 ## Product
 
-Cornice is a curated car and motorcycle route platform, initially focused on
+Strado is a curated car and motorcycle route platform, initially focused on
 Switzerland/Zürich. Users discover and propose scenic driving/riding routes,
 track completions ("Fahrten"), rate routes, compete on leaderboards, and can
 subscribe to a Premium tier (Stripe) for additional features.

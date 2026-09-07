@@ -1,4 +1,4 @@
-# Allgemeine Geschäftsbedingungen (AGB) für Cornice
+# Allgemeine Geschäftsbedingungen (AGB) für Strado
 
 > ## ⚠️ Ungeprüfter Entwurf — keine Rechtsberatung
 >
@@ -41,7 +41,7 @@
 ## 1. Geltungsbereich und Anbieterin
 
 **1.1** Diese Allgemeinen Geschäftsbedingungen (nachfolgend „AGB") regeln die
-Nutzung der Plattform Cornice (Website und Webanwendung, nachfolgend „Cornice"
+Nutzung der Plattform Strado (Website und Webanwendung, nachfolgend „Strado"
 oder „Plattform"), die unter `https://[[DOMAIN]]` erreichbar ist.
 
 **1.2** Anbieterin und Vertragspartnerin ist:
@@ -53,7 +53,7 @@ E-Mail: [[EMAIL]]
 (nachfolgend „Anbieterin"). Weitere Angaben finden sich im Impressum unter
 `https://[[DOMAIN]]/impressum`.
 
-**1.3** Cornice ist eine kuratierte Plattform für Auto- und Motorradstrecken
+**1.3** Strado ist eine kuratierte Plattform für Auto- und Motorradstrecken
 mit Schwerpunkt Schweiz, vorerst Raum Zürich. Nutzende können Strecken
 entdecken, eigene Fahrten per GPS aufzeichnen und speichern, Fahrten
 veröffentlichen, Strecken bewerten und vorschlagen sowie anderen Nutzenden
@@ -106,7 +106,7 @@ Strecken.
 
 ### 3.2 Premium-Abo
 
-Das kostenpflichtige Premium-Abo („Cornice Premium") ergänzt die kostenlose
+Das kostenpflichtige Premium-Abo („Strado Premium") ergänzt die kostenlose
 Nutzung. Es umfasst nach dem aktuellen Planungsstand:
 
 - unbegrenzt viele private Strecken (kostenlos: eine private Strecke),
@@ -126,7 +126,7 @@ nur das Neuanlegen (Bestandsschutz).
 
 ### 3.3 Weiterentwicklung und Änderungen des Funktionsumfangs
 
-**3.3.1** Cornice wird laufend weiterentwickelt. Die Anbieterin darf einzelne
+**3.3.1** Strado wird laufend weiterentwickelt. Die Anbieterin darf einzelne
 Funktionen ändern, ergänzen oder ersetzen, solange der wesentliche
 Leistungsumfang des Abos dadurch nicht beeinträchtigt wird.
 
@@ -138,7 +138,7 @@ zurückerstattet.
 
 ### 3.4 Kuratierte Strecken sind Vorschläge, keine Navigation
 
-**3.4.1** Cornice ist **keine Navigations-App**. Die Plattform zeigt Strecken,
+**3.4.1** Strado ist **keine Navigations-App**. Die Plattform zeigt Strecken,
 Karten, Höhenprofile, Wetter- und Verkehrsangaben zu Informationszwecken.
 
 **3.4.2** Angaben zu Strassenzustand, Befahrbarkeit, Saison (Passöffnung),
@@ -354,7 +354,7 @@ regelt die Datenschutzerklärung.
 **10.2 Rechteeinräumung.** Nutzende räumen der Anbieterin an den von ihnen
 **veröffentlichten** Inhalten ein räumlich und zeitlich unbeschränktes, nicht
 ausschliessliches, unentgeltliches Recht ein, diese im Rahmen des Betriebs von
-Cornice zu speichern, zu vervielfältigen, zu bearbeiten (insbesondere
+Strado zu speichern, zu vervielfältigen, zu bearbeiten (insbesondere
 Skalierung, Zuschnitt und die Kappung von Track-Enden zur Wahrung der
 Privatsphäre) und öffentlich zugänglich zu machen. Bei einem
 Streckenvorschlag, der freigegeben wird, umfasst dies auch die dauerhafte
@@ -374,7 +374,7 @@ Inhalte, Werbung und Spam, falsche Angaben zu Strecken, manipulierte oder
 nicht selbst gefahrene GPS-Aufzeichnungen sowie Inhalte, die zu Verstössen
 gegen das Strassenverkehrsrecht anleiten oder solche verherrlichen.
 
-**10.5 Moderationsvorbehalt.** Cornice ist eine **kuratierte** Plattform.
+**10.5 Moderationsvorbehalt.** Strado ist eine **kuratierte** Plattform.
 
 - Streckenvorschläge werden vor der Veröffentlichung geprüft. Ein Anspruch auf
   Freigabe besteht nicht; die Ablehnung muss nicht begründet werden.
@@ -394,7 +394,7 @@ durch einen Verstoss gegen Verkehrsregeln zustande gekommen sind.
 
 ## 11. Pflichten der Nutzenden, insbesondere im Strassenverkehr
 
-**11.1** Die Nutzung von Cornice entbindet nicht von der Pflicht, sämtliche
+**11.1** Die Nutzung von Strado entbindet nicht von der Pflicht, sämtliche
 Verkehrsregeln einzuhalten. **Massgebend sind stets die Signalisation vor Ort,
 die tatsächlichen Strassen- und Witterungsverhältnisse und die
 Strassenverkehrsgesetzgebung.**
@@ -403,7 +403,7 @@ Strassenverkehrsgesetzgebung.**
 gesetzlich nicht erlaubt ist. Die Aufzeichnung einer Fahrt ist vor der Abfahrt
 zu starten und nach dem Anhalten zu beenden.
 
-**11.3** Cornice ist **kein Wettbewerb um Geschwindigkeit**. Zeiten werden nur
+**11.3** Strado ist **kein Wettbewerb um Geschwindigkeit**. Zeiten werden nur
 erfasst, wenn die Nutzenden dies selbst aktivieren. Fahrten, die unter
 Missachtung von Verkehrsregeln zustande gekommen sind, dürfen nicht
 veröffentlicht werden.
@@ -420,7 +420,7 @@ fremde Konten oder Daten sowie Handlungen, die den Betrieb beeinträchtigen
 ## 12. Verfügbarkeit
 
 **12.1** Die Anbieterin bemüht sich um eine möglichst hohe Verfügbarkeit,
-schuldet aber keine bestimmte Verfügbarkeit. Cornice wird auf der
+schuldet aber keine bestimmte Verfügbarkeit. Strado wird auf der
 Infrastruktur von Drittanbietern betrieben; deren Störungen kann die
 Anbieterin nicht ausschliessen.
 
@@ -450,7 +450,7 @@ Schäden und Folgeschäden.
 entstehen, weil sich Nutzende auf Angaben zu Strecken, Tempolimits,
 Strassenzustand, Saison, Wetter oder Verkehrslage verlassen haben (Ziff. 3.4),
 oder aus der Teilnahme am Strassenverkehr im Zusammenhang mit einer über
-Cornice gefundenen Strecke.
+Strado gefundenen Strecke.
 
 **13.4** Für Nutzerinhalte Dritter — insbesondere Bewertungen,
 Streckenvorschläge und Fotos — übernimmt die Anbieterin keine Haftung. Sie
@@ -469,7 +469,7 @@ sichern (z. B. als GPX-Export).
 **14.1 AGB-Änderungen.** Die Anbieterin kann diese AGB ändern, wenn dies
 aufgrund geänderter Rechtslage, geänderter Rechtsprechung, geänderter
 technischer oder wirtschaftlicher Rahmenbedingungen oder aufgrund einer
-Weiterentwicklung von Cornice sachlich gerechtfertigt ist. Nutzende werden
+Weiterentwicklung von Strado sachlich gerechtfertigt ist. Nutzende werden
 mindestens **30 Tage** vor Inkrafttreten per E-Mail und in der App informiert.
 Widersprechen sie nicht bis zum Inkrafttreten, gelten die neuen AGB als
 angenommen; auf diese Folge wird in der Mitteilung ausdrücklich hingewiesen.
@@ -532,7 +532,7 @@ verzichten.
 | `[[STRASSE_NR]]` | Strasse und Hausnummer des Geschäftssitzes | Ziff. 1.2 |
 | `[[PLZ_ORT]]` | Postleitzahl und Ort des Geschäftssitzes | Ziff. 1.2 |
 | `[[EMAIL]]` | Kontakt-E-Mail für Kündigung, Geld-zurück-Anfragen und allgemeine Anliegen | Ziff. 1.2, 6.4, 7.1 |
-| `[[DOMAIN]]` | Echte Domain, unter der Cornice und die Rechtstexte erreichbar sind | Ziff. 1.1, 1.2, 15 |
+| `[[DOMAIN]]` | Echte Domain, unter der Strado und die Rechtstexte erreichbar sind | Ziff. 1.1, 1.2, 15 |
 | `[[GERICHTSSTAND]]` | Ort des vereinbarten Gerichtsstands (in der Regel der Sitz der Anbieterin) | Ziff. 16.4 |
 | `[[STAND_DATUM]]` | Datum, ab dem diese AGB-Fassung gilt | Kopfzeile |
 

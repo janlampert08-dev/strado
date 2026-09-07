@@ -29,8 +29,8 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const profile = await getPublicProfile(id);
-  if (!profile) return { title: "Fahrer – Cornice" };
-  return { title: `${profile.displayName ?? "Fahrer"} – Cornice` };
+  if (!profile) return { title: "Fahrer – Strado" };
+  return { title: `${profile.displayName ?? "Fahrer"} – Strado` };
 }
 
 export default async function FahrerPage({

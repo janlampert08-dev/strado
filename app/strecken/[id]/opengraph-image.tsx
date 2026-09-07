@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { getRoute } from "@/lib/routes";
 
-export const alt = "Strecke auf Cornice";
+export const alt = "Strecke auf Strado";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -31,7 +31,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
             color: "#131316",
           }}
         >
-          Cornice
+          Strado
         </div>
       ),
       { ...size },
@@ -57,7 +57,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
         }}
       >
         <div style={{ display: "flex", fontSize: 32, fontWeight: 600, color: "#3d5afe" }}>
-          CORNICE
+          STRADO
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{ display: "flex", fontSize: 72, fontWeight: 600, color: "#131316" }}>

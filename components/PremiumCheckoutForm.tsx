@@ -247,7 +247,7 @@ function CheckoutInner({
             {submitting ? "Wird verarbeitet…" : `Zahlungspflichtig abonnieren — ${preisText(preis)}`}
           </Button>
           <p className="text-center text-xs text-muted">
-            Zahlungsdaten gehen direkt an Stripe — Cornice sieht und speichert sie nie.
+            Zahlungsdaten gehen direkt an Stripe — Strado sieht und speichert sie nie.
           </p>
         </>
       )}

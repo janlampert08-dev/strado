@@ -28,7 +28,7 @@ const metadataBase = new URL(
 
 export const metadata: Metadata = {
   metadataBase,
-  title: "Cornice",
+  title: "Strado",
   description: "Kuratierte Fahrstrecken für Auto und Motorrad",
   appleWebApp: {
     // "standalone" entfernt die Safari-Chrome, sobald die Seite via
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     // im Browser geöffnete Website.
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Cornice",
+    title: "Strado",
   },
 };
 

@@ -41,7 +41,7 @@ async function fetchAllOfficialFeatures() {
   const url =
     `${WFS_URL}?service=WFS&version=2.0.0&request=GetFeature&typenames=ms:geschwindigkeit` +
     `&outputFormat=application/json&srsName=EPSG:4326&count=2000`;
-  const res = await fetch(url, { headers: { "User-Agent": "cornice-zh-tempolimit/1.0" } });
+  const res = await fetch(url, { headers: { "User-Agent": "strado-zh-tempolimit/1.0" } });
   if (!res.ok) throw new Error(`WFS HTTP ${res.status}`);
   const json = await res.json();
   await writeFile(CACHE_FILE, JSON.stringify(json));

@@ -1,4 +1,4 @@
-# Cornice — Full Application Audit
+# Strado — Full Application Audit
 
 Date: 2026-09-06 · Audited commit: `330ed1d` (branch `claude/full-app-audit-k0cmkh`)
 

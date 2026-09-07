@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Cornice",
-    short_name: "Cornice",
+    name: "Strado",
+    short_name: "Strado",
     description: "Kuratierte Fahrstrecken für Auto und Motorrad",
     start_url: "/",
     display: "standalone",

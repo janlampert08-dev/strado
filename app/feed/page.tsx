@@ -13,7 +13,7 @@ import { buttonVariants } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
 
 export const metadata = {
-  title: "Feed – Cornice",
+  title: "Feed – Strado",
 };
 
 // Öffentlich lesbar wie /strecken/[id] (public_fahrten ist an anon

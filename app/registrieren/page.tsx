@@ -2,7 +2,7 @@ import Header from "@/components/Header";
 import RegistrierenForm from "@/components/RegistrierenForm";
 import { safeInternalPath } from "@/lib/utils/url";
 
-export const metadata = { title: "Registrieren – Cornice" };
+export const metadata = { title: "Registrieren – Strado" };
 
 // ?next wie auf /anmelden: wohin es nach der Registrierung weitergeht,
 // gesetzt z.B. vom Anmelde-Gate im Fazit einer Gastfahrt (FreeRideForm.tsx),

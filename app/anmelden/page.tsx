@@ -3,7 +3,7 @@ import AnmeldenForm from "@/components/AnmeldenForm";
 import { LEGAL_URLS } from "@/lib/constants";
 import { safeInternalPath } from "@/lib/utils/url";
 
-export const metadata = { title: "Anmelden – Cornice" };
+export const metadata = { title: "Anmelden – Strado" };
 
 // ?next steuert, wohin es nach erfolgreicher Anmeldung geht, statt immer fest
 // zu /profil — gesetzt z.B. vom Auth-Gate in app/fahrten/neu/page.tsx, damit

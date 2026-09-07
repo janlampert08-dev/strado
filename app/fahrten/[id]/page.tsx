@@ -41,15 +41,15 @@ export async function generateMetadata({
     data: { user },
   } = await supabase.auth.getUser();
   const completion = await getCompletionDetail(id, user?.id ?? null);
-  if (!completion) return { title: "Fahrt – Cornice" };
+  if (!completion) return { title: "Fahrt – Strado" };
 
   const fahrer = completion.displayName ?? "Fahrer";
   if (completion.art === "frei") {
-    return { title: `${freieFahrtTitel(completion.titel, completion.startOrt)} – Fahrt von ${fahrer} – Cornice` };
+    return { title: `${freieFahrtTitel(completion.titel, completion.startOrt)} – Fahrt von ${fahrer} – Strado` };
   }
 
   const route = completion.routeId ? await getRoute(completion.routeId) : null;
-  return { title: route ? `${route.name} – Fahrt von ${fahrer} – Cornice` : "Fahrt – Cornice" };
+  return { title: route ? `${route.name} – Fahrt von ${fahrer} – Strado` : "Fahrt – Strado" };
 }
 
 // Custom Detailseite pro Aufzeichnung (Strava-artig: Strecke + Stats +

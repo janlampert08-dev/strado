@@ -35,7 +35,7 @@ export default async function Header({ back }: { back?: string } = {}) {
         <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           {back && <BackButton fallbackHref={back} />}
           <Link href="/" className="shrink-0 text-lg font-semibold tracking-tight">
-            Cornice
+            Strado
           </Link>
         </div>
         <div className="flex shrink-0 items-center gap-3 sm:gap-4">
