@@ -34,8 +34,10 @@ is what should be corrected.
 
 - **Premium is live.** The purchase page, Payment Element, customer portal,
   founder seats, the `subscriptions` table and the nightly reconciliation cron
-  all ship. `lib/leaderboard.ts` evaluates `ist_premium && zeigt_premium_badge`
-  for the badge. This section previously said the opposite — that the Premium
+  all ship. The "Gold-Abzeichen" opt-in was removed on 2026-09-07 — it was
+  never rendered by any component; the column `profiles.zeigt_premium_badge`
+  remains in the schema and the views but is no longer written or read by
+  the app. This section previously said the opposite — that the Premium
   components were commented out and re-enabling them was the active workstream
   — which is why the paid path went unaudited until 2026-09-07: a security
   pass scoped from this file skipped it as not-yet-shipped. Treat everything

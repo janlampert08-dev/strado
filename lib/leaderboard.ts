@@ -5,7 +5,6 @@ export interface LeaderboardEntry {
   name: string;
   avatarUrl: string | null;
   value: number;
-  isPremiumBadge: boolean;
 }
 
 // Zeilenform von public.leaderboard_user_totals (0054_leaderboard_user_totals.sql)
@@ -16,8 +15,6 @@ export interface LeaderboardUserTotalsRow {
   user_id: string;
   display_name: string | null;
   avatar_url: string | null;
-  ist_premium: boolean;
-  zeigt_premium_badge: boolean;
   fahrten_count: number;
   // Summe von hoehenmeter_aufstieg (kumulierter Anstieg aus dem GPS-Track)
   // über alle Fahrten des Nutzers, freie wie Streckenfahrten. Vor
@@ -46,15 +43,6 @@ export function toEntry(row: LeaderboardUserTotalsRow, value: number): Leaderboa
     // nur noch durchgereicht, keine weitere Prüfung nötig.
     avatarUrl: row.avatar_url,
     value,
-    // Zwei Bedingungen, beide nötig: das Abo muss laufen UND das Abzeichen
-    // muss selbst eingeschaltet sein (0021_premium_und_private_strecken.sql).
-    // Das Opt-in ist der Grund, warum hier nicht einfach ist_premium steht —
-    // wer zahlt, aber nicht auffallen will, bleibt unmarkiert.
-    //
-    // Endet ein Abo, fällt ist_premium weg und das Abzeichen verschwindet
-    // von selbst; ein Aufräumen der Opt-in-Spalte ist dafür nicht nötig
-    // (apply_subscription_state schaltet sie trotzdem ab, siehe 0059).
-    isPremiumBadge: row.ist_premium === true && row.zeigt_premium_badge === true,
   };
 }
 
@@ -69,7 +57,7 @@ async function topByMetric(
   const { data, error } = await supabase
     .from("leaderboard_user_totals")
     .select(
-      "user_id, display_name, avatar_url, ist_premium, zeigt_premium_badge, fahrten_count, hoehenmeter, km, strecken_count",
+      "user_id, display_name, avatar_url, fahrten_count, hoehenmeter, km, strecken_count",
     )
     .order(metric, { ascending: false, nullsFirst: false })
     .limit(TOP_N);
@@ -120,7 +108,6 @@ export interface RouteTimeEntry {
   name: string;
   avatarUrl: string | null;
   dauerSekunden: number;
-  isPremiumBadge: boolean;
 }
 
 export interface RouteLeaderboardRow {
@@ -129,8 +116,6 @@ export interface RouteLeaderboardRow {
   display_name: string | null;
   avatar_url: string | null;
   dauer_sekunden: number;
-  ist_premium: boolean;
-  zeigt_premium_badge: boolean;
 }
 
 const ROUTE_TOP_N = 10;
@@ -168,7 +153,7 @@ export async function getRouteLeaderboard(routeId: string): Promise<RouteTimeEnt
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("route_leaderboard")
-    .select("completion_id, user_id, display_name, avatar_url, dauer_sekunden, ist_premium, zeigt_premium_badge")
+    .select("completion_id, user_id, display_name, avatar_url, dauer_sekunden")
     .eq("route_id", routeId)
     .order("dauer_sekunden", { ascending: true })
     .limit(ROUTE_FETCH_LIMIT);
@@ -184,7 +169,5 @@ export async function getRouteLeaderboard(routeId: string): Promise<RouteTimeEnt
     // Bereits serverseitig mit zeigt_avatar verrechnet (0028_leaderboard_avatar.sql).
     avatarUrl: r.avatar_url,
     dauerSekunden: r.dauer_sekunden,
-    // Wie in toEntry(): laufendes Abo UND eigenes Opt-in.
-    isPremiumBadge: r.ist_premium === true && r.zeigt_premium_badge === true,
   }));
 }

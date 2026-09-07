@@ -3,7 +3,6 @@ import type { RouteRating } from "@/types/database";
 
 export interface RatingWithAuthor extends RouteRating {
   display_name: string | null;
-  is_premium_badge: boolean;
 }
 
 export async function getRatings(routeId: string): Promise<RatingWithAuthor[]> {
@@ -19,7 +18,7 @@ export async function getRatings(routeId: string): Promise<RatingWithAuthor[]> {
   const userIds = [...new Set(ratings.map((r) => r.user_id))];
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, display_name, ist_premium, zeigt_premium_badge")
+    .select("id, display_name")
     .in("id", userIds);
 
   const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
@@ -28,9 +27,6 @@ export async function getRatings(routeId: string): Promise<RatingWithAuthor[]> {
     return {
       ...r,
       display_name: profile?.display_name ?? null,
-      // Laufendes Abo UND eigenes Opt-in — dieselbe Regel wie in
-      // lib/leaderboard.ts und lib/profile.ts.
-      is_premium_badge: profile?.ist_premium === true && profile?.zeigt_premium_badge === true,
     };
   });
 }
