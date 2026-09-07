@@ -43,25 +43,52 @@ function profileColumns(): Set<string> {
     const ohneKommentare = readMigration(file).replace(/^\s*--.*$/gm, "");
     for (const statement of ohneKommentare.split(";")) {
       if (!/^\s*alter table public\.profiles\b/.test(statement)) continue;
-      for (const [, name] of statement.matchAll(/\badd column (\w+)\b/g)) columns.add(name);
-      for (const [, name] of statement.matchAll(/\bdrop column (\w+)\b/g)) columns.delete(name);
+      // "if not exists" / "if exists" gehören zur Syntax, nicht zum Namen —
+      // ohne das optionale Stück landete "if" als Spalte im Set.
+      for (const [, name] of statement.matchAll(/\badd column (?:if not exists )?(\w+)\b/g)) {
+        columns.add(name);
+      }
+      for (const [, name] of statement.matchAll(/\bdrop column (?:if exists )?(\w+)\b/g)) {
+        columns.delete(name);
+      }
     }
   }
 
   return columns;
 }
 
-// Die jüngste Fassung der Funktion gewinnt: 0042 hat sie eingeführt, 0045 und
-// 0058 haben sie per CREATE OR REPLACE ersetzt.
+// Die jüngste Fassung gewinnt: 0042 hat die Löschung eingeführt, 0045 und
+// 0058 haben sie ersetzt, 0076 hat sie in die parametrisierte
+// anonymize_account(p_user_id) verschoben. Seitdem ist DIESE Funktion die
+// Implementierung — anonymize_own_account() ist nur noch eine Hülle darum
+// und hätte keinen Rumpf mehr, den zu prüfen sich lohnt.
 function currentAnonymizeFunctionBody(): string {
+  const file = migrationFiles()
+    .filter((f) => readMigration(f).includes("function public.anonymize_account(p_user_id uuid)"))
+    .pop();
+  expect(file, "Migration mit anonymize_account(p_user_id uuid)").toBeDefined();
+
+  const body =
+    /create or replace function public\.anonymize_account\(p_user_id uuid\)[\s\S]*?as \$\$([\s\S]*?)\$\$;/.exec(
+      readMigration(file!),
+    );
+  expect(body, `Rumpf von anonymize_account() in ${file}`).not.toBeNull();
+  return body![1];
+}
+
+// Die Hülle separat: sie darf keine eigene Logik bekommen, sondern muss an
+// die parametrisierte Fassung delegieren. Zwei Implementierungen derselben
+// Löschung wären genau die Sorte Duplikat, die auseinanderläuft.
+function ownAccountWrapperBody(): string {
   const file = migrationFiles()
     .filter((f) => readMigration(f).includes("function public.anonymize_own_account()"))
     .pop();
   expect(file, "Migration mit anonymize_own_account()").toBeDefined();
 
-  const body = /create or replace function public\.anonymize_own_account\(\)[\s\S]*?as \$\$([\s\S]*?)\$\$;/.exec(
-    readMigration(file!),
-  );
+  const body =
+    /create or replace function public\.anonymize_own_account\(\)[\s\S]*?as \$\$([\s\S]*?)\$\$;/.exec(
+      readMigration(file!),
+    );
   expect(body, `Rumpf von anonymize_own_account() in ${file}`).not.toBeNull();
   return body![1];
 }
@@ -77,7 +104,7 @@ const ABSICHTLICH_ERHALTEN: Record<string, string> = {
   kudos_gesehen_am: "not null, kein vom Nutzer eingegebener Wert",
 };
 
-describe("anonymize_own_account (Kontolöschung)", () => {
+describe("anonymize_account (Kontolöschung)", () => {
   const body = currentAnonymizeFunctionBody();
 
   it.each([...profileColumns()].filter((c) => !(c in ABSICHTLICH_ERHALTEN)))(
@@ -103,8 +130,39 @@ describe("anonymize_own_account (Kontolöschung)", () => {
     expect(body).toMatch(/geloescht_am\s*=\s*coalesce\(geloescht_am, now\(\)\)/);
   });
 
-  it("bindet sich an die eigene Sitzung statt an einen Parameter", () => {
-    expect(body).toContain("auth.uid() is null");
-    expect(body).not.toMatch(/\b(?:id|user_id)\s*=(?!\s*auth\.uid\(\))/);
+  // Seit 0076 ist die Bindung an die Identität NICHT mehr Sache dieser
+  // Funktion: Sie bekommt die ID als Parameter und läuft nur für
+  // service_role. Festgestellt wird die Identität eine Ebene höher, in
+  // deleteAccount() (Passwort-Neueingabe) bzw. in der Hülle
+  // anonymize_own_account() (auth.uid()).
+  //
+  // Was hier zählt: auth.uid() darf im Rumpf nicht mehr vorkommen. Unter
+  // einem service_role-Aufruf ist es NULL — jedes darauf gefilterte
+  // Statement träfe keine Zeile, die Funktion liefe fehlerfrei durch und
+  // hätte nichts getan. Das ist der Fehler, der beim Umbau am ehesten
+  // passiert, und er wäre lautlos.
+  it("filtert ausschliesslich über den Parameter, nie über auth.uid()", () => {
+    expect(body).not.toContain("auth.uid()");
+    expect(body).toMatch(/where id = p_user_id/);
+    expect(body).toMatch(/where user_id = p_user_id/);
+  });
+
+  it("löscht die Abo-Zeile, damit premium_abgleich sie nicht wiederherstellt", () => {
+    expect(body).toMatch(/delete from public\.subscriptions where user_id = p_user_id/);
+  });
+});
+
+describe("anonymize_own_account (Hülle)", () => {
+  const wrapper = ownAccountWrapperBody();
+
+  it("delegiert an die parametrisierte Fassung, statt eigene Logik zu haben", () => {
+    expect(wrapper).toMatch(/perform public\.anonymize_account\(auth\.uid\(\)\)/);
+    // Keine zweite Implementierung: kein eigenes UPDATE/DELETE im Rumpf.
+    expect(wrapper).not.toMatch(/\bupdate\s+public\./);
+    expect(wrapper).not.toMatch(/\bdelete\s+from\s+public\./);
+  });
+
+  it("prüft weiterhin, dass überhaupt eine Sitzung existiert", () => {
+    expect(wrapper).toContain("auth.uid() is null");
   });
 });
