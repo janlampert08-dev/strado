@@ -127,7 +127,7 @@ export function renderShareImage(data: ShareRideData): Promise<Blob> {
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-  // Markenzeichen: dieselbe "C"-Wortmarke wie app/opengraph-image.tsx, hier
+  // Markenzeichen: dieselbe "S"-Wortmarke wie app/opengraph-image.tsx, hier
   // als runder Chip statt eckig, passend zu den Pill-Elementen weiter unten.
   const markSize = 52;
   roundedRect(ctx, PAD, 64, markSize, markSize, 16);
@@ -136,7 +136,7 @@ export function renderShareImage(data: ShareRideData): Promise<Blob> {
   ctx.fillStyle = "#0b0b0d";
   ctx.font = "700 28px system-ui, sans-serif";
   ctx.textBaseline = "middle";
-  ctx.fillText("C", PAD + markSize / 2 - 9, 64 + markSize / 2 + 2);
+  ctx.fillText("S", PAD + markSize / 2 - 9, 64 + markSize / 2 + 2);
   ctx.textBaseline = "alphabetic";
 
   ctx.fillStyle = MUTED;

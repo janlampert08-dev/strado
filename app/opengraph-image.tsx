@@ -38,7 +38,7 @@ export default function Image() {
             fontWeight: 600,
           }}
         >
-          C
+          S
         </div>
         <div style={{ display: "flex", fontSize: 88, fontWeight: 600, color: "#131316" }}>
           Strado

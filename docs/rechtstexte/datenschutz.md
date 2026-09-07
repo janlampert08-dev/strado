@@ -584,7 +584,7 @@ E-Mail.
 | `[[VERCEL_REGION]]` | Region, in der die Anwendung bei Vercel ausgeführt wird | Abschnitt 7 |
 | `[[STAND_DATUM]]` | Datum, ab dem diese Fassung gilt | Kopfzeile |
 
-Insgesamt **9 Platzhalter**. Vor der Veröffentlichung ist im gesamten Dokument
+Insgesamt **8 Platzhalter**. Vor der Veröffentlichung ist im gesamten Dokument
 nach der Zeichenfolge `[[` zu suchen, um sicherzustellen, dass kein Platzhalter
 übrig geblieben ist.
 

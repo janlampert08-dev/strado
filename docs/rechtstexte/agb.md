@@ -535,7 +535,7 @@ verzichten.
 | `[[GERICHTSSTAND]]` | Ort des vereinbarten Gerichtsstands (in der Regel der Sitz der Anbieterin) | Ziff. 16.4 |
 | `[[STAND_DATUM]]` | Datum, ab dem diese AGB-Fassung gilt | Kopfzeile |
 
-Insgesamt **8 Platzhalter**. Vor der Veröffentlichung ist im gesamten Dokument
+Insgesamt **7 Platzhalter**. Vor der Veröffentlichung ist im gesamten Dokument
 nach der Zeichenfolge `[[` zu suchen, um sicherzustellen, dass kein Platzhalter
 übrig geblieben ist.
 

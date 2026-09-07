@@ -124,6 +124,6 @@ füllen und schon gar nicht mit dem Platzhalter zu belassen.
 | `[[MWST_NR]]` | MWST-Nummer, nur bei bestehender Steuerpflicht | Form `CHE-###.###.### MWST` |
 | `[[DOMAIN]]` | Echte Domain, unter der die Rechtstexte erreichbar sind | — |
 
-Insgesamt **10 Platzhalter**. Vor der Veröffentlichung ist im gesamten
+Insgesamt **9 Platzhalter**. Vor der Veröffentlichung ist im gesamten
 Dokument nach der Zeichenfolge `[[` zu suchen, um sicherzustellen, dass kein
 Platzhalter übrig geblieben ist.
