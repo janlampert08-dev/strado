@@ -89,6 +89,45 @@ describe("LEGAL_URLS", () => {
     }
   });
 
+  // Dieselbe Falle wie der Schrägstrich, nur unauffälliger: der Wert ist
+  // eine BASIS, an die /legal/… angehängt wird. Aus
+  // "https://strado.ch/?x=1" + "/legal/impressum" würde
+  // "https://strado.ch/?x=1/legal/impressum" — Pfad "/", also die
+  // Startseite statt des Impressums. Bei einem rechtlich verlangten Link
+  // ist das schlimmer als ein toter Link, weil niemand es bemerkt.
+  it("weist eine Basis mit Query zurück und nimmt den Standard", async () => {
+    const urls = await legalUrls("https://beispiel.test/?x=1");
+    expect(urls.impressum).toBe("https://strado.ch/legal/impressum");
+  });
+
+  it("weist eine Basis mit Fragment zurück und nimmt den Standard", async () => {
+    const urls = await legalUrls("https://beispiel.test/#f");
+    expect(urls.impressum).toBe("https://strado.ch/legal/impressum");
+  });
+
+  // Gegenprobe: ein Pfad in der Basis ist zulässig und bleibt erhalten.
+  it("behält einen Pfad in der Basis", async () => {
+    const urls = await legalUrls("https://beispiel.test/recht");
+    expect(urls.agb).toBe("https://beispiel.test/recht/legal/agb");
+  });
+
+  // Die Zusicherung dahinter: der Pfad kommt im Pfadteil an, nie in einer
+  // Query oder einem Fragment.
+  it("liefert Links, deren Pfad tatsächlich auf /legal/ endet", async () => {
+    for (const wert of [
+      undefined,
+      "https://beispiel.test",
+      "https://beispiel.test/",
+      "https://beispiel.test/?x=1",
+      "https://beispiel.test/#f",
+    ]) {
+      const urls = await legalUrls(wert);
+      for (const url of Object.values(urls)) {
+        expect(new URL(url).pathname).toMatch(/\/legal\/[a-z]+$/);
+      }
+    }
+  });
+
   // Ein versehentlicher Schrägstrich am Ende hätte sonst "//legal/agb"
   // ergeben — auf manchen Hosts eine andere Ressource, auf anderen ein 404.
   it("verträgt einen abschliessenden Schrägstrich in der Basis-URL", async () => {

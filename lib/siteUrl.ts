@@ -27,8 +27,18 @@
 // "/profil" — eine relative URL, die Stripe zurückweist.
 const ENTWICKLUNGS_STANDARD = "http://localhost:3000";
 
-// Nimmt einen Kandidaten an, wenn er eine gültige http(s)-URL ist, und
-// entfernt abschliessende Schrägstriche (sonst entstünde "…//profil").
+// Nimmt einen Kandidaten an, wenn er eine gültige http(s)-URL ohne Query und
+// ohne Fragment ist, und entfernt abschliessende Schrägstriche (sonst
+// entstünde "…//profil").
+//
+// Query und Fragment müssen abgewiesen werden, weil der Rückgabewert eine
+// BASIS ist, an die ein Pfad angehängt wird. Aus
+// "https://app.strado.ch/?source=portal" + "/profil" würde
+// "https://app.strado.ch/?source=portal/profil" — das "/profil" landet im
+// Query-String, und die zahlende Person kommt aus dem Kundenportal auf der
+// Startseite statt im Profil heraus. Ein Fragment verhält sich gleich.
+// Ein reiner Pfad ("https://app.strado.ch/app") bleibt gültig und ergibt
+// wie erwartet "https://app.strado.ch/app/profil".
 function geprueft(kandidat: string | undefined): string | null {
   const wert = kandidat?.trim();
   if (!wert) return null;
@@ -41,6 +51,7 @@ function geprueft(kandidat: string | undefined): string | null {
   }
 
   if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+  if (url.search !== "" || url.hash !== "") return null;
 
   return wert.replace(/\/+$/, "");
 }

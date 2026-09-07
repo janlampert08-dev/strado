@@ -94,6 +94,19 @@ function legaleBasisUrl(): string {
     return LEGAL_BASE_URL_STANDARD;
   }
 
+  // Der Wert ist eine BASIS, an die /legal/… angehängt wird. Trüge er eine
+  // Query oder ein Fragment, landete der Pfad darin statt im Pfadteil: aus
+  // "https://strado.ch/?x=1" + "/legal/impressum" würde
+  // "https://strado.ch/?x=1/legal/impressum", was auf der Startseite
+  // herauskommt statt beim Impressum. Bei einem rechtlich verlangten Link
+  // ist das schlimmer als ein toter Link, weil es unbemerkt bleibt.
+  if (geprueft.search !== "" || geprueft.hash !== "") {
+    console.warn(
+      `NEXT_PUBLIC_LEGAL_BASE_URL darf keine Query und kein Fragment enthalten (${konfiguriert}) — Standard wird verwendet.`,
+    );
+    return LEGAL_BASE_URL_STANDARD;
+  }
+
   return konfiguriert.replace(/\/+$/, "");
 }
 

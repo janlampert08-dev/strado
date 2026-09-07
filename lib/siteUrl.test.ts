@@ -49,6 +49,45 @@ describe("siteUrl", () => {
     expect(siteUrl()).toBe("https://app.strado.ch");
   });
 
+  // Der Rückgabewert ist eine BASIS, an die "/profil" angehängt wird. Aus
+  // "https://app.strado.ch/?source=portal" + "/profil" würde
+  // "https://app.strado.ch/?source=portal/profil": das "/profil" landet im
+  // Query-String, new URL(...).pathname ist "/", und die zahlende Person
+  // kommt aus dem Kundenportal auf der Startseite statt im Profil heraus.
+  it("weist eine Basis mit Query zurück", () => {
+    setze("https://app.strado.ch/?source=portal", "produktion.beispiel.test");
+    expect(siteUrl()).toBe("https://produktion.beispiel.test");
+  });
+
+  it("weist eine Basis mit Fragment zurück", () => {
+    setze("https://app.strado.ch/#irgendwo", "produktion.beispiel.test");
+    expect(siteUrl()).toBe("https://produktion.beispiel.test");
+  });
+
+  // Die Gegenprobe: ein reiner Pfad ist eine zulässige Basis und muss
+  // erhalten bleiben, sonst wäre die Zurückweisung oben zu grob.
+  it("behält einen Pfad in der Basis", () => {
+    setze("https://app.strado.ch/app", undefined);
+    expect(siteUrl()).toBe("https://app.strado.ch/app");
+    expect(new URL(`${siteUrl()}/profil`).pathname).toBe("/app/profil");
+  });
+
+  // Die Zusicherung, um die es bei alldem geht: an das Ergebnis lässt sich
+  // ein Pfad anhängen und er kommt auch dort an.
+  it("liefert eine Basis, an die sich /profil anhängen lässt", () => {
+    for (const [site, vercel] of [
+      [undefined, undefined],
+      ["https://app.strado.ch", undefined],
+      ["https://app.strado.ch/", undefined],
+      ["https://app.strado.ch/?source=portal", "app.strado.ch"],
+      ["https://app.strado.ch/#irgendwo", "app.strado.ch"],
+      [undefined, "app.strado.ch"],
+    ] as [string | undefined, string | undefined][]) {
+      setze(site, vercel);
+      expect(new URL(`${siteUrl()}/profil`).pathname).toBe("/profil");
+    }
+  });
+
   // Sonst entstünde aus `${siteUrl()}/profil` ein doppelter Schrägstrich.
   it("entfernt abschliessende Schrägstriche", () => {
     setze("https://app.strado.ch///", undefined);
