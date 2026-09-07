@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Flame } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/server";
 import { isModerator } from "@/lib/moderation";
 import { getUnseenKudosCount } from "@/lib/kudos";
 import { getNavItems } from "@/lib/nav";
@@ -9,18 +9,24 @@ import BottomNav from "@/components/BottomNav";
 import { buttonVariants } from "@/components/ui/Button";
 
 export default async function Header({ back }: { back?: string } = {}) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const moderator = user ? await isModerator(user.id) : false;
-  // Rückkanal für "Community reagiert" im Kernloop (siehe AGENTS.md, "Core
-  // User Loop") — ohne diesen Zähler erfährt der Fahrer sonst nie aktiv,
-  // dass eine geteilte Fahrt Kudos bekommen hat. Zeigt sich am Flammen-Icon
-  // unten, das auf jeder Bildschirmgrösse sichtbar ist (anders als die
-  // reine Text-Nav, die auf Mobile hinter BottomNav zurücktritt) — deshalb
-  // hier zentral berechnet statt separat je Surface.
-  const unseenKudosCount = user ? await getUnseenKudosCount() : 0;
+  const user = await getCurrentUser();
+
+  // unseenKudosCount ist der Rückkanal für "Community reagiert" im Kernloop
+  // (siehe AGENTS.md, "Core User Loop") — ohne diesen Zähler erfährt der
+  // Fahrer sonst nie aktiv, dass eine geteilte Fahrt Kudos bekommen hat.
+  // Zeigt sich am Flammen-Icon unten, das auf jeder Bildschirmgrösse
+  // sichtbar ist (anders als die reine Text-Nav, die auf Mobile hinter
+  // BottomNav zurücktritt) — deshalb hier zentral berechnet statt separat
+  // je Surface.
+  //
+  // Beide Abfragen hängen nur an user, nicht voneinander. Sequenziell waren
+  // das zwei Roundtrips hintereinander, und zwar auf jeder Seite: <Header />
+  // ist ein Kind der Seite, läuft also ohnehin erst nach deren eigenen
+  // Abfragen.
+  const [moderator, unseenKudosCount] = await Promise.all([
+    user ? isModerator(user.id) : Promise.resolve(false),
+    user ? getUnseenKudosCount() : Promise.resolve(0),
+  ]);
   // "/" wird hier ausgelassen — das Logo verlinkt bereits dorthin, ein
   // zweiter Link wäre redundant. Einzige Quelle der Nav-Items: lib/nav.ts,
   // von BottomNav (Mobile) genauso genutzt.

@@ -74,15 +74,35 @@ export async function recomputePublicTracks(
 
   if (tracksError) return false;
 
+  // In Blöcken statt einzeln nacheinander. Wer viele Fahrten geteilt hat
+  // und seinen Privatzonen-Radius ändert, löste sonst genauso viele
+  // sequenzielle Roundtrips aus — in einer Server Action, die auf Vercel
+  // ein Zeitlimit hat. Bricht sie in der Mitte ab, bleibt ein Teil der
+  // Tracks mit dem alten, WEITEREN Radius öffentlich; das ist der Grund,
+  // warum der Rückgabewert hier zählt und der Aufrufer bei false eine
+  // Fehlermeldung zeigt statt "Gespeichert.".
+  //
+  // Bewusst kein einzelnes UPDATE über alle Zeilen: der Zuschnitt ist
+  // JS-Rechnung (cropTrackEnds), keine SQL-Operation — siehe Kommentar
+  // oben. Ein Block begrenzt nur, wie viele davon gleichzeitig fliegen.
+  const BLOCKGROESSE = 25;
+  const zeilen = tracks ?? [];
   let alleErfolgreich = true;
-  for (const row of tracks ?? []) {
-    const cropped = cropTrackEnds(row.track_geojson.coordinates, radiusM);
-    const { error } = await supabase
-      .from("route_completions")
-      .update({ track_oeffentlich: toEwktLineString(cropped) })
-      .eq("id", row.completion_id)
-      .eq("user_id", userId);
-    if (error) alleErfolgreich = false;
+
+  for (let i = 0; i < zeilen.length; i += BLOCKGROESSE) {
+    const block = zeilen.slice(i, i + BLOCKGROESSE);
+    const ergebnisse = await Promise.all(
+      block.map((row) => {
+        const cropped = cropTrackEnds(row.track_geojson.coordinates, radiusM);
+        return supabase
+          .from("route_completions")
+          .update({ track_oeffentlich: toEwktLineString(cropped) })
+          .eq("id", row.completion_id)
+          .eq("user_id", userId);
+      }),
+    );
+    if (ergebnisse.some(({ error }) => error)) alleErfolgreich = false;
   }
+
   return alleErfolgreich;
 }

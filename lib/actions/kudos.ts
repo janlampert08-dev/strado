@@ -29,12 +29,24 @@ export async function toggleKudos(completionId: string): Promise<{ ok: boolean }
     return { ok: false };
   }
 
-  const { data: existing } = await supabase
-    .from("kudos")
-    .select("completion_id")
-    .eq("completion_id", completionId)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  // Besitzer der Fahrt mitlesen: nur dessen Fahrerseite muss neu gebaut
+  // werden, nicht jede. Ohne diese Abfrage bliebe nur die Segmentform
+  // revalidatePath("/fahrer/[id]", "page"), und die entwertet ALLE
+  // Instanzen des dynamischen Segments — bei einem einzelnen Kudo also den
+  // Cache sämtlicher Fahrer- und Fahrtseiten der Plattform.
+  const [{ data: existing }, { data: fahrt }] = await Promise.all([
+    supabase
+      .from("kudos")
+      .select("completion_id")
+      .eq("completion_id", completionId)
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("route_completions")
+      .select("user_id")
+      .eq("id", completionId)
+      .maybeSingle(),
+  ]);
 
   const { error } = existing
     ? await supabase.from("kudos").delete().eq("completion_id", completionId).eq("user_id", user.id)
@@ -42,10 +54,15 @@ export async function toggleKudos(completionId: string): Promise<{ ok: boolean }
 
   if (error) return { ok: false };
 
-  revalidatePath("/fahrer/[id]", "page");
-  revalidatePath("/fahrten/[id]", "page");
+  revalidatePath(`/fahrten/${completionId}`);
+  // Nur die Seite des Fahrt-BESITZERS — dort ändert sich der Kudo-Zähler.
+  // Die Seite des Kudo-Gebers ändert sich nicht, deshalb ist auch
+  // revalidatePath("/profil") hier weg: /profil ist seine eigene.
+  if (fahrt?.user_id) revalidatePath(`/fahrer/${fahrt.user_id}`);
   revalidatePath("/feed");
-  revalidatePath("/profil");
+  // Der Aktivitäts-Rückkanal des Besitzers (Kernloop-Schritt 8) und der
+  // Ungelesen-Zähler im Header hängen an dieser Reaktion.
+  revalidatePath("/aktivitaet");
   return { ok: true };
 }
 

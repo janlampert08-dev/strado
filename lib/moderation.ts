@@ -1,8 +1,11 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { freieFahrtTitel } from "@/lib/completions";
 import type { Route } from "@/types/database";
 
-export async function isModerator(userId: string): Promise<boolean> {
+// Pro Request memoisiert: <Header /> fragt den Moderator-Status auf jeder
+// Seite ab, /moderation zusätzlich noch einmal für den Zugriffsschutz.
+export const isModerator = cache(async function isModerator(userId: string): Promise<boolean> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
@@ -10,7 +13,7 @@ export async function isModerator(userId: string): Promise<boolean> {
     .eq("id", userId)
     .maybeSingle();
   return data?.is_moderator ?? false;
-}
+});
 
 export async function getPendingRoutes(): Promise<Route[]> {
   const supabase = await createClient();
