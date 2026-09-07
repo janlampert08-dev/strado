@@ -98,13 +98,17 @@ export default async function FeedPage({
               // verschachtelte Links sind kein gültiges HTML. Stattdessen
               // dehnt der Titel-Link sein ::after über die Karte ("stretched
               // link"); Avatar, Name und Kudos liegen mit z-10 darüber und
-              // bleiben eigenständig klickbar. Der active:-Zustand ist das
+              // bleiben eigenständig klickbar. has-[a:active] ist das
               // Tippen-Feedback für Touch — Hover gibt es dort nicht, und
               // das Tap-Highlight ist global abgeschaltet (globals.css).
+              // Bewusst an den gedrückten Link gebunden statt an die Karte:
+              // so färbt sich die Karte beim Tippen auf die Fahrt oder das
+              // Profil, nicht aber beim Kudos-Button, der eine eigene
+              // Rückmeldung hat.
               <Card
                 as="li"
                 key={item.completion_id}
-                className="group relative overflow-hidden transition-colors duration-fast hover:border-border-strong active:bg-surface"
+                className="group relative overflow-hidden transition-colors duration-fast hover:border-border-strong has-[a:active]:bg-surface"
               >
                 <div className="flex flex-col gap-3 p-4">
                   <div className="flex items-center gap-3">
