@@ -1,9 +1,15 @@
 import { SIGNET, WORTMARKE } from "@/lib/marke";
 
-// Die Wortmarke als Inline-SVG. Höhe kommt vom Aufrufer (Tailwind-Klasse),
-// die Breite ergibt sich über den viewBox — deshalb kein width/height am
-// <svg> selbst. fill="currentColor" heisst: die Marke erbt die Textfarbe und
-// funktioniert damit in beiden Farbschemata ohne eigene Fassung.
+/**
+ * Die Wortmarke als Inline-SVG.
+ *
+ * Die Höhe kommt vom Aufrufer über className, die Breite ergibt sich aus dem
+ * viewBox — deshalb trägt das <svg> selbst kein width/height. fill ist
+ * currentColor: die Marke erbt die Textfarbe ihrer Umgebung und braucht damit
+ * keine zweite Fassung für das dunkle Schema.
+ *
+ * @param className Tailwind-Klassen für die Grösse, etwa "h-[18px] w-auto".
+ */
 export default function Wortmarke({ className }: { className?: string }) {
   return (
     <svg
@@ -18,9 +24,16 @@ export default function Wortmarke({ className }: { className?: string }) {
   );
 }
 
-// Das "s" allein — für Stellen, an denen die volle Wortmarke nicht hinpasst.
-// Ohne aria-label und mit aria-hidden, weil es bisher nur schmückend neben
-// einem Text steht; wer es allein als Link setzt, muss selbst beschriften.
+/**
+ * Das "s" der Wortmarke allein, für Stellen, an denen der volle Schriftzug
+ * nicht hinpasst.
+ *
+ * Trägt aria-hidden statt eines Labels, weil es bisher nur schmückend neben
+ * einem Text steht. Wer es allein als Link oder Schaltfläche setzt, muss die
+ * Beschriftung selbst mitgeben.
+ *
+ * @param className Tailwind-Klassen für die Grösse.
+ */
 export function Signet({ className }: { className?: string }) {
   return (
     <svg viewBox={SIGNET.viewBox} className={className} fill="currentColor" aria-hidden="true">

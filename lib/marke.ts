@@ -30,21 +30,43 @@ export const SIGNET = {
     "M23.17 52.5Q14.83 52.5 9.88 49.88Q4.92 47.25 2.63 43.25Q0.33 39.25 0 35.25L12.83 35.25Q13.25 37.42 14.63 39.21Q16 41 18.29 42Q20.58 43 23.83 43Q27.83 43 29.58 41.63Q31.33 40.25 31.33 38.08Q31.33 36.08 29.71 34.71Q28.08 33.33 24.42 32.17L18.42 30.17Q14.08 28.67 10.42 26.88Q6.75 25.08 4.54 22.25Q2.33 19.42 2.33 14.92Q2.33 8.25 7.42 4.13Q12.5 0 21.83 0Q28.58 0 32.88 2.08Q37.17 4.17 39.33 7.63Q41.5 11.08 41.83 15.25L29.5 15.25Q29.08 12.25 27 10.63Q24.92 9 21.33 9Q18.08 9 16.46 10.25Q14.83 11.5 14.83 13.67Q14.83 15.83 16.58 17.25Q18.33 18.67 21.92 19.83L27.92 21.75Q32.25 23.08 35.88 24.88Q39.5 26.67 41.67 29.54Q43.83 32.42 43.83 37Q43.83 44 38.54 48.25Q33.25 52.5 23.17 52.5Z",
 } as const;
 
-// Fertiges SVG als data:-URI. Für next/og (Satori), das Pfade nur über <img>
-// zuverlässig rendert, und für alles andere, was eine Bildquelle erwartet.
+/**
+ * Die Wortmarke als fertiges SVG in einem data:-URI.
+ *
+ * Gedacht für next/og (Satori), das einen Pfad nur über ein <img> zuverlässig
+ * rastert, und für alles andere, was eine Bildquelle statt eines React-Knotens
+ * erwartet. Im Markup einer Seite ist components/Wortmarke.tsx die bessere
+ * Wahl: das Inline-SVG dort erbt über currentColor die Textfarbe, ein
+ * data:-URI trägt seine Farbe fest eingebacken.
+ *
+ * @param farbe Füllfarbe der Kontur, beliebiger CSS-Farbwert.
+ */
 export function wortmarkeDataUri(farbe: string): string {
   return svgDataUri(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${WORTMARKE.viewBox}"><path fill="${farbe}" d="${WORTMARKE.pfad}"/></svg>`,
   );
 }
 
+/**
+ * Das Signet — das "s" der Wortmarke — als data:-URI, quadratisch gerahmt.
+ *
+ * Wie wortmarkeDataUri, nur für die Stellen, an denen der ganze Schriftzug
+ * nicht hinpasst: App-Icon und Favicon.
+ *
+ * @param farbe Füllfarbe der Kontur, beliebiger CSS-Farbwert.
+ */
 export function signetDataUri(farbe: string): string {
   return svgDataUri(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${SIGNET.viewBox}"><path fill="${farbe}" transform="translate(${SIGNET.einzug} 0)" d="${SIGNET.pfad}"/></svg>`,
   );
 }
 
+/**
+ * Packt ein SVG-Dokument in einen data:-URI.
+ *
+ * encodeURIComponent statt base64: das Ergebnis bleibt im Diff lesbar und ist
+ * kürzer — base64 bläht jede Datei um ein Drittel auf.
+ */
 function svgDataUri(svg: string): string {
-  // encodeURIComponent statt base64: bleibt im Diff lesbar und spart Bytes.
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
