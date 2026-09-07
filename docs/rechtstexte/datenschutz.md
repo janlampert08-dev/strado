@@ -72,7 +72,7 @@ Zum Profil gehören: Anzeigename, optionales **Profilbild**, die Einstellung des
 **Privatzonen-Radius** (Abschnitt 3.4), sowie mehrere unabhängige
 **Sichtbarkeits-Schalter**, mit denen selbst bestimmt wird, was auf dem
 öffentlichen Profil erscheint (Profilbild, Fahrzeuge, Anzahl Pässe,
-Höhenmeter, Distanz, Follower-Liste, Premium-Abzeichen). Beim Premium-Abo
+Höhenmeter, Distanz, Follower-Liste). Beim Premium-Abo
 kommt eine Kunden-Kennung des Zahlungsdienstleisters hinzu (Abschnitt 3.9).
 
 > **Wichtig zu den Standardeinstellungen:** Bei neu angelegten Konten sind
@@ -84,9 +84,9 @@ kommt eine Kunden-Kennung des Zahlungsdienstleisters hinzu (Abschnitt 3.9).
 > Opt-in-Voreinstellung; die Anwendung weist in den Profileinstellungen
 > ausdrücklich darauf hin („Standardmässig ist alles an").
 >
-> Zwei Einstellungen sind davon ausgenommen und bleiben **standardmässig aus**:
-> das **Premium-Abzeichen** (Abschnitt 3.9) und die Sichtbarkeit
-> **einzelner Fahrten**, über die pro Fahrt entschieden wird (Abschnitt 3.4).
+> Eine Einstellung ist davon ausgenommen und bleibt **standardmässig aus**:
+> die Sichtbarkeit **einzelner Fahrten**, über die pro Fahrt entschieden wird
+> (Abschnitt 3.4).
 
 ### 3.3 Fahrzeugdaten
 
@@ -289,8 +289,8 @@ widerrechtlich verletzt wird. Wo eine Rechtfertigung nötig ist, stützen wir un
 auf Art. 31 DSG: **Vertragserfüllung** (Konto, Fahrten, Abo),
 **überwiegendes privates Interesse** (Sicherheit, Missbrauchsabwehr,
 Reichweitenmessung, Weiterentwicklung), **Einwilligung** (Standortzugriff,
-Veröffentlichen einzelner Fahrten, Premium-Abzeichen) und **gesetzliche
-Pflicht** (Aufbewahrung).
+Veröffentlichen einzelner Fahrten) und **gesetzliche Pflicht**
+(Aufbewahrung).
 
 Die sechs voreingestellt eingeschalteten Profil-Schalter (Abschnitt 3.2)
 lassen sich **nicht** auf eine Einwilligung stützen, weil ihnen keine aktive
@@ -307,15 +307,15 @@ ist, gilt zusätzlich:
 | Bearbeitung | Rechtsgrundlage DSGVO |
 | --- | --- |
 | Konto, Fahrten, Abo, Zahlungsabwicklung | Art. 6 Abs. 1 lit. b (Vertrag) |
-| Standortzugriff, Veröffentlichen einzelner Fahrten, Premium-Abzeichen | Art. 6 Abs. 1 lit. a (Einwilligung) |
+| Standortzugriff, Veröffentlichen einzelner Fahrten | Art. 6 Abs. 1 lit. a (Einwilligung) |
 | Voreingestellt sichtbare Profilangaben (Abschnitt 6) | Art. 6 Abs. 1 lit. b und f — siehe offenen Punkt 12 |
 | Sicherheit, Missbrauchsabwehr, Reichweitenmessung, Moderation | Art. 6 Abs. 1 lit. f (berechtigtes Interesse) |
 | Aufbewahrung von Rechnungsunterlagen | Art. 6 Abs. 1 lit. c (rechtliche Verpflichtung) |
 
 Eine Einwilligung kann jederzeit mit Wirkung für die Zukunft widerrufen
 werden — beim Standortzugriff über die Browsereinstellungen, bei der
-Sichtbarkeit von Fahrten und beim Premium-Abzeichen über die entsprechenden
-Schalter in der Anwendung. Die voreingestellt eingeschalteten Profilangaben
+Sichtbarkeit von Fahrten über den entsprechenden Schalter in der Anwendung.
+Die voreingestellt eingeschalteten Profilangaben
 beruhen nicht auf einer Einwilligung; sie lassen sich über dieselben Schalter
 jederzeit abschalten, und ein Widerspruch nach Abschnitt 11 bleibt möglich.
 
@@ -329,7 +329,7 @@ Bewertungstexte; Streckenvorschläge nach ihrer Freigabe.
 
 **Nur nach ausdrücklicher Freigabe sichtbar (Standard: aus):** einzelne
 Fahrten — mit Datum, Strecke bzw. Titel, Distanz, Dauer, Höhenmeter, Fotos und
-Notiz sowie dem an den Enden gekappten Track; ausserdem das Premium-Abzeichen.
+Notiz sowie dem an den Enden gekappten Track.
 
 **Voreingestellt sichtbar, bis es abgeschaltet wird (Standard: an):**
 Profilbild; Fahrzeuge; Anzahl gefahrener Pässe; gesammelte Höhenmeter;

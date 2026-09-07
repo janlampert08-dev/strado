@@ -307,8 +307,8 @@ zugänglich. Bereits gespeicherte Fotos bleiben bestehen, auch wenn eine Fahrt
 mehr Fotos enthält, als das kostenlose Kontingent erlauben würde; neue Fotos
 können nur noch bis zur kostenlosen Obergrenze hinzugefügt werden.
 
-**9.3 Premium-Abzeichen.** Das Premium-Abzeichen wird mit dem Ende des Abos
-automatisch nicht mehr angezeigt.
+**9.3 Profil.** Profilangaben und Sichtbarkeits-Einstellungen bleiben durch
+das Ende des Abos unberührt.
 
 **9.4 Offline gespeicherte Strecken** liegen ausschliesslich lokal im Browser
 der Nutzenden und werden durch das Ende des Abos nicht entfernt. Neue Strecken
