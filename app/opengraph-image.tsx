@@ -1,7 +1,8 @@
 import { ImageResponse } from "next/og";
+import { SLOGAN } from "@/lib/constants";
 import { WORTMARKE, wortmarkeDataUri } from "@/lib/marke";
 
-export const alt = "Strado — Kuratierte Fahrstrecken für Auto und Motorrad";
+export const alt = `Strado — ${SLOGAN}`;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -41,9 +42,7 @@ export default function Image() {
           height={MARKE_HOEHE}
           alt="Strado"
         />
-        <div style={{ display: "flex", fontSize: 36, color: "#8a8f98" }}>
-          Kuratierte Fahrstrecken für Auto und Motorrad
-        </div>
+        <div style={{ display: "flex", fontSize: 36, color: "#8a8f98" }}>{SLOGAN}</div>
       </div>
     ),
     { ...size },

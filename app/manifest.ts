@@ -1,15 +1,15 @@
 import type { MetadataRoute } from "next";
+import { BESCHREIBUNG } from "@/lib/constants";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
     // name erscheint im Installations-Dialog, short_name auf dem
-    // Home-Bildschirm. Die Beschreibung war wortgleich mit der
-    // meta-description und nannte weder Region noch das, was die App
-    // eigentlich kann.
+    // Home-Bildschirm. Die Beschreibung teilt sich die Quelle mit der
+    // meta-description (lib/constants.ts) — bewusst, damit Installations-
+    // Dialog und Suchtreffer nicht auseinanderlaufen.
     name: "Strado — Fahrstrecken für Auto & Motorrad",
     short_name: "Strado",
-    description:
-      "Kuratierte Kurven- und Passstrecken in der Schweiz. Fahrten per GPS aufzeichnen, Bestzeiten vergleichen, Touren teilen.",
+    description: BESCHREIBUNG,
     lang: "de-CH",
     dir: "ltr",
     categories: ["travel", "navigation", "sports"],
