@@ -21,8 +21,9 @@ import ActivityHeatmap from "@/components/ActivityHeatmap";
 import CountUp from "@/components/CountUp";
 import FollowCounts from "@/components/FollowCounts";
 import PremiumCard from "@/components/PremiumCard";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
+import { getUnseenKudosCount } from "@/lib/kudos";
 import { getFollowCounts, getFollowerProfiles, getFollowingProfiles } from "@/lib/follows";
 import { formatDuration, formatKm } from "@/lib/format";
 import { freieFahrtTitel } from "@/lib/completions";
@@ -65,9 +66,10 @@ function SectionSummary({
 
 export default async function ProfilPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getCurrentUser() statt supabase.auth.getUser(): derselbe GoTrue-Roundtrip
+  // fiel sonst dreimal pro Request an — hier, in getPremiumStatus() und in
+  // <Header />. Die cache()-Variante teilt ihn (siehe lib/supabase/server.ts).
+  const user = await getCurrentUser();
 
   if (!user) {
     redirect("/anmelden");
@@ -87,6 +89,7 @@ export default async function ProfilPage() {
     followers,
     following,
     premiumStatus,
+    unseenKudos,
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -162,6 +165,9 @@ export default async function ProfilPage() {
     getFollowerProfiles(user.id),
     getFollowingProfiles(user.id),
     getPremiumStatus(),
+    // Entscheidet, ob MarkKudosSeen unten überhaupt etwas tut — derselbe
+    // Wert, den <Header /> für den Zähler liest (cache() in lib/kudos.ts).
+    getUnseenKudosCount(),
   ]);
 
   // Pro Strecke nur einmal zählen (auch bei mehrfacher Befahrung) — sonst
@@ -181,7 +187,7 @@ export default async function ProfilPage() {
 
   return (
     <div className="flex h-dvh flex-col">
-      <MarkKudosSeen />
+      <MarkKudosSeen hasUnseen={unseenKudos > 0} />
       <Header />
       {/* Scroll-Container ist der volle Rest der Seitenbreite, nicht das
           zentrierte max-w-Element darin — sonst sitzt die native

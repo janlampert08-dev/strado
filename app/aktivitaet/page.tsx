@@ -34,8 +34,10 @@ export default async function AktivitaetPage() {
           /profil, hier zusätzlich statt stattdessen. Das router.refresh()
           darin würde die "neu"-Flags dieser Liste sofort auf false ziehen,
           bevor der Nutzer sie gesehen hat — deshalb hält ActivityKudosList
-          einen eigenen Snapshot statt live aus den Props neu zu lesen. */}
-      <MarkKudosSeen />
+          einen eigenen Snapshot statt live aus den Props neu zu lesen.
+          Ohne ungelesene Kudos in der Liste gibt es nichts zu markieren —
+          dann bleibt auch der Refresh aus. */}
+      <MarkKudosSeen hasUnseen={kudosList.some((k) => k.neu)} />
       <div className="flex-1 overflow-y-auto">
         <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-5 py-8 sm:px-6 sm:py-10">
           <div>
