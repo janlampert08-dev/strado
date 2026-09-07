@@ -63,9 +63,31 @@ describe("toEntry", () => {
     expect(toEntry(totalsRow({ avatar_url: null }), 1).avatarUrl).toBeNull();
   });
 
-  it("never shows the premium badge while the Premium feature is disabled", () => {
+  // Das Abzeichen verlangt BEIDES: ein laufendes Abo und das eigene Opt-in.
+  // Die Wahrheitstabelle steht ausgeschrieben da, weil beide Hälften je eine
+  // eigene Zusage tragen — die eine, dass niemand ohne Abo ein Abzeichen
+  // bekommt, die andere, dass niemand gegen seinen Willen markiert wird.
+  it("shows the premium badge only with an active subscription AND the opt-in", () => {
     expect(
       toEntry(totalsRow({ ist_premium: true, zeigt_premium_badge: true }), 1).isPremiumBadge,
+    ).toBe(true);
+  });
+
+  it("hides the badge when the subscription has ended, even with the opt-in still set", () => {
+    expect(
+      toEntry(totalsRow({ ist_premium: false, zeigt_premium_badge: true }), 1).isPremiumBadge,
+    ).toBe(false);
+  });
+
+  it("hides the badge for a paying user who did not opt in", () => {
+    expect(
+      toEntry(totalsRow({ ist_premium: true, zeigt_premium_badge: false }), 1).isPremiumBadge,
+    ).toBe(false);
+  });
+
+  it("hides the badge when neither holds", () => {
+    expect(
+      toEntry(totalsRow({ ist_premium: false, zeigt_premium_badge: false }), 1).isPremiumBadge,
     ).toBe(false);
   });
 

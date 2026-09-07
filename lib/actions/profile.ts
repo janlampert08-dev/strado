@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { metadatenEntfernen } from "@/lib/imageMetadata";
 import { recomputePublicTracks } from "@/lib/publicTrack";
+import { istPremium } from "@/lib/premium";
 import { DEFAULT_PRIVACY_RADIUS_M, PRIVACY_RADIUS_OPTIONS } from "@/lib/track";
 
 export interface ProfileActionState {
@@ -82,8 +83,21 @@ export async function updateVisibilitySettings(
       zeigt_hoehenmeter: formData.get("zeigt_hoehenmeter") === "true",
       zeigt_distanz: formData.get("zeigt_distanz") === "true",
       zeigt_follower_liste: formData.get("zeigt_follower_liste") === "true",
-      // Premium-Feature (Gold-Badge) vorerst deaktiviert — bleibt aus.
-      zeigt_premium_badge: false,
+      // Das Abzeichen ist ein Opt-in, kein Automatismus: wer zahlt, aber
+      // nicht auffallen will, lässt es aus. Der Wunsch aus dem Formular wird
+      // deshalb übernommen — aber nur, solange das Abo tatsächlich läuft.
+      //
+      // Die Und-Verknüpfung ist die eigentliche Schranke: ohne sie könnte
+      // jedes Konto den Schalter setzen und sich das Abzeichen erschleichen.
+      // Ein ausgeblendetes Formularfeld ist keine Prüfung, und der Wert
+      // kommt aus dem Browser.
+      //
+      // Zweite Schranke unabhängig davon in der Datenbank: die Views
+      // verrechnen zeigt_premium_badge ohnehin mit ist_premium (0021), und
+      // apply_subscription_state schaltet den Schalter beim Ende eines Abos
+      // von selbst ab (0059). Ein hier stehengebliebenes true wäre also
+      // wirkungslos — es soll trotzdem gar nicht erst entstehen.
+      zeigt_premium_badge: formData.get("zeigt_premium_badge") === "true" && (await istPremium()),
     })
     .eq("id", user.id);
 

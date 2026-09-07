@@ -10,6 +10,7 @@ export default function GefahrenSection({
   vehicles,
   personalBestSeconds,
   guestContinuationToken = null,
+  maxPhotos,
 }: {
   route: RouteGeoJSON;
   // null heisst abgemeldeter Besucher — aufzeichnen darf er, das Konto
@@ -17,6 +18,8 @@ export default function GefahrenSection({
   userId: string | null;
   vehicles: Vehicle[];
   personalBestSeconds: number | null;
+  /** Fotos pro Fahrt, aus dem Abo-Zustand (lib/premium.ts). */
+  maxPhotos: number;
   // Aus ?fortsetzen=<token>: der Besucher kommt gerade aus dem Anmelde-Gate
   // einer als Gast aufgezeichneten Fahrt zurück.
   guestContinuationToken?: string | null;
@@ -65,6 +68,7 @@ export default function GefahrenSection({
       vehicles={vehicles}
       personalBestSeconds={personalBestSeconds}
       guestContinuationToken={guestContinuationToken}
+      maxPhotos={maxPhotos}
       onExit={() => setOpen(false)}
     />
   );

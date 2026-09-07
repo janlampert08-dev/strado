@@ -172,6 +172,133 @@ früheren Zeitstempel als 0061, weil 0061 auf den Produktions-Deploy warten
 musste. Der Ledger sortiert nach Zeitstempel, nicht nach Dateinummer — beim
 Abgleich mit dem Verzeichnis also nach Namen suchen, nicht nach Position.
 
+## Premium-Migrationen 0063–0065 (eingespielt 2026-09-06)
+
+| Datei | Was sie tut |
+| --- | --- |
+| `0063_eigene_abozeile_lesbar.sql` | gibt die **eigene** Zeile in `subscriptions` für `authenticated` frei — Policy auf `user_id = auth.uid()` plus Spalten-Grant ohne die Stripe-Kennungen |
+| `0064_private_strecken_bestandsschutz.sql` | Freikontingent 1 private Strecke, Bestandsschutz-Tabelle, `darf_private_strecke_anlegen()` |
+| `0065_gruenderplaetze.sql` | Verzeichnis der vergebenen Gründerpreis-Plätze, `gruenderplatz_beanspruchen()` und `gruenderplaetze_frei()` |
+
+Alle drei liefen gegen eine praktisch leere Produktionsdatenbank: 0 Abos,
+0 private Strecken, 0 Premium-Konten. Der Bestandsschutz-Backfill in 0064 hat
+entsprechend **0 Zeilen** geschrieben.
+
+## Premium-Migrationen 0066–0068 (eingespielt 2026-09-07)
+
+Alle drei gehen auf CodeRabbit-Befunde zu PR #123 zurück.
+
+| Datei | Was sie korrigiert |
+| --- | --- |
+| `0066_gruenderplaetze_erst_nach_zahlung.sql` | 0065 hat den Gründerplatz beim Klick auf „Weiter zur Zahlung" **verbraucht**. Hundert abgebrochene Checkouts hätten die Zusage aus AGB Ziff. 4.3 aufgezehrt, ohne dass ein Abo zustande kam. Jetzt: Reservierung mit Ablauf, endgültig erst mit verifizierter Zahlung. |
+| `0067_private_strecken_grenze_am_schreibrand.sql` | 0064 stellte die Regel als Funktion bereit, aber nur die Server Action rief sie auf. Die Policy „Nutzer können eigene unverifizierte Strecken bearbeiten" liess einen direkten PostgREST-`UPDATE` auf `ist_privat` daran vorbei. Jetzt ein Trigger am Schreibrand. |
+| `0068_gruenderplatz_ueber_customer_bestaetigen.sql` | Der Webhook kennt nur die Stripe-Kunden-Kennung, nicht die Benutzer-Kennung. Ohne diese Auflösung bliebe ein per TWINT bezahlter Platz reserviert, wenn die zahlende Person nicht zurückkehrt. |
+
+Als Rolle `authenticated` gegengeprüft — die Umgehung ist zu:
+
+| Prüfung | Ergebnis |
+| --- | --- |
+| Reservierung zählt gegen das Kontingent | belegt=1 |
+| abgelaufene Reservierung zählt nicht mehr | belegt=0 |
+| bestätigter Platz zählt dauerhaft | belegt=1, frei=99 |
+| 1. private Strecke per direktem `UPDATE` | erlaubt (im Kontingent) |
+| 2. private Strecke per direktem `UPDATE` | **blockiert:** `private_strecken_kontingent_erschoepft` |
+
+`0067` ist der einzige `SECURITY DEFINER` in dieser Reihe, und mit Grund: der
+Trigger zählt **alle** privaten Strecken des Kontos und liest den
+Bestandsschutz. Als Aufrufer wäre beides von RLS gefiltert — eine Schranke,
+die weniger sieht, als sie schützen soll, ist keine. `search_path` ist
+gepinnt, die Funktion nimmt keine Parameter und entscheidet nur anhand von
+`new.erstellt_von`, das die Schreib-Policy ohnehin auf das eigene Konto
+begrenzt hat.
+
+## Premium-Migration 0069 (eingespielt 2026-09-07)
+
+`0069_gruenderplatz_reservierung_dicht_machen.sql` schliesst zwei Lücken in
+0066 — beide aus einem CodeRabbit-Befund zu PR #123.
+
+1. **Die abgelaufene eigene Zeile umging die Kontingentprüfung.**
+   `gruenderplatz_beanspruchen` prüfte mit `if found then` nur, ob eine Zeile
+   für das Konto existiert, nicht ob deren Frist noch läuft. Eine abgelaufene
+   Zeile bekam eine frische Frist, ohne dass nachgezählt wurde. Die Begründung
+   in 0066 („für dieses Konto ist der Platz schon gezählt") gilt nur, solange
+   die Reservierung **läuft** — genau diese Bedingung fehlte.
+2. **Bestätigen nahm den Advisory Lock nicht,** Reservieren schon. Beide
+   nehmen ihn jetzt.
+
+Die Frist gilt neu **24 Stunden statt einer**. Massgeblich ist nicht die Dauer
+des Checkouts, sondern wie lange Stripe die Zahlung noch annimmt: der
+Gründerpreis steht fest, sobald das Abo entsteht, und ein Abo im Status
+`incomplete` bleibt rund 23 Stunden bezahlbar. Mit einer Stunde konnte die
+Reservierung ablaufen, jemand anders den letzten Platz nehmen — und die erste
+Zahlung trotzdem noch zum Gründerpreis durchgehen.
+
+Bewusst **nicht** umgesetzt: die Bestätigung abzulehnen, wenn die Reservierung
+abgelaufen oder das Kontingent voll ist. Sie läuft erst, nachdem Stripe die
+Zahlung bestätigt hat — der Preis ist dann abgebucht. Die Zeile zu verweigern
+macht die Abbuchung nicht rückgängig, sie versteckt sie: das Verzeichnis
+zählte 100, während 101 Leute den Gründerpreis zahlen. Die Schranke gehört an
+den Anfang des Kaufs.
+
+Gegen die Produktionsdatenbank in einer Transaktion mit `rollback` geprüft,
+`p_maximum = 1`:
+
+| Schritt | Ergebnis |
+| --- | --- |
+| A reserviert mit Frist 0 min | `true` |
+| B nimmt den einzigen Platz | `true` |
+| A erneut, Frist abgelaufen | **`false`** (vor 0069: `true`) |
+| B verlängert seine laufende Frist | `true` (keine Regression) |
+| B bestätigt nach Zahlung | `true`, belegt=1 |
+| A nach B's Bestätigung | **`false`** |
+
+Danach: 0 Zeilen, belegt=0, frei=100 — der Rollback hat gegriffen, es liegen
+keine Testdaten in der Tabelle. Die Ausführungsrechte haben das
+`create or replace` überstanden: alle fünf Gründerplatz-Funktionen stehen
+weiterhin nur `postgres` und `service_role` offen, nicht `anon` oder
+`authenticated`.
+
+### Warum 0063 überhaupt sein muss
+
+`lib/premium.ts` beantwortet "darf diese Person X?" über den an die Session
+gebundenen Client, nicht über den Service-Role-Client. Der Admin-Client
+umgeht RLS vollständig; ihn für eine *Berechtigungsfrage* in einem
+nutzerseitigen Pfad zu verwenden hiesse, die Schranke genau dort aufzugeben,
+wo sie zählt. Statt eines Umwegs also eine genauere Policy — so verlangt es
+der Abschnitt „Supabase Rules" in `AGENTS.md`.
+
+Nach dem Einspielen als Rolle `authenticated` gegengeprüft, nicht nur als
+`postgres`:
+
+| Prüfung | Ergebnis |
+| --- | --- |
+| `subscriptions.status` lesen | erlaubt |
+| `subscriptions.stripe_customer_id` lesen | **verweigert** |
+| `subscriptions.stripe_subscription_id` lesen | **verweigert** |
+| `update subscriptions` | **verweigert** |
+| eigenen Bestandsschutz eintragen | **verweigert** |
+| fremde Abo-Zeilen | 0 Zeilen (RLS filtert) |
+| `darf_private_strecke_anlegen()` | `erlaubt=t vorhanden=0 grenze=1 grund=kontingent_frei` |
+
+Der Einzeiler dafür steht als `do $$ … set local role authenticated … $$`
+im PR zu diesen Migrationen. **Rechte immer als die betroffene Rolle prüfen,
+nicht als `postgres`** — als Superuser sieht jede Schranke offen aus.
+
+### Funktionsrechte auf einen Blick
+
+```sql
+select p.proname, coalesce(string_agg(distinct a.grantee::regrole::text, ', '), '(niemand)')
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+left join lateral aclexplode(p.proacl) a on a.privilege_type = 'EXECUTE'
+where n.nspname = 'public' group by p.proname;
+```
+
+Soll-Zustand: `darf_private_strecke_anlegen` bei `authenticated` (die
+angemeldete Person fragt ihr eigenes Kontingent ab, die Funktion nimmt keine
+Parameter); `gruenderplatz_beanspruchen`, `gruenderplaetze_frei`,
+`apply_subscription_state`, `subscription_ist_premium` und `premium_abgleich`
+**nur** bei `service_role`.
+
 ### 0061 ist die Ausnahme von der Reihenfolgenregel
 
 Sonst gilt: Migration vor oder mit dem Deploy. 0061 macht den Bucket
@@ -190,10 +317,18 @@ Nach der Einspielung geprüft:
 
 ```sql
 select id, public from storage.buckets;                 -- route-photos: false
-select policyname, cmd, roles::text from pg_policies
+-- qual traegt die USING-Bedingung, with_check die von INSERT/UPDATE. Nur
+-- qual abzufragen liesse eine Schreibpolicy uebersehen, die den Bucket
+-- ausschliesslich ueber with_check einschraenkt — coalesce, weil die
+-- jeweils andere Spalte null ist und `null like ...` nichts trifft.
+select policyname, cmd, roles::text, qual, with_check
+from pg_policies
 where schemaname = 'storage' and tablename = 'objects'
-  and qual like '%route-photos%';
--- nur noch "Nutzer lesen eigene Fahrt-Fotos" (SELECT, authenticated)
--- und "Nutzer löschen eigene Fahrt-Fotos" (DELETE, authenticated);
--- die bedingungslose Lesepolicy für {public} ist weg.
+  and (coalesce(qual, '') like '%route-photos%'
+    or coalesce(with_check, '') like '%route-photos%');
+-- Erwartet: "Nutzer lesen eigene Fahrt-Fotos" (SELECT, authenticated),
+-- "Nutzer löschen eigene Fahrt-Fotos" (DELETE, authenticated) und
+-- "Nutzer laden Fotos in eigenen Ordner hoch" (INSERT, authenticated —
+-- diese steht nur in with_check). Die bedingungslose Lesepolicy für
+-- {public} ist weg.
 ```

@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 
 const MAX_FOTO_BYTES = 8 * 1024 * 1024;
-const MAX_PHOTOS = 6;
 
 interface PhotoEntry {
   file: File;
@@ -15,9 +14,19 @@ interface PhotoEntry {
 // hängt ausgewählte Dateien in einem versteckten <input multiple> unter
 // demselben Feldnamen an, FormData.getAll(name) liefert beim Absenden alle
 // zurück (logTrackedCompletion, lib/actions/completions.ts). Serverseitig
-// zusätzlich auf MAX_PHOTOS_PER_COMPLETION begrenzt — diese Clientgrenze ist
-// nur UX, keine Durchsetzung.
-export default function MultiPhotoInput({ name, id }: { name: string; id: string }) {
+// zusätzlich begrenzt (maxFotosProFahrt in lib/premium.ts, angewendet in
+// lib/actions/completions.ts) — diese Clientgrenze ist nur UX, keine
+// Durchsetzung. Wer das Formular selbst zusammenbaut, schickt so viele
+// Dateien, wie er will; abgeschnitten wird im Server.
+export default function MultiPhotoInput({
+  name,
+  id,
+  maxPhotos,
+}: {
+  name: string;
+  id: string;
+  maxPhotos: number;
+}) {
   const [entries, setEntries] = useState<PhotoEntry[]>([]);
   const [sizeError, setSizeError] = useState(false);
   const [limitError, setLimitError] = useState(false);
@@ -59,12 +68,12 @@ export default function MultiPhotoInput({ name, id }: { name: string; id: string
 
     setEntries((prev) => {
       const combined = [...prev, ...accepted];
-      const next = combined.slice(0, MAX_PHOTOS);
+      const next = combined.slice(0, maxPhotos);
       // Über das Limit hinaus abgeschnittene Previews sofort freigeben,
       // sonst bleiben ihre Object-URLs bis zum Unmount im Speicher, ohne
       // dass sie je angezeigt werden.
-      for (const dropped of combined.slice(MAX_PHOTOS)) URL.revokeObjectURL(dropped.preview);
-      setLimitError(combined.length > MAX_PHOTOS);
+      for (const dropped of combined.slice(maxPhotos)) URL.revokeObjectURL(dropped.preview);
+      setLimitError(combined.length > maxPhotos);
       syncInputFiles(next);
       return next;
     });
@@ -85,7 +94,7 @@ export default function MultiPhotoInput({ name, id }: { name: string; id: string
         <span>Fotos (optional)</span>
         {entries.length > 0 && (
           <span className="font-mono text-xs tabular-nums text-muted">
-            {entries.length}/{MAX_PHOTOS}
+            {entries.length}/{maxPhotos}
           </span>
         )}
       </div>
@@ -117,7 +126,7 @@ export default function MultiPhotoInput({ name, id }: { name: string; id: string
           ))}
         </div>
       )}
-      {entries.length < MAX_PHOTOS && (
+      {entries.length < maxPhotos && (
         <label
           htmlFor={id}
           className="cursor-pointer rounded-md border border-dashed border-border px-3 py-3 text-center text-muted transition-colors duration-fast hover:border-border-strong hover:text-foreground"
@@ -127,7 +136,7 @@ export default function MultiPhotoInput({ name, id }: { name: string; id: string
       )}
       {sizeError && <span className="text-xs text-danger">Ein Foto ist zu gross (max. 8 MB).</span>}
       {limitError && (
-        <span className="text-xs text-danger">Maximal {MAX_PHOTOS} Fotos pro Fahrt.</span>
+        <span className="text-xs text-danger">Maximal {maxPhotos} Fotos pro Fahrt.</span>
       )}
     </div>
   );

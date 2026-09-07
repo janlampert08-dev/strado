@@ -46,8 +46,15 @@ export function toEntry(row: LeaderboardUserTotalsRow, value: number): Leaderboa
     // nur noch durchgereicht, keine weitere Prüfung nötig.
     avatarUrl: row.avatar_url,
     value,
-    // Premium-Feature (Gold-Badge) vorerst deaktiviert.
-    isPremiumBadge: false,
+    // Zwei Bedingungen, beide nötig: das Abo muss laufen UND das Abzeichen
+    // muss selbst eingeschaltet sein (0021_premium_und_private_strecken.sql).
+    // Das Opt-in ist der Grund, warum hier nicht einfach ist_premium steht —
+    // wer zahlt, aber nicht auffallen will, bleibt unmarkiert.
+    //
+    // Endet ein Abo, fällt ist_premium weg und das Abzeichen verschwindet
+    // von selbst; ein Aufräumen der Opt-in-Spalte ist dafür nicht nötig
+    // (apply_subscription_state schaltet sie trotzdem ab, siehe 0059).
+    isPremiumBadge: row.ist_premium === true && row.zeigt_premium_badge === true,
   };
 }
 
@@ -61,7 +68,9 @@ async function topByMetric(
 ): Promise<LeaderboardEntry[]> {
   const { data, error } = await supabase
     .from("leaderboard_user_totals")
-    .select("user_id, display_name, avatar_url, fahrten_count, hoehenmeter, km, strecken_count")
+    .select(
+      "user_id, display_name, avatar_url, ist_premium, zeigt_premium_badge, fahrten_count, hoehenmeter, km, strecken_count",
+    )
     .order(metric, { ascending: false, nullsFirst: false })
     .limit(TOP_N);
 
@@ -175,7 +184,7 @@ export async function getRouteLeaderboard(routeId: string): Promise<RouteTimeEnt
     // Bereits serverseitig mit zeigt_avatar verrechnet (0028_leaderboard_avatar.sql).
     avatarUrl: r.avatar_url,
     dauerSekunden: r.dauer_sekunden,
-    // Premium-Feature (Gold-Badge) vorerst deaktiviert.
-    isPremiumBadge: false,
+    // Wie in toEntry(): laufendes Abo UND eigenes Opt-in.
+    isPremiumBadge: r.ist_premium === true && r.zeigt_premium_badge === true,
   }));
 }

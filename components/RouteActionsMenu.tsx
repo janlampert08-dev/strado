@@ -26,12 +26,33 @@ export default function RouteActionsMenu({
   moderator = false,
   isOwner = false,
   canReport = false,
+  istPremium = false,
 }: {
   route: RouteGeoJSON;
   moderator?: boolean;
   isOwner?: boolean;
   /** Angemeldet und nicht der Ersteller selbst — siehe app/strecken/[id]/page.tsx. */
   canReport?: boolean;
+  /**
+   * Der GPX-Export kuratierter Strecken gehört zum Abo (AGB Ziff. 3.2).
+   * Eigene Fahrten lassen sich unabhängig davon immer exportieren — das ist
+   * Datenherausgabe nach Art. 28 DSG und darf nichts kosten.
+   *
+   * ACHTUNG, und das ist keine Nachlässigkeit, sondern die Lage: das hier
+   * ist eine BEQUEMLICHKEITSSCHRANKE, keine Zugriffsschranke. Die
+   * Streckengeometrie liegt ohnehin vollständig im Browser — RouteDetailMap
+   * zeichnet die Karte daraus, OfflineRouteButton bekommt dieselben
+   * Koordinaten. Wer sie will, hat sie bereits.
+   *
+   * Ein serverseitiger GPX-Endpunkt würde daran nichts ändern und wäre
+   * blosses Theater: er müsste Daten schützen, die die Seite eine Zeile
+   * weiter oben selbst ausliefert. Echt verschliessen liesse sich das nur,
+   * indem auch die Karte verschwindet — und die Karte ist das Produkt.
+   *
+   * Deshalb wird hier nichts vorgetäuscht: Premium spart den Umweg, nicht
+   * den Zugang. Wo das Feature beworben wird, muss es genauso stehen.
+   */
+  istPremium?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -113,8 +134,18 @@ export default function RouteActionsMenu({
           >
             In Google Maps öffnen ↗
           </a>
-          <button type="button" onClick={handleGpxExport} className={ITEM_CLASS}>
-            GPX exportieren
+          <button
+            type="button"
+            onClick={istPremium || isOwner ? handleGpxExport : undefined}
+            disabled={!istPremium && !isOwner}
+            title={
+              istPremium || isOwner
+                ? undefined
+                : "GPX-Export kuratierter Strecken gehört zu Premium. Eigene Fahrten kannst du immer exportieren."
+            }
+            className={`${ITEM_CLASS} disabled:cursor-not-allowed disabled:text-muted`}
+          >
+            {istPremium || isOwner ? "GPX exportieren" : "GPX exportieren (Premium)"}
           </button>
           {route.saison_status === "saisonal" && (
             <a

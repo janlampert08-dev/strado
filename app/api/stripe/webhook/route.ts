@@ -58,6 +58,42 @@ async function schreibeAboZustand(
 
   if (error) throw error;
 
+  // Gründerplatz endgültig machen, sobald das Abo läuft. Der zweite von zwei
+  // Wegen — der erste ist confirmSubscription (lib/actions/billing.ts).
+  //
+  // Beide sind nötig, keiner allein reicht: bei einer Weiterleitungs-
+  // Zahlungsart wie TWINT kann der Nutzer die Rückkehr abbrechen, dann kommt
+  // nur der Webhook an. Umgekehrt kann der Webhook verzögert eintreffen,
+  // während der Nutzer schon zurück ist. gruenderplatz_bestaetigen ist
+  // idempotent, ein doppelter Aufruf ändert nichts.
+  //
+  // Der Preisvergleich hält Monats- und reguläre Jahresabos heraus: nur ein
+  // Abo auf dem Gründerpreis darf einen Platz verbrauchen.
+  const gruenderPreisId = process.env.STRIPE_PREMIUM_PRICE_ID_GRUENDER;
+  if (
+    gruenderPreisId &&
+    zustand.priceId === gruenderPreisId &&
+    (zustand.status === "active" || zustand.status === "trialing")
+  ) {
+    const { error: platzFehler } = await supabase.rpc("gruenderplatz_bestaetigen_fuer_customer", {
+      p_stripe_customer_id: zustand.stripeCustomerId,
+    });
+    // Werfen, nicht nur loggen: sonst quittiert die Route mit 200, Stripe
+    // stellt nie wieder zu, und der Platz bliebe für immer unbestätigt.
+    // Genau das ist der teure Ausgang — die Person hat den Gründerpreis
+    // bezahlt, das Verzeichnis weiss nichts davon, die Reservierung läuft ab
+    // und derselbe Platz wird ein zweites Mal vergeben.
+    //
+    // Die Wiederholung ist ungefährlich: apply_subscription_state ist oben
+    // bereits durchgelaufen (Premium steht also), und beide Aufrufe sind
+    // idempotent. Ein erneuter Zustellversuch schreibt denselben Zustand und
+    // bestätigt denselben Platz.
+    if (platzFehler) {
+      console.error("Gründerplatz konnte nicht bestätigt werden", { subscriptionId }, platzFehler);
+      throw platzFehler;
+    }
+  }
+
   // false heisst: kein Profil zu diesem Customer (gelöschtes Konto) oder ein
   // neuerer Zustand war bereits gespeichert. Beides ist kein Fehler, aber
   // beim gelöschten Konto einen Blick wert.

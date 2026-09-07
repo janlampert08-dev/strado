@@ -57,6 +57,63 @@ export async function saveOfflineRoute(route: OfflineRoute): Promise<void> {
   await withStore("readwrite", (store) => store.put(route));
 }
 
+/** Ergebnis von saveOfflineRouteMitGrenze. */
+export type OfflineSpeicherErgebnis = "gespeichert" | "kontingent_erschoepft";
+
+/**
+ * Speichert eine Strecke, sofern das Kontingent es zulässt — Zählen und
+ * Schreiben in EINER IndexedDB-Transaktion.
+ *
+ * Warum nicht erst zählen und dann speichern: zwei offene Tabs sähen beide
+ * dieselbe Zahl, kämen beide durch und legten zusammen mehr Strecken an, als
+ * die Grenze erlaubt. IndexedDB serialisiert Transaktionen auf demselben
+ * Store, also entscheidet hier genau eine.
+ *
+ * Das ist kein Sicherheitsmechanismus und soll keiner sein: die Daten liegen
+ * in der IndexedDB des eigenen Browsers, kosten uns nichts, und wer die
+ * Grenze über die Entwicklerkonsole umgeht, füllt seinen eigenen
+ * Gerätespeicher. Es geht darum, dass die angezeigte Grenze auch stimmt.
+ *
+ * `grenze === null` heisst unbegrenzt (Premium) — dann wird nur geschrieben.
+ */
+export async function saveOfflineRouteMitGrenze(
+  route: OfflineRoute,
+  grenze: number | null,
+): Promise<OfflineSpeicherErgebnis> {
+  if (grenze === null) {
+    await saveOfflineRoute(route);
+    return "gespeichert";
+  }
+
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+
+    // Die eigene Kennung zählt nicht als neuer Platz: eine bereits
+    // gespeicherte Strecke zu aktualisieren muss immer erlaubt bleiben.
+    const vorhandene = store.getAllKeys();
+    let ergebnis: OfflineSpeicherErgebnis = "gespeichert";
+
+    vorhandene.onsuccess = () => {
+      const schluessel = vorhandene.result as IDBValidKey[];
+      const schonGespeichert = schluessel.some((k) => k === route.id);
+      if (!schonGespeichert && schluessel.length >= grenze) {
+        ergebnis = "kontingent_erschoepft";
+        // Nicht abort(): der Abbruch wäre ein Fehlerpfad für einen Fall, der
+        // keiner ist. Die Transaktion läuft ohne Schreibvorgang aus.
+        return;
+      }
+      store.put(route);
+    };
+    vorhandene.onerror = () => reject(vorhandene.error);
+
+    tx.oncomplete = () => resolve(ergebnis);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+}
+
 export async function removeOfflineRoute(id: string): Promise<void> {
   await withStore("readwrite", (store) => store.delete(id));
 }
