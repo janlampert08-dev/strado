@@ -48,16 +48,24 @@ is what should be corrected.
   in the sign-up form and the pages behind them still carry the old product
   name, so this stays a launch blocker, not an oversight to fix incidentally.
 
-- **Domains are decided: `strado.ch` is the info page, `app.strado.ch` is the
-  application, `contact@strado.ch` is the contact address.** `strado.ch` is
-  registered and owned. What is *not* yet true: nothing is served under either
-  hostname, and the legal texts still live at `cornice-ch.vercel.app` (repo
-  `janlampert08-dev/cornice.ch`) under the old name. Two consequences worth
-  knowing before touching either:
-  - Repoint `LEGAL_BASE_URL_STANDARD` only once the new target actually
-    answers. The comment above it in `lib/constants.ts` explains why an
-    unanswered wish-domain default is worse than a stale but reachable one —
-    owning the domain removes the hijacking risk, not the dead-link one.
+- **Domains are decided AND live: `strado.ch` is the info page,
+  `app.strado.ch` is the application, `contact@strado.ch` is the contact
+  address.** Measured 2026-09-07: `strado.ch` answers 308 → `www.strado.ch`,
+  which serves the info page (200); `app.strado.ch` serves the application
+  (200); and `www.strado.ch/legal/impressum`, `/legal/agb` and
+  `/legal/datenschutz` all answer 200. An earlier version of this entry said
+  nothing was served under either hostname — that was true when it was
+  written and is no longer. Three consequences:
+  - **`LEGAL_BASE_URL_STANDARD` can now be repointed.** The comment above it
+    in `lib/constants.ts` makes answering the precondition, and the new target
+    answers. This is a deliberate step, not a drive-by: the old address
+    (`cornice-ch.vercel.app`) is still up, so nothing is broken today, and the
+    pages under `www.strado.ch/legal/…` still carry the old product name —
+    check what they say before pointing users at them.
+  - **The info page still says "Cornice".** `www.strado.ch` serves
+    `<title>Cornice — Kuratierte Fahrstrecken für Auto & Motorrad</title>`.
+    It lives in the separate repo `janlampert08-dev/cornice.ch`, which this
+    repository's rename does not reach.
   - The `[[DOMAIN]]` placeholder in `docs/rechtstexte/` can no longer be
     filled as one value. It stands for the platform in `agb.md` Ziff. 1.1 and
     `datenschutz.md` 2.1 (→ `app.strado.ch`) and for where the legal texts are
