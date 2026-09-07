@@ -15,11 +15,27 @@
 // zweiten Preisliste im Code.
 import type { PlanAngebot } from "./premiumLimits";
 
-export function betragText(rappen: number, waehrung: string): string {
-  return new Intl.NumberFormat("de-CH", {
+/**
+ * Schreibt einen Betrag in der kleinsten Einheit als Währungsbetrag aus.
+ *
+ * Wie viele kleinste Einheiten auf eine ganze gehen, ist nicht überall 100:
+ * der Yen kennt keine Nachkommastelle, der Bahrain-Dinar drei. Eine fest
+ * verdrahtete 100 zeigte für einen Stripe-Preis in JPY den hundertsten Teil
+ * des Betrags an — auf einer Kaufseite ein falsch ausgezeichneter Preis.
+ * Der Teiler kommt deshalb aus derselben Locale-Datenbank, die den Betrag
+ * gleich darauf formatiert; für CHF ist das unverändert 100.
+ */
+export function betragText(betrag: number, waehrung: string): string {
+  const format = new Intl.NumberFormat("de-CH", {
     style: "currency",
     currency: waehrung.toUpperCase(),
-  }).format(rappen / 100);
+  });
+  // ?? 2, weil die Typdefinition die Angabe als optional führt. Praktisch
+  // liefert jede Laufzeit mit vollständigen Locale-Daten sie; bleibt sie
+  // einmal aus, ist der Zweistellen-Fall der richtige Rückfall — er trifft
+  // CHF, die einzige Währung, in der Cornice heute Preise führt.
+  const stellen = format.resolvedOptions().maximumFractionDigits ?? 2;
+  return format.format(betrag / 10 ** stellen);
 }
 
 /**

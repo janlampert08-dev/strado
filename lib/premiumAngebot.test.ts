@@ -25,6 +25,20 @@ describe("betragText", () => {
   it("nimmt die Währung so, wie Stripe sie führt (klein geschrieben)", () => {
     expect(betragText(1000, "eur")).toBe(betragText(1000, "EUR"));
   });
+
+  it("teilt nicht blind durch 100, sondern nach den Stellen der Währung", () => {
+    // Stripe führt Beträge in der kleinsten Einheit, und die ist nicht
+    // überall ein Hundertstel: 4900 JPY sind 4900 Yen, nicht 49. Eine fest
+    // verdrahtete 100 wäre hier ein um den Faktor 100 falsch ausgezeichneter
+    // Preis. Verglichen wird gegen dieselbe Formatierung mit dem fertigen
+    // Betrag, damit der Test nicht an Trennzeichen oder Währungssymbol
+    // einer Locale-Version hängt.
+    const jpy = new Intl.NumberFormat("de-CH", { style: "currency", currency: "JPY" });
+    expect(betragText(4900, "jpy")).toBe(jpy.format(4900));
+    // Drei Nachkommastellen, die andere Richtung: 4900 Fils sind BHD 4.900.
+    const bhd = new Intl.NumberFormat("de-CH", { style: "currency", currency: "BHD" });
+    expect(betragText(4900, "bhd")).toBe(bhd.format(4.9));
+  });
 });
 
 describe("monatsAequivalentRappen", () => {
