@@ -57,7 +57,7 @@ export default function PhotoGallery({ photos }: { photos: RoutePhoto[] }) {
             >
               <Image
                 src={photo.foto_url}
-                alt={`Foto von ${photo.display_name ?? "Nutzer"}`}
+                alt={`Foto von ${photo.display_name ?? "einem Fahrer"}`}
                 fill
                 sizes="33vw"
                 className="object-cover"

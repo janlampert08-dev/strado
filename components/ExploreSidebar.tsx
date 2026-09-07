@@ -65,6 +65,20 @@ export default function ExploreSidebar({
     // der scrollende Container ist. Ab md verschwindet die BottomNav
     // (md:hidden), daher md:pb-6 als Reset auf den ursprünglichen Wert.
     <div className="flex w-full flex-col gap-5 overflow-y-auto overscroll-y-contain border-border px-5 pt-5 pb-[calc(5.5rem+var(--safe-bottom))] sm:px-6 sm:pt-6 sm:pb-[calc(5.75rem+var(--safe-bottom))] md:max-w-sm md:border-r md:pb-6 lg:max-w-md xl:max-w-lg">
+      {/* Die Startseite hatte weder <h1> noch einen erklärenden Satz: Ein
+          Erstbesucher sah ein Suchfeld, einen Chip und eine Liste und
+          erfuhr nirgends, was Cornice ist oder dass er Fahrten aufzeichnen
+          kann. Für Suchmaschinen war die Seite damit ohne Überschrift.
+          sr-only wäre hier falsch — der Satz ist gerade für sehende
+          Erstbesucher gedacht. */}
+      <div className="flex flex-col gap-1">
+        <h1 className="text-lg font-semibold tracking-tight">Kuratierte Fahrstrecken</h1>
+        <p className="text-sm text-muted">
+          Handverlesene Kurven-, Pass- und Aussichtsstrecken in der Schweiz. Strecke wählen,
+          losfahren, Fahrt aufzeichnen — ein Konto brauchst du erst zum Speichern.
+        </p>
+      </div>
+
       <input
         type="search"
         value={searchQuery}

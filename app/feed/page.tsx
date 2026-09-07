@@ -79,7 +79,7 @@ export default async function FeedPage({
             icon={Rss}
             title={
               scope === "following"
-                ? "Noch keine Fahrten von Nutzern, denen du folgst."
+                ? "Noch keine Fahrten von Fahrern, denen du folgst."
                 : "Noch keine geteilten Fahrten."
             }
             action={

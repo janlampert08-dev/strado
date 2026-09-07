@@ -63,7 +63,7 @@ export default function ProfileSearch() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => results.length > 0 && setOpen(true)}
-          placeholder="Nutzer suchen…"
+          placeholder="Fahrer suchen…"
           className="pl-9"
         />
       </div>
@@ -74,7 +74,7 @@ export default function ProfileSearch() {
             <p className="px-3 py-2.5 text-sm text-muted">Suche…</p>
           )}
           {!isPending && results.length === 0 && (
-            <p className="px-3 py-2.5 text-sm text-muted">Keine Nutzer gefunden.</p>
+            <p className="px-3 py-2.5 text-sm text-muted">Keine Fahrer gefunden.</p>
           )}
           {results.map((profile) => (
             <Link

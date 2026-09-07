@@ -123,7 +123,15 @@ export default function OfflineRouteButton({
         ) : (
           <Download className="h-3.5 w-3.5" aria-hidden="true" />
         )}
-        {saved ? "Offline entfernen" : kontingentKnapp ? "Offline download (Premium)" : "Offline download"}
+        {/* "Offline download" war der einzige englische UI-String im
+            gesamten Projekt — und klein geschrieben, wo das Deutsche ein
+            Substantiv gross schreibt. "speichern" benennt zudem die
+            Aktion; "download" beschreibt nur den Transport. */}
+        {saved
+          ? "Offline entfernen"
+          : kontingentKnapp
+            ? "Offline speichern (Premium)"
+            : "Offline speichern"}
       </button>
       {hinweis && (
         <p role="status" className="text-xs text-muted">

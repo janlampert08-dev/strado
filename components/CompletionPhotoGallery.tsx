@@ -82,7 +82,7 @@ export default function CompletionPhotoGallery({
   }
 
   const openPhoto = openIndex !== null ? items[openIndex] : null;
-  const caption = `Foto von ${displayName ?? "Nutzer"}`;
+  const caption = `Foto von ${displayName ?? "einem Fahrer"}`;
 
   return (
     <section className="flex flex-col gap-3">
