@@ -21,6 +21,7 @@ import { fieldClassName } from "@/components/ui/Input";
 import { buttonVariants } from "@/components/ui/Button";
 import Skeleton from "@/components/ui/Skeleton";
 import Card from "@/components/ui/Card";
+import FullscreenDialog from "@/components/ui/FullscreenDialog";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
@@ -155,7 +156,7 @@ export default function FreeRideForm({
   // sei einfach verschwunden.
   if (recorder.uebernahmeGescheitert) {
     return (
-      <div className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)]" role="dialog" aria-modal="true" aria-label="Fahrt aufzeichnen">
+      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)]">
         <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-5 py-8 sm:px-6 sm:py-10">
           <Card surface className="flex flex-col gap-3 p-4 text-sm">
             <p className="font-medium text-foreground">
@@ -167,16 +168,28 @@ export default function FreeRideForm({
               zu viel Zeit vergangen, lässt sich die Fahrt nicht mehr zuordnen. Dein Konto ist
               angelegt — die Fahrt selbst ist leider verloren.
             </p>
+            {/* Nicht router.push("/fahrten/neu"): Dieser Bildschirm liegt
+                selbst auf /fahrten/neu, nur mit einem ?fortsetzen=-Marker in
+                der URL. Eine Client-Navigation auf dieselbe Route hängt die
+                Komponente nicht aus — uebernahmeGescheitert bliebe stehen
+                und der Knopf zeigte wieder genau diesen Bildschirm.
+                Stattdessen das Flag zurücksetzen (der Recorder steht ohnehin
+                auf "idle", die Übernahme ist vor jedem Start abgebrochen)
+                und den verbrauchten Marker per replace aus der URL nehmen,
+                damit ein Neuladen nicht wieder hier landet. */}
             <button
               type="button"
-              onClick={() => router.push("/fahrten/neu")}
+              onClick={() => {
+                recorder.uebernahmeFehlerVerwerfen();
+                router.replace("/fahrten/neu");
+              }}
               className={buttonVariants({ variant: "accent", size: "sm", className: "self-start" })}
             >
               Neue Fahrt aufzeichnen
             </button>
           </Card>
         </div>
-      </div>
+      </FullscreenDialog>
     );
   }
 
@@ -185,7 +198,7 @@ export default function FreeRideForm({
       result && result.seconds > 0 ? result.distanceKm / (result.seconds / 3600) : null;
 
     return (
-      <div className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)]" role="dialog" aria-modal="true" aria-label="Fahrt aufzeichnen">
+      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)]">
         <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-5 py-8 sm:px-6 sm:py-10">
           <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">Fazit</h2>
 
@@ -330,14 +343,14 @@ export default function FreeRideForm({
             </RideSummaryForm>
           )}
         </div>
-      </div>
+      </FullscreenDialog>
     );
   }
 
   // phase "idle" und "tracking" teilen sich denselben Vollbild-Screen: die
   // Aufzeichnung läuft ab dem ersten Fix, bis dahin steht nur die Karte da.
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background" role="dialog" aria-modal="true" aria-label="Fahrt aufzeichnen">
+    <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col bg-background">
       <div className="min-h-0 flex-1">
         <RouteMap
           routes={routes}
@@ -417,6 +430,6 @@ export default function FreeRideForm({
           </p>
         </div>
       </div>
-    </div>
+    </FullscreenDialog>
   );
 }

@@ -18,6 +18,7 @@ import type { RouteGeoJSON, Vehicle } from "@/types/database";
 import { buttonVariants } from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Skeleton from "@/components/ui/Skeleton";
+import FullscreenDialog from "@/components/ui/FullscreenDialog";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
@@ -149,7 +150,7 @@ export default function LiveTrackingForm({
   // sei einfach verschwunden.
   if (recorder.uebernahmeGescheitert) {
     return (
-      <div className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)]" role="dialog" aria-modal="true" aria-label="Fahrt aufzeichnen">
+      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)]">
         <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-5 py-8 sm:px-6 sm:py-10">
           <Card surface className="flex flex-col gap-3 p-4 text-sm">
             <p className="font-medium text-foreground">
@@ -170,13 +171,13 @@ export default function LiveTrackingForm({
             </button>
           </Card>
         </div>
-      </div>
+      </FullscreenDialog>
     );
   }
 
   if (phase === "idle") {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-background px-6 pt-[var(--safe-top)] pb-[var(--safe-bottom)] text-center" role="dialog" aria-modal="true" aria-label="Fahrt aufzeichnen">
+      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-background px-6 pt-[var(--safe-top)] pb-[var(--safe-bottom)] text-center">
         {recorder.locationError ? (
           <>
             <p role="alert" className="text-sm text-danger">{recorder.locationError}</p>
@@ -197,7 +198,7 @@ export default function LiveTrackingForm({
             <p className="text-sm text-muted">Standort wird ermittelt…</p>
           </>
         )}
-      </div>
+      </FullscreenDialog>
     );
   }
 
@@ -212,7 +213,7 @@ export default function LiveTrackingForm({
     // — während einer laufenden Aufzeichnung sind die Streckendetails
     // ausgeblendet, stattdessen zeigt die Karte Route und Live-Standort.
     return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-background" role="dialog" aria-modal="true" aria-label="Fahrt aufzeichnen">
+      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col bg-background">
         <div className="min-h-0 flex-1">
           <RouteMap
             routes={routes}
@@ -326,7 +327,7 @@ export default function LiveTrackingForm({
             </p>
           </div>
         </div>
-      </div>
+      </FullscreenDialog>
     );
   }
 
@@ -337,7 +338,7 @@ export default function LiveTrackingForm({
     result !== null && (personalBestSeconds === null || result.seconds < personalBestSeconds);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)]" role="dialog" aria-modal="true" aria-label="Fahrt aufzeichnen">
+    <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)]">
       <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-5 py-8 sm:px-6 sm:py-10">
         <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">Fazit</h2>
 
@@ -445,6 +446,6 @@ export default function LiveTrackingForm({
           />
         )}
       </div>
-    </div>
+    </FullscreenDialog>
   );
 }

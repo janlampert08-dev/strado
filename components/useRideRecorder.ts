@@ -60,6 +60,7 @@ export interface RideRecorder {
   // Recorder startet dann bewusst NICHT — die Oberfläche muss das erklären,
   // statt den Nutzer in einer leeren Aufzeichnung stehen zu lassen.
   uebernahmeGescheitert: boolean;
+  uebernahmeFehlerVerwerfen: () => void;
   phase: RecorderPhase;
   hasStarted: boolean;
   distanceKm: number;
@@ -532,6 +533,18 @@ export function useRideRecorder({
   // die aufgezeichnete Fahrt darüber aber nicht mehr gefunden wurde.
   const [uebernahmeGescheitert, setUebernahmeGescheitert] = useState(false);
 
+  // Weg aus dem Fehlerbildschirm zurück in eine normale, leere
+  // Aufzeichnung. Nötig, weil der Bildschirm auf derselben Route liegt wie
+  // der Startbildschirm (/fahrten/neu, nur mit ?fortsetzen=): eine
+  // Client-Navigation dorthin hängt die Komponente nicht aus, das Flag
+  // bliebe stehen, und der Knopf zeigte wieder denselben Fehler. Ein
+  // vollständiges Neuladen wäre der grobe Weg zum selben Ziel — der
+  // Recorder steht hier ohnehin unangetastet auf "idle", weil die Übernahme
+  // vor jedem Start abgebrochen hat.
+  const uebernahmeFehlerVerwerfen = useCallback(() => {
+    setUebernahmeGescheitert(false);
+  }, []);
+
   const clearSnapshot = useCallback(() => {
     clearTrackingSnapshot(userIdRef.current, storageKeyRef.current);
   }, []);
@@ -602,6 +615,7 @@ export function useRideRecorder({
 
   return {
     uebernahmeGescheitert,
+    uebernahmeFehlerVerwerfen,
     phase,
     hasStarted,
     distanceKm,
