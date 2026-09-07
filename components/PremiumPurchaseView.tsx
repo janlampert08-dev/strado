@@ -64,7 +64,7 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
         <li>· Gold-Abzeichen neben deinem Namen — wenn du magst</li>
         <li>· 12 statt 6 Fotos pro Fahrt</li>
         <li>· Unbegrenzt Strecken offline speichern</li>
-        <li>· GPX-Export auch für kuratierte Strecken</li>
+        <li>· GPX-Export kuratierter Strecken mit einem Klick</li>
         <li>· Erweiterte Filter und Statistiken</li>
       </ul>
 
@@ -125,7 +125,12 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
       {/* key auf dem Plan: wechselt die Wahl, muss ein bereits vorbereitetes
           Payment Element verworfen werden — sonst zahlte man den Betrag des
           zuvor gewählten Plans. */}
-      <PremiumCheckoutForm key={gewaehlt} plan={gewaehlt} onSuccess={() => router.push("/profil")} />
+      <PremiumCheckoutForm
+        key={gewaehlt}
+        plan={gewaehlt}
+        beworbenerPreis={aktiv.betragRappen}
+        onSuccess={() => router.push("/profil")}
+      />
     </div>
   );
 }

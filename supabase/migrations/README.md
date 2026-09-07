@@ -184,6 +184,34 @@ Alle drei liefen gegen eine praktisch leere Produktionsdatenbank: 0 Abos,
 0 private Strecken, 0 Premium-Konten. Der Bestandsschutz-Backfill in 0064 hat
 entsprechend **0 Zeilen** geschrieben.
 
+## Premium-Migrationen 0066–0068 (eingespielt 2026-09-07)
+
+Alle drei gehen auf CodeRabbit-Befunde zu PR #123 zurück.
+
+| Datei | Was sie korrigiert |
+| --- | --- |
+| `0066_gruenderplaetze_erst_nach_zahlung.sql` | 0065 hat den Gründerplatz beim Klick auf „Weiter zur Zahlung" **verbraucht**. Hundert abgebrochene Checkouts hätten die Zusage aus AGB Ziff. 4.3 aufgezehrt, ohne dass ein Abo zustande kam. Jetzt: Reservierung mit Ablauf, endgültig erst mit verifizierter Zahlung. |
+| `0067_private_strecken_grenze_am_schreibrand.sql` | 0064 stellte die Regel als Funktion bereit, aber nur die Server Action rief sie auf. Die Policy „Nutzer können eigene unverifizierte Strecken bearbeiten" liess einen direkten PostgREST-`UPDATE` auf `ist_privat` daran vorbei. Jetzt ein Trigger am Schreibrand. |
+| `0068_gruenderplatz_ueber_customer_bestaetigen.sql` | Der Webhook kennt nur die Stripe-Kunden-Kennung, nicht die Benutzer-Kennung. Ohne diese Auflösung bliebe ein per TWINT bezahlter Platz reserviert, wenn die zahlende Person nicht zurückkehrt. |
+
+Als Rolle `authenticated` gegengeprüft — die Umgehung ist zu:
+
+| Prüfung | Ergebnis |
+| --- | --- |
+| Reservierung zählt gegen das Kontingent | belegt=1 |
+| abgelaufene Reservierung zählt nicht mehr | belegt=0 |
+| bestätigter Platz zählt dauerhaft | belegt=1, frei=99 |
+| 1. private Strecke per direktem `UPDATE` | erlaubt (im Kontingent) |
+| 2. private Strecke per direktem `UPDATE` | **blockiert:** `private_strecken_kontingent_erschoepft` |
+
+`0067` ist der einzige `SECURITY DEFINER` in dieser Reihe, und mit Grund: der
+Trigger zählt **alle** privaten Strecken des Kontos und liest den
+Bestandsschutz. Als Aufrufer wäre beides von RLS gefiltert — eine Schranke,
+die weniger sieht, als sie schützen soll, ist keine. `search_path` ist
+gepinnt, die Funktion nimmt keine Parameter und entscheidet nur anhand von
+`new.erstellt_von`, das die Schreib-Policy ohnehin auf das eigene Konto
+begrenzt hat.
+
 ### Warum 0063 überhaupt sein muss
 
 `lib/premium.ts` beantwortet "darf diese Person X?" über den an die Session

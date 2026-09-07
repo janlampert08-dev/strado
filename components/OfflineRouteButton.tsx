@@ -8,7 +8,7 @@ import {
   getOfflineRoute,
   isIndexedDbAvailable,
   removeOfflineRoute,
-  saveOfflineRoute,
+  saveOfflineRouteMitGrenze,
   type OfflineRoute,
 } from "@/lib/offlineRoutes";
 import { MAX_OFFLINE_STRECKEN_GRATIS } from "@/lib/premiumLimits";
@@ -30,6 +30,11 @@ import { buttonVariants } from "@/components/ui/Button";
 // serverseitige Prüfung gelesen wird. Bei den Fotos und den privaten
 // Strecken ist es genau umgekehrt: dort ist die Clientgrenze Anzeige und die
 // Schranke sitzt im Server.
+//
+// Die Entscheidung fällt trotzdem in saveOfflineRouteMitGrenze und nicht
+// hier: `anzahl` unten ist Anzeige, und zwei offene Tabs sähen beide
+// dieselbe Zahl. Die Zählung gehört in dieselbe IndexedDB-Transaktion wie
+// der Schreibvorgang, damit die angezeigte Grenze auch die tatsächliche ist.
 export default function OfflineRouteButton({
   route,
   istPremium,
@@ -59,16 +64,11 @@ export default function OfflineRouteButton({
 
   if (!isIndexedDbAvailable() || saved === null) return null;
 
-  const kontingentErschoepft = !istPremium && !saved && anzahl >= MAX_OFFLINE_STRECKEN_GRATIS;
+  // Nur für die Beschriftung: die verbindliche Entscheidung trifft
+  // saveOfflineRouteMitGrenze in der Transaktion.
+  const kontingentKnapp = !istPremium && !saved && anzahl >= MAX_OFFLINE_STRECKEN_GRATIS;
 
   async function toggle() {
-    if (kontingentErschoepft) {
-      setHinweis(
-        `Ohne Premium lassen sich ${MAX_OFFLINE_STRECKEN_GRATIS} Strecken offline speichern. ` +
-          "Entferne eine andere — oder unterstütze Cornice für unbegrenzt viele.",
-      );
-      return;
-    }
     setPending(true);
     setHinweis(null);
     try {
@@ -77,7 +77,19 @@ export default function OfflineRouteButton({
         setSaved(false);
         setAnzahl((n) => Math.max(0, n - 1));
       } else {
-        await saveOfflineRoute(route);
+        const ergebnis = await saveOfflineRouteMitGrenze(
+          route,
+          istPremium ? null : MAX_OFFLINE_STRECKEN_GRATIS,
+        );
+        if (ergebnis === "kontingent_erschoepft") {
+          setHinweis(
+            `Ohne Premium lassen sich ${MAX_OFFLINE_STRECKEN_GRATIS} Strecken offline speichern. ` +
+              "Entferne eine andere — oder unterstütze Cornice für unbegrenzt viele.",
+          );
+          const alle = await getAllOfflineRoutes();
+          setAnzahl(alle.length);
+          return;
+        }
         setSaved(true);
         setAnzahl((n) => n + 1);
       }
@@ -103,7 +115,7 @@ export default function OfflineRouteButton({
         ) : (
           <Download className="h-3.5 w-3.5" aria-hidden="true" />
         )}
-        {saved ? "Offline entfernen" : "Offline download"}
+        {saved ? "Offline entfernen" : kontingentKnapp ? "Offline download (Premium)" : "Offline download"}
       </button>
       {hinweis && (
         <p role="status" className="text-xs text-muted">

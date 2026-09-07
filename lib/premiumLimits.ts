@@ -132,3 +132,18 @@ export interface PremiumAngebot {
   plaene: PlanAngebot[];
   gruenderPlaetzeFrei: number;
 }
+
+/**
+ * Was beim Anlegen des Abos TATSÄCHLICH vergeben wurde.
+ *
+ * Nicht dasselbe wie das `PlanAngebot`, das die Kaufseite gerendert hat:
+ * zwischen Rendern und Klick kann der letzte Gründerplatz weg sein. Dann
+ * bekommt dieser Kauf den regulären Preis, und die Oberfläche muss den
+ * gezeigten Betrag korrigieren, bevor jemand bestätigt — sonst steht auf
+ * der Seite CHF 39 und abgebucht werden CHF 49.
+ */
+export interface VergebenerPreis {
+  betragRappen: number;
+  waehrung: string;
+  istGruenderpreis: boolean;
+}

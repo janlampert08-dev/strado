@@ -14,6 +14,7 @@ import {
   type AboPlan,
   type PlanAngebot,
   type PremiumAngebot,
+  type VergebenerPreis,
 } from "@/lib/premiumLimits";
 import type Stripe from "stripe";
 
@@ -60,7 +61,14 @@ async function getOrCreateStripeCustomerId(
 }
 
 export type SubscriptionIntentResult =
-  | { ok: true; clientSecret: string; subscriptionId: string }
+  | {
+      ok: true;
+      clientSecret: string;
+      subscriptionId: string;
+      /** Der Preis, der für dieses Abo tatsächlich gilt — nicht der, den die
+       *  Kaufseite beim Rendern gezeigt hat. Siehe VergebenerPreis. */
+      preis: VergebenerPreis;
+    }
   | { ok: false; error: string };
 
 // AboPlan, GRUENDER_PLAETZE und die Angebots-Typen stehen in
@@ -81,29 +89,61 @@ function monatsPreisId(): string | undefined {
 // eigenen Preis aussuchen kann — auch einen fremden oder einen aus einem
 // anderen Katalog.
 //
-// Beim Jahresplan wird hier zugleich der Gründerplatz beansprucht. Das ist
-// bewusst ein Schreibvorgang und keine blosse Abfrage: nur so ist "die
-// ersten 100" gegen zwei gleichzeitige Käufe dicht (Advisory Lock in
-// gruenderplatz_beanspruchen, Migration 0065). Der Preis dieser Genauigkeit
-// ist, dass ein abgebrochener Checkout einen Platz belegt — bei 100 Plätzen
-// verkraftbar, und ein zurückkehrendes Konto bekommt seinen Platz wieder,
-// statt einen zweiten zu verbrauchen.
-async function preisIdFuer(plan: AboPlan, userId: string): Promise<string | undefined> {
-  if (plan === "monat") return monatsPreisId();
+// Beim Jahresplan wird hier zugleich ein Gründerplatz RESERVIERT. Bewusst
+// ein Schreibvorgang und keine blosse Abfrage: nur so ist "die ersten 100"
+// gegen zwei gleichzeitige Käufe dicht (Advisory Lock in
+// gruenderplatz_beanspruchen).
+//
+// Reserviert, nicht verbraucht — der Unterschied ist der Punkt von Migration
+// 0066. Die Reservierung läuft von selbst ab; endgültig wird der Platz erst
+// mit der verifizierten Zahlung (gruenderplatz_bestaetigen, aufgerufen aus
+// confirmSubscription und aus dem Webhook). Sonst hätten hundert abgebrochene
+// Checkouts die Zusage aus AGB Ziff. 4.3 aufgebraucht, ohne dass ein einziges
+// Abo zustande kam.
+//
+// Gibt den vergebenen Preis mit zurück, nicht nur die ID: der Aufrufer muss
+// dem Client sagen können, was tatsächlich abgebucht wird.
+async function preisIdFuer(
+  plan: AboPlan,
+  userId: string,
+): Promise<{ preisId: string | undefined; istGruenderpreis: boolean }> {
+  if (plan === "monat") return { preisId: monatsPreisId(), istGruenderpreis: false };
 
   const gruenderPreisId = process.env.STRIPE_PREMIUM_PRICE_ID_GRUENDER;
   if (gruenderPreisId) {
     const { data: hatPlatz, error } = await createAdminClient().rpc("gruenderplatz_beanspruchen", {
       p_user_id: userId,
       p_maximum: GRUENDER_PLAETZE,
+      p_reservierung_minuten: GRUENDER_RESERVIERUNG_MINUTEN,
     });
     // Bei einem Fehler NICHT den Gründerpreis vergeben: im Zweifel den
     // regulären Preis nehmen. Andersherum verschenkte ein Datenbankausfall
     // beliebig viele vergünstigte Jahresabos.
-    if (!error && hatPlatz === true) return gruenderPreisId;
+    if (!error && hatPlatz === true) {
+      return { preisId: gruenderPreisId, istGruenderpreis: true };
+    }
   }
 
-  return process.env.STRIPE_PREMIUM_PRICE_ID_JAHR;
+  return { preisId: process.env.STRIPE_PREMIUM_PRICE_ID_JAHR, istGruenderpreis: false };
+}
+
+// Wie lange eine Reservierung gilt. Grosszügig genug für einen Checkout mit
+// 3-D-Secure oder TWINT-Umweg über die Banking-App, kurz genug, dass ein
+// abgebrochener Versuch den Platz nicht lange blockiert.
+const GRUENDER_RESERVIERUNG_MINUTEN = 60;
+
+// Macht aus der Reservierung einen dauerhaften Platz — aber nur, wenn das
+// bezahlte Abo wirklich auf dem Gründerpreis läuft. Ein Monats- oder
+// regulärer Jahresabschluss darf keinen Platz verbrauchen.
+//
+// Exportiert wird das NICHT: der Aufruf gehört ausschliesslich hinter eine
+// bei Stripe verifizierte Zahlung.
+async function gruenderplatzBestaetigen(preisId: string, userId: string): Promise<void> {
+  if (!preisId || preisId !== process.env.STRIPE_PREMIUM_PRICE_ID_GRUENDER) return;
+  const { error } = await createAdminClient().rpc("gruenderplatz_bestaetigen", {
+    p_user_id: userId,
+  });
+  if (error) console.error("Gründerplatz konnte nicht bestätigt werden", { userId }, error);
 }
 
 // Preise kommen aus Stripe, nicht aus einer zweiten Liste im Code — eine im
@@ -226,8 +266,18 @@ export async function createSubscriptionIntent(
   // Erst hier die Preis-ID bestimmen, nicht weiter oben: beim Jahresplan
   // beansprucht das einen Gründerplatz, und den soll niemand verbrauchen,
   // der ohnehin schon ein laufendes Abo hat und gleich abgewiesen wird.
-  const preisId = await preisIdFuer(plan, user.id);
+  const { preisId, istGruenderpreis } = await preisIdFuer(plan, user.id);
   if (!preisId) return { ok: false, error: "Dieser Plan ist zurzeit nicht verfügbar." };
+
+  // Den tatsächlich geltenden Betrag mitliefern. Ohne ihn bestätigt jemand
+  // eine Zahlung über die Zahl, die beim Öffnen der Seite galt — und wenn
+  // der letzte Gründerplatz zwischenzeitlich weg war, ist das die falsche.
+  const vergeben = await betrag(preisId);
+  const preis: VergebenerPreis = {
+    betragRappen: vergeben?.rappen ?? 0,
+    waehrung: vergeben?.waehrung ?? "chf",
+    istGruenderpreis,
+  };
 
   // Ein noch unbezahltes Abo für denselben Plan wiederverwenden, statt
   // daneben ein zweites anzulegen.
@@ -237,7 +287,7 @@ export async function createSubscriptionIntent(
       clientSecretVon(abo) !== null,
   );
   if (offen) {
-    return { ok: true, clientSecret: clientSecretVon(offen)!, subscriptionId: offen.id };
+    return { ok: true, clientSecret: clientSecretVon(offen)!, subscriptionId: offen.id, preis };
   }
 
   const subscription = await stripe.subscriptions.create(
@@ -262,7 +312,7 @@ export async function createSubscriptionIntent(
     return { ok: false, error: "Zahlung konnte nicht vorbereitet werden." };
   }
 
-  return { ok: true, clientSecret, subscriptionId: subscription.id };
+  return { ok: true, clientSecret, subscriptionId: subscription.id, preis };
 }
 
 // Nach erfolgreicher Bestätigung des Payment Elements im Browser (kein
@@ -339,6 +389,17 @@ export async function confirmSubscription(subscriptionId: string): Promise<boole
   });
 
   if (error) return false;
+
+  // Jetzt ist die Zahlung bei Stripe verifiziert — erst hier wird aus der
+  // Reservierung ein dauerhafter Gründerplatz (Migration 0066). Vorher
+  // hätte ein abgebrochener Checkout den Platz behalten.
+  //
+  // Idempotent und bewusst ohne Fehlerbehandlung nach aussen: schlägt es
+  // fehl, läuft die Reservierung ab und der Platz wird wieder frei. Das ist
+  // der harmlosere Ausgang — ein zu grosszügiges Kontingent wäre schlimmer
+  // als ein verlorener Platz.
+  await gruenderplatzBestaetigen(zustand.priceId, user.id);
+
   // false heisst hier: der Webhook war schneller und hat bereits einen
   // neueren Zustand geschrieben. Das Abo ist bezahlt und verifiziert, der
   // Kauf gilt also trotzdem als erfolgreich.

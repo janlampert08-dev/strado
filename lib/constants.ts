@@ -54,9 +54,46 @@ export const REPORT_REASONS = [
 // String. Mit ?? bliebe der erhalten, LEGAL_BASE_URL wäre "" und aus den
 // Links würden relative Pfade — die dann auf die App-Domain zeigen und dort
 // ins Leere laufen, statt auf die Rechtstexte.
-const LEGAL_BASE_URL = (
-  process.env.NEXT_PUBLIC_LEGAL_BASE_URL?.trim() || "https://cornice-ch.vercel.app"
-).replace(/\/+$/, "");
+const LEGAL_BASE_URL_STANDARD = "https://cornice-ch.vercel.app";
+
+// Nur https. Ein http://-Wert würde Nutzende auf unverschlüsselt
+// ausgelieferte Rechtstexte schicken — bei einem Dokument, dessen ganzer
+// Zweck Verbindlichkeit ist, das falsche Signal, und unterwegs veränderbar.
+//
+// Bewusst KEINE Ausnahme für localhost: die Variable steuert Links auf eine
+// getrennt gehostete Marketing-Seite, nicht auf diese Anwendung. In der
+// Entwicklung ist der richtige Wert entweder leer (dann greift der Standard)
+// oder eine echte https-Adresse.
+//
+// Fällt bei einem unbrauchbaren Wert auf den Standard zurück, statt zu
+// werfen: diese Datei wird beim Modulladen ausgewertet, eine Ausnahme hier
+// nähme die ganze Anwendung mit — wegen einer falsch gesetzten
+// Umgebungsvariable für drei Links. Die Warnung landet im Serverlog.
+function legaleBasisUrl(): string {
+  const konfiguriert = process.env.NEXT_PUBLIC_LEGAL_BASE_URL?.trim();
+  if (!konfiguriert) return LEGAL_BASE_URL_STANDARD;
+
+  let geprueft: URL;
+  try {
+    geprueft = new URL(konfiguriert);
+  } catch {
+    console.warn(
+      `NEXT_PUBLIC_LEGAL_BASE_URL ist keine gültige URL (${konfiguriert}) — Standard wird verwendet.`,
+    );
+    return LEGAL_BASE_URL_STANDARD;
+  }
+
+  if (geprueft.protocol !== "https:") {
+    console.warn(
+      `NEXT_PUBLIC_LEGAL_BASE_URL muss https sein (${konfiguriert}) — Standard wird verwendet.`,
+    );
+    return LEGAL_BASE_URL_STANDARD;
+  }
+
+  return konfiguriert.replace(/\/+$/, "");
+}
+
+const LEGAL_BASE_URL = legaleBasisUrl();
 
 export const LEGAL_URLS = {
   impressum: `${LEGAL_BASE_URL}/legal/impressum`,

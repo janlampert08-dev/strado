@@ -50,11 +50,32 @@ describe("LEGAL_URLS", () => {
     expect(urls.impressum).toBe("https://cornice-ch.vercel.app/legal/impressum");
   });
 
-  // Die eigentliche Zusicherung hinter den beiden Fällen oben: die Links
-  // sind IMMER absolut. Ein relativer Rechtstext-Link ist kein Schönheits-
-  // fehler, sondern zeigt auf die falsche Seite.
-  it("erzeugt immer absolute Links", async () => {
-    for (const wert of [undefined, "", "  ", "https://beispiel.test/"]) {
+  // Ein http-Wert würde auf unverschlüsselt ausgelieferte Rechtstexte
+  // zeigen. Fällt auf den Standard zurück statt zu werfen — diese Datei wird
+  // beim Modulladen ausgewertet, eine Ausnahme nähme die Anwendung mit.
+  it("weist eine http-Basis zurück und nimmt den Standard", async () => {
+    const urls = await legalUrls("http://cornice-ch.vercel.app");
+    expect(urls.agb).toBe("https://cornice-ch.vercel.app/legal/agb");
+  });
+
+  it("weist eine unbrauchbare Basis zurück und nimmt den Standard", async () => {
+    const urls = await legalUrls("nicht-mal-eine-url");
+    expect(urls.agb).toBe("https://cornice-ch.vercel.app/legal/agb");
+  });
+
+  // Die eigentliche Zusicherung hinter allen Fällen oben: die Links sind
+  // IMMER absolut und IMMER https. Ein relativer Rechtstext-Link zeigt auf
+  // die falsche Seite, ein http-Link auf eine unterwegs veränderbare.
+  it("erzeugt immer absolute https-Links", async () => {
+    for (const wert of [
+      undefined,
+      "",
+      "  ",
+      "https://beispiel.test/",
+      "http://unsicher.test",
+      "nicht-mal-eine-url",
+      "//ohne-schema.test",
+    ]) {
       const urls = await legalUrls(wert);
       for (const url of Object.values(urls)) {
         expect(url).toMatch(/^https:\/\/[^/]+\/legal\//);

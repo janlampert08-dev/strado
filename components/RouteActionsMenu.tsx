@@ -33,9 +33,25 @@ export default function RouteActionsMenu({
   isOwner?: boolean;
   /** Angemeldet und nicht der Ersteller selbst — siehe app/strecken/[id]/page.tsx. */
   canReport?: boolean;
-  /** Der GPX-Export kuratierter Strecken gehört zum Abo (AGB Ziff. 3.2).
-   *  Eigene Fahrten lassen sich unabhängig davon immer exportieren — das
-   *  ist Datenherausgabe nach Art. 28 DSG und darf nichts kosten. */
+  /**
+   * Der GPX-Export kuratierter Strecken gehört zum Abo (AGB Ziff. 3.2).
+   * Eigene Fahrten lassen sich unabhängig davon immer exportieren — das ist
+   * Datenherausgabe nach Art. 28 DSG und darf nichts kosten.
+   *
+   * ACHTUNG, und das ist keine Nachlässigkeit, sondern die Lage: das hier
+   * ist eine BEQUEMLICHKEITSSCHRANKE, keine Zugriffsschranke. Die
+   * Streckengeometrie liegt ohnehin vollständig im Browser — RouteDetailMap
+   * zeichnet die Karte daraus, OfflineRouteButton bekommt dieselben
+   * Koordinaten. Wer sie will, hat sie bereits.
+   *
+   * Ein serverseitiger GPX-Endpunkt würde daran nichts ändern und wäre
+   * blosses Theater: er müsste Daten schützen, die die Seite eine Zeile
+   * weiter oben selbst ausliefert. Echt verschliessen liesse sich das nur,
+   * indem auch die Karte verschwindet — und die Karte ist das Produkt.
+   *
+   * Deshalb wird hier nichts vorgetäuscht: Premium spart den Umweg, nicht
+   * den Zugang. Wo das Feature beworben wird, muss es genauso stehen.
+   */
   istPremium?: boolean;
 }) {
   const [open, setOpen] = useState(false);
