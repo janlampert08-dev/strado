@@ -95,14 +95,24 @@ export default function OfflineRouteButton({
       }
     } catch {
       // Zustand unverändert lassen, der Button bleibt für einen erneuten
-      // Versuch bedienbar — aber nicht mehr stumm: Der wahrscheinlichste
-      // Auslöser ist ein QuotaExceededError bei vollem Gerätespeicher, und
-      // genau dann scheitert ein zweiter Versuch garantiert wieder. Ohne
-      // Meldung sah der Nutzer den Button nur kurz ausgrauen und
-      // zurückspringen. Der Kontingent-Zweig oben nutzt dieselbe Mechanik.
+      // Versuch bedienbar — aber nicht mehr stumm: Ohne Meldung sah der
+      // Nutzer den Button nur kurz ausgrauen und zurückspringen. Der
+      // Kontingent-Zweig oben nutzt dieselbe Mechanik.
+      //
+      // Beide Zweige landen hier, deshalb entscheidet `saved`, welche
+      // Meldung passt: Es beschreibt noch den Zustand VOR dem Versuch (die
+      // setSaved-Aufrufe stehen hinter dem await), zeigt also, welche
+      // Operation gescheitert ist.
       setHinweis(
-        "Speichern nicht möglich — vermutlich ist der Speicher dieses Geräts voll. " +
-          "Entferne eine andere Offline-Strecke und versuche es erneut.",
+        saved
+          ? "Die Strecke konnte nicht aus dem Offline-Speicher entfernt werden. " +
+              "Bitte versuche es erneut."
+          : // Beim Speichern ist der wahrscheinlichste Auslöser ein
+            // QuotaExceededError bei vollem Gerätespeicher, und genau dann
+            // scheitert ein zweiter Versuch garantiert wieder — deshalb hier
+            // ein Rat statt einer blossen Wiederholungsaufforderung.
+            "Speichern nicht möglich — vermutlich ist der Speicher dieses Geräts voll. " +
+            "Entferne eine andere Offline-Strecke und versuche es erneut.",
       );
     } finally {
       setPending(false);

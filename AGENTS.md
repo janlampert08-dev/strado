@@ -41,26 +41,51 @@ is what should be corrected.
   pass scoped from this file skipped it as not-yet-shipped. Treat everything
   under `app/profil/premium/`, `lib/actions/billing.ts`, `lib/stripe*` and the
   webhook as production code.
-- **`lib/constants.ts` `LEGAL_URLS` points at `https://strado.ch`** — repointed
-  on 2026-09-07, after checking that `/legal/impressum`, `/legal/datenschutz`
-  and `/legal/agb` answer with 200 there. The apex form is deliberate and
-  matches the rest of the project even though `strado.ch` sends a permanent
-  308 to `www.strado.ch`; see the comment above the constant. Until that day
-  the default still named `cornice-ch.vercel.app` while
-  `janlampert08-dev/stradoinfo`'s README already listed the repoint as done —
-  if the two disagree again, the constant is the one that ships.
+- **The domains are live and every link now points at them.** `strado.ch`
+  serves the info page and the legal texts under `/legal/…`, `app.strado.ch`
+  serves the application, and `contact@strado.ch` is the contact address.
+  The apex answers with a permanent 308 to `www.strado.ch` and keeps the
+  path, so `strado.ch/legal/agb` resolves; the apex form is what gets
+  linked, because it is what the legal texts name. This entry previously
+  said nothing was served under either hostname — that was true when it was
+  written and stopped being true without the entry noticing, which is why
+  the links sat on `cornice-ch.vercel.app` longer than they had to.
+  - `LEGAL_BASE_URL_STANDARD` in `lib/constants.ts` is `https://strado.ch`.
+    `NEXT_PUBLIC_LEGAL_BASE_URL` no longer needs setting in production; it
+    remains an override for preview environments. The rule that governed
+    the old value still governs the next one: only an address we own **and**
+    that answers belongs there — owning a domain removes the hijacking
+    risk, not the dead-link one.
+  - The `[[DOMAIN]]` placeholder in `docs/rechtstexte/` is gone, resolved
+    rather than split: the platform references (`agb.md` Ziff. 1.1,
+    `datenschutz.md` 2.1) name both hosts explicitly, and the legal-text
+    references (`impressum.md`, every `/legal/…` link) name `strado.ch`.
+    The remaining placeholders there are the company's own particulars.
 
-- **The domains are live: `strado.ch`/`www.strado.ch` serve the info page and
-  the legal texts, `app.strado.ch` serves the application, `contact@strado.ch`
-  is the contact address.** The legal texts live in
-  `janlampert08-dev/stradoinfo` under `legal/`. This entry previously said
-  nothing was served under either hostname — that was true when it was
-  written and is not any more. One consequence worth knowing:
-  - The `[[DOMAIN]]` placeholder in `docs/rechtstexte/` can no longer be
-    filled as one value. It stands for the platform in `agb.md` Ziff. 1.1 and
-    `datenschutz.md` 2.1 (→ `app.strado.ch`) and for where the legal texts are
-    reachable in `impressum.md` and every `/legal/...` link (→ `strado.ch`).
-    Split it into two placeholders before resolving either.
+- **The published pages now say Strado, and name `contact@strado.ch`.**
+  `janlampert08-dev/stradoinfo` was renamed and merged on 2026-09-07, so
+  the three legal pages linked from the sign-up form no longer carry the
+  old product name. One thing was *not* verified before that went live:
+  whether `contact@strado.ch` actually receives mail. It is the contact
+  channel the impressum names, which Art. 3 Abs. 1 lit. s UWG requires, so
+  confirm it accepts mail rather than assuming it.
+
+- **`NEXT_PUBLIC_SITE_URL` is set in Vercel, but a value set there does not
+  reach a build that already happened.** Next.js inlines every
+  `NEXT_PUBLIC_*` variable at build time — server code included, not just
+  the client bundle (`node_modules/next/dist/docs/01-app/02-guides/environment-variables.md`,
+  "After being built, your app will no longer respond to changes to these
+  environment variables"). Changing one in the dashboard therefore does
+  nothing until the next deployment. This is the trap to remember for any
+  `NEXT_PUBLIC_*` value: setting it is only half the change.
+  - `siteUrl()` in `lib/siteUrl.ts` resolves
+    `NEXT_PUBLIC_SITE_URL` → `VERCEL_PROJECT_PRODUCTION_URL` → localhost.
+    The middle one carries no `NEXT_PUBLIC_` prefix, so it *is* read at
+    runtime — which is what keeps a stale build off `localhost`.
+  - Because the function is only ever called server-side, the
+    `NEXT_PUBLIC_` prefix buys nothing and costs this freezing. Renaming it
+    to `SITE_URL` would make it a true runtime value; that needs the repo
+    and the Vercel dashboard changed together, so it has not been done.
 - **Migrations are applied by hand and the newest ones are not applied.**
   Green CI means nothing about the live schema. See
   `supabase/migrations/README.md` and `.agents/deployment.md`.

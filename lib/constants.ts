@@ -38,28 +38,20 @@ export const REPORT_REASONS = [
 // liegen im Repo janlampert08-dev/stradoinfo unter legal/.
 //
 // Der Standard ist die Adresse, unter der die Seiten HEUTE tatsächlich
-// stehen, nicht die Wunschdomain. Das ist der Kern der Sache: der frühere
-// Wert war https://xyz.ch/… — eine Domain, die uns nicht gehört. Das ist
-// schlimmer als ein toter Link, denn sie kann jederzeit jemand anderem
-// gehören und beliebige Inhalte ausliefern, während bei uns „Impressum"
-// darübersteht. Eine noch nicht gekaufte Wunschdomain als Standard hätte
-// genau dieselbe Eigenschaft.
+// stehen, nicht die Wunschdomain. Diese Bedingung ist jetzt erfüllt:
+// strado.ch ist registriert, bei Vercel eingetragen und liefert die
+// Rechtstexte unter /legal/… aus (die Apex-Domain antwortet mit 308 auf
+// www.strado.ch, der Pfad bleibt dabei erhalten). Deshalb steht hier
+// strado.ch statt der früheren vercel.app-Adresse.
 //
-// Genau dieser Fall ist inzwischen eingetreten: strado.ch ist registriert,
-// bei Vercel auf das Projekt stradoinfo eingetragen und liefert die
-// Rechtstexte aus (nachgeprüft: /legal/impressum, /legal/datenschutz und
-// /legal/agb antworten mit 200). Der README von stradoinfo führte diese
-// Umstellung bereits als erledigt auf — hier stand aber weiter die alte
-// vercel.app-Adresse.
-//
-// Apex-Form ohne www, wie im ganzen Projekt: strado.ch antwortet mit einer
-// permanenten Weiterleitung (308) auf www.strado.ch und behält den Pfad
-// dabei. Der eine Sprung ist der Preis dafür, dass überall dieselbe Adresse
-// steht wie in den Rechtstexten; wer ihn sparen will, stellt bei Vercel die
-// Apex-Domain als primäre Domain ein, ohne dass hier etwas zu ändern wäre.
-//
-// NEXT_PUBLIC_LEGAL_BASE_URL bleibt der Weg, davon abzuweichen (Vorschau-
-// Deployments, ein späterer Domainwechsel).
+// Die Regel dahinter bleibt und ist der Grund, warum dieser Wert nicht
+// einfach „die schönste Adresse" ist: der ursprüngliche Wert war
+// https://xyz.ch/… — eine Domain, die uns nicht gehört. Das ist schlimmer
+// als ein toter Link, denn sie kann jederzeit jemand anderem gehören und
+// beliebige Inhalte ausliefern, während bei uns „Impressum" darübersteht.
+// Eine noch nicht gekaufte oder noch nicht antwortende Wunschdomain hätte
+// dieselbe Eigenschaft. Wer diesen Wert das nächste Mal ändert, prüft
+// vorher, dass die neue Adresse uns gehört UND antwortet.
 //
 // Ein leerer Wert zählt als nicht gesetzt: .env.local.example führt die
 // Variable ohne Wert, und eine daraus kopierte Datei liefert einen leeren
@@ -98,6 +90,19 @@ function legaleBasisUrl(): string {
   if (geprueft.protocol !== "https:") {
     console.warn(
       `NEXT_PUBLIC_LEGAL_BASE_URL muss https sein (${konfiguriert}) — Standard wird verwendet.`,
+    );
+    return LEGAL_BASE_URL_STANDARD;
+  }
+
+  // Der Wert ist eine BASIS, an die /legal/… angehängt wird. Trüge er eine
+  // Query oder ein Fragment, landete der Pfad darin statt im Pfadteil: aus
+  // "https://strado.ch/?x=1" + "/legal/impressum" würde
+  // "https://strado.ch/?x=1/legal/impressum", was auf der Startseite
+  // herauskommt statt beim Impressum. Bei einem rechtlich verlangten Link
+  // ist das schlimmer als ein toter Link, weil es unbemerkt bleibt.
+  if (geprueft.search !== "" || geprueft.hash !== "") {
+    console.warn(
+      `NEXT_PUBLIC_LEGAL_BASE_URL darf keine Query und kein Fragment enthalten (${konfiguriert}) — Standard wird verwendet.`,
     );
     return LEGAL_BASE_URL_STANDARD;
   }

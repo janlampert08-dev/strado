@@ -173,3 +173,53 @@ textarea {
     padding-bottom: calc(4.25rem + var(--safe-bottom));
   }
 }
+
+/* Mapbox-Attribution (RouteMap.tsx, RoutePicker.tsx) — zurückgenommen, aber
+   vollständig. Mapbox verlangt auf jeder Karte das Logo *und* den
+   Attributions-Hinweis; ausdrücklich erlaubt ist nur, Schriftgrösse und
+   -farbe des Hinweises anzupassen, solange er lesbar bleibt. Das Logo
+   (.mapboxgl-ctrl-logo) darf weder umgestaltet noch ausgeblendet werden und
+   bleibt hier deshalb unangetastet — ein Ausblenden per CSS wäre ein Verstoss
+   gegen die Nutzungsbedingungen, nicht bloss eine Designentscheidung:
+   https://docs.mapbox.com/help/getting-started/attribution/
+   Die Selektoren sind bewusst zweistufig (.mapboxgl-map davor), weil
+   mapbox-gl.css aus den Komponenten heraus importiert wird und je nach
+   Chunk-Reihenfolge nach dieser Datei geladen werden kann — die höhere
+   Spezifität macht die Überschreibung reihenfolgeunabhängig. */
+.mapboxgl-map .mapboxgl-ctrl-bottom-left,
+.mapboxgl-map .mapboxgl-ctrl-bottom-right {
+  /* Nicht unter den Home-Indicator schieben — der Hinweis muss sichtbar
+     bleiben (viewport-fit=cover, siehe app/layout.tsx). */
+  bottom: var(--safe-bottom);
+}
+
+/* Theme-Tokens statt Mapbox' fixem Weiss, damit die eingeklappte Attribution
+   auf der dunklen Karte nicht als weisse Pille aufblitzt. */
+.mapboxgl-map .mapboxgl-ctrl-attrib,
+.mapboxgl-map .mapboxgl-ctrl-attrib.mapboxgl-compact {
+  background: color-mix(in oklch, var(--color-surface) 88%, transparent);
+}
+
+.mapboxgl-map .mapboxgl-ctrl-attrib-inner,
+.mapboxgl-map .mapboxgl-ctrl-attrib-inner a {
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.mapboxgl-map .mapboxgl-ctrl-attrib-inner a:hover {
+  color: var(--color-foreground);
+}
+
+/* Das ⓘ-Icon des Kompakt-Knopfs ist in mapbox-gl.css eine fest dunkle SVG —
+   auf dunklem Grund invertieren, sonst verschwindet der Knopf, über den der
+   Hinweis überhaupt erst erreichbar ist. Wie bei den Farb-Tokens oben für
+   beide Theme-Mechanismen dupliziert statt verschachtelt. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .mapboxgl-ctrl-attrib-button {
+    filter: invert(1);
+  }
+}
+
+:root[data-theme="dark"] .mapboxgl-ctrl-attrib-button {
+  filter: invert(1);
+}

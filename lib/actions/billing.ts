@@ -6,6 +6,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { siteUrl } from "@/lib/siteUrl";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { stripe } from "@/lib/stripe";
 import { KULANZ_TAGE, leseAboZustand } from "@/lib/stripeWebhook";
@@ -422,10 +423,6 @@ export async function confirmSubscription(subscriptionId: string): Promise<boole
   revalidatePath("/profil");
   revalidatePath("/profil/einstellungen");
   return true;
-}
-
-function siteUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 }
 
 // Stripes gehostetes Kundenportal — dort verwaltet/kündigt der Nutzer sein

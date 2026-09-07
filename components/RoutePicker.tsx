@@ -50,8 +50,12 @@ export default function RoutePicker({
       style: mapStyleForTheme(),
       center: ZURICH_CENTER,
       zoom: DEFAULT_ZOOM,
+      // Kompakte Attribution (ⓘ-Knopf) statt ausgeschriebener Zeile — siehe
+      // RouteMap.tsx für die ausführliche Begründung.
+      attributionControl: false,
     });
 
+    map.addControl(new mapboxgl.AttributionControl({ compact: true }));
     map.addControl(new mapboxgl.NavigationControl(), "top-right");
     map.on("click", (e) => onPickRef.current([e.lngLat.lng, e.lngLat.lat]));
 
