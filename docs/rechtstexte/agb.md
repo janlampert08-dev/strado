@@ -48,7 +48,7 @@ oder „Plattform"), die unter `https://[[DOMAIN]]` erreichbar ist.
 
 [[FIRMENNAME]] [[RECHTSFORM]]
 [[STRASSE_NR]], [[PLZ_ORT]], Schweiz
-E-Mail: [[EMAIL]]
+E-Mail: contact@strado.ch
 
 (nachfolgend „Anbieterin"). Weitere Angaben finden sich im Impressum unter
 `https://[[DOMAIN]]/impressum`.
@@ -233,7 +233,7 @@ Rechnungen abrufen. Nach der Kündigung zeigt das Profil bis zum Periodenende
 an, bis zu welchem Datum Premium noch aktiv ist.
 
 Alternativ genügt eine formlose Kündigungserklärung per E-Mail an
-[[EMAIL]]. Massgebend ist der Zugang der Erklärung bei der Anbieterin.
+contact@strado.ch. Massgebend ist der Zugang der Erklärung bei der Anbieterin.
 
 **6.5 Kündigung durch die Anbieterin.** Die Anbieterin kann das Abo ebenfalls
 auf das Ende der laufenden Abrechnungsperiode kündigen. Aus wichtigem Grund —
@@ -252,7 +252,7 @@ ungültig wird** — sie muss über Ziff. 6.4 erklärt werden.
 
 **7.1** Die Anbieterin gewährt **freiwillig** eine Geld-zurück-Regel: Wer
 innerhalb von **14 Tagen** nach dem erstmaligen Abschluss eines Premium-Abos
-nicht zufrieden ist, erhält auf formlose Anfrage an [[EMAIL]] das bezahlte
+nicht zufrieden ist, erhält auf formlose Anfrage an contact@strado.ch das bezahlte
 Entgelt vollständig zurück. Eine Begründung ist nicht nötig.
 
 **7.2** Mit der Rückerstattung wird das Abo beendet und der Zugang zu den
@@ -531,7 +531,6 @@ verzichten.
 | `[[RECHTSFORM]]` | Rechtsform (z. B. Einzelunternehmen, GmbH, AG) | Ziff. 1.2 |
 | `[[STRASSE_NR]]` | Strasse und Hausnummer des Geschäftssitzes | Ziff. 1.2 |
 | `[[PLZ_ORT]]` | Postleitzahl und Ort des Geschäftssitzes | Ziff. 1.2 |
-| `[[EMAIL]]` | Kontakt-E-Mail für Kündigung, Geld-zurück-Anfragen und allgemeine Anliegen | Ziff. 1.2, 6.4, 7.1 |
 | `[[DOMAIN]]` | Echte Domain, unter der Strado und die Rechtstexte erreichbar sind | Ziff. 1.1, 1.2, 15 |
 | `[[GERICHTSSTAND]]` | Ort des vereinbarten Gerichtsstands (in der Regel der Sitz der Anbieterin) | Ziff. 16.4 |
 | `[[STAND_DATUM]]` | Datum, ab dem diese AGB-Fassung gilt | Kopfzeile |
