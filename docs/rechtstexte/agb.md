@@ -17,7 +17,7 @@
 > durch die echten Werte ersetzt werden. Eine vollständige Liste steht am
 > Ende dieses Dokuments.
 >
-> Entwurfsdatum: 2026-09-06
+> Entwurfsdatum: 2026-09-07
 
 > ### Hinweis zum Umsetzungsstand
 >
@@ -341,6 +341,13 @@ Datenschutzerklärung beschrieben.
 GPS-Tracks, Fotos, Bewertungstexte, Fahrt-Titel und -Notizen sowie
 Profilangaben („Nutzerinhalte"). Die Rechte an diesen Inhalten verbleiben bei
 den Nutzenden.
+
+**10.1.1 Voreingestellte Sichtbarkeit von Profilangaben.** Einzelne Fahrten
+sind **standardmässig privat** und werden nur öffentlich, wenn dies pro Fahrt
+aktiv gewählt wird. Die Profilangaben Profilbild, Fahrzeuge, Anzahl Pässe,
+Höhenmeter, Distanz und Follower-Liste sind demgegenüber auf dem öffentlichen
+Profil **voreingestellt sichtbar** und lassen sich in den Profileinstellungen
+jederzeit einzeln abschalten. Einzelheiten regelt die Datenschutzerklärung.
 
 **10.2 Rechteeinräumung.** Nutzende räumen der Anbieterin an den von ihnen
 **veröffentlichten** Inhalten ein räumlich und zeitlich unbeschränktes, nicht
