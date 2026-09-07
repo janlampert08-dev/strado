@@ -62,3 +62,47 @@ originally confirmed, not as a current-state report.
   below the WCAG AA 4.5:1 threshold for normal-size text. Matches the agent's figure.
 - The comment at `:49-52` explicitly claims a token swap here "genügt für die ganze App",
   which is what makes the omission easy to miss.
+
+## CONFIRMED BY EXECUTION — Out-and-back routes score 100% from half the ride (backend agent H2)
+- `lib/routeCoverage.ts:31`: `trail.some((point) => haversineKm(sample, point) <= CORRIDOR_KM)`.
+  No ordering, no one-sample-consumes-one-point. For an A→B→A route the outbound and return
+  samples lie on the same road, so an outbound-only trail satisfies both halves.
+- Ran the real function in-repo against a 20 km each-way route at lat 46.5, trail = outbound
+  leg only (temporary vitest file, deleted afterwards; `git status` clean):
+
+      route pts: 401   trail pts: 201   coverage: 100
+      ✓ expect(cov).toBe(100) — PASSED
+
+- Consequence: the ride clears `COVERAGE_THRESHOLD_PERCENT = 75`, is publication-eligible, and
+  posts half the distance in half the time to a fastest-time board.
+- **Re-run and still passing after PR #109 merged** — neither migration `0059` nor `0060`
+  touches `computeRouteCoverage`, so this leg of A1 remains open. See the A1 table in
+  [`README.md`](./README.md#remediation-status).
+
+## CONFIRMED — proposeRoute can publish a route the user asked to keep private (backend agent H3)
+- `lib/actions/routes.ts:223`: `await supabase.from("routes").update({ ist_privat: true })
+  .eq("id", data);` — return value discarded, no error branch, then an unconditional
+  `redirect()`.
+- `lib/moderation.ts:20-22` — `getPendingRoutes` selects exactly
+  `status_ok = false AND ist_privat = false AND abgelehnt_am IS NULL`.
+- The RPC creates the row at `status_ok = false, ist_privat = false`. A failed follow-up update
+  therefore leaves the route sitting in the public moderation queue, full geometry visible to
+  moderators, with no error shown to the user.
+- Same file also shows the `const { data }` error-discarding pattern the backend audit flags
+  under M7 (`lib/queryError.ts` exists but is unused here).
+- **Still open** — this is finding A4, not addressed by PR #109.
+
+## CONFIRMED — RouteMap default array params defeat two dependency arrays (performance agent #1)
+- `components/RouteMap.tsx:265-266`: `trafficSegments = []`, `trail = []` as destructuring
+  defaults — a fresh array identity on every render for callers that omit them.
+- `components/CompletionMap.tsx:15` defines `const NO_ROUTES: never[] = []` at module scope and
+  passes it at `:30`, i.e. the correct pattern already exists in the codebase and simply was
+  not applied in `RouteMap`.
+- **Still open** — §B performance item, not addressed by PR #109.
+
+## Orchestrator build measurements corroborate the performance agent's bundle claim
+The performance audit could not run `next build` (its `node_modules` was reinstalled mid-run),
+so its bundle numbers are marked `[measured]`/`[computed]`/`[estimated]` in its own report. An
+independent build confirms its central positive finding: the 1785 KB mapbox chunk appears in
+`react-loadable-manifest.json`, i.e. it is behind `next/dynamic` and out of the shared entry.
+Full figures in [`baseline.md`](./baseline.md).
