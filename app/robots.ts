@@ -10,24 +10,18 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
       // Auth-/Einstellungs-/Moderationsbereiche sind nicht öffentlich
       // teilbar und bringen für die Indexierung keinen Wert.
       //
-      // /fahrer ist der wichtigere Zusatz: app/sitemap.ts schliesst
-      // Fahrer-Profile ausdrücklich aus Datenschutzgründen aus ("ob ein
-      // Profil überhaupt etwas preisgibt, entscheidet der Nutzer selbst").
-      // Das Weglassen aus der Sitemap verhindert aber keine Indexierung —
-      // /feed verlinkt jedes dieser Profile. Die Entscheidung war
-      // dokumentiert, aber nicht durchgesetzt.
-      //
       // /anmelden und /registrieren sind Formulare ohne Inhalt; /aktivitaet
       // ist der persönliche Rückkanal und ohnehin nur angemeldet sichtbar.
-      disallow: [
-        "/profil",
-        "/moderation",
-        "/api",
-        "/fahrer",
-        "/aktivitaet",
-        "/anmelden",
-        "/registrieren",
-      ],
+      //
+      // /fahrer steht bewusst NICHT hier. Fahrer-Profile sollen nicht in
+      // den Index — app/sitemap.ts lässt sie aus Datenschutzgründen aus —,
+      // aber ein Disallow leistet das nicht: es verbietet das Abrufen, nicht
+      // das Indexieren, und /feed verlinkt jedes dieser Profile. Die URL
+      // landete also weiterhin im Index, nur ohne Inhalt. Durchgesetzt wird
+      // es stattdessen mit robots: { index: false } in
+      // app/fahrer/[id]/page.tsx — was voraussetzt, dass der Crawler die
+      // Seite überhaupt holen darf.
+      disallow: ["/profil", "/moderation", "/api", "/aktivitaet", "/anmelden", "/registrieren"],
     },
     sitemap: `${origin}/sitemap.xml`,
   };

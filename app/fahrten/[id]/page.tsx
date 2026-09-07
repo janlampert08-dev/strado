@@ -56,26 +56,43 @@ export async function generateMetadata({
     .filter(Boolean)
     .join(" in ");
 
+  // openGraph.description muss ausdrücklich mit: Next übernimmt die
+  // description NICHT automatisch in den openGraph-Block, sobald dieser
+  // eigene Felder setzt. Ohne sie fällt die Vorschau in WhatsApp,
+  // Signal, Slack & Co. auf den Seitentext zurück — dieselbe
+  // "Kudos geben · Melden"-Zeile, gegen die die description oben steht,
+  // und ausgerechnet dort, wo eine Fahrt am ehesten geteilt wird.
   if (completion.art === "frei") {
     const titel = freieFahrtTitel(completion.titel, completion.startOrt);
+    const beschreibung = kennzahlen
+      ? `${fahrer} ist ${kennzahlen} gefahren — ${titel}. Auf Cornice ansehen.`
+      : `Freie Fahrt von ${fahrer} auf Cornice.`;
     return {
       title: `${titel} – Fahrt von ${fahrer} – Cornice`,
-      description: kennzahlen
-        ? `${fahrer} ist ${kennzahlen} gefahren — ${titel}. Auf Cornice ansehen.`
-        : `Freie Fahrt von ${fahrer} auf Cornice.`,
-      openGraph: { type: "article", title: `${titel} – Fahrt von ${fahrer}` },
+      description: beschreibung,
+      openGraph: {
+        type: "article",
+        title: `${titel} – Fahrt von ${fahrer}`,
+        description: beschreibung,
+      },
     };
   }
 
   const route = completion.routeId ? await getRoute(completion.routeId) : null;
   if (!route) return { title: "Fahrt – Cornice" };
 
+  const beschreibung = kennzahlen
+    ? `${fahrer} ist ${kennzahlen} auf der Strecke ${route.name} gefahren. Auf Cornice ansehen.`
+    : `Fahrt von ${fahrer} auf der Strecke ${route.name}. Auf Cornice ansehen.`;
+
   return {
     title: `${route.name} – Fahrt von ${fahrer} – Cornice`,
-    description: kennzahlen
-      ? `${fahrer} ist ${kennzahlen} auf der Strecke ${route.name} gefahren. Auf Cornice ansehen.`
-      : `Fahrt von ${fahrer} auf der Strecke ${route.name}. Auf Cornice ansehen.`,
-    openGraph: { type: "article", title: `${route.name} – Fahrt von ${fahrer}` },
+    description: beschreibung,
+    openGraph: {
+      type: "article",
+      title: `${route.name} – Fahrt von ${fahrer}`,
+      description: beschreibung,
+    },
   };
 }
 

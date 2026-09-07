@@ -31,14 +31,25 @@ export async function generateMetadata({
   const profile = await getPublicProfile(id);
   if (!profile) return { title: "Fahrer – Cornice" };
   const name = profile.displayName ?? "Ein Fahrer";
+  // Kurz und ohne Kennzahlen: Welche davon überhaupt sichtbar sind,
+  // entscheiden die zeigt_*-Schalter des Nutzers (lib/profile.ts). Sie in
+  // die Beschreibung zu ziehen würde diese Entscheidung an Suchmaschinen
+  // vorbei aushebeln — deshalb bewusst nur der Name.
+  const beschreibung = `Profil von ${name} auf Cornice: gefahrene Strecken und Touren.`;
   return {
     title: `${name} – Cornice`,
-    // Kurz und ohne Kennzahlen: Welche davon überhaupt sichtbar sind,
-    // entscheiden die zeigt_*-Schalter des Nutzers (lib/profile.ts). Sie in
-    // die Beschreibung zu ziehen würde diese Entscheidung an Suchmaschinen
-    // vorbei aushebeln — deshalb bewusst nur der Name.
-    description: `Profil von ${name} auf Cornice: gefahrene Strecken und Touren.`,
-    openGraph: { type: "profile", title: `${name} – Cornice` },
+    description: beschreibung,
+    // description muss im openGraph-Block wiederholt werden — Next zieht
+    // sie nicht automatisch nach, sobald der Block eigene Felder hat.
+    openGraph: { type: "profile", title: `${name} – Cornice`, description: beschreibung },
+    // noindex statt eines Disallow in robots.ts: app/sitemap.ts lässt
+    // Fahrer-Profile aus Datenschutzgründen aus, aber /feed verlinkt jedes
+    // von ihnen. Ein Disallow verbietet nur das ABRUFEN — die URL kann über
+    // solche Links trotzdem im Index landen, dann eben ohne Inhalt, und der
+    // Crawler bekommt diese Anweisung hier nie zu sehen, weil er die Seite
+    // gar nicht erst holen darf. Genau umgekehrt wirkt es: crawlen lassen,
+    // damit das noindex ankommt.
+    robots: { index: false, follow: true },
   };
 }
 
