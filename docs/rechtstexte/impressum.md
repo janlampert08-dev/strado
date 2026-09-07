@@ -88,25 +88,29 @@ füllen und schon gar nicht mit dem Platzhalter zu belassen.
 
 ## Weitere Rechtstexte
 
-- Allgemeine Geschäftsbedingungen: `https://[[DOMAIN]]/legal/agb`
-- Datenschutzerklärung: `https://[[DOMAIN]]/legal/datenschutz`
+- Allgemeine Geschäftsbedingungen: `https://strado.ch/legal/agb`
+- Datenschutzerklärung: `https://strado.ch/legal/datenschutz`
 
 > **Technischer Hinweis (nicht Teil des veröffentlichten Impressums):** Diese
 > drei Entwürfe sind am 2026-09-06 als HTML unter `legal/` im Repo
-> `janlampert08-dev/cornice.ch` veröffentlicht worden; `LEGAL_URLS` in
+> `janlampert08-dev/stradoinfo` veröffentlicht worden; `LEGAL_URLS` in
 > `lib/constants.ts` zeigt darauf. Die Entwürfe hier bleiben die Arbeitsfassung
 > — **wer den einen ändert, muss den anderen mitziehen.** Die Platzhalter
 > stehen in den HTML-Seiten als orange markierte `.todo`-Felder.
 >
-> **Eine eigene Domain ist noch nicht registriert.** `LEGAL_URLS` fällt
-> deshalb auf `https://cornice-ch.vercel.app` zurück — die Adresse, unter der
-> die Seiten heute erreichbar sind. Eine noch nicht gekaufte Wunschdomain als
-> Vorgabe wäre derselbe Fehler wie das frühere `xyz.ch`: sie kann jederzeit
-> jemand anderem gehören. Sobald eine Domain registriert und bei Vercel
-> eingetragen ist, gehört sie in `NEXT_PUBLIC_LEGAL_BASE_URL`; die
-> vollständige Liste der mitzuziehenden Stellen steht im README des Repos
-> `janlampert08-dev/cornice.ch`. Das ist der Rest von Blocker 1 aus
-> `docs/premium-plan.md`, Abschnitt 8.
+> **Die Domain ist registriert und ausgeliefert.** `strado.ch` liefert die
+> Rechtstexte unter `/legal/…` aus (die Apex-Domain antwortet mit 308 auf
+> `www.strado.ch`, der Pfad bleibt erhalten), die Webanwendung läuft unter
+> `app.strado.ch`. `LEGAL_URLS` in `lib/constants.ts` fällt deshalb auf
+> `https://strado.ch` zurück; `NEXT_PUBLIC_LEGAL_BASE_URL` muss dafür nicht
+> mehr gesetzt werden. Der frühere Übergangswert `cornice-ch.vercel.app` und
+> das ursprüngliche `xyz.ch` sind damit aus allen Links verschwunden — die
+> Regel dahinter bleibt: unter der Überschrift „Impressum" steht nur eine
+> Adresse, die uns gehört und die antwortet.
+>
+> Offen aus Blocker 1 (`docs/premium-plan.md`, Abschnitt 8) sind nur noch
+> die Pflichtangaben in der Platzhalter-Tabelle unten, nicht mehr die
+> Domain.
 
 ---
 
@@ -122,8 +126,7 @@ füllen und schon gar nicht mit dem Platzhalter zu belassen.
 | `[[VERTRETUNGSBERECHTIGTE_PERSON]]` | Name der vertretungsberechtigten bzw. inhaltlich verantwortlichen Person | — |
 | `[[UID_NR]]` | Unternehmens-Identifikationsnummer / Handelsregisternummer | Form `CHE-###.###.###` |
 | `[[MWST_NR]]` | MWST-Nummer, nur bei bestehender Steuerpflicht | Form `CHE-###.###.### MWST` |
-| `[[DOMAIN]]` | Echte Domain, unter der die Rechtstexte erreichbar sind | — |
 
-Insgesamt **9 Platzhalter**. Vor der Veröffentlichung ist im gesamten
+Insgesamt **8 Platzhalter**. Vor der Veröffentlichung ist im gesamten
 Dokument nach der Zeichenfolge `[[` zu suchen, um sicherzustellen, dass kein
 Platzhalter übrig geblieben ist.

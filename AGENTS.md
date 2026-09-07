@@ -41,28 +41,39 @@ is what should be corrected.
   pass scoped from this file skipped it as not-yet-shipped. Treat everything
   under `app/profil/premium/`, `lib/actions/billing.ts`, `lib/stripe*` and the
   webhook as production code.
-- **`lib/constants.ts` `LEGAL_URLS` points at
-  `https://cornice-ch.vercel.app`** — the address where the pages actually
-  stand today. The earlier `https://xyz.ch/...` placeholder is long gone; this
-  entry described it for a while after the code had moved on. Those links ship
-  in the sign-up form and the pages behind them still carry the old product
-  name, so this stays a launch blocker, not an oversight to fix incidentally.
+- **The domains are live and every link now points at them.** `strado.ch`
+  serves the info page and the legal texts under `/legal/…`, `app.strado.ch`
+  serves the application, and `contact@strado.ch` is the contact address.
+  The apex answers with a permanent 308 to `www.strado.ch` and keeps the
+  path, so `strado.ch/legal/agb` resolves; the apex form is what gets
+  linked, because it is what the legal texts name. This entry previously
+  said nothing was served under either hostname — that was true when it was
+  written and stopped being true without the entry noticing, which is why
+  the links sat on `cornice-ch.vercel.app` longer than they had to.
+  - `LEGAL_BASE_URL_STANDARD` in `lib/constants.ts` is `https://strado.ch`.
+    `NEXT_PUBLIC_LEGAL_BASE_URL` no longer needs setting in production; it
+    remains an override for preview environments. The rule that governed
+    the old value still governs the next one: only an address we own **and**
+    that answers belongs there — owning a domain removes the hijacking
+    risk, not the dead-link one.
+  - The `[[DOMAIN]]` placeholder in `docs/rechtstexte/` is gone, resolved
+    rather than split: the platform references (`agb.md` Ziff. 1.1,
+    `datenschutz.md` 2.1) name both hosts explicitly, and the legal-text
+    references (`impressum.md`, every `/legal/…` link) name `strado.ch`.
+    The remaining placeholders there are the company's own particulars.
 
-- **Domains are decided: `strado.ch` is the info page, `app.strado.ch` is the
-  application, `contact@strado.ch` is the contact address.** `strado.ch` is
-  registered and owned. What is *not* yet true: nothing is served under either
-  hostname, and the legal texts still live at `cornice-ch.vercel.app` (repo
-  `janlampert08-dev/cornice.ch`) under the old name. Two consequences worth
-  knowing before touching either:
-  - Repoint `LEGAL_BASE_URL_STANDARD` only once the new target actually
-    answers. The comment above it in `lib/constants.ts` explains why an
-    unanswered wish-domain default is worse than a stale but reachable one —
-    owning the domain removes the hijacking risk, not the dead-link one.
-  - The `[[DOMAIN]]` placeholder in `docs/rechtstexte/` can no longer be
-    filled as one value. It stands for the platform in `agb.md` Ziff. 1.1 and
-    `datenschutz.md` 2.1 (→ `app.strado.ch`) and for where the legal texts are
-    reachable in `impressum.md` and every `/legal/...` link (→ `strado.ch`).
-    Split it into two placeholders before resolving either.
+- **The published legal pages still carry the old product name.** The
+  addresses are fixed, the branding is not: `janlampert08-dev/stradoinfo`
+  still says "Cornice" in its titles, logos and body text, including inside
+  the three legal pages, while this app was renamed to Strado. Those pages
+  are linked from the sign-up form, so this remains a launch blocker — and
+  it is a rename, not a link fix, so it needs its own change.
+
+- **`NEXT_PUBLIC_SITE_URL` is still unset in production.** It backs the
+  Stripe customer-portal return link (`lib/actions/billing.ts`) and falls
+  back to `http://localhost:3000`, which would send a paying customer to
+  their own machine. It is a Vercel environment variable and cannot be
+  fixed in the repo; set it to `https://app.strado.ch`.
 - **Migrations are applied by hand and the newest ones are not applied.**
   Green CI means nothing about the live schema. See
   `supabase/migrations/README.md` and `.agents/deployment.md`.

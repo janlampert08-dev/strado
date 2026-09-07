@@ -41,8 +41,9 @@ der Rechte nach Abschnitt 11 genügt eine formlose Nachricht an diese Adresse.
 
 ## 2. Geltungsbereich und anwendbares Recht
 
-**2.1** Diese Erklärung gilt für die Website und Webanwendung Strado unter
-`https://[[DOMAIN]]` sowie für alle damit verbundenen Bearbeitungen.
+**2.1** Diese Erklärung gilt für die Website Strado unter `https://strado.ch`
+und die Webanwendung unter `https://app.strado.ch` sowie für alle damit
+verbundenen Bearbeitungen.
 
 **2.2** Massgebend ist das **Schweizer Bundesgesetz über den Datenschutz
 (DSG, revidiert)** samt Verordnung (VDSG). Soweit auf einzelne Nutzende die
@@ -565,7 +566,7 @@ Person ohne die nötige Zustimmung bearbeitet werden, löschen wir diese.
 
 Wir können diese Datenschutzerklärung anpassen, wenn sich die
 Datenbearbeitung, die eingesetzten Dienste oder die Rechtslage ändern. Es gilt
-jeweils die auf `https://[[DOMAIN]]/datenschutz` veröffentlichte Fassung. Bei
+jeweils die auf `https://strado.ch/legal/datenschutz` veröffentlichte Fassung. Bei
 wesentlichen Änderungen informieren wir zusätzlich in der Anwendung oder per
 E-Mail.
 
@@ -579,12 +580,11 @@ E-Mail.
 | `[[RECHTSFORM]]` | Rechtsform (z. B. Einzelunternehmen, GmbH, AG) | Abschnitt 1 |
 | `[[STRASSE_NR]]` | Strasse und Hausnummer des Geschäftssitzes | Abschnitt 1 |
 | `[[PLZ_ORT]]` | Postleitzahl und Ort des Geschäftssitzes | Abschnitt 1 |
-| `[[DOMAIN]]` | Echte Domain, unter der Strado und die Rechtstexte erreichbar sind | Abschnitt 2.1, 14 |
 | `[[SUPABASE_REGION]]` | Region, in der das Supabase-Projekt betrieben wird (bestimmt den Speicherort der Kerndaten) | Abschnitt 7 |
 | `[[VERCEL_REGION]]` | Region, in der die Anwendung bei Vercel ausgeführt wird | Abschnitt 7 |
 | `[[STAND_DATUM]]` | Datum, ab dem diese Fassung gilt | Kopfzeile |
 
-Insgesamt **8 Platzhalter**. Vor der Veröffentlichung ist im gesamten Dokument
+Insgesamt **7 Platzhalter**. Vor der Veröffentlichung ist im gesamten Dokument
 nach der Zeichenfolge `[[` zu suchen, um sicherzustellen, dass kein Platzhalter
 übrig geblieben ist.
 
