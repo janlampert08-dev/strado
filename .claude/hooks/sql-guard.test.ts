@@ -40,14 +40,18 @@ describe("sql-guard: supabase migration", () => {
     "supabase migration repair --status applied 0062",
     "supabase migration squash",
     "supabase migration fetch",
+    // `list` liest mit --linked/--db-url die Ledger-Tabelle
+    // supabase_migrations.schema_migrations auf der Remote-Datenbank und
+    // erreicht damit die Datenbank -- bleibt bestaetigungspflichtig.
+    "supabase migration list",
+    "supabase migration list --linked",
+    "supabase migration list --db-url postgresql://example.invalid/db",
   ])("fordert Bestaetigung fuer %s", (command) => {
     expect(fordertBestaetigung(command)).toBe(true);
   });
 
   it.each([
     "supabase migration new premium_abo",
-    "supabase migration list",
-    "supabase migration list --linked",
     "npx supabase migration new premium_abo",
   ])("laesst %s ohne Bestaetigung durch", (command) => {
     expect(fordertBestaetigung(command)).toBe(false);
