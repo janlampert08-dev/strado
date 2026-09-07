@@ -112,11 +112,26 @@ claim has two halves, and each rests on a different artifact:
   `dynamic(() => import("@/components/RouteMap"))` — `CompletionMap`, `ExploreView`,
   `FreeRideForm`, `LiveTrackingForm` and `RouteDetailMap` — all on the same specifier, which is
   what makes it one shared chunk rather than five.
-- **Absent from the shared entry.** The loadable manifest does *not* show this; it only maps
-  loadable chunks. The supporting artifact is `build-manifest.json`, where the chunk appears in
-  no entry list at all — not in `rootMainFiles` (6 entries), not in any per-page list, and not
-  in `fallback-build-manifest.json` either.
+- **Out of first load on those four routes — but NOT everywhere.** The authoritative artifact
+  is `.next/diagnostics/route-bundle-stats.json`, which lists `firstLoadChunkPaths` per route.
+  The mapbox chunk appears in exactly one route's first load: **`/strecken/neu`**, whose
+  `firstLoadUncompressedJsBytes` is **2,330,360** against 511-795 KB for every other route —
+  roughly 4.5x the next largest.
 
-An earlier draft of this entry cited the loadable manifest for both halves. The conclusion was
-right, the citation was not — flagged in review on PR #122 and corrected by re-measuring rather
-than by softening the wording. Full figures in [`baseline.md`](./baseline.md).
+**Cause, and a finding the original audit missed.** The performance audit checked the five
+`RouteMap` consumers and correctly found all five behind `next/dynamic` on one specifier. But
+`components/RoutePicker.tsx:4` does not go through `RouteMap` at all — it does a **static**
+`import mapboxgl from "mapbox-gl"` (plus the stylesheet at `:5`), and
+`components/NeueStreckeForm.tsx:5` imports `RoutePicker` statically. So the route-creation page
+eagerly ships the 1.8 MB library that every other route lazy-loads. **Open**, not addressed
+anywhere in PR #109 or this PR; the fix is the same `next/dynamic` treatment the other five
+consumers already use.
+
+**Two corrections are recorded here rather than silently absorbed.** The first draft of this
+entry cited `react-loadable-manifest.json` for both halves of the claim; that manifest only maps
+loadable chunks and says nothing about entry composition. The second draft cited
+`build-manifest.json` and concluded the chunk was "out of the shared entry" — wrong, because
+that file is largely a Pages-Router artifact (no `app-build-manifest.json` is emitted by this
+build) and absence from it does not mean absence from an App Router route's first load. Both
+were flagged in review on PR #122; the third measurement, against the per-route stats, is what
+turned up `/strecken/neu`. Full figures in [`baseline.md`](./baseline.md).
