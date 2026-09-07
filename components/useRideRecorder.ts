@@ -55,6 +55,11 @@ export interface RideGate {
 }
 
 export interface RideRecorder {
+  // Nur im Gast-Übergang relevant: Es lag ein ?fortsetzen=-Token vor, die
+  // damit angekündigte Aufzeichnung war aber nicht mehr auffindbar. Der
+  // Recorder startet dann bewusst NICHT — die Oberfläche muss das erklären,
+  // statt den Nutzer in einer leeren Aufzeichnung stehen zu lassen.
+  uebernahmeGescheitert: boolean;
   phase: RecorderPhase;
   hasStarted: boolean;
   distanceKm: number;
@@ -523,6 +528,10 @@ export function useRideRecorder({
     clearTrackingSnapshot(userIdRef.current, storageKeyRef.current);
   }, [releaseTracking]);
 
+  // Nur für den Gast-Übergang: true, wenn ein ?fortsetzen=-Token vorlag,
+  // die aufgezeichnete Fahrt darüber aber nicht mehr gefunden wurde.
+  const [uebernahmeGescheitert, setUebernahmeGescheitert] = useState(false);
+
   const clearSnapshot = useCallback(() => {
     clearTrackingSnapshot(userIdRef.current, storageKeyRef.current);
   }, []);
@@ -543,14 +552,31 @@ export function useRideRecorder({
     // Vor dem Laden: eine Fahrt, die dieser Nutzer noch abgemeldet
     // aufgezeichnet hat, liegt unter dem Gast-Schlüssel und würde sonst
     // nicht gefunden.
+    let uebernahmeFehlgeschlagen = false;
     if (guestContinuationTokenRef.current) {
-      adoptGuestTrackingSnapshot(
+      uebernahmeFehlgeschlagen = !adoptGuestTrackingSnapshot(
         userIdRef.current,
         storageKeyRef.current,
         guestContinuationTokenRef.current,
       );
     }
     const snapshot = loadTrackingSnapshot(userIdRef.current, storageKeyRef.current);
+
+    // Der Rückgabewert wurde bisher verworfen. Schlägt die Übernahme fehl —
+    // Token abgelaufen (2 h, während der Snapshot 24 h lebt),
+    // Bestätigungslink in einem anderen Browser geöffnet, localStorage
+    // gesperrt — findet loadTrackingSnapshot nichts, und der Code lief unten
+    // in start(undefined). Die Seite ist wegen des ?fortsetzen=-Markers
+    // bereits aufgeklappt, fragte also GPS an und begann eine NEUE Fahrt.
+    //
+    // Wer sich gerade extra registriert hat, um seine aufgezeichnete Fahrt zu
+    // speichern, landete damit kommentarlos in einem leeren Recorder — die
+    // Fahrt war weg, und nichts sagte es ihm. Deshalb hier abbrechen statt
+    // starten; die Oberfläche zeigt stattdessen einen Hinweis.
+    if (uebernahmeFehlgeschlagen && !snapshot) {
+      setUebernahmeGescheitert(true);
+      return;
+    }
 
     const timeout = setTimeout(() => {
       if (snapshot?.phase === "finished") {
@@ -575,6 +601,7 @@ export function useRideRecorder({
   }, []);
 
   return {
+    uebernahmeGescheitert,
     phase,
     hasStarted,
     distanceKm,

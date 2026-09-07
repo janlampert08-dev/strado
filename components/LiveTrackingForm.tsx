@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useState } from "react";
+import { ConfirmDialog } from "@/components/ui/Dialog";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { logTrackedCompletion, type CompletionFormState } from "@/lib/actions/completions";
@@ -87,6 +88,12 @@ export default function LiveTrackingForm({
   const { phase, result, finishedTrail, clearSnapshot, discard } = recorder;
 
   const [isPublic, setIsPublic] = useState(false);
+  // Dieselbe Rückfrage wie im angemeldeten Pfad (RideSummaryForm).
+  // Vorher verwarf ein einzelner Tap hier eine bereits FERTIGE
+  // Aufzeichnung sofort und endgültig — ausgerechnet im Gast-Fall,
+  // wo serverseitig noch nichts liegt und der lokale Snapshot die
+  // einzige Kopie der Fahrt ist.
+  const [gastVerwerfenOffen, setGastVerwerfenOffen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   const coveragePercent = useMemo(() => {
@@ -134,12 +141,45 @@ export default function LiveTrackingForm({
     router.push(`${ziel}?next=${encodeURIComponent(zurueck)}`);
   }
 
+  // Gast-Übernahme fehlgeschlagen: Es lag ein ?fortsetzen=-Token vor, die
+  // damit angekündigte Aufzeichnung war aber nicht mehr auffindbar (Token
+  // älter als 2 h, anderer Browser, gesperrter Speicher). Der Recorder
+  // startet dann bewusst nicht — hier steht, was passiert ist, statt dass
+  // der Nutzer in einer leeren Aufzeichnung landet und glaubt, seine Fahrt
+  // sei einfach verschwunden.
+  if (recorder.uebernahmeGescheitert) {
+    return (
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)]" role="dialog" aria-modal="true" aria-label="Fahrt aufzeichnen">
+        <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-5 py-8 sm:px-6 sm:py-10">
+          <Card surface className="flex flex-col gap-3 p-4 text-sm">
+            <p className="font-medium text-foreground">
+              Die aufgezeichnete Fahrt konnte nicht übernommen werden.
+            </p>
+            <p className="text-muted">
+              Aufzeichnungen liegen nur in dem Browser, in dem sie entstanden sind. Wurde der
+              Bestätigungslink auf einem anderen Gerät oder in einer anderen App geöffnet, oder ist
+              zu viel Zeit vergangen, lässt sich die Fahrt nicht mehr zuordnen. Dein Konto ist
+              angelegt — die Fahrt selbst ist leider verloren.
+            </p>
+            <button
+              type="button"
+              onClick={onExit}
+              className={buttonVariants({ variant: "accent", size: "sm", className: "self-start" })}
+            >
+              Zurück zur Strecke
+            </button>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   if (phase === "idle") {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-background px-6 pt-[var(--safe-top)] pb-[var(--safe-bottom)] text-center">
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-background px-6 pt-[var(--safe-top)] pb-[var(--safe-bottom)] text-center" role="dialog" aria-modal="true" aria-label="Fahrt aufzeichnen">
         {recorder.locationError ? (
           <>
-            <p className="text-sm text-danger">{recorder.locationError}</p>
+            <p role="alert" className="text-sm text-danger">{recorder.locationError}</p>
             <button
               type="button"
               onClick={onExit}
@@ -172,7 +212,7 @@ export default function LiveTrackingForm({
     // — während einer laufenden Aufzeichnung sind die Streckendetails
     // ausgeblendet, stattdessen zeigt die Karte Route und Live-Standort.
     return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-background">
+      <div className="fixed inset-0 z-50 flex flex-col bg-background" role="dialog" aria-modal="true" aria-label="Fahrt aufzeichnen">
         <div className="min-h-0 flex-1">
           <RouteMap
             routes={routes}
@@ -245,7 +285,7 @@ export default function LiveTrackingForm({
                 : "Standort wird ermittelt…"}
             </p>
           )}
-          {recorder.locationError && <p className="text-sm text-danger">{recorder.locationError}</p>}
+          {recorder.locationError && <p role="alert" className="text-sm text-danger">{recorder.locationError}</p>}
           {/* Vorwarnung statt einer Überraschung am Ziel — siehe
               FreeRideForm.tsx. */}
           {istGast && (
@@ -297,7 +337,7 @@ export default function LiveTrackingForm({
     result !== null && (personalBestSeconds === null || result.seconds < personalBestSeconds);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)]">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)]" role="dialog" aria-modal="true" aria-label="Fahrt aufzeichnen">
       <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-5 py-8 sm:px-6 sm:py-10">
         <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">Fazit</h2>
 
@@ -340,6 +380,7 @@ export default function LiveTrackingForm({
             Serverseitig ändert das nichts — logTrackedCompletion weist eine
             Fahrt ohne Session unabhängig davon ab. */}
         {istGast ? (
+        <>
           <Card surface className="flex flex-col gap-3 p-4 text-sm">
             <p className="font-medium text-foreground">Strecke gefahren.</p>
             <p className="text-muted">
@@ -365,12 +406,22 @@ export default function LiveTrackingForm({
             </div>
             <button
               type="button"
-              onClick={handleExit}
+              onClick={() => setGastVerwerfenOffen(true)}
               className="self-start text-xs text-muted underline hover:text-foreground"
             >
               Fahrt verwerfen
             </button>
           </Card>
+          <ConfirmDialog
+            open={gastVerwerfenOffen}
+            title="Fahrt verwerfen?"
+            description="Die aufgezeichnete Fahrt wurde noch nicht gespeichert und geht dabei endgültig verloren."
+            confirmLabel="Verwerfen"
+            variant="danger"
+            onConfirm={handleExit}
+            onCancel={() => setGastVerwerfenOffen(false)}
+          />
+        </>
         ) : (
           <RideSummaryForm
             maxPhotos={maxPhotos}

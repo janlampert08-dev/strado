@@ -51,6 +51,9 @@ export default async function FeedPage({
           <div className="flex gap-2 border-b border-border pb-3">
             <Link
               href="/feed"
+              // Der aktive Filter war ausschliesslich an der Hintergrundfarbe
+              // erkennbar. BottomNav.tsx macht es im selben Repo richtig.
+              aria-current={scope === "global" ? "page" : undefined}
               className={cn(
                 "rounded-full px-3 py-1.5 text-sm font-medium transition-colors duration-fast",
                 scope === "global" ? "bg-foreground text-background" : "text-muted hover:text-foreground",
@@ -60,6 +63,7 @@ export default async function FeedPage({
             </Link>
             <Link
               href="/feed?scope=following"
+              aria-current={scope === "following" ? "page" : undefined}
               className={cn(
                 "rounded-full px-3 py-1.5 text-sm font-medium transition-colors duration-fast",
                 scope === "following" ? "bg-foreground text-background" : "text-muted hover:text-foreground",

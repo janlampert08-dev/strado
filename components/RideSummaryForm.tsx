@@ -286,9 +286,14 @@ export default function RideSummaryForm({
         <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">Sichtbarkeit</h3>
         {visibility ? (
           <>
-            <div className="flex gap-2">
+            {/* Die folgenreichste Entscheidung dieses Screens — geht die Fahrt
+                in Feed und Bestenlisten oder nicht — war rein visuell markiert.
+                role="group" plus aria-pressed macht Auswahl und
+                Zusammengehörigkeit für Hilfstechnik ablesbar. */}
+            <div className="flex gap-2" role="group" aria-label="Sichtbarkeit der Fahrt">
               <button
                 type="button"
+                aria-pressed={!isPublic}
                 onClick={() => onIsPublicChange(false)}
                 className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors duration-fast ${
                   !isPublic
@@ -301,6 +306,7 @@ export default function RideSummaryForm({
               </button>
               <button
                 type="button"
+                aria-pressed={isPublic}
                 onClick={() => onIsPublicChange(true)}
                 disabled={visibility.publicDisabled}
                 title={visibility.publicDisabled ? visibility.publicDisabledHint : undefined}

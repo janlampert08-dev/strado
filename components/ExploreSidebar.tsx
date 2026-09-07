@@ -91,12 +91,16 @@ export default function ExploreSidebar({
               ? "Standort aktualisieren"
               : "Strecken in meiner Nähe"}
         </button>
-        {locationError && <p className="text-xs text-muted">{locationError}</p>}
+        {/* Antwort auf eine gerade ausgelöste Nutzeraktion — role="alert",
+            damit sie angesagt wird. Vorher in text-xs text-muted, also im
+            hellsten Grauton und der kleinsten Schriftgrösse: eine
+            Fehlermeldung, die aussah wie eine Fussnote. */}
+        {locationError && <p role="alert" className="text-sm text-danger">{locationError}</p>}
       </div>
 
       <ul className="flex flex-col gap-1">
         {routes.length === 0 && loadError && (
-          <li className="text-sm text-danger">
+          <li role="alert" className="text-sm text-danger">
             Strecken konnten nicht geladen werden. Bitte versuche es später erneut.
           </li>
         )}

@@ -94,8 +94,16 @@ export default function OfflineRouteButton({
         setAnzahl((n) => n + 1);
       }
     } catch {
-      // Speicher voll o.ä. — Zustand unverändert lassen, Button bleibt
-      // bedienbar für einen erneuten Versuch.
+      // Zustand unverändert lassen, der Button bleibt für einen erneuten
+      // Versuch bedienbar — aber nicht mehr stumm: Der wahrscheinlichste
+      // Auslöser ist ein QuotaExceededError bei vollem Gerätespeicher, und
+      // genau dann scheitert ein zweiter Versuch garantiert wieder. Ohne
+      // Meldung sah der Nutzer den Button nur kurz ausgrauen und
+      // zurückspringen. Der Kontingent-Zweig oben nutzt dieselbe Mechanik.
+      setHinweis(
+        "Speichern nicht möglich — vermutlich ist der Speicher dieses Geräts voll. " +
+          "Entferne eine andere Offline-Strecke und versuche es erneut.",
+      );
     } finally {
       setPending(false);
     }
