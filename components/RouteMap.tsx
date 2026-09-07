@@ -398,8 +398,28 @@ export default function RouteMap({
       style: mapStyleForTheme(),
       center: ZURICH_CENTER,
       zoom: DEFAULT_ZOOM,
+      // Standard-Attribution aus, unten durch die kompakte Variante ersetzt:
+      // statt der ausgeschriebenen Zeile "© Mapbox © OpenStreetMap Improve
+      // this map" nur ein ⓘ-Knopf, der sie auf Klick zeigt.
+      //
+      // Mapbox verlangt Hinweis *und* Logo auf jeder Karte; ein Ausblenden
+      // per CSS wäre ein Verstoss gegen die Nutzungsbedingungen, siehe
+      // app/globals.css und
+      // https://docs.mapbox.com/help/getting-started/attribution/
+      //
+      // Bewusste Abweichung von Mapbox' Empfehlung: die JSDoc zu `compact`
+      // (node_modules/mapbox-gl/dist/mapbox-gl.d.ts) rät, nicht einzuklappen,
+      // solange die volle Zeile bequem auf die Karte passt — von selbst
+      // klappt mapbox-gl erst unter 640px Kartenbreite ein. Wir erzwingen es
+      // auch auf breiten Karten, weil die Zeile dort mit den eigenen
+      // Overlays kollidiert; der Hinweis bleibt über den ⓘ-Knopf jederzeit
+      // erreichbar. Wer das zurückdrehen will, entfernt hier
+      // `attributionControl: false` samt der AttributionControl-Zeile unten
+      // (dann greift wieder das responsive Standardverhalten).
+      attributionControl: false,
     });
 
+    map.addControl(new mapboxgl.AttributionControl({ compact: true }));
     map.addControl(new mapboxgl.NavigationControl(), "top-right");
     mapRef.current = map;
 
