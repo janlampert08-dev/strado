@@ -20,11 +20,12 @@
 --    Datum nicht definiert, was beim Blättern Zeilen doppelt oder gar
 --    nicht zeigt.
 --
---    Damit der Index vollständig greift, sortiert lib/feed.ts jetzt
---    ebenfalls nach id — die Änderung liegt im selben PR, weil der
---    Index sonst nicht als vollständige Sortierquelle taugt und die
---    Reihenfolge bei gleichem Datum weiterhin dem Zufall überlassen
---    bliebe.
+--    Damit der Index vollständig greift, muss lib/feed.ts zusätzlich
+--    nach completion_id sortieren (so heisst rc.id in der View, siehe
+--    0070). Diese App-Änderung liegt im Performance-PR, nicht hier —
+--    ohne sie ist der Index nutzbar, aber keine vollständige
+--    Sortierquelle, und die Reihenfolge bei gleichem Datum bleibt dem
+--    Zufall überlassen.
 --
 -- pg_trgm liegt bewusst in extensions, nicht in public: Supabase legt
 -- Erweiterungen dort ab, und ein Objekt im public-Schema wäre über
@@ -79,4 +80,4 @@ create index if not exists route_completions_oeffentlich_datum_idx
   where ist_oeffentlich = true;
 
 comment on index public.route_completions_oeffentlich_datum_idx is
-  'Deckt die Feed-Abfrage (lib/feed.ts, order by datum desc limit 30) ab. id als zweite Spalte macht die Sortierung eindeutig — sonst ist die Reihenfolge bei gleichem Datum undefiniert und das Blaettern zeigt Zeilen doppelt oder gar nicht. lib/feed.ts sortiert im selben Zug ebenfalls nach id, sonst waere der Index keine vollstaendige Sortierquelle (0075).';
+  'Deckt die Feed-Abfrage (lib/feed.ts, order by datum desc limit 30) ab. id als zweite Spalte macht die Sortierung eindeutig — sonst ist die Reihenfolge bei gleichem Datum undefiniert und das Blaettern zeigt Zeilen doppelt oder gar nicht. Voll wirksam erst, wenn lib/feed.ts ebenfalls nach completion_id sortiert — das tut der Performance-PR (0075).';

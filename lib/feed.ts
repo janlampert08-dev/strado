@@ -26,14 +26,6 @@ export async function getFeed(scope: FeedScope, viewerId: string | null): Promis
     .from("public_fahrten")
     .select("*")
     .order("datum", { ascending: false })
-    // datum ist ein DATE, keine Zeitangabe — an einem gut gefahrenen Tag
-    // teilen sich beliebig viele Fahrten denselben Sortierschlüssel, und
-    // Postgres darf sie dann in beliebiger Reihenfolge liefern. Mit einem
-    // limit heisst das: welche 30 überhaupt erscheinen, ist nicht stabil.
-    // completion_id als zweiter Schlüssel macht die Reihenfolge eindeutig
-    // und deckt sich mit route_completions_oeffentlich_datum_idx aus 0075
-    // (datum desc, id desc — id der Basistabelle ist hier completion_id).
-    .order("completion_id", { ascending: false })
     .limit(FEED_LIMIT);
 
   if (scope === "following") {

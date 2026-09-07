@@ -350,9 +350,9 @@ Kommt nichts zurück, wird sie angelegt; kommt `extensions`, passiert
 nichts; kommt etwas anderes, wird sie verschoben. Bestehende
 Trigramm-Indizes überstehen das — sie verweisen per OID auf die Opklasse.
 
-`lib/feed.ts` sortiert im selben PR zusätzlich nach `completion_id`, sonst
-taugt der Feed-Index nicht als vollständige Sortierquelle und die
-Reihenfolge bei gleichem `datum` bleibt undefiniert.
+Der Feed-Index wird erst vollständig genutzt, wenn `lib/feed.ts`
+zusätzlich nach `completion_id` sortiert — so heisst `rc.id` in der View
+(`0070`). Diese App-Änderung liegt im Performance-PR, nicht hier.
 
 ---
 
