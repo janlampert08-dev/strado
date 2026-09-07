@@ -33,8 +33,11 @@ here is a snapshot — if the code disagrees, the code wins, and this section
 is what should be corrected.
 
 - **Premium is live.** The purchase page, Payment Element, customer portal,
-  founder seats, the `subscriptions` table and the nightly reconciliation cron
-  all ship. `lib/leaderboard.ts` evaluates `ist_premium && zeigt_premium_badge`
+  the `subscriptions` table and the nightly reconciliation cron all ship.
+  Founder seats (Gründerpreis) were sold until 2026-09-07 and are no longer
+  offered: the DB functions from `0065`–`0069` remain but are no longer
+  called, and `STRIPE_PREMIUM_PRICE_ID_GRUENDER` only names existing
+  subscriptions. `lib/leaderboard.ts` evaluates `ist_premium && zeigt_premium_badge`
   for the badge. This section previously said the opposite — that the Premium
   components were commented out and re-enabling them was the active workstream
   — which is why the paid path went unaudited until 2026-09-07: a security

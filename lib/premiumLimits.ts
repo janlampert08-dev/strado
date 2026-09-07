@@ -10,7 +10,7 @@
 //      ganze Modul ins Browser-Bundle — und scheiterte.
 //   2. lib/actions/billing.ts trägt "use server" und darf laut React/Next
 //      ausschliesslich async Functions exportieren. Eine Zahl wie
-//      GRUENDER_PLAETZE dort zu exportieren, lässt die
+//      MAX_FOTOS_PREMIUM dort zu exportieren, lässt die
 //      Client-Reference-Transformation die Datei als "hat gar keine
 //      Exporte" behandeln — der Build bricht mit einer Fehlermeldung ab,
 //      die auf den Import und nicht auf die Ursache zeigt. Dieselbe Falle
@@ -68,13 +68,6 @@ export const MAX_OFFLINE_STRECKEN_GRATIS = 3;
  */
 export const MAX_PRIVATE_STRECKEN_GRATIS = 1;
 
-/**
- * Anzahl Gründerpreis-Plätze (AGB Ziff. 4.3). Die Vergabe selbst zählt in
- * der Datenbank (gruenderplatz_beanspruchen, Migration 0065); diese Zahl
- * wird als Obergrenze mitgegeben.
- */
-export const GRUENDER_PLAETZE = 100;
-
 export function maxFotosProFahrt(istPremium: boolean): number {
   return istPremium ? MAX_FOTOS_PREMIUM : MAX_FOTOS_GRATIS;
 }
@@ -83,15 +76,16 @@ export function maxFotosProFahrt(istPremium: boolean): number {
 // Pläne und Zustand
 // ---------------------------------------------------------------------------
 
-/**
- * Was gewählt werden kann. Der Gründerpreis steht bewusst NICHT darin: er
- * ist keine Wahl, sondern eine Eigenschaft des Jahresplans, die der Server
- * vergibt, solange von den Plätzen noch einer frei ist. Dürfte der Client
- * ihn wählen, wäre er kein Kontingent mehr.
- */
+/** Was gewählt werden kann. */
 export type AboPlan = "monat" | "jahr";
 
-/** Was tatsächlich abgeschlossen wurde — hier taucht der Gründerpreis auf. */
+/**
+ * Was tatsächlich abgeschlossen wurde. "gruender" benennt nur noch
+ * bestehende Abos: der Gründerpreis wurde bis 2026-09-07 verkauft und ist
+ * seither nicht mehr wählbar (Bestandsschutz — wer ihn hat, behält ihn,
+ * solange das Abo ununterbrochen läuft). Neue Abos landen auf "monat" oder
+ * "jahr"; die Kennung bleibt, damit PremiumCard das Abo richtig benennt.
+ */
 export type AboPlanKennung = "monat" | "jahr" | "gruender";
 
 export interface PremiumStatus {
@@ -128,28 +122,22 @@ export interface PlanAngebot {
   /** Betrag in Rappen, wie Stripe ihn führt. */
   betragRappen: number;
   waehrung: string;
-  /** true, wenn dieser Preis der Gründerpreis ist. */
-  istGruenderpreis: boolean;
-  /** Beim Gründerpreis: der reguläre Jahrespreis zum Vergleich. */
-  regulaerRappen: number | null;
 }
 
 export interface PremiumAngebot {
   plaene: PlanAngebot[];
-  gruenderPlaetzeFrei: number;
 }
 
 /**
  * Was beim Anlegen des Abos TATSÄCHLICH vergeben wurde.
  *
  * Nicht dasselbe wie das `PlanAngebot`, das die Kaufseite gerendert hat:
- * zwischen Rendern und Klick kann der letzte Gründerplatz weg sein. Dann
- * bekommt dieser Kauf den regulären Preis, und die Oberfläche muss den
- * gezeigten Betrag korrigieren, bevor jemand bestätigt — sonst steht auf
- * der Seite CHF 39 und abgebucht werden CHF 49.
+ * zwischen Rendern und Klick kann sich der Preis bei Stripe geändert haben.
+ * Dann muss die Oberfläche den gezeigten Betrag korrigieren, bevor jemand
+ * bestätigt — sonst steht auf der Seite die eine Zahl und abgebucht wird
+ * eine andere.
  */
 export interface VergebenerPreis {
   betragRappen: number;
   waehrung: string;
-  istGruenderpreis: boolean;
 }
