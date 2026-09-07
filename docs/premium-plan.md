@@ -206,7 +206,7 @@ Das ist Absicht: die Grenzkosten pro Abonnent bleiben so praktisch bei null
 
 Der Funktionsumfang allein trägt CHF 4.90 nicht — ehrlicherweise ist das ein
 Unterstützer-Abo mit Vergünstigungen. Genau so sollte es auch benannt werden
-(„Cornice unterstützen“, Abzeichen als sichtbarer Dank). Das erhöht die
+(„Strado unterstützen“, Abzeichen als sichtbarer Dank). Das erhöht die
 Zahlungsbereitschaft bei dünnem Funktionsumfang und vermeidet den Reflex,
 zunehmend Kernfunktionen einzuzäunen, um den Preis zu rechtfertigen.
 
@@ -275,7 +275,7 @@ Liquidität.
 ### 5.4 Bedingte Kosten und Lizenzfragen
 
 - **Open-Meteo** (`lib/weather.ts`) ist gratis nur für nichtkommerzielle
-  Nutzung. Sobald Cornice Geld einnimmt, ist die Lage mindestens auslegungs-
+  Nutzung. Sobald Strado Geld einnimmt, ist die Lage mindestens auslegungs-
   bedürftig. Vor dem Launch klären und im Zweifel den kommerziellen Tarif
   (≈ CHF 27/Monat) buchen. Kein Blocker für den Code, aber einer für den Launch.
 - **geo.admin.ch Höhenprofil** (`lib/elevation.ts`): Nutzungsbedingungen der
@@ -321,7 +321,7 @@ und Markt gesetzt werden, nicht nach Serverkosten.
 | Calimoto Premium | €59.99/Jahr ≈ CHF 56 | Vollnavigation, grosse Nutzerbasis |
 | Strava | ≈ CHF 8–10/Monat | Referenz für „Community-Abo“ |
 
-Cornice bietet weniger Funktion als alle drei Motorrad-Apps (keine Navigation,
+Strado bietet weniger Funktion als alle drei Motorrad-Apps (keine Navigation,
 keine Offline-Karten), aber etwas, das keine von ihnen hat: **kuratierte,
 geprüfte Strecken für einen konkreten Raum**, plus Community-Mechanik. Der
 Preis sollte deshalb unter Kurviger liegen und über die Unterstützer-Erzählung
@@ -401,7 +401,7 @@ spielt sie ein, vor dem Deploy des Codes, der sie braucht.
    README von `janlampert08-dev/cornice.ch`, Abschnitt „Domains".
    1c. Anwaltliche Durchsicht der Texte (die offenen Punkte stehen am Ende
    jeder Datei in `docs/rechtstexte/`).
-2. Stripe: Produkt „Cornice Premium“ mit drei Preisen (Monat 4.90, Jahr 49.00,
+2. Stripe: Produkt „Strado Premium“ mit drei Preisen (Monat 4.90, Jahr 49.00,
    Gründer 39.00, alle CHF, wiederkehrend). TWINT im Dashboard beantragen.
 3. Stripe-API-Version in `lib/stripe.ts` pinnen (siehe 3.7): mindestens
    `2025-03-31.basil`, weil `confirmation_secret` erst ab dort existiert. Das

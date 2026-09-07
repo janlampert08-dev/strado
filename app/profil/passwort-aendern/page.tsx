@@ -3,7 +3,7 @@ import Header from "@/components/Header";
 import PasswortAendernForm from "@/components/PasswortAendernForm";
 import { createClient } from "@/lib/supabase/server";
 
-export const metadata = { title: "Passwort ändern – Cornice" };
+export const metadata = { title: "Passwort ändern – Strado" };
 
 export default async function PasswortAendernPage() {
   const supabase = await createClient();

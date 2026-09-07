@@ -1,6 +1,6 @@
 # Database Role
 
-Reusable role instructions for database/schema work in Cornice:
+Reusable role instructions for database/schema work in Strado:
 `supabase/migrations/**`, RLS policies, and `types/database.ts`. Listed in
 `AGENTS.md` → Further Reading, but not auto-loaded — open it yourself when a
 task touches schema. See `AGENTS.md` for the full constitution these extend,

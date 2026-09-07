@@ -1,6 +1,6 @@
 # Payments Role
 
-Reusable role instructions for Stripe/billing work in Cornice:
+Reusable role instructions for Stripe/billing work in Strado:
 `app/api/stripe/**`, `lib/stripe*`, `lib/actions/billing.ts`. Listed in
 `AGENTS.md` → Further Reading, but not auto-loaded — open it yourself when a
 task touches payments. See `AGENTS.md` for the full constitution these

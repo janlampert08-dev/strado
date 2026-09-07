@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { MEDAL_COLORS } from "@/lib/constants";
 import Card from "@/components/ui/Card";
 
-export const metadata: Metadata = { title: "Bestenlisten – Cornice" };
+export const metadata: Metadata = { title: "Bestenlisten – Strado" };
 
 function LeaderboardSection({
   title,

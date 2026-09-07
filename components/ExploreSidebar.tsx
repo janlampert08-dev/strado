@@ -67,7 +67,7 @@ export default function ExploreSidebar({
     <div className="flex w-full flex-col gap-5 overflow-y-auto overscroll-y-contain border-border px-5 pt-5 pb-[calc(5.5rem+var(--safe-bottom))] sm:px-6 sm:pt-6 sm:pb-[calc(5.75rem+var(--safe-bottom))] md:max-w-sm md:border-r md:pb-6 lg:max-w-md xl:max-w-lg">
       {/* Die Startseite hatte weder <h1> noch einen erklärenden Satz: Ein
           Erstbesucher sah ein Suchfeld, einen Chip und eine Liste und
-          erfuhr nirgends, was Cornice ist oder dass er Fahrten aufzeichnen
+          erfuhr nirgends, was Strado ist oder dass er Fahrten aufzeichnen
           kann. Für Suchmaschinen war die Seite damit ohne Überschrift.
           sr-only wäre hier falsch — der Satz ist gerade für sehende
           Erstbesucher gedacht. */}

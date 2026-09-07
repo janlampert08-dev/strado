@@ -56,7 +56,7 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
     // Leerzustand wie überall sonst — mit einem Weg zurück.
     return (
       <div className="flex flex-col gap-4">
-        <h1 className="text-display font-semibold">Cornice unterstützen</h1>
+        <h1 className="text-display font-semibold">Strado unterstützen</h1>
         <EmptyState
           icon={Sparkles}
           title="Der Abo-Abschluss ist zurzeit nicht verfügbar. Bitte versuch es später noch einmal."
@@ -86,10 +86,10 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
             umfang allein trägt den Preis nicht, und so benannt zu werden ist
             ehrlicher als eine Bezahlschranke vorzutäuschen, die es nicht
             gibt — die Kernfunktionen bleiben kostenlos. */}
-        <h1 className="text-display font-semibold">Cornice unterstützen</h1>
+        <h1 className="text-display font-semibold">Strado unterstützen</h1>
         <p className="text-sm text-muted">
           Entdecken, Aufzeichnen, Bestenlisten und Feed bleiben kostenlos. Premium hebt Grenzen an
-          und ist vor allem eines: die Art, wie Cornice sich trägt.
+          und ist vor allem eines: die Art, wie Strado sich trägt.
         </p>
       </div>
 

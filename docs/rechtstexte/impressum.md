@@ -51,7 +51,7 @@ Schweiz
 
 **Kontakt**
 
-E-Mail: [[EMAIL]]
+E-Mail: contact@strado.ch
 Telefon: [[TELEFON]]
 
 > **Hinweis für die Fertigstellung:** Es genügt formal *eine* der beiden
@@ -118,13 +118,12 @@ füllen und schon gar nicht mit dem Platzhalter zu belassen.
 | `[[RECHTSFORM]]` | Rechtsform (z. B. Einzelunternehmen, GmbH, AG) | — |
 | `[[STRASSE_NR]]` | Strasse und Hausnummer des Geschäftssitzes | — |
 | `[[PLZ_ORT]]` | Postleitzahl und Ort des Geschäftssitzes | — |
-| `[[EMAIL]]` | Allgemeine Kontakt-E-Mail-Adresse | — |
 | `[[TELEFON]]` | Telefonnummer im internationalen Format | — |
 | `[[VERTRETUNGSBERECHTIGTE_PERSON]]` | Name der vertretungsberechtigten bzw. inhaltlich verantwortlichen Person | — |
 | `[[UID_NR]]` | Unternehmens-Identifikationsnummer / Handelsregisternummer | Form `CHE-###.###.###` |
 | `[[MWST_NR]]` | MWST-Nummer, nur bei bestehender Steuerpflicht | Form `CHE-###.###.### MWST` |
 | `[[DOMAIN]]` | Echte Domain, unter der die Rechtstexte erreichbar sind | — |
 
-Insgesamt **10 Platzhalter**. Vor der Veröffentlichung ist im gesamten
+Insgesamt **9 Platzhalter**. Vor der Veröffentlichung ist im gesamten
 Dokument nach der Zeichenfolge `[[` zu suchen, um sicherzustellen, dass kein
 Platzhalter übrig geblieben ist.

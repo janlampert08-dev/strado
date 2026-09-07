@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   metadataBase,
   // Der Titel der Startseite kommt aus app/page.tsx; dieser hier greift für
   // alle Seiten ohne eigenes generateMetadata.
-  title: "Cornice",
+  title: "Strado",
   description:
     "Kuratierte Kurven-, Pass- und Aussichtsstrecken in der Schweiz. Fahrten per GPS aufzeichnen, Bestzeiten vergleichen, Touren teilen.",
   // Bis hierher gab es im ganzen Projekt kein einziges openGraph- oder
@@ -42,8 +42,8 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "de_CH",
-    siteName: "Cornice",
-    title: "Cornice — kuratierte Fahrstrecken für Auto und Motorrad",
+    siteName: "Strado",
+    title: "Strado — kuratierte Fahrstrecken für Auto und Motorrad",
     description:
       "Handverlesene Kurven- und Passstrecken in der Schweiz. Aufzeichnen, vergleichen, teilen.",
   },
@@ -57,7 +57,7 @@ export const metadata: Metadata = {
     // im Browser geöffnete Website.
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Cornice",
+    title: "Strado",
   },
 };
 

@@ -1,4 +1,4 @@
-# Datenschutzerklärung für Cornice
+# Datenschutzerklärung für Strado
 
 > ## ⚠️ Ungeprüfter Entwurf — keine Rechtsberatung
 >
@@ -30,18 +30,18 @@
 ## 1. Verantwortliche Stelle
 
 Verantwortlich für die Bearbeitung von Personendaten im Zusammenhang mit
-Cornice ist:
+Strado ist:
 
 [[FIRMENNAME]] [[RECHTSFORM]]
 [[STRASSE_NR]], [[PLZ_ORT]], Schweiz
-E-Mail: [[EMAIL_DATENSCHUTZ]]
+E-Mail: contact@strado.ch
 
 Für alle Fragen zum Datenschutz, für Auskunftsbegehren und für die Ausübung
 der Rechte nach Abschnitt 11 genügt eine formlose Nachricht an diese Adresse.
 
 ## 2. Geltungsbereich und anwendbares Recht
 
-**2.1** Diese Erklärung gilt für die Website und Webanwendung Cornice unter
+**2.1** Diese Erklärung gilt für die Website und Webanwendung Strado unter
 `https://[[DOMAIN]]` sowie für alle damit verbundenen Bearbeitungen.
 
 **2.2** Massgebend ist das **Schweizer Bundesgesetz über den Datenschutz
@@ -51,7 +51,7 @@ dortigen Bestimmungen ergänzend; die Rechtsgrundlagen sind in Abschnitt 5
 zugeordnet.
 
 **2.3** Wir bearbeiten Personendaten nur, soweit dies für den Betrieb von
-Cornice nötig ist. Wir **verkaufen keine Personendaten** und geben sie nicht
+Strado nötig ist. Wir **verkaufen keine Personendaten** und geben sie nicht
 zu Werbezwecken an Dritte weiter.
 
 ## 3. Welche Daten wir bearbeiten
@@ -248,7 +248,7 @@ die Anzahl Versuche pro IP-Adresse. Die dafür nötigen Angaben werden
 gehalten, für ein Zeitfenster von wenigen Minuten, und **nicht in der
 Datenbank gespeichert**.
 
-**Cookies und lokale Speicher.** Cornice setzt **keine Werbe- oder
+**Cookies und lokale Speicher.** Strado setzt **keine Werbe- oder
 Trackingcookies**. Verwendet werden:
 
 | Zweck | Technik | Bemerkung |
@@ -324,7 +324,7 @@ jederzeit abschalten, und ein Widerspruch nach Abschnitt 11 bleibt möglich.
 
 ## 6. Sichtbarkeit gegenüber anderen Nutzenden
 
-Cornice ist zu einem Teil eine öffentliche Plattform. Damit klar ist, was
+Strado ist zu einem Teil eine öffentliche Plattform. Damit klar ist, was
 andere sehen können:
 
 **Immer öffentlich sichtbar (sofern gesetzt):** Anzeigename;
@@ -465,7 +465,7 @@ verlangt zur Sicherheit eine erneute Eingabe des Passworts. Sie ist
 **9.5 Weitergehende Löschung.** Wer über diese Anonymisierung hinaus die
 vollständige Löschung einzelner Inhalte wünscht — namentlich von Fotos,
 Bewertungen oder erhalten gebliebenen öffentlichen Fahrten —, kann dies
-jederzeit per Nachricht an [[EMAIL_DATENSCHUTZ]] verlangen. Wir setzen ein
+jederzeit per Nachricht an contact@strado.ch verlangen. Wir setzen ein
 solches Begehren im Rahmen der gesetzlichen Vorgaben um; **es empfiehlt sich,
 Inhalte vor der Kontolöschung selbst zu löschen**, da eine nachträgliche
 Zuordnung ohne Konto aufwendiger ist.
@@ -530,7 +530,7 @@ Im Rahmen des anwendbaren Rechts haben Sie insbesondere folgende Rechte:
   Fahrten lassen sich zusätzlich jederzeit selbst als **GPX-Datei** exportieren.
 - **Einschränkung der Bearbeitung**, soweit die DSGVO anwendbar ist.
 
-Zur Ausübung genügt eine Nachricht an [[EMAIL_DATENSCHUTZ]]. Wir dürfen zur
+Zur Ausübung genügt eine Nachricht an contact@strado.ch. Wir dürfen zur
 Identifikation zusätzliche Angaben verlangen — insbesondere, um zu verhindern,
 dass jemand unter falschem Namen Auskunft über fremde Daten erhält. Die
 Auskunft ist grundsätzlich kostenlos.
@@ -579,13 +579,12 @@ E-Mail.
 | `[[RECHTSFORM]]` | Rechtsform (z. B. Einzelunternehmen, GmbH, AG) | Abschnitt 1 |
 | `[[STRASSE_NR]]` | Strasse und Hausnummer des Geschäftssitzes | Abschnitt 1 |
 | `[[PLZ_ORT]]` | Postleitzahl und Ort des Geschäftssitzes | Abschnitt 1 |
-| `[[EMAIL_DATENSCHUTZ]]` | Kontaktadresse für Datenschutzanliegen (kann dieselbe sein wie die allgemeine Kontaktadresse im Impressum) | Abschnitt 1, 9.5, 11 |
-| `[[DOMAIN]]` | Echte Domain, unter der Cornice und die Rechtstexte erreichbar sind | Abschnitt 2.1, 14 |
+| `[[DOMAIN]]` | Echte Domain, unter der Strado und die Rechtstexte erreichbar sind | Abschnitt 2.1, 14 |
 | `[[SUPABASE_REGION]]` | Region, in der das Supabase-Projekt betrieben wird (bestimmt den Speicherort der Kerndaten) | Abschnitt 7 |
 | `[[VERCEL_REGION]]` | Region, in der die Anwendung bei Vercel ausgeführt wird | Abschnitt 7 |
 | `[[STAND_DATUM]]` | Datum, ab dem diese Fassung gilt | Kopfzeile |
 
-Insgesamt **9 Platzhalter**. Vor der Veröffentlichung ist im gesamten Dokument
+Insgesamt **8 Platzhalter**. Vor der Veröffentlichung ist im gesamten Dokument
 nach der Zeichenfolge `[[` zu suchen, um sicherzustellen, dass kein Platzhalter
 übrig geblieben ist.
 

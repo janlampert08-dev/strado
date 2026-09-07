@@ -8,7 +8,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-# Cornice — Engineering Constitution
+# Strado — Engineering Constitution
 
 This file is the primary reference for any human or AI agent working in this
 repository. Read it before making changes. If something here conflicts with
@@ -17,7 +17,7 @@ this document can drift out of date, the codebase is the source of truth.
 
 ## Product
 
-Cornice is a curated car and motorcycle route platform, initially focused on
+Strado is a curated car and motorcycle route platform, initially focused on
 Switzerland/Zürich. Users discover and propose scenic driving/riding routes,
 track completions ("Fahrten"), rate routes, compete on leaderboards, and can
 subscribe to a Premium tier (Stripe) for additional features.
@@ -41,12 +41,28 @@ is what should be corrected.
   pass scoped from this file skipped it as not-yet-shipped. Treat everything
   under `app/profil/premium/`, `lib/actions/billing.ts`, `lib/stripe*` and the
   webhook as production code.
-- **`lib/constants.ts` `LEGAL_URLS` no longer points at `https://xyz.ch/...`**
-  — that was fixed on 2026-09-06. The links now resolve under `/legal/…`,
-  defaulting to `cornice-ch.vercel.app` with `NEXT_PUBLIC_LEGAL_BASE_URL` as
-  the override. Two things that fix did *not* close: no own domain is
-  registered, and the published texts still lack the operator's identity and
-  address.
+- **`lib/constants.ts` `LEGAL_URLS` points at
+  `https://cornice-ch.vercel.app`** — the address where the pages actually
+  stand today. The earlier `https://xyz.ch/...` placeholder is long gone; this
+  entry described it for a while after the code had moved on. Those links ship
+  in the sign-up form and the pages behind them still carry the old product
+  name, so this stays a launch blocker, not an oversight to fix incidentally.
+
+- **Domains are decided: `strado.ch` is the info page, `app.strado.ch` is the
+  application, `contact@strado.ch` is the contact address.** `strado.ch` is
+  registered and owned. What is *not* yet true: nothing is served under either
+  hostname, and the legal texts still live at `cornice-ch.vercel.app` (repo
+  `janlampert08-dev/cornice.ch`) under the old name. Two consequences worth
+  knowing before touching either:
+  - Repoint `LEGAL_BASE_URL_STANDARD` only once the new target actually
+    answers. The comment above it in `lib/constants.ts` explains why an
+    unanswered wish-domain default is worse than a stale but reachable one —
+    owning the domain removes the hijacking risk, not the dead-link one.
+  - The `[[DOMAIN]]` placeholder in `docs/rechtstexte/` can no longer be
+    filled as one value. It stands for the platform in `agb.md` Ziff. 1.1 and
+    `datenschutz.md` 2.1 (→ `app.strado.ch`) and for where the legal texts are
+    reachable in `impressum.md` and every `/legal/...` link (→ `strado.ch`).
+    Split it into two placeholders before resolving either.
 - **Migrations are applied by hand and the newest ones are not applied.**
   Green CI means nothing about the live schema. See
   `supabase/migrations/README.md` and `.agents/deployment.md`.

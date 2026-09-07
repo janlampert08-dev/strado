@@ -1,4 +1,4 @@
-# Cornice — Performance & Frontend Architecture Audit
+# Strado — Performance & Frontend Architecture Audit
 
 Read-only audit of `/home/user/strado` (Next.js 16.3.3 App Router + Turbopack, React 19.2.8,
 Tailwind 4, Mapbox GL 3.29, Supabase). No files in the repo were modified.
@@ -907,7 +907,7 @@ a real failure mode.
 
 ```js
 // Injected at build time; falls back so local `next start` still works.
-const BUILD_ID = self.__CORNICE_BUILD_ID__ || "dev";
+const BUILD_ID = self.__STRADO_BUILD_ID__ || "dev";
 const CACHE_NAME = `cornice-shell-${BUILD_ID}`;
 ```
 

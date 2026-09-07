@@ -46,10 +46,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const route = await getRoute(id);
-  if (!route) return { title: "Strecke – Cornice" };
+  if (!route) return { title: "Strecke – Strado" };
 
   return {
-    title: `${route.name} – Cornice`,
+    title: `${route.name} – Strado`,
     description:
       route.charakter_text ??
       `${route.region}: ${route.start_ort} → ${route.ziel_ort}, ${route.laenge_km.toFixed(0)} km`,

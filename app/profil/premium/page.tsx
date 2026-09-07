@@ -9,7 +9,7 @@ import { getPremiumStatus } from "@/lib/premium";
 // geänderter Preis darf nicht als zwischengespeicherte Zahl weiterlaufen.
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "Premium – Cornice" };
+export const metadata = { title: "Premium – Strado" };
 
 export default async function PremiumPage() {
   const supabase = await createClient();

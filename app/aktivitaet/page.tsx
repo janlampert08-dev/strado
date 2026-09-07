@@ -6,7 +6,7 @@ import { getRecentKudosReceived } from "@/lib/kudos";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = {
-  title: "Aktivität – Cornice",
+  title: "Aktivität – Strado",
 };
 
 // Eigene Seite für "Community reagiert" im Kernloop (siehe AGENTS.md, "Core

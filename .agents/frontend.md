@@ -1,6 +1,6 @@
 # Frontend Role
 
-Reusable role instructions for frontend work in Cornice: pages, layouts,
+Reusable role instructions for frontend work in Strado: pages, layouts,
 and components. Listed in `AGENTS.md` → Further Reading, but not
 auto-loaded — open it yourself when a task is scoped to UI work. See
 `AGENTS.md` for the full constitution these extend.

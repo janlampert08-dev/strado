@@ -1,4 +1,4 @@
-# Cornice — Code Quality, Testing & Maintainability Audit
+# Strado — Code Quality, Testing & Maintainability Audit
 
 Read-only audit of `/home/user/strado` @ `330ed1d` (branch `claude/full-app-audit-k0cmkh`).
 Scope: test coverage & test quality, type safety, duplication (AGENTS.md rule 14),

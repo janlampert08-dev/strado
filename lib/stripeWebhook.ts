@@ -31,7 +31,7 @@ function idVon(feld: string | { id: string } | null | undefined): string | null 
 
 // Seit API-Version 2025-03-31.basil hängt current_period_end nicht mehr am
 // Abo selbst, sondern an dessen Positionen — dasselbe gilt für den Preis.
-// Cornice verkauft genau eine Position pro Abo (ein Premium-Plan, Menge 1),
+// Strado verkauft genau eine Position pro Abo (ein Premium-Plan, Menge 1),
 // deshalb ist die erste Position die maßgebliche; mehr als eine wäre ein
 // Konfigurationsfehler im Stripe-Katalog und keine hier zu lösende Frage.
 export function leseAboZustand(subscription: Stripe.Subscription): AboZustand | null {

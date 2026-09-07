@@ -19,7 +19,7 @@ const PAD = 72;
 
 // Dieselbe dunkle Palette wie das App-Theme (app/globals.css,
 // :root[data-theme="dark"]) statt einer eigenen — das Bild soll wie ein Stück
-// Cornice aussehen, nicht wie ein generischer Fitness-Tracker-Export.
+// Strado aussehen, nicht wie ein generischer Fitness-Tracker-Export.
 const BG_TOP = "#111116";
 const BG_BOTTOM = "#0b0b0d";
 const INK = "#f2f2f4";
@@ -127,7 +127,7 @@ export function renderShareImage(data: ShareRideData): Promise<Blob> {
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-  // Markenzeichen: dieselbe "C"-Wortmarke wie app/opengraph-image.tsx, hier
+  // Markenzeichen: dieselbe "S"-Wortmarke wie app/opengraph-image.tsx, hier
   // als runder Chip statt eckig, passend zu den Pill-Elementen weiter unten.
   const markSize = 52;
   roundedRect(ctx, PAD, 64, markSize, markSize, 16);
@@ -136,12 +136,12 @@ export function renderShareImage(data: ShareRideData): Promise<Blob> {
   ctx.fillStyle = "#0b0b0d";
   ctx.font = "700 28px system-ui, sans-serif";
   ctx.textBaseline = "middle";
-  ctx.fillText("C", PAD + markSize / 2 - 9, 64 + markSize / 2 + 2);
+  ctx.fillText("S", PAD + markSize / 2 - 9, 64 + markSize / 2 + 2);
   ctx.textBaseline = "alphabetic";
 
   ctx.fillStyle = MUTED;
   ctx.font = "600 24px system-ui, sans-serif";
-  ctx.fillText("CORNICE", PAD + markSize + 18, 64 + markSize / 2 + 8);
+  ctx.fillText("STRADO", PAD + markSize + 18, 64 + markSize / 2 + 8);
 
   // Meilenstein-Chip rechtsbündig in derselben Kopfzeile, falls vorhanden.
   if (data.milestoneLabel) {

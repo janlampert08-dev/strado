@@ -29,19 +29,19 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const profile = await getPublicProfile(id);
-  if (!profile) return { title: "Fahrer – Cornice" };
+  if (!profile) return { title: "Fahrer – Strado" };
   const name = profile.displayName ?? "Ein Fahrer";
   // Kurz und ohne Kennzahlen: Welche davon überhaupt sichtbar sind,
   // entscheiden die zeigt_*-Schalter des Nutzers (lib/profile.ts). Sie in
   // die Beschreibung zu ziehen würde diese Entscheidung an Suchmaschinen
   // vorbei aushebeln — deshalb bewusst nur der Name.
-  const beschreibung = `Profil von ${name} auf Cornice: gefahrene Strecken und Touren.`;
+  const beschreibung = `Profil von ${name} auf Strado: gefahrene Strecken und Touren.`;
   return {
-    title: `${name} – Cornice`,
+    title: `${name} – Strado`,
     description: beschreibung,
     // description muss im openGraph-Block wiederholt werden — Next zieht
     // sie nicht automatisch nach, sobald der Block eigene Felder hat.
-    openGraph: { type: "profile", title: `${name} – Cornice`, description: beschreibung },
+    openGraph: { type: "profile", title: `${name} – Strado`, description: beschreibung },
     // noindex statt eines Disallow in robots.ts: app/sitemap.ts lässt
     // Fahrer-Profile aus Datenschutzgründen aus, aber /feed verlinkt jedes
     // von ihnen. Ein Disallow verbietet nur das ABRUFEN — die URL kann über

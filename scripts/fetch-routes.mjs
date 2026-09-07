@@ -146,7 +146,7 @@ async function overpassQuery(route) {
         method: "POST",
         headers: {
           "Content-Type": "text/plain",
-          "User-Agent": "cornice-route-seed/1.0 (lampert.jan@icloud.com)",
+          "User-Agent": "strado-route-seed/1.0 (contact@strado.ch)",
           Accept: "*/*",
         },
         body: ql,

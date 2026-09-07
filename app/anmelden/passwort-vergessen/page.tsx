@@ -1,7 +1,7 @@
 import Header from "@/components/Header";
 import PasswortVergessenForm from "@/components/PasswortVergessenForm";
 
-export const metadata = { title: "Passwort vergessen – Cornice" };
+export const metadata = { title: "Passwort vergessen – Strado" };
 
 export default function PasswortVergessenPage() {
   return (

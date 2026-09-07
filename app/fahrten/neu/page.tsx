@@ -5,7 +5,7 @@ import { getPremiumStatus, maxFotosProFahrt } from "@/lib/premium";
 import type { Vehicle } from "@/types/database";
 
 export const metadata = {
-  title: "Fahrt aufzeichnen – Cornice",
+  title: "Fahrt aufzeichnen – Strado",
 };
 
 // Einstieg für eine freie Fahrt (ohne Strecke). Das Gegenstück zur

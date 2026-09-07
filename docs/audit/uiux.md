@@ -1,4 +1,4 @@
-# Cornice — UI/UX Audit
+# Strado — UI/UX Audit
 
 Read-only audit of `app/**`, `components/**`, `app/globals.css` against the Core User
 Loop in `AGENTS.md`. Every finding below was verified by reading the actual source;

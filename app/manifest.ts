@@ -6,8 +6,8 @@ export default function manifest(): MetadataRoute.Manifest {
     // Home-Bildschirm. Die Beschreibung war wortgleich mit der
     // meta-description und nannte weder Region noch das, was die App
     // eigentlich kann.
-    name: "Cornice — Fahrstrecken für Auto & Motorrad",
-    short_name: "Cornice",
+    name: "Strado — Fahrstrecken für Auto & Motorrad",
+    short_name: "Strado",
     description:
       "Kuratierte Kurven- und Passstrecken in der Schweiz. Fahrten per GPS aufzeichnen, Bestzeiten vergleichen, Touren teilen.",
     lang: "de-CH",

@@ -1,4 +1,4 @@
-# Cornice — Application Security Audit
+# Strado — Application Security Audit
 
 **Scope:** read-only review of `/home/user/strado` @ `330ed1d` (main).
 **Method:** static reading of every file in scope, traced end to end (Server Action → RPC/PostgREST → RLS policy / trigger / grant). **No SQL was executed, no MCP tool was pointed at a live Supabase/Stripe/Vercel project**, so every claim about the *live* database state is an inference from `supabase/migrations/**` and is marked where it matters.

@@ -1,4 +1,4 @@
-# Cornice — Backend / Server-Logic Audit
+# Strado — Backend / Server-Logic Audit
 
 Read-only audit of server-side correctness and robustness. Security is covered by a separate
 agent; findings here are flagged only where they change *what the system computes or stores*.

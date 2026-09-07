@@ -3,7 +3,7 @@ import OfflineRoutesList from "@/components/OfflineRoutesList";
 import StatusPage from "@/components/ui/StatusPage";
 
 export const metadata = {
-  title: "Offline – Cornice",
+  title: "Offline – Strado",
 };
 
 // Statischer Fallback, den der Service Worker (public/sw.js) bei
@@ -15,7 +15,7 @@ export const metadata = {
 export default function OfflinePage() {
   return (
     <StatusPage
-      eyebrow="Cornice"
+      eyebrow="Strado"
       title="Du bist offline"
       description="Diese Seite braucht eine Verbindung, die gerade nicht besteht. Läuft gerade eine Fahrt-Aufzeichnung, ist sie lokal gesichert und geht nicht verloren."
     >

@@ -1,4 +1,4 @@
-# Cornice — Database Layer Audit
+# Strado — Database Layer Audit
 
 **Scope:** `supabase/migrations/0001…0057` (60 SQL files, all read in order), `types/database.ts`,
 and the query code in `lib/*.ts` / `lib/actions/*.ts`.

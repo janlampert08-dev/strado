@@ -30,7 +30,7 @@ export default function PremiumCard({ status }: { status: PremiumStatus }) {
       {status.aktiv ? (
         <>
           <p className="text-sm text-foreground">
-            {status.plan ? `Du unterstützt Cornice mit dem ${PLAN_NAME[status.plan]}.` : "Du bist Premium-Mitglied."}
+            {status.plan ? `Du unterstützt Strado mit dem ${PLAN_NAME[status.plan]}.` : "Du bist Premium-Mitglied."}
           </p>
 
           {status.inKulanzfrist && status.kulanzBis && (
@@ -77,7 +77,7 @@ export default function PremiumCard({ status }: { status: PremiumStatus }) {
             href="/profil/premium"
             className="self-start rounded-full border border-foreground bg-foreground px-4 py-2 text-sm font-medium text-background transition-transform duration-fast active:scale-95 hover:opacity-90"
           >
-            Cornice unterstützen
+            Strado unterstützen
           </Link>
         </>
       )}

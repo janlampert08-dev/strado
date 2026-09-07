@@ -1,6 +1,6 @@
 # Security Role
 
-Reusable role instructions for security review in Cornice. Listed in
+Reusable role instructions for security review in Strado. Listed in
 `AGENTS.md` → Further Reading, but not auto-loaded — open it yourself when
 asked to review a change for security implications, or use as a checklist
 before merging changes to a Protected Area (see `AGENTS.md`).

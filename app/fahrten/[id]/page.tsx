@@ -41,7 +41,7 @@ export async function generateMetadata({
     data: { user },
   } = await supabase.auth.getUser();
   const completion = await getCompletionDetail(id, user?.id ?? null);
-  if (!completion) return { title: "Fahrt – Cornice" };
+  if (!completion) return { title: "Fahrt – Strado" };
 
   const fahrer = completion.displayName ?? "Fahrer";
 
@@ -65,10 +65,10 @@ export async function generateMetadata({
   if (completion.art === "frei") {
     const titel = freieFahrtTitel(completion.titel, completion.startOrt);
     const beschreibung = kennzahlen
-      ? `${fahrer} ist ${kennzahlen} gefahren — ${titel}. Auf Cornice ansehen.`
-      : `Freie Fahrt von ${fahrer} auf Cornice.`;
+      ? `${fahrer} ist ${kennzahlen} gefahren — ${titel}. Auf Strado ansehen.`
+      : `Freie Fahrt von ${fahrer} auf Strado.`;
     return {
-      title: `${titel} – Fahrt von ${fahrer} – Cornice`,
+      title: `${titel} – Fahrt von ${fahrer} – Strado`,
       description: beschreibung,
       openGraph: {
         type: "article",
@@ -79,14 +79,14 @@ export async function generateMetadata({
   }
 
   const route = completion.routeId ? await getRoute(completion.routeId) : null;
-  if (!route) return { title: "Fahrt – Cornice" };
+  if (!route) return { title: "Fahrt – Strado" };
 
   const beschreibung = kennzahlen
-    ? `${fahrer} ist ${kennzahlen} auf der Strecke ${route.name} gefahren. Auf Cornice ansehen.`
-    : `Fahrt von ${fahrer} auf der Strecke ${route.name}. Auf Cornice ansehen.`;
+    ? `${fahrer} ist ${kennzahlen} auf der Strecke ${route.name} gefahren. Auf Strado ansehen.`
+    : `Fahrt von ${fahrer} auf der Strecke ${route.name}. Auf Strado ansehen.`;
 
   return {
-    title: `${route.name} – Fahrt von ${fahrer} – Cornice`,
+    title: `${route.name} – Fahrt von ${fahrer} – Strado`,
     description: beschreibung,
     openGraph: {
       type: "article",
