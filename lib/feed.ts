@@ -30,7 +30,12 @@ export async function getFeed(scope: FeedScope, viewerId: string | null): Promis
     // eindeutig ist — datum ist ein Datum ohne Uhrzeit, Gleichstände sind
     // also der Normalfall, nicht die Ausnahme. Passt zum Index aus 0075
     // (datum desc, id desc).
-    .order("id", { ascending: false })
+    //
+    // completion_id, nicht id: public_fahrten führt den Primärschlüssel
+    // der Basistabelle unter diesem Namen ("rc.id as completion_id",
+    // 0070). Eine Spalte "id" gibt es in der View nicht, PostgREST hätte
+    // die Feed-Abfrage mit 400 quittiert.
+    .order("completion_id", { ascending: false })
     .limit(FEED_LIMIT);
 
   if (scope === "following") {

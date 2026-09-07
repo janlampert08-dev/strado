@@ -125,7 +125,7 @@ export default function PhotoGallery({ photos }: { photos: RoutePhoto[] }) {
                   Grösse macht object-contain. */}
               <Image
                 src={openPhoto.foto_url}
-                alt={`Foto von ${openPhoto.display_name ?? "Nutzer"}`}
+                alt={`Foto von ${openPhoto.display_name ?? "einem Fahrer"}`}
                 width={1600}
                 height={1200}
                 sizes="90vw"
