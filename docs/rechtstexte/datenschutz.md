@@ -1,39 +1,35 @@
 # Datenschutzerklärung für Strado
 
-> ## ⚠️ Ungeprüfter Entwurf — keine Rechtsberatung
+> ## Arbeitsfassung der veröffentlichten Datenschutzerklärung — keine Rechtsberatung
 >
-> Dieser Text ist ein **von einem KI-Assistenten erstellter, ungeprüfter
-> Entwurf**. Er stellt **keine Rechtsberatung** dar und darf in dieser Form
-> **nicht veröffentlicht** werden. Vor der Publikation muss er von einer
-> **qualifizierten Schweizer Anwältin oder einem qualifizierten Schweizer
-> Anwalt** geprüft und freigegeben werden — insbesondere die Abschnitte zu
-> Rechtsgrundlagen (Abschnitt 5), zur Bekanntgabe ins Ausland (Abschnitt 8)
-> und zur Aufbewahrung nach einer Kontolöschung (Abschnitt 9), weil dort
-> Aussagen stehen, die sich mit dem tatsächlichen Verhalten des Systems decken
+> Dieser Text ist von einem KI-Assistenten erstellt und **anwaltlich nicht
+> geprüft**; er stellt **keine Rechtsberatung** dar. Er ist seit dem
+> 2026-09-07 mit den tatsächlichen Angaben unter
+> `https://strado.ch/legal/datenschutz` veröffentlicht — Entscheid des
+> Inhabers, ohne vorgängige anwaltliche Prüfung zu publizieren. Die
+> Prüfpunkte am Ende bleiben deshalb offen, insbesondere zu Rechtsgrundlagen
+> (Abschnitt 5), zur Bekanntgabe ins Ausland (Abschnitt 8) und zur
+> Aufbewahrung nach einer Kontolöschung (Abschnitt 9), weil dort Aussagen
+> stehen, die sich mit dem tatsächlichen Verhalten des Systems decken
 > müssen.
 >
 > Der Text beschreibt den Stand der Datenbearbeitung, wie er sich aus dem
 > Quellcode dieses Repositories ergibt (Stand des Entwurfs: 2026-09-07).
-> **Ändert sich der Code, muss dieser Text mitgeändert werden.** Am Ende
-> stehen ausserdem Punkte, die vor der Veröffentlichung fachlich geklärt
-> werden müssen.
+> **Ändert sich der Code, muss dieser Text mitgeändert werden.**
 >
-> Alle Angaben in doppelten eckigen Klammern (`[[…]]`) sind **Platzhalter**.
-> Sie wurden bewusst **nicht** erfunden und müssen vor der Veröffentlichung
-> durch die echten Werte ersetzt werden. Eine vollständige Liste steht am
-> Ende dieses Dokuments.
+> Es gibt **keine Platzhalter** mehr in diesem Dokument (Stand 2026-09-07).
 
 ---
 
-**Stand: [[STAND_DATUM]]**
+**Stand: 7. September 2026**
 
 ## 1. Verantwortliche Stelle
 
 Verantwortlich für die Bearbeitung von Personendaten im Zusammenhang mit
 Strado ist:
 
-[[FIRMENNAME]] [[RECHTSFORM]]
-[[STRASSE_NR]], [[PLZ_ORT]], Schweiz
+Jan Lampert, Einzelunternehmen (nicht im Handelsregister eingetragen)
+c/o Softsite AG, Leutschenbachstrasse 45, 8050 Zürich, Schweiz
 E-Mail: contact@strado.ch
 
 Für alle Fragen zum Datenschutz, für Auskunftsbegehren und für die Ausübung
@@ -217,7 +213,7 @@ sowie eine gespiegelte Fassung des Abo-Zustands mit den folgenden Angaben:
 | Angabe | Zweck |
 | --- | --- |
 | Kennung des Abos bei Stripe | ordnet die Zeile dem Abo zu, aus dem sie stammt |
-| Kennung des gewählten Preises | unterscheidet Monats-, Jahres- und Gründerpreis-Abo |
+| Kennung des gewählten Preises | unterscheidet Monats- und Jahresabo (bei älteren Abos auch den früheren Gründerpreis) |
 | Status des Abos | entscheidet über die Premium-Berechtigung |
 | Ende der laufenden Abrechnungsperiode | Anzeige „Premium bis …" und Erkennung ausgebliebener Meldungen |
 | Kennzeichen „zum Periodenende gekündigt" | Anzeige des Kündigungsstands |
@@ -358,8 +354,8 @@ weisungsgemäss und mit angemessenen Sicherheitsmassnahmen zu bearbeiten.
 
 | Dienst | Rolle | Übermittelte Daten |
 | --- | --- | --- |
-| **Supabase** (Supabase Inc., USA; Datenbank-Region: [[SUPABASE_REGION]]) | Datenbank, Authentifizierung, Dateispeicher, Versand der Konto-E-Mails | sämtliche Konto-, Profil-, Fahrten-, Track-, Foto- und Community-Daten |
-| **Vercel** (Vercel Inc., USA; Ausführungsregion: [[VERCEL_REGION]]) | Hosting der Anwendung, Reichweitenmessung | technische Verbindungsdaten inkl. IP-Adresse, alle über die Anwendung laufenden Inhalte, aggregierte Nutzungszahlen |
+| **Supabase** (Supabase Inc., USA; Datenbank-Region: EU (Frankfurt)) | Datenbank, Authentifizierung, Dateispeicher, Versand der Konto-E-Mails | sämtliche Konto-, Profil-, Fahrten-, Track-, Foto- und Community-Daten |
+| **Vercel** (Vercel Inc., USA) | Hosting der Anwendung, Reichweitenmessung | technische Verbindungsdaten inkl. IP-Adresse, alle über die Anwendung laufenden Inhalte, aggregierte Nutzungszahlen |
 | **Stripe** (Stripe Payments Europe Ltd., Irland, sowie verbundene Gesellschaften) | Zahlungsabwicklung, Abo-Verwaltung, Kundenportal | E-Mail-Adresse, interne Benutzer-Kennung, Zahlungsmittel- und Rechnungsdaten (direkt bei Stripe erhoben) |
 | **Mapbox** (Mapbox Inc., USA) | Kartendarstellung, Routenberechnung, Ortsnamen (Geocoding), Verkehrslage | IP-Adresse und technische Daten des Browsers beim Laden von Karten; Koordinaten der angezeigten bzw. geplanten Strecke |
 | **Open-Meteo** (`api.open-meteo.com`) | aktuelles Wetter am Streckenstart | Koordinaten des Streckenstartpunkts. Die Abfrage erfolgt von unserem Server aus; die IP-Adresse der Nutzenden wird dabei nicht übermittelt |
@@ -391,7 +387,8 @@ Durchsetzung unserer Rechte nötig ist.
 
 Ein Teil der eingesetzten Dienste hat seinen Sitz ausserhalb der Schweiz,
 namentlich in den **Vereinigten Staaten** und im **EWR**. Damit werden
-Personendaten ins Ausland bekanntgegeben.
+Personendaten ins Ausland bekanntgegeben. Die Kerndaten — Konto, Profil,
+Fahrten, Tracks, Fotos — liegen in der **EU (Frankfurt)**.
 
 Für Staaten mit einem vom Bundesrat anerkannten angemessenen Datenschutz
 (darunter die EU- und EWR-Staaten) ist keine zusätzliche Massnahme nötig. Für
@@ -403,11 +400,12 @@ ist — auf das **Swiss-U.S. Data Privacy Framework**.
 Trotz dieser Garantien lässt sich nicht ausschliessen, dass Behörden im
 Empfängerstaat auf Daten zugreifen.
 
-> **Prüfpunkt für die anwaltliche Durchsicht:** Für jeden Anbieter ist vor der
-> Veröffentlichung einzeln zu belegen, worauf sich die Bekanntgabe stützt
-> (Zertifizierung, Standardvertragsklauseln, Speicherregion). Die
-> Datenbank-Region von Supabase und die Ausführungsregion bei Vercel
-> bestimmen mit, ob überhaupt eine Auslandbekanntgabe der Kerndaten vorliegt.
+> **Prüfpunkt für die anwaltliche Durchsicht:** Für jeden Anbieter ist
+> einzeln zu belegen, worauf sich die Bekanntgabe stützt (Zertifizierung,
+> Standardvertragsklauseln, Speicherregion). Die Datenbank-Region von
+> Supabase ist EU (Frankfurt) und seit 2026-09-07 im Text genannt; die
+> Ausführungsregion bei Vercel wird — wie in der veröffentlichten Fassung —
+> nicht genannt, weil sie für die Kerndaten nicht ausschlaggebend ist.
 
 ## 9. Aufbewahrung und Löschung
 
@@ -574,19 +572,10 @@ E-Mail.
 
 ## Verwendete Platzhalter
 
-| Platzhalter | Bedeutung | Kommt vor in |
-| --- | --- | --- |
-| `[[FIRMENNAME]]` | Firmenname der verantwortlichen Stelle | Abschnitt 1 |
-| `[[RECHTSFORM]]` | Rechtsform (z. B. Einzelunternehmen, GmbH, AG) | Abschnitt 1 |
-| `[[STRASSE_NR]]` | Strasse und Hausnummer des Geschäftssitzes | Abschnitt 1 |
-| `[[PLZ_ORT]]` | Postleitzahl und Ort des Geschäftssitzes | Abschnitt 1 |
-| `[[SUPABASE_REGION]]` | Region, in der das Supabase-Projekt betrieben wird (bestimmt den Speicherort der Kerndaten) | Abschnitt 7 |
-| `[[VERCEL_REGION]]` | Region, in der die Anwendung bei Vercel ausgeführt wird | Abschnitt 7 |
-| `[[STAND_DATUM]]` | Datum, ab dem diese Fassung gilt | Kopfzeile |
-
-Insgesamt **7 Platzhalter**. Vor der Veröffentlichung ist im gesamten Dokument
-nach der Zeichenfolge `[[` zu suchen, um sicherzustellen, dass kein Platzhalter
-übrig geblieben ist.
+Keine mehr. Alle Platzhalter sind am 2026-09-07 durch die tatsächlichen
+Werte ersetzt worden; eine Suche nach doppelten eckigen Klammern im gesamten
+Dokument muss leer bleiben und ist Teil der Prüfung vor jeder weiteren
+Änderung.
 
 ## Offene Punkte für die anwaltliche und fachliche Prüfung
 
@@ -603,8 +592,10 @@ nach der Zeichenfolge `[[` zu suchen, um sicherzustellen, dass kein Platzhalter
 4. **Auftragsbearbeitungsverträge** — für Supabase, Vercel, Stripe und Mapbox
    sind die jeweiligen Verträge abzuschliessen bzw. zu dokumentieren
    (Art. 9 DSG).
-5. **Auslandbekanntgabe pro Anbieter belegen** (Abschnitt 8) sowie die
-   Speicherregionen für die beiden Platzhalter ermitteln.
+5. **Auslandbekanntgabe pro Anbieter belegen** (Abschnitt 8). ~~Die
+   Speicherregionen für die beiden Platzhalter ermitteln~~ — erledigt
+   2026-09-07: Supabase EU (Frankfurt) steht im Text, die Vercel-Region wird
+   nicht genannt.
 6. **Betreiber und Sitz von Open-Meteo** sind vor der Veröffentlichung zu
    verifizieren und in die Tabelle in Abschnitt 7 einzutragen. Zugleich ist
    die kommerzielle Lizenzfrage zu klären (`docs/premium-plan.md`,
