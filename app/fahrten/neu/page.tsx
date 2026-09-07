@@ -1,5 +1,5 @@
 import FreeRideForm from "@/components/FreeRideForm";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getRoutes } from "@/lib/routes";
 import { getPremiumStatus, maxFotosProFahrt } from "@/lib/premium";
 import type { Vehicle } from "@/types/database";
@@ -33,9 +33,12 @@ export default async function NeueFahrtPage({
 }) {
   const { fortsetzen } = await searchParams;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getCurrentUser() statt supabase.auth.getUser(): getPremiumStatus() weiter
+  // unten und der Header holen denselben Nutzer über den request-weiten
+  // Cache. Ein direkter Aufruf hier wäre ein zusätzlicher /auth/v1/user-
+  // Roundtrip für dieselbe Antwort. Der Client bleibt für die
+  // Fahrzeug-Abfrage.
+  const user = await getCurrentUser();
 
   // Die freigegebenen Strecken dienen auf der Aufzeichnungskarte nur der
   // Orientierung ("fahre ich gerade auf einer kuratierten Strecke?") — sie
