@@ -36,19 +36,25 @@ export default async function PremiumZahlungPage({
 }: {
   searchParams: Promise<{ plan?: string; preis?: string }>;
 }) {
-  const { plan, preis } = await searchParams;
+  // Parallel wie auf der Kaufseite: vier Wartezeiten hintereinander
+  // (searchParams, Auth, Datenbank, Stripe) waren auf dem Weg zum
+  // Bezahlformular die Hälfte der gefühlten Ladezeit — und keine davon
+  // braucht das Ergebnis der vorherigen.
+  const [{ plan, preis }, user, status, angebot] = await Promise.all([
+    searchParams,
+    getCurrentUser(),
+    getPremiumStatus(),
+    getPremiumAngebot(),
+  ]);
 
-  const user = await getCurrentUser();
   if (!user) redirect("/anmelden");
 
   // Wer schon Premium hat, hat hier nichts zu suchen — siehe
   // app/profil/premium/page.tsx.
-  const status = await getPremiumStatus();
   if (status.aktiv) redirect("/profil");
 
   if (!istAboPlan(plan)) redirect("/profil/premium");
 
-  const angebot = await getPremiumAngebot();
   const gewaehlt = angebot.plaene.find((p) => p.plan === plan);
   // Der Plan aus der Adresszeile existiert im aktuellen Angebot nicht (mehr)
   // — zurück zur Auswahl statt einer Seite ohne Preis und ohne Formular.

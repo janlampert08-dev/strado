@@ -12,7 +12,15 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Premium – Strado" };
 
 export default async function PremiumPage() {
-  const user = await getCurrentUser();
+  // Alle drei parallel: die Preise aus Stripe hängen nicht am Nutzer, und
+  // getPremiumStatus holt den Nutzer über denselben cache()-Aufruf wie
+  // getCurrentUser. Nacheinander waren das drei Wartezeiten hintereinander
+  // (Auth, Datenbank, Stripe), von denen nur die letzte unvermeidbar ist.
+  const [user, status, angebot] = await Promise.all([
+    getCurrentUser(),
+    getPremiumStatus(),
+    getPremiumAngebot(),
+  ]);
 
   if (!user) redirect("/anmelden");
 
@@ -20,10 +28,7 @@ export default async function PremiumPage() {
   // über das Kundenportal auf der Profilseite. Ein zweiter Abschluss würde
   // in createCheckoutSession ohnehin abgewiesen, aber eine Kaufseite, die
   // gar nicht erst erscheint, ist die klarere Antwort.
-  const status = await getPremiumStatus();
   if (status.aktiv) redirect("/profil");
-
-  const angebot = await getPremiumAngebot();
 
   return (
     <div className="flex h-dvh flex-col">

@@ -19,6 +19,7 @@ import {
   confirmCheckoutSession,
   meldeCheckoutProblem,
 } from "@/lib/actions/billing";
+import { fehlerMeldung } from "@/lib/checkoutFehler";
 import { isDarkTheme, subscribeToThemeChange } from "@/lib/theme";
 import { betragText } from "@/lib/premiumAngebot";
 import type { AboPlan, VergebenerPreis } from "@/lib/premiumLimits";
@@ -318,17 +319,6 @@ function fehlertext(fehler: ConfirmFehler): string | null {
     default:
       return "Deine Bank hat die Zahlung abgelehnt. Versuch es mit einer anderen Karte oder mit TWINT.";
   }
-}
-
-// Was von einem geworfenen Wert fürs Log übrig bleibt. Kurz gehalten: die
-// Meldung reist als Server-Action-Argument, und im Log will niemand einen
-// minifizierten Stacktrace lesen — der Name plus die Meldung sagt bereits,
-// ob eine Origin blockiert wurde ("Failed to fetch"), Stripe.js gestolpert
-// ist oder das Netz wegbrach.
-function fehlerMeldung(fehler: unknown): string {
-  if (fehler instanceof Error) return `${fehler.name}: ${fehler.message}`;
-  if (typeof fehler === "string") return fehler;
-  return String(fehler);
 }
 
 // Ins Server-Log melden, ohne die Oberfläche darauf warten zu lassen —
@@ -698,10 +688,22 @@ export default function PremiumCheckoutForm({
           elementsOptions: { appearance: appearance(dunkel), fonts: FONTS },
         }}
       >
+        {/* Nach der Zahlung auf die Abschluss-Seite statt wortlos auf
+            /profil: dort steht die Quittung — was jetzt freigeschaltet ist,
+            wann sich das Abo verlängert, wo gekündigt wird. Dieselbe Seite,
+            auf der auch TWINT & Co. landen, damit es für den Abschluss nur
+            einen Ort gibt. Die Sitzungs-ID reist mit, obwohl sie hier
+            bereits bestätigt ist: sollte der Schreibvorgang doch nicht
+            angekommen sein, prüft die Seite von sich aus nach, statt einen
+            Gruss zu zeigen, der nicht stimmt. */}
         <CheckoutInner
           sessionId={state.sessionId}
           preis={state.preis}
-          onSuccess={() => router.push("/profil")}
+          onSuccess={() =>
+            router.push(
+              `/profil/premium/abschluss?sitzung=${encodeURIComponent(state.sessionId)}`,
+            )
+          }
         />
       </CheckoutElementsProvider>
     </div>
