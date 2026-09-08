@@ -20,7 +20,7 @@ export default function KudosButton({
   const [count, setCount] = useState(initialCount);
   const [pending, startTransition] = useTransition();
   // Kurzes Aufploppen der Flamme beim Geben — nur beim Geben, nicht beim
-  // Zuruecknehmen: quittiert wird die zustimmende Geste, nicht ihr Widerruf.
+  // Zurücknehmen: quittiert wird die zustimmende Geste, nicht ihr Widerruf.
   const [puls, setPuls] = useState(false);
 
   function handleClick() {
@@ -49,8 +49,8 @@ export default function KudosButton({
         given ? "text-accent" : "text-muted hover:text-foreground",
       )}
     >
-      {/* Die Klasse wird am Ende der Animation wieder abgeraeumt, damit ein
-          zweites Geben erneut ausloest. Bei reduzierter Bewegung kuerzt der
+      {/* Die Klasse wird am Ende der Animation wieder abgeräumt, damit ein
+          zweites Geben erneut auslöst. Bei reduzierter Bewegung kürzt der
           globale Block in globals.css die Dauer auf 0.01 ms — animationend
           feuert dann sofort, die Flamme steht still. */}
       <Flame

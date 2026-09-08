@@ -48,9 +48,10 @@ const RouteMap = dynamic(() => import("@/components/RouteMap"), {
 // ich?) beim voll aufgezogenen Sheet nicht verloren geht.
 const SHEET_PEEK_PX = 272;
 
-// Wie lange der Zufallsvorschlag (siehe unten) stehen bleibt. Lang genug zum
-// Lesen und Antippen, kurz genug, um die Karte nicht dauerhaft zu belegen.
-const ZUFALLSVORSCHLAG_MS = 2500;
+// Wie lange der Zufallsvorschlag (siehe unten) stehen bleibt. Die Kamerafahrt
+// dorthin dauert 800 ms, danach bleiben gut vier Sekunden zum Lesen und
+// Antippen — kurz genug, um die Karte nicht dauerhaft zu belegen.
+const ZUFALLSVORSCHLAG_MS = 5000;
 const SHEET_EXPANDED_GAP_PX = 96;
 
 export default function ExploreView({
@@ -98,7 +99,7 @@ export default function ExploreView({
   const [locationError, setLocationError] = useState<string | null>(null);
   const [hoveredRouteId, setHoveredRouteId] = useState<string | null>(null);
   // Vom Logo angestossener Zufallsvorschlag (LogoLink.tsx): auf der
-  // Startseite fuehrt ein Klick auf die Wortmarke sonst nirgendwohin.
+  // Startseite führt ein Klick auf die Wortmarke sonst nirgendwohin.
   const [zufallsstrecke, setZufallsstrecke] = useState<RouteGeoJSON | null>(null);
 
   // Bottom-Sheet-Container (nur < md relevant — ab md greift die feste
@@ -163,7 +164,7 @@ export default function ExploreView({
   useEffect(() => {
     function handleZufallsstrecke() {
       const auswahl = visibleRoutes[Math.floor(Math.random() * visibleRoutes.length)];
-      // Bei leerer Trefferliste (etwa waehrend einer Suche ohne Treffer)
+      // Bei leerer Trefferliste (etwa während einer Suche ohne Treffer)
       // passiert schlicht nichts — besser als eine leere Meldung.
       if (!auswahl) return;
       setZufallsstrecke(auswahl);
@@ -178,7 +179,10 @@ export default function ExploreView({
     if (!zufallsstrecke) return;
     const timeout = setTimeout(() => {
       setZufallsstrecke(null);
-      setHoveredRouteId(null);
+      // Nur die eigene Hervorhebung zurücknehmen: zeigt der Zeiger inzwischen
+      // auf eine andere Strecke in der Liste, gehört sie dem Hover und darf
+      // hier nicht mit abgeräumt werden.
+      setHoveredRouteId((aktuell) => (aktuell === zufallsstrecke.id ? null : aktuell));
     }, ZUFALLSVORSCHLAG_MS);
     return () => clearTimeout(timeout);
   }, [zufallsstrecke]);
@@ -199,7 +203,7 @@ export default function ExploreView({
         />
       </div>
 
-      {/* Der Vorschlag selbst — oben ueber der Karte, damit er weder das
+      {/* Der Vorschlag selbst — oben über der Karte, damit er weder das
           Sheet noch die Kopfleiste verdeckt. pointer-events-none auf dem
           Rahmen, damit die Karte darunter bedienbar bleibt; nur die Pille
           selbst nimmt Klicks an. */}
