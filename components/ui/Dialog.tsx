@@ -14,6 +14,16 @@ interface DialogProps {
    * Layout sprengen würde). Wird ignoriert, sobald `title` vorhanden ist.
    */
   ariaLabel?: string;
+  /**
+   * Ob Escape und ein Klick auf den Hintergrund den Dialog schliessen
+   * dürfen. Standard ist ja — abschalten nur dort, wo ein Schliessen
+   * gerade etwas kaputt macht, das nicht rückgängig zu machen ist (z. B.
+   * eine laufende Zahlung in PremiumCheckoutForm). Ein Dialog, aus dem es
+   * dauerhaft keinen Weg heraus gibt, wäre schlimmer als das Problem:
+   * wer das setzt, schuldet einen sichtbaren Ausgang, sobald der Grund
+   * wegfällt.
+   */
+  dismissable?: boolean;
   children: ReactNode;
   className?: string;
 }
@@ -21,7 +31,15 @@ interface DialogProps {
 // Natives <dialog> statt einer eigenen Modal-Implementierung oder
 // Bibliothek — Fokus-Trap und "inert" für den Hintergrund kommen dadurch
 // kostenlos vom Browser (Baseline-unterstützt), siehe Plan §3.
-export function Dialog({ open, onClose, title, ariaLabel, children, className }: DialogProps) {
+export function Dialog({
+  open,
+  onClose,
+  title,
+  ariaLabel,
+  dismissable = true,
+  children,
+  className,
+}: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -46,6 +64,18 @@ export function Dialog({ open, onClose, title, ariaLabel, children, className }:
     if (!open && el.open) el.close();
   }, [open]);
 
+  // Escape geht am nativen <dialog> nicht am Aufrufer vorbei, sondern über
+  // ein abbrechbares "cancel"-Ereignis — preventDefault() hält den Dialog
+  // offen. Das ist der einzige Weg, der auch den Browser-eigenen
+  // Schliessbefehl erwischt; ein keydown-Handler käme zu spät.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || dismissable) return;
+    const abfangen = (event: Event) => event.preventDefault();
+    el.addEventListener("cancel", abfangen);
+    return () => el.removeEventListener("cancel", abfangen);
+  }, [dismissable]);
+
   return (
     <dialog
       ref={ref}
@@ -56,7 +86,7 @@ export function Dialog({ open, onClose, title, ariaLabel, children, className }:
         className,
       )}
       onClick={(event) => {
-        if (event.target === event.currentTarget) ref.current?.close();
+        if (dismissable && event.target === event.currentTarget) ref.current?.close();
       }}
     >
       {title && <h2 className="mb-3 text-title font-semibold">{title}</h2>}
