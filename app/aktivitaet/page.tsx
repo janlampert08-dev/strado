@@ -3,7 +3,7 @@ import Header from "@/components/Header";
 import MarkKudosSeen from "@/components/MarkKudosSeen";
 import ActivityKudosList from "@/components/ActivityKudosList";
 import { getRecentKudosReceived } from "@/lib/kudos";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/server";
 
 export const metadata = {
   title: "Aktivität – Strado",
@@ -18,10 +18,7 @@ export const metadata = {
 // (0057_kudos_aktivitaetsliste.sql) — ausschliesslich auf auth.uid()
 // beschränkt.
 export default async function AktivitaetPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/anmelden");
 
   const kudosList = await getRecentKudosReceived();

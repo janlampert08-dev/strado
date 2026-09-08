@@ -1,15 +1,12 @@
 import { redirect } from "next/navigation";
 import Header from "@/components/Header";
 import PasswortAendernForm from "@/components/PasswortAendernForm";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/server";
 
 export const metadata = { title: "Passwort ändern – Strado" };
 
 export default async function PasswortAendernPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   // Kein aktiver Link mehr (abgelaufen/schon verwendet) — zurück zum
   // Anfordern eines neuen statt eines leeren Formulars, das nur mit dem

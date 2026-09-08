@@ -6,7 +6,7 @@ import TrackLeaderboardChooser from "@/components/TrackLeaderboardChooser";
 import Avatar from "@/components/Avatar";
 import { getGlobalLeaderboards, type LeaderboardEntry } from "@/lib/leaderboard";
 import { listRouteChoices } from "@/lib/routes";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/server";
 import { MEDAL_COLORS } from "@/lib/constants";
 import Card from "@/components/ui/Card";
 
@@ -73,14 +73,11 @@ function LeaderboardSection({
 }
 
 export default async function LeaderboardsPage() {
-  const supabase = await createClient();
   const [
     { meisteFahrten, meisteHoehenmeter, meisteKm, meisteStrecken },
     routes,
-    {
-      data: { user },
-    },
-  ] = await Promise.all([getGlobalLeaderboards(), listRouteChoices(), supabase.auth.getUser()]);
+    user,
+  ] = await Promise.all([getGlobalLeaderboards(), listRouteChoices(), getCurrentUser()]);
   const currentUserId = user?.id ?? null;
 
   return (

@@ -4,7 +4,7 @@ import EditRouteForm from "@/components/EditRouteForm";
 import { getRoute } from "@/lib/routes";
 import { isModerator } from "@/lib/moderation";
 import { updateRoute, updateRouteAsModerator } from "@/lib/actions/routes";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/server";
 
 export default async function EditRoutePage({
   params,
@@ -15,10 +15,7 @@ export default async function EditRoutePage({
   const route = await getRoute(id);
   if (!route) notFound();
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   const moderator = user ? await isModerator(user.id) : false;
   const isOwnPending = user?.id === route.erstellt_von && !route.status_ok;
