@@ -282,23 +282,52 @@ export default function RouteMap({
   centerOnFirstLocation = false,
   followLocation = false,
 }: {
+  // Alle Strecken, die gezeichnet werden. Die Reihenfolge ist gleichgültig,
+  // sie landen gemeinsam in einer Feature-Sammlung. Genau eine Strecke ist
+  // kein Sonderfall des Zeichnens, wohl aber für showSpeedLimits — siehe
+  // dort.
   routes: RouteGeoJSON[];
+  // null blendet den Standort-Marker aus, statt ihn auf einer alten Position
+  // stehen zu lassen.
   userLocation?: [number, number] | null;
   // GPS-Genauigkeitsradius in Metern (position.coords.accuracy) bzw.
   // Kompasskurs in Grad (position.coords.heading) — optional, da nicht jeder
   // Aufrufer sie hat (z.B. ExploreView ruft nur einmalig getCurrentPosition).
   userAccuracyM?: number | null;
   userHeadingDeg?: number | null;
+  // Tempolimit-Ebene einblenden. Sie wird nur gezeichnet, wenn GENAU EINE
+  // Strecke übergeben ist (und diese tempolimits trägt): die Segmente werden
+  // entlang einer Geometrie aufgetragen, für mehrere Linien gäbe es keine
+  // eindeutige. Bei mehr als einer Strecke bleibt die Ebene stumm leer —
+  // gedacht ist sie für die Detailkarte (RouteDetailMap).
   showSpeedLimits?: boolean;
+  // Stau-Ebene ein- und ausblenden. Nur der Schalter: die Daten kommen
+  // fertig eingefärbt über trafficSegments von aussen (siehe
+  // toTrafficFeatureCollection oben). Ohne Segmente schaltet das Flag eine
+  // leere Ebene sichtbar.
   showTraffic?: boolean;
+  // Geländerelief samt geneigter Kamera (Pitch und Bearing), nicht nur eine
+  // Schattierung. Das Umschalten bewegt also die Ansicht — bei reduzierter
+  // Bewegung springt sie, statt zu fahren (bewegungsdauer()).
   show3D?: boolean;
+  // Farbe je Strecken-ID, abgeleitet aus dem Signatur-Merkmal
+  // (lib/signature.ts), damit Kartenlinie und Sidebar-Karte dasselbe
+  // bedeuten. Fehlt der Eintrag, greift ein stabiler Hash der ID
+  // (colorForRoute) — nie der Listenindex, sonst wechselte eine Strecke beim
+  // Filtern die Farbe.
   colors?: Map<string, string>;
+  // Diese Strecke bekommt Halo und kräftige Linie. Teilt sich den
+  // Hervorhebungs-Layer mit flyToRouteId; gesetzt wird er vom Zeiger über
+  // der Seitenleiste, weshalb er beim Rendern Vorrang hat.
   hoveredRouteId?: string | null;
   // Kartenausschnitt einmalig auf genau diese Strecke legen, sobald sich der
   // Wert ändert — unabhängig von fitRoutes, das der gesamten (gefilterten)
   // Liste folgt. Genutzt vom Zufallsvorschlag der Startseite
   // (ExploreView.tsx). null lässt die Kamera in Ruhe.
   flyToRouteId?: string | null;
+  // Fertig eingefärbte Stau-Abschnitte. RouteMap kennt Stau-Level und
+  // -Farben nicht selbst — sie kommen aus lib/traffic.ts über
+  // RouteDetailMap, genau wie die Signatur-Farben oben.
   trafficSegments?: { coords: [number, number][]; color: string }[];
   // Aufgezeichneter GPS-Track: live wachsend während einer Aufzeichnung
   // (FreeRideForm) oder fertig auf der Fahrt-Detailseite (CompletionMap).
