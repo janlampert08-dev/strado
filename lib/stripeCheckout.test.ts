@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type Stripe from "stripe";
+import Stripe from "stripe";
 import {
   aktivesAboAusSession,
   istEigeneBezahlteSession,
+  istUnbekannterCustomer,
   passendeOffeneSession,
   preisVonSession,
 } from "@/lib/stripeCheckout";
@@ -117,6 +118,40 @@ describe("istEigeneBezahlteSession", () => {
 
   it("weist eine Einmalzahlung ab", () => {
     expect(istEigeneBezahlteSession(session({ mode: "payment" }), "cus_ich")).toBe(false);
+  });
+});
+
+describe("istUnbekannterCustomer", () => {
+  it("erkennt einen unbekannten Customer", () => {
+    const fehler = new Stripe.errors.StripeInvalidRequestError({
+      code: "resource_missing",
+      param: "customer",
+    });
+    expect(istUnbekannterCustomer(fehler)).toBe(true);
+  });
+
+  it("weist denselben Fehlercode zu einem anderen Parameter ab", () => {
+    // resource_missing kommt auch für andere Felder vor (z.B. eine Preis-ID)
+    // — nur "customer" heisst "veraltete ID, neu anlegen und wiederholen".
+    const fehler = new Stripe.errors.StripeInvalidRequestError({
+      code: "resource_missing",
+      param: "price",
+    });
+    expect(istUnbekannterCustomer(fehler)).toBe(false);
+  });
+
+  it("weist einen anderen Stripe-Fehlercode ab", () => {
+    const fehler = new Stripe.errors.StripeInvalidRequestError({
+      code: "parameter_invalid_empty",
+      param: "customer",
+    });
+    expect(istUnbekannterCustomer(fehler)).toBe(false);
+  });
+
+  it("weist einen Fehler ab, der kein Stripe-Fehler ist", () => {
+    expect(istUnbekannterCustomer(new Error("Netzabbruch"))).toBe(false);
+    expect(istUnbekannterCustomer("resource_missing")).toBe(false);
+    expect(istUnbekannterCustomer(null)).toBe(false);
   });
 });
 

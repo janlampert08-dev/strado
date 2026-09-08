@@ -13,6 +13,7 @@ import { KULANZ_TAGE, leseAboZustand } from "@/lib/stripeWebhook";
 import {
   aktivesAboAusSession,
   istEigeneBezahlteSession,
+  istUnbekannterCustomer,
   passendeOffeneSession,
   preisVonSession,
 } from "@/lib/stripeCheckout";
@@ -179,26 +180,18 @@ export async function getPremiumAngebot(): Promise<PremiumAngebot> {
 // ersten Rechnung durch. Die Checkout Sessions API übernimmt genau diesen
 // Aufbau: das Abo entsteht erst, wenn die Session bezahlt ist, und Stripe
 // verwaltet Rechnung, Zahlungsarten und Wiederaufnahme selbst.
-export async function createCheckoutSession(
-  plan: AboPlan = "monat",
+//
+// Ausgelagert aus createCheckoutSession, damit sich der Aufbau nach einem
+// unbekannten Customer unten einmal mit einer frischen ID wiederholen lässt,
+// ohne die Prüfungen am Anfang der Funktion (Anmeldung, Plan, Preis-ID) ein
+// zweites Mal zu durchlaufen.
+async function checkoutSessionMitCustomer(
+  userId: string,
+  email: string | undefined,
+  plan: AboPlan,
+  preisId: string,
 ): Promise<CheckoutSessionResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { ok: false, error: "Bitte melde dich zuerst an." };
-
-  // Nur die beiden bekannten Werte. Kommt etwas anderes an, ist es keine
-  // Auswahl aus der Oberfläche, sondern ein selbst gebauter Aufruf.
-  if (plan !== "monat" && plan !== "jahr") {
-    return { ok: false, error: "Unbekannter Plan." };
-  }
-
-  const preisId = preisIdFuer(plan);
-  if (!preisId) return { ok: false, error: "Dieser Plan ist zurzeit nicht verfügbar." };
-
-  const customerId = await getOrCreateStripeCustomerId(user.id, user.email);
+  const customerId = await getOrCreateStripeCustomerId(userId, email);
 
   // Ohne diese Prüfung legte jeder Aufruf eine neue Session an: wer die
   // Kaufseite zweimal öffnet oder neu lädt, erzeugte zwei offene Sessions —
@@ -244,14 +237,14 @@ export async function createCheckoutSession(
       // dieser Session — die Abschluss-Seite braucht sie, um den Zustand
       // nachzuprüfen.
       return_url: `${siteUrl()}/profil/premium/abschluss?sitzung={CHECKOUT_SESSION_ID}`,
-      metadata: { supabase_user_id: user.id, plan, price_id: preisId },
+      metadata: { supabase_user_id: userId, plan, price_id: preisId },
     },
     {
       // Fängt den Doppelklick ab, bei dem zwei Anfragen die Prüfung oben
       // gleichzeitig passieren: beide bekommen dann dieselbe Session zurück.
       // Auf eine Stunde begrenzt, damit ein späteres, absichtliches
       // Neuabschliessen nicht auf einer alten Antwort hängen bleibt.
-      idempotencyKey: `checkout:${user.id}:${plan}:${Math.floor(Date.now() / 3_600_000)}`,
+      idempotencyKey: `checkout:${userId}:${plan}:${Math.floor(Date.now() / 3_600_000)}`,
     },
   );
 
@@ -279,6 +272,68 @@ export async function createCheckoutSession(
     sessionId: session.id,
     preis: { betragRappen: katalog.rappen, waehrung: katalog.waehrung },
   };
+}
+
+// Legt eine Checkout-Session an (siehe checkoutSessionMitCustomer). Aufrufer
+// von components/PremiumCheckoutForm.tsx.
+//
+// Ohne dieses Netz liess jede Stripe-Ausnahme — Netzstörung, unbekannter
+// Customer, alles — die Server Action einfach werfen: die Anfrage im Browser
+// blieb dann für immer im Ladezustand hängen ("Zahlung wird
+// vorbereitet…"), weil kein Ergebnis je zurückkam, mit dem die Oberfläche
+// einen Fehler hätte anzeigen können.
+export async function createCheckoutSession(
+  plan: AboPlan = "monat",
+): Promise<CheckoutSessionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { ok: false, error: "Bitte melde dich zuerst an." };
+
+  // Nur die beiden bekannten Werte. Kommt etwas anderes an, ist es keine
+  // Auswahl aus der Oberfläche, sondern ein selbst gebauter Aufruf.
+  if (plan !== "monat" && plan !== "jahr") {
+    return { ok: false, error: "Unbekannter Plan." };
+  }
+
+  const preisId = preisIdFuer(plan);
+  if (!preisId) return { ok: false, error: "Dieser Plan ist zurzeit nicht verfügbar." };
+
+  try {
+    return await checkoutSessionMitCustomer(user.id, user.email, plan, preisId);
+  } catch (err) {
+    if (!istUnbekannterCustomer(err)) {
+      console.error("Checkout-Session konnte nicht angelegt werden", { userId: user.id, plan }, err);
+      return {
+        ok: false,
+        error: "Zahlung konnte gerade nicht vorbereitet werden. Bitte versuch es in ein paar Minuten noch einmal.",
+      };
+    }
+
+    // profiles.stripe_customer_id zeigt auf eine ID, die es unter dem
+    // aktuell verwendeten Schlüssel nicht gibt — typischerweise ein
+    // Test/Live-Moduswechsel, bei dem die gespeicherte ID aus dem jeweils
+    // anderen Modus stammt. Verworfen und einmal neu versucht, statt den
+    // Kauf für dieses Konto dauerhaft an einer toten ID scheitern zu lassen.
+    console.warn("Stripe-Customer nicht gefunden, wird neu angelegt", { userId: user.id });
+    await createAdminClient().from("profiles").update({ stripe_customer_id: null }).eq("id", user.id);
+
+    try {
+      return await checkoutSessionMitCustomer(user.id, user.email, plan, preisId);
+    } catch (err2) {
+      console.error(
+        "Checkout-Session konnte auch nach Neuanlage des Customers nicht angelegt werden",
+        { userId: user.id, plan },
+        err2,
+      );
+      return {
+        ok: false,
+        error: "Zahlung konnte gerade nicht vorbereitet werden. Bitte versuch es in ein paar Minuten noch einmal.",
+      };
+    }
+  }
 }
 
 // Schreibt den Abo-Zustand aus einem bereits bei Stripe verifizierten Abo in

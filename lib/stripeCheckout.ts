@@ -11,7 +11,7 @@
 // kommt aus dem Browser bzw. aus der Adresszeile und ist damit eine
 // Nutzereingabe — die Bindung an den eigenen Customer ist die Prüfung, die
 // "Premium mit einer fremden Session-ID einschalten" verhindert.
-import type Stripe from "stripe";
+import Stripe from "stripe";
 import type { VergebenerPreis } from "./premiumLimits";
 
 function idVon(feld: string | { id: string } | null | undefined): string | null {
@@ -80,6 +80,25 @@ export function istEigeneBezahlteSession(
   if (session.mode !== "subscription") return false;
   if (session.status !== "complete") return false;
   return session.payment_status === "paid";
+}
+
+/**
+ * Ein Stripe-Fehler vom Typ "unbekannter Customer" — z.B. weil
+ * profiles.stripe_customer_id noch eine Test-Konto-ID trägt, während der
+ * Server inzwischen mit dem Live-Schlüssel läuft (oder umgekehrt). Kunden-
+ * und Preis-IDs sind bei Stripe pro Modus getrennte Namensräume; eine ID aus
+ * dem anderen Modus existiert für den aktuell verwendeten Schlüssel schlicht
+ * nicht — Stripe antwortet dann nicht mit einer diffusen Netzstörung,
+ * sondern exakt mit diesem Fehler. createCheckoutSession
+ * (lib/actions/billing.ts) nutzt das, um die veraltete ID zu verwerfen und
+ * einmal mit einem neuen Customer neu zu versuchen.
+ */
+export function istUnbekannterCustomer(err: unknown): boolean {
+  return (
+    err instanceof Stripe.errors.StripeInvalidRequestError &&
+    err.code === "resource_missing" &&
+    err.param === "customer"
+  );
 }
 
 /**

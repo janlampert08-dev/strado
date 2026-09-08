@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useSyncExternalStore, type FormEvent } from "react";
+import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import {
   CheckoutElementsProvider,
   PaymentElement,
@@ -305,49 +306,67 @@ type SessionState =
 export default function PremiumCheckoutForm({
   plan,
   beworbenerPreis,
-  onSuccess,
 }: {
   plan: AboPlan;
   /** Was die Kaufseite für diesen Plan ausgezeichnet hat. Dient nur dem
    *  Vergleich: weicht der tatsächlich vergebene Preis davon ab, muss die
    *  Abweichung sichtbar werden, bevor jemand bestätigt. */
   beworbenerPreis: number;
-  onSuccess: () => void;
 }) {
   const [state, setState] = useState<SessionState>({ status: "bereitzustarten" });
   const dunkel = useDunklesSchema();
+  const router = useRouter();
 
-  // Die Checkout-Session wird erst angelegt, wenn ausdrücklich bezahlt werden
-  // soll — nicht beim Öffnen der Seite. Eine Session bei jedem Seitenaufruf
-  // anzulegen hiesse, bei Stripe offene Sessions fürs blosse Hinschauen zu
-  // stapeln.
-  async function starten() {
-    // Aus demselben Grund kein zweiter Aufruf, solange der erste läuft: ein
-    // hektischer Doppelklick würde sonst zwei Sessions anlegen.
-    if (state.status === "laedt") return;
-    setState({ status: "laedt" });
-    const result = await createCheckoutSession(plan);
-    setState(
-      result.ok
+  // Reine Netzabfrage ohne setState — verwendet sowohl vom Auto-Start beim
+  // Erreichen dieser Seite (Effekt unten) als auch von "Noch einmal
+  // versuchen". try/catch fängt eine unerwartete Ausnahme (Netzabbruch,
+  // Fehler in der Server Action selbst) ab: ohne dieses Netz blieb der
+  // Zustand in so einem Fall für immer auf "laedt" stehen — das Formular
+  // zeigte endlos "Zahlung wird vorbereitet…", ohne dass je ein Fehler oder
+  // ein Weg nach vorn erschien.
+  async function ladeCheckoutErgebnis(): Promise<SessionState> {
+    try {
+      const result = await createCheckoutSession(plan);
+      return result.ok
         ? {
             status: "bereit",
             clientSecret: result.clientSecret,
             sessionId: result.sessionId,
             preis: result.preis,
           }
-        : { status: "fehler", text: result.error },
-    );
+        : { status: "fehler", text: result.error };
+    } catch {
+      return {
+        status: "fehler",
+        text: "Zahlung konnte gerade nicht vorbereitet werden. Bitte versuch es noch einmal.",
+      };
+    }
   }
 
-  if (state.status === "bereitzustarten") {
-    return (
-      <Button type="button" onClick={starten}>
-        Weiter zur Zahlung
-      </Button>
-    );
+  // Für "Noch einmal versuchen": kein zweiter Aufruf, solange der erste
+  // läuft — ein hektischer Doppelklick würde sonst zwei Sessions anlegen
+  // (abgefangen ausserdem serverseitig über den Idempotency-Key, siehe
+  // createCheckoutSession).
+  async function starten() {
+    if (state.status === "laedt") return;
+    setState({ status: "laedt" });
+    setState(await ladeCheckoutErgebnis());
   }
 
-  if (state.status === "laedt") {
+  // Diese Komponente lebt auf ihrer eigenen Seite
+  // (app/profil/premium/zahlung), die erst erreicht wird, nachdem auf der
+  // Kaufseite ein Plan gewählt und "Weiter zur Zahlung" angetippt wurde. Die
+  // Session anzulegen ist an dieser Stelle also bereits die Handlung, die
+  // dieser Klick ausgelöst hat — kein zweiter Tastendruck hier nötig. Ohne
+  // synchrones setState im Effekt selbst (das löst Render-Kaskaden aus,
+  // react-hooks/set-state-in-effect) — der Anfangszustand
+  // "bereitzustarten" zeigt bereits dasselbe Skelett wie "laedt".
+  useEffect(() => {
+    ladeCheckoutErgebnis().then(setState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (state.status === "bereitzustarten" || state.status === "laedt") {
     return <CheckoutSkeleton />;
   }
 
@@ -392,7 +411,11 @@ export default function PremiumCheckoutForm({
           elementsOptions: { appearance: appearance(dunkel), fonts: FONTS },
         }}
       >
-        <CheckoutInner sessionId={state.sessionId} preis={state.preis} onSuccess={onSuccess} />
+        <CheckoutInner
+          sessionId={state.sessionId}
+          preis={state.preis}
+          onSuccess={() => router.push("/profil")}
+        />
       </CheckoutElementsProvider>
     </div>
   );
