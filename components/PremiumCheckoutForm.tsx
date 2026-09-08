@@ -279,14 +279,11 @@ export default function PremiumCheckoutForm({
   const dunkel = useDunklesSchema();
 
   // Das Abo wird erst angelegt, wenn ausdrücklich bezahlt werden soll —
-  // nicht beim Öffnen der Seite. Beim Jahresplan beansprucht der Aufruf
-  // einen Gründerplatz (lib/actions/billing.ts); ein Abo bei jedem
-  // Seitenaufruf anzulegen hiesse, Plätze fürs blosse Hinschauen zu
-  // verbrennen und bei Stripe unbezahlte Abos zu stapeln.
+  // nicht beim Öffnen der Seite. Ein Abo bei jedem Seitenaufruf anzulegen
+  // hiesse, bei Stripe unbezahlte Abos fürs blosse Hinschauen zu stapeln.
   async function starten() {
     // Aus demselben Grund kein zweiter Aufruf, solange der erste läuft: ein
-    // hektischer Doppelklick würde sonst zwei Abos anlegen und beim
-    // Jahresplan zwei Gründerplätze beanspruchen.
+    // hektischer Doppelklick würde sonst zwei Abos anlegen.
     if (state.status === "laedt") return;
     setState({ status: "laedt" });
     const result = await createSubscriptionIntent(plan);
@@ -340,11 +337,12 @@ export default function PremiumCheckoutForm({
     );
   }
 
-  // Der Gründerpreis ist ein Kontingent: zwischen dem Rendern der Kaufseite
-  // und diesem Klick kann der letzte Platz weg sein. Dann gilt der reguläre
-  // Preis — und das muss dastehen, bevor jemand bestätigt. Eine Seite, die
-  // CHF 39 auszeichnet, während CHF 49 abgebucht werden, ist ein falsch
-  // ausgezeichneter Preis und kein Anzeigefehler.
+  // Zwischen dem Rendern der Kaufseite und diesem Klick kann der Preis bei
+  // Stripe geändert worden sein — die Seite liest ihn beim Öffnen, das Abo
+  // entsteht jetzt. Dann muss der neue Betrag dastehen, bevor jemand
+  // bestätigt: eine Seite, die den einen Betrag auszeichnet, während ein
+  // anderer abgebucht wird, ist ein falsch ausgezeichneter Preis und kein
+  // Anzeigefehler.
   const preisWeichtAb = state.preis.betragRappen !== beworbenerPreis;
 
   return (
@@ -352,8 +350,8 @@ export default function PremiumCheckoutForm({
       {preisWeichtAb && (
         <p role="alert" className="rounded-lg border border-danger/40 px-4 py-3 text-sm text-danger">
           Hinweis: Für dieses Abo gilt {preisText(state.preis)} statt des zuvor angezeigten
-          Betrags — der letzte Gründerplatz war inzwischen vergeben. Der Betrag unten auf dem
-          Button ist der, der abgebucht wird.
+          Betrags — der Preis wurde inzwischen angepasst. Der Betrag auf dem Button ist der, der
+          abgebucht wird.
         </p>
       )}
       {/* Kein key auf dem Schema: react-stripe-js reicht ein geändertes

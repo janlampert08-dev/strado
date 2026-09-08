@@ -1,42 +1,37 @@
 # Allgemeine Geschäftsbedingungen (AGB) für Strado
 
-> ## ⚠️ Ungeprüfter Entwurf — keine Rechtsberatung
+> ## Arbeitsfassung der veröffentlichten AGB — keine Rechtsberatung
 >
-> Dieser Text ist ein **von einem KI-Assistenten erstellter, ungeprüfter
-> Entwurf**. Er stellt **keine Rechtsberatung** dar und darf in dieser Form
-> **nicht veröffentlicht** und **nicht einem Vertragsschluss zugrunde gelegt**
-> werden. Vor der Publikation muss er von einer **qualifizierten Schweizer
-> Anwältin oder einem qualifizierten Schweizer Anwalt** geprüft und
-> freigegeben werden — insbesondere die Ziffern zu Haftung (Ziff. 13),
+> Dieser Text ist von einem KI-Assistenten erstellt und **anwaltlich nicht
+> geprüft**; er stellt **keine Rechtsberatung** dar. Er ist seit dem
+> 2026-09-07 mit den tatsächlichen Angaben unter `https://strado.ch/legal/agb`
+> veröffentlicht und liegt den Abos zugrunde — Entscheid des Inhabers, ohne
+> vorgängige anwaltliche Prüfung zu publizieren. Die Prüfpunkte am Ende
+> bleiben deshalb offen, insbesondere zu Haftung (Ziff. 13),
 > Vertragsänderungen (Ziff. 14) und Gerichtsstand (Ziff. 16), weil dort das
 > Konsumentenschutzrecht Grenzen setzt, die eine AGB-Klausel nicht
 > verschieben kann.
 >
-> Alle Angaben in doppelten eckigen Klammern (`[[…]]`) sind **Platzhalter**.
-> Sie wurden bewusst **nicht** erfunden und müssen vor der Veröffentlichung
-> durch die echten Werte ersetzt werden. Eine vollständige Liste steht am
-> Ende dieses Dokuments.
+> Es gibt **keine Platzhalter** mehr in diesem Dokument (Stand 2026-09-07).
 >
-> Entwurfsdatum: 2026-09-07
+> Entwurfsdatum: 2026-09-07 · Stand der veröffentlichten Fassung:
+> 7. September 2026
 
 > ### Hinweis zum Umsetzungsstand
 >
-> Die Ziffern 3.2 bis 9 beschreiben das **Premium-Abo**, wie es in
-> `docs/premium-plan.md` geplant ist. Diese Funktionen sind im Code heute
-> teilweise **noch nicht aktiv**: die Abo-Zustandstabelle, die Kulanzfrist
-> nach Ziff. 8.2 und die Kündigung bei Kontolöschung nach Ziff. 6.6 sind mit
-> Phase 1 umgesetzt (Migration 0059 — beachten: eine Migration ist erst
-> wirksam, wenn sie eingespielt wurde), die Premium-Oberfläche ist dagegen
-> weiterhin auskommentiert und das Feature-Gating nach Ziff. 3.2
-> abgeschaltet. Diese AGB dürfen erst in Kraft gesetzt werden, wenn die
-> entsprechenden Phasen umgesetzt und live sind.
-> Wird der Funktionsumfang gegenüber dem Plan geändert, ist Ziff. 3.2
-> zwingend mit anzupassen — eine AGB, die nicht existierende Leistungen
-> verspricht, ist selbst ein Problem.
+> Das **Premium-Abo** ist live und wird verkauft. Ziff. 3.2 beschreibt den
+> Funktionsumfang, wie er am 2026-09-07 tatsächlich freigeschaltet ist
+> (`lib/premiumLimits.ts`): eigene Strecken, zwölf statt sechs Fotos pro
+> Fahrt, unbegrenzt offline gespeicherte Strecken, GPX-Export kuratierter
+> Strecken. Der Gründerpreis wird seit demselben Datum nicht mehr angeboten;
+> Ziff. 4.3 regelt nur noch den Bestandsschutz der davor abgeschlossenen
+> Abos. Wird der Funktionsumfang geändert, ist Ziff. 3.2 zwingend mit
+> anzupassen — eine AGB, die nicht existierende Leistungen verspricht, ist
+> selbst ein Problem.
 
 ---
 
-**Stand: [[STAND_DATUM]]**
+**Stand: 7. September 2026**
 
 ## 1. Geltungsbereich und Anbieterin
 
@@ -47,8 +42,8 @@ Rechtstexten) und `https://app.strado.ch` (Webanwendung) erreichbar ist.
 
 **1.2** Anbieterin und Vertragspartnerin ist:
 
-[[FIRMENNAME]] [[RECHTSFORM]]
-[[STRASSE_NR]], [[PLZ_ORT]], Schweiz
+Jan Lampert, Einzelunternehmen (nicht im Handelsregister eingetragen)
+c/o Softsite AG, Leutschenbachstrasse 45, 8050 Zürich, Schweiz
 E-Mail: contact@strado.ch
 
 (nachfolgend „Anbieterin"). Weitere Angaben finden sich im Impressum unter
@@ -102,28 +97,25 @@ Umgehung von Nutzungsgrenzen, Sperren oder Cooldowns sind nicht gestattet.
 Ohne Abo stehen insbesondere zur Verfügung: das Entdecken und Durchsuchen der
 kuratierten Strecken, das Starten und Aufzeichnen von Fahrten (Streckenfahrten
 und freie Fahrten), das Speichern und optionale Veröffentlichen von Fahrten,
-Kudos, Bewertungen, Bestenlisten, der Community-Feed und das Vorschlagen neuer
-Strecken.
+Kudos, Bewertungen, Bestenlisten und der Community-Feed.
 
 ### 3.2 Premium-Abo
 
 Das kostenpflichtige Premium-Abo („Strado Premium") ergänzt die kostenlose
-Nutzung. Es umfasst nach dem aktuellen Planungsstand:
+Nutzung. Es umfasst:
 
-- unbegrenzt viele private Strecken (kostenlos: eine private Strecke),
-- ein optionales Premium-Abzeichen neben dem Anzeigenamen,
-- unbegrenzt viele offline gespeicherte Strecken (kostenlos: drei),
-- erweiterte Filter in der Streckensuche,
-- GPX-Export auch für kuratierte Strecken (kostenlos: nur eigene Fahrten),
+- das Erstellen eigener Strecken — privat nur für die eigene Nutzung oder
+  öffentlich nach Prüfung durch die Moderation (Ziff. 10.5); dazu gehören
+  unbegrenzt viele private Strecken,
 - bis zu zwölf Fotos pro Fahrt (kostenlos: sechs),
-- erweiterte Statistiken (Jahresvergleich, Auswertung pro Fahrzeug),
-- bevorzugte Behandlung eigener Streckenvorschläge in der Moderation.
+- unbegrenzt viele offline gespeicherte Strecken (kostenlos: drei),
+- GPX-Export auch für kuratierte Strecken (kostenlos: nur eigene Fahrten).
 
 **Kein Bestandteil des Abos** sind die Kernfunktionen aus Ziff. 3.1 — sie
-bleiben dauerhaft kostenlos. Wer vor der Einführung der Mengenbegrenzung für
-private Strecken bereits mehrere private Strecken angelegt hat, behält diese
-vollständig und darf sie weiter bearbeiten und veröffentlichen; begrenzt ist
-nur das Neuanlegen (Bestandsschutz).
+bleiben dauerhaft kostenlos. Wer vor der Einführung dieser Regelung ohne Abo
+bereits eine oder mehrere private Strecken angelegt hat (kostenlos war bisher
+eine private Strecke), behält diese vollständig und darf sie weiter bearbeiten
+und veröffentlichen; ein Abo setzt nur das Neuanlegen voraus (Bestandsschutz).
 
 ### 3.3 Weiterentwicklung und Änderungen des Funktionsumfangs
 
@@ -149,7 +141,17 @@ unvollständig, veraltet oder falsch sein. Für Abschnitte ohne hinterlegte
 Signalisation wird ein Standardwert angenommen. **Diese Angaben sind
 unverbindlich und ersetzen weder die Signalisation vor Ort noch die eigene
 Beurteilung der Verkehrslage.** Massgebend ist ausschliesslich die tatsächliche
-Signalisation und die geltende Strassenverkehrsordnung.
+Signalisation und die geltende Strassenverkehrsgesetzgebung.
+
+**3.4.3** Angezeigte Fahrzeiten sind **Schätzungen, keine Zusagen**. Die zu
+einer Strecke angezeigte Dauer wird rechnerisch aus Länge, Streckencharakter
+und hinterlegten Tempolimits abgeleitet; sie berücksichtigt weder die
+tatsächliche Verkehrslage noch Baustellen, kurzfristige Sperrungen, Witterung
+oder die individuelle Fahrweise. Auch die in Bestenlisten angezeigten Zeiten
+anderer Nutzender sind keine Zusage, dass eine Strecke in dieser Zeit gefahren
+werden kann oder darf. **Ein Anspruch darauf, eine bestimmte Zeit zu erreichen,
+besteht nicht; das Erreichen einer angezeigten Zeit ist kein Ziel der Nutzung
+von Strado.**
 
 ## 4. Preise und Mehrwertsteuer
 
@@ -159,7 +161,6 @@ Signalisation und die geltende Strassenverkehrsordnung.
 | --- | --- | --- |
 | Monatsabo | **CHF 4.90** | 1 Monat |
 | Jahresabo | **CHF 49.00** | 12 Monate |
-| Jahresabo Gründerpreis | **CHF 39.00** | 12 Monate |
 
 **4.2** Alle Preise sind Endpreise in Schweizer Franken **inklusive allfälliger
 Mehrwertsteuer** und allfälliger weiterer Abgaben. Es kommen keine weiteren
@@ -168,12 +169,12 @@ Zahlungsdienstleisters der Nutzenden (z. B. Fremdwährungs- oder
 Auslandszuschläge bei einer nicht auf CHF lautenden Karte) gehen zulasten der
 Nutzenden.
 
-**4.3** Der **Gründerpreis** von CHF 39.00 pro Jahr gilt für die ersten 100
-abgeschlossenen Abos. Er bleibt für die Dauer des ununterbrochen bestehenden
-Abos preisgebunden: solange das Abo nicht gekündigt wird und die Zahlungen
-erfolgen, verlängert es sich weiterhin zu CHF 39.00 pro Jahr. Wird das Abo
-gekündigt oder wegen Zahlungsverzugs beendet, erlischt die Preisbindung; ein
-späterer Neuabschluss erfolgt zum dann gültigen Normalpreis.
+**4.3 Frühere Gründerpreis-Abos.** Der Gründerpreis von CHF 39.00 pro Jahr
+wird nicht mehr angeboten. Abos, die vor dem 7. September 2026 zum
+Gründerpreis abgeschlossen wurden, behalten diesen Preis, solange das Abo
+ununterbrochen läuft; wird es gekündigt oder wegen Zahlungsverzugs beendet,
+erlischt die Preisbindung, und ein späterer Neuabschluss erfolgt zum dann
+gültigen Normalpreis.
 
 **4.4** Preisänderungen gelten grundsätzlich nur für **neu abgeschlossene
 Abos**. Bestehende Abos behalten ihren Preis; Ziff. 14.2 bleibt vorbehalten.
@@ -211,8 +212,8 @@ ersten Zahlung. Die Premium-Funktionen stehen ab diesem Zeitpunkt zur
 Verfügung.
 
 **6.2 Laufzeit.** Die Mindestlaufzeit beträgt beim Monatsabo einen Monat, beim
-Jahresabo (auch zum Gründerpreis) zwölf Monate, gerechnet ab dem Tag des
-Abschlusses.
+Jahresabo (auch bei einem früheren Gründerpreis-Abo nach Ziff. 4.3) zwölf
+Monate, gerechnet ab dem Tag des Abschlusses.
 
 **6.3 Automatische Verlängerung.** **Das Abo verlängert sich automatisch um
 jeweils dieselbe Laufzeit** (ein Monat bzw. zwölf Monate) zum jeweils für
@@ -309,16 +310,15 @@ Kündigung, durch Ablauf nach erfolgloser Kulanzfrist oder auf anderem Weg —
 werden **keine Nutzerinhalte gelöscht**. Das gilt ausdrücklich auch für
 **private Strecken**: Sie bleiben bestehen, bleiben privat und bleiben für die
 Eigentümerin oder den Eigentümer sichtbar und nutzbar. Gesperrt ist lediglich
-das **Neuanlegen** weiterer privater Strecken über das kostenlose Kontingent
-hinaus.
+das **Neuanlegen** weiterer Strecken.
 
 **9.2 Fahrten, Fotos und Statistiken** bleiben unverändert erhalten und
 zugänglich. Bereits gespeicherte Fotos bleiben bestehen, auch wenn eine Fahrt
 mehr Fotos enthält, als das kostenlose Kontingent erlauben würde; neue Fotos
 können nur noch bis zur kostenlosen Obergrenze hinzugefügt werden.
 
-**9.3 Premium-Abzeichen.** Das Premium-Abzeichen wird mit dem Ende des Abos
-automatisch nicht mehr angezeigt.
+**9.3 Profil.** Profilangaben und Sichtbarkeits-Einstellungen bleiben durch
+das Ende des Abos unberührt.
 
 **9.4 Offline gespeicherte Strecken** liegen ausschliesslich lokal im Browser
 der Nutzenden und werden durch das Ende des Abos nicht entfernt. Neue Strecken
@@ -409,16 +409,30 @@ erfasst, wenn die Nutzenden dies selbst aktivieren. Fahrten, die unter
 Missachtung von Verkehrsregeln zustande gekommen sind, dürfen nicht
 veröffentlicht werden.
 
-**11.4** Nutzende sind für die Verkehrstauglichkeit ihres Fahrzeugs, für
+**11.4** **Strado darf nicht in einer Weise genutzt werden, die andere
+gefährdet.** Untersagt sind insbesondere das Verabreden oder Austragen von
+Rennen, das Fahren im Pulk oder dichtes Auffahren zum Zweck einer gemeinsamen
+Aufzeichnung sowie jedes Verhalten, das darauf zielt, eine angezeigte oder in
+einer Bestenliste geführte Zeit zu unterbieten. Wer zwischen einer Aufzeichnung
+und der Sicherheit anderer entscheiden muss, bricht die Aufzeichnung ab.
+
+**11.5** Nutzende sind für die Verkehrstauglichkeit ihres Fahrzeugs, für
 gültige Fahrberechtigungen und für den Versicherungsschutz selbst
 verantwortlich.
 
-**11.5** Untersagt sind ferner: automatisiertes Auslesen der Plattform
+**11.6** Untersagt sind ferner: automatisiertes Auslesen der Plattform
 (Scraping), das Umgehen technischer Schutzmassnahmen, Zugriffsversuche auf
 fremde Konten oder Daten sowie Handlungen, die den Betrieb beeinträchtigen
 (z. B. Überlastungsversuche).
 
-## 12. Verfügbarkeit
+**11.7 Sperre.** Die Anbieterin kann ein Konto vorübergehend oder dauerhaft
+sperren, wenn Nutzende schwerwiegend oder wiederholt gegen diese AGB verstossen
+— insbesondere gegen Ziff. 10.4, Ziff. 11.1 bis 11.4 oder Ziff. 11.6 — oder
+wenn konkrete Anhaltspunkte für eine Nutzung bestehen, die andere gefährdet.
+Die Sperre wird mitgeteilt und begründet; Nutzende können ihr formlos
+widersprechen. Bei einem laufenden Abo gilt zusätzlich Ziff. 6.5.
+
+## 12. Verfügbarkeit und Genauigkeit
 
 **12.1** Die Anbieterin bemüht sich um eine möglichst hohe Verfügbarkeit,
 schuldet aber keine bestimmte Verfügbarkeit. Strado wird auf der
@@ -434,6 +448,25 @@ betroffene Zeit auf Anfrage anteilig gutgeschrieben.
 Wetterdaten, Höhenprofile, Verkehrsdaten). Fallen diese aus, kann die
 betroffene Funktion vorübergehend fehlen, ohne dass darin ein Mangel des
 Gesamtangebots liegt.
+
+**12.4 Aufzeichnung und Messwerte.** Die Aufzeichnung einer Fahrt hängt vom
+Gerät der Nutzenden, vom Betriebssystem und vom Satellitenempfang ab. Die
+Anbieterin garantiert weder, dass eine Aufzeichnung zustande kommt oder
+vollständig ist, noch dass die daraus abgeleiteten Werte — Zeit, Distanz,
+Höhenmeter, Rundenerkennung und die Zuordnung zu einer Strecke — genau sind.
+Empfangslücken (Tunnel, enge Täler, dichte Bebauung oder Bewaldung), eine
+unterbrochene Aufzeichnung, ein gesperrter Bildschirm oder Energiesparfunktionen
+des Geräts können Werte verfälschen oder eine Fahrt unbrauchbar machen.
+**Zeiten in Bestenlisten sind keine geeichte Zeitmessung.** Aus einer
+fehlenden, unvollständigen oder ungenauen Aufzeichnung entsteht kein Anspruch;
+im Übrigen gilt Ziff. 13.
+
+**12.5 Zurückweisung einer Aufzeichnung.** Die Anbieterin darf eine
+Aufzeichnung beim Speichern zurückweisen, wenn deren Werte oder Bewegungsmuster
+nicht von einer Fahrt mit einem Strassenfahrzeug stammen können — etwa bei
+unrealistischer Durchschnittsgeschwindigkeit, unrealistischer Dauer oder zu
+grossen Lücken zwischen zwei Messpunkten. Die Zurückweisung wird begründet
+angezeigt; ein Anspruch auf Speicherung besteht in diesen Fällen nicht.
 
 ## 13. Haftung
 
@@ -481,8 +514,8 @@ bezahlte Entgelte für die Zeit danach werden anteilig zurückerstattet.
 **14.2 Preisänderungen für bestehende Abos.** Preiserhöhungen für bestehende
 Abos werden mindestens **60 Tage** im Voraus per E-Mail angekündigt. Nutzende
 können das Abo in diesem Fall bis zum Wirksamwerden der Erhöhung auf diesen
-Zeitpunkt kündigen. Der Gründerpreis nach Ziff. 4.3 bleibt von Erhöhungen
-ausgenommen, solange das Abo ununterbrochen besteht.
+Zeitpunkt kündigen. Frühere Gründerpreis-Abos nach Ziff. 4.3 bleiben von
+Erhöhungen ausgenommen, solange das Abo ununterbrochen läuft.
 
 > **Prüfpunkt für die anwaltliche Durchsicht:** Die Zustimmungsfiktion in
 > Ziff. 14.1 ist in Konsumentenverträgen nicht unbegrenzt zulässig. Zu prüfen
@@ -516,7 +549,7 @@ vorbehalten.
 
 **16.4 Gerichtsstand.** Ausschliesslicher Gerichtsstand für alle
 Streitigkeiten aus oder im Zusammenhang mit diesem Vertrag ist
-**[[GERICHTSSTAND]], Schweiz** — dies unter dem ausdrücklichen Vorbehalt
+**Zürich, Schweiz** — dies unter dem ausdrücklichen Vorbehalt
 zwingender gesetzlicher Gerichtsstände. Konsumentinnen und Konsumenten können
 insbesondere in jedem Fall am Gericht ihres Wohnsitzes oder am Sitz der
 Anbieterin klagen; auf diesen Gerichtsstand können sie nicht im Voraus
@@ -526,18 +559,10 @@ verzichten.
 
 ## Verwendete Platzhalter
 
-| Platzhalter | Bedeutung | Kommt vor in |
-| --- | --- | --- |
-| `[[FIRMENNAME]]` | Firmenname der Betreiberin | Ziff. 1.2 |
-| `[[RECHTSFORM]]` | Rechtsform (z. B. Einzelunternehmen, GmbH, AG) | Ziff. 1.2 |
-| `[[STRASSE_NR]]` | Strasse und Hausnummer des Geschäftssitzes | Ziff. 1.2 |
-| `[[PLZ_ORT]]` | Postleitzahl und Ort des Geschäftssitzes | Ziff. 1.2 |
-| `[[GERICHTSSTAND]]` | Ort des vereinbarten Gerichtsstands (in der Regel der Sitz der Anbieterin) | Ziff. 16.4 |
-| `[[STAND_DATUM]]` | Datum, ab dem diese AGB-Fassung gilt | Kopfzeile |
-
-Insgesamt **6 Platzhalter**. Vor der Veröffentlichung ist im gesamten Dokument
-nach der Zeichenfolge `[[` zu suchen, um sicherzustellen, dass kein Platzhalter
-übrig geblieben ist.
+Keine mehr. Alle Platzhalter sind am 2026-09-07 durch die tatsächlichen
+Werte ersetzt worden; eine Suche nach doppelten eckigen Klammern im gesamten
+Dokument muss leer bleiben und ist Teil der Prüfung vor jeder weiteren
+Änderung.
 
 ## Offene Punkte für die anwaltliche Prüfung
 
@@ -552,10 +577,12 @@ nach der Zeichenfolge `[[` zu suchen, um sicherzustellen, dass kein Platzhalter
 4. **Umgang mit bereits veröffentlichten Inhalten nach Kontolöschung**
    (Ziff. 9.6) — die Formulierung muss mit der Datenschutzerklärung und mit
    dem tatsächlichen Verhalten der Löschfunktion übereinstimmen.
-5. **Gründerpreis-Bindung** (Ziff. 4.3) — die dauerhafte Preisbindung ist eine
-   bindende Zusage über viele Jahre; die Ausnahme in Ziff. 14.2 muss dazu
-   passen.
-6. **Mengenbegrenzung privater Strecken** (Ziff. 3.2) — laut
-   `docs/premium-plan.md`, Abschnitt 8, ist noch nicht entschieden, ob private
-   Strecken überhaupt begrenzt werden. Wird anders entschieden, sind Ziff. 3.2
-   und 9.1 anzupassen.
+5. **Gründerpreis-Bindung** (Ziff. 4.3) — der Gründerpreis wird seit dem
+   2026-09-07 nicht mehr angeboten; die Preisbindung gilt nur noch für die
+   davor abgeschlossenen Abos und bleibt für diese eine bindende Zusage über
+   viele Jahre. Die Ausnahme in Ziff. 14.2 ist darauf abgestimmt; zu prüfen
+   bleibt nur noch die Haltbarkeit der Zusage selbst.
+6. ~~**Mengenbegrenzung privater Strecken** (Ziff. 3.2)~~ — erledigt
+   2026-09-07: Das Erstellen eigener Strecken ist eine Premium-Funktion,
+   Ziff. 3.2 und 9.1 sind entsprechend gefasst, der Bestandsschutz für davor
+   ohne Abo angelegte Strecken steht in Ziff. 3.2.

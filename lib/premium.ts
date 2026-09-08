@@ -43,6 +43,9 @@ function datum(wert: string | null): Date | null {
 function planAusPreisId(preisId: string | null): AboPlanKennung | null {
   if (!preisId) return null;
   if (preisId === process.env.STRIPE_PREMIUM_PRICE_ID_JAHR) return "jahr";
+  // Nur noch für Bestandsabos: der Gründerpreis wird seit 2026-09-07 nicht
+  // mehr verkauft, aber wer ihn hat, behält ihn — und soll ihn im Profil
+  // unter seinem Namen sehen, nicht als "Jahresabo".
   if (preisId === process.env.STRIPE_PREMIUM_PRICE_ID_GRUENDER) return "gruender";
   if (
     preisId === process.env.STRIPE_PREMIUM_PRICE_ID_MONAT ||

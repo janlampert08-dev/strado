@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Trophy } from "lucide-react";
 import Header from "@/components/Header";
+import PullToRefreshArea from "@/components/PullToRefreshArea";
 import TrackLeaderboardChooser from "@/components/TrackLeaderboardChooser";
 import Avatar from "@/components/Avatar";
 import { getGlobalLeaderboards, type LeaderboardEntry } from "@/lib/leaderboard";
@@ -83,6 +84,8 @@ export default async function LeaderboardsPage() {
   return (
     <div className="flex h-dvh flex-col">
       <Header />
+      {/* Ziehen zum Aktualisieren (nur Touch) — siehe PullToRefreshArea.tsx */}
+      <PullToRefreshArea>
       <div className="flex-1 overflow-y-auto">
         <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-5 py-8 sm:px-6 sm:py-10 lg:max-w-5xl">
         <div>
@@ -126,6 +129,7 @@ export default async function LeaderboardsPage() {
         <TrackLeaderboardChooser routes={routes} />
         </main>
       </div>
+      </PullToRefreshArea>
     </div>
   );
 }

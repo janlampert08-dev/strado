@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Header from "@/components/Header";
+import PullToRefreshArea from "@/components/PullToRefreshArea";
 import MarkKudosSeen from "@/components/MarkKudosSeen";
 import ActivityKudosList from "@/components/ActivityKudosList";
 import { getRecentKudosReceived } from "@/lib/kudos";
@@ -33,6 +34,8 @@ export default async function AktivitaetPage() {
           bevor der Nutzer sie gesehen hat — deshalb hält ActivityKudosList
           einen eigenen Snapshot statt live aus den Props neu zu lesen. */}
       <MarkKudosSeen />
+      {/* Ziehen zum Aktualisieren (nur Touch) — siehe PullToRefreshArea.tsx */}
+      <PullToRefreshArea>
       <div className="flex-1 overflow-y-auto">
         <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-5 py-8 sm:px-6 sm:py-10">
           <div>
@@ -43,6 +46,7 @@ export default async function AktivitaetPage() {
           <ActivityKudosList initialKudosList={kudosList} />
         </main>
       </div>
+      </PullToRefreshArea>
     </div>
   );
 }
