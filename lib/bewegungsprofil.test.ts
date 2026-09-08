@@ -41,8 +41,8 @@ function erzeugeTrack({
   return punkte;
 }
 
-// Kurvige Bergstrasse: 45 Minuten mit 45 km/h und staendigen Richtungs-
-// wechseln (Kehren) — der Fall, der unter keinen Umstaenden abgelehnt werden
+// Kurvige Bergstrasse: 45 Minuten mit 45 km/h und ständigen Richtungs-
+// wechseln (Kehren) — der Fall, der unter keinen Umständen abgelehnt werden
 // darf.
 function bergstrasse(): BewegungsPunkt[] {
   return erzeugeTrack({
@@ -53,9 +53,9 @@ function bergstrasse(): BewegungsPunkt[] {
 }
 
 // Autobahnetappe: eine Stunde, im Mittel 125 km/h mit Verkehrsschwankungen
-// (115..135) und der sanften Linienfuehrung einer Autobahn. Legitim, schnell
+// (115..135) und der sanften Linienführung einer Autobahn. Legitim, schnell
 // und praktisch kurvenfrei — genau die Kombination, bei der eine zu scharfe
-// Erkennung falsch-positiv wuerde.
+// Erkennung falsch-positiv würde.
 function autobahnetappe(): BewegungsPunkt[] {
   return erzeugeTrack({
     dauerSekunden: 60 * 60,
@@ -65,7 +65,7 @@ function autobahnetappe(): BewegungsPunkt[] {
 }
 
 // Bahnfahrt: 45 Minuten mit 165 km/h, ein Zwischenhalt von einer Minute,
-// nahezu gerade Linienfuehrung.
+// nahezu gerade Linienführung.
 function bahnfahrt(): BewegungsPunkt[] {
   return erzeugeTrack({
     dauerSekunden: 45 * 60,
@@ -85,16 +85,16 @@ function flug(): BewegungsPunkt[] {
 }
 
 describe("bewerteBewegungsprofil", () => {
-  it("laesst eine kurvige Bergstrecke durch", () => {
+  it("lässt eine kurvige Bergstrecke durch", () => {
     const profil = bewerteBewegungsprofil(bergstrasse());
     expect(profil.plausibel).toBe(true);
     expect(profil.art).toBe("strassenfahrzeug");
     // Die Kurvigkeit ist das Sicherheitsnetz gegen Falsch-Positive: eine
-    // Passstrasse liegt um Groessenordnungen ueber der Bahn-Schwelle.
+    // Passstrasse liegt um Grössenordnungen über der Bahn-Schwelle.
     expect(profil.kennzahlen.kurvigkeitGradProKm).toBeGreaterThan(100);
   });
 
-  it("laesst eine schnelle Autobahnetappe durch", () => {
+  it("lässt eine schnelle Autobahnetappe durch", () => {
     const profil = bewerteBewegungsprofil(autobahnetappe());
     expect(profil.plausibel).toBe(true);
     expect(profil.art).toBe("strassenfahrzeug");
@@ -120,7 +120,7 @@ describe("bewerteBewegungsprofil", () => {
   it("lehnt wegen eines einzelnen GPS-Ausreissers nicht ab", () => {
     const punkte = bergstrasse();
     const mitte = Math.floor(punkte.length / 2);
-    // Ein einzelner Fix springt gut 1.5 km daneben und wieder zurueck —
+    // Ein einzelner Fix springt gut 1.5 km daneben und wieder zurück —
     // rechnerisch kurzzeitig mehrere hundert km/h.
     const ausreisser: BewegungsPunkt[] = punkte.map((p, i) =>
       i === mitte ? { ...p, lat: p.lat + 0.0135 } : p,
@@ -133,8 +133,8 @@ describe("bewerteBewegungsprofil", () => {
   it("ignoriert einen Sprung ueber der Ausreisser-Grenze in der Tempostatistik", () => {
     const punkte = autobahnetappe();
     const mitte = Math.floor(punkte.length / 2);
-    // 10 km Versatz in fuenf Sekunden: als Segment verworfen, statt als
-    // Flugtempo gezaehlt zu werden.
+    // 10 km Versatz in fünf Sekunden: als Segment verworfen, statt als
+    // Flugtempo gezählt zu werden.
     const mitSprung: BewegungsPunkt[] = punkte.map((p, i) =>
       i >= mitte ? { ...p, lat: p.lat + 0.09 } : p,
     );
@@ -143,7 +143,7 @@ describe("bewerteBewegungsprofil", () => {
     expect(profil.kennzahlen.sekundenUeberFlugTempo).toBe(0);
   });
 
-  it("faellt bei einer zu kurzen Aufzeichnung kein Urteil", () => {
+  it("fällt bei einer zu kurzen Aufzeichnung kein Urteil", () => {
     const kurz = erzeugeTrack({ dauerSekunden: 45, tempo: () => 30, kurs: () => 0 });
     const profil = bewerteBewegungsprofil(kurz);
     expect(profil.art).toBe("unbestimmt");
@@ -151,14 +151,14 @@ describe("bewerteBewegungsprofil", () => {
     expect(profil.begruendung).toBeNull();
   });
 
-  it("faellt bei einem leeren Trail kein Urteil", () => {
+  it("fällt bei einem leeren Trail kein Urteil", () => {
     const profil = bewerteBewegungsprofil([]);
     expect(profil.art).toBe("unbestimmt");
     expect(profil.plausibel).toBe(true);
   });
 
-  it("laesst eine kurze schnelle Etappe durch (zu wenig Distanz fuer ein Bahn-Urteil)", () => {
-    // Dieselbe Signatur wie eine Bahnfahrt, aber nur ueber 8 km: unterhalb
+  it("lässt eine kurze schnelle Etappe durch (zu wenig Distanz fuer ein Bahn-Urteil)", () => {
+    // Dieselbe Signatur wie eine Bahnfahrt, aber nur über 8 km: unterhalb
     // der Mindestdistanz wird bewusst nicht abgelehnt.
     const kurzeEtappe = erzeugeTrack({
       dauerSekunden: 4 * 60,
@@ -173,7 +173,7 @@ describe("bewerteBewegungsprofil", () => {
     const punkte = bahnfahrt().map((p) => ({ ...p, acc: 120 }));
     const profil = bewerteBewegungsprofil(punkte);
     // Ohne verwertbare Segmente bleibt nichts, worauf sich ein Urteil
-    // stuetzen liesse.
+    // stützen liesse.
     expect(profil.art).toBe("unbestimmt");
     expect(profil.plausibel).toBe(true);
   });

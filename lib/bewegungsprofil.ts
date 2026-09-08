@@ -1,10 +1,10 @@
 import { haversineKm, type TrailPoint } from "@/lib/geo";
 import { MAX_JUMP_KM, MOVING_MIN_KMH } from "@/lib/track";
 
-// Aus einem aufgezeichneten GPS-Trail ableiten, ob die Bewegung ueberhaupt
+// Aus einem aufgezeichneten GPS-Trail ableiten, ob die Bewegung überhaupt
 // von einem Strassenfahrzeug stammen kann — oder ob sie nach Bahn bzw. Flug
-// aussieht. Reine Funktion ohne I/O: derselbe Code laeuft im Browser als
-// frueher Hinweis waehrend der Fahrt und serverseitig als Bedingung fuers
+// aussieht. Reine Funktion ohne I/O: derselbe Code läuft im Browser als
+// früher Hinweis während der Fahrt und serverseitig als Bedingung fürs
 // Speichern (lib/actions/completions.ts), so wie es Deckungsgrad
 // (lib/routeCoverage.ts) und Teilbarkeit (publicationBlockReason in
 // lib/track.ts) schon vormachen.
@@ -14,13 +14,13 @@ import { MAX_JUMP_KM, MOVING_MIN_KMH } from "@/lib/track";
 // wird, verliert echte Arbeit — eine nicht erkannte Zugfahrt kostet nur
 // einen falschen Eintrag. Deshalb sind alle Schwellen so gesetzt, dass eine
 // schnelle, legale (und auch eine deutlich zu schnelle) Autobahnetappe
-// durchgeht, und jede Ablehnung braucht mehrere unabhaengige Signale
+// durchgeht, und jede Ablehnung braucht mehrere unabhängige Signale
 // gleichzeitig.
 
 /**
  * Ein Trail-Punkt, optional mit der GPS-Genauigkeit des Fixes. Der Recorder
- * (components/useRideRecorder.ts) verwirft Fixes ueber MIN_ACCURACY_M schon
- * vor dem Trail, fuehrt die Genauigkeit aber nicht mit — das Feld ist fuer
+ * (components/useRideRecorder.ts) verwirft Fixes über MIN_ACCURACY_M schon
+ * vor dem Trail, führt die Genauigkeit aber nicht mit — das Feld ist für
  * Aufrufer da, die sie haben (z.B. importierte Tracks), und bleibt sonst
  * schlicht leer.
  */
@@ -33,7 +33,7 @@ export type Bewegungsart = "unbestimmt" | "strassenfahrzeug" | "bahn" | "flug";
 export interface Bewegungskennzahlen {
   punkte: number;
   distanzKm: number;
-  /** Sekunden, in denen der Trail sich tatsaechlich bewegt hat (ohne Halte). */
+  /** Sekunden, in denen der Trail sich tatsächlich bewegt hat (ohne Halte). */
   bewegtSekunden: number;
   /** Zeitgewichteter Median der Fenstertempi in Bewegung. */
   tempoMedianKmh: number;
@@ -43,31 +43,31 @@ export interface Bewegungskennzahlen {
   zeitanteilUeberBahnTempo: number;
   /** Aufsummierte Sekunden oberhalb von FLUG_TEMPO_KMH. */
   sekundenUeberFlugTempo: number;
-  /** Aufsummierte Richtungsaenderung je Kilometer (Grad/km). */
+  /** Aufsummierte Richtungsänderung je Kilometer (Grad/km). */
   kurvigkeitGradProKm: number;
 }
 
 export interface Bewegungsprofil {
   art: Bewegungsart;
-  /** false nur bei "bahn"/"flug" — "unbestimmt" laesst immer durch. */
+  /** false nur bei "bahn"/"flug" — "unbestimmt" lässt immer durch. */
   plausibel: boolean;
-  /** Deutscher Klartext fuers UI; null, wenn nichts dagegen spricht. */
+  /** Deutscher Klartext fürs UI; null, wenn nichts dagegen spricht. */
   begruendung: string | null;
   kennzahlen: Bewegungskennzahlen;
 }
 
 // --- Schwellen: Datengrundlage ---------------------------------------------
 
-// Unterhalb dieser Groessen wird gar nicht geurteilt ("unbestimmt", und damit
-// durchgelassen). Eine Handvoll Punkte ueber wenige hundert Meter traegt
-// keine Aussage: dort sieht ein Rangiermanoever aus wie eine Bahnfahrt.
+// Unterhalb dieser Grössen wird gar nicht geurteilt ("unbestimmt", und damit
+// durchgelassen). Eine Handvoll Punkte über wenige hundert Meter trägt
+// keine Aussage: dort sieht ein Rangiermanöver aus wie eine Bahnfahrt.
 export const MIN_PUNKTE = 20;
 export const MIN_DISTANZ_KM = 2;
 export const MIN_BEWEGTZEIT_SEKUNDEN = 120;
 
-// Fensterlaenge fuer die Tempoberechnung. Einzelne GPS-Ausreisser (ein
+// Fensterlänge für die Tempoberechnung. Einzelne GPS-Ausreisser (ein
 // Sprung, ein schlechter Fix) verschwinden in einem 30-Sekunden-Mittel,
-// waehrend eine echte Reisegeschwindigkeit ueber Minuten stabil bleibt.
+// während eine echte Reisegeschwindigkeit über Minuten stabil bleibt.
 const FENSTER_SEKUNDEN = 30;
 
 // Punkte mit schlechterer Genauigkeit fliessen nicht in die Tempostatistik
@@ -76,39 +76,39 @@ const FENSTER_SEKUNDEN = 30;
 const MAX_GENAUIGKEIT_M = 50;
 
 // Tempo, oberhalb dessen ein Segment nicht mehr Bewegung, sondern ein
-// Messfehler ist (Sprung ins Nichts und zurueck). Bewusst ueber jeder
-// Reisegeschwindigkeit eines Verkehrsflugzeugs: ein zu enger Filter wuerde
-// bei duenner Abtastung echte, schnelle Segmente wegwerfen. Alles darunter
-// bleibt drin und wird durch die Fenstermittelung entschaerft — deshalb kann
-// ein einzelner Ausreisser nie allein zu einem Verdikt fuehren.
+// Messfehler ist (Sprung ins Nichts und zurück). Bewusst über jeder
+// Reisegeschwindigkeit eines Verkehrsflugzeugs: ein zu enger Filter würde
+// bei dünner Abtastung echte, schnelle Segmente wegwerfen. Alles darunter
+// bleibt drin und wird durch die Fenstermittelung entschärft — deshalb kann
+// ein einzelner Ausreisser nie allein zu einem Verdikt führen.
 const AUSREISSER_TEMPO_KMH = 1500;
 
-// Groesste Luecke, ueber die hinweg die Linienfuehrung noch als
-// zusammenhaengend gilt (Kurvigkeit). Gleiche Grenze wie MAX_JUMP_KM in
-// lib/track.ts: was darueber liegt, ist Empfangsverlust oder Sprung und
+// Grösste Lücke, über die hinweg die Linienführung noch als
+// zusammenhängend gilt (Kurvigkeit). Gleiche Grenze wie MAX_JUMP_KM in
+// lib/track.ts: was darüber liegt, ist Empfangsverlust oder Sprung und
 // darf nicht als scharfer Knick in die Kurvigkeit eingehen.
 const MAX_LUECKE_KM = MAX_JUMP_KM;
 
 // --- Schwellen: Verdikte ---------------------------------------------------
 
-// Flug. 300 km/h ueber zwei zusammengerechnete Minuten: kein Strassenfahrzeug
-// haelt das im oeffentlichen Verkehr, auch nicht auf einer unbegrenzten
-// Autobahn. Bewusst weit oberhalb jeder Auto-Hoechstgeschwindigkeit, damit
+// Flug. 300 km/h über zwei zusammengerechnete Minuten: kein Strassenfahrzeug
+// hält das im öffentlichen Verkehr, auch nicht auf einer unbegrenzten
+// Autobahn. Bewusst weit oberhalb jeder Auto-Höchstgeschwindigkeit, damit
 // ein Messfehler bei Tempo 250 nicht als Flug endet.
 export const FLUG_TEMPO_KMH = 300;
 export const FLUG_MIN_SEKUNDEN = 120;
 
-// Bahn. Alle vier Bedingungen muessen zusammen erfuellt sein:
-//  - mehr als die Haelfte der Bewegtzeit ueber 140 km/h. Das Schweizer
-//    Autobahnlimit liegt bei 120; mit GPS-Toleranz und zuegiger Fahrweise
-//    sind 130..140 noch erklaerbar, dauerhaft daueber ist es der Zug (IC/ICE
-//    fahren 140..200). Ein einzelner Ueberholvorgang faellt nicht ins
+// Bahn. Alle vier Bedingungen müssen zusammen erfüllt sein:
+//  - mehr als die Hälfte der Bewegtzeit über 140 km/h. Das Schweizer
+//    Autobahnlimit liegt bei 120; mit GPS-Toleranz und zügiger Fahrweise
+//    sind 130..140 noch erklärbar, dauerhaft darüber ist es der Zug (IC/ICE
+//    fahren 140..200). Ein einzelner Überholvorgang fällt nicht ins
 //    Gewicht, weil es um die halbe Bewegtzeit geht.
-//  - mindestens 20 km und 10 Minuten in Bewegung: kurze Stuecke sind zu
-//    zufaellig, um darauf eine Ablehnung zu stuetzen.
-//  - hoechstens 20 Grad Richtungsaenderung je Kilometer. Das ist die
+//  - mindestens 20 km und 10 Minuten in Bewegung: kurze Stücke sind zu
+//    zufällig, um darauf eine Ablehnung zu stützen.
+//  - höchstens 20 Grad Richtungsänderung je Kilometer. Das ist die
 //    Absicherung gegen den teuersten Irrtum: eine kurvige Landstrasse oder
-//    Passstrasse liegt um ein Vielfaches darueber und kann so nie als Bahn
+//    Passstrasse liegt um ein Vielfaches darüber und kann so nie als Bahn
 //    gelten, egal wie schnell gefahren wurde.
 export const BAHN_TEMPO_KMH = 140;
 export const BAHN_MIN_ZEITANTEIL = 0.5;
@@ -117,13 +117,13 @@ export const BAHN_MIN_BEWEGTZEIT_SEKUNDEN = 600;
 export const BAHN_MAX_KURVIGKEIT_GRAD_PRO_KM = 20;
 
 // Bewusst NICHT erkannt: S-Bahn und Regionalzug unter 140 km/h. Sie liessen
-// sich nur ueber Merkmale fassen (Halte im Takt, gleichmaessiges Tempo um
-// 100 km/h), die eine Autobahnfahrt mit Stau ebenso erfuellt — und dieser
-// Irrtum kostet eine echte Fahrt. Der Trade-off ist bewusst so gewaehlt.
+// sich nur über Merkmale fassen (Halte im Takt, gleichmässiges Tempo um
+// 100 km/h), die eine Autobahnfahrt mit Stau ebenso erfüllt — und dieser
+// Irrtum kostet eine echte Fahrt. Der Trade-off ist bewusst so gewählt.
 
-// Abstand, auf den die Linie fuer die Kurvigkeit ausgeduennt wird. Bei
+// Abstand, auf den die Linie für die Kurvigkeit ausgedünnt wird. Bei
 // dichter GPS-Abtastung zittert die Richtung von Punkt zu Punkt um zig Grad;
-// erst ueber 500 m misst man die Linienfuehrung statt des Rauschens.
+// erst über 500 m misst man die Linienführung statt des Rauschens.
 const KURVIGKEIT_ABSTAND_M = 500;
 
 interface Fenster {
@@ -132,7 +132,7 @@ interface Fenster {
 }
 
 // Segmente zwischen aufeinanderfolgenden Punkten, ohne offensichtliche
-// Ausreisser: Zeitstillstand/-ruecklauf, unplausible Spruenge und (falls
+// Ausreisser: Zeitstillstand/-rücklauf, unplausible Sprünge und (falls
 // bekannt) zu ungenaue Fixes.
 function saubereSegmente(punkte: BewegungsPunkt[]): { km: number; sekunden: number }[] {
   const segmente: { km: number; sekunden: number }[] = [];
@@ -169,13 +169,13 @@ function fenster(segmente: { km: number; sekunden: number }[]): Fenster[] {
       sekunden = 0;
     }
   }
-  // Rest nur mitnehmen, wenn er ueberhaupt Zeit traegt — sein Gewicht in
+  // Rest nur mitnehmen, wenn er überhaupt Zeit trägt — sein Gewicht in
   // allen Kennzahlen ist ohnehin seine Dauer.
   if (sekunden > 0) ergebnis.push({ kmh: km / (sekunden / 3600), sekunden });
   return ergebnis;
 }
 
-// Zeitgewichtetes Quantil ueber die Fenstertempi: ein langes Fenster zaehlt
+// Zeitgewichtetes Quantil über die Fenstertempi: ein langes Fenster zählt
 // mehr als ein kurzes.
 function quantil(fensterListe: Fenster[], anteil: number): number {
   if (fensterListe.length === 0) return 0;
@@ -200,7 +200,7 @@ function peilungGrad([lng1, lat1]: [number, number], [lng2, lat2]: [number, numb
   return (Math.atan2(y, x) * 180) / Math.PI;
 }
 
-// Aufsummierte Richtungsaenderung je Kilometer auf der ausgeduennten Linie.
+// Aufsummierte Richtungsänderung je Kilometer auf der ausgedünnten Linie.
 // Eine Passstrasse liegt hier bei mehreren hundert Grad/km, eine Autobahn
 // im niedrigen zweistelligen Bereich, eine Bahnstrecke darunter.
 function kurvigkeitGradProKm(punkte: BewegungsPunkt[]): number {
@@ -216,7 +216,7 @@ function kurvigkeitGradProKm(punkte: BewegungsPunkt[]): number {
       continue;
     }
     const km = haversineKm(letzter, koordinate);
-    // Luecken ueberspringen, statt sie als scharfen Knick in die Kurvigkeit
+    // Lücken überspringen, statt sie als scharfen Knick in die Kurvigkeit
     // einzurechnen.
     if (km > MAX_LUECKE_KM) {
       letzter = koordinate;
@@ -254,7 +254,7 @@ function unbestimmt(kennzahlen: Bewegungskennzahlen): Bewegungsprofil {
 
 /**
  * Beurteilt, ob ein aufgezeichneter Trail von einem Strassenfahrzeug stammen
- * kann. Im Zweifel ("unbestimmt") immer plausibel — zu kurze oder zu duenne
+ * kann. Im Zweifel ("unbestimmt") immer plausibel — zu kurze oder zu dünne
  * Aufzeichnungen bekommen kein Verdikt.
  */
 export function bewerteBewegungsprofil(punkte: BewegungsPunkt[]): Bewegungsprofil {
@@ -290,8 +290,8 @@ export function bewerteBewegungsprofil(punkte: BewegungsPunkt[]): Bewegungsprofi
     return unbestimmt(kennzahlen);
   }
 
-  // Flug zuerst: eine Flugbewegung erfuellt auch die Bahn-Bedingungen, die
-  // Begruendung waere dann aber die falsche.
+  // Flug zuerst: eine Flugbewegung erfüllt auch die Bahn-Bedingungen, die
+  // Begründung wäre dann aber die falsche.
   if (kennzahlen.sekundenUeberFlugTempo >= FLUG_MIN_SEKUNDEN) {
     return {
       art: "flug",

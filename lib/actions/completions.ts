@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isRateLimited } from "@/lib/rateLimit";
 import { computeRouteCoverage, COVERAGE_THRESHOLD_PERCENT } from "@/lib/routeCoverage";
 import { computeTrailStats, type TrailPoint } from "@/lib/geo";
+import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
 import {
   MAX_JUMP_KM,
   MAX_RIDE_SECONDS,
@@ -133,6 +134,21 @@ function implausibilityReason(
   if (maxJumpKm(trail) > MAX_JUMP_KM) {
     return "Die Aufzeichnung enthält eine zu grosse Lücke zwischen zwei Punkten.";
   }
+
+  // Bewegungsprofil: stammt die Bewegung überhaupt von einem
+  // Strassenfahrzeug, oder sieht sie nach Bahn/Flug aus (siehe
+  // lib/bewegungsprofil.ts)? Bewusst hier und nicht nur im Client: der
+  // Client-Hinweis ist Komfort, diese Stelle ist die Kontrolle. Sie sitzt in
+  // implausibilityReason, weil damit beide Speicherwege (Streckenfahrt und
+  // freie Fahrt) und auch die automatisch erkannten Streckenabschnitte
+  // innerhalb einer freien Fahrt dieselbe Prüfung durchlaufen.
+  //
+  // NEUE GESCHÄFTSREGEL: Fahrten können dadurch abgelehnt werden. Im
+  // Zweifel (zu kurze/dünne Aufzeichnung) fällt kein Urteil und es bleibt
+  // beim bisherigen Verhalten.
+  const bewegung = bewerteBewegungsprofil(trail);
+  if (!bewegung.plausibel && bewegung.begruendung) return bewegung.begruendung;
+
   return null;
 }
 
