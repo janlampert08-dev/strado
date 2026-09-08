@@ -1,8 +1,20 @@
 import type { MetadataRoute } from "next";
 import { getOrigin } from "@/lib/utils/url";
+import { istStaging } from "@/lib/staging";
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
   const origin = await getOrigin();
+
+  // Staging trägt denselben Inhalt wie die Produktion, ist aus eigenem
+  // Antrieb öffentlich erreichbar (Vercels Deployment Protection muss aus
+  // bleiben, damit Stripe seine Sandbox-Webhooks zustellen kann) und würde
+  // sonst mit app.strado.ch um dieselben Suchbegriffe konkurrieren. Kein
+  // sitemap-Verweis: eine Sitemap, die zu lauter gesperrten Adressen führt,
+  // ist bestenfalls Lärm.
+  if (istStaging(new URL(origin).hostname)) {
+    return { rules: { userAgent: "*", disallow: "/" } };
+  }
+
   return {
     rules: {
       userAgent: "*",
@@ -21,7 +33,14 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
       // es stattdessen mit robots: { index: false } in
       // app/fahrer/[id]/page.tsx — was voraussetzt, dass der Crawler die
       // Seite überhaupt holen darf.
-      disallow: ["/profil", "/moderation", "/api", "/aktivitaet", "/anmelden", "/registrieren"],
+      disallow: [
+        "/profil",
+        "/moderation",
+        "/api",
+        "/aktivitaet",
+        "/anmelden",
+        "/registrieren",
+      ],
     },
     sitemap: `${origin}/sitemap.xml`,
   };

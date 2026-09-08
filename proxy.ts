@@ -1,10 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
-
-// Die Staging-Umgebung läuft unter dieser eigenen Domain (separates
-// Vercel-Deployment des staging-Branches) — Produktion läuft unter
-// app.strado.ch und ist von diesem Gate nie betroffen.
-const STAGING_HOSTNAME = "staging.strado.ch";
+import { istStaging } from "@/lib/staging";
 
 // Pfade, die auch auf Staging ohne Login/Moderator-Status erreichbar bleiben
 // müssen: die Anmeldeseite selbst (sonst könnte sich niemand einloggen), die
@@ -13,12 +9,19 @@ const STAGING_HOSTNAME = "staging.strado.ch";
 // /api/**, das laut Absprache von diesem Gate ausgenommen bleibt (u.a. der
 // Stripe-Webhook, der keine Login-Session mitbringt, und die bewusst
 // unauthentifizierten /api/strecken/**-Endpunkte).
+//
+// Dazu /robots.txt: ohne diese Ausnahme bekäme ein Crawler statt des
+// "disallow: /" aus app/robots.ts eine Weiterleitung auf /anmelden — und die
+// Anmeldeseite ist ausgenommen, wäre also das Einzige, was er von Staging je
+// zu sehen bekommt und indexieren kann. Die Ausnahme gibt nichts preis: die
+// Antwort ist auf Staging genau eine Zeile Verbot.
 function istVomGateAusgenommen(pathname: string): boolean {
   return (
     pathname === "/anmelden" ||
     pathname.startsWith("/anmelden/") ||
     pathname.startsWith("/auth/") ||
-    pathname.startsWith("/api/")
+    pathname.startsWith("/api/") ||
+    pathname === "/robots.txt"
   );
 }
 
@@ -26,7 +29,7 @@ export async function proxy(request: NextRequest) {
   const { response, supabase, user } = await updateSession(request);
 
   if (
-    request.nextUrl.hostname !== STAGING_HOSTNAME ||
+    !istStaging(request.nextUrl.hostname) ||
     istVomGateAusgenommen(request.nextUrl.pathname)
   ) {
     return response;

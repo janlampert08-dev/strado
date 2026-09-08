@@ -405,6 +405,10 @@ additional care and review before merging changes to them:
 - `/lib/rateLimit.ts` — abuse-prevention cooldown checks (per-user, DB
   backed) and the per-IP limiter the public API depends on.
 - `/lib/validation.ts` — `isValidUuid`, the input guard on those endpoints.
+- `/lib/staging.ts` — decides whether a request is running against the
+  staging deployment. `proxy.ts` locks staging to logged-in moderators on
+  the strength of it, and `app/robots.ts` blocks indexing on the same
+  signal. A change that narrows it opens staging to the public.
 - `/.github/` — CI/CD configuration.
 - `/.claude/` — `settings.json` (`permissions.ask`) and
   `hooks/sql-guard.sh`. The "Think twice before executing SQL" rule below
