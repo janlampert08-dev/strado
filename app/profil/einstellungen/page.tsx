@@ -7,7 +7,7 @@ import { DEFAULT_PRIVACY_RADIUS_M } from "@/lib/track";
 import ThemeToggle from "@/components/ThemeToggle";
 import DeleteProposalButton from "@/components/DeleteProposalButton";
 import DeleteAccountSection from "@/components/DeleteAccountSection";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import Card from "@/components/ui/Card";
 import Button, { buttonVariants } from "@/components/ui/Button";
 import { LEGAL_URLS } from "@/lib/constants";
@@ -26,9 +26,7 @@ import { LEGAL_URLS } from "@/lib/constants";
 // gibt, und kein separates Tab-Primitiv nur für diese eine Seite.
 export default async function EinstellungenPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) redirect("/anmelden");
 

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { detectLaps, type RouteCandidate } from "@/lib/lapDetection";
 import type { TrailPoint } from "@/lib/geo";
-import type { RouteGeoJSON } from "@/types/database";
+import type { ExploreRoute } from "@/types/database";
 
 // Nur zur Beruhigung/Orientierung während der Fahrt geprüft, deshalb
 // grosszügig gedrosselt — nicht bei jedem GPS-Fix und nicht so häufig wie
@@ -37,7 +37,7 @@ export interface LiveLapHint {
 export function useLiveLapHint(
   active: boolean,
   liveTrailPoints: TrailPoint[],
-  routes: RouteGeoJSON[],
+  routes: ExploreRoute[],
 ): LiveLapHint | null {
   const [hint, setHint] = useState<LiveLapHint | null>(null);
   const trailRef = useRef(liveTrailPoints);

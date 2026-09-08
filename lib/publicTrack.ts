@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { DEFAULT_PRIVACY_RADIUS_M, cropTrackEnds, toEwktLineString } from "@/lib/track";
+import { MAX_PRIVACY_RADIUS_M, cropTrackEnds, toEwktLineString } from "@/lib/track";
 import type { GeoLineString } from "@/types/database";
 
 type ServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -9,16 +9,35 @@ type ServerClient = Awaited<ReturnType<typeof createClient>>;
 // aufrufbarer Endpunkt. Sie werden ausschliesslich von Server Actions
 // (lib/actions/completions.ts, lib/actions/profile.ts) benutzt.
 
-// Der eingestellte Privatzonen-Radius des Nutzers. Fällt auf den Standard
-// zurück, wenn das Profil nicht gelesen werden kann — im Zweifel wird
-// gekappt, nicht veröffentlicht.
+// Der eingestellte Privatzonen-Radius des Nutzers.
+//
+// Der Rückfallwert ist bewusst MAX_PRIVACY_RADIUS_M und nicht der Standard:
+// Vorher stand hier DEFAULT_PRIVACY_RADIUS_M (200 m) mit dem Kommentar "im
+// Zweifel wird gekappt, nicht veröffentlicht". Das stimmt nur für Konten, die
+// den Standard nie verändert haben. Wer 500 m eingestellt hat, bekam bei
+// einem Lesefehler 200 m — also 300 m WENIGER Schutz als verlangt, und zwar
+// genau an den beiden Enden des Tracks, an denen die Wohnadresse liegt.
+// Zusätzlich wurde der Fehler gar nicht erst betrachtet: `const { data }`
+// verwirft ihn, ein Ausfall der Datenbank war von "Nutzer hat 200 m
+// eingestellt" nicht zu unterscheiden.
+//
+// Der strengste Wert als Rückfall dreht die Fehlerrichtung um: Im Zweifel
+// wird zu viel gekappt. Das kostet im schlimmsten Fall ein Stück Kartenlinie
+// bei jemandem, der die Privatzone bewusst abgeschaltet hat — die
+// Gegenrichtung kostet eine Adresse.
 export async function privacyRadiusM(supabase: ServerClient, userId: string): Promise<number> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("profiles")
     .select("privatzone_radius_m")
     .eq("id", userId)
     .maybeSingle<{ privatzone_radius_m: number }>();
-  return data?.privatzone_radius_m ?? DEFAULT_PRIVACY_RADIUS_M;
+
+  if (error) {
+    console.error("Privatzonen-Radius konnte nicht gelesen werden", { userId }, error);
+    return MAX_PRIVACY_RADIUS_M;
+  }
+
+  return data?.privatzone_radius_m ?? MAX_PRIVACY_RADIUS_M;
 }
 
 // Die öffentlich sichtbare Fassung eines Tracks: Anfang und Ende innerhalb

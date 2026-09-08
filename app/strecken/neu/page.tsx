@@ -1,15 +1,12 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
 import { isModerator } from "@/lib/moderation";
 import NeueStreckeForm from "@/components/NeueStreckeForm";
 import PremiumGate from "@/components/PremiumGate";
 
 export default async function NeueStreckePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) redirect("/anmelden");
 

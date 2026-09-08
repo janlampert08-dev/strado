@@ -6,7 +6,7 @@ import { Gauge, Mountain, Route, Ruler, SearchX, TrendingUp } from "lucide-react
 import { routeShapePath } from "@/lib/routeShape";
 import { formatKm } from "@/lib/format";
 import { withAlpha, type RouteSignature, type SignatureKey } from "@/lib/signature";
-import type { RouteGeoJSON } from "@/types/database";
+import type { ExploreRoute } from "@/types/database";
 import { fieldClassName } from "@/components/ui/Input";
 import EmptyState from "@/components/ui/EmptyState";
 
@@ -34,7 +34,7 @@ export default function ExploreSidebar({
   onRequestLocation,
   onHoverRoute,
 }: {
-  routes: RouteGeoJSON[];
+  routes: ExploreRoute[];
   loadError?: boolean;
   loggedIn: boolean;
   searchQuery: string;

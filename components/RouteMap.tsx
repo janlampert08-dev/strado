@@ -31,6 +31,18 @@ const HIGHLIGHT_LINE_LAYER = "route-highlight-line";
 const TRACK_SOURCE = "ride-track";
 const TRACK_LINE_LAYER = "ride-track-line";
 const TRACK_COLOR = "#3D5AFE";
+// Leere Vorgaben für die optionalen Listen-Props auf Modulebene statt als
+// Destrukturierungs-Default. `trail = []` im Signatur-Kopf erzeugt bei JEDEM
+// Render ein neues Array — und damit eine neue Referenz für die
+// Abhängigkeitslisten der beiden Effekte weiter unten, die daraufhin bei
+// jedem Render setData() auf der Quelle aufrufen und die Karte neu zeichnen
+// lassen. Genau das passiert bei jedem Aufrufer, der die Prop weglässt (z. B.
+// die Explore-Karte, die einmal pro Sekunde einen GPS-Fix bekommt): eine
+// laufende WebGL-Neuzeichnung ohne jede Änderung, auf dem Gerät im Auto.
+// Dieselbe Lösung wie NO_ROUTES in CompletionMap.tsx.
+const KEINE_VERKEHRSSEGMENTE: { coords: [number, number][]; color: string }[] = [];
+const KEIN_TRACK: [number, number][] = [];
+
 const TERRAIN_SOURCE = "mapbox-dem";
 const SKY_LAYER = "sky";
 const TERRAIN_EXAGGERATION = 1.4;
@@ -303,8 +315,8 @@ export default function RouteMap({
   hoveredRouteId = null,
   primaryRouteId = null,
   flyToRouteId = null,
-  trafficSegments = [],
-  trail = [],
+  trafficSegments = KEINE_VERKEHRSSEGMENTE,
+  trail = KEIN_TRACK,
   fitTrail = false,
   fitRoutes = true,
   routesClickable = true,
@@ -314,8 +326,14 @@ export default function RouteMap({
   // Alle Strecken, die gezeichnet werden. Die Reihenfolge ist gleichgültig,
   // sie landen gemeinsam in einer Feature-Sammlung. Genau eine Strecke ist
   // kein Sonderfall des Zeichnens, wohl aber für showSpeedLimits — siehe
-  // dort. KartenStrecke statt RouteGeoJSON, weil die Kontext-Strecken des
-  // Aufzeichnungsschirms nur die Felder tragen, die zum Zeichnen nötig sind.
+  // dort.
+  //
+  // KartenStrecke statt RouteGeoJSON: die Karte liest nur sieben Spalten, und
+  // getRoutes() lädt seit e1571b9 auch nur noch die, die die Explore-Ansicht
+  // braucht. Eine vollständige Zeile erfüllt den engeren Typ strukturell
+  // weiterhin, die übrigen Aufrufer bleiben also unverändert — und die
+  // Kontext-Strecken des Aufzeichnungsschirms, die nur die Zeichenfelder
+  // tragen, erfüllen ihn ebenfalls.
   routes: KartenStrecke[];
   // null blendet den Standort-Marker aus, statt ihn auf einer alten Position
   // stehen zu lassen.

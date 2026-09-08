@@ -4,7 +4,13 @@
   --color-background: #fafafa;
   --color-foreground: #131316;
   --color-accent: #3d5afe;
-  --color-muted: #8a8f98;
+  /* Trägt fast den gesamten Sekundärtext der App (Labels, Hinweise,
+     Einheiten). Vorher #8a8f98 — 3.11:1 auf #fafafa und damit unter der
+     AA-Schwelle von 4.5:1. Das ist genau der Text, der bei Sonnenlicht auf
+     einem Handy im Auto gelesen werden muss, also unter den schlechtesten
+     Bedingungen, die diese App hat. #666b74 bringt 5.13:1 auf dem
+     Hintergrund und 4.92:1 auf --color-surface. */
+  --color-muted: #666b74;
 
   /* Ein Token statt der bisherigen, uneinheitlich verwendeten
      border-foreground/10|15|20|30-Opazitätsstufen. */
@@ -67,6 +73,26 @@
     --color-accent-subtle: color-mix(in oklch, var(--color-accent) 14%, var(--color-background));
     --color-accent-strong: color-mix(in oklch, var(--color-accent) 80%, white);
 
+    /* Die drei Statusfarben wurden im Dunkelmodus bisher NICHT neu
+       gesetzt. Die Werte aus :root sind für einen hellen Hintergrund
+       gewählt und fallen auf #0b0b0d unter die AA-Schwelle: #dc2626 auf
+       4.07:1, #1a7f37 auf 3.87:1, #b45309 auf 3.92:1 — jede
+       Fehlermeldung, jede Erfolgsmeldung, jeder Warnhinweis. Der
+       Kommentar über dem @media-Block ("ein Redefinieren hier genügt für
+       die ganze App") ist der Grund, warum das übersehen werden konnte:
+       er stimmt nur für die Tokens, die auch wirklich redefiniert werden.
+
+       Bewusst die satten Stufen (500er statt 400er): sie erfüllen AA
+       (5.23 / 8.63 / 9.16 auf dem Hintergrund, 4.57 / 7.54 / 8.00 auf
+       --color-surface) und bleiben als Fläche erkennbar rot/grün/gelb —
+       --color-danger ist in components/ui/Button.tsx auch Füllfarbe, und
+       eine pastellrosa Löschen-Schaltfläche liest sich nicht mehr als
+       Warnung. Als Füllung mit text-background ergibt #ef4444 dieselben
+       5.23:1. */
+    --color-danger: #ef4444;
+    --color-success: #22c55e;
+    --color-warning: #f59e0b;
+
     --shadow-sm: 0 1px 3px color-mix(in oklch, black 40%, transparent);
     --shadow-elevated: 0 2px 8px -2px color-mix(in oklch, black 50%, transparent),
       0 1px 2px color-mix(in oklch, black 30%, transparent);
@@ -94,6 +120,26 @@
 
   --color-accent-subtle: color-mix(in oklch, var(--color-accent) 14%, var(--color-background));
   --color-accent-strong: color-mix(in oklch, var(--color-accent) 80%, white);
+
+  /* Die drei Statusfarben wurden im Dunkelmodus bisher NICHT neu
+     gesetzt. Die Werte aus :root sind für einen hellen Hintergrund
+     gewählt und fallen auf #0b0b0d unter die AA-Schwelle: #dc2626 auf
+     4.07:1, #1a7f37 auf 3.87:1, #b45309 auf 3.92:1 — jede
+     Fehlermeldung, jede Erfolgsmeldung, jeder Warnhinweis. Der
+     Kommentar über dem @media-Block ("ein Redefinieren hier genügt für
+     die ganze App") ist der Grund, warum das übersehen werden konnte:
+     er stimmt nur für die Tokens, die auch wirklich redefiniert werden.
+
+     Bewusst die satten Stufen (500er statt 400er): sie erfüllen AA
+     (5.23 / 8.63 / 9.16 auf dem Hintergrund, 4.57 / 7.54 / 8.00 auf
+     --color-surface) und bleiben als Fläche erkennbar rot/grün/gelb —
+     --color-danger ist in components/ui/Button.tsx auch Füllfarbe, und
+     eine pastellrosa Löschen-Schaltfläche liest sich nicht mehr als
+     Warnung. Als Füllung mit text-background ergibt #ef4444 dieselben
+     5.23:1. */
+  --color-danger: #ef4444;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
 
   --shadow-sm: 0 1px 3px color-mix(in oklch, black 40%, transparent);
   --shadow-elevated: 0 2px 8px -2px color-mix(in oklch, black 50%, transparent),

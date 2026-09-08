@@ -18,7 +18,7 @@ import RideSummaryForm from "@/components/RideSummaryForm";
 import { formatDuration } from "@/lib/format";
 import { movingSeconds, publicationBlockReason } from "@/lib/track";
 import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
-import type { RouteGeoJSON, Vehicle } from "@/types/database";
+import type { ExploreRoute, Vehicle } from "@/types/database";
 import { fieldClassName } from "@/components/ui/Input";
 import { buttonVariants } from "@/components/ui/Button";
 import Skeleton from "@/components/ui/Skeleton";
@@ -60,7 +60,7 @@ export default function FreeRideForm({
   // Karte folgt der GPS-Position). Ein Streckenbezug entsteht daraus nicht —
   // eine freie Fahrt bleibt eine freie Fahrt, auch wenn sie zufällig über
   // eine kuratierte Strecke führt.
-  routes: RouteGeoJSON[];
+  routes: ExploreRoute[];
   // Der Marker aus ?fortsetzen=<token>, mit dem sich die Rückkehr aus dem
   // Anmelde-Gate ausweist — nur damit darf die als Gast aufgezeichnete Fahrt
   // an dieses Konto übergehen (siehe adoptGuestTrackingSnapshot).
@@ -455,7 +455,7 @@ export default function FreeRideForm({
             <button
               type="button"
               onClick={recorder.stop}
-              className={buttonVariants({ variant: "accent" })}
+              className={buttonVariants({ variant: "accent", size: "lg" })}
             >
               Fahrt beenden
             </button>
@@ -463,7 +463,7 @@ export default function FreeRideForm({
             <button
               type="button"
               onClick={handleExit}
-              className={buttonVariants({ variant: "secondary" })}
+              className={buttonVariants({ variant: "secondary", size: "lg" })}
             >
               Abbrechen
             </button>

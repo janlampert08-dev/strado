@@ -1,15 +1,28 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { haversineKm } from "@/lib/geo";
-import type { GeoLineString, KartenStrecke, RouteGeoJSON } from "@/types/database";
+import type { ExploreRoute, GeoLineString, KartenStrecke, RouteGeoJSON } from "@/types/database";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export async function getRoutes(): Promise<{ routes: RouteGeoJSON[]; error: boolean }> {
+// Die Spalten aus ExploreRoute, als String für PostgREST. Aus dem Typ
+// abgeleitet zu halten geht nicht (Typen existieren zur Laufzeit nicht) —
+// deshalb hier einmal ausgeschrieben und in types/database.ts dokumentiert.
+const EXPLORE_SPALTEN =
+  "id, name, region, start_ort, ziel_ort, start_geojson, ziel_geojson, geometry_geojson, hoehe_m, laenge_km, max_steigung_prozent, kehren, saison_status, tempolimits, ist_rundfahrt";
+
+// Vorher select("*"). Das lud für jede freigegebene Strecke zusätzlich
+// hoehenprofil, charakter_text, kategorien, status_ok, erstellt_von,
+// created_at und ist_privat — und schickte sie in die RSC-Nutzlast der
+// Startseite, wo keine Komponente sie liest (nachgeprüft an ExploreView,
+// ExploreSidebar, RouteMap, exploreFilters, signature, search, useLiveLapHint).
+// Das Höhenprofil ist dabei der teuerste Posten nach der Geometrie: ein
+// Array aus Punkten pro Strecke, für die Explore-Liste ohne jede Verwendung.
+export async function getRoutes(): Promise<{ routes: ExploreRoute[]; error: boolean }> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("routes_geojson")
-    .select("*")
+    .select(EXPLORE_SPALTEN)
     .eq("status_ok", true)
     .order("name");
 
@@ -18,7 +31,7 @@ export async function getRoutes(): Promise<{ routes: RouteGeoJSON[]; error: bool
     return { routes: [], error: true };
   }
 
-  return { routes: (data as RouteGeoJSON[]) ?? [], error: false };
+  return { routes: (data as unknown as ExploreRoute[]) ?? [], error: false };
 }
 
 // Umkreis um die gefahrene Strecke, in dem umliegende Strecken auf der
