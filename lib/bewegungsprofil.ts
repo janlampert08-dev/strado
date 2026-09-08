@@ -74,9 +74,12 @@ export interface Bewegungsprofil {
 
 // --- Schwellen: Datengrundlage ---------------------------------------------
 
-// Unterhalb dieser Grössen wird gar nicht geurteilt ("unbestimmt", und damit
+// Unterhalb dieser Grössen wird nicht geurteilt ("unbestimmt", und damit
 // durchgelassen). Eine Handvoll Punkte über wenige hundert Meter trägt
 // keine Aussage: dort sieht ein Rangiermanöver aus wie eine Bahnfahrt.
+//
+// Gilt NICHT für das Flug-Urteil: dessen Kriterium bringt seine eigene
+// Mindestgrösse mit (siehe FLUG_MIN_SEKUNDEN) und wird davor geprüft.
 export const MIN_PUNKTE = 20;
 export const MIN_DISTANZ_KM = 2;
 export const MIN_BEWEGTZEIT_SEKUNDEN = 120;
@@ -311,16 +314,16 @@ export function bewerteBewegungsprofil(punkte: BewegungsPunkt[]): Bewegungsprofi
     kurvigkeitGradProKm: kurvigkeitGradProKm(punkte),
   };
 
-  if (
-    punkte.length < MIN_PUNKTE ||
-    distanzKm < MIN_DISTANZ_KM ||
-    bewegtSekunden < MIN_BEWEGTZEIT_SEKUNDEN
-  ) {
-    return unbestimmt(kennzahlen);
-  }
-
-  // Flug zuerst: eine Flugbewegung erfüllt auch die Bahn-Bedingungen, die
-  // Begründung wäre dann aber die falsche.
+  // Flug wird VOR den Mindestgrössen geprüft, nicht danach. Das Kriterium
+  // trägt seine eigene Mindestgrösse schon in sich — zwei Minuten über
+  // 300 km/h sind über zehn Kilometer —, und es an MIN_PUNKTE zu hängen
+  // liesse eine dünn abgetastete Aufzeichnung durch: bei einem Fix alle
+  // zehn Sekunden hat ein Zwei-Minuten-Flug dreizehn Punkte und damit
+  // weniger als MIN_PUNKTE, obwohl vier volle Fenster über der Schwelle
+  // liegen.
+  //
+  // Auch der Reihenfolge nach zuerst: eine Flugbewegung erfüllt die
+  // Bahn-Bedingungen ebenfalls, die Begründung wäre dann aber die falsche.
   if (kennzahlen.sekundenUeberFlugTempo >= FLUG_MIN_SEKUNDEN) {
     return {
       art: "flug",
@@ -331,6 +334,17 @@ export function bewerteBewegungsprofil(punkte: BewegungsPunkt[]): Bewegungsprofi
         "Als Auto- oder Motorradfahrt lässt sie sich deshalb nicht speichern.",
       kennzahlen,
     };
+  }
+
+  // Alles Übrige braucht eine Aufzeichnung, die überhaupt etwas aussagt.
+  // Eine Handvoll Punkte über wenige hundert Meter trägt kein Urteil: dort
+  // sieht ein Rangiermanöver aus wie eine Bahnfahrt.
+  if (
+    punkte.length < MIN_PUNKTE ||
+    distanzKm < MIN_DISTANZ_KM ||
+    bewegtSekunden < MIN_BEWEGTZEIT_SEKUNDEN
+  ) {
+    return unbestimmt(kennzahlen);
   }
 
   if (

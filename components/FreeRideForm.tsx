@@ -437,11 +437,16 @@ export default function FreeRideForm({
               : `„${liveLapHint.routeName}" wird erkannt · ${Math.round(liveLapHint.fraction * 100)}%`}
           </p>
         )}
-        {/* Zug/Flug erkannt: lieber jetzt sagen, dass diese Aufzeichnung
-            nicht gespeichert werden kann, als erst im Fazit. */}
+        {/* Zug oder Flug erkannt. Der Ton hängt an der Folge: ein Flug
+            lässt sich am Ende nicht speichern (rot), eine mutmassliche
+            Bahnfahrt schon — die fragt nur nach und darf deshalb nicht wie
+            ein Fehler aussehen. */}
         {bewegungswarnung && (
-          <p role="status" className="text-sm text-danger">
-            {bewegungswarnung}
+          <p
+            role="status"
+            className={`text-sm ${bewegungswarnung.blockiert ? "text-danger" : "text-muted"}`}
+          >
+            {bewegungswarnung.text}
           </p>
         )}
         {recorder.locationError && <p role="alert" className="text-sm text-danger">{recorder.locationError}</p>}

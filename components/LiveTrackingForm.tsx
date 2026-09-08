@@ -319,9 +319,14 @@ export default function LiveTrackingForm({
           {recorder.locationError && <p role="alert" className="text-sm text-danger">{recorder.locationError}</p>}
           {/* Zug/Flug erkannt: lieber jetzt sagen, dass diese Aufzeichnung
               nicht gespeichert werden kann, als erst im Fazit. */}
+          {/* Wie bei der freien Fahrt: rot nur, wenn das Speichern daran
+              scheitert. Eine mutmassliche Bahnfahrt fragt bloss nach. */}
           {bewegungswarnung && (
-            <p role="status" className="text-sm text-danger">
-              {bewegungswarnung}
+            <p
+              role="status"
+              className={`text-sm ${bewegungswarnung.blockiert ? "text-danger" : "text-muted"}`}
+            >
+              {bewegungswarnung.text}
             </p>
           )}
           {/* Vorwarnung statt einer Überraschung am Ziel — siehe

@@ -186,4 +186,22 @@ describe("bewerteBewegungsprofil", () => {
     expect(profil.art).toBe("unbestimmt");
     expect(profil.plausibel).toBe(true);
   });
+
+  it("erkennt auch einen dünn abgetasteten Flug", () => {
+    // Zwei Minuten bei einem Fix alle zehn Sekunden: dreizehn Punkte, also
+    // weniger als MIN_PUNKTE. Vor der Umstellung fiel dieser Track durch die
+    // Mindestgrössen und bekam gar kein Urteil — obwohl vier volle Fenster
+    // weit über der Flug-Schwelle lagen.
+    const punkte = erzeugeTrack({
+      dauerSekunden: 130,
+      schrittSekunden: 10,
+      tempo: () => 850,
+      kurs: () => 90,
+    });
+    expect(punkte.length).toBeLessThan(20);
+
+    const profil = bewerteBewegungsprofil(punkte);
+    expect(profil.art).toBe("flug");
+    expect(profil.blockiert).toBe(true);
+  });
 });

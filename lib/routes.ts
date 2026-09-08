@@ -32,10 +32,17 @@ export const KONTEXT_UMKREIS_KM = 25;
 // lesbar, und mehr hilft der Orientierung ohnehin nicht.
 export const KONTEXT_MAX_STRECKEN = 12;
 
-// Mittelpunkt der Bounding-Box einer Streckengeometrie — als Bezugspunkt
-// besser als der Startpunkt, weil eine 40 km lange Strecke sonst je nach
-// Fahrtrichtung einen ganz anderen Umkreis aufspannen würde.
-function geometrieMittelpunkt(route: RouteGeoJSON): [number, number] {
+// Achsenparalleles Rechteck um eine Streckengeometrie. Als Bezugsgrösse
+// besser als ein einzelner Punkt: eine 40 km lange Strecke hat keinen Ort,
+// sie hat eine Ausdehnung.
+interface Box {
+  minLng: number;
+  maxLng: number;
+  minLat: number;
+  maxLat: number;
+}
+
+function geometrieBox(route: KartenStrecke): Box | null {
   const coords = route.geometry_geojson.coordinates as [number, number][];
   let minLng = Infinity;
   let maxLng = -Infinity;
@@ -47,57 +54,85 @@ function geometrieMittelpunkt(route: RouteGeoJSON): [number, number] {
     if (lat < minLat) minLat = lat;
     if (lat > maxLat) maxLat = lat;
   }
-  if (!Number.isFinite(minLng) || !Number.isFinite(minLat)) {
-    return route.start_geojson.coordinates as [number, number];
-  }
-  return [(minLng + maxLng) / 2, (minLat + maxLat) / 2];
+  if (!Number.isFinite(minLng) || !Number.isFinite(minLat)) return null;
+  return { minLng, maxLng, minLat, maxLat };
+}
+
+// Die einander nächsten Werte zweier Intervalle. Überlappen sie, ist der
+// Abstand auf dieser Achse null — dann zählt nur noch die andere.
+function naechsteWerte(aMin: number, aMax: number, bMin: number, bMax: number): [number, number] {
+  if (aMax < bMin) return [aMax, bMin];
+  if (bMax < aMin) return [aMin, bMax];
+  const gemeinsam = Math.max(aMin, bMin);
+  return [gemeinsam, gemeinsam];
+}
+
+// Kürzester Abstand zwischen zwei Rechtecken. Bewusst über die Rechtecke und
+// nicht über ihre Mittelpunkte: eine lange Strecke kann auf zehn Kilometer
+// an der gefahrenen vorbeiführen, während ihr Mittelpunkt fünfzig Kilometer
+// weit weg liegt — über den Mittelpunkt gemessen fiele sie aus der Auswahl,
+// obwohl sie genau die Nachbarschaft ist, die zur Orientierung taugt.
+//
+// Punktgenau wäre der Abstand der Geometrien selbst; das kostet für jedes
+// Paar das Produkt ihrer Stützpunkte. Das Rechteck schätzt nach unten ab
+// (nie weiter als die echte Linie) und nimmt dafür ein paar Strecken mehr
+// auf, als nötig wären — auf einer Orientierungskarte der harmlosere Fehler.
+function boxAbstandKm(a: Box, b: Box): number {
+  const [lngA, lngB] = naechsteWerte(a.minLng, a.maxLng, b.minLng, b.maxLng);
+  const [latA, latB] = naechsteWerte(a.minLat, a.maxLat, b.minLat, b.maxLat);
+  return haversineKm([lngA, latA], [lngB, latB]);
 }
 
 // Wählt aus allen freigegebenen Strecken diejenigen aus, die rund um die
-// gefahrene Strecke liegen — die Auswahl selbst, ohne Datenbankzugriff, damit
-// getRoutes() die einzige Abfrage bleibt (dieselbe wie auf der Explore-Karte).
-// Die gefahrene Strecke ist nicht enthalten: sie wird auf dem
-// Aufzeichnungsschirm gesondert übergeben und hervorgehoben.
+// gefahrene Strecke liegen — die Auswahl selbst, ohne Datenbankzugriff,
+// damit sie prüfbar bleibt. Die gefahrene Strecke ist nicht enthalten: sie
+// wird auf dem Aufzeichnungsschirm gesondert übergeben und hervorgehoben.
 export function waehleKontextStrecken(
-  alle: RouteGeoJSON[],
-  route: RouteGeoJSON,
+  alle: KartenStrecke[],
+  route: KartenStrecke,
   umkreisKm: number = KONTEXT_UMKREIS_KM,
   maxAnzahl: number = KONTEXT_MAX_STRECKEN,
 ): KartenStrecke[] {
-  const bezug = geometrieMittelpunkt(route);
+  const bezug = geometrieBox(route);
+  if (!bezug) return [];
   return alle
     .filter((kandidat) => kandidat.id !== route.id)
-    .map((kandidat) => ({
-      kandidat,
-      distanzKm: haversineKm(bezug, geometrieMittelpunkt(kandidat)),
-    }))
+    .map((kandidat) => ({ kandidat, box: geometrieBox(kandidat) }))
+    .filter((eintrag): eintrag is { kandidat: KartenStrecke; box: Box } => eintrag.box !== null)
+    .map(({ kandidat, box }) => ({ kandidat, distanzKm: boxAbstandKm(bezug, box) }))
     .filter(({ distanzKm }) => distanzKm <= umkreisKm)
     .sort((a, b) => a.distanzKm - b.distanzKm)
     .slice(0, maxAnzahl)
-    // Auf das eindampfen, was die Karte zeichnet. Der Rest der Zeile —
-    // Höhenprofil, Tempolimits, Charaktertext — ist um ein Vielfaches
-    // grösser und ginge sonst zwölfmal pro Aufruf der Streckenseite als
-    // RSC-Payload an jeden Besucher, auch an den, der nie aufzeichnet.
-    .map(({ kandidat }) => ({
-      id: kandidat.id,
-      name: kandidat.name,
-      start_geojson: kandidat.start_geojson,
-      ziel_geojson: kandidat.ziel_geojson,
-      geometry_geojson: kandidat.geometry_geojson,
-      ist_rundfahrt: kandidat.ist_rundfahrt,
-    }));
+    .map(({ kandidat }) => kandidat);
 }
 
+// Die Spalten, die components/RouteMap.tsx zum Zeichnen braucht — und keine
+// mehr. routes_geojson führt zusätzlich Höhenprofil, Tempolimits und
+// Charaktertext, zusammen um ein Vielfaches grösser als alles hier; sie
+// gingen sonst bei jedem Aufruf der Streckenseite mit über die Leitung, auch
+// für Besucher, die nie aufzeichnen.
+const KARTEN_SPALTEN = "id, name, start_geojson, ziel_geojson, geometry_geojson, ist_rundfahrt";
+
 // Die umliegenden Strecken für die Karte des Aufzeichnungsschirms
-// (components/LiveTrackingForm.tsx). Bewusst über getRoutes() statt über eine
-// eigene Abfrage: es ist dieselbe Liste, die die Explore-Karte zeigt, samt
-// derselben RLS-Sicht auf freigegebene/private Strecken. Ein Ladefehler
-// kostet nur die Orientierungshilfe, nicht die Aufzeichnung — dann bleibt die
+// (components/LiveTrackingForm.tsx). Eigene, schmale Abfrage statt
+// getRoutes(): dieselbe View, dieselbe RLS-Sicht auf freigegebene Strecken,
+// nur ohne die Spalten, die eine Karte nicht zeichnet. Ein Ladefehler kostet
+// bloss die Orientierungshilfe, nicht die Aufzeichnung — dann bleibt die
 // Karte bei der gefahrenen Strecke allein (gleiches Verhalten wie bei der
 // freien Fahrt, siehe app/fahrten/neu/page.tsx).
 export async function getKontextStrecken(route: RouteGeoJSON): Promise<KartenStrecke[]> {
-  const { routes } = await getRoutes();
-  return waehleKontextStrecken(routes, route);
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("routes_geojson")
+    .select(KARTEN_SPALTEN)
+    .eq("status_ok", true);
+
+  if (error) {
+    console.error("Kontext-Strecken konnten nicht geladen werden:", error.message);
+    return [];
+  }
+
+  return waehleKontextStrecken((data as unknown as KartenStrecke[]) ?? [], route);
 }
 
 // Nur was die Sitemap braucht. getRoutes() liefert sonst für jede Strecke

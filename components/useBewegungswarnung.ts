@@ -17,11 +17,19 @@ const PRUEF_INTERVALL_MS = 30_000;
 //
 // Der Sinn ist die Frühwarnung: wer erst im Fazit erfährt, dass eine
 // Flugaufzeichnung nicht speicherbar ist, hat sie umsonst gemacht.
+/** Was die Warnung sagt, und ob sie das Speichern am Ende verhindert. Ohne
+ *  das Zweite läse sich ein Bahn-Hinweis wie eine Ablehnung — er ist aber
+ *  nur eine Nachfrage (siehe lib/bewegungsprofil.ts). */
+export interface Bewegungswarnung {
+  text: string;
+  blockiert: boolean;
+}
+
 export function useBewegungswarnung(
   active: boolean,
   liveTrailPoints: TrailPoint[],
-): string | null {
-  const [warnung, setWarnung] = useState<string | null>(null);
+): Bewegungswarnung | null {
+  const [warnung, setWarnung] = useState<Bewegungswarnung | null>(null);
   const trailRef = useRef(liveTrailPoints);
 
   useEffect(() => {
@@ -41,7 +49,9 @@ export function useBewegungswarnung(
       // Einmal gezeigt, bleibt der Hinweis stehen: der Trail wächst weiter,
       // und ein Hinweis, der zwischendurch verschwindet, wirkt wie ein
       // Fehler statt wie eine Warnung.
-      if (profil.begruendung) setWarnung(profil.begruendung);
+      if (profil.begruendung) {
+        setWarnung({ text: profil.begruendung, blockiert: profil.blockiert });
+      }
     }, PRUEF_INTERVALL_MS);
 
     return () => clearInterval(interval);
