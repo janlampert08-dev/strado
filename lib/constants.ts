@@ -1,3 +1,9 @@
+/** Der Claim, wie er überall in der App steht — eine Quelle, kein Wildwuchs. */
+export const SLOGAN = "Für alle, die den Umweg nehmen.";
+/** Kurzbeschreibung für Metadaten und Manifest — knapp, mit den Suchbegriffen. */
+export const BESCHREIBUNG =
+  "Handverlesene Kurven-, Pass- und Aussichtsstrecken in der Schweiz, gestartet in Zürich. Fahrten per GPS aufzeichnen, vergleichen, teilen.";
+
 // Geografischer Standard-Mittelpunkt: Zürich HB.
 export const ZURICH_CENTER: [number, number] = [8.5417, 47.3769];
 export const DEFAULT_ZOOM = 10.5;
