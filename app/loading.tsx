@@ -33,17 +33,17 @@ export default function Loading() {
           </div>
 
           <div className="flex w-full flex-col gap-5 overflow-hidden border-border px-5 pt-5 pb-[calc(5.5rem+var(--safe-bottom))] sm:px-6 sm:pt-6 sm:pb-[calc(5.75rem+var(--safe-bottom))] md:max-w-sm md:border-r md:pb-6 lg:max-w-md xl:max-w-lg">
-            {/* Einleitung (Überschrift plus zwei Zeilen Fliesstext). Sie
-                erscheint auf der echten Seite immer — das Skelett kann
-                ohnehin nicht wissen, ob eine Sitzung besteht, und ein
-                fehlender Block wäre der grössere Sprung als ein zu viel
-                gezeichneter. */}
-            <div className="flex flex-col gap-2">
-              <Skeleton className="h-6 w-56 rounded-md" />
-              <Skeleton className="h-4 w-full rounded-sm" />
-              <Skeleton className="h-4 w-4/5 rounded-sm" />
-            </div>
+            {/* Kein Block für die Einleitung. Sie steht seit dem Umbau der
+                Startseite nur noch für abgemeldete Besucher
+                (ExploreSidebar.tsx); angemeldet bleibt an ihrer Stelle eine
+                sr-only-Überschrift ohne Höhe. Ein loading.tsx ist der
+                Suspense-Platzhalter der Seite und kennt die Sitzung nicht —
+                es muss sich also für einen der beiden Fälle entscheiden.
 
+                Die Wahl fällt auf den angemeldeten: dieses Skelett sieht ein
+                Konto bei jedem Wechsel auf die Startseite, ein abgemeldeter
+                Besucher ein- bis zweimal überhaupt. Der Sprung, den wir uns
+                einhandeln, trifft damit die seltenere Seite. */}
             {/* Suchfeld */}
             <Skeleton className="h-10 rounded-md" />
 
