@@ -2,29 +2,25 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Check, Sparkles } from "lucide-react";
-import PremiumCheckoutForm from "@/components/PremiumCheckoutForm";
-import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import { buttonVariants } from "@/components/ui/Button";
-import { LEGAL_URLS } from "@/lib/constants";
-import { betragText, jahresVorteilProzent, monatsAequivalentRappen } from "@/lib/premiumAngebot";
+import {
+  betragText,
+  jahresVorteilProzent,
+  monatsAequivalentRappen,
+  planTitel,
+  planZeitraum,
+} from "@/lib/premiumAngebot";
 import type { AboPlan, PremiumAngebot, PlanAngebot } from "@/lib/premiumLimits";
 
 // Betrag so anzeigen, wie Stripe ihn führt — nicht aus einer zweiten Liste
 // im Code. Weicht die beworbene Zahl vom abgebuchten Betrag ab, ist das kein
 // Anzeigefehler, sondern ein falsch ausgezeichneter Preis. Das Formatieren
 // und das Rechnen dazu liegt in lib/premiumAngebot.ts, weil es dort geprüft
-// werden kann (Vitest kennt nur lib/).
-
-function planTitel(plan: AboPlan): string {
-  return plan === "monat" ? "Monatlich" : "Jährlich";
-}
-
-function planZeitraum(plan: AboPlan): string {
-  return plan === "monat" ? "pro Monat" : "pro Jahr";
-}
+// werden kann (Vitest kennt nur lib/). planTitel/planZeitraum stehen aus
+// demselben Grund dort — die Zahlungsseite (app/profil/premium/zahlung)
+// braucht denselben Titel für denselben Plan.
 
 // Nur, was es gibt. Die frühere Liste versprach "Erweiterte Filter und
 // Statistiken" und ein Gold-Abzeichen — beides nicht ausgeliefert, und auf
@@ -43,7 +39,6 @@ const VORTEILE = [
 const ABSCHNITT_KLASSEN = "text-sm font-semibold tracking-wide text-muted uppercase";
 
 export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngebot }) {
-  const router = useRouter();
   // Der Jahresplan steht vorne, wenn es ihn gibt: er ist der günstigere pro
   // Monat.
   const [gewaehlt, setGewaehlt] = useState<AboPlan>(
@@ -119,59 +114,19 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
         ))}
       </fieldset>
 
-      <section className="flex flex-col gap-3">
-        {/* Die Pflichtangaben vor dem Kauf, nicht danach: automatische
-            Verlängerung, Kündigungsweg, Widerrufslage. Sie stehen hier im Text
-            und nicht nur im verlinkten Dokument, weil ein Link auf 16 Ziffern
-            AGB niemand vor dem Bezahlen liest — und unmittelbar über der
-            Schaltfläche, die die Zahlungspflicht auslöst, nicht irgendwo
-            weiter oben auf der Seite. */}
-        <h2 className={ABSCHNITT_KLASSEN}>Bevor du bestätigst</h2>
-        <Card surface className="flex flex-col gap-2 px-4 py-3 text-sm text-muted">
-          <p>
-            Das Abo verlängert sich automatisch um{" "}
-            {gewaehlt === "monat" ? "einen Monat" : "zwölf Monate"}, bis du kündigst. Kündigen
-            kannst du jederzeit ohne Frist in deinem Profil — Premium läuft dann bis zum Ende der
-            bezahlten Periode weiter.
-          </p>
-          <p>
-            Nicht zufrieden? Innerhalb von 14 Tagen nach dem ersten Abschluss bekommst du den Betrag
-            auf formlose Anfrage zurück. Das ist eine freiwillige Zusage, kein gesetzliches
-            Widerrufsrecht.
-          </p>
-          <p>
-            Es gelten die{" "}
-            <a
-              href={LEGAL_URLS.agb}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2 hover:text-foreground"
-            >
-              AGB
-            </a>{" "}
-            und die{" "}
-            <a
-              href={LEGAL_URLS.datenschutz}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2 hover:text-foreground"
-            >
-              Datenschutzerklärung
-            </a>
-            .
-          </p>
-        </Card>
-
-        {/* key auf dem Plan: wechselt die Wahl, muss ein bereits vorbereitetes
-            Payment Element verworfen werden — sonst zahlte man den Betrag des
-            zuvor gewählten Plans. */}
-        <PremiumCheckoutForm
-          key={gewaehlt}
-          plan={gewaehlt}
-          beworbenerPreis={aktiv.betragRappen}
-          onSuccess={() => router.push("/profil")}
-        />
-      </section>
+      {/* Das Bezahlformular selbst steht auf einer eigenen Seite
+          (app/profil/premium/zahlung) — dort auch die Pflichtangaben
+          (automatische Verlängerung, Kündigungsweg, Widerrufslage), direkt
+          über der Schaltfläche, die die Zahlungspflicht tatsächlich auslöst.
+          plan und preis wandern als Query-Parameter mit: preis ist nur der
+          Anzeigewert vom Laden dieser Seite — abgebucht wird, was Stripe für
+          die Session tatsächlich vergibt (siehe PremiumCheckoutForm). */}
+      <Link
+        href={`/profil/premium/zahlung?plan=${gewaehlt}&preis=${aktiv.betragRappen}`}
+        className={buttonVariants({ className: "w-full" })}
+      >
+        Weiter zur Zahlung
+      </Link>
     </div>
   );
 }
