@@ -15,6 +15,7 @@ import {
   monatsAequivalentRappen,
   planTitel,
   planZeitraum,
+  verlaengerungsZeitraum,
 } from "@/lib/premiumAngebot";
 import type { AboPlan, PremiumAngebot, PlanAngebot } from "@/lib/premiumLimits";
 
@@ -29,7 +30,7 @@ import type { AboPlan, PremiumAngebot, PlanAngebot } from "@/lib/premiumLimits";
 // Statistiken" und ein Gold-Abzeichen — beides nicht ausgeliefert, und auf
 // einer Kaufseite ist ein versprochenes Feature eine Vertragsleistung.
 const VORTEILE = [
-  "Eigene Strecken erstellen — privat für dich oder öffentlich nach Review",
+  "Eigene Strecken erstellen — privat oder öffentlich nach Review",
   "12 statt 6 Fotos pro Fahrt",
   "Unbegrenzt Strecken offline speichern",
   "GPX-Export kuratierter Strecken",
@@ -89,7 +90,7 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
         <h1 className="text-display font-semibold">Strado unterstützen</h1>
         <p className="text-sm text-muted">
           Entdecken, Aufzeichnen, Bestenlisten und Feed bleiben gratis. Premium schaltet eigene
-          Strecken frei — und ist die Art, wie Strado sich trägt.
+          Strecken frei — und trägt Strado.
         </p>
       </div>
 
@@ -120,44 +121,23 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
 
       <section className="flex flex-col gap-3">
         {/* Die Pflichtangaben vor dem Kauf, nicht danach: automatische
-            Verlängerung, Kündigungsweg, Widerrufslage. Sie stehen hier im Text
-            und nicht nur im verlinkten Dokument, weil ein Link auf 16 Ziffern
-            AGB niemand vor dem Bezahlen liest — und unmittelbar über der
-            Schaltfläche, die die Zahlungspflicht auslöst, nicht irgendwo
-            weiter oben auf der Seite. */}
+            Verlängerung, Kündigungsweg, Widerrufslage. Sie stehen hier im
+            Text und nicht nur im verlinkten Dokument, weil ein Link auf 16
+            Ziffern AGB niemand vor dem Bezahlen liest. Knapper als zuvor,
+            aber vollständig — gekürzt wurde die Formulierung, nicht der
+            Inhalt. Dieselben Angaben stehen noch einmal im Bezahlfenster,
+            weil dort die Schaltfläche sitzt, die die Zahlungspflicht
+            auslöst. */}
         <h2 className={ABSCHNITT_KLASSEN}>Bevor du bestätigst</h2>
         <Card surface className="flex flex-col gap-2 px-4 py-3 text-sm text-muted">
           <p>
-            Das Abo verlängert sich automatisch um{" "}
-            {gewaehlt === "monat" ? "einen Monat" : "zwölf Monate"}, bis du kündigst. Kündigen
-            kannst du jederzeit ohne Frist in deinem Profil — Premium läuft dann bis zum Ende der
-            bezahlten Periode weiter.
+            Verlängert sich automatisch um {verlaengerungsZeitraum(gewaehlt)}, bis du kündigst.
+            Kündigen kannst du jederzeit ohne Frist in deinem Profil; Premium läuft bis zum Ende
+            der bezahlten Periode weiter.
           </p>
           <p>
-            Nicht zufrieden? Innerhalb von 14 Tagen nach dem ersten Abschluss bekommst du den Betrag
-            auf formlose Anfrage zurück. Das ist eine freiwillige Zusage, kein gesetzliches
+            14 Tage Geld zurück auf formlose Anfrage — freiwillige Zusage, kein gesetzliches
             Widerrufsrecht.
-          </p>
-          <p>
-            Es gelten die{" "}
-            <a
-              href={LEGAL_URLS.agb}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2 hover:text-foreground"
-            >
-              AGB
-            </a>{" "}
-            und die{" "}
-            <a
-              href={LEGAL_URLS.datenschutz}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2 hover:text-foreground"
-            >
-              Datenschutzerklärung
-            </a>
-            .
           </p>
         </Card>
 
@@ -174,8 +154,44 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
           angebot={aktiv}
           onSuccess={() => router.push("/profil")}
         />
+
+        {/* Wer hier steht, gibt gleich Zahlungsdaten ein — dann gehören der
+            Zahlungsabwickler und die Rechtstexte in Sichtweite und nicht ins
+            Impressum irgendeiner anderen Seite. */}
+        <p className="text-center text-xs text-muted">
+          Zahlung über Stripe
+          <Trenner />
+          <Rechtslink href={LEGAL_URLS.impressum}>Impressum</Rechtslink>
+          <Trenner />
+          <Rechtslink href={LEGAL_URLS.agb}>AGB</Rechtslink>
+          <Trenner />
+          <Rechtslink href={LEGAL_URLS.datenschutz}>Datenschutz</Rechtslink>
+        </p>
       </section>
     </div>
+  );
+}
+
+/** Trennt die Fusszeile optisch, ohne dass ein Screenreader "Mittelpunkt"
+ *  vorliest. */
+function Trenner() {
+  return (
+    <span aria-hidden="true" className="px-1.5">
+      ·
+    </span>
+  );
+}
+
+function Rechtslink({ href, children }: { href: string; children: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="underline underline-offset-2 hover:text-foreground"
+    >
+      {children}
+    </a>
   );
 }
 
