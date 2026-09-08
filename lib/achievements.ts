@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { summiereHoehenmeter } from "@/lib/hoehenmeter";
 
 export const PASS_MILESTONES = [1, 5, 10, 25, 50, 100];
 export const HOEHENMETER_MILESTONES = [1000, 5000, 10000, 25000, 50000];
@@ -16,33 +17,35 @@ export interface AchievementStats {
 }
 
 // Dieselbe Aggregation wie die Statistiken-Kachelreihe in app/profil/page.tsx
-// (Pässe dedupliziert pro Strecke, Höhenmeter daraus summiert), hier separat
-// abrufbar für Stellen, die nicht die ganze Profilseite laden — z.B. das
-// Teilen-Bild einer einzelnen Fahrt (app/fahrten/[id]/page.tsx).
+// (Pässe dedupliziert pro Strecke, Höhenmeter als kumulierter Anstieg über
+// dieselben Fahrten, die auch "Anzahl Fahrten" zählt), hier separat abrufbar
+// für Stellen, die nicht die ganze Profilseite laden — z.B. das Teilen-Bild
+// einer einzelnen Fahrt (app/fahrten/[id]/page.tsx). Beide Stellen müssen
+// dieselbe Zahl zeigen: das Abzeichen auf dem geteilten Bild behauptet einen
+// Meilenstein, den das eigene Profil sonst nicht bestätigt.
 export async function getUserAchievementStats(userId: string): Promise<AchievementStats> {
   const supabase = await createClient();
-  const [{ data: streckenFahrten }, { count: fahrtenCount }] = await Promise.all([
+  const [{ data: streckenFahrten }, { data: fahrten, count: fahrtenCount }] = await Promise.all([
     supabase
       .from("route_completions")
-      .select("route_id, routes(hoehe_m)")
+      .select("route_id")
       .eq("user_id", userId)
       .eq("art", "strecke")
-      .returns<{ route_id: string; routes: { hoehe_m: number | null } | null }[]>(),
+      .returns<{ route_id: string }[]>(),
+    // hoehenmeter_aufstieg statt eines Joins auf routes(hoehe_m): der
+    // kumulierte Anstieg hängt an der Fahrt, nicht an der Strecke, und gilt
+    // deshalb auch für freie Fahrten. Siehe lib/hoehenmeter.ts.
     supabase
       .from("route_completions")
-      .select("id", { count: "exact", head: true })
+      .select("hoehenmeter_aufstieg", { count: "exact" })
       .eq("user_id", userId)
-      .not("dauer_sekunden", "is", null),
+      .not("dauer_sekunden", "is", null)
+      .returns<{ hoehenmeter_aufstieg: number | null }[]>(),
   ]);
 
-  const hoeheProRoute = new Map<string, number>();
-  for (const c of streckenFahrten ?? []) {
-    if (!hoeheProRoute.has(c.route_id)) hoeheProRoute.set(c.route_id, c.routes?.hoehe_m ?? 0);
-  }
-
   return {
-    passCount: hoeheProRoute.size,
-    hoehenmeter: [...hoeheProRoute.values()].reduce((sum, h) => sum + h, 0),
+    passCount: new Set((streckenFahrten ?? []).map((c) => c.route_id)).size,
+    hoehenmeter: summiereHoehenmeter(fahrten ?? []),
     fahrtenCount: fahrtenCount ?? 0,
   };
 }

@@ -29,6 +29,7 @@ import { getFollowCounts, getFollowerProfiles, getFollowingProfiles } from "@/li
 import { formatDuration, formatKm } from "@/lib/format";
 import { freieFahrtTitel } from "@/lib/completions";
 import { publicationBlockReason } from "@/lib/track";
+import { summiereHoehenmeter } from "@/lib/hoehenmeter";
 import type { FahrtArt, Vehicle } from "@/types/database";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
@@ -108,16 +109,18 @@ export default async function ProfilPage() {
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
-    // Pässe und Höhenmeter sind streckenbezogene Kennzahlen: ohne den
-    // art-Filter käme seit 0044_freie_fahrten.sql für jede freie Fahrt eine
-    // Zeile mit route_id = null dazu und der Pässe-Zähler wäre um eins zu
-    // hoch (siehe hoeheProRoute unten).
+    // Der Pässe-Zähler ist streckenbezogen: ohne den art-Filter käme seit
+    // 0044_freie_fahrten.sql für jede freie Fahrt eine Zeile mit
+    // route_id = null dazu und der Zähler wäre um eins zu hoch. Die
+    // Höhenmeter kommen nicht mehr aus dieser Abfrage (früher über den
+    // Join routes(hoehe_m)), sondern aus trackedRides unten — siehe
+    // lib/hoehenmeter.ts.
     supabase
       .from("route_completions")
-      .select("route_id, routes(hoehe_m)")
+      .select("route_id")
       .eq("user_id", user.id)
       .eq("art", "strecke")
-      .returns<{ route_id: string; routes: { hoehe_m: number | null } | null }[]>(),
+      .returns<{ route_id: string }[]>(),
     // Beide Fahrtarten: freie Fahrten stehen in derselben Liste wie
     // Streckenfahrten und zählen in "Km gefahren"/"Anzahl Fahrten" mit —
     // anders als in den globalen Bestenlisten, die streckenbasiert bleiben
@@ -125,7 +128,7 @@ export default async function ProfilPage() {
     supabase
       .from("route_completions")
       .select(
-        "id, art, route_id, datum, dauer_sekunden, distanz_km, ist_oeffentlich, abdeckung_prozent, notiz, titel, start_ort, bewegte_zeit_sekunden, routes(name)",
+        "id, art, route_id, datum, dauer_sekunden, distanz_km, ist_oeffentlich, abdeckung_prozent, notiz, titel, start_ort, bewegte_zeit_sekunden, hoehenmeter_aufstieg, routes(name)",
       )
       .eq("user_id", user.id)
       .not("dauer_sekunden", "is", null)
@@ -148,6 +151,7 @@ export default async function ProfilPage() {
           titel: string | null;
           start_ort: string | null;
           bewegte_zeit_sekunden: number | null;
+          hoehenmeter_aufstieg: number | null;
           routes: { name: string } | null;
         }[]
       >(),
@@ -171,15 +175,14 @@ export default async function ProfilPage() {
     getUnseenKudosCount(),
   ]);
 
-  // Pro Strecke nur einmal zählen (auch bei mehrfacher Befahrung) — sonst
-  // widersprechen sich passCount (dedupliziert) und hoehenmeter auf demselben
-  // Screen; entspricht der Dedup-Logik in lib/profile.ts (öffentliches Profil).
-  const hoeheProRoute = new Map<string, number>();
-  for (const c of completions ?? []) {
-    if (!hoeheProRoute.has(c.route_id)) hoeheProRoute.set(c.route_id, c.routes?.hoehe_m ?? 0);
-  }
-  const passCount = hoeheProRoute.size;
-  const hoehenmeter = [...hoeheProRoute.values()].reduce((sum, h) => sum + h, 0);
+  // Pro Strecke nur einmal zählen (auch bei mehrfacher Befahrung) — wie im
+  // öffentlichen Profil (lib/profile.ts).
+  const passCount = new Set((completions ?? []).map((c) => c.route_id)).size;
+  // Höhenmeter über dieselbe Fahrtenliste wie "Km gefahren" und "Anzahl
+  // Fahrten" darunter, damit die vier Kacheln denselben Bestand beschreiben.
+  // Gezählt wird der kumulierte Anstieg, nicht mehr die Scheitelhöhe der
+  // Strecke — siehe lib/hoehenmeter.ts.
+  const hoehenmeter = summiereHoehenmeter(trackedRides ?? []);
 
   const getrackteDistanzGesamt = (trackedRides ?? []).reduce(
     (sum, r) => sum + r.distanz_km,

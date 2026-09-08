@@ -72,7 +72,10 @@ function formatSignature(key: SignatureKey, route: ExploreRoute): string {
     case "steigung":
       return `${route.max_steigung_prozent}% Steigung`;
     case "hoehe":
-      return `${route.hoehe_m} Höhenmeter`;
+      // "m hoch", nicht "Höhenmeter": routes.hoehe_m ist die Scheitelhöhe der
+      // Strecke, nicht der gesammelte Anstieg. Unter demselben Wort standen
+      // beide Grössen nebeneinander — siehe lib/hoehenmeter.ts.
+      return `${route.hoehe_m} m hoch`;
     case "tempo": {
       const avg = averageTempolimit(route.tempolimits);
       return avg !== null ? `Ø ${avg} km/h` : "Freie Fahrt";

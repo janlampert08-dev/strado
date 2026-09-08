@@ -24,9 +24,105 @@ const nextConfig: NextConfig = {
     // werden — kein Leak-Risiko, nur etwas grösserer/langsamerer Build.
     serverSourceMaps: true,
   },
-  // Sicherheits-Header. Bis auf die CSP alle scharf; die CSP läuft
-  // absichtlich zunächst nur im Report-Only-Modus, siehe unten.
+  // Sicherheits-Header. Ab hier alle scharf — auch die CSP, die zuvor nur
+  // als Content-Security-Policy-Report-Only auslieferte. Report-Only war als
+  // Beobachtungsphase gedacht ("erst beobachten, dann durchsetzen"), hat aber
+  // nie beobachtet: es war kein report-uri/report-to gesetzt, also ging jeder
+  // Verstoss in die Browser-Konsole des jeweiligen Besuchers und sonst
+  // nirgendwohin. Eine Policy, die nichts durchsetzt und niemanden
+  // benachrichtigt, ist keine Massnahme.
+  //
+  // Die Origin-Liste unten ist deshalb aus dem Code hergeleitet statt aus der
+  // Beobachtung, und an den Stellen, an denen ein Dritter seine eigenen
+  // Endpunkte jederzeit erweitern kann (Stripe), bewusst als Wildcard über
+  // dessen eigene Domain gefasst — ein übersehener Unter-Endpunkt bricht sonst
+  // lautlos die Bezahlseite. Herleitung je Direktive:
+  //
+  // - Mapbox GL (components/RouteMap.tsx) kommt aus dem Bundle, nicht von
+  //   einer CDN, holt Style/Sprites/Glyphen/Kacheln von api.mapbox.com, meldet
+  //   Nutzung an events.mapbox.com (beides *.mapbox.com) und erzeugt seine
+  //   Worker aus Blobs — daher worker-src blob:. child-src steht als Fallback
+  //   für Browser ohne worker-src daneben.
+  // - Stripe (components/PremiumCheckoutForm.tsx): Skript von js.stripe.com,
+  //   Iframes von js.stripe.com/hooks.stripe.com (3-D Secure) und
+  //   m.stripe.network (Betrugserkennung, eigene Domain — nicht von
+  //   *.stripe.com abgedeckt), Netzverkehr an mehrere *.stripe.com-Hosts
+  //   (api., q., r., merchant-ui-api.).
+  // - Supabase: REST/Auth/Storage über *.supabase.co, Bilder ebenso (signierte
+  //   Storage-URLs, lib/storageUrls.ts). Kein Realtime im Einsatz, deshalb
+  //   kein wss:.
+  // - api.open-meteo.com: Wetter auf der Streckenseite.
+  // - Nicht in der Liste, weil serverseitig geholt und damit nie vom Browser:
+  //   api3.geo.admin.ch (lib/elevation.ts) sowie overpass-api.de und
+  //   maps.zh.ch (scripts/, laufen unter Node).
+  // - @vercel/analytics lädt in Produktion /_vercel/insights/script.js von der
+  //   eigenen Origin; nur im Dev-Modus kommt das Debug-Skript von
+  //   va.vercel-scripts.com, siehe entwicklungsQuellen unten.
+  //
+  // Bleibende Schwäche, bewusst und benannt: script-src trägt weiterhin
+  // 'unsafe-inline' und 'unsafe-eval'. Next injiziert Inline-Skripte, und der
+  // saubere Ersatz sind Nonces — die verlangen, dass die CSP pro Anfrage in
+  // der Middleware (proxy.ts) erzeugt wird, was jede Seite dynamisch macht.
+  // Das ist ein eigener Umbau. Bis dahin schützt script-src nur gegen fremde
+  // Skript-Origins, nicht gegen eingeschleustes Inline-Skript; alle übrigen
+  // Direktiven wirken davon unabhängig.
   async headers() {
+    // Im Dev-Modus zusätzlich erlaubt: Turbopacks HMR-Websocket und das
+    // Debug-Skript von @vercel/analytics. Beides gibt es in Produktion nicht,
+    // und beides würde die scharfe Policy sonst lokal brechen — was den
+    // einzigen Ort entwertet, an dem ein Verstoss vor dem Deploy auffällt.
+    const istEntwicklung = process.env.NODE_ENV !== "production";
+    const dev = (...quellen: string[]) => (istEntwicklung ? quellen : []);
+
+    const csp = [
+      ["default-src", "'self'"],
+      [
+        "script-src",
+        "'self'",
+        "'unsafe-inline'",
+        "'unsafe-eval'",
+        "https://js.stripe.com",
+        ...dev("https://va.vercel-scripts.com"),
+      ],
+      ["worker-src", "'self'", "blob:"],
+      ["child-src", "'self'", "blob:"],
+      ["style-src", "'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      ["font-src", "'self'", "data:", "https://fonts.gstatic.com"],
+      [
+        "img-src",
+        "'self'",
+        "data:",
+        "blob:",
+        "https://*.supabase.co",
+        "https://*.mapbox.com",
+        "https://*.stripe.com",
+      ],
+      [
+        "connect-src",
+        "'self'",
+        "https://*.supabase.co",
+        "https://*.mapbox.com",
+        "https://api.open-meteo.com",
+        "https://*.stripe.com",
+        "https://m.stripe.network",
+        ...dev("ws:"),
+      ],
+      ["frame-src", "https://*.stripe.com", "https://m.stripe.network"],
+      ["frame-ancestors", "'none'"],
+      ["base-uri", "'self'"],
+      // billing.stripe.com ist die einzige fremde Adresse, auf die ein
+      // Formular der App führt: <form action={createPortalSession}> in
+      // components/PremiumCard.tsx legt eine Portal-Sitzung an und leitet auf
+      // deren URL weiter (lib/actions/billing.ts). Mit Javascript ist das eine
+      // Navigation und form-action gar nicht zuständig; ohne Javascript wird
+      // daraus ein echter Formular-POST mit Weiterleitung, und den blockieren
+      // Firefox und Safari unter form-action 'self'.
+      ["form-action", "'self'", "https://billing.stripe.com"],
+      ["object-src", "'none'"],
+    ]
+      .map((direktive) => direktive.join(" "))
+      .join("; ");
+
     return [
       {
         source: "/:path*",
@@ -52,32 +148,7 @@ const nextConfig: NextConfig = {
             key: "Strict-Transport-Security",
             value: "max-age=63072000; includeSubDomains; preload",
           },
-          // Report-Only: Mapbox GL (Worker + WebGL), Stripe Elements
-          // (Iframe + eigenes Skript) und Supabase Storage hängen an
-          // mehreren Fremd-Origins. Scharf geschaltet würde ein
-          // übersehener Origin die Karte oder die Bezahlseite lautlos
-          // brechen — und beides lässt sich hier nicht gegen eine laufende
-          // Anwendung prüfen. Erst beobachten, dann durchsetzen.
-          {
-            key: "Content-Security-Policy-Report-Only",
-            value: [
-              "default-src 'self'",
-              // 'unsafe-inline'/'unsafe-eval': Next injiziert Inline-Skripte,
-              // Mapbox GL erzeugt Worker aus Blobs. Beim Scharfschalten
-              // durch Nonces ersetzen.
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
-              "worker-src 'self' blob:",
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "font-src 'self' data: https://fonts.gstatic.com",
-              "img-src 'self' data: blob: https://*.supabase.co https://*.mapbox.com",
-              "connect-src 'self' https://*.supabase.co https://*.mapbox.com https://api.open-meteo.com https://api.stripe.com",
-              "frame-src https://js.stripe.com https://hooks.stripe.com",
-              "frame-ancestors 'none'",
-              "base-uri 'self'",
-              "form-action 'self'",
-              "object-src 'none'",
-            ].join("; "),
-          },
+          { key: "Content-Security-Policy", value: csp },
         ],
       },
     ];

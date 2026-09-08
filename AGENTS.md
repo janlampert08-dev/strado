@@ -99,6 +99,18 @@ is what should be corrected.
     `NEXT_PUBLIC_` prefix buys nothing and costs this freezing. Renaming it
     to `SITE_URL` would make it a true runtime value; that needs the repo
     and the Vercel dashboard changed together, so it has not been done.
+- **Die CSP wird durchgesetzt, nicht mehr nur berichtet.** `next.config.ts`
+  liefert seit dem Wechsel eine echte `Content-Security-Policy` statt
+  `Content-Security-Policy-Report-Only` aus. Der Report-Only-Modus war als
+  Beobachtungsphase gedacht, hat aber nie beobachtet — es war kein
+  `report-uri`/`report-to` gesetzt. Folge für neue Arbeit: ein Skript, ein
+  Iframe, ein `fetch` oder ein Bild von einer neuen Fremd-Origin wird im
+  Browser blockiert, bis die Origin in der passenden Direktive steht. Das
+  fällt lokal auf, weil die Policy auch im Dev-Modus scharf ist (mit zwei
+  ausdrücklichen Dev-Ausnahmen: HMR-Websocket und das Debug-Skript von
+  `@vercel/analytics`). `script-src` trägt weiterhin `'unsafe-inline'` und
+  `'unsafe-eval'`; der Ersatz durch Nonces verlangt die CSP pro Anfrage in
+  `proxy.ts` und macht jede Seite dynamisch — offen, bewusst.
 - **Migrations are applied by hand and the newest ones are not applied.**
   Green CI means nothing about the live schema. See
   `supabase/migrations/README.md` and `.agents/deployment.md`.

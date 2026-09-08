@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { throwOnQueryError } from "@/lib/queryError";
+import { summiereHoehenmeter } from "@/lib/hoehenmeter";
 import type { PublicFahrt, Vehicle } from "@/types/database";
 
 export interface PublicProfile {
@@ -65,25 +66,24 @@ export const getPublicProfile = cache(async function getPublicProfile(
   throwOnQueryError(fahrtenResult.error, "Fahrten");
 
   const fahrten = (fahrtenResult.data as PublicFahrt[]) ?? [];
-  // Pässe und Höhenmeter zählen nur Streckenfahrten: seit
+  // Der Pässe-Zähler ist die einzige streckenbezogene Kennzahl: seit
   // 0044_freie_fahrten.sql kann route_id null sein, und ohne diesen Filter
-  // liefe null als eigener "Pass" in die Menge bzw. als null in die
-  // routes-Abfrage. Die Distanzsumme dagegen umfasst bewusst jede Fahrt.
+  // liefe null als eigener "Pass" in die Menge. Distanz und Höhenmeter
+  // umfassen dagegen bewusst jede Fahrt, freie wie Streckenfahrten.
   const streckenFahrten = fahrten.filter((f) => f.route_id !== null);
   const passCount = new Set(streckenFahrten.map((f) => f.route_id)).size;
   const distanzKm = fahrten.reduce((sum, f) => sum + (f.distanz_km ?? 0), 0);
-
-  let hoehenmeter = 0;
-  if (streckenFahrten.length > 0) {
-    const routeIds = [...new Set(streckenFahrten.map((f) => f.route_id))];
-    const { data: routes, error: routesError } = await supabase
-      .from("routes")
-      .select("id, hoehe_m")
-      .in("id", routeIds);
-    throwOnQueryError(routesError, "Strecken zu den Fahrten");
-    const hoeheById = new Map((routes ?? []).map((r) => [r.id, r.hoehe_m ?? 0]));
-    hoehenmeter = streckenFahrten.reduce((sum, f) => sum + (hoeheById.get(f.route_id!) ?? 0), 0);
-  }
+  // Kumulierter Anstieg aus der View statt einer zweiten Abfrage auf
+  // routes.hoehe_m: public_fahrten führt hoehenmeter_aufstieg seit
+  // 0045_freie_fahrten_teilen.sql selbst mit. Zur Definition und dazu, warum
+  // hier nicht mehr die Scheitelhöhe summiert wird, siehe lib/hoehenmeter.ts.
+  //
+  // Dass diese Summe kleiner ausfällt als die auf dem eigenen Profil, ist
+  // kein Widerspruch mehr, sondern der Sichtbarkeitsunterschied: die View
+  // führt nur öffentlich geteilte Fahrten. Gerechnet wird auf beiden Seiten
+  // dasselbe, nur über verschiedene Bestände — nicht wieder angleichen, das
+  // hiesse private Fahrten öffentlich mitzuzählen.
+  const hoehenmeter = summiereHoehenmeter(fahrten);
 
   return {
     id: profile.id,
