@@ -1,19 +1,22 @@
 import Skeleton from "@/components/ui/Skeleton";
+import PageSkeleton from "@/components/ui/PageSkeleton";
 
-// Eigenes Skelett für dieses Segment. Ohne das greift app/loading.tsx —
-// und das zeichnet die Explore-Form (Karte links, Streckenliste rechts),
-// die zu dieser Seite gar nicht passt: Der Nutzer sieht beim Navigieren
-// kurz ein Layout, das gleich von einem völlig anderen ersetzt wird.
+// Spiegelt app/aktivitaet/page.tsx: Überschrift im text-display-Grad plus
+// Unterzeile, darunter die Kudos-Liste.
 
 export default function Loading() {
   return (
-    <div className="flex flex-col gap-4 px-5 py-6 sm:px-6">
-      <Skeleton className="h-7 w-40 rounded-md" />
+    <PageSkeleton>
+      <div className="flex flex-col gap-1">
+        <Skeleton className="h-9 w-48 rounded-md" />
+        <Skeleton className="h-4 w-64 rounded-sm" />
+      </div>
+
       <div className="flex flex-col gap-3">
         {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton key={i} className="h-24 rounded-xl" />
         ))}
       </div>
-    </div>
+    </PageSkeleton>
   );
 }
