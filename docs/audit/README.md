@@ -20,7 +20,12 @@ found. What changed since is tracked here instead, and only here.
 | A1 — forgeable ride statistics | **Two of three legs closed** — see the A1 table below | migrations `0052`, `0059`, `0074`, `0078` |
 | A2 — route ride has no post-save destination | **Fixed** | `logTrackedCompletion` returns `completionId`; `LiveTrackingForm` navigates to `/fahrten/[id]` |
 | A3 — private routes in anon-readable views | **Fixed** | migration `0060` |
-| A4, A5, A6 and everything in §B | Open except the rows below | — |
+| A4 — private route can enter the public queue | **Fixed** | `lib/actions/routes.ts` checks the `ist_privat` update (`.select()`, because RLS denial returns zero rows and no error) and redirects with `?privat=fehlgeschlagen`; `app/strecken/[id]/page.tsx` now renders that marker — and `?privat=kontingent`, which was set since it was written and read by nobody |
+| A5 — Stripe: paid customers can silently not get premium | **Fixed** | the webhook rewrite closed the ordering leg earlier; the price id is now checked in `lib/stripeWebhook.ts` (`preisHerkunft`) and enforced in both writing paths — the webhook and the nightly cron |
+| A6 — `next build` fails without environment variables | **Fixed** | `lib/stripe.ts` exports `getStripe()` with a lazy singleton; verified by building with every Stripe variable unset |
+| §B — auth rate limiting fails open on a DB error | **Fixed** | `isRateLimited` reads the error and fails closed; `lib/rateLimit.test.ts` covers both error shapes |
+| §B — ascent under-reports long rides (`nb_points` hardcoded to 300) | **Fixed for rides** | `stuetzpunkteFuer()` couples sampling to length (one point per 50 m, 300–3000). Route metrics deliberately stay at 300: `computeHoeheUndSteigung` is calibrated against known pass gradients at that density |
+| A4, A5, A6 and everything in §B | Open except the rows above and below | — |
 | §B — dark mode never redefines `--color-danger/success/warning` | **Fixed** | `app/globals.css`: both dark blocks now set `#ef4444` / `#22c55e` / `#f59e0b` (5.23 / 8.63 / 9.16 on the background) |
 | §B — light `--color-muted` at 3.11:1 | **Fixed** | `app/globals.css`: `#666b74`, 5.13:1 on the background and 4.92:1 on `--color-surface` |
 | §B — `lib/actions/moderation.ts` returns `void` and never looks at an error | **Fixed** | every action returns `ModerationResult`; `ModerationActions` / `ReportedContentActions` render it. A DB error and a zero-row hit are reported separately — zero rows means either RLS denied it or the row is already gone, and "try again" is the wrong advice for the second |
@@ -267,6 +272,17 @@ with a missing variable — fails with an error that doesn't name the cause.
   Höhenmeter board rewards splitting one long ride into several.
 - Three inconsistent definitions of "Höhenmeter": the same pass driven ten
   times shows 2000 on your own profile and 20000 on your public one.
+  **Still open, and narrower than first described — it needs a product
+  decision, not a bug fix.** The three expressions are: `lib/leaderboard.ts`
+  sums `route_completions.hoehenmeter_aufstieg` (real cumulative ascent);
+  `lib/profile.ts:85` sums `routes.hoehe_m` once per ride; and
+  `app/profil/page.tsx:182` sums `routes.hoehe_m` deduplicated per route. The
+  latter two do not measure ascent at all — `hoehe_m` is the route's *summit
+  altitude*, so ten passes over the Julier add ten summit heights. Only the
+  leaderboard's definition is the quantity the label claims. Switching the
+  profiles to it is right but visibly changes every profile number, and
+  `hoehenmeter_aufstieg` is null on rides saved while swisstopo was
+  unreachable — so the switch needs a decision about those rows first.
 - `lib/actions/moderation.ts` — a Protected Area — contains the word `error`
   **zero** times across 8 mutations, all returning `void`. Zero-row updates
   read as success.

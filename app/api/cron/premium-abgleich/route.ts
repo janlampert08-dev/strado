@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { KULANZ_TAGE, leseAboZustand } from "@/lib/stripeWebhook";
+import { KULANZ_TAGE, leseAboZustand, preisHerkunft } from "@/lib/stripeWebhook";
 
 // Nachlaufender Abgleich zwischen Stripe und profiles.ist_premium.
 //
@@ -77,11 +77,25 @@ export async function GET(req: Request) {
 
   for (const zeile of ueberfaellig ?? []) {
     try {
-      const subscription = await stripe.subscriptions.retrieve(zeile.stripe_subscription_id);
+      const subscription = await getStripe().subscriptions.retrieve(zeile.stripe_subscription_id);
       const abgerufenAm = new Date().toISOString();
       const zustand = leseAboZustand(subscription);
       if (!zustand) {
         fehlgeschlagen += 1;
+        continue;
+      }
+
+      // Dieselbe Schranke wie im Webhook (Befund A5). Hier eigentlich
+      // redundant — der Cron liest nur Zeilen, die der Webhook angelegt hat,
+      // und der lässt fremde Preise gar nicht erst durch. Sie steht trotzdem
+      // hier, weil beide Pfade dieselbe RPC mit denselben Rechten aufrufen
+      // und eine Schranke, die nur an einem von zwei Eingängen hängt, beim
+      // nächsten Umbau still verloren geht.
+      if (preisHerkunft(zustand.priceId) !== "premium") {
+        console.info("Abo mit fremder oder unbekannter Preis-ID übersprungen", {
+          subscriptionId: zeile.stripe_subscription_id,
+          priceId: zustand.priceId,
+        });
         continue;
       }
 

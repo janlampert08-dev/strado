@@ -34,12 +34,47 @@ interface ProfilePoint {
 // Genauigkeit) — deutlich präziser als globale Gratis-DEMs wie SRTM und
 // speziell für Schweizer Koordinaten gedacht. Kostenlos, kein API-Key,
 // Fair-Use-Limit 20 Anfragen/Minute.
+// Wie viele Stützpunkte swisstopo über die Geometrie legen soll.
+//
+// 300 war fest verdrahtet, unabhängig von der Länge. Auf einer 20-km-Strecke
+// ist das ein Punkt alle ~67 m; auf einer 120-km-Fahrt einer alle 400 m. In
+// diesem Raster verschwinden kurze Anstiege vollständig, und was übrig
+// bleibt, fällt danach zusätzlich unter MIN_ASCENT_STEP_M. Der summierte
+// Anstieg einer langen Fahrt fiel damit um ein Vielfaches zu klein aus — und
+// weil die Höhenmeter-Bestenliste Fahrten vergleicht, belohnte das
+// Auseinanderschneiden einer langen Fahrt in mehrere kurze.
+//
+// Deshalb ein fester Abstand statt einer festen Anzahl. Die Untergrenze
+// hält kurze Strecken bei der bisherigen Auflösung; die Obergrenze ist ein
+// selbst gesetzter Sicherheitsabstand, keine gemessene Grenze des Dienstes —
+// sie deckelt Antwortgrösse und Laufzeit gegen ELEVATION_TIMEOUT_MS.
+export const SAMPLE_ABSTAND_M = 50;
+export const MIN_STUETZPUNKTE = 300;
+export const MAX_STUETZPUNKTE = 3000;
+
+export function stuetzpunkteFuer(coords: [number, number][]): number {
+  let meter = 0;
+  for (let i = 1; i < coords.length; i++) {
+    meter += haversineKm(coords[i - 1], coords[i]) * 1000;
+  }
+  const gewuenscht = Math.ceil(meter / SAMPLE_ABSTAND_M);
+  return Math.min(MAX_STUETZPUNKTE, Math.max(MIN_STUETZPUNKTE, gewuenscht));
+}
+
+// stuetzpunkte ist bewusst ein Parameter mit dem alten Wert als Vorgabe und
+// keine automatische Ableitung: computeHoeheUndSteigung() ist gegen bekannte
+// Passwerte auf genau 300 Punkte kalibriert (siehe scripts/enrich-routes.mjs
+// — Julier 12%, Susten 9%, Flüela 8%). Ein dichteres Raster verschiebt das
+// 90.-Perzentil der Steigung und damit veröffentlichte Streckenkennzahlen.
+// Die Dichte anzuheben ist deshalb nur dort richtig, wo der summierte
+// Anstieg gefragt ist — bei Fahrten (lib/actions/completions.ts).
 export async function fetchElevationProfile(
   coords: [number, number][],
+  stuetzpunkte: number = MIN_STUETZPUNKTE,
 ): Promise<{ dist: number; elevation: number }[] | null> {
   const lv95 = coords.map(wgs84ToLv95);
   const geom = JSON.stringify({ type: "LineString", coordinates: lv95 });
-  const body = new URLSearchParams({ geom, sr: "2056", nb_points: "300" });
+  const body = new URLSearchParams({ geom, sr: "2056", nb_points: String(stuetzpunkte) });
 
   // Mit Frist, und jeder Fehler wird zu null: das Höhenprofil ist Beiwerk.
   // Ein stockender oder ausgefallener swisstopo-Aufruf darf weder das
@@ -142,7 +177,9 @@ export function computeAscentM(profile: { dist: number; elevation: number }[]): 
 }
 
 // Downsampled Höhenprofil fürs Diagramm (ca. 80 Punkte reichen für eine
-// glatte Linie, spart Speicher/Payload gegenüber den vollen 300 Rohpunkten).
+// glatte Linie, spart Speicher/Payload gegenüber den Rohpunkten — deren
+// Anzahl hängt seit stuetzpunkteFuer() an der Länge und ist nicht mehr
+// zwingend 300).
 export function buildHoehenprofil(
   profile: { dist: number; elevation: number }[],
   targetPoints = 80,

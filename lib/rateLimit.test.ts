@@ -3,13 +3,16 @@ import { getClientIp, isRateLimited, isRateLimitedByKey } from "@/lib/rateLimit"
 
 // Minimaler Chainable-Mock für den Teil der Supabase-Query-Builder-API, den
 // isRateLimited tatsächlich nutzt (.from().select().eq().order().limit().maybeSingle()).
-function makeMockSupabase(row: Record<string, string> | null) {
+function makeMockSupabase(
+  row: Record<string, string> | null,
+  error: { message: string } | null = null,
+) {
   const chain = {
     select: () => chain,
     eq: () => chain,
     order: () => chain,
     limit: () => chain,
-    maybeSingle: async () => ({ data: row, error: null }),
+    maybeSingle: async () => ({ data: row, error }),
   };
   return { from: () => chain } as unknown as Parameters<typeof isRateLimited>[0];
 }
@@ -29,6 +32,20 @@ describe("isRateLimited", () => {
     const old = new Date(Date.now() - 10_000).toISOString();
     const supabase = makeMockSupabase({ created_at: old });
     expect(await isRateLimited(supabase, "t", "created_at", "user_id", "u1", 5000)).toBe(false);
+  });
+
+  // Der Fehlerfall lieferte bisher data=null und damit dasselbe Ergebnis wie
+  // "noch nie geschrieben": die Bremse fiel bei jedem Datenbankproblem
+  // lautlos aus. Sie schliesst jetzt.
+  it("bremst vorsorglich, wenn die Abfrage fehlschlägt", async () => {
+    const supabase = makeMockSupabase(null, { message: "connection refused" });
+    expect(await isRateLimited(supabase, "t", "created_at", "user_id", "u1", 5000)).toBe(true);
+  });
+
+  it("bremst auch dann, wenn neben dem Fehler eine Zeile zurückkommt", async () => {
+    const alt = new Date(Date.now() - 10_000).toISOString();
+    const supabase = makeMockSupabase({ created_at: alt }, { message: "timeout" });
+    expect(await isRateLimited(supabase, "t", "created_at", "user_id", "u1", 5000)).toBe(true);
   });
 });
 

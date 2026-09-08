@@ -15,13 +15,32 @@ export async function isRateLimited(
   userId: string,
   cooldownMs: number,
 ): Promise<boolean> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from(table)
     .select(timestampColumn)
     .eq(userColumn, userId)
     .order(timestampColumn, { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  // Der Fehler wurde bisher verworfen, und ein Lesefehler liefert data=null
+  // — dasselbe wie "noch nie geschrieben". Die Bremse fiel damit bei jedem
+  // Datenbankproblem lautlos aus, also genau dann, wenn die Datenbank ohnehin
+  // schon unter Last steht.
+  //
+  // Deshalb geschlossen statt offen: die Kosten sind nicht symmetrisch. Wer
+  // im Fehlerfall blockiert wird, sieht einen Hinweis und versucht es gleich
+  // noch einmal; im offenen Fall gibt es keine Bremse mehr und keine Meldung
+  // darüber. Das Fenster umfasst wenige Sekunden, echte Nutzung verliert also
+  // höchstens einen Anlauf.
+  if (error) {
+    console.error("Cooldown-Prüfung fehlgeschlagen — vorsorglich gebremst", {
+      table,
+      userColumn,
+      error,
+    });
+    return true;
+  }
 
   if (!data) return false;
   const lastTimestamp = (data as unknown as Record<string, string>)[timestampColumn];

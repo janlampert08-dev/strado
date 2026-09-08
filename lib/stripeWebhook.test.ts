@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type Stripe from "stripe";
 import {
   ANSPRUCH_VERFAELLT_NACH_MS,
@@ -6,6 +6,8 @@ import {
   kulanzAktionFuer,
   leseAboIdAusRechnung,
   leseAboZustand,
+  bekanntePreisIds,
+  preisHerkunft,
 } from "@/lib/stripeWebhook";
 
 // Minimaler Mock für genau die Teile der Supabase-Query-Builder-API, die
@@ -197,5 +199,73 @@ describe("ereignisBeanspruchen", () => {
     await expect(ereignisBeanspruchen(supabase, "evt_1", "invoice.paid")).rejects.toEqual({
       code: "57014",
     });
+  });
+});
+
+
+// Die Preis-Schranke aus Audit-Befund A5: der Webhook-Endpunkt hängt am
+// Stripe-KONTO, nicht am Produkt, und vergab Premium bisher für jedes Abo,
+// das dort auflief.
+describe("preisHerkunft", () => {
+  const PREIS_VARIABLEN = [
+    "STRIPE_PREMIUM_PRICE_ID_MONAT",
+    "STRIPE_PREMIUM_PRICE_ID_JAHR",
+    "STRIPE_PREMIUM_PRICE_ID_GRUENDER",
+    "STRIPE_PREMIUM_PRICE_ID",
+  ] as const;
+
+  let gesichert: Record<string, string | undefined>;
+
+  beforeEach(() => {
+    gesichert = Object.fromEntries(PREIS_VARIABLEN.map((n) => [n, process.env[n]]));
+    for (const name of PREIS_VARIABLEN) delete process.env[name];
+  });
+
+  afterEach(() => {
+    for (const name of PREIS_VARIABLEN) {
+      const wert = gesichert[name];
+      if (wert === undefined) delete process.env[name];
+      else process.env[name] = wert;
+    }
+  });
+
+  it("erkennt eine konfigurierte Preis-ID als eigenes Premium", () => {
+    process.env.STRIPE_PREMIUM_PRICE_ID_MONAT = "price_monat";
+    expect(preisHerkunft("price_monat")).toBe("premium");
+  });
+
+  it("zählt den Gründerpreis weiter mit, obwohl er nicht mehr verkauft wird", () => {
+    process.env.STRIPE_PREMIUM_PRICE_ID_GRUENDER = "price_gruender";
+    expect(preisHerkunft("price_gruender")).toBe("premium");
+  });
+
+  it("erkennt die Alt-Variable ohne Monat/Jahr-Suffix", () => {
+    process.env.STRIPE_PREMIUM_PRICE_ID = "price_alt";
+    expect(preisHerkunft("price_alt")).toBe("premium");
+  });
+
+  it("weist ein fremdes Produkt auf demselben Konto ab", () => {
+    process.env.STRIPE_PREMIUM_PRICE_ID_MONAT = "price_monat";
+    expect(preisHerkunft("price_etwas_anderes")).toBe("fremd");
+  });
+
+  // Der wichtige Unterschied: ohne jede konfigurierte Variable ist "fremd"
+  // die falsche Antwort. Dann lässt sich eigen und fremd nicht
+  // unterscheiden, und das gehört gemeldet statt weggefiltert.
+  it("meldet fehlende Konfiguration, statt alles als fremd abzutun", () => {
+    expect(preisHerkunft("price_irgendwas")).toBe("unkonfiguriert");
+  });
+
+  it("sammelt alle gesetzten Varianten ohne Dubletten", () => {
+    process.env.STRIPE_PREMIUM_PRICE_ID_MONAT = "price_a";
+    process.env.STRIPE_PREMIUM_PRICE_ID = "price_a";
+    process.env.STRIPE_PREMIUM_PRICE_ID_JAHR = "price_b";
+    expect(bekanntePreisIds().sort()).toEqual(["price_a", "price_b"]);
+  });
+
+  it("ignoriert eine leer gesetzte Variable", () => {
+    process.env.STRIPE_PREMIUM_PRICE_ID_MONAT = "   ";
+    expect(bekanntePreisIds()).toEqual([]);
+    expect(preisHerkunft("price_x")).toBe("unkonfiguriert");
   });
 });
