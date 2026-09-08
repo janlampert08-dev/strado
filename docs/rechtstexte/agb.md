@@ -149,7 +149,17 @@ unvollständig, veraltet oder falsch sein. Für Abschnitte ohne hinterlegte
 Signalisation wird ein Standardwert angenommen. **Diese Angaben sind
 unverbindlich und ersetzen weder die Signalisation vor Ort noch die eigene
 Beurteilung der Verkehrslage.** Massgebend ist ausschliesslich die tatsächliche
-Signalisation und die geltende Strassenverkehrsordnung.
+Signalisation und die geltende Strassenverkehrsgesetzgebung.
+
+**3.4.3** Angezeigte Fahrzeiten sind **Schätzungen, keine Zusagen**. Die zu
+einer Strecke angezeigte Dauer wird rechnerisch aus Länge, Streckencharakter
+und hinterlegten Tempolimits abgeleitet; sie berücksichtigt weder die
+tatsächliche Verkehrslage noch Baustellen, kurzfristige Sperrungen, Witterung
+oder die individuelle Fahrweise. Auch die in Bestenlisten angezeigten Zeiten
+anderer Nutzender sind keine Zusage, dass eine Strecke in dieser Zeit gefahren
+werden kann oder darf. **Ein Anspruch darauf, eine bestimmte Zeit zu erreichen,
+besteht nicht; das Erreichen einer angezeigten Zeit ist kein Ziel der Nutzung
+von Strado.**
 
 ## 4. Preise und Mehrwertsteuer
 
@@ -409,16 +419,30 @@ erfasst, wenn die Nutzenden dies selbst aktivieren. Fahrten, die unter
 Missachtung von Verkehrsregeln zustande gekommen sind, dürfen nicht
 veröffentlicht werden.
 
-**11.4** Nutzende sind für die Verkehrstauglichkeit ihres Fahrzeugs, für
+**11.4** **Strado darf nicht in einer Weise genutzt werden, die andere
+gefährdet.** Untersagt sind insbesondere das Verabreden oder Austragen von
+Rennen, das Fahren im Pulk oder dichtes Auffahren zum Zweck einer gemeinsamen
+Aufzeichnung sowie jedes Verhalten, das darauf zielt, eine angezeigte oder in
+einer Bestenliste geführte Zeit zu unterbieten. Wer zwischen einer Aufzeichnung
+und der Sicherheit anderer entscheiden muss, bricht die Aufzeichnung ab.
+
+**11.5** Nutzende sind für die Verkehrstauglichkeit ihres Fahrzeugs, für
 gültige Fahrberechtigungen und für den Versicherungsschutz selbst
 verantwortlich.
 
-**11.5** Untersagt sind ferner: automatisiertes Auslesen der Plattform
+**11.6** Untersagt sind ferner: automatisiertes Auslesen der Plattform
 (Scraping), das Umgehen technischer Schutzmassnahmen, Zugriffsversuche auf
 fremde Konten oder Daten sowie Handlungen, die den Betrieb beeinträchtigen
 (z. B. Überlastungsversuche).
 
-## 12. Verfügbarkeit
+**11.7 Sperre.** Die Anbieterin kann ein Konto vorübergehend oder dauerhaft
+sperren, wenn Nutzende schwerwiegend oder wiederholt gegen diese AGB verstossen
+— insbesondere gegen Ziff. 10.4, Ziff. 11.1 bis 11.4 oder Ziff. 11.6 — oder
+wenn konkrete Anhaltspunkte für eine Nutzung bestehen, die andere gefährdet.
+Die Sperre wird mitgeteilt und begründet; Nutzende können ihr formlos
+widersprechen. Bei einem laufenden Abo gilt zusätzlich Ziff. 6.5.
+
+## 12. Verfügbarkeit und Genauigkeit
 
 **12.1** Die Anbieterin bemüht sich um eine möglichst hohe Verfügbarkeit,
 schuldet aber keine bestimmte Verfügbarkeit. Strado wird auf der
@@ -434,6 +458,18 @@ betroffene Zeit auf Anfrage anteilig gutgeschrieben.
 Wetterdaten, Höhenprofile, Verkehrsdaten). Fallen diese aus, kann die
 betroffene Funktion vorübergehend fehlen, ohne dass darin ein Mangel des
 Gesamtangebots liegt.
+
+**12.4 Aufzeichnung und Messwerte.** Die Aufzeichnung einer Fahrt hängt vom
+Gerät der Nutzenden, vom Betriebssystem und vom Satellitenempfang ab. Die
+Anbieterin garantiert weder, dass eine Aufzeichnung zustande kommt oder
+vollständig ist, noch dass die daraus abgeleiteten Werte — Zeit, Distanz,
+Höhenmeter, Rundenerkennung und die Zuordnung zu einer Strecke — genau sind.
+Empfangslücken (Tunnel, enge Täler, dichte Bebauung oder Bewaldung), eine
+unterbrochene Aufzeichnung, ein gesperrter Bildschirm oder Energiesparfunktionen
+des Geräts können Werte verfälschen oder eine Fahrt unbrauchbar machen.
+**Zeiten in Bestenlisten sind keine geeichte Zeitmessung.** Aus einer
+fehlenden, unvollständigen oder ungenauen Aufzeichnung entsteht kein Anspruch;
+im Übrigen gilt Ziff. 13.
 
 ## 13. Haftung
 
