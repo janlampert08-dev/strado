@@ -1,22 +1,49 @@
 import Skeleton from "@/components/ui/Skeleton";
+import Card from "@/components/ui/Card";
+import PageSkeleton from "@/components/ui/PageSkeleton";
 
-// Eigenes Skelett für dieses Segment. Ohne das greift app/loading.tsx —
-// und das zeichnet die Explore-Form (Karte links, Streckenliste rechts),
-// die zu dieser Seite gar nicht passt: Der Nutzer sieht beim Navigieren
-// kurz ein Layout, das gleich von einem völlig anderen ersetzt wird.
+// Spiegelt app/fahrten/[id]/page.tsx: Fahrer-Zeile mit Aktionen, Titelblock,
+// Kartenkarte in ihrer echten Höhe (h-64 sm:h-80, siehe CompletionMap),
+// Fotogalerie und das vierspaltige Kennzahlenraster. Die Karte war hier
+// vorher als h-56 gezeichnet und die Kennzahlen dreispaltig — beides sprang
+// beim Auflösen.
 
 export default function Loading() {
   return (
-    <div className="flex flex-col gap-4 px-5 py-6 sm:px-6">
-      <Skeleton className="h-7 w-56 rounded-md" />
-      {/* Karte mit dem gekappten Track */}
-      <Skeleton className="h-56 rounded-xl" />
-      <div className="grid grid-cols-3 gap-3">
+    <PageSkeleton maxWidth="max-w-2xl lg:max-w-3xl">
+      {/* Fahrer plus Datum links, Kudos/Teilen/Menü rechts */}
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-11 w-11 shrink-0 rounded-full" />
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <Skeleton className="h-4 w-32 rounded-sm" />
+          <Skeleton className="h-3 w-40 rounded-sm" />
+        </div>
+        <Skeleton className="h-6 w-6 shrink-0 rounded-full" />
+      </div>
+
+      {/* Region, Titel, Start/Ziel */}
+      <div className="flex flex-col gap-1">
+        <Skeleton className="h-4 w-24 rounded-sm" />
+        <Skeleton className="h-9 w-3/4 rounded-md" />
+        <Skeleton className="h-4 w-48 rounded-sm" />
+      </div>
+
+      <Card className="h-64 overflow-hidden sm:h-80">
+        <Skeleton className="h-full w-full" />
+      </Card>
+
+      {/* Fotos der Fahrt */}
+      <div className="flex gap-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-16 rounded-lg" />
+          <Skeleton key={i} className="h-24 w-24 shrink-0 rounded-lg" />
         ))}
       </div>
-      <Skeleton className="h-24 rounded-xl" />
-    </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-[86px] rounded-lg" />
+        ))}
+      </div>
+    </PageSkeleton>
   );
 }

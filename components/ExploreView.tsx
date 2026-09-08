@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { ZUFALLSSTRECKE_EVENT } from "@/components/LogoLink";
 import ExploreSidebar from "@/components/ExploreSidebar";
 import DragSheet from "@/components/ui/DragSheet";
 import Skeleton from "@/components/ui/Skeleton";
@@ -45,6 +47,11 @@ const RouteMap = dynamic(() => import("@/components/RouteMap"), {
 // lässt oben immer einen Streifen Karte sichtbar, damit der Kontext (wo bin
 // ich?) beim voll aufgezogenen Sheet nicht verloren geht.
 const SHEET_PEEK_PX = 272;
+
+// Wie lange der Zufallsvorschlag (siehe unten) stehen bleibt. Die Kamerafahrt
+// dorthin dauert 800 ms, danach bleiben gut vier Sekunden zum Lesen und
+// Antippen — kurz genug, um die Karte nicht dauerhaft zu belegen.
+const ZUFALLSVORSCHLAG_MS = 5000;
 const SHEET_EXPANDED_GAP_PX = 96;
 
 export default function ExploreView({
@@ -93,6 +100,9 @@ export default function ExploreView({
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [hoveredRouteId, setHoveredRouteId] = useState<string | null>(null);
+  // Vom Logo angestossener Zufallsvorschlag (LogoLink.tsx): auf der
+  // Startseite führt ein Klick auf die Wortmarke sonst nirgendwohin.
+  const [zufallsstrecke, setZufallsstrecke] = useState<RouteGeoJSON | null>(null);
 
   // Bottom-Sheet-Container (nur < md relevant — ab md greift die feste
   // Liste-links/Karte-rechts-Aufteilung unverändert, siehe Klassen unten).
@@ -153,6 +163,24 @@ export default function ExploreView({
     );
   }, [routes, searchInput, userLocation]);
 
+  useEffect(() => {
+    function handleZufallsstrecke() {
+      const auswahl = visibleRoutes[Math.floor(Math.random() * visibleRoutes.length)];
+      // Bei leerer Trefferliste (etwa während einer Suche ohne Treffer)
+      // passiert schlicht nichts — besser als eine leere Meldung.
+      if (!auswahl) return;
+      setZufallsstrecke(auswahl);
+    }
+    window.addEventListener(ZUFALLSSTRECKE_EVENT, handleZufallsstrecke);
+    return () => window.removeEventListener(ZUFALLSSTRECKE_EVENT, handleZufallsstrecke);
+  }, [visibleRoutes]);
+
+  useEffect(() => {
+    if (!zufallsstrecke) return;
+    const timeout = setTimeout(() => setZufallsstrecke(null), ZUFALLSVORSCHLAG_MS);
+    return () => clearTimeout(timeout);
+  }, [zufallsstrecke]);
+
   return (
     <main ref={containerRef} className="relative flex flex-1 flex-col overflow-hidden md:flex-row">
       <div
@@ -164,9 +192,30 @@ export default function ExploreView({
           routes={visibleRoutes}
           userLocation={userLocation}
           colors={colors}
-          hoveredRouteId={hoveredRouteId}
+          // Hover und Zufallsvorschlag speisen denselben
+          // Hervorhebungs-Layer, bleiben aber getrennte Zustände: der
+          // Vorschlag darf einen laufenden Hover weder überschreiben noch
+          // beim Ausblenden mit abräumen. Der Hover hat Vorrang — er folgt
+          // dem Zeiger und ist damit die aktuellere Absicht.
+          hoveredRouteId={hoveredRouteId ?? zufallsstrecke?.id ?? null}
+          flyToRouteId={zufallsstrecke?.id ?? null}
         />
       </div>
+
+      {/* Der Vorschlag selbst — oben über der Karte, damit er weder das
+          Sheet noch die Kopfleiste verdeckt. pointer-events-none auf dem
+          Rahmen, damit die Karte darunter bedienbar bleibt; nur die Pille
+          selbst nimmt Klicks an. */}
+      {zufallsstrecke && (
+        <div className="pointer-events-none absolute inset-x-0 top-4 z-20 flex justify-center px-5">
+          <Link
+            href={`/strecken/${zufallsstrecke.id}`}
+            className="pointer-events-auto max-w-full truncate rounded-full border border-border bg-background/95 px-4 py-2 text-sm font-medium shadow-overlay backdrop-blur-xl transition-colors duration-fast hover:text-accent"
+          >
+            Wie wär&rsquo;s mit … {zufallsstrecke.name}?
+          </Link>
+        </div>
+      )}
 
       {/* Mobile: Bottom-Sheet über der Karte, per Ziehgriff auf- und
           zuziehbar zwischen Peek- und Vollhöhe (siehe DragSheet.tsx).

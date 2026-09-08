@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChevronRight, Rss } from "lucide-react";
 import Header from "@/components/Header";
+import PullToRefreshArea from "@/components/PullToRefreshArea";
 import Avatar from "@/components/Avatar";
 import KudosButton from "@/components/KudosButton";
 import ProfileSearch from "@/components/ProfileSearch";
@@ -38,6 +39,8 @@ export default async function FeedPage({
   return (
     <div className="flex h-dvh flex-col">
       <Header back="/" />
+      {/* Ziehen zum Aktualisieren (nur Touch) — siehe PullToRefreshArea.tsx */}
+      <PullToRefreshArea>
       <div className="flex-1 overflow-y-auto">
         <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-5 py-8 sm:px-6 sm:py-10">
         <div>
@@ -79,8 +82,8 @@ export default async function FeedPage({
             icon={Rss}
             title={
               scope === "following"
-                ? "Noch keine Fahrten von Fahrern, denen du folgst."
-                : "Noch keine geteilten Fahrten."
+                ? "Von den Fahrern, denen du folgst, kam noch nichts."
+                : "Hier ist es noch ruhig. Fahr eine Runde, dann nicht mehr."
             }
             action={
               scope === "following" ? (
@@ -172,6 +175,7 @@ export default async function FeedPage({
         )}
         </main>
       </div>
+      </PullToRefreshArea>
     </div>
   );
 }
