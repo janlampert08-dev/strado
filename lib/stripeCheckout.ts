@@ -102,6 +102,57 @@ export function istUnbekannterCustomer(err: unknown): boolean {
 }
 
 /**
+ * Ein Stripe-Fehler vom Typ "derselbe Idempotency-Key, andere Parameter".
+ *
+ * Stripe merkt sich zu einem Idempotency-Key die Parameter des ersten
+ * Aufrufs — auch dann, wenn dieser Aufruf mit einem Fehler endete. Ein
+ * späterer Aufruf mit demselben Key, aber abweichenden Parametern wird
+ * deshalb hart abgewiesen, statt die Anfrage auszuführen.
+ *
+ * Das trifft genau die Fälle, in denen sich zwischen zwei Versuchen etwas
+ * am Aufruf ändert: der Selbstheilungs-Versuch mit einem frisch angelegten
+ * Customer (siehe istUnbekannterCustomer) und ein Deploy, der die
+ * Session-Parameter erweitert, während im selben Zeitfenster noch ein
+ * verbrannter Key aus der Vorversion liegt. checkoutIdempotencyKey unten
+ * verhindert beides bereits im Schlüssel; diese Prüfung ist das Netz
+ * darunter, damit ein solcher Konflikt keinen zahlenden Nutzer aussperrt.
+ */
+export function istIdempotencyKonflikt(err: unknown): boolean {
+  return err instanceof Stripe.errors.StripeIdempotencyError;
+}
+
+/**
+ * Der Idempotency-Key für das Anlegen einer Checkout-Session.
+ *
+ * Er trägt jeden Wert, der den Aufruf inhaltlich unterscheidet — Customer
+ * und Preis-ID eingeschlossen. Das ist kein Zierrat: lag im Key nur
+ * (Nutzer, Plan, Stunde), dann benutzte der Wiederholungsversuch nach einem
+ * unbekannten Customer denselben Key mit einer anderen customer-ID, und
+ * Stripe wies ihn mit einem idempotency_error ab, statt die Session
+ * anzulegen. Ein Wert, der sich ändert, muss auch den Schlüssel ändern.
+ *
+ * Der Stundenraster bleibt als Ablauf: zwei Klicks kurz hintereinander
+ * bekommen dieselbe Session, ein bewusster neuer Anlauf später nicht mehr
+ * die alte Antwort.
+ *
+ * `zusatz` erzwingt einen frischen Key, wenn der reguläre verbrannt ist —
+ * siehe istIdempotencyKonflikt.
+ */
+export function checkoutIdempotencyKey(teile: {
+  userId: string;
+  plan: string;
+  customerId: string;
+  preisId: string;
+  /** Millisekunden seit Epoch; Default ist die aktuelle Zeit. */
+  jetzt?: number;
+  zusatz?: string;
+}): string {
+  const stunde = Math.floor((teile.jetzt ?? Date.now()) / 3_600_000);
+  const basis = `checkout:${teile.userId}:${teile.plan}:${teile.customerId}:${teile.preisId}:${stunde}`;
+  return teile.zusatz ? `${basis}:${teile.zusatz}` : basis;
+}
+
+/**
  * Das Abo einer Session, sofern es ausgeklappt vorliegt und aktiv ist.
  *
  * Kein Gratis-Testzeitraum konfiguriert — "trialing" hier bewusst NICHT

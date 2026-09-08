@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { KeyRound, Lock, LogOut, MapPin, Palette, Scale } from "lucide-react";
+import { KeyRound, Lock, LogOut, MapPin, Palette, Scale, Sparkles } from "lucide-react";
 import Header from "@/components/Header";
 import VisibilitySettings from "@/components/VisibilitySettings";
 import { DEFAULT_PRIVACY_RADIUS_M } from "@/lib/track";
@@ -157,6 +157,27 @@ export default async function EinstellungenPage() {
                   Abmelden
                 </Button>
               </form>
+            </Card>
+          </section>
+
+          {/* Kein eigener Statuszug hier — der Abo-Zustand (aktiv, gekündigt,
+              Kulanzfrist, Verlängerungsdatum) steht bereits auf der
+              Profilseite (PremiumCard) und noch einmal, gleich formatiert,
+              auf app/profil/einstellungen/abo. Zwei Quellen fürs selbe Datum
+              wären eine, die auseinanderlaufen kann. */}
+          <section className="flex flex-col gap-3">
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold tracking-wide text-muted uppercase">
+              <Sparkles className="h-4 w-4" aria-hidden="true" />
+              Premium
+            </h2>
+            <Card className="flex items-center justify-between gap-3 p-4">
+              <p className="text-sm text-muted">Abo-Status, Rechnungen, Kündigung.</p>
+              <Link
+                href="/profil/einstellungen/abo"
+                className={buttonVariants({ variant: "secondary", size: "sm", className: "shrink-0" })}
+              >
+                Abo verwalten
+              </Link>
             </Card>
           </section>
 
