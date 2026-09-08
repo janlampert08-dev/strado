@@ -17,7 +17,7 @@ found. What changed since is tracked here instead, and only here.
 
 | Finding | Status | Where |
 | --- | --- | --- |
-| A1 — forgeable ride statistics | **Partially fixed** | migration `0059` |
+| A1 — forgeable ride statistics | **Two of three legs closed** — see the A1 table below | migrations `0052`, `0059`, `0074`, `0077` |
 | A2 — route ride has no post-save destination | **Fixed** | `logTrackedCompletion` returns `completionId`; `LiveTrackingForm` navigates to `/fahrten/[id]` |
 | A3 — private routes in anon-readable views | **Fixed** | migration `0060` |
 | A4, A5, A6 and everything in §B | Open except the rows below | — |
@@ -26,6 +26,10 @@ found. What changed since is tracked here instead, and only here.
 | §B — `lib/actions/moderation.ts` returns `void` and never looks at an error | **Fixed** | every action returns `ModerationResult`; a zero-row hit counts as a failure, and `ModerationActions` / `ReportedContentActions` render it |
 | §B — React 19 wipes the file input across five forms | **Fixed for the photo case** | `MultiPhotoInput` re-applies `input.files` on the form's `reset` event. The other four forms use controlled fields and were never affected |
 | §B (performance) — `RouteMap`'s `trafficSegments = []` / `trail = []` defaults | **Fixed** | module-scope constants; `RouteDetailMap` also memoises its `routes={[route]}` |
+| §B — password change requires no re-authentication | **Fixed** | `updatePassword` verifies the current password unless the session came from a reset link; the marker is set server-side in `app/auth/callback/route.ts` (`lib/passwortWiederherstellung.ts`) |
+| §B (performance) — `auth.getUser()` is not memoised (60 call sites, 4 modules use `cache()`) | **Fixed for pages** | thirteen page components now call the memoised `getCurrentUser()`. Route Handlers and Server Actions stay on the direct call by design |
+| §B (performance) — `getRoutes()` uses `select("*")` | **Fixed** | explicit column list; new `ExploreRoute` / `MapRoute` types in `types/database.ts` |
+| §B (UI/UX) — small tap targets in a product used in a vehicle | **Fixed** | `min-h-9` / `min-h-11` on the existing sizes, new `lg` (52 px) for the controls shown while recording |
 
 Three findings below are **new** — neither audit raised them. All three sit
 in the privacy boundary and share one shape: an error that silently produced
@@ -48,18 +52,24 @@ live project, and neither was used while writing it. Treat its first run
 as a deploy step: read the dry-run list before letting it delete
 anything.
 
-A1 is deliberately marked partial, and it is worth being precise about how
-partial. Migration `0059` adds a validating trigger, four `NOT VALID` bounds,
-and a rule that stops a trackless free ride from ever being public. It
-**constrains the values a write may carry; it does not make any statistic
-server-derived**, and it does not close the write path itself. Taking A1's
-three legs in turn:
+A1's three legs have moved apart and are worth taking one at a time. The
+original recommendation — "`REVOKE INSERT` and route all writes through a
+`SECURITY DEFINER` function" — has since been **overtaken and deliberately
+declined**, not merely left undone: `0059` argues in its own header why a
+`BEFORE` trigger was chosen instead, and that argument holds. A trigger
+fires on every write path (direct PostgREST, `logTrackedCompletion`,
+`save_free_ride_with_segments`) without a client change; the revoke would
+have been a much larger cut through the core flow for the same gain.
 
-| A1 leg | After `0059` |
+| A1 leg | Status today |
 | --- | --- |
-| No write authorization on the stat columns | **Narrowed, not closed.** `INSERT` on `route_completions` is still granted, so a direct PostgREST write still bypasses every check in `lib/actions/completions.ts`. What changed is that the values it can carry are now bounded, cross-checked against the stored geometry, and — for a free ride with no track — forced private. |
-| `dauer_sekunden` is a client-supplied clock | **Untouched.** There are no timestamps in the stored track to derive it from, so closing this needs a server-recorded ride start: a product change, not a migration. |
-| Coverage ignores direction | **Untouched.** `computeRouteCoverage` still asks only whether *any* trail point is near each sample, so an out-and-back route driven one way still scores 100% — confirmed by executing the function, see [`verification.md`](./verification.md). `0059` does not address this and no other change in this PR does either. |
+| No write authorization on the stat columns | **Closed as a forgery route, by a different mechanism than the one recommended.** `INSERT` is still granted, but `enforce_route_completion_coverage` (`0052`) *recomputes* `abdeckung_prozent` from the stored geometry on every insert and update and can only ever narrow `ist_oeffentlich`; `enforce_route_completion_stats` (`0059`) rejects impossible values and cross-checks `distanz_km` against `st_length(track)`; `0074` bounds the remaining columns; RLS pins `user_id` to `auth.uid()`. A direct PostgREST write no longer chooses its own coverage or visibility. What it can still do is pick values *inside* those bands — which is leg 2. |
+| `dauer_sekunden` is a client-supplied clock | **Open, and it needs a product decision, not a migration.** The band from `0059` (≤ 200 km/h average) leaves room: a genuine 10 km / 600 s trail replayed with timestamps ×0.4 becomes 240 s at 150 km/h and passes. Closing it needs a ride start the server recorded itself — and the recorder is open to signed-out visitors (`GefahrenSection` takes `userId: string \| null`), so there is no session to hang that start on for a guest ride. Any fix therefore changes the guest flow. A tighter speed heuristic was considered and rejected here: every threshold that catches ×0.4 compression on a pass road also rejects real rides, and a rule that quietly discards genuine rides is worse than the forgery it prevents. |
+| Coverage ignores direction | **Closed** by `0077` and `lib/routeCoverage.ts`, though by a different mechanism than "make it order-aware". The coverage value is now the **minimum** of the touch ratio and the distance actually travelled relative to the route's length. The audit's case — a 20 km out-and-back driven one way — measured 100 % before and measures **50 %** now (`lib/routeCoverage.test.ts`, "Hin-und-zurück-Strecken"). A point-to-point route driven in reverse still scores 100 %, deliberately: driving a pass the other way is its own real ride. Existing rows are not re-scored; the trigger only runs on write. |
+
+**Business rule change** (Core Rule 16): a ride over an out-and-back route
+that covers only one direction used to be publishable and no longer is. It
+is still saved — it just does not reach the leaderboards.
 
 Deriving `distanz_km` server-side is not available as a fix here: the stored
 track is Douglas-Peucker simplified and `lib/track.ts:93` states that

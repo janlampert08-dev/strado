@@ -437,7 +437,11 @@ export default function LiveTrackingForm({
             onDiscard={handleExit}
             visibility={{
               publicDisabled: belowCoverageThreshold,
-              publicDisabledHint: `Diese Fahrt deckt nur ${coveragePercent}% der offiziellen Strecke ab — evtl. abgekürzt oder am falschen Punkt gestartet/beendet. Sie bleibt privat gespeichert, kann aber nicht öffentlich geteilt werden.`,
+              // Seit 0077 ist der Deckungsgrad das Minimum aus "berührt" und
+              // "zurückgelegte Länge". Der dritte Grund im Text ist der neue:
+              // bei einer Strecke, die über dieselbe Strasse zurückführt, kann
+              // alles berührt und trotzdem nur die Hälfte gefahren sein.
+              publicDisabledHint: `Diese Fahrt deckt nur ${coveragePercent}% der offiziellen Strecke ab — evtl. abgekürzt, am falschen Punkt gestartet/beendet, oder die Strecke führt zurück und du bist nur eine Richtung gefahren. Sie bleibt privat gespeichert, kann aber nicht öffentlich geteilt werden.`,
               publicHint:
                 "Öffentlich: erscheint auf Bestenlisten und deinem öffentlichen Profil. Später jederzeit umschaltbar.",
               privateHint:
