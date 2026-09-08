@@ -7,7 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getOrigin, safeInternalPath } from "@/lib/utils/url";
 import { getClientIp, isRateLimitedByKey } from "@/lib/rateLimit";
 import { stripe } from "@/lib/stripe";
-import { BILD_ENDUNGEN } from "@/lib/validation";
+import { AVATAR_BUCKET, avatareEntfernen } from "@/lib/avatarSpeicher";
 import {
   PASSWORT_AENDERN_PFAD,
   istWiederherstellung,
@@ -438,18 +438,26 @@ export async function deleteAccount(
   // avatars-Bucket liegen, und der ist öffentlich (0015). Ihr Schlüssel ist
   // "{user_id}/avatar.{endung}", die Nutzer-ID steht in jeder
   // /fahrer/[id]-URL: das Bild eines gelöschten Kontos wäre also weiterhin
-  // für jeden abrufbar, der die vier möglichen Endungen durchprobiert.
+  // für jeden abrufbar.
+  //
+  // Der Ordner wird dafür aufgelistet statt aus BILD_ENDUNGEN zusammengesetzt.
+  // Die Endungsliste trifft nur, was bildEndungFuerMime() heute vergibt, und
+  // liess damit genau den Fall stehen, um den es hier geht: in Produktion
+  // fand sich ein gelöschtes Konto, dessen avatar.jpeg weiter mit HTTP 200
+  // antwortete. Begründung in lib/avatarSpeicher.ts.
   //
   // Über den session-gebundenen Client, nicht über den Admin-Client: die
-  // Storage-Policy aus 0015 erlaubt dem Nutzer genau das Löschen im eigenen
-  // Ordner, ein weiterer RLS-Bypass wäre hier unnötig. Die Session lebt noch
-  // (signOut steht unten).
+  // Storage-Policy aus 0015 erlaubt dem Nutzer genau das Auflisten und
+  // Löschen im eigenen Ordner, ein weiterer RLS-Bypass wäre hier unnötig.
+  // Die Session lebt noch (signOut steht unten).
   //
   // Best effort und ausdrücklich kein Abbruch: das Konto ist zu diesem
   // Zeitpunkt bereits anonymisiert, ein Fehlschlag hier darf den Nutzer nicht
   // in einen halb gelöschten Zustand zurückwerfen. Er wird protokolliert.
-  const avatarPfade = BILD_ENDUNGEN.map((endung) => `${user.id}/avatar.${endung}`);
-  const { error: avatarFehler } = await supabase.storage.from("avatars").remove(avatarPfade);
+  const { fehler: avatarFehler } = await avatareEntfernen(
+    supabase.storage.from(AVATAR_BUCKET),
+    user.id,
+  );
   if (avatarFehler) {
     console.error("Avatar bei Kontolöschung nicht entfernt", { userId: user.id }, avatarFehler);
   }
