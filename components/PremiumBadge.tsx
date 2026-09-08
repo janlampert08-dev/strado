@@ -1,4 +1,4 @@
-import { Sparkles } from "lucide-react";
+import { SparklesIcon } from "@/components/NavIcons";
 
 // Die Premium-Pille über der Überschrift. Auf der Kaufseite
 // (PremiumPurchaseView) und der Zahlungsseite dieselbe Marke: zwei Schritte
@@ -7,7 +7,7 @@ import { Sparkles } from "lucide-react";
 export default function PremiumBadge() {
   return (
     <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-accent-subtle px-3 py-1 text-xs font-semibold tracking-wide text-accent uppercase">
-      <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+      <SparklesIcon className="h-3.5 w-3.5" aria-hidden="true" />
       Premium
     </span>
   );
