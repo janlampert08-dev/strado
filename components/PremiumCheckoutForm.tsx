@@ -276,23 +276,27 @@ function CheckoutInner({
     // Weg nach vorn. Genau dieses Bild hat der Kauf im Live-Konto gezeigt.
     let antwort: StripeCheckoutConfirmResult;
     try {
-      antwort = await checkout.confirm({
-        // returnUrl ist auch bei redirect: "if_required" nötig, sobald das
-        // Payment Element eine Weiterleitungs-Zahlungsart anbieten kann.
-        // TWINT ist genau das — und für ein Schweizer Produkt die wichtigste.
-        //
-        // Die Session trägt bereits eine return_url mit der
-        // {CHECKOUT_SESSION_ID}-Vorlage (siehe createCheckoutSession). Hier
-        // steht dieselbe Adresse noch einmal mit der bereits bekannten
-        // Session-ID: das nimmt der Rückweg der Zahlungsart, auf die es
-        // ankommt, jede Abhängigkeit davon, dass die Vorlage ersetzt wird.
-        //
-        // "if_required" bleibt: Kartenzahlungen werden weiterhin ohne
-        // Seitenwechsel bestätigt, und nur die Zahlungsarten, die es
-        // brauchen, laufen über die Weiterleitung.
-        returnUrl: `${window.location.origin}/profil/premium/abschluss?sitzung=${encodeURIComponent(sessionId)}`,
-        redirect: "if_required",
-      });
+      // KEIN returnUrl hier. Die Session trägt ihre return_url bereits aus
+      // createCheckoutSession, und Stripe verbietet beides zugleich:
+      //
+      //   IntegrationError: You cannot provide `returnUrl` to confirm()
+      //   when `return_url` was already provided when creating the
+      //   Checkout Session.
+      //
+      // Das ist kein Hinweis, sondern eine geworfene Ausnahme — sie hat
+      // jeden Kauf im Live-Konto im catch unten enden lassen, für Karte
+      // wie für TWINT, noch bevor Stripe überhaupt gefragt wurde. Hier
+      // stand der returnUrl in der Annahme, er nehme dem Rückweg die
+      // Abhängigkeit davon, dass Stripe die {CHECKOUT_SESSION_ID}-Vorlage
+      // ersetzt. Diese Abhängigkeit ist real, aber sie ist Stripes
+      // dokumentiertes Verhalten und nicht verhandelbar: die Vorlage in
+      // der return_url der Session ist der einzig vorgesehene Weg.
+      //
+      // "if_required" bleibt: Kartenzahlungen werden ohne Seitenwechsel
+      // bestätigt, und nur die Zahlungsarten, die es brauchen — TWINT vor
+      // allem —, laufen über die Weiterleitung an die return_url der
+      // Session.
+      antwort = await checkout.confirm({ redirect: "if_required" });
     } catch (err) {
       // Das Einzige, was von diesem Fehler je irgendwo ankommt: er ist im
       // Browser entstanden, es gibt keine Fehlerberichterstattung, und die
