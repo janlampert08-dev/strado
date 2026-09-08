@@ -273,10 +273,18 @@ with a missing variable — fails with an error that doesn't name the cause.
 - Three inconsistent definitions of "Höhenmeter": the same pass driven ten
   times shows 2000 on your own profile and 20000 on your public one.
   **Still open, and narrower than first described — it needs a product
-  decision, not a bug fix.** The three expressions are: `lib/leaderboard.ts`
-  sums `route_completions.hoehenmeter_aufstieg` (real cumulative ascent);
-  `lib/profile.ts:85` sums `routes.hoehe_m` once per ride; and
-  `app/profil/page.tsx:182` sums `routes.hoehe_m` deduplicated per route. The
+  decision, not a bug fix.** The three expressions, with the surface each
+  one feeds, are: `lib/leaderboard.ts` (the leaderboards) sums
+  `route_completions.hoehenmeter_aufstieg` — real cumulative ascent;
+  `lib/profile.ts:85`, reached only through `getPublicProfile` in
+  `app/fahrer/[id]/page.tsx` (**the public profile**), sums `routes.hoehe_m`
+  once per ride, so ten rides give 20 000; and `app/profil/page.tsx:182`
+  (**your own profile**) sums `routes.hoehe_m` deduplicated per route, giving
+  2 000. That is the direction the example above states. What hid it is a
+  comment: `app/profil/page.tsx:176` says its deduplication "entspricht der
+  Dedup-Logik in lib/profile.ts (öffentliches Profil)" — `lib/profile.ts`
+  does not deduplicate, so the file that noticed the problem documented the
+  other one as already solving it. The
   latter two do not measure ascent at all — `hoehe_m` is the route's *summit
   altitude*, so ten passes over the Julier add ten summit heights. Only the
   leaderboard's definition is the quantity the label claims. Switching the
