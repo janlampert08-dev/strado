@@ -40,8 +40,13 @@ in the privacy boundary and share one shape: an error that silently produced
 The avatar fix is forward-looking only. Objects orphaned **before** it —
 every account that already swapped a JPG for a PNG, and every account
 already deleted — are still in the bucket and still fetchable. Clearing
-them needs a one-off sweep of `avatars/` against `profiles.avatar_url`,
-which is a storage operation, not a migration, and has not been run.
+them is a storage operation, not a migration:
+`scripts/verwaiste-avatare.mjs` does the sweep (list `avatars/`, diff
+against `profiles.avatar_url`, report; `--loeschen` to delete). **It has
+never been run**, here or anywhere — it needs the service-role key and a
+live project, and neither was used while writing it. Treat its first run
+as a deploy step: read the dry-run list before letting it delete
+anything.
 
 A1 is deliberately marked partial, and it is worth being precise about how
 partial. Migration `0059` adds a validating trigger, four `NOT VALID` bounds,
