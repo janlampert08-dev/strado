@@ -249,6 +249,28 @@ disabled. It is a single switch in the Supabase dashboard (Auth → Passwords)
 that checks new passwords against HaveIBeenPwned. There is no migration for
 it and no MCP tool — it has to be clicked.
 
+## Promoting staging to main
+
+Since 2026-09-08 a feature does not reach production on its own (see
+"Release Flow" in `AGENTS.md`). It lands on `staging` first, and `main`
+advances only via a batch promotion. That changes two things about this
+checklist:
+
+- **The rehearsal is real now.** `staging` has its own Supabase project, so
+  a migration gets applied there first, against the same code, before it
+  ever touches production. Given that migrations are applied by hand, this
+  is the closest thing to a dry run this project has — use it.
+- **A promotion PR is not a feature PR.** It carries several changes at
+  once, so walk section 1 and 2 below for the union of what they touch, not
+  for the last one merged. If one change in the batch is not ready, take it
+  off `staging` before promoting — do not promote and revert on `main`.
+
+Staging talks to the Stripe **sandbox** and is locked to logged-in
+moderators (`proxy.ts`, `lib/staging.ts`); Vercel's Deployment Protection
+stays off there, because Stripe has to be able to deliver sandbox webhooks.
+A green staging is evidence about staging, not about production: the Stripe
+mode, the database and the environment variables all differ by design.
+
 ## A deploy is not done when
 
 - The code is on `main` but the migration it needs is not applied. This

@@ -11,11 +11,17 @@ on:
   # Jeder PR wird geprüft, egal wohin er zeigt.
   pull_request:
   # Hier bleibt der Filter richtig: gemeint ist der Branch, auf den
-  # geschoben wurde. Nur main soll einen eigenen Lauf ausserhalb von PRs
-  # bekommen — Pushes auf Feature-Branches sind bereits über deren PR
-  # abgedeckt.
+  # geschoben wurde. Nur die beiden Sammelbranches sollen einen eigenen Lauf
+  # ausserhalb von PRs bekommen — Pushes auf Feature-Branches sind bereits
+  # über deren PR abgedeckt.
+  #
+  # staging ist seit dem 8. September 2026 der Integrationsbranch (siehe
+  # "Release Flow" in AGENTS.md) und wird selbst deployt. Sein Merge-Commit
+  # entsteht erst NACH dem PR-Lauf und trägt einen Stand, den so noch nichts
+  # geprüft hat — zwei je für sich grüne PRs können sich beim
+  # Zusammentreffen widersprechen.
   push:
-    branches: [main]
+    branches: [main, staging]
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}

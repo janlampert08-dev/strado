@@ -314,6 +314,37 @@ batch — not one PR to `main` per feature. `main` stays the deploy branch:
 it only ever advances via a batch promotion from a tested `staging`, never
 via a single feature branch merged straight into it.
 
+**Branch naming.** Feature branches carry a `staging-` prefix followed by a
+slug of what they do: `staging-zugang-nur-fuer-moderatoren`. The separator
+is a hyphen, not a slash, and that is not a style preference — git stores
+`refs/heads/staging` as a file, so it cannot at the same time hold a
+directory `refs/heads/staging/`. As long as a branch named `staging` exists,
+`git branch staging/foo` fails with *cannot lock ref*. Anyone who wants the
+slash form has to rename the integration branch first (`develop`, say), and
+that means moving the Vercel domain binding and the Stripe sandbox webhook
+with it.
+
+**The staging environment.** `staging` deploys to `staging.strado.ch`. It has
+its own Supabase project and talks to the Stripe **sandbox**, so a test
+purchase there touches no production data and no real money. Three things
+follow:
+
+- It is **locked to logged-in moderators** (`proxy.ts`, `lib/staging.ts`).
+  Vercel's Deployment Protection has to stay off so Stripe can deliver its
+  sandbox webhooks, so this gate is the only thing standing in front of it.
+  The gate keys off the deployment's git branch as well as the hostname —
+  Vercel serves every deployment under several addresses, and the hostname
+  alone missed all but one of them.
+- `app/robots.ts` answers `disallow: /` there. Two public copies of the same
+  content compete for the same search terms otherwise.
+- `/api/**` is exempt from the gate, deliberately: the Stripe webhook
+  arrives server-to-server with no session, and the `/api/strecken/**`
+  endpoints are unauthenticated by design.
+
+A migration is applied to the staging database **before** it is applied to
+production — that rehearsal is the main reason the environment exists, given
+that migrations are applied by hand (see below).
+
 ## Core Rules
 
 1. Never modify `main` directly. Every change lands via a pull request.
