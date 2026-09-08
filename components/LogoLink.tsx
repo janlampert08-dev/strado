@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import Wortmarke from "@/components/Wortmarke";
 import { cn } from "@/lib/utils/cn";
 
@@ -37,6 +37,7 @@ function bevorzugtReduzierteBewegung() {
  */
 export default function LogoLink() {
   const pathname = usePathname();
+  const istStartseite = pathname === "/";
   const [anschlag, setAnschlag] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -56,24 +57,44 @@ export default function LogoLink() {
     timeoutRef.current = setTimeout(() => setAnschlag(false), ANSCHLAG_MS);
   }
 
-  function handleClick(event: MouseEvent<HTMLAnchorElement>) {
-    if (pathname !== "/") return;
-    event.preventDefault();
+  function vorschlagen() {
     window.dispatchEvent(new CustomEvent(ZUFALLSSTRECKE_EVENT));
   }
 
+  // Klassen unverändert aus Header.tsx übernommen: text-foreground fixiert
+  // die Farbe, damit die Marke keine Hover-Farbe der Leiste erbt, h-[18px]
+  // entspricht der früheren Texthöhe.
+  const marke = <Wortmarke className={cn("h-[18px] w-auto", anschlag && "marke-anschlag")} />;
+  const klassen = "shrink-0 text-foreground";
+
+  // Auf der Startseite ist das hier kein Link: es führt nirgendwohin,
+  // sondern schlägt eine Strecke vor. Als <Link> angekündigt bekämen
+  // Screenreader-Nutzende "Strado, zur Startseite" zu hören und danach eine
+  // Seite, die sich nicht bewegt hat. Deshalb dort ein echter Button mit
+  // dem Namen der Handlung, die er auslöst — und überall sonst weiterhin
+  // der Link nach Hause.
+  if (istStartseite) {
+    return (
+      <button
+        type="button"
+        onPointerDown={handlePointerDown}
+        onClick={vorschlagen}
+        className={klassen}
+        aria-label="Zufällige Strecke vorschlagen"
+      >
+        {marke}
+      </button>
+    );
+  }
+
   return (
-    // Klassen und aria-label unverändert aus Header.tsx übernommen:
-    // text-foreground fixiert die Farbe, damit die Marke keine Hover-Farbe
-    // der Leiste erbt, h-[18px] entspricht der früheren Texthöhe.
     <Link
       href="/"
       onPointerDown={handlePointerDown}
-      onClick={handleClick}
-      className="shrink-0 text-foreground"
+      className={klassen}
       aria-label="Strado, zur Startseite"
     >
-      <Wortmarke className={cn("h-[18px] w-auto", anschlag && "marke-anschlag")} />
+      {marke}
     </Link>
   );
 }

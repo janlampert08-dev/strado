@@ -95,6 +95,17 @@ export default function PullToRefreshArea({ children }: { children: ReactNode })
     if (ausgeloest) startNeuladen(() => router.refresh());
   }
 
+  // pointercancel heisst: der Browser hat die Geste übernommen (Scrollen,
+  // Zoomen, Handballen, App-Wechsel) — ein pointerup folgt dann nicht mehr.
+  // Aufgeräumt werden muss trotzdem, aktualisiert aber gerade nicht: die
+  // Geste wurde abgebrochen, nicht beendet. Deshalb ein eigener Handler
+  // statt handlePointerUp, der oberhalb der Schwelle sonst neu geladen
+  // hätte.
+  function handlePointerCancel() {
+    zugStartRef.current = null;
+    setZug(0);
+  }
+
   const hoehe = laedt ? LADE_HOEHE_PX : zug;
   const fortschritt = laedt || statisch ? 1 : Math.min(zug / SCHWELLE_PX, 1);
   // Während des Ziehens ohne Übergang, damit der Indikator am Finger klebt;
@@ -108,7 +119,7 @@ export default function PullToRefreshArea({ children }: { children: ReactNode })
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
       className="flex min-h-0 flex-1 flex-col"
     >
       {/* Im Ruhezustand h-0 und overflow-hidden: kein reservierter Platz,

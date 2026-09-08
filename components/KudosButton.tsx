@@ -31,6 +31,11 @@ export default function KudosButton({
     startTransition(async () => {
       const { ok } = await toggleKudos(completionId);
       if (!ok) {
+        // Auch den Puls zurücknehmen: er quittiert eine Zustimmung, die es
+        // nach dem Rollback nicht gab. Ohne das liefe die Animation noch zu
+        // Ende, während Zähler und Zustand schon wieder auf dem alten Wert
+        // stehen.
+        setPuls(false);
         setGiven(!next);
         setCount((c) => c + (next ? -1 : 1));
       }

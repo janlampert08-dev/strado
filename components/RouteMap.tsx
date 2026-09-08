@@ -337,6 +337,12 @@ export default function RouteMap({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const styleLoadedRef = useRef(false);
+  // Gegenstück zu styleLoadedRef als Zustand: eine Ref löst kein erneutes
+  // Rendern aus, ein Effekt, der auf styleLoadedRef.current abbricht, läuft
+  // also nie von selbst nach. Dieser Zähler steigt nach jedem erfolgreichen
+  // style.load und lässt genau die Effekte nachziehen, die ihn in ihren
+  // Abhängigkeiten führen.
+  const [stilGeneration, setStilGeneration] = useState(0);
   // Deckt die Lücke zwischen Container-Mount und dem ersten sichtbaren
   // Kartenbild ab (Style- und Tile-Ladezeit von Mapbox GL selbst, unabhängig
   // vom bereits vorhandenen Skeleton für den Code-Split in RouteDetailMap/
@@ -678,6 +684,7 @@ export default function RouteMap({
       }
 
       styleLoadedRef.current = true;
+      setStilGeneration((n) => n + 1);
       setIsReady(true);
     });
 
@@ -804,7 +811,11 @@ export default function RouteMap({
       bounds.extend(coord as [number, number]);
     }
     map.fitBounds(bounds, { padding: 64, duration: bewegungsdauer(800) });
-  }, [flyToRouteId]);
+    // stilGeneration in den Abhängigkeiten, damit ein Klick, der vor dem
+    // style.load eintrifft, nicht verpufft: der Effekt bricht dann oben ab
+    // und läuft nach, sobald der Stil steht. Ohne das erschiene der
+    // Vorschlag, aber die Kamera bliebe stehen.
+  }, [flyToRouteId, stilGeneration]);
 
   // Hält die gezeichnete Track-Linie aktuell — während einer Aufzeichnung
   // bei jedem neuen GPS-Punkt, auf der Detailseite einmalig.

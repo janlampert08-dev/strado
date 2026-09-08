@@ -170,8 +170,6 @@ export default function ExploreView({
       // passiert schlicht nichts — besser als eine leere Meldung.
       if (!auswahl) return;
       setZufallsstrecke(auswahl);
-      // Derselbe Hervorhebungs-Layer, den auch der Listen-Hover benutzt.
-      setHoveredRouteId(auswahl.id);
     }
     window.addEventListener(ZUFALLSSTRECKE_EVENT, handleZufallsstrecke);
     return () => window.removeEventListener(ZUFALLSSTRECKE_EVENT, handleZufallsstrecke);
@@ -179,13 +177,7 @@ export default function ExploreView({
 
   useEffect(() => {
     if (!zufallsstrecke) return;
-    const timeout = setTimeout(() => {
-      setZufallsstrecke(null);
-      // Nur die eigene Hervorhebung zurücknehmen: zeigt der Zeiger inzwischen
-      // auf eine andere Strecke in der Liste, gehört sie dem Hover und darf
-      // hier nicht mit abgeräumt werden.
-      setHoveredRouteId((aktuell) => (aktuell === zufallsstrecke.id ? null : aktuell));
-    }, ZUFALLSVORSCHLAG_MS);
+    const timeout = setTimeout(() => setZufallsstrecke(null), ZUFALLSVORSCHLAG_MS);
     return () => clearTimeout(timeout);
   }, [zufallsstrecke]);
 
@@ -200,7 +192,12 @@ export default function ExploreView({
           routes={visibleRoutes}
           userLocation={userLocation}
           colors={colors}
-          hoveredRouteId={hoveredRouteId}
+          // Hover und Zufallsvorschlag speisen denselben
+          // Hervorhebungs-Layer, bleiben aber getrennte Zustände: der
+          // Vorschlag darf einen laufenden Hover weder überschreiben noch
+          // beim Ausblenden mit abräumen. Der Hover hat Vorrang — er folgt
+          // dem Zeiger und ist damit die aktuellere Absicht.
+          hoveredRouteId={hoveredRouteId ?? zufallsstrecke?.id ?? null}
           flyToRouteId={zufallsstrecke?.id ?? null}
         />
       </div>
