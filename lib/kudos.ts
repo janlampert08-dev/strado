@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { throwOnQueryError } from "@/lib/queryError";
 
@@ -48,12 +49,17 @@ export async function getKudosForCompletions(
 // die ausschliesslich auf auth.uid() arbeitet: es gibt bewusst keinen
 // userId-Parameter, ein Aufruf liefert immer nur die eigenen ungelesenen
 // Kudos des eingeloggten Nutzers.
-export async function getUnseenKudosCount(): Promise<number> {
+//
+// Mit React cache() umschlossen: <Header /> fragt den Zähler auf jeder
+// Seite ab, und /profil braucht ihn zusätzlich selbst, um MarkKudosSeen nur
+// bei Bedarf feuern zu lassen — ohne cache() wären das zwei RPCs pro
+// Request für dieselbe Zahl.
+export const getUnseenKudosCount = cache(async function getUnseenKudosCount(): Promise<number> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("count_unseen_kudos");
   if (error || data == null) return 0;
   return Number(data);
-}
+});
 
 export interface ReceivedKudos {
   completionId: string;
