@@ -14,7 +14,11 @@ import type {
 import { getStripe } from "@/lib/stripeClient";
 import Button from "@/components/ui/Button";
 import Skeleton from "@/components/ui/Skeleton";
-import { createCheckoutSession, confirmCheckoutSession } from "@/lib/actions/billing";
+import {
+  createCheckoutSession,
+  confirmCheckoutSession,
+  meldeCheckoutProblem,
+} from "@/lib/actions/billing";
 import { isDarkTheme, subscribeToThemeChange } from "@/lib/theme";
 import { betragText } from "@/lib/premiumAngebot";
 import type { AboPlan, VergebenerPreis } from "@/lib/premiumLimits";
@@ -170,6 +174,25 @@ function fehlertext(fehler: ConfirmFehler): string | null {
   }
 }
 
+// Was von einem geworfenen Wert fürs Log übrig bleibt. Kurz gehalten: die
+// Meldung reist als Server-Action-Argument, und im Log will niemand einen
+// minifizierten Stacktrace lesen — der Name plus die Meldung sagt bereits,
+// ob eine Origin blockiert wurde ("Failed to fetch"), Stripe.js gestolpert
+// ist oder das Netz wegbrach.
+function fehlerMeldung(fehler: unknown): string {
+  if (fehler instanceof Error) return `${fehler.name}: ${fehler.message}`;
+  if (typeof fehler === "string") return fehler;
+  return String(fehler);
+}
+
+// Ins Server-Log melden, ohne die Oberfläche darauf warten zu lassen —
+// und ohne dass ein Fehler beim Melden den Bezahlvorgang stört. Siehe
+// meldeCheckoutProblem in lib/actions/billing.ts: ohne diesen Weg
+// hinterlässt ein Fehler im Bezahlformular nirgendwo eine Spur.
+function melde(sitzungId: string, phase: "vorbereitung" | "confirm" | "bestaetigung", fehler: unknown) {
+  void meldeCheckoutProblem(sitzungId, phase, fehlerMeldung(fehler)).catch(() => {});
+}
+
 function preisText(preis: VergebenerPreis): string {
   return betragText(preis.betragRappen, preis.waehrung);
 }
@@ -216,7 +239,8 @@ function CheckoutInner({
         "Die Zahlung ist noch nicht bestätigt. Warte einen Moment und versuch es noch einmal — " +
           "abgebucht wird nichts doppelt.",
       );
-    } catch {
+    } catch (err) {
+      melde(sessionId, "bestaetigung", err);
       setError(
         "Die Bestätigung liess sich gerade nicht prüfen. Versuch es noch einmal — " +
           "abgebucht wird nichts doppelt.",
@@ -269,7 +293,11 @@ function CheckoutInner({
         returnUrl: `${window.location.origin}/profil/premium/abschluss?sitzung=${encodeURIComponent(sessionId)}`,
         redirect: "if_required",
       });
-    } catch {
+    } catch (err) {
+      // Das Einzige, was von diesem Fehler je irgendwo ankommt: er ist im
+      // Browser entstanden, es gibt keine Fehlerberichterstattung, und die
+      // zahlende Person sieht nur den Satz unten.
+      melde(sessionId, "confirm", err);
       // Bewusst als "nicht durchgelaufen" behandelt, aber mit dem Hinweis
       // auf die Doppelbuchung: geworfen hat der Aufruf, bevor Stripe ein
       // Ergebnis geliefert hat, und ob dabei schon etwas angestossen wurde,
@@ -284,7 +312,12 @@ function CheckoutInner({
     }
 
     if (antwort.type === "error") {
-      setError(fehlertext(antwort.error) ?? antwort.error.message ?? "Zahlung fehlgeschlagen.");
+      const uebersetzt = fehlertext(antwort.error);
+      // Eine abgelehnte Karte ist kein Mangel der Anwendung und gehört
+      // nicht ins Log. Alles andere schon: dann kennt fehlertext() den Fall
+      // nicht, und im Formular stand gerade eine englische Rohmeldung.
+      if (!uebersetzt) melde(sessionId, "confirm", antwort.error.message ?? antwort.error.code);
+      setError(uebersetzt ?? antwort.error.message ?? "Zahlung fehlgeschlagen.");
       setSubmitting(false);
       return;
     }
@@ -304,9 +337,11 @@ function CheckoutInner({
         onSuccess();
         return;
       }
-    } catch {
+    } catch (err) {
       // Fällt in denselben Zwischenstand wie eine noch nicht verbuchte
       // Zahlung: der Weg nach vorn ist die Schaltfläche "Erneut prüfen".
+      // Gemeldet wird er trotzdem — hier ist bereits Geld geflossen.
+      melde(sessionId, "bestaetigung", err);
     }
 
     setError(
@@ -403,7 +438,8 @@ export default function PremiumCheckoutForm({
             preis: result.preis,
           }
         : { status: "fehler", text: result.error };
-    } catch {
+    } catch (err) {
+      melde("", "vorbereitung", err);
       return {
         status: "fehler",
         text: "Zahlung konnte gerade nicht vorbereitet werden. Bitte versuch es noch einmal.",
