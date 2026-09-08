@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Lock } from "lucide-react";
 import {
   CheckoutElementsProvider,
   PaymentElement,
@@ -528,8 +527,12 @@ function CheckoutInner({
           <Button type="submit" disabled={submitting} aria-busy={submitting}>
             {submitting ? "Wird verarbeitet…" : `Zahlungspflichtig abonnieren — ${preisText(preis)}`}
           </Button>
-          <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted">
-            <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          {/* Ohne Schloss-Icon davor: der Satz bricht auf 390px Breite —
+              der Breite, für die diese App gebaut ist — auf zwei Zeilen, und
+              ein Icon in einer items-center-Zeile daneben steht dann allein
+              links neben einem zentrierten Block. Im Render war genau das zu
+              sehen. Die Aussage trägt der Satz, nicht das Symbol. */}
+          <p className="text-center text-xs text-muted">
             Zahlungsdaten gehen direkt an Stripe — Strado sieht und speichert sie nie.
           </p>
         </div>
