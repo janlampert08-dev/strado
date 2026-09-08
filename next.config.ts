@@ -42,11 +42,25 @@ const nextConfig: NextConfig = {
           // Referrer-Policy ginge die vollständige URL beim Klick auf einen
           // externen Link als Referer mit — inklusive Token.
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          // Keine der drei Berechtigungen wird gebraucht. Geolocation
+          // Kamera und Mikrofon braucht die Anwendung nirgends. Geolocation
           // ausdrücklich NICHT gesperrt: die Fahrtaufzeichnung lebt davon.
+          //
+          // payment: seit Premium live ist, braucht die Kaufseite die
+          // Berechtigung. Das Payment Element läuft in einem iframe von
+          // js.stripe.com und bietet dort Apple Pay / Google Pay über die
+          // Payment Request API an. Mit payment=() verweigert der Browser
+          // das dem iframe, Stripe.js meldet die fehlende Berechtigung in
+          // der Konsole und blendet im Formular einen Hinweis ein — die
+          // Zahlung selbst lief zwar durch, aber mit einer Warnung, die
+          // ausgerechnet auf der Bezahlseite steht.
+          //
+          // Freigegeben wird deshalb genau so eng wie nötig: die eigene
+          // Herkunft und js.stripe.com, kein "*". Das ist die Erlaubnis,
+          // die die Anwendung tatsächlich braucht, keine Lockerung ins
+          // Blaue — jede andere Fremd-Herkunft bleibt gesperrt.
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), payment=()",
+            value: 'camera=(), microphone=(), payment=(self "https://js.stripe.com")',
           },
           {
             key: "Strict-Transport-Security",
@@ -65,13 +79,37 @@ const nextConfig: NextConfig = {
               // 'unsafe-inline'/'unsafe-eval': Next injiziert Inline-Skripte,
               // Mapbox GL erzeugt Worker aus Blobs. Beim Scharfschalten
               // durch Nonces ersetzen.
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
+              //
+              // *.js.stripe.com neben js.stripe.com: Stripe.js lädt Teile
+              // seines Codes nach und startet seine Frames wo möglich auf
+              // wechselnden Unter-Herkünften, damit sie sich gegenseitig
+              // nicht ausbremsen (Stripe, Integration security guide →
+              // Content Security Policy). Ohne den Eintrag bricht das
+              // scharf geschaltet mitten im Bezahlen ab.
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://*.js.stripe.com",
               "worker-src 'self' blob:",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' data: https://fonts.gstatic.com",
-              "img-src 'self' data: blob: https://*.supabase.co https://*.mapbox.com",
-              "connect-src 'self' https://*.supabase.co https://*.mapbox.com https://api.open-meteo.com https://api.stripe.com",
-              "frame-src https://js.stripe.com https://hooks.stripe.com",
+              // q.stripe.com: Stripe.js meldet von der eigenen Seite aus
+              // Messwerte über ein Bild-Pixel dorthin (nachgeprüft im
+              // ausgelieferten js.stripe.com/v3: `(new Image).src` auf
+              // diese Adresse). Das ist ein img-src der Seite selbst, kein
+              // Aufruf aus Stripes iframe heraus — den beträfe unsere CSP
+              // gar nicht.
+              "img-src 'self' data: blob: https://*.supabase.co https://*.mapbox.com https://q.stripe.com",
+              // fonts.googleapis.com auch hier, nicht nur in style-src:
+              // PremiumCheckoutForm reicht dem Payment Element eine
+              // Schrift als `fonts: [{ cssSrc }]` weiter, und diese CSS
+              // holt Stripe.js von unserer Seite aus — Stripe verlangt sie
+              // deshalb ausdrücklich in connect-src.
+              "connect-src 'self' https://*.supabase.co https://*.mapbox.com https://api.open-meteo.com https://api.stripe.com https://fonts.googleapis.com",
+              // hooks.stripe.com trägt die Weiterleitungsverfahren (3D
+              // Secure, TWINT). Bewusst NICHT aufgenommen: m.stripe.com
+              // (Betrugserkennung) und m.stripe.network — beide werden aus
+              // Stripes eigenen Frames heraus angesprochen und fallen unter
+              // deren CSP, nicht unter unsere. Sie hier zu führen, wäre
+              // eine Freigabe für nichts.
+              "frame-src https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
