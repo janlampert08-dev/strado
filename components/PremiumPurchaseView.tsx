@@ -9,22 +9,21 @@ import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import { buttonVariants } from "@/components/ui/Button";
 import { LEGAL_URLS } from "@/lib/constants";
-import { betragText, jahresVorteilProzent, monatsAequivalentRappen } from "@/lib/premiumAngebot";
+import {
+  betragText,
+  jahresVorteilProzent,
+  monatsAequivalentRappen,
+  planTitel,
+  planZeitraum,
+} from "@/lib/premiumAngebot";
 import type { AboPlan, PremiumAngebot, PlanAngebot } from "@/lib/premiumLimits";
 
 // Betrag so anzeigen, wie Stripe ihn führt — nicht aus einer zweiten Liste
 // im Code. Weicht die beworbene Zahl vom abgebuchten Betrag ab, ist das kein
-// Anzeigefehler, sondern ein falsch ausgezeichneter Preis. Das Formatieren
-// und das Rechnen dazu liegt in lib/premiumAngebot.ts, weil es dort geprüft
-// werden kann (Vitest kennt nur lib/).
-
-function planTitel(plan: AboPlan): string {
-  return plan === "monat" ? "Monatlich" : "Jährlich";
-}
-
-function planZeitraum(plan: AboPlan): string {
-  return plan === "monat" ? "pro Monat" : "pro Jahr";
-}
+// Anzeigefehler, sondern ein falsch ausgezeichneter Preis. Das Formatieren,
+// das Rechnen und die Benennung der Pläne liegen in lib/premiumAngebot.ts,
+// weil es dort geprüft werden kann (Vitest kennt nur lib/) und weil das
+// Bezahlfenster dieselben Wörter braucht.
 
 // Nur, was es gibt. Die frühere Liste versprach "Erweiterte Filter und
 // Statistiken" und ein Gold-Abzeichen — beides nicht ausgeliefert, und auf
@@ -164,11 +163,15 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
 
         {/* key auf dem Plan: wechselt die Wahl, muss ein bereits vorbereitetes
             Payment Element verworfen werden — sonst zahlte man den Betrag des
-            zuvor gewählten Plans. */}
+            zuvor gewählten Plans. Ein offenes Bezahlfenster geht dabei zu,
+            was richtig ist: es zeigte den alten Betrag.
+
+            Übergeben wird `aktiv` statt `gewaehlt` samt Preis daneben, damit
+            Plan und ausgezeichneter Betrag garantiert aus derselben Zeile des
+            Angebots stammen. */}
         <PremiumCheckoutForm
           key={gewaehlt}
-          plan={gewaehlt}
-          beworbenerPreis={aktiv.betragRappen}
+          angebot={aktiv}
           onSuccess={() => router.push("/profil")}
         />
       </section>
