@@ -1,5 +1,12 @@
 # Premium-Abo: Umsetzungsplan
 
+> **Historisches Dokument.** Dieser Plan stammt aus der Zeit vor dem Start
+> und ist nicht mehr nachgeführt: Premium ist live und wird verkauft, der
+> Gründerpreis wird seit dem 2026-09-07 nicht mehr angeboten (Bestandsschutz
+> für davor abgeschlossene Abos, AGB Ziff. 4.3), und die Platzhalter in den
+> Rechtstexten — Blocker 1 in Abschnitt 8 — sind am selben Tag aufgelöst.
+> Wo dieses Dokument etwas anderes sagt als `AGENTS.md`, gilt `AGENTS.md`.
+
 Status: Entwurf zur Entscheidung. Dieses Dokument beschreibt, **was** gebaut
 wird, **in welcher Reihenfolge**, und **zu welchem Preis** das Abo verkauft
 werden sollte. Es ändert selbst keinen Code.

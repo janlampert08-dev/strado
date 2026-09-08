@@ -26,8 +26,8 @@ export default function DeleteProposalButton({ routeId }: { routeId: string }) {
       )}
       <ConfirmDialog
         open={open}
-        title="Vorschlag löschen"
-        description="Der abgelehnte Vorschlag wird endgültig gelöscht."
+        title="Strecke löschen"
+        description="Die abgelehnte Strecke wird endgültig gelöscht."
         confirmLabel="Löschen"
         variant="danger"
         pending={pending}

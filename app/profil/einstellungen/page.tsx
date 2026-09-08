@@ -102,7 +102,7 @@ export default async function EinstellungenPage() {
           <section className="flex flex-col gap-3">
             <h2 className="flex items-center gap-1.5 text-sm font-semibold tracking-wide text-muted uppercase">
               <MapPin className="h-4 w-4" aria-hidden="true" />
-              Streckenvorschläge
+              Meine Strecken
             </h2>
             {ownRoutes && ownRoutes.length > 0 ? (
               <Card as="ul" className="divide-y divide-border">
@@ -144,7 +144,7 @@ export default async function EinstellungenPage() {
                 })}
               </Card>
             ) : (
-              <p className="text-sm text-muted">Noch keine Streckenvorschläge eingereicht.</p>
+              <p className="text-sm text-muted">Noch keine eigenen Strecken.</p>
             )}
           </section>
 

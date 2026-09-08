@@ -221,6 +221,14 @@ export default async function FahrtDetailPage({
                   durationSeconds={completion.dauerSekunden}
                   date={completion.datum}
                   milestoneLabel={milestoneLabel}
+                  // Eine private Fahrt sieht nur ihr Besitzer — wer dem Link
+                  // aus dem geteilten Bild folgt, liefe ins Leere. Dann
+                  // verweist das Bild auf die Strecke selbst.
+                  shareUrl={
+                    completion.istOeffentlich || !route
+                      ? `/fahrten/${completion.id}`
+                      : `/strecken/${route.id}`
+                  }
                 />
               )}
               {/* Melden nur für andere und nur bei einer geteilten Fahrt —

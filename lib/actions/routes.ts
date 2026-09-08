@@ -12,7 +12,7 @@ import {
   fetchElevationProfile,
 } from "@/lib/elevation";
 import { deriveRouteLocations } from "@/lib/geocoding";
-import { privateStreckenKontingent } from "@/lib/premium";
+import { istPremium, privateStreckenKontingent } from "@/lib/premium";
 import type { GeoLineString, Kategorie, TempolimitSegment } from "@/types/database";
 
 export interface ProposeRouteState {
@@ -131,8 +131,17 @@ export async function proposeRoute(
 
   if (!user) return { error: "Bitte melde dich zuerst an." };
 
+  // Eigene Strecken sind Premium — oder Moderation, die den Bestand ohne
+  // Abo kuratiert. Produktentscheid 2026-09-07, bewusster Bruch mit dem
+  // additiven Gating aus docs/premium-plan.md Abschnitt 4. Die eigentliche
+  // Schranke ist die INSERT-Policy auf routes (0077); sie gilt auch für den
+  // Direktweg über PostgREST. Diese Prüfung hier liefert nur die lesbare
+  // Antwort, bevor Geocoding und Höhenprofil für nichts laufen.
+  const [premium, moderator] = await Promise.all([istPremium(), isModerator(user.id)]);
+  if (!premium && !moderator) return { error: "Eigene Strecken gehören zu Premium." };
+
   if (await isRateLimited(supabase, "routes", "created_at", "erstellt_von", user.id, PROPOSE_ROUTE_COOLDOWN_MS)) {
-    return { error: "Bitte warte einen Moment, bevor du eine weitere Strecke vorschlägst." };
+    return { error: "Bitte warte einen Moment, bevor du eine weitere Strecke erstellst." };
   }
 
   const name = String(formData.get("name") ?? "").trim();
@@ -212,15 +221,18 @@ export async function proposeRoute(
     // oben ist nur ein schnelles Vorab-Feedback und kann bei parallelen
     // Requests theoretisch durchrutschen.
     if (error?.message.includes("cooldown_active")) {
-      return { error: "Bitte warte einen Moment, bevor du eine weitere Strecke vorschlägst." };
+      return { error: "Bitte warte einen Moment, bevor du eine weitere Strecke erstellst." };
     }
     return { error: "Strecke konnte nicht gespeichert werden." };
   }
 
-  // Private Strecken sind das einzige Premium-Feature mit Mengenbegrenzung
-  // (docs/premium-plan.md, Abschnitt 4; AGB Ziff. 3.2). Die Entscheidung
-  // fällt in der Datenbank — darf_private_strecke_anlegen() zählt und prüft
-  // in einem Aufruf, statt hier zu zählen und danach zu schreiben.
+  // Kontingent für private Strecken (AGB Ziff. 3.2): kostenlos eine, mit
+  // Premium unbegrenzt. Seit eigene Strecken selbst Premium sind (0077),
+  // kommt hier ohne Abo praktisch nur noch die Moderation vorbei — für sie
+  // gilt das Kontingent weiterhin, die Logik bleibt deshalb. Die
+  // Entscheidung fällt in der Datenbank — darf_private_strecke_anlegen()
+  // zählt und prüft in einem Aufruf, statt hier zu zählen und danach zu
+  // schreiben.
   //
   // Die Prüfung steht bewusst NACH dem Anlegen: propose_route_full erzeugt
   // die Zeile, und erst danach lässt sich sagen, ob sie privat sein darf.
@@ -292,11 +304,11 @@ export async function deleteOwnRejectedRoute(routeId: string): Promise<DeleteRou
     .not("abgelehnt_am", "is", null)
     .maybeSingle();
 
-  if (!existing) return { error: "Vorschlag nicht gefunden." };
+  if (!existing) return { error: "Strecke nicht gefunden." };
 
   const { error } = await supabase.from("routes").delete().eq("id", routeId);
 
-  if (error) return { error: "Vorschlag konnte nicht gelöscht werden." };
+  if (error) return { error: "Strecke konnte nicht gelöscht werden." };
 
   revalidatePath("/profil");
   return { error: null };
