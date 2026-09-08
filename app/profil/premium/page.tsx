@@ -31,15 +31,25 @@ export default async function PremiumPage() {
   return (
     <div className="flex h-dvh flex-col">
       <Header back="/profil" />
-      {/* Kein justify-center: der Inhalt dieser Seite ist höher als ein
-          Telefonbildschirm, und ein zentrierter Flex-Inhalt in einem
-          scrollenden Container lässt sich am oberen Rand nicht mehr
-          erreichen — die Überschrift wäre abgeschnitten und unerreichbar.
-          Etwas breiter als die Formularseiten, weil die Planauswahl Preis,
-          Abzeichen und Zusatzzeile nebeneinander trägt. */}
-      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 overflow-y-auto px-5 py-8 sm:px-6">
-        <PremiumPurchaseView angebot={angebot} />
-      </main>
+      {/* Scroll-Container ist der volle Rest der Seitenbreite, nicht das
+          zentrierte max-w-Element darin (wie app/profil/page.tsx): sass
+          overflow-y-auto auf dem <main>, klebte die Browser-Scrollbar am
+          Rand der Inhaltsspalte statt am Viewport-Rand, sobald das Fenster
+          breiter als max-w war.
+
+          Kein justify-center: der Inhalt ist höher als ein Telefonbildschirm,
+          und zentrierter Flex-Inhalt in einem scrollenden Container lässt
+          sich am oberen Rand nicht mehr erreichen — die Überschrift wäre
+          abgeschnitten und unerreichbar. Etwas breiter als die
+          Formularseiten, weil die Planauswahl Preis, Abzeichen und
+          Zusatzzeile nebeneinander trägt. Das padding-bottom aus globals.css
+          (< md) sitzt weiterhin auf <main>, also am Ende des gescrollten
+          Inhalts — genau dort hält es das letzte Element über der BottomNav. */}
+      <div className="flex-1 overflow-y-auto">
+        <main className="mx-auto flex w-full max-w-lg flex-col gap-8 px-5 py-8 sm:px-6">
+          <PremiumPurchaseView angebot={angebot} />
+        </main>
+      </div>
     </div>
   );
 }

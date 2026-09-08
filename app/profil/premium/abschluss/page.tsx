@@ -48,7 +48,16 @@ export default async function PremiumAbschlussPage({
   return (
     <div className="flex h-dvh flex-col">
       <Header back="/profil" />
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-4 px-5 py-8 sm:px-6">
+      {/* Scroll-Container in voller Breite, wie auf der Kaufseite. Vorher
+          gab es hier gar keinen: h-dvh + justify-center ohne Overflow
+          schnitt auf niedrigen Viewports (Telefon quer, eingeblendete
+          Tastatur) den unteren Rand ab, ohne dass sich etwas scrollen
+          liess. min-h-full statt h-full auf dem <main>: kurzer Inhalt wird
+          weiterhin zentriert, langer Inhalt lässt das <main> über den
+          Wrapper hinauswachsen und scrollt — justify-center kann so nichts
+          mehr abschneiden, weil das <main> nie kleiner ist als sein Inhalt. */}
+      <div className="flex-1 overflow-y-auto">
+        <main className="mx-auto flex min-h-full w-full max-w-md flex-col justify-center gap-4 px-5 py-8 sm:px-6">
         <h1 className="text-display font-semibold">Zahlung wird noch geprüft</h1>
         <p className="text-sm text-muted">
           Deine Zahlung ist unterwegs, aber noch nicht bestätigt. Bei TWINT dauert das manchmal
@@ -68,7 +77,8 @@ export default async function PremiumAbschlussPage({
             Zum Profil
           </Link>
         </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }
