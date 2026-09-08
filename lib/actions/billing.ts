@@ -574,3 +574,49 @@ export async function createPortalSession() {
 
   redirect(session.url);
 }
+
+// Kürzt eine Nutzereingabe fürs Log auf eine Zeile: Steuerzeichen raus,
+// damit sich nichts einschmuggeln kann, das im Log wie ein eigener Eintrag
+// aussieht, und auf maxLaenge beschnitten.
+function einzeilig(wert: unknown, maxLaenge: number): string {
+  if (typeof wert !== "string") return "";
+  return wert.replace(/[\u0000-\u001F\u007F]+/g, " ").slice(0, maxLaenge);
+}
+
+// Meldet ein im Browser aufgetretenes Problem des Bezahlformulars ins
+// Server-Log — und damit in Vercels Runtime-Logs.
+//
+// Der Grund: checkout.confirm() läuft vollständig im Browser. Wirft es —
+// weil eine Fremd-Origin von der CSP blockiert wird, weil Stripe.js in
+// einen unerwarteten Zustand gerät, weil die Verbindung abreisst — dann
+// sieht die zahlende Person "Die Zahlung liess sich gerade nicht
+// bestätigen", und sonst erfährt es niemand: eine Fehlerberichterstattung
+// gibt es nicht (kein Sentry, siehe AGENTS.md), im Server-Log steht nichts,
+// weil nie eine Anfrage ankam, und ein CSP-Verstoss landet ohnehin nur in
+// der Browser-Konsole der zahlenden Person. Genau diese Blindheit hat den
+// Live-Kauf zweimal hintereinander auf Verdacht debuggen lassen.
+//
+// Bewusst schmal: liest nichts, schreibt nichts, gibt nichts zurück, und
+// die Oberfläche wartet nicht darauf. Eine angemeldete Sitzung ist Pflicht,
+// damit das hier kein offener Log-Eingang ist.
+export async function meldeCheckoutProblem(
+  sitzungId: string,
+  phase: "vorbereitung" | "confirm" | "bestaetigung",
+  meldung: string,
+): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  console.error("Bezahlformular: Fehler im Browser", {
+    userId: user.id,
+    // phase kommt wie alles andere aus dem Browser — auf die drei bekannten
+    // Werte festnageln statt durchreichen.
+    phase: phase === "confirm" || phase === "bestaetigung" ? phase : "vorbereitung",
+    sitzungId: einzeilig(sitzungId, 80),
+    meldung: einzeilig(meldung, 300),
+  });
+}
