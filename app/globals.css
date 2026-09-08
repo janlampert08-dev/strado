@@ -279,3 +279,36 @@ textarea {
 .kudos-puls {
   animation: kudos-puls var(--duration-base) var(--ease-standard);
 }
+
+/* Reduzierte Bewegung — App-weit, und bis hierher gab es das nirgends
+   (docs/audit/uiux.md §6.4). Betroffen ist praktisch jede Bewegung im
+   Projekt: animate-pulse auf jedem Skeleton (also auf jedem Ladebildschirm),
+   animate-spin, active:scale-95 auf jedem Button, transition-colors überall,
+   die Höhen-Transition des DragSheets und die beiden Keyframes oben.
+
+   !important ist hier ausnahmsweise richtig, und zwar aus einem Grund, der
+   nichts mit Spezifitätskämpfen zu tun hat: die Werte, die überschrieben
+   werden müssen, stehen in Tailwind-Utilities an einzelnen Elementen und in
+   Inline-Styles (DragSheet setzt seine Höhe per style-Attribut). Eine Regel
+   ohne !important verlöre gegen beides. Und die Betriebssystem-Einstellung
+   ist eine ausdrückliche Nutzeransage — sie darf gewinnen, auch gegen die
+   Absicht einer einzelnen Komponente.
+
+   0.01ms statt 0: eine Dauer von exakt 0 unterdrückt in manchen Browsern das
+   transitionend-/animationend-Ereignis, und Code, der darauf wartet (etwa
+   KudosButton, das damit seine Klasse abräumt), bliebe hängen.
+
+   Nicht erfasst sind Bewegungen, die nicht über CSS laufen: die Kamerafahrten
+   von Mapbox (dafür bewegungsdauer() in RouteMap.tsx), das Hochzählen in
+   CountUp.tsx und die Zeichen-Animation in PullToRefreshArea.tsx prüfen die
+   Abfrage jeweils selbst in JavaScript. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
