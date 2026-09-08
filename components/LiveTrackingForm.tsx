@@ -16,7 +16,7 @@ import { computeRouteCoverage, COVERAGE_THRESHOLD_PERCENT } from "@/lib/routeCov
 import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
 import { formatDuration } from "@/lib/format";
 import RideSummaryForm from "@/components/RideSummaryForm";
-import type { RouteGeoJSON, Vehicle } from "@/types/database";
+import type { KartenStrecke, RouteGeoJSON, Vehicle } from "@/types/database";
 import { buttonVariants } from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Skeleton from "@/components/ui/Skeleton";
@@ -52,7 +52,7 @@ export default function LiveTrackingForm({
   // jeden Einfluss auf Start-/Zielgate (lib/tracking.ts) oder Deckungsgrad
   // (lib/routeCoverage.ts) — dasselbe Muster wie bei der freien Fahrt
   // (FreeRideForm.tsx).
-  kontextStrecken: RouteGeoJSON[];
+  kontextStrecken: KartenStrecke[];
   // Nur für den localStorage-Schlüssel der Wiederherstellung — die Fahrt
   // selbst wird serverseitig dem angemeldeten Nutzer zugeordnet.
   //

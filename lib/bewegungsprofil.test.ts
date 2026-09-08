@@ -102,7 +102,7 @@ describe("bewerteBewegungsprofil", () => {
     expect(profil.kennzahlen.distanzKm).toBeGreaterThan(100);
   });
 
-  it("erkennt eine Bahnfahrt und begruendet sie", () => {
+  it("erkennt eine Bahnfahrt und begründet sie", () => {
     const profil = bewerteBewegungsprofil(bahnfahrt());
     expect(profil.art).toBe("bahn");
     expect(profil.plausibel).toBe(false);
@@ -130,7 +130,7 @@ describe("bewerteBewegungsprofil", () => {
     expect(profil.kennzahlen.sekundenUeberFlugTempo).toBeLessThan(120);
   });
 
-  it("ignoriert einen Sprung ueber der Ausreisser-Grenze in der Tempostatistik", () => {
+  it("ignoriert einen Sprung über der Ausreisser-Grenze in der Tempostatistik", () => {
     const punkte = autobahnetappe();
     const mitte = Math.floor(punkte.length / 2);
     // 10 km Versatz in fünf Sekunden: als Segment verworfen, statt als
@@ -157,7 +157,7 @@ describe("bewerteBewegungsprofil", () => {
     expect(profil.plausibel).toBe(true);
   });
 
-  it("lässt eine kurze schnelle Etappe durch (zu wenig Distanz fuer ein Bahn-Urteil)", () => {
+  it("lässt eine kurze schnelle Etappe durch (zu wenig Distanz für ein Bahn-Urteil)", () => {
     // Dieselbe Signatur wie eine Bahnfahrt, aber nur über 8 km: unterhalb
     // der Mindestdistanz wird bewusst nicht abgelehnt.
     const kurzeEtappe = erzeugeTrack({

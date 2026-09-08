@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import LiveTrackingForm from "@/components/LiveTrackingForm";
-import type { RouteGeoJSON, Vehicle } from "@/types/database";
+import type { KartenStrecke, RouteGeoJSON, Vehicle } from "@/types/database";
 
 export default function GefahrenSection({
   route,
@@ -18,7 +18,7 @@ export default function GefahrenSection({
   // Orientierung mitgezeichnet werden (serverseitig ausgewählt, siehe
   // getKontextStrecken in lib/routes.ts). Rein darstellend: sie sind dort
   // weder anklickbar noch für Start-/Zielgate oder Deckungsgrad relevant.
-  kontextStrecken: RouteGeoJSON[];
+  kontextStrecken: KartenStrecke[];
   // null heisst abgemeldeter Besucher — aufzeichnen darf er, das Konto
   // verlangt erst das Speichern (siehe LiveTrackingForm.tsx).
   userId: string | null;

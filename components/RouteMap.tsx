@@ -9,7 +9,7 @@ import { ZURICH_CENTER, DEFAULT_ZOOM } from "@/lib/constants";
 import { sliceRouteBySpeed, speedColor } from "@/lib/speed";
 import { isDarkTheme, subscribeToThemeChange } from "@/lib/theme";
 import { MIN_ACCURACY_M } from "@/components/useRideRecorder";
-import type { RouteGeoJSON, TempolimitSegment } from "@/types/database";
+import type { KartenStrecke, TempolimitSegment } from "@/types/database";
 import Skeleton from "@/components/ui/Skeleton";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -91,7 +91,7 @@ function mapStyleForTheme(): string {
 }
 
 function toFeatureCollection(
-  routes: RouteGeoJSON[],
+  routes: KartenStrecke[],
   colors?: Map<string, string>,
 ): GeoJSON.FeatureCollection {
   return {
@@ -108,7 +108,7 @@ function toFeatureCollection(
 // Bei Rundfahrten liegen Start und Ziel am selben Ort — dort nur ein Punkt,
 // sonst je ein Punkt am Anfang und am Ende der Strecke.
 function toEndpointFeatureCollection(
-  routes: RouteGeoJSON[],
+  routes: KartenStrecke[],
   colors?: Map<string, string>,
 ): GeoJSON.FeatureCollection {
   const features: GeoJSON.Feature[] = [];
@@ -256,13 +256,13 @@ function toTrackFeatureCollection(trail: [number, number][]): GeoJSON.FeatureCol
 // dann ausschliesslich auf sie. Auf dem Aufzeichnungsschirm sind die übrigen
 // Strecken blosser Kontext — ein Einpassen auf sie alle würde die gefahrene
 // Strecke zur Briefmarke schrumpfen lassen.
-function fitTargets(routes: RouteGeoJSON[], primaryRouteId: string | null): RouteGeoJSON[] {
+function fitTargets(routes: KartenStrecke[], primaryRouteId: string | null): KartenStrecke[] {
   if (!primaryRouteId) return routes;
   const primary = routes.find((r) => r.id === primaryRouteId);
   return primary ? [primary] : routes;
 }
 
-function fitToRoutes(map: mapboxgl.Map, routes: RouteGeoJSON[], animate: boolean) {
+function fitToRoutes(map: mapboxgl.Map, routes: KartenStrecke[], animate: boolean) {
   if (routes.length === 0) return;
   const bounds = new mapboxgl.LngLatBounds();
   for (const route of routes) {
@@ -299,7 +299,7 @@ export default function RouteMap({
   centerOnFirstLocation = false,
   followLocation = false,
 }: {
-  routes: RouteGeoJSON[];
+  routes: KartenStrecke[];
   userLocation?: [number, number] | null;
   // GPS-Genauigkeitsradius in Metern (position.coords.accuracy) bzw.
   // Kompasskurs in Grad (position.coords.heading) — optional, da nicht jeder

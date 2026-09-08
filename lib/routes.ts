@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { haversineKm } from "@/lib/geo";
-import type { GeoLineString, RouteGeoJSON } from "@/types/database";
+import type { GeoLineString, KartenStrecke, RouteGeoJSON } from "@/types/database";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -63,7 +63,7 @@ export function waehleKontextStrecken(
   route: RouteGeoJSON,
   umkreisKm: number = KONTEXT_UMKREIS_KM,
   maxAnzahl: number = KONTEXT_MAX_STRECKEN,
-): RouteGeoJSON[] {
+): KartenStrecke[] {
   const bezug = geometrieMittelpunkt(route);
   return alle
     .filter((kandidat) => kandidat.id !== route.id)
@@ -74,7 +74,18 @@ export function waehleKontextStrecken(
     .filter(({ distanzKm }) => distanzKm <= umkreisKm)
     .sort((a, b) => a.distanzKm - b.distanzKm)
     .slice(0, maxAnzahl)
-    .map(({ kandidat }) => kandidat);
+    // Auf das eindampfen, was die Karte zeichnet. Der Rest der Zeile —
+    // Höhenprofil, Tempolimits, Charaktertext — ist um ein Vielfaches
+    // grösser und ginge sonst zwölfmal pro Aufruf der Streckenseite als
+    // RSC-Payload an jeden Besucher, auch an den, der nie aufzeichnet.
+    .map(({ kandidat }) => ({
+      id: kandidat.id,
+      name: kandidat.name,
+      start_geojson: kandidat.start_geojson,
+      ziel_geojson: kandidat.ziel_geojson,
+      geometry_geojson: kandidat.geometry_geojson,
+      ist_rundfahrt: kandidat.ist_rundfahrt,
+    }));
 }
 
 // Die umliegenden Strecken für die Karte des Aufzeichnungsschirms
@@ -84,7 +95,7 @@ export function waehleKontextStrecken(
 // kostet nur die Orientierungshilfe, nicht die Aufzeichnung — dann bleibt die
 // Karte bei der gefahrenen Strecke allein (gleiches Verhalten wie bei der
 // freien Fahrt, siehe app/fahrten/neu/page.tsx).
-export async function getKontextStrecken(route: RouteGeoJSON): Promise<RouteGeoJSON[]> {
+export async function getKontextStrecken(route: RouteGeoJSON): Promise<KartenStrecke[]> {
   const { routes } = await getRoutes();
   return waehleKontextStrecken(routes, route);
 }
