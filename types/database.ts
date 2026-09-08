@@ -78,15 +78,31 @@ export interface Route {
 
 // Zeilenform von public.routes_geojson (siehe 0002_routes_geojson_view.sql) —
 // dieselben Felder wie Route, aber die geography-Spalten als GeoJSON statt WKB.
-export interface RouteGeoJSON {
+/**
+ * Das Minimum, das components/RouteMap.tsx braucht, um eine Strecke zu
+ * zeichnen: Linie, Start- und Zielpunkt, Name fürs Popup, Rundfahrt-Flag für
+ * die Endpunkte. Herausgezogen, damit Aufrufer, die nur zeichnen wollen,
+ * nicht die ganze Zeile mitschicken müssen — Höhenprofil, Tempolimits und
+ * Charaktertext sind zusammen um ein Vielfaches grösser als alles hier und
+ * haben auf einer Karte nichts verloren (siehe getKontextStrecken in
+ * lib/routes.ts).
+ */
+export interface KartenStrecke {
   id: string;
   name: string;
-  region: string;
-  start_ort: string;
-  ziel_ort: string;
   start_geojson: GeoPoint;
   ziel_geojson: GeoPoint;
   geometry_geojson: GeoLineString;
+  ist_rundfahrt: boolean;
+  /** Optional, weil die Tempolimit-Ebene ohnehin nur bei genau einer Strecke
+   *  gezeichnet wird — Kontext-Strecken schicken sie deshalb nicht mit. */
+  tempolimits?: TempolimitSegment[] | null;
+}
+
+export interface RouteGeoJSON extends KartenStrecke {
+  region: string;
+  start_ort: string;
+  ziel_ort: string;
   hoehe_m: number | null;
   laenge_km: number;
   max_steigung_prozent: number | null;
@@ -97,7 +113,6 @@ export interface RouteGeoJSON {
   charakter_text: string | null;
   tempolimits: TempolimitSegment[] | null;
   hoehenprofil: HoehenprofilPunkt[] | null;
-  ist_rundfahrt: boolean;
   erstellt_von: string | null;
   created_at: string;
   ist_privat: boolean;

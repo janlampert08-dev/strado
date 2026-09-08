@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
-import type { GeoLineString, RouteGeoJSON } from "@/types/database";
+import { haversineKm } from "@/lib/geo";
+import type { GeoLineString, KartenStrecke, RouteGeoJSON } from "@/types/database";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -18,6 +19,148 @@ export async function getRoutes(): Promise<{ routes: RouteGeoJSON[]; error: bool
   }
 
   return { routes: (data as RouteGeoJSON[]) ?? [], error: false };
+}
+
+// Umkreis um die gefahrene Strecke, in dem umliegende Strecken auf der
+// Aufzeichnungskarte als Orientierung mitgezeichnet werden. 25 km decken die
+// Nachbarschaft einer Passfahrt ab (Anfahrt, Parallelrouten im selben Tal),
+// ohne die halbe Schweiz mitzuschicken.
+export const KONTEXT_UMKREIS_KM = 25;
+// Harte Obergrenze für die Anzahl. Jede Strecke bringt ihre volle Geometrie
+// mit (RouteMap braucht sie), deshalb bindet nicht der Umkreis allein die
+// Datenmenge, sondern diese Zahl: zwölf Linien sind auf einer Karte noch
+// lesbar, und mehr hilft der Orientierung ohnehin nicht.
+export const KONTEXT_MAX_STRECKEN = 12;
+
+// Achsenparalleles Rechteck um eine Streckengeometrie. Als Bezugsgrösse
+// besser als ein einzelner Punkt: eine 40 km lange Strecke hat keinen Ort,
+// sie hat eine Ausdehnung.
+interface Box {
+  minLng: number;
+  maxLng: number;
+  minLat: number;
+  maxLat: number;
+}
+
+function geometrieBox(route: KartenStrecke): Box | null {
+  const coords = route.geometry_geojson.coordinates as [number, number][];
+  let minLng = Infinity;
+  let maxLng = -Infinity;
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  for (const [lng, lat] of coords) {
+    if (lng < minLng) minLng = lng;
+    if (lng > maxLng) maxLng = lng;
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+  }
+  if (!Number.isFinite(minLng) || !Number.isFinite(minLat)) return null;
+  return { minLng, maxLng, minLat, maxLat };
+}
+
+// Die einander nächsten Längengrade zweier Rechtecke. Überlappen sie, ist
+// der Abstand auf dieser Achse null — dann zählt nur noch die Breite.
+function naechsteLaengen(a: Box, b: Box): [number, number] {
+  if (a.maxLng < b.minLng) return [a.maxLng, b.minLng];
+  if (b.maxLng < a.minLng) return [a.minLng, b.maxLng];
+  const gemeinsam = Math.max(a.minLng, b.minLng);
+  return [gemeinsam, gemeinsam];
+}
+
+// Die Breitengrade, an denen gemessen wird — als Liste, weil bei
+// überlappenden Breitenbändern mehr als ein Kandidat in Frage kommt.
+//
+// Auf der Breitenachse ist der Abstand dann zwar null, der Breitengrad
+// entscheidet aber trotzdem mit, wie weit eine Längendifferenz in
+// Kilometern ist: Meridiane laufen zu den Polen hin zusammen, ein Grad
+// Länge misst bei 47.5° weniger als bei 46.5°. Wer hier einfach den
+// unteren Rand des gemeinsamen Bandes nimmt, misst auf der Nordhalbkugel
+// den *weitesten* Punkt statt des nächsten und überschätzt den Abstand —
+// womit die Funktion genau die Zusicherung bräche, die sie unten gibt.
+// Deshalb kommen beide Ränder zurück und der Aufrufer nimmt den kleineren
+// der beiden Abstände.
+function breitenKandidaten(a: Box, b: Box): [number, number][] {
+  if (a.maxLat < b.minLat) return [[a.maxLat, b.minLat]];
+  if (b.maxLat < a.minLat) return [[a.minLat, b.maxLat]];
+  const unten = Math.max(a.minLat, b.minLat);
+  const oben = Math.min(a.maxLat, b.maxLat);
+  return unten === oben
+    ? [[unten, unten]]
+    : [
+        [unten, unten],
+        [oben, oben],
+      ];
+}
+
+// Kürzester Abstand zwischen zwei Rechtecken. Bewusst über die Rechtecke und
+// nicht über ihre Mittelpunkte: eine lange Strecke kann auf zehn Kilometer
+// an der gefahrenen vorbeiführen, während ihr Mittelpunkt fünfzig Kilometer
+// weit weg liegt — über den Mittelpunkt gemessen fiele sie aus der Auswahl,
+// obwohl sie genau die Nachbarschaft ist, die zur Orientierung taugt.
+//
+// Punktgenau wäre der Abstand der Geometrien selbst; das kostet für jedes
+// Paar das Produkt ihrer Stützpunkte. Das Rechteck schätzt nach unten ab
+// (nie weiter als die echte Linie) und nimmt dafür ein paar Strecken mehr
+// auf, als nötig wären — auf einer Orientierungskarte der harmlosere Fehler.
+function boxAbstandKm(a: Box, b: Box): number {
+  const [lngA, lngB] = naechsteLaengen(a, b);
+  return Math.min(
+    ...breitenKandidaten(a, b).map(([latA, latB]) =>
+      haversineKm([lngA, latA], [lngB, latB]),
+    ),
+  );
+}
+
+// Wählt aus allen freigegebenen Strecken diejenigen aus, die rund um die
+// gefahrene Strecke liegen — die Auswahl selbst, ohne Datenbankzugriff,
+// damit sie prüfbar bleibt. Die gefahrene Strecke ist nicht enthalten: sie
+// wird auf dem Aufzeichnungsschirm gesondert übergeben und hervorgehoben.
+export function waehleKontextStrecken(
+  alle: KartenStrecke[],
+  route: KartenStrecke,
+  umkreisKm: number = KONTEXT_UMKREIS_KM,
+  maxAnzahl: number = KONTEXT_MAX_STRECKEN,
+): KartenStrecke[] {
+  const bezug = geometrieBox(route);
+  if (!bezug) return [];
+  return alle
+    .filter((kandidat) => kandidat.id !== route.id)
+    .map((kandidat) => ({ kandidat, box: geometrieBox(kandidat) }))
+    .filter((eintrag): eintrag is { kandidat: KartenStrecke; box: Box } => eintrag.box !== null)
+    .map(({ kandidat, box }) => ({ kandidat, distanzKm: boxAbstandKm(bezug, box) }))
+    .filter(({ distanzKm }) => distanzKm <= umkreisKm)
+    .sort((a, b) => a.distanzKm - b.distanzKm)
+    .slice(0, maxAnzahl)
+    .map(({ kandidat }) => kandidat);
+}
+
+// Die Spalten, die components/RouteMap.tsx zum Zeichnen braucht — und keine
+// mehr. routes_geojson führt zusätzlich Höhenprofil, Tempolimits und
+// Charaktertext, zusammen um ein Vielfaches grösser als alles hier; sie
+// gingen sonst bei jedem Aufruf der Streckenseite mit über die Leitung, auch
+// für Besucher, die nie aufzeichnen.
+const KARTEN_SPALTEN = "id, name, start_geojson, ziel_geojson, geometry_geojson, ist_rundfahrt";
+
+// Die umliegenden Strecken für die Karte des Aufzeichnungsschirms
+// (components/LiveTrackingForm.tsx). Eigene, schmale Abfrage statt
+// getRoutes(): dieselbe View, dieselbe RLS-Sicht auf freigegebene Strecken,
+// nur ohne die Spalten, die eine Karte nicht zeichnet. Ein Ladefehler kostet
+// bloss die Orientierungshilfe, nicht die Aufzeichnung — dann bleibt die
+// Karte bei der gefahrenen Strecke allein (gleiches Verhalten wie bei der
+// freien Fahrt, siehe app/fahrten/neu/page.tsx).
+export async function getKontextStrecken(route: RouteGeoJSON): Promise<KartenStrecke[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("routes_geojson")
+    .select(KARTEN_SPALTEN)
+    .eq("status_ok", true);
+
+  if (error) {
+    console.error("Kontext-Strecken konnten nicht geladen werden:", error.message);
+    return [];
+  }
+
+  return waehleKontextStrecken((data as unknown as KartenStrecke[]) ?? [], route);
 }
 
 // Nur was die Sitemap braucht. getRoutes() liefert sonst für jede Strecke

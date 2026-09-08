@@ -13,7 +13,7 @@ import ElevationProfile from "@/components/ElevationProfile";
 import PhotoGallery from "@/components/PhotoGallery";
 import RouteLeaderboardPreview from "@/components/RouteLeaderboardPreview";
 import OfflineRouteButton from "@/components/OfflineRouteButton";
-import { getRoute } from "@/lib/routes";
+import { getKontextStrecken, getRoute } from "@/lib/routes";
 import { formatKm } from "@/lib/format";
 import { getRatings, getOwnRating } from "@/lib/ratings";
 import { getPersonalBestSeconds } from "@/lib/completions";
@@ -82,7 +82,12 @@ export default async function StreckeDetailPage({
 
   if (!route) notFound();
 
-  const [ratings, ownRating, favorite, vehicles, personalBestSeconds, photos, leaderboard, weather, moderator, premiumStatus] =
+  // kontextStrecken: die umliegenden Strecken für die Karte des
+  // Aufzeichnungsschirms (siehe GefahrenSection/LiveTrackingForm). Sie werden
+  // hier serverseitig mitgeladen, weil GefahrenSection eine Client-Komponente
+  // ist und selbst nicht abfragen kann — im selben Promise.all wie alles
+  // andere, also ohne die Antwortzeit zu verlängern.
+  const [ratings, ownRating, favorite, vehicles, personalBestSeconds, photos, leaderboard, weather, moderator, premiumStatus, kontextStrecken] =
     await Promise.all([
       getRatings(id),
       user ? getOwnRating(id, user.id) : Promise.resolve(null),
@@ -100,6 +105,7 @@ export default async function StreckeDetailPage({
       fetchCurrentWeather(route.start_geojson.coordinates as [number, number]),
       user ? isModerator(user.id) : Promise.resolve(false),
       getPremiumStatus(),
+      getKontextStrecken(route),
     ]);
 
   // Strukturierte Daten für die Streckenseite — der einzige öffentlich
@@ -212,6 +218,7 @@ export default async function StreckeDetailPage({
             hingehört. */}
         <GefahrenSection
           route={route}
+          kontextStrecken={kontextStrecken}
           userId={user?.id ?? null}
           vehicles={vehicles}
           personalBestSeconds={personalBestSeconds}
