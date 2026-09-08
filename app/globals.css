@@ -223,3 +223,40 @@ textarea {
 :root[data-theme="dark"] .mapboxgl-ctrl-attrib-button {
   filter: invert(1);
 }
+
+/* Bewegung — die einzigen @keyframes der App.
+   Bis hierher kam die App ohne eigene Keyframes aus: Bewegung entstand
+   ausschliesslich aus Tailwind-Utilities (transition-colors, active:scale-95,
+   animate-pulse). Die beiden Regeln unten sind Ausnahmen mit einem klaren
+   Anlass — sie quittieren eine Nutzeraktion in dem Moment, in dem sie
+   passiert. Beide werden vom prefers-reduced-motion-Block weiter unten
+   miterfasst; die auslösenden Komponenten prüfen die Abfrage zusätzlich
+   selbst, damit gar nicht erst eine Klasse gesetzt wird. */
+
+/* Antippen der Wortmarke (components/LogoLink.tsx): eine kurze Neigung nach
+   vorne, begleitet von einem Farbwisch in den Akzentton. Über color statt
+   fill, weil Wortmarke.tsx fill="currentColor" setzt — so bleibt die eine
+   Kontur die einzige Quelle der Form. Die Dauer (400 ms) steht auch in
+   LogoLink.tsx: dort räumt ein Timeout die Klasse wieder ab. */
+@keyframes marke-anschlag {
+  0% {
+    transform: skewX(0deg);
+    color: var(--color-foreground);
+  }
+  30% {
+    transform: skewX(-9deg);
+    color: var(--color-accent);
+  }
+  70% {
+    transform: skewX(2deg);
+    color: var(--color-accent);
+  }
+  100% {
+    transform: skewX(0deg);
+    color: var(--color-foreground);
+  }
+}
+
+.marke-anschlag {
+  animation: marke-anschlag 400ms var(--ease-standard);
+}

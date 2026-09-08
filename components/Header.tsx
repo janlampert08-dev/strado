@@ -5,7 +5,7 @@ import { isModerator } from "@/lib/moderation";
 import { getUnseenKudosCount } from "@/lib/kudos";
 import { getNavItems } from "@/lib/nav";
 import BackButton from "@/components/BackButton";
-import Wortmarke from "@/components/Wortmarke";
+import LogoLink from "@/components/LogoLink";
 import BottomNav from "@/components/BottomNav";
 import { buttonVariants } from "@/components/ui/Button";
 
@@ -42,13 +42,11 @@ export default async function Header({ back }: { back?: string } = {}) {
         <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           {back && <BackButton fallbackHref={back} />}
           {/* Die Wortmarke ist eine Kontur (lib/marke.ts), kein gesetzter
-              Text — h-[18px] entspricht der Höhe, die der frühere Textlink
-              in text-lg hatte, w-auto lässt den viewBox die Breite bestimmen.
-              text-foreground fixiert die Farbe, damit die Marke keine
-              Hover-Farbe der Leiste erbt. */}
-          <Link href="/" className="shrink-0 text-foreground" aria-label="Strado, zur Startseite">
-            <Wortmarke className="h-[18px] w-auto" />
-          </Link>
+              Text. Klassen und Grösse stecken jetzt in LogoLink.tsx: der Link
+              braucht einen Client-Anteil für das Antipp-Feedback (auf Touch
+              gibt es keinen Hover) und dafür, auf der Startseite statt einer
+              wirkungslosen Navigation eine zufällige Strecke vorzuschlagen. */}
+          <LogoLink />
         </div>
         <div className="flex shrink-0 items-center gap-3 sm:gap-4">
           {/* Eigener Icon-Link statt eines Nav-Eintrags: liegt hier

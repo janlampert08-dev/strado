@@ -234,6 +234,17 @@ function toTrackFeatureCollection(trail: [number, number][]): GeoJSON.FeatureCol
   };
 }
 
+// Kamerafahrten von Mapbox laufen in JS, nicht über CSS-Transitions — der
+// prefers-reduced-motion-Block in globals.css erreicht sie also nicht. Diese
+// Funktion ist die entsprechende Prüfung für jede Dauer, die hier gesetzt
+// wird: bei reduzierter Bewegung springt die Kamera, statt zu fahren.
+// Bewusst bei jedem Aufruf abgefragt statt einmal gecacht, damit ein
+// Umschalten der Systemeinstellung sofort greift.
+function bewegungsdauer(ms: number): number {
+  if (typeof window === "undefined") return ms;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : ms;
+}
+
 function fitToRoutes(map: mapboxgl.Map, routes: RouteGeoJSON[], animate: boolean) {
   if (routes.length === 0) return;
   const bounds = new mapboxgl.LngLatBounds();
@@ -242,14 +253,14 @@ function fitToRoutes(map: mapboxgl.Map, routes: RouteGeoJSON[], animate: boolean
       bounds.extend(coord as [number, number]);
     }
   }
-  map.fitBounds(bounds, { padding: 48, duration: animate ? 500 : 0 });
+  map.fitBounds(bounds, { padding: 48, duration: animate ? bewegungsdauer(500) : 0 });
 }
 
 function fitToTrail(map: mapboxgl.Map, trail: [number, number][], animate: boolean) {
   if (trail.length < 2) return;
   const bounds = new mapboxgl.LngLatBounds();
   for (const coord of trail) bounds.extend(coord);
-  map.fitBounds(bounds, { padding: 48, duration: animate ? 500 : 0 });
+  map.fitBounds(bounds, { padding: 48, duration: animate ? bewegungsdauer(500) : 0 });
 }
 
 export default function RouteMap({
@@ -262,6 +273,7 @@ export default function RouteMap({
   show3D = false,
   colors,
   hoveredRouteId = null,
+  flyToRouteId = null,
   trafficSegments = [],
   trail = [],
   fitTrail = false,
@@ -282,6 +294,11 @@ export default function RouteMap({
   show3D?: boolean;
   colors?: Map<string, string>;
   hoveredRouteId?: string | null;
+  // Kartenausschnitt einmalig auf genau diese Strecke legen, sobald sich der
+  // Wert ändert — unabhängig von fitRoutes, das der gesamten (gefilterten)
+  // Liste folgt. Genutzt vom Zufallsvorschlag der Startseite
+  // (ExploreView.tsx). null lässt die Kamera in Ruhe.
+  flyToRouteId?: string | null;
   trafficSegments?: { coords: [number, number][]; color: string }[];
   // Aufgezeichneter GPS-Track: live wachsend während einer Aufzeichnung
   // (FreeRideForm) oder fertig auf der Fahrt-Detailseite (CompletionMap).
@@ -772,6 +789,23 @@ export default function RouteMap({
     );
   }, [hoveredRouteId, routes]);
 
+  // Zufallsvorschlag der Startseite: rein additiv neben fitRoutes — die
+  // Streckenliste selbst ändert sich dabei nicht, es wird also kein
+  // bestehendes Einpassen ersetzt, sondern eines nachgeschoben. Grösseres
+  // Padding als fitToRoutes (64 statt 48), weil hier eine einzelne Strecke
+  // gezeigt wird und die Meldung darüber Platz braucht.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !styleLoadedRef.current || !flyToRouteId) return;
+    const route = routesRef.current.find((r) => r.id === flyToRouteId);
+    if (!route) return;
+    const bounds = new mapboxgl.LngLatBounds();
+    for (const coord of route.geometry_geojson.coordinates) {
+      bounds.extend(coord as [number, number]);
+    }
+    map.fitBounds(bounds, { padding: 64, duration: bewegungsdauer(800) });
+  }, [flyToRouteId]);
+
   // Hält die gezeichnete Track-Linie aktuell — während einer Aufzeichnung
   // bei jedem neuen GPS-Punkt, auf der Detailseite einmalig.
   useEffect(() => {
@@ -817,10 +851,10 @@ export default function RouteMap({
     if (!map || !styleLoadedRef.current) return;
     if (show3D) {
       map.setTerrain({ source: TERRAIN_SOURCE, exaggeration: TERRAIN_EXAGGERATION });
-      map.easeTo({ pitch: TILTED_PITCH, bearing: TILTED_BEARING, duration: 800 });
+      map.easeTo({ pitch: TILTED_PITCH, bearing: TILTED_BEARING, duration: bewegungsdauer(800) });
     } else {
       map.setTerrain(null);
-      map.easeTo({ pitch: 0, bearing: 0, duration: 800 });
+      map.easeTo({ pitch: 0, bearing: 0, duration: bewegungsdauer(800) });
     }
   }, [show3D]);
 
@@ -885,7 +919,7 @@ export default function RouteMap({
       // Unabhängig von centerOnFirstLocation/hasCenteredOnLocationRef: ein
       // Aufrufer, der nur followLocation setzt (keine initiale Zentrierung),
       // soll trotzdem ab dem ersten Fix nachgeführt werden.
-      map.easeTo({ center: userLocation, duration: 800 });
+      map.easeTo({ center: userLocation, duration: bewegungsdauer(800) });
     }
 
     if (locationMarkerRef.current) {
