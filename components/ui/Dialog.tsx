@@ -71,10 +71,28 @@ export function Dialog({
   useEffect(() => {
     const el = ref.current;
     if (!el || dismissable) return;
+
+    // Das Fenster wieder aufmachen, falls es zwischen dem Umschalten auf
+    // dismissable={false} und diesem Effekt schon geschlossen wurde. Der
+    // Zeitraum ist schmal, aber echt: React führt Effekte erst nach dem
+    // Zeichnen aus, und ein Escape in genau diesem Moment trifft das
+    // native <dialog>, bevor der Abfangjäger unten hängt.
+    //
+    // Ohne das Wiederöffnen liefe der Zustand auseinander: das Element
+    // wäre zu, onClose ruft zwar den Aufrufer, der aber gerade nicht
+    // schliessen will (PremiumCheckoutForm während einer laufenden
+    // Zahlung) und deshalb open unverändert lässt — und der Effekt oben
+    // reagiert nur auf Wechsel von open, springt also nicht ein. Übrig
+    // bliebe ein unsichtbares Fenster über einer laufenden Zahlung.
+    if (open && !el.open) {
+      el.showModal();
+      el.focus({ preventScroll: true });
+    }
+
     const abfangen = (event: Event) => event.preventDefault();
     el.addEventListener("cancel", abfangen);
     return () => el.removeEventListener("cancel", abfangen);
-  }, [dismissable]);
+  }, [dismissable, open]);
 
   return (
     <dialog
