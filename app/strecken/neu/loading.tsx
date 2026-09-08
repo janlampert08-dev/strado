@@ -7,6 +7,9 @@ import Skeleton from "@/components/ui/Skeleton";
 // wer hier landet, wartet auf ein Formular, nicht auf Inhalte.
 const SHEET_PEEK_PX = 280;
 
+/**
+ * Renders a responsive loading skeleton for the new route creation page.
+ */
 export default function Loading() {
   return (
     <main className="relative flex h-dvh flex-1 flex-col overflow-hidden md:flex-row">

@@ -6,7 +6,9 @@ import PageSkeleton from "@/components/ui/PageSkeleton";
 // zwei gleich breite Buttons, die Statistik-Card (vier Kacheln plus zwei
 // aufklappbare Abschnitte), die Fahrten-Card, die Garage und zuunterst die
 // Premium-Karte. Vorher zeichnete diese Datei ein Dreier-Kennzahlenraster
-// und eine flache Fahrtenliste — eine Form, die es auf der Seite nicht gibt.
+/**
+ * Renders the loading skeleton for the profile page.
+ */
 
 export default function Loading() {
   return (

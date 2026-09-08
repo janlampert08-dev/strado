@@ -5,7 +5,9 @@ import { HeaderSkeleton } from "@/components/ui/PageSkeleton";
 // zentriertes Formular (max-w-sm) mit drei Feldern plus Hinweis auf die
 // Rechtstexte. Bewusst knapp — ein detaillierteres Skelett hätte auf einer
 // Formularseite nichts zu zeigen. Ohne diese Datei griff app/loading.tsx und
-// zeichnete die Explore-Karte.
+/**
+ * Renders the registration page loading skeleton.
+ */
 
 export default function Loading() {
   return (

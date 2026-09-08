@@ -6,7 +6,11 @@ import PageSkeleton from "@/components/ui/PageSkeleton";
 // Kartenkarte in ihrer echten Höhe (h-64 sm:h-80, siehe CompletionMap),
 // Fotogalerie und das vierspaltige Kennzahlenraster. Die Karte war hier
 // vorher als h-56 gezeichnet und die Kennzahlen dreispaltig — beides sprang
-// beim Auflösen.
+/**
+ * Displays a loading skeleton for the ride-detail page.
+ *
+ * @returns The ride-detail page loading skeleton.
+ */
 
 export default function Loading() {
   return (

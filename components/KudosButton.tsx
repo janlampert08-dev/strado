@@ -6,7 +6,16 @@ import { toggleKudos } from "@/lib/actions/kudos";
 import { cn } from "@/lib/utils/cn";
 
 // Gleiches optimistisches Toggle-Muster wie FavoriteButton.tsx, zusätzlich
-// mit lokal mitgeführtem Zähler (±1 bei Klick, kein Re-Fetch nötig).
+/**
+ * Provides a button for giving or withdrawing kudos on a completion.
+ *
+ * The button updates its state optimistically and restores the previous state if the
+ * kudos operation fails.
+ *
+ * @param completionId - The completion whose kudos state is being changed
+ * @param initialCount - The initial number of kudos
+ * @param initialGiven - Whether the current user has already given kudos
+ */
 export default function KudosButton({
   completionId,
   initialCount,
@@ -23,6 +32,11 @@ export default function KudosButton({
   // Zurücknehmen: quittiert wird die zustimmende Geste, nicht ihr Widerruf.
   const [puls, setPuls] = useState(false);
 
+  /**
+   * Optimistically toggles the kudos state and count for the completion.
+   *
+   * Rolls back the state, count, and pulse animation if the update fails.
+   */
   function handleClick() {
     const next = !given;
     setGiven(next);

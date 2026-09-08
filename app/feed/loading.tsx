@@ -4,7 +4,9 @@ import PageSkeleton from "@/components/ui/PageSkeleton";
 // Spiegelt app/feed/page.tsx: Überschrift mit Unterzeile, die Profilsuche,
 // der Alle/Folge-ich-Umschalter und die Fahrtenkarten. Die Profilsuche
 // fehlte hier bisher ganz, und der Umschalter stand ohne Überschrift ganz
-// oben — das Skelett begann also zwei Blöcke tiefer als die Seite.
+/**
+ * Renders the loading skeleton for the feed page.
+ */
 
 export default function Loading() {
   return (

@@ -17,23 +17,19 @@ export const ZUFALLSSTRECKE_EVENT = "strado:zufallsstrecke";
 // länger wäre ein hängender Zustand, kürzer ein abgeschnittener.
 const ANSCHLAG_MS = 400;
 
+/**
+ * Determines whether the user prefers reduced motion.
+ *
+ * @returns `true` if reduced motion is preferred, `false` otherwise.
+ */
 function bevorzugtReduzierteBewegung() {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 /**
- * Die Wortmarke als Link auf die Startseite — mit zwei Zutaten, die der
- * blosse <Link><Wortmarke/></Link> im Header nicht haben kann.
+ * Renders the wordmark as a homepage link or a random-route action on the homepage.
  *
- * Erstens die Antipp-Animation: ausgelöst über pointerdown und einen
- * State, nicht über :hover oder :active. Auf Touch-Geräten gibt es keinen
- * Hover, und das globale -webkit-tap-highlight-color: transparent
- * (globals.css) nimmt dort jedes eingebaute Antipp-Feedback weg — ohne
- * eigenen Zustand fände auf einem iPad also gar nichts statt.
- *
- * Zweitens: steht man bereits auf "/", führt ein Klick nirgendwohin. Statt
- * einer Navigation ohne Wirkung schlägt das Logo dort eine zufällige
- * Strecke vor (ExploreView.tsx hört auf das Ereignis).
+ * The wordmark provides tap feedback unless reduced motion is preferred.
  */
 export default function LogoLink() {
   const pathname = usePathname();
@@ -57,6 +53,9 @@ export default function LogoLink() {
     timeoutRef.current = setTimeout(() => setAnschlag(false), ANSCHLAG_MS);
   }
 
+  /**
+   * Requests a random route suggestion by dispatching the corresponding window event.
+   */
   function vorschlagen() {
     window.dispatchEvent(new CustomEvent(ZUFALLSSTRECKE_EVENT));
   }

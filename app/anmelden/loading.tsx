@@ -10,7 +10,11 @@ import { HeaderSkeleton } from "@/components/ui/PageSkeleton";
 // Ohne BottomNav-Skelett, obwohl <Header /> die Leiste mitbringt: die
 // Rechtstext-Zeile steht auf dieser Seite ganz unten am Bildschirmrand und
 // bekäme sonst einen Platzhalter unter sich, den die echte Seite dort nicht
-// hat.
+/**
+ * Renders the loading skeleton for the login page.
+ *
+ * @returns The login page loading skeleton
+ */
 
 export default function Loading() {
   return (

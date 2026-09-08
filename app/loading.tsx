@@ -12,6 +12,9 @@ import { BottomNavSkeleton, HeaderSkeleton } from "@/components/ui/PageSkeleton"
 // ein Skelett verhindern soll.
 const SHEET_PEEK_PX = 272;
 
+/**
+ * Renders the homepage loading skeleton with a responsive map, route list, and navigation layout.
+ */
 export default function Loading() {
   return (
     <div className="flex h-dvh flex-col">

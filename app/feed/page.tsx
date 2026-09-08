@@ -20,7 +20,12 @@ export const metadata = {
 // Öffentlich lesbar wie /strecken/[id] (public_fahrten ist an anon
 // freigegeben) — nur der "Folge ich"-Filter und der Kudos-Button brauchen
 // eine Session. Kein Redirect zu /anmelden, damit ein geteilter Feed-Link
-// auch für ausgeloggte Besucher funktioniert.
+/**
+ * Renders the community feed with optional filtering by followed users.
+ *
+ * @param searchParams - Query parameters used to select the feed scope.
+ * @returns The feed page content.
+ */
 export default async function FeedPage({
   searchParams,
 }: {

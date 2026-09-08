@@ -15,7 +15,11 @@ import type { ReceivedKudos } from "@/lib/kudos";
 // das gerade erst aktualisierte kudos_gesehen_am neu auswerten und jedes
 // "neu"-Flag wäre sofort false, noch bevor der Nutzer die Liste überhaupt
 // gesehen hat (die Markierung wäre witzlos). initialKudosList spiegelt
-// bewusst nur den Stand beim ersten Laden der Seite.
+/**
+ * Displays the kudos received for completed rides.
+ *
+ * @param initialKudosList - Kudos entries used as the initial list.
+ */
 export default function ActivityKudosList({
   initialKudosList,
 }: {

@@ -6,7 +6,11 @@ import { BottomNavSkeleton, HeaderSkeleton } from "@/components/ui/PageSkeleton"
 // und components/PremiumPurchaseView.tsx: schmale Spalte (max-w-lg), oben
 // die Premium-Pille mit Überschrift, dann die Vorteilsliste und die
 // Planauswahl. Nicht über PageSkeleton, weil hier <main> selbst der
-// scrollende Container ist und die Seite kein py-10 setzt.
+/**
+ * Renders the premium profile page loading skeleton.
+ *
+ * @returns The loading layout for the premium profile page.
+ */
 
 export default function Loading() {
   return (

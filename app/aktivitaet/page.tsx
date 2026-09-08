@@ -17,7 +17,11 @@ export const metadata = {
 // (lib/kudos.ts, getUnseenKudosCount). Nur der Besitzer selbst sieht seine
 // eigene Liste, siehe recent_kudos_received
 // (0057_kudos_aktivitaetsliste.sql) — ausschliesslich auf auth.uid()
-// beschränkt.
+/**
+ * Displays the authenticated user's activity page with recently received kudos.
+ *
+ * @returns The rendered activity page.
+ */
 export default async function AktivitaetPage() {
   const supabase = await createClient();
   const {

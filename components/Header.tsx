@@ -9,6 +9,12 @@ import LogoLink from "@/components/LogoLink";
 import BottomNav from "@/components/BottomNav";
 import { buttonVariants } from "@/components/ui/Button";
 
+/**
+ * Renders the site header and responsive navigation.
+ *
+ * @param back - Optional fallback route for the back button.
+ * @returns The site header with desktop and mobile navigation.
+ */
 export default async function Header({ back }: { back?: string } = {}) {
   const user = await getCurrentUser();
 

@@ -4,7 +4,11 @@ import Skeleton from "@/components/ui/Skeleton";
 // Karte oben, Kennzahlen und Bedienleiste unten) und rendert weder Kopfleiste
 // noch BottomNav — deshalb hier bewusst kein PageSkeleton. Ohne diese Datei
 // griff app/loading.tsx und zeichnete die Explore-Liste, obwohl der Nutzer
-// gerade losfahren will.
+/**
+ * Displays a full-screen loading skeleton for the free-ride form.
+ *
+ * @returns The loading layout for the map area and bottom control panel.
+ */
 
 export default function Loading() {
   return (

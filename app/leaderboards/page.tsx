@@ -73,6 +73,11 @@ function LeaderboardSection({
   );
 }
 
+/**
+ * Displays global and route-specific cycling leaderboards.
+ *
+ * @returns The rendered leaderboards page.
+ */
 export default async function LeaderboardsPage() {
   const supabase = await createClient();
   const [

@@ -21,23 +21,23 @@ const LADE_HOEHE_PX = 28;
 // müssen (getTotalLength() wäre ein Layout-Zugriff pro Bewegungsereignis).
 const PFAD_LAENGE = 100;
 
+/**
+ * Determines whether the user prefers reduced motion.
+ *
+ * @returns `true` if reduced motion is preferred in the browser, `false` otherwise.
+ */
 function bevorzugtReduzierteBewegung() {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 /**
- * Ziehen zum Aktualisieren für die scrollenden Inhaltsseiten.
+ * Adds touch-based pull-to-refresh behavior to a scrollable content container.
  *
- * Umschliesst den vorhandenen Scroll-Container einer Seite (das
- * `flex-1 overflow-y-auto`-div) und zeichnet über dessen Inhalt einen
- * Indikator, sobald am oberen Ende weitergezogen wird: eine stilisierte
- * Streckenlinie, die sich proportional zur Zugstrecke selbst zeichnet.
+ * The gesture activates only when the container is scrolled to the top and
+ * refreshes the route after the pull reaches the activation threshold.
  *
- * Bewusst nur touch: mit Maus oder Trackpad gibt es diese Geste nicht, und
- * ein Zeigergerät würde beim Markieren von Text sonst versehentlich ziehen.
- * Ebenso bewusst nicht auf der Startseite und der Streckendetailseite — dort
- * liegt das DragSheet, dessen eigene Zieh-Geste sich sonst mit dieser
- * überlagern würde.
+ * @param children - The scrollable content to wrap
+ * @returns The wrapped content with a pull-to-refresh indicator
  */
 export default function PullToRefreshArea({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -52,11 +52,20 @@ export default function PullToRefreshArea({ children }: { children: ReactNode })
 
   // Der Scroll-Container ist das letzte Kind: Indikator zuerst, Inhalt
   // danach. Über die Kinder statt über eine Ref am Aufrufer, damit die
-  // Änderung je Seite eine Zeile bleibt.
+  /**
+   * Gets the wrapped scroll container.
+   *
+   * @returns The wrapper's last child as an `HTMLElement`, or `null` when unavailable.
+   */
   function scrollContainer(): HTMLElement | null {
     return (wrapperRef.current?.lastElementChild as HTMLElement | null) ?? null;
   }
 
+  /**
+   * Begins tracking a pull gesture when a touch starts at the top of the scroll container.
+   *
+   * @param event - The pointer event that initiated the gesture
+   */
   function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.pointerType !== "touch") return;
     if (laedt) return;
@@ -66,6 +75,11 @@ export default function PullToRefreshArea({ children }: { children: ReactNode })
     setStatisch(bevorzugtReduzierteBewegung());
   }
 
+  /**
+   * Updates the pull distance from a touch pointer movement while the gesture is active.
+   *
+   * @param event - The pointer movement event used to calculate the vertical drag distance
+   */
   function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
     const start = zugStartRef.current;
     if (start === null) return;
@@ -86,6 +100,9 @@ export default function PullToRefreshArea({ children }: { children: ReactNode })
     setZug(Math.min(delta * DAEMPFUNG, MAX_PX));
   }
 
+  /**
+   * Completes the pull gesture and refreshes the route when the activation threshold is reached.
+   */
   function handlePointerUp() {
     const ausgeloest = zugStartRef.current !== null && zug >= SCHWELLE_PX;
     zugStartRef.current = null;
@@ -100,7 +117,9 @@ export default function PullToRefreshArea({ children }: { children: ReactNode })
   // Aufgeräumt werden muss trotzdem, aktualisiert aber gerade nicht: die
   // Geste wurde abgebrochen, nicht beendet. Deshalb ein eigener Handler
   // statt handlePointerUp, der oberhalb der Schwelle sonst neu geladen
-  // hätte.
+  /**
+   * Resets the current pull-to-refresh gesture without triggering a refresh.
+   */
   function handlePointerCancel() {
     zugStartRef.current = null;
     setZug(0);

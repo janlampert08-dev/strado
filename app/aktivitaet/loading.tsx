@@ -2,7 +2,9 @@ import Skeleton from "@/components/ui/Skeleton";
 import PageSkeleton from "@/components/ui/PageSkeleton";
 
 // Spiegelt app/aktivitaet/page.tsx: Überschrift im text-display-Grad plus
-// Unterzeile, darunter die Kudos-Liste.
+/**
+ * Renders the loading skeleton for the activity page, including heading and Kudos list placeholders.
+ */
 
 export default function Loading() {
   return (

@@ -7,7 +7,9 @@ import PageSkeleton from "@/components/ui/PageSkeleton";
 // zeichnet Avatar, Kennzahlen und Fahrten — nichts davon steht hier.
 // Spiegelt stattdessen app/profil/einstellungen/page.tsx: Überschrift plus
 // fünf Abschnitte (Privatsphäre, Darstellung, Streckenvorschläge, Konto,
-// Rechtliches).
+/**
+ * Renders a loading skeleton for the profile settings page.
+ */
 
 export default function Loading() {
   return (

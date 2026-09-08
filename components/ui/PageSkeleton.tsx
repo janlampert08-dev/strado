@@ -14,11 +14,7 @@ import { cn } from "@/lib/utils/cn";
 // verhindern soll.
 
 /**
- * Kopfleiste als Skelett — spiegelt components/Header.tsx: dieselbe
- * sticky-Positionierung, dieselben Abstände, dieselbe Trennlinie. Die
- * Wortmarke ist ein Block in ihrer tatsächlichen Grösse (h-[18px], Breite aus
- * WORTMARKE.seitenverhaeltnis ≈ 3.958 → 71px), damit nichts umbricht, sobald
- * die echte Kontur einrückt.
+ * Renders a loading skeleton for the application header.
  */
 export function HeaderSkeleton() {
   return (
@@ -40,8 +36,7 @@ export function HeaderSkeleton() {
 }
 
 /**
- * Die fixierte Tab-Leiste als Skelett — spiegelt components/BottomNav.tsx
- * (fünf Spalten, Icon über Beschriftung, safe-area-Padding unten).
+ * Renders a loading skeleton for the mobile bottom navigation bar.
  */
 export function BottomNavSkeleton() {
   return (
@@ -63,15 +58,10 @@ export function BottomNavSkeleton() {
 }
 
 /**
- * Rahmen für die zentrierten Inhaltsseiten (Profil, Feed, Bestenlisten,
- * Aktivität, Fahrtdetail, …): Kopfleiste, scrollender Bereich, zentriertes
- * <main> mit denselben Innenabständen wie die echten Seiten.
+ * Provides the shared layout for centered page loading states.
  *
- * @param maxWidth Die max-w-*-Klassen der jeweiligen Seite, inklusive
- *   Breakpoint-Varianten (z. B. "max-w-2xl lg:max-w-4xl").
- * @param children Die seitenspezifischen Platzhalter. Der Abstand zwischen
- *   ihnen ist hier gap-6; Seiten mit grösseren Abständen setzen ihn in
- *   ihrem eigenen Skelett nach.
+ * @param maxWidth - Tailwind classes that define the content area's maximum width.
+ * @param children - Page-specific loading placeholders.
  */
 export default function PageSkeleton({
   maxWidth = "max-w-2xl",

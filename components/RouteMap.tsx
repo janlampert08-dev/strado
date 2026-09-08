@@ -218,6 +218,12 @@ function createLocationMarkerElement() {
   return { wrapper, accuracyEl, headingEl, dotEl };
 }
 
+/**
+ * Converts a recorded trail into a GeoJSON feature collection.
+ *
+ * @param trail - The trail coordinates in longitude-latitude order
+ * @returns A feature collection containing a line when the trail has at least two coordinates
+ */
 function toTrackFeatureCollection(trail: [number, number][]): GeoJSON.FeatureCollection {
   return {
     type: "FeatureCollection",
@@ -239,12 +245,23 @@ function toTrackFeatureCollection(trail: [number, number][]): GeoJSON.FeatureCol
 // Funktion ist die entsprechende Prüfung für jede Dauer, die hier gesetzt
 // wird: bei reduzierter Bewegung springt die Kamera, statt zu fahren.
 // Bewusst bei jedem Aufruf abgefragt statt einmal gecacht, damit ein
-// Umschalten der Systemeinstellung sofort greift.
+/**
+ * Adjusts an animation duration according to the user's reduced-motion preference.
+ *
+ * @param ms - The requested duration in milliseconds
+ * @returns `0` when reduced motion is enabled; otherwise, the requested duration
+ */
 function bewegungsdauer(ms: number): number {
   if (typeof window === "undefined") return ms;
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : ms;
 }
 
+/**
+ * Fits the map view to encompass all provided routes.
+ *
+ * @param routes - The routes whose geometries define the map bounds
+ * @param animate - Whether to animate the camera transition
+ */
 function fitToRoutes(map: mapboxgl.Map, routes: RouteGeoJSON[], animate: boolean) {
   if (routes.length === 0) return;
   const bounds = new mapboxgl.LngLatBounds();
@@ -256,6 +273,12 @@ function fitToRoutes(map: mapboxgl.Map, routes: RouteGeoJSON[], animate: boolean
   map.fitBounds(bounds, { padding: 48, duration: animate ? bewegungsdauer(500) : 0 });
 }
 
+/**
+ * Fits the map view to a recorded trail.
+ *
+ * @param trail - The trail coordinates used to determine the map bounds
+ * @param animate - Whether to animate the map transition
+ */
 function fitToTrail(map: mapboxgl.Map, trail: [number, number][], animate: boolean) {
   if (trail.length < 2) return;
   const bounds = new mapboxgl.LngLatBounds();
@@ -263,6 +286,27 @@ function fitToTrail(map: mapboxgl.Map, trail: [number, number][], animate: boole
   map.fitBounds(bounds, { padding: 48, duration: animate ? bewegungsdauer(500) : 0 });
 }
 
+/**
+ * Renders an interactive Mapbox map with routes, overlays, GPS tracks, and user location.
+ *
+ * @param routes - Routes to display on the map.
+ * @param userLocation - Current user coordinates, when available.
+ * @param userAccuracyM - User-location accuracy radius in meters.
+ * @param userHeadingDeg - User heading in degrees.
+ * @param showSpeedLimits - Whether to display speed-limit overlays.
+ * @param showTraffic - Whether to display traffic overlays.
+ * @param show3D - Whether to enable terrain and a tilted camera.
+ * @param colors - Optional route colors keyed by route ID.
+ * @param hoveredRouteId - ID of the route to highlight.
+ * @param flyToRouteId - ID of a route whose bounds should be displayed.
+ * @param trafficSegments - Traffic segments and their display colors.
+ * @param trail - Recorded GPS coordinates to display.
+ * @param fitTrail - Whether to fit the map view to the recorded trail.
+ * @param fitRoutes - Whether to fit the map view to the displayed routes.
+ * @param routesClickable - Whether clicking a route navigates to its detail page.
+ * @param centerOnFirstLocation - Whether to center the map on the first user location.
+ * @param followLocation - Whether to keep the map centered on the user's location.
+ */
 export default function RouteMap({
   routes,
   userLocation,

@@ -7,30 +7,49 @@ import { useSyncExternalStore } from "react";
 // Client-Rendering unterscheidet, ist ein Hydration-Mismatch. Deshalb über
 // useSyncExternalStore: der Server-Snapshot ist null (es wird nichts
 // gerendert), der Client-Snapshot liest die lokale Uhr. Kein Abonnement, weil
-// sich die Tageszeit während eines Seitenaufrufs nicht sinnvoll ändert.
+/**
+ * Provides an inert subscription for the greeting store.
+ *
+ * @returns A function that unsubscribes from the store.
+ */
 function abonnieren() {
   return () => {};
 }
 
+/**
+ * Selects a German greeting based on the hour of the day.
+ *
+ * @param stunde - The hour of the day
+ * @returns The greeting for the specified hour
+ */
 function grussFuerStunde(stunde: number): string {
   if (stunde < 11) return "Guten Morgen";
   if (stunde < 18) return "Schön, dich zu sehen";
   return "Guten Abend";
 }
 
+/**
+ * Determines the greeting for the client's current local hour.
+ *
+ * @returns The time-based greeting for the current local hour.
+ */
 function clientGruss(): string {
   return grussFuerStunde(new Date().getHours());
 }
 
+/**
+ * Provides the server-side greeting snapshot.
+ *
+ * @returns `null`
+ */
 function serverGruss(): null {
   return null;
 }
 
 /**
- * Tageszeit-Gruss über dem eigenen Namen auf der Profilseite. Bewusst
- * unauffällig (text-sm text-muted) und ohne eigene Überschrift — die Seite
- * soll damit beginnen, dass sie einen wiedererkennt, nicht damit, dass sie
- * etwas ankündigt.
+ * Displays a localized time-of-day greeting.
+ *
+ * @returns The greeting paragraph, or `null` when no greeting is available.
  */
 export default function Begruessung() {
   const gruss = useSyncExternalStore(abonnieren, clientGruss, serverGruss);

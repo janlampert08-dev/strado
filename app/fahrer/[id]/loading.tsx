@@ -7,7 +7,11 @@ import PageSkeleton from "@/components/ui/PageSkeleton";
 // geteilten Fahrten. Welche Blöcke tatsächlich erscheinen, hängt an den
 // Sichtbarkeits-Einstellungen des Fahrers — das Skelett kann das nicht
 // wissen und zeichnet den vollständigen Fall, weil ein fehlender Block
-// beim Auflösen mehr springt als ein zusätzlicher.
+/**
+ * Displays a loading skeleton for the driver profile page.
+ *
+ * @returns The driver profile page loading skeleton.
+ */
 
 export default function Loading() {
   return (

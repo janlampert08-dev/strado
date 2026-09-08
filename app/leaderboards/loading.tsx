@@ -6,7 +6,11 @@ import PageSkeleton from "@/components/ui/PageSkeleton";
 // erklärendem Absatz, darunter die Ranglisten-Sections. Eine Rangliste ist
 // eine Card mit getrennten Zeilen (divide-y), nicht acht einzelne Karten —
 // das zeichnete diese Datei vorher, und beim Auflösen sprang die ganze
-// Liste um mehrere Trennlinien zusammen.
+/**
+ * Renders a loading skeleton for a leaderboard section.
+ *
+ * @returns A leaderboard section placeholder with a heading and eight rows.
+ */
 
 function LeaderboardSectionSkeleton() {
   return (
@@ -26,6 +30,11 @@ function LeaderboardSectionSkeleton() {
   );
 }
 
+/**
+ * Renders a loading skeleton for the leaderboards page.
+ *
+ * @returns The page loading layout with title, description, and leaderboard placeholders.
+ */
 export default function Loading() {
   return (
     <PageSkeleton maxWidth="max-w-2xl lg:max-w-5xl">

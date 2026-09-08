@@ -8,6 +8,11 @@ import { BottomNavSkeleton, HeaderSkeleton } from "@/components/ui/PageSkeleton"
 // (Peek 320 px), ab md Detailspalte links und Karte rechts.
 const SHEET_PEEK_PX = 320;
 
+/**
+ * Renders a responsive loading skeleton for the route detail page.
+ *
+ * @returns The route detail loading layout.
+ */
 export default function Loading() {
   return (
     <div className="flex h-dvh flex-col">

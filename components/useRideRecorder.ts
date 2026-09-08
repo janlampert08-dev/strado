@@ -100,7 +100,15 @@ export interface RideRecorder {
 // Lock und die lokale Wiederherstellung nach einem Tab-/App-Kill. Beide
 // Aufzeichnungsarten teilen sich diesen Hook — LiveTrackingForm (Strecke,
 // mit Gate) und FreeRideForm (freie Fahrt, ohne Gate) unterscheiden sich
-// nur noch in der Oberfläche und im Speichern.
+/**
+ * Manages GPS ride recording, including gated routes, free rides, recovery, and local persistence.
+ *
+ * @param userId - Identifies the user whose recording data is stored.
+ * @param storageKey - Identifies the ride recording within the user's stored data.
+ * @param gate - Optional route start and end points used to control automatic start and finish.
+ * @param guestContinuationToken - Optional one-time token for adopting a guest recording.
+ * @returns The recorder state and controls for starting, stopping, discarding, and clearing a ride.
+ */
 export function useRideRecorder({
   userId,
   storageKey,

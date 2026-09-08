@@ -65,6 +65,11 @@ function SectionSummary({
   );
 }
 
+/**
+ * Renders the authenticated user's profile page with account details, statistics, rides, favorites, vehicles, and premium status.
+ *
+ * @returns The profile page content.
+ */
 export default async function ProfilPage() {
   const supabase = await createClient();
   const {

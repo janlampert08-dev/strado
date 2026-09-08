@@ -4,7 +4,11 @@ import PageSkeleton from "@/components/ui/PageSkeleton";
 
 // Spiegelt app/moderation/page.tsx: Überschrift mit Zählzeile, darunter die
 // Vorschlags- und Meldungskarten. Ohne diese Datei griff app/loading.tsx und
-// zeichnete die Explore-Karte.
+/**
+ * Displays a loading skeleton for the moderation page.
+ *
+ * @returns The moderation page loading layout
+ */
 
 export default function Loading() {
   return (

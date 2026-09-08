@@ -54,6 +54,13 @@ const SHEET_PEEK_PX = 272;
 const ZUFALLSVORSCHLAG_MS = 5000;
 const SHEET_EXPANDED_GAP_PX = 96;
 
+/**
+ * Renders the route exploration page with search, map visualization, location-based sorting, and route selection.
+ *
+ * @param routes - The routes available for display and exploration
+ * @param loadError - Whether loading the route data failed
+ * @param loggedIn - Whether the current user is logged in
+ */
 export default function ExploreView({
   routes,
   loadError = false,
