@@ -32,21 +32,47 @@ type ElementsOptionen = NonNullable<StripeCheckoutElementsSdkOptions["elementsOp
 // Ableitung zur Laufzeit (getComputedStyle) wäre möglich, brächte aber
 // color-mix()-Ergebnisse in unklaren Farbräumen an eine fremde Bibliothek —
 // zwei gepflegte Paletten sind der ehrlichere Weg.
+//
+// Ziel ist, dass die Felder von einem Feld der App nicht zu unterscheiden
+// sind. Massgeblich ist fieldClassName() in components/ui/Input.tsx:
+// rounded-lg (--radius-lg, 16px), 1px Rahmen in --color-border,
+// durchsichtiger Grund, 14px Text, und im Fokus ein Akzentrahmen plus
+// ring-2 ring-accent/15. Genau das bilden die Regeln unten nach; ein Ring
+// ist in CSS ein box-shadow mit 2px Ausbreitung, deshalb steht er dort.
 function appearance(dunkel: boolean): ElementsOptionen["appearance"] {
   const farben = dunkel
     ? {
         background: "#0B0B0D",
         text: "#F2F2F4",
+        // --color-muted im Dunkelmodus.
         textSecondary: "#8F95A3",
         accent: "#6B83FF",
-        border: "rgba(242,242,244,0.32)",
+        // --color-border: 14 % der Vordergrundfarbe. Vorher standen hier
+        // 32 % — das ist --color-border-strong und liess die Felder
+        // deutlich kantiger wirken als jedes Feld der App daneben.
+        border: "rgba(242,242,244,0.14)",
+        // Fokusring wie ring-accent/15.
+        ring: "rgba(107,131,255,0.15)",
+        // --color-danger im Dunkelmodus. #DC2626 (der helle Wert) kommt
+        // auf #0B0B0D nur auf 4.07:1 und fällt damit unter AA — genau der
+        // Grund, aus dem globals.css im Dunkelmodus auf #EF4444 wechselt.
+        danger: "#EF4444",
+        // --color-accent-subtle, die Fläche des gewählten Tabs.
+        accentSubtle: "#191C2F",
       }
     : {
         background: "#FAFAFA",
         text: "#131316",
-        textSecondary: "#8A8F98",
+        // --color-muted. Vorher #8A8F98 — der Wert, den globals.css wegen
+        // 3.11:1 auf dem Hintergrund ausdrücklich ersetzt hat; er stand
+        // hier noch, weil diese Palette beim Wechsel übersehen wurde.
+        textSecondary: "#666B74",
         accent: "#3D5AFE",
-        border: "rgba(19,19,22,0.3)",
+        // --color-border: 12 % der Vordergrundfarbe (vorher 30 %).
+        border: "rgba(19,19,22,0.12)",
+        ring: "rgba(61,90,254,0.15)",
+        danger: "#DC2626",
+        accentSubtle: "#EBEDFA",
       };
 
   return {
@@ -56,18 +82,40 @@ function appearance(dunkel: boolean): ElementsOptionen["appearance"] {
       colorBackground: farben.background,
       colorText: farben.text,
       colorTextSecondary: farben.textSecondary,
-      colorDanger: "#DC2626",
+      colorDanger: farben.danger,
       fontFamily: "'Inter', sans-serif",
       fontSizeBase: "14px",
-      borderRadius: "12px",
+      // --radius-lg, also dasselbe rounded-lg wie jedes Eingabefeld und
+      // jede Card der App. Vorher 12px, was neben einem App-Feld sichtbar
+      // eckiger aussah.
+      borderRadius: "16px",
       spacingUnit: "4px",
     },
     rules: {
-      ".Input": { border: `1px solid ${farben.border}`, boxShadow: "none" },
-      ".Input:focus": { border: `1px solid ${farben.accent}`, boxShadow: "none" },
+      // px-3 py-2 wie fieldClassName; Stripe rechnet Innenabstände sonst
+      // aus spacingUnit hoch und kommt auf andere Werte als die App.
+      ".Input": {
+        border: `1px solid ${farben.border}`,
+        boxShadow: "none",
+        padding: "8px 12px",
+      },
+      ".Input:focus": {
+        border: `1px solid ${farben.accent}`,
+        boxShadow: `0 0 0 2px ${farben.ring}`,
+      },
+      ".Input--invalid": {
+        border: `1px solid ${farben.danger}`,
+        boxShadow: "none",
+      },
       ".Label": { color: farben.textSecondary, fontSize: "12px" },
-      ".Tab": { border: `1px solid ${farben.border}`, borderRadius: "12px" },
-      ".Tab--selected": { border: `1px solid ${farben.accent}`, boxShadow: "none" },
+      ".Tab": { border: `1px solid ${farben.border}`, boxShadow: "none" },
+      // Wie die Planauswahl auf der Kaufseite: Akzentrahmen auf getönter
+      // Fläche (border-accent bg-accent-subtle in PremiumPurchaseView).
+      ".Tab--selected": {
+        border: `1px solid ${farben.accent}`,
+        backgroundColor: farben.accentSubtle,
+        boxShadow: "none",
+      },
     },
   };
 }
