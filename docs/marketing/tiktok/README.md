@@ -95,11 +95,17 @@ an einem echten Post, nicht hier.
 
 ## Zwei Regeln für den Inhalt
 
-**Erfundene Namen.** Die Fahrernamen und Zeiten der Bestenlisten-Slides sind
+**Erfundene Namen.** Die Fahrernamen und Zeiten der Ranglisten-Slides sind
 erfunden und bleiben es — genau wie bei Instagram und auf der Info-Seite.
 Echte Nutzernamen und echte Fahrten gehören niemandem, der ihrer
 Veröffentlichung auf einer Werbefläche zugestimmt hat (siehe
 `docs/rechtstexte/datenschutz.md`).
+
+**Die Rangliste hängt an der Strecke.** Nicht an einer Fahrzeugklasse:
+`getRouteLeaderboard()` in `lib/leaderboard.ts` filtert nach `route_id` und
+sortiert nach `dauer_sekunden`, sonst nichts. Fahrzeuge gibt es (Auto,
+Motorrad, am Eintrag der Fahrt), eine Rangliste je Klasse gibt es nicht. Wer
+sie in eine Caption schreibt, bewirbt ein Feature, das die App nicht hat.
 
 **Legale Beispielzeiten.** Jede gezeigte Zeit muss auf eine
 Durchschnittsgeschwindigkeit hinauslaufen, die man legal fährt. 17:34 auf

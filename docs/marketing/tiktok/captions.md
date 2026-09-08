@@ -69,9 +69,9 @@ Zwei Gründe, beide ernst:
    nicht eine Anzeige, sondern ein stiller Reichweitendeckel auf dem
    ganzen Konto — den du nicht siehst und nicht anfechten kannst.
 
-Was stattdessen trägt: der Vergleich ist **nach Fahrzeugklasse sortiert**
-und misst eine Strecke, die man legal fährt. Deshalb steht auf jeder
-Bestenlisten-Slide der Satz, der auch bei Instagram steht — „Fahr nur so
+Was stattdessen trägt: verglichen wird **eine Strecke, die man legal
+fährt**, und die gezeigten Zeiten sagen das auch. Deshalb steht auf jeder
+Ranglisten-Slide der Satz, der auch bei Instagram steht — „Fahr nur so
 schnell, wie es sicher und erlaubt ist." — und deshalb sind die
 Beispielzeiten so gewählt, wie `README.md` es beschreibt.
 
@@ -81,9 +81,9 @@ Beispielzeiten so gewählt, wie `README.md` es beschreibt.
 
 **Dateien:** `out/01-deine-zeit-01.png` … `-08.png` (8 Slides, in dieser Reihenfolge)
 
-Aufbau: Hook → fünf Strecken → Bestenliste → Schluss. Der Post ist auf den
+Aufbau: Hook → fünf Strecken → Rangliste → Schluss. Der Post ist auf den
 Vergleich gebaut: die Strecken-Slides zeigen, worum es geht, die
-Bestenlisten-Slide zeigt, wogegen.
+Ranglisten-Slide zeigt, wogegen.
 
 > Deine Zeit ist gut. Bis du sie vergleichst.
 >
@@ -91,9 +91,8 @@ Bestenlisten-Slide zeigt, wogegen.
 > Höhenmeter, maximale Steigung, Kehren. Nicht geschätzt, sondern aus den
 > Daten der Strecke gerechnet.
 >
-> Danach steht deine Zeit in der Bestenliste — sortiert nach Fahrzeugklasse.
-> Ein Töff gehört nicht in dieselbe Liste wie ein Kombi, sonst sagt der
-> Vergleich nur, wer das schnellere Fahrzeug hat.
+> Danach steht deine Zeit in der Rangliste der Strecke — neben allen anderen,
+> die dieselbe Strecke gefahren sind.
 >
 > Gratis im Browser: app.strado.ch
 >
@@ -139,7 +138,7 @@ Kommentar, und sag Bescheid, wenn eine davon wirklich reinkommt.
 
 **Dateien:** `out/03-kennt-nur-einer-01.png` … `-08.png`
 
-Aufbau: Hook → warum es Strado gibt → vier Strecken → Bestenliste → Schluss.
+Aufbau: Hook → warum es Strado gibt → vier Strecken → Rangliste → Schluss.
 Das ist der Post mit Geschichte; er läuft langsamer an und bleibt länger.
 
 > Die beste Strecke in Zürich kennt genau einer. Und der schickt sie dir nicht.
@@ -149,7 +148,7 @@ Das ist der Post mit Geschichte; er läuft langsamer an und bleibt länger.
 > fing mit derselben Frage an: wo fahren wir eigentlich hin?
 >
 > Deshalb gibt es Strado. Die Strecken an einem Ort, mit Verlauf und Karte,
-> und danach eine Bestenliste pro Fahrzeugklasse.
+> und danach eine Rangliste pro Strecke.
 >
 > Gestartet in Zürich. app.strado.ch
 >

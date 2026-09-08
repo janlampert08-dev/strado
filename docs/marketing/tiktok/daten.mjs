@@ -10,6 +10,11 @@
 // Fahrten gehoeren niemandem, der ihrer Veroeffentlichung auf einer
 // Werbeflaeche zugestimmt hat.
 //
+// Die Rangliste haengt an der STRECKE, nicht an einer Fahrzeugklasse —
+// getRouteLeaderboard() in lib/leaderboard.ts filtert nach route_id und
+// sortiert nach dauer_sekunden, sonst nichts. Wer hier eine Klasse
+// hineinschreibt, behauptet ein Feature, das es nicht gibt.
+//
 // Zu den Beispielzeiten gibt es eine harte Regel, siehe README:
 // jede gezeigte Zeit muss auf eine Durchschnittsgeschwindigkeit hinauslaufen,
 // die legal fahrbar ist. 17:34 auf 12.3 km sind 42 km/h — das ist der Punkt.
@@ -27,7 +32,7 @@ export const SLIDESHOWS = [
         typ: "hook",
         marker: "Zürich",
         titel: "Deine Zeit ist gut.\nBis du sie\nvergleichst.",
-        subline: "Sieben Strecken. Eine Bestenliste pro Fahrzeugklasse. →",
+        subline: "Sieben Strecken. Jede mit ihrer eigenen Rangliste. →",
       },
       { typ: "strecke", strecke: "zberg" },
       { typ: "strecke", strecke: "binzmer" },
@@ -37,13 +42,12 @@ export const SLIDESHOWS = [
       {
         typ: "liste",
         strecke: "zberg",
-        klasse: "Motorrad",
         fahrer: [["zberg_88", "17:34"], ["pass_driver", "17:52"], ["zooloop_zoe", "18:14"], ["bergziege_b", "18:43"], ["serpentine_s", "19:21"]],
       },
       {
         typ: "cta",
         titel: "Jetzt du.",
-        text: "Strecke wählen, fahren — und deine Zeit steht neben denen, die dasselbe fahren.",
+        text: "Strecke wählen, fahren — und deine Zeit steht in der Rangliste der Strecke.",
         fussnote: "Kein App Store. Link auf, losfahren.",
       },
     ],
@@ -102,7 +106,6 @@ export const SLIDESHOWS = [
       {
         typ: "liste",
         strecke: "nordwest",
-        klasse: "Auto",
         fahrer: [["nordwest_n", "48:12"], ["kombi_kurt", "49:03"], ["rampe_r", "50:27"], ["achtkomma9", "51:44"], ["sonntagsfahrt", "53:10"]],
       },
       {

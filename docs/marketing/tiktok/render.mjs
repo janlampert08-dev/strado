@@ -140,11 +140,11 @@ function slideListe(slide, m) {
   const s = STRECKEN[slide.strecke];
   if (!s) throw new Error(`Unbekannte Strecke: ${slide.strecke}`);
   return `
-    ${kopf(m, slide.klasse)}
+    ${kopf(m)}
     <main class="mitte">
-      <p class="eyebrow">Bestenliste · ${esc(s.region)}</p>
+      <p class="eyebrow">Rangliste · ${esc(s.region)}</p>
       <h1 class="titel-strecke" data-zeilen="1">${esc(s.name)}</h1>
-      <p class="orte">${esc(s.laenge)} · Klasse ${esc(slide.klasse)}</p>
+      <p class="orte">${esc(s.laenge)} · ${esc(s.kehren)} Kehren</p>
       <ol class="bestenliste">
         ${slide.fahrer.map(([name, zeit], i) => `
           <li${i < 3 ? ' class="podest"' : ""}>
