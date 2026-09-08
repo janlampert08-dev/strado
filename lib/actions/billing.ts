@@ -230,6 +230,15 @@ async function checkoutSessionMitCustomer(
       // Zahlungsdaten eingebettet im eigenen UI. Für diesen Modus ist
       // return_url Pflicht.
       ui_mode: "elements",
+      // Managed Payments (Stripes eigene Merchant-of-Record-Lösung) ist auf
+      // neuen Live-Konten standardmässig an und lässt in diesem Zustand nur
+      // ui_mode "hosted_page"/"embedded_page" zu — ui_mode "elements" schlägt
+      // dann mit "Invalid ui_mode: elements" fehl. Das eigene, gestylte
+      // Payment Element (Appearance, Dunkelmodus, TWINT, die AGB direkt im
+      // UI) ist bewusst gebaut und keine Stripe-Merchant-of-Record-Abwicklung
+      // — deshalb hier ausdrücklich abgewählt statt im Dashboard global
+      // umzustellen.
+      managed_payments: { enabled: false },
       customer: customerId,
       line_items: [{ price: preisId, quantity: 1 }],
       // Rückweg für Zahlungsarten mit Weiterleitung (TWINT, Bankverfahren).
