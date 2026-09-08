@@ -3,6 +3,7 @@
 // Abschluss, Bestätigung und Verwaltung des Premium-Abos. Aufgerufen aus
 // components/PremiumCheckoutForm.tsx (Kauf), components/PremiumCard.tsx
 // (Kundenportal) und app/profil/premium/page.tsx (Angebot).
+import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -12,7 +13,9 @@ import { getStripe } from "@/lib/stripe";
 import { KULANZ_TAGE, leseAboZustand } from "@/lib/stripeWebhook";
 import {
   aktivesAboAusSession,
+  checkoutIdempotencyKey,
   istEigeneBezahlteSession,
+  istIdempotencyKonflikt,
   istUnbekannterCustomer,
   passendeOffeneSession,
   preisVonSession,
@@ -190,6 +193,9 @@ async function checkoutSessionMitCustomer(
   email: string | undefined,
   plan: AboPlan,
   preisId: string,
+  /** Erzwingt einen frischen Idempotency-Key, wenn der reguläre bei Stripe
+   *  mit abweichenden Parametern verbrannt ist — siehe unten. */
+  schluesselZusatz?: string,
 ): Promise<CheckoutSessionResult> {
   const customerId = await getOrCreateStripeCustomerId(userId, email);
 
@@ -251,9 +257,16 @@ async function checkoutSessionMitCustomer(
     {
       // Fängt den Doppelklick ab, bei dem zwei Anfragen die Prüfung oben
       // gleichzeitig passieren: beide bekommen dann dieselbe Session zurück.
-      // Auf eine Stunde begrenzt, damit ein späteres, absichtliches
-      // Neuabschliessen nicht auf einer alten Antwort hängen bleibt.
-      idempotencyKey: `checkout:${userId}:${plan}:${Math.floor(Date.now() / 3_600_000)}`,
+      // Der Schlüssel trägt Customer und Preis-ID mit, damit ein geänderter
+      // Aufruf auch einen geänderten Schlüssel bekommt — siehe
+      // checkoutIdempotencyKey.
+      idempotencyKey: checkoutIdempotencyKey({
+        userId,
+        plan,
+        customerId,
+        preisId,
+        zusatz: schluesselZusatz,
+      }),
     },
   );
 
@@ -313,6 +326,42 @@ export async function createCheckoutSession(
   try {
     return await checkoutSessionMitCustomer(user.id, user.email, plan, preisId);
   } catch (err) {
+    // Derselbe Idempotency-Key liegt bei Stripe mit anderen Parametern —
+    // etwa weil ein Deploy die Session-Parameter erweitert hat, während im
+    // selben Stundenraster noch ein Key aus der Vorversion verbrannt ist.
+    // Ohne diesen Zweig wäre der Kauf für dieses Konto bis zum Stundenwechsel
+    // gesperrt; mit ihm läuft der zweite Versuch auf einem frischen Key.
+    //
+    // Kein Risiko einer Doppelbuchung: der Konflikt sagt gerade, dass unter
+    // diesem Key nie eine Session mit diesen Parametern entstanden ist, und
+    // der zweite Versuch durchläuft die Prüfung auf aktives Abo und offene
+    // Session erneut.
+    if (istIdempotencyKonflikt(err)) {
+      console.warn("Idempotency-Key verbrannt, neuer Versuch mit frischem Schlüssel", {
+        userId: user.id,
+        plan,
+      });
+      try {
+        return await checkoutSessionMitCustomer(
+          user.id,
+          user.email,
+          plan,
+          preisId,
+          randomUUID(),
+        );
+      } catch (err2) {
+        console.error(
+          "Checkout-Session konnte auch mit frischem Idempotency-Key nicht angelegt werden",
+          { userId: user.id, plan },
+          err2,
+        );
+        return {
+          ok: false,
+          error: "Zahlung konnte gerade nicht vorbereitet werden. Bitte versuch es in ein paar Minuten noch einmal.",
+        };
+      }
+    }
+
     if (!istUnbekannterCustomer(err)) {
       console.error("Checkout-Session konnte nicht angelegt werden", { userId: user.id, plan }, err);
       return {
