@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { Check, Sparkles } from "lucide-react";
 import EmptyState from "@/components/ui/EmptyState";
+import SectionHeading from "@/components/ui/SectionHeading";
+import PremiumBadge from "@/components/PremiumBadge";
 import { buttonVariants } from "@/components/ui/Button";
 import {
   betragText,
@@ -31,12 +33,6 @@ const VORTEILE = [
   "Unbegrenzt Strecken offline speichern",
   "GPX-Export kuratierter Strecken",
 ];
-
-// Einheitliche Abschnittsmarke für die ganze Seite — dieselbe Optik wie die
-// Überschrift in PremiumCard.tsx, damit "Was Premium dazugibt", "Plan
-// wählen" und "Bevor du bestätigst" beim Überfliegen als gleichrangige
-// Stufen lesbar sind statt als drei verschiedene Textsorten.
-const ABSCHNITT_KLASSEN = "text-sm font-semibold tracking-wide text-muted uppercase";
 
 export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngebot }) {
   // Der Jahresplan steht vorne, wenn es ihn gibt: er ist der günstigere pro
@@ -73,10 +69,7 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-3">
-        <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-accent-subtle px-3 py-1 text-xs font-semibold tracking-wide text-accent uppercase">
-          <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-          Premium
-        </span>
+        <PremiumBadge />
         {/* Die Überschrift sagt weiterhin "unterstützen", der Text darunter
             sagt "schaltet frei" — beides stimmt, und nur beides zusammen ist
             ehrlich: seit eigene Strecken Premium sind (0077), gibt es eine
@@ -90,7 +83,7 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
       </div>
 
       <section className="flex flex-col gap-3">
-        <h2 className={ABSCHNITT_KLASSEN}>Was Premium dazugibt</h2>
+        <SectionHeading>Was Premium dazugibt</SectionHeading>
         <ul className="flex flex-col gap-2.5 text-sm text-foreground">
           {VORTEILE.map((vorteil) => (
             <li key={vorteil} className="flex items-start gap-2.5">
@@ -102,7 +95,9 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
       </section>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className={`mb-3 ${ABSCHNITT_KLASSEN}`}>Plan wählen</legend>
+        <SectionHeading as="legend" className="mb-3">
+          Plan wählen
+        </SectionHeading>
         {angebot.plaene.map((p) => (
           <PlanOption
             key={p.plan}

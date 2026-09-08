@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import Header from "@/components/Header";
 import Card from "@/components/ui/Card";
+import SectionHeading from "@/components/ui/SectionHeading";
+import PremiumBadge from "@/components/PremiumBadge";
 import PremiumCheckoutForm from "@/components/PremiumCheckoutForm";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumAngebot } from "@/lib/actions/billing";
@@ -23,6 +25,12 @@ function istAboPlan(wert: string | undefined): wert is AboPlan {
 // Query-Parameter mitgibt. Getrennt von der Planauswahl, damit das
 // Formular — inklusive Stripe-Skript und -Iframe — nicht schon lädt, wer
 // die Kaufseite nur ansieht.
+//
+// Gebaut wie die Kaufseite, weil es derselbe Kauf ist: Premium-Pille über
+// der Überschrift, darunter drei mit SectionHeading beschriftete
+// Abschnitte. Vorher stand hier eine Überschrift, eine graue Zeile und
+// zwei unbeschriftete Blöcke — der Schritt sah aus wie ein anderer
+// Bereich der App, obwohl er nur einen Klick hinter der Planauswahl liegt.
 export default async function PremiumZahlungPage({
   searchParams,
 }: {
@@ -61,55 +69,82 @@ export default async function PremiumZahlungPage({
   return (
     <div className="flex h-dvh flex-col">
       <Header back="/profil/premium" />
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 overflow-y-auto px-5 py-8 sm:px-6">
-        <div className="flex flex-col gap-1">
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 overflow-y-auto px-5 py-8 sm:px-6">
+        <div className="flex flex-col gap-3">
+          <PremiumBadge />
           <h1 className="text-display font-semibold">Zahlung abschliessen</h1>
-          <p className="text-sm text-muted">
-            {planTitel(gewaehlt.plan)} — {betragText(gewaehlt.betragRappen, gewaehlt.waehrung)}{" "}
-            {planZeitraum(gewaehlt.plan)}
-          </p>
         </div>
+
+        {/* Der gewählte Plan in derselben Zeile, in der er auf der Kaufseite
+            ausgewählt wurde (PlanOption): Titel, grosser Betrag, Zeitraum
+            daneben. Vorher stand das als eine graue Zeile unter der
+            Überschrift — der Betrag, den man gleich zahlt, war der kleinste
+            Text auf der Seite. */}
+        <section className="flex flex-col gap-3">
+          <SectionHeading>Deine Auswahl</SectionHeading>
+          <Card className="flex flex-col gap-1 px-4 py-3.5">
+            <span className="text-sm font-semibold text-foreground">
+              {planTitel(gewaehlt.plan)}
+            </span>
+            <span className="flex flex-wrap items-baseline gap-x-2">
+              <span className="text-title font-semibold text-foreground">
+                {betragText(gewaehlt.betragRappen, gewaehlt.waehrung)}
+              </span>
+              <span className="text-sm text-muted">{planZeitraum(gewaehlt.plan)}</span>
+            </span>
+          </Card>
+        </section>
 
         {/* Die Pflichtangaben vor dem Kauf, nicht danach: automatische
             Verlängerung, Kündigungsweg, Widerrufslage. Sie stehen hier im
             Text und nicht nur im verlinkten Dokument, weil ein Link auf 16
             Ziffern AGB niemand vor dem Bezahlen liest — und unmittelbar über
             dem Formular, das die Zahlungspflicht auslöst. */}
-        <Card surface className="flex flex-col gap-2 px-4 py-3 text-sm text-muted">
-          <p>
-            Das Abo verlängert sich automatisch um{" "}
-            {gewaehlt.plan === "monat" ? "einen Monat" : "zwölf Monate"}, bis du kündigst. Kündigen
-            kannst du jederzeit ohne Frist in deinem Profil. Premium läuft danach bis zum Ende der
-            bezahlten Periode weiter.
-          </p>
-          <p>
-            Es gelten die{" "}
-            <a
-              href={LEGAL_URLS.agb}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2 hover:text-foreground"
-            >
-              AGB
-            </a>{" "}
-            und die{" "}
-            <a
-              href={LEGAL_URLS.datenschutz}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2 hover:text-foreground"
-            >
-              Datenschutzerklärung
-            </a>
-            .
-          </p>
-        </Card>
+        <section className="flex flex-col gap-3">
+          <SectionHeading>Bevor du bestätigst</SectionHeading>
+          <Card surface className="flex flex-col gap-2 px-4 py-3 text-sm text-muted">
+            <p>
+              Das Abo verlängert sich automatisch um{" "}
+              {gewaehlt.plan === "monat" ? "einen Monat" : "zwölf Monate"}, bis du kündigst.
+              Kündigen kannst du jederzeit ohne Frist in deinem Profil. Premium läuft danach bis
+              zum Ende der bezahlten Periode weiter.
+            </p>
+            <p>
+              Es gelten die{" "}
+              <a
+                href={LEGAL_URLS.agb}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:text-foreground"
+              >
+                AGB
+              </a>{" "}
+              und die{" "}
+              <a
+                href={LEGAL_URLS.datenschutz}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:text-foreground"
+              >
+                Datenschutzerklärung
+              </a>
+              .
+            </p>
+          </Card>
+        </section>
 
-        {/* key auf dem Plan: käme jemand über die Zurück-Schaltfläche mit
-            einem anderen Plan zurück auf diese Seite, muss ein bereits
-            vorbereitetes Payment Element verworfen werden — sonst zahlte man
-            den Betrag des zuvor gewählten Plans. */}
-        <PremiumCheckoutForm key={gewaehlt.plan} plan={gewaehlt.plan} beworbenerPreis={beworbenerPreis} />
+        <section className="flex flex-col gap-3">
+          <SectionHeading>Zahlungsdaten</SectionHeading>
+          {/* key auf dem Plan: käme jemand über die Zurück-Schaltfläche mit
+              einem anderen Plan zurück auf diese Seite, muss ein bereits
+              vorbereitetes Payment Element verworfen werden — sonst zahlte
+              man den Betrag des zuvor gewählten Plans. */}
+          <PremiumCheckoutForm
+            key={gewaehlt.plan}
+            plan={gewaehlt.plan}
+            beworbenerPreis={beworbenerPreis}
+          />
+        </section>
       </main>
     </div>
   );

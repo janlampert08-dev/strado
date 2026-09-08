@@ -38,11 +38,24 @@ type ElementsOptionen = NonNullable<StripeCheckoutElementsSdkOptions["elementsOp
 // zwei gepflegte Paletten sind der ehrlichere Weg.
 //
 // Ziel ist, dass die Felder von einem Feld der App nicht zu unterscheiden
-// sind. Massgeblich ist fieldClassName() in components/ui/Input.tsx:
-// rounded-lg (--radius-lg, 16px), 1px Rahmen in --color-border,
-// durchsichtiger Grund, 14px Text, und im Fokus ein Akzentrahmen plus
-// ring-2 ring-accent/15. Genau das bilden die Regeln unten nach; ein Ring
-// ist in CSS ein box-shadow mit 2px Ausbreitung, deshalb steht er dort.
+// sind. Massgeblich sind drei Stellen:
+//
+//   - fieldClassName() in components/ui/Input.tsx: rounded-lg (--radius-lg,
+//     16px), 1px Rahmen in --color-border, durchsichtiger Grund, 14px Text,
+//     im Fokus ein Akzentrahmen plus ring-2 ring-accent/15.
+//   - Die Beschriftung darüber: <label className="flex flex-col gap-1.5
+//     text-sm font-medium"> — 14px, Gewicht 500, Vordergrundfarbe, 6px
+//     Abstand zum Feld. Das ist in jedem Formular der App so (AnmeldenForm,
+//     RegistrierenForm, PasswortAendernForm).
+//   - Die Zahlungsart-Reiter: dieselbe Optik wie PlanOption in
+//     PremiumPurchaseView — Rahmen in --color-border, beim Zeigen
+//     --color-border-strong, gewählt Akzentrahmen auf --color-accent-subtle.
+//
+// Wo Stripe eine benannte Variable dafür anbietet, steht sie unter
+// `variables` statt als eigene Regel: die Variablen sind Teil der
+// dokumentierten Appearance-API (siehe den Appearance-Typ in
+// @stripe/stripe-js), während jede Regel unter `rules` an einen internen
+// Klassennamen gebunden ist.
 function appearance(dunkel: boolean): ElementsOptionen["appearance"] {
   const farben = dunkel
     ? {
@@ -55,14 +68,31 @@ function appearance(dunkel: boolean): ElementsOptionen["appearance"] {
         // 32 % — das ist --color-border-strong und liess die Felder
         // deutlich kantiger wirken als jedes Feld der App daneben.
         border: "rgba(242,242,244,0.14)",
+        // --color-border-strong: der Rahmen beim Zeigen auf einen Reiter,
+        // wie hover:border-border-strong an PlanOption.
+        borderStrong: "rgba(242,242,244,0.32)",
         // Fokusring wie ring-accent/15.
         ring: "rgba(107,131,255,0.15)",
+        // Der kräftigere Ring, den die App auf anklickbaren Flächen statt
+        // auf Eingabefeldern zeigt: focus-visible:ring-accent/40 aus
+        // components/ui/Button.tsx.
+        ringStark: "rgba(107,131,255,0.4)",
         // --color-danger im Dunkelmodus. #DC2626 (der helle Wert) kommt
         // auf #0B0B0D nur auf 4.07:1 und fällt damit unter AA — genau der
         // Grund, aus dem globals.css im Dunkelmodus auf #EF4444 wechselt.
         danger: "#EF4444",
+        dangerRing: "rgba(239,68,68,0.15)",
+        // --color-success und --color-warning im Dunkelmodus. Standen hier
+        // bisher gar nicht, also blieb es bei Stripes eigenem Grün und Gelb
+        // — sichtbar etwa am Haken einer gemerkten Zahlungsart.
+        success: "#22C55E",
+        warning: "#F59E0B",
         // --color-accent-subtle, die Fläche des gewählten Tabs.
         accentSubtle: "#191C2F",
+        // --color-surface: 6 % der Vordergrundfarbe über dem Hintergrund,
+        // von Hand ausgerechnet — der Grund verschachtelter Flächen (Card
+        // mit surface), den Stripe für gemerkte Zahlungsarten verwendet.
+        surface: "#191A1C",
       }
     : {
         background: "#FAFAFA",
@@ -74,30 +104,100 @@ function appearance(dunkel: boolean): ElementsOptionen["appearance"] {
         accent: "#3D5AFE",
         // --color-border: 12 % der Vordergrundfarbe (vorher 30 %).
         border: "rgba(19,19,22,0.12)",
+        borderStrong: "rgba(19,19,22,0.30)",
         ring: "rgba(61,90,254,0.15)",
+        ringStark: "rgba(61,90,254,0.4)",
         danger: "#DC2626",
+        dangerRing: "rgba(220,38,38,0.15)",
+        success: "#1A7F37",
+        warning: "#B45309",
         accentSubtle: "#EBEDFA",
+        surface: "#F3F3F4",
       };
 
   return {
     theme: "flat",
+    // Beschriftung über dem Feld, Felder mit Abstand dazwischen — die
+    // Anordnung jedes Formulars der App. Der Vorgabewert "auto" überlässt
+    // Stripe die Wahl und kann in schwebende Beschriftungen kippen, die es
+    // in der App nirgends gibt.
+    labels: "above",
+    inputs: "spaced",
     variables: {
       colorPrimary: farben.accent,
       colorBackground: farben.background,
       colorText: farben.text,
       colorTextSecondary: farben.textSecondary,
+      colorTextPlaceholder: farben.textSecondary,
       colorDanger: farben.danger,
-      fontFamily: "'Inter', sans-serif",
+      colorSuccess: farben.success,
+      colorWarning: farben.warning,
+      // Auf einer Akzentfläche liegt in der App immer die Hintergrundfarbe
+      // (bg-accent text-background, siehe ui/Button.tsx) — nicht Weiss.
+      accessibleColorOnColorPrimary: farben.background,
+
+      fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
       fontSizeBase: "14px",
+      fontWeightMedium: "500",
+      fontWeightBold: "600",
+
       // --radius-lg, also dasselbe rounded-lg wie jedes Eingabefeld und
       // jede Card der App. Vorher 12px, was neben einem App-Feld sichtbar
       // eckiger aussah.
       borderRadius: "16px",
+
+      // Die Abstände der App statt Stripes Ableitung aus spacingUnit:
+      // gap-4 zwischen den Feldzeilen wie in jedem Formular, gap-3
+      // zwischen Ablaufdatum und Prüfziffer, gap-2 zwischen den
+      // Zahlungsart-Reitern wie zwischen den Plänen auf der Kaufseite.
       spacingUnit: "4px",
+      gridRowSpacing: "16px",
+      gridColumnSpacing: "12px",
+      tabSpacing: "8px",
+      accordionItemSpacing: "8px",
+
+      // Beschriftungen wie in der App: text-sm font-medium in der
+      // Vordergrundfarbe, 6px über dem Feld (gap-1.5). Vorher 12px in der
+      // gedämpften Farbe — "Kartennummer" las sich damit kleiner und
+      // blasser als "E-Mail" zwei Bildschirme vorher, und das war der
+      // auffälligste Unterschied zwischen diesem Formular und der App.
+      labelColorText: farben.text,
+      labelFontSize: "14px",
+      labelFontWeight: "500",
+      labelSpacing: "6px",
+
+      // Rahmen und Fokus wie fieldClassName().
+      inputColorBorder: farben.border,
+      inputBoxShadow: "none",
+      inputFocusColorBorder: farben.accent,
+      inputFocusBoxShadow: `0 0 0 2px ${farben.ring}`,
+      // Alles, was kein Eingabefeld ist (Reiter, Kontrollkästchen), bekommt
+      // den kräftigeren Ring der Schaltflächen.
+      focusBoxShadow: `0 0 0 2px ${farben.ringStark}`,
+
+      iconColor: farben.textSecondary,
+      iconHoverColor: farben.text,
+      // Kein iconCheckmarkColor: der Haken liegt auf einer Fläche in
+      // colorPrimary, und ein Haken im Akzentton wäre dort unsichtbar. Für
+      // ihn gilt accessibleColorOnColorPrimary oben.
+      tabIconColor: farben.textSecondary,
+      tabIconHoverColor: farben.text,
+      tabIconSelectedColor: farben.accent,
+
+      accordionItemLabelColorText: farben.text,
+      accordionItemLabelFontSize: "14px",
+      accordionItemLabelFontWeight: "500",
+      accordionItemLabelSelectedColorText: farben.text,
+      accordionItemLabelSelectedFontWeight: "600",
     },
     rules: {
-      // px-3 py-2 wie fieldClassName; Stripe rechnet Innenabstände sonst
-      // aus spacingUnit hoch und kommt auf andere Werte als die App.
+      // Rahmen und Fokus stehen hier trotz der Variablen oben noch einmal
+      // als Regel: das Thema "flat" zeichnet Felder von Haus aus ohne
+      // Rahmen, und inputColorBorder färbt nur einen Rahmen, den es dann
+      // gar nicht gibt. Die Regeln setzen die Breite, die Variablen decken
+      // ab, was Regeln nicht erreichen. Innenabstand px-3 py-2 wie
+      // fieldClassName; Stripe rechnet ihn sonst aus spacingUnit hoch und
+      // kommt auf andere Werte als die App.
       ".Input": {
         border: `1px solid ${farben.border}`,
         boxShadow: "none",
@@ -111,15 +211,61 @@ function appearance(dunkel: boolean): ElementsOptionen["appearance"] {
         border: `1px solid ${farben.danger}`,
         boxShadow: "none",
       },
-      ".Label": { color: farben.textSecondary, fontSize: "12px" },
-      ".Tab": { border: `1px solid ${farben.border}`, boxShadow: "none" },
-      // Wie die Planauswahl auf der Kaufseite: Akzentrahmen auf getönter
-      // Fläche (border-accent bg-accent-subtle in PremiumPurchaseView).
+      ".Input--invalid:focus": {
+        border: `1px solid ${farben.danger}`,
+        boxShadow: `0 0 0 2px ${farben.dangerRing}`,
+      },
+
+      // Reiter und Akkordeon-Zeilen sind dieselbe Sache wie PlanOption auf
+      // der Kaufseite — eine anklickbare Zeile mit Rahmen —, und werden
+      // deshalb gleich behandelt: py-3.5-artige Höhe, damit sie sich mit
+      // dem Daumen treffen lassen, Rahmen in --color-border, beim Zeigen
+      // --color-border-strong, gewählt Akzentrahmen auf getönter Fläche.
+      ".Tab": {
+        border: `1px solid ${farben.border}`,
+        boxShadow: "none",
+        padding: "10px 12px",
+      },
+      ".Tab:hover": {
+        border: `1px solid ${farben.borderStrong}`,
+        boxShadow: "none",
+      },
       ".Tab--selected": {
         border: `1px solid ${farben.accent}`,
         backgroundColor: farben.accentSubtle,
         boxShadow: "none",
       },
+      ".Tab--selected:hover": {
+        border: `1px solid ${farben.accent}`,
+        backgroundColor: farben.accentSubtle,
+        boxShadow: "none",
+      },
+      ".AccordionItem": {
+        border: `1px solid ${farben.border}`,
+        backgroundColor: "transparent",
+        boxShadow: "none",
+        padding: "12px 16px",
+      },
+      ".AccordionItem:hover": {
+        border: `1px solid ${farben.borderStrong}`,
+        boxShadow: "none",
+      },
+      ".AccordionItem--selected": {
+        border: `1px solid ${farben.accent}`,
+        backgroundColor: farben.accentSubtle,
+        boxShadow: "none",
+      },
+
+      // Die Fläche einer gemerkten Zahlungsart — wie <Card surface>.
+      ".Block": {
+        border: `1px solid ${farben.border}`,
+        backgroundColor: farben.surface,
+        boxShadow: "none",
+      },
+
+      // Fehlermeldungen unter einem Feld lesen sich in der App als
+      // text-sm text-danger, nicht als Kleingedrucktes.
+      ".Error": { color: farben.danger, fontSize: "14px" },
     },
   };
 }
@@ -356,7 +502,12 @@ function CheckoutInner({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+    // gap-4 zwischen Formularzeilen wie in jedem Formular der App
+    // (AnmeldenForm, RegistrierenForm) — und derselbe Abstand, den das
+    // Payment Element jetzt zwischen seinen eigenen Zeilen hält
+    // (gridRowSpacing in appearance()), damit das iframe nicht enger
+    // gesetzt ist als seine Umgebung.
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <PaymentElement />
       {error && (
         <p role="alert" className="text-sm text-danger">
@@ -368,7 +519,7 @@ function CheckoutInner({
           {pruefen ? "Wird geprüft…" : "Erneut prüfen"}
         </Button>
       ) : (
-        <>
+        <div className="flex flex-col gap-2">
           {/* Volle Breite und der Betrag auf der Schaltfläche selbst: das
               hier ist der Moment, in dem die Zahlungspflicht ausgelöst wird,
               und der Betrag darf dafür nicht weiter oben auf der Seite
@@ -376,10 +527,15 @@ function CheckoutInner({
           <Button type="submit" disabled={submitting} aria-busy={submitting}>
             {submitting ? "Wird verarbeitet…" : `Zahlungspflichtig abonnieren — ${preisText(preis)}`}
           </Button>
+          {/* Ohne Schloss-Icon davor: der Satz bricht auf 390px Breite —
+              der Breite, für die diese App gebaut ist — auf zwei Zeilen, und
+              ein Icon in einer items-center-Zeile daneben steht dann allein
+              links neben einem zentrierten Block. Im Render war genau das zu
+              sehen. Die Aussage trägt der Satz, nicht das Symbol. */}
           <p className="text-center text-xs text-muted">
             Zahlungsdaten gehen direkt an Stripe — Strado sieht und speichert sie nie.
           </p>
-        </>
+        </div>
       )}
     </form>
   );
@@ -389,15 +545,38 @@ function CheckoutInner({
 // frühere einzeilige Hinweis liess die Seite in dem Moment springen, in dem
 // das Formular erschien. aria-live meldet den Zustand denen, die den Sprung
 // ohnehin nicht sehen.
+//
+// Die Formen bilden nach, was danach tatsächlich steht — zwei
+// Zahlungsart-Reiter nebeneinander, Kartennummer mit Beschriftung darüber,
+// darunter Ablaufdatum und Prüfziffer nebeneinander —, und tragen dieselben
+// Radien wie das Ergebnis (rounded-lg für Felder, rounded-full für die
+// Schaltfläche). Vorher waren es zwei gleich hohe rounded-md-Balken, also
+// weder die Anordnung noch die Kanten des Formulars, das gleich erscheint.
 function CheckoutSkeleton() {
   return (
-    <div className="flex flex-col gap-3" aria-busy="true">
+    <div className="flex flex-col gap-4" aria-busy="true">
       <p role="status" aria-live="polite" className="text-sm text-muted">
         Zahlung wird vorbereitet…
       </p>
-      <Skeleton className="h-11 rounded-md" />
-      <Skeleton className="h-11 rounded-md" />
-      <Skeleton className="h-10 w-full rounded-full" />
+      <div className="grid grid-cols-2 gap-2">
+        <Skeleton className="h-14 rounded-lg" />
+        <Skeleton className="h-14 rounded-lg" />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Skeleton className="h-4 w-28 rounded-sm" />
+        <Skeleton className="h-10 rounded-lg" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="flex flex-col gap-1.5">
+          <Skeleton className="h-4 w-24 rounded-sm" />
+          <Skeleton className="h-10 rounded-lg" />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Skeleton className="h-4 w-20 rounded-sm" />
+          <Skeleton className="h-10 rounded-lg" />
+        </div>
+      </div>
+      <Skeleton className="h-11 w-full rounded-full" />
     </div>
   );
 }
