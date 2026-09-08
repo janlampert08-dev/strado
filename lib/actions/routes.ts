@@ -242,10 +242,32 @@ export async function proposeRoute(
   // schlechtere Antwort auf ein erschöpftes Kontingent.
   if (requestedPrivat) {
     const kontingent = await privateStreckenKontingent();
-    if (kontingent.erlaubt) {
-      await supabase.from("routes").update({ ist_privat: true }).eq("id", data);
-    } else {
+    if (!kontingent.erlaubt) {
       redirect(`/strecken/${data}?privat=kontingent`);
+    }
+
+    // Das Ergebnis dieses UPDATE wurde bisher verworfen (Audit-Befund A4).
+    // Schlug es fehl, blieb die Zeile auf status_ok=false, ist_privat=false
+    // stehen — und das ist genau das Prädikat, auf das getPendingRoutes()
+    // selektiert (lib/moderation.ts). Die als privat angeforderte Strecke
+    // ging damit samt vollständiger Geometrie in die öffentliche
+    // Moderationswarteschlange, während der Anfragende kommentarlos auf die
+    // Streckenseite umgeleitet wurde.
+    //
+    // .select() ist hier nicht schmückend: verweigert RLS das UPDATE, kommt
+    // KEIN Fehler zurück, sondern null Zeilen. Ohne die Rückgabe wäre genau
+    // der Fall, der die Strecke veröffentlicht, von einem Erfolg nicht zu
+    // unterscheiden.
+    const { data: privatGesetzt, error: privatFehler } = await supabase
+      .from("routes")
+      .update({ ist_privat: true })
+      .eq("id", data)
+      .select("id")
+      .maybeSingle();
+
+    if (privatFehler || !privatGesetzt) {
+      console.error("ist_privat konnte nicht gesetzt werden", { routeId: data, privatFehler });
+      redirect(`/strecken/${data}?privat=fehlgeschlagen`);
     }
   }
 

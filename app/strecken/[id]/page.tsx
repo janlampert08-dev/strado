@@ -67,10 +67,17 @@ export default async function StreckeDetailPage({
   // eingelöst wird er ausschliesslich im Client gegen den gespeicherten Wert
   // (adoptGuestTrackingSnapshot); hier ist er ein durchgereichter, nicht
   // vertrauenswürdiger Query-Wert.
-  searchParams: Promise<{ fortsetzen?: string }>;
+  // ?privat=… meldet zurück, warum eine als privat angeforderte Strecke
+  // NICHT privat angelegt wurde (proposeRoute in lib/actions/routes.ts):
+  // "kontingent" = Gratis-Kontingent erschöpft, "fehlgeschlagen" = das
+  // UPDATE auf ist_privat kam nicht durch. Beide Fälle enden damit, dass die
+  // Strecke als normaler Vorschlag in die Moderation geht — das muss die
+  // Person erfahren, die sie privat haben wollte. Der Marker wurde bisher
+  // gesetzt, aber von niemandem gelesen.
+  searchParams: Promise<{ fortsetzen?: string; privat?: string }>;
 }) {
   const { id } = await params;
-  const { fortsetzen } = await searchParams;
+  const { fortsetzen, privat } = await searchParams;
   const supabase = await createClient();
 
   // getRoute() und getCurrentUser() sind voneinander unabhängig (Routenabruf
@@ -168,6 +175,22 @@ export default async function StreckeDetailPage({
             {route.ist_rundfahrt ? `Start/Ziel: ${route.start_ort}` : `${route.start_ort} → ${route.ziel_ort}`}
           </p>
         </div>
+
+        {/* Nur für die Person, die die Strecke angelegt hat — für alle
+            anderen ist der Query-Parameter bedeutungslos und würde nur eine
+            fremde Fehlermeldung zeigen. Der Wert kommt aus der URL und ist
+            damit frei setzbar; er entscheidet deshalb ausschliesslich über
+            einen von zwei festen Texten und wird nirgends ausgegeben. */}
+        {user?.id === route.erstellt_von && !route.ist_privat && (privat === "kontingent" || privat === "fehlgeschlagen") && (
+          <Card surface className="px-3 py-2 text-sm">
+            <p className="font-medium">Diese Strecke ist nicht privat.</p>
+            <p className="mt-1 text-muted">
+              {privat === "kontingent"
+                ? "Dein Kontingent für private Strecken ist erschöpft. Die Strecke ist gespeichert und geht als normaler Vorschlag in die Moderation."
+                : "Die Strecke konnte nicht auf privat gesetzt werden. Sie ist gespeichert und geht als normaler Vorschlag in die Moderation — melde dich bei uns, wenn das nicht gewollt ist."}
+            </p>
+          </Card>
+        )}
 
         {route.ist_privat && user?.id === route.erstellt_von && (
           <Card surface className="flex items-center justify-between gap-3 px-3 py-2 text-sm">

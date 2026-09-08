@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getOrigin, safeInternalPath } from "@/lib/utils/url";
 import { getClientIp, isRateLimitedByKey } from "@/lib/rateLimit";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import { AVATAR_BUCKET, avatareEntfernen } from "@/lib/avatarSpeicher";
 import {
   PASSWORT_AENDERN_PFAD,
@@ -342,13 +342,13 @@ async function kuendigeStripeAbo(userId: string): Promise<boolean> {
     // vielen beendeten Abos genau das übersehen, worum es hier geht — ein noch
     // abrechenbares Abo hinter der Seitengrenze, das nach der Kontolöschung
     // unsichtbar weiterbucht.
-    for await (const abo of stripe.subscriptions.list({
+    for await (const abo of getStripe().subscriptions.list({
       customer: profile.stripe_customer_id,
       status: "all",
       limit: 100,
     })) {
       if (beendet.has(abo.status)) continue;
-      await stripe.subscriptions.cancel(abo.id);
+      await getStripe().subscriptions.cancel(abo.id);
     }
   } catch (fehler) {
     console.error("Stripe-Kündigung bei Kontolöschung fehlgeschlagen", { userId }, fehler);

@@ -20,7 +20,12 @@ import {
 import { metadatenEntfernen } from "@/lib/imageMetadata";
 import { istPremium, maxFotosProFahrt } from "@/lib/premium";
 import { publicTrackEwkt } from "@/lib/publicTrack";
-import { buildHoehenprofil, computeAscentM, fetchElevationProfile } from "@/lib/elevation";
+import {
+  buildHoehenprofil,
+  computeAscentM,
+  fetchElevationProfile,
+  stuetzpunkteFuer,
+} from "@/lib/elevation";
 import { reverseGeocode } from "@/lib/geocoding";
 import {
   getRoute,
@@ -432,7 +437,12 @@ async function deriveElevation(
   coordinates: [number, number][],
 ): Promise<{ hoehenmeter_aufstieg: number | null; hoehenprofil: { km: number; m: number }[] | null }> {
   try {
-    const profile = await fetchElevationProfile(coordinates);
+    // Stützpunktdichte an die Länge gekoppelt statt fest bei 300: sonst
+    // untermeldet der summierte Anstieg lange Fahrten drastisch, und die
+    // Höhenmeter-Bestenliste belohnt das Zerschneiden einer langen Fahrt.
+    // Streckenkennzahlen bleiben davon unberührt — Begründung in
+    // lib/elevation.ts.
+    const profile = await fetchElevationProfile(coordinates, stuetzpunkteFuer(coordinates));
     if (!profile || profile.length < 2) {
       return { hoehenmeter_aufstieg: null, hoehenprofil: null };
     }

@@ -57,6 +57,62 @@ export function leseAboZustand(subscription: Stripe.Subscription): AboZustand | 
   };
 }
 
+// Die Preis-IDs, die Strado selbst verkauft — die einzigen, die Premium
+// auslösen dürfen.
+//
+// Der Webhook-Endpunkt hängt an einem Stripe-KONTO, nicht an einem Produkt.
+// Wer auf demselben Konto irgendwann etwas anderes verkauft (ein zweites
+// Produkt, ein Testabo, eine Beratungsleistung), löst damit dieselben
+// customer.subscription.*-Ereignisse aus. Bis hierher wurde die Preis-ID
+// zwar ausgelesen und in apply_subscription_state geschrieben, aber nirgends
+// dagegen geprüft, ob sie überhaupt zu einem Premium-Plan gehört — ein
+// beliebiges Abo auf diesem Konto hätte Premium gesetzt (Audit-Befund A5,
+// verbleibendes Bein).
+//
+// Die Gründer-Variable gehört dazu, obwohl der Preis seit 2026-09-07 nicht
+// mehr verkauft wird: Bestandsabos erzeugen weiterhin Ereignisse, und die
+// müssen weiter verarbeitet werden. Fällt die Variable weg, verlieren genau
+// diese Konten ihre Zustandspflege — deshalb steht in .env.local.example,
+// dass sie bestehende Abos benennt.
+//
+// STRIPE_PREMIUM_PRICE_ID ist der Alt-Name aus der Zeit vor der Monat/Jahr-
+// Trennung; lib/actions/billing.ts fällt beim Kauf auf ihn zurück, also muss
+// er auch hier gelten.
+const PREIS_VARIABLEN = [
+  "STRIPE_PREMIUM_PRICE_ID_MONAT",
+  "STRIPE_PREMIUM_PRICE_ID_JAHR",
+  "STRIPE_PREMIUM_PRICE_ID_GRUENDER",
+  "STRIPE_PREMIUM_PRICE_ID",
+] as const;
+
+export function bekanntePreisIds(): string[] {
+  const ids = PREIS_VARIABLEN.map((name) => process.env[name]?.trim()).filter(
+    (wert): wert is string => Boolean(wert),
+  );
+  return [...new Set(ids)];
+}
+
+// Drei Ergebnisse, nicht zwei — der Unterschied entscheidet, ob ein
+// Ereignis übersprungen oder laut gemeldet wird:
+//
+// - "premium": bekannte Preis-ID, ganz normal verarbeiten.
+// - "fremd": das Konto verkauft hier etwas, das Strado nichts angeht.
+//   Kein Fehler, sondern der Normalfall eines geteilten Stripe-Kontos —
+//   überspringen und mit 200 quittieren, sonst liefert Stripe das Ereignis
+//   endlos erneut aus.
+// - "unkonfiguriert": KEINE einzige Preis-Variable gesetzt. Dann lässt sich
+//   eigen und fremd nicht unterscheiden, und die stille Antwort wäre die
+//   gefährliche: entweder bekämen alle Premium oder niemand. Das ist ein
+//   Konfigurationsfehler und gehört laut gemeldet, nicht weggefiltert —
+//   genau der Fehlermodus, aus dem A5 ursprünglich bestand.
+export type PreisHerkunft = "premium" | "fremd" | "unkonfiguriert";
+
+export function preisHerkunft(preisId: string): PreisHerkunft {
+  const bekannt = bekanntePreisIds();
+  if (bekannt.length === 0) return "unkonfiguriert";
+  return bekannt.includes(preisId) ? "premium" : "fremd";
+}
+
 // Die Abo-ID aus einem Rechnungs-Ereignis. Seit Basil hängt sie nicht mehr
 // direkt an der Rechnung, sondern unter parent.subscription_details.
 export function leseAboIdAusRechnung(invoice: Stripe.Invoice): string | null {

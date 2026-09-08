@@ -8,7 +8,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { siteUrl } from "@/lib/siteUrl";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import { KULANZ_TAGE, leseAboZustand } from "@/lib/stripeWebhook";
 import type { AboPlan, PlanAngebot, PremiumAngebot, VergebenerPreis } from "@/lib/premiumLimits";
 import type Stripe from "stripe";
@@ -42,7 +42,7 @@ async function getOrCreateStripeCustomerId(
 
   if (profile?.stripe_customer_id) return profile.stripe_customer_id;
 
-  const customer = await stripe.customers.create({
+  const customer = await getStripe().customers.create({
     email,
     metadata: { supabase_user_id: userId },
   });
@@ -125,7 +125,7 @@ async function betrag(
     return null;
   }
   try {
-    const preis = await stripe.prices.retrieve(preisId);
+    const preis = await getStripe().prices.retrieve(preisId);
     if (typeof preis.unit_amount !== "number") {
       console.error("Premium-Preis konnte nicht geladen werden", { variable, preisId }, "unit_amount fehlt");
       return null;
@@ -194,9 +194,9 @@ export async function createSubscriptionIntent(
   // ein Konto mit vielen beendeten Abos hätte sonst genau das laufende aus
   // der ersten Seite verdrängt, und daneben wäre ein zweites entstanden.
   const [aktive, testphase, unbezahlte] = await Promise.all([
-    stripe.subscriptions.list({ customer: customerId, status: "active", limit: 1 }),
-    stripe.subscriptions.list({ customer: customerId, status: "trialing", limit: 1 }),
-    stripe.subscriptions.list({
+    getStripe().subscriptions.list({ customer: customerId, status: "active", limit: 1 }),
+    getStripe().subscriptions.list({ customer: customerId, status: "trialing", limit: 1 }),
+    getStripe().subscriptions.list({
       customer: customerId,
       status: "incomplete",
       limit: 20,
@@ -238,7 +238,7 @@ export async function createSubscriptionIntent(
     return { ok: true, clientSecret: clientSecretVon(offen)!, subscriptionId: offen.id, preis };
   }
 
-  const subscription = await stripe.subscriptions.create(
+  const subscription = await getStripe().subscriptions.create(
     {
       customer: customerId,
       items: [{ price: preisId }],
@@ -292,7 +292,7 @@ export async function confirmSubscription(subscriptionId: string): Promise<boole
 
   let subscription: Stripe.Subscription;
   try {
-    subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+    subscription = await getStripe().subscriptions.retrieve(subscriptionId, {
       expand: ["latest_invoice"],
     });
   } catch {
@@ -369,7 +369,7 @@ export async function createPortalSession() {
 
   if (!profile?.stripe_customer_id) redirect("/profil");
 
-  const session = await stripe.billingPortal.sessions.create({
+  const session = await getStripe().billingPortal.sessions.create({
     customer: profile.stripe_customer_id,
     return_url: `${siteUrl()}/profil`,
   });

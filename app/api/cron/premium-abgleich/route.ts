@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { KULANZ_TAGE, leseAboZustand } from "@/lib/stripeWebhook";
+import {
+  bekanntePreisIds,
+  KULANZ_TAGE,
+  leseAboZustand,
+  preisHerkunft,
+} from "@/lib/stripeWebhook";
 
 // Nachlaufender Abgleich zwischen Stripe und profiles.ist_premium.
 //
@@ -42,6 +47,16 @@ export async function GET(req: Request) {
 
   const supabase = createAdminClient();
 
+  // Ohne konfigurierte Preis-IDs liesse sich unten eigenes von fremdem Abo
+  // nicht unterscheiden. Die Prüfung steht VOR der Schleife, weil sie an der
+  // Umgebung hängt und nicht an der einzelnen Zeile: im per-Zeile-try würde
+  // sie sonst als "fehlgeschlagen" mitgezählt und der Lauf meldete trotzdem
+  // 200. Genau diese stille Antwort ist der Fehlermodus, aus dem A5 bestand.
+  if (bekanntePreisIds().length === 0) {
+    console.error("Keine STRIPE_PREMIUM_PRICE_ID* gesetzt — Abgleich nicht durchführbar");
+    return NextResponse.json({ error: "Preis-Konfiguration fehlt" }, { status: 500 });
+  }
+
   // 1. Projektion nachziehen — fängt abgelaufene Kulanzfristen ab.
   const { data: korrigiert, error: abgleichFehler } = await supabase.rpc("premium_abgleich");
   if (abgleichFehler) {
@@ -77,11 +92,30 @@ export async function GET(req: Request) {
 
   for (const zeile of ueberfaellig ?? []) {
     try {
-      const subscription = await stripe.subscriptions.retrieve(zeile.stripe_subscription_id);
+      const subscription = await getStripe().subscriptions.retrieve(zeile.stripe_subscription_id);
       const abgerufenAm = new Date().toISOString();
       const zustand = leseAboZustand(subscription);
       if (!zustand) {
         fehlgeschlagen += 1;
+        continue;
+      }
+
+      // Dieselbe Schranke wie im Webhook (Befund A5). Hier eigentlich
+      // redundant — der Cron liest nur Zeilen, die der Webhook angelegt hat,
+      // und der lässt fremde Preise gar nicht erst durch. Sie steht trotzdem
+      // hier, weil beide Pfade dieselbe RPC mit denselben Rechten aufrufen
+      // und eine Schranke, die nur an einem von zwei Eingängen hängt, beim
+      // nächsten Umbau still verloren geht.
+      //
+      // Nur "fremd" wird übersprungen. "unkonfiguriert" kann hier nicht mehr
+      // auftreten — das ist oben vor der Schleife abgefangen, und es als
+      // Überspringen zu behandeln hiesse, bei fehlender Konfiguration jedes
+      // überfällige Abo stillschweigend liegen zu lassen.
+      if (preisHerkunft(zustand.priceId) === "fremd") {
+        console.info("Abo mit fremder Preis-ID übersprungen", {
+          subscriptionId: zeile.stripe_subscription_id,
+          priceId: zustand.priceId,
+        });
         continue;
       }
 

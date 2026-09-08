@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   ereignisAbschliessen,
@@ -10,6 +10,7 @@ import {
   KULANZ_TAGE,
   leseAboIdAusRechnung,
   leseAboZustand,
+  preisHerkunft,
   type KulanzAktion,
 } from "@/lib/stripeWebhook";
 
@@ -33,7 +34,7 @@ async function schreibeAboZustand(
   kulanzAktion: KulanzAktion,
   kulanzInvoiceId: string | null,
 ): Promise<void> {
-  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const subscription = await getStripe().subscriptions.retrieve(subscriptionId);
   // Zeitpunkt NACH dem Abruf: apply_subscription_state verwirft damit einen
   // Schreibvorgang, dessen Zustand älter ist als der bereits gespeicherte.
   const abgerufenAm = new Date().toISOString();
@@ -41,6 +42,26 @@ async function schreibeAboZustand(
   const zustand = leseAboZustand(subscription);
   if (!zustand) {
     throw new Error(`Abo ${subscriptionId} ohne Customer oder Preis — nicht zuordenbar`);
+  }
+
+  // Gehört dieses Abo überhaupt zu einem Premium-Plan? Der Endpunkt hängt am
+  // Stripe-KONTO, nicht am Produkt — siehe preisHerkunft() in
+  // lib/stripeWebhook.ts für die drei Fälle und ihre Begründung.
+  const herkunft = preisHerkunft(zustand.priceId);
+  if (herkunft === "unkonfiguriert") {
+    // Werfen, nicht überspringen: Stripe liefert erneut aus, und der Fehler
+    // steht im Dashboard, bis die Variablen gesetzt sind.
+    throw new Error(
+      "Keine STRIPE_PREMIUM_PRICE_ID* gesetzt — eigene und fremde Abos sind nicht unterscheidbar.",
+    );
+  }
+  if (herkunft === "fremd") {
+    // Kein Fehler: ein Abo auf diesem Konto, das Strado nichts angeht.
+    console.info("Abo mit fremder Preis-ID übersprungen", {
+      subscriptionId,
+      priceId: zustand.priceId,
+    });
+    return;
   }
 
   const { data, error } = await supabase.rpc("apply_subscription_state", {
@@ -95,7 +116,7 @@ export async function POST(req: Request) {
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET!);
+    event = getStripe().webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET!);
   } catch {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }

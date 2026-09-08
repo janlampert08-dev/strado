@@ -22,6 +22,34 @@ import Stripe from "stripe";
 // nur festhält, was bisher zufällig galt.
 export const STRIPE_API_VERSION = "2026-08-26.dahlia";
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: STRIPE_API_VERSION,
-});
+// Der Client wird beim ERSTEN Aufruf gebaut, nicht beim Import.
+//
+// Vorher stand hier ein `new Stripe(process.env.STRIPE_SECRET_KEY!)` auf
+// Modulebene. Das lief nicht nur zur Laufzeit, sondern auch im Build: Next
+// sammelt für /api/stripe/webhook die Seitendaten und importiert die Route
+// dafür. Ohne gesetzten Schlüssel warf der Konstruktor dabei "Neither
+// apiKey nor config.authenticator provided" — ein Fehler, der die Ursache
+// nicht nennt und den ganzen Build kippt. Betroffen war jeder Build ohne
+// vollständige Secrets: ein Fork, ein frischer Clone, ein CI-Job mit einer
+// fehlenden Variable (Audit-Befund A6).
+//
+// Ein Modul, das beim Import Umgebungsvariablen erzwingt, macht den Build
+// von Laufzeit-Konfiguration abhängig. Die Prüfung gehört an die Stelle, an
+// der der Schlüssel wirklich gebraucht wird — dort ist sie auch aussagekräftig.
+let client: Stripe | null = null;
+
+export function getStripe(): Stripe {
+  if (client) return client;
+
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    // Bewusst der Variablenname im Klartext und NICHT der Wert — dieselbe
+    // Regel wie in lib/actions/billing.ts bei den Preis-IDs: "Stripe nicht
+    // konfiguriert" ohne die Variable ist die Meldung, die niemand
+    // nachschlagen kann.
+    throw new Error("STRIPE_SECRET_KEY ist nicht gesetzt — Stripe-Aufruf nicht möglich.");
+  }
+
+  client = new Stripe(secretKey, { apiVersion: STRIPE_API_VERSION });
+  return client;
+}

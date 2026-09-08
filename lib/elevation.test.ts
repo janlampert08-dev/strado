@@ -3,6 +3,10 @@ import {
   buildHoehenprofil,
   computeAscentM,
   computeHoeheUndSteigung,
+  MAX_STUETZPUNKTE,
+  MIN_STUETZPUNKTE,
+  SAMPLE_ABSTAND_M,
+  stuetzpunkteFuer,
   countKehren,
   interpolateElevation,
 } from "@/lib/elevation";
@@ -144,5 +148,45 @@ describe("computeAscentM", () => {
   it("returns 0 for a profile that is too short to say anything", () => {
     expect(computeAscentM([])).toBe(0);
     expect(computeAscentM([{ dist: 0, elevation: 400 }])).toBe(0);
+  });
+});
+
+
+// Audit §B: nb_points war fest 300, unabhängig von der Länge. Auf langen
+// Fahrten verschwanden dadurch kurze Anstiege im Raster, der summierte
+// Anstieg fiel zu klein aus, und die Höhenmeter-Bestenliste belohnte das
+// Zerschneiden einer Fahrt in mehrere kurze.
+describe("stuetzpunkteFuer", () => {
+  // Ein Grad Längengrad auf ~47° Nord sind grob 76 km — für die Tests wird
+  // stattdessen mit kleinen Schritten eine bekannte Länge zusammengesetzt.
+  function linieUeberMeter(meter: number): [number, number][] {
+    // 0.001° Breite ≈ 111.2 m; daraus die nötige Punktzahl ableiten.
+    const schritt = 0.001;
+    const proSchrittM = 111.2;
+    const punkte = Math.max(2, Math.round(meter / proSchrittM) + 1);
+    return Array.from({ length: punkte }, (_, i) => [8.5, 47 + i * schritt] as [number, number]);
+  }
+
+  it("hält kurze Strecken bei der bisherigen Auflösung", () => {
+    expect(stuetzpunkteFuer(linieUeberMeter(2_000))).toBe(MIN_STUETZPUNKTE);
+  });
+
+  it("skaliert mit der Länge, sobald die Untergrenze überschritten ist", () => {
+    // 120 km bei einem Punkt alle 50 m wären 2400 — deutlich mehr als 300.
+    const punkte = stuetzpunkteFuer(linieUeberMeter(120_000));
+    expect(punkte).toBeGreaterThan(MIN_STUETZPUNKTE);
+    expect(punkte).toBeLessThanOrEqual(MAX_STUETZPUNKTE);
+    // Grob ein Punkt je SAMPLE_ABSTAND_M, mit Toleranz für die
+    // Haversine-Näherung der Testgeometrie.
+    expect(punkte).toBeGreaterThan((120_000 / SAMPLE_ABSTAND_M) * 0.9);
+  });
+
+  it("deckelt sehr lange Fahrten auf die Obergrenze", () => {
+    expect(stuetzpunkteFuer(linieUeberMeter(400_000))).toBe(MAX_STUETZPUNKTE);
+  });
+
+  it("kommt mit einer entarteten Geometrie zurecht", () => {
+    expect(stuetzpunkteFuer([])).toBe(MIN_STUETZPUNKTE);
+    expect(stuetzpunkteFuer([[8.5, 47]])).toBe(MIN_STUETZPUNKTE);
   });
 });
