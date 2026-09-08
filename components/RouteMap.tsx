@@ -30,6 +30,18 @@ const HIGHLIGHT_LINE_LAYER = "route-highlight-line";
 const TRACK_SOURCE = "ride-track";
 const TRACK_LINE_LAYER = "ride-track-line";
 const TRACK_COLOR = "#3D5AFE";
+// Leere Vorgaben für die optionalen Listen-Props auf Modulebene statt als
+// Destrukturierungs-Default. `trail = []` im Signatur-Kopf erzeugt bei JEDEM
+// Render ein neues Array — und damit eine neue Referenz für die
+// Abhängigkeitslisten der beiden Effekte weiter unten, die daraufhin bei
+// jedem Render setData() auf der Quelle aufrufen und die Karte neu zeichnen
+// lassen. Genau das passiert bei jedem Aufrufer, der die Prop weglässt (z. B.
+// die Explore-Karte, die einmal pro Sekunde einen GPS-Fix bekommt): eine
+// laufende WebGL-Neuzeichnung ohne jede Änderung, auf dem Gerät im Auto.
+// Dieselbe Lösung wie NO_ROUTES in CompletionMap.tsx.
+const KEINE_VERKEHRSSEGMENTE: { coords: [number, number][]; color: string }[] = [];
+const KEIN_TRACK: [number, number][] = [];
+
 const TERRAIN_SOURCE = "mapbox-dem";
 const SKY_LAYER = "sky";
 const TERRAIN_EXAGGERATION = 1.4;
@@ -262,8 +274,8 @@ export default function RouteMap({
   show3D = false,
   colors,
   hoveredRouteId = null,
-  trafficSegments = [],
-  trail = [],
+  trafficSegments = KEINE_VERKEHRSSEGMENTE,
+  trail = KEIN_TRACK,
   fitTrail = false,
   fitRoutes = true,
   routesClickable = true,

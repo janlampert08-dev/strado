@@ -32,6 +32,17 @@ export const MAX_RIDE_SECONDS = 12 * 3600;
 export const PRIVACY_RADIUS_OPTIONS = [0, 100, 200, 500] as const;
 export const DEFAULT_PRIVACY_RADIUS_M = 200;
 
+// Der strengste anbietbare Radius. Nicht als Vorgabe gedacht, sondern als
+// Rückfallwert für den Fall, dass die Einstellung des Nutzers gerade NICHT
+// gelesen werden kann (privacyRadiusM in lib/publicTrack.ts): dort ist der
+// Standard der falsche Rückfall, weil er für jemanden mit 500 m eine
+// Verengung des Schutzes um 300 m wäre — ein Datenbankfehler darf keine
+// Privatsphäre-Einstellung stillschweigend abschwächen.
+//
+// Aus PRIVACY_RADIUS_OPTIONS abgeleitet statt als zweite Zahl geschrieben:
+// kommt eine weitere Stufe dazu, wandert der Rückfallwert von selbst mit.
+export const MAX_PRIVACY_RADIUS_M = Math.max(...PRIVACY_RADIUS_OPTIONS);
+
 // Untergrenzen, ab denen eine freie Fahrt überhaupt geteilt werden darf.
 // Sie ersetzen den Deckungsgrad, den es ohne Strecke nicht geben kann:
 // eine Aufzeichnung über wenige hundert Meter sagt niemandem etwas und ist

@@ -20,7 +20,28 @@ found. What changed since is tracked here instead, and only here.
 | A1 — forgeable ride statistics | **Partially fixed** | migration `0059` |
 | A2 — route ride has no post-save destination | **Fixed** | `logTrackedCompletion` returns `completionId`; `LiveTrackingForm` navigates to `/fahrten/[id]` |
 | A3 — private routes in anon-readable views | **Fixed** | migration `0060` |
-| A4, A5, A6 and everything in §B | Open | — |
+| A4, A5, A6 and everything in §B | Open except the rows below | — |
+| §B — dark mode never redefines `--color-danger/success/warning` | **Fixed** | `app/globals.css`: both dark blocks now set `#ef4444` / `#22c55e` / `#f59e0b` (5.23 / 8.63 / 9.16 on the background) |
+| §B — light `--color-muted` at 3.11:1 | **Fixed** | `app/globals.css`: `#666b74`, 5.13:1 on the background and 4.92:1 on `--color-surface` |
+| §B — `lib/actions/moderation.ts` returns `void` and never looks at an error | **Fixed** | every action returns `ModerationResult`; a zero-row hit counts as a failure, and `ModerationActions` / `ReportedContentActions` render it |
+| §B — React 19 wipes the file input across five forms | **Fixed for the photo case** | `MultiPhotoInput` re-applies `input.files` on the form's `reset` event. The other four forms use controlled fields and were never affected |
+| §B (performance) — `RouteMap`'s `trafficSegments = []` / `trail = []` defaults | **Fixed** | module-scope constants; `RouteDetailMap` also memoises its `routes={[route]}` |
+
+Three findings below are **new** — neither audit raised them. All three sit
+in the privacy boundary and share one shape: an error that silently produced
+*less* privacy than the user asked for.
+
+| New finding | Status | Where |
+| --- | --- | --- |
+| `privacyRadiusM()` fell back to the 200 m default on a read error, and discarded the error unexamined. For an account set to 500 m that is 300 m less cropping at exactly the two ends of the track where the home address is | **Fixed** | `lib/publicTrack.ts` falls back to `MAX_PRIVACY_RADIUS_M` and logs; covered by `lib/publicTrack.test.ts` |
+| `updateVisibilitySettings()` fell back to the same default for an out-of-range form value, then re-cropped every already-shared ride with it — a silent widening, reported as "Gespeichert." | **Fixed** | `lib/actions/profile.ts` rejects the submission instead |
+| A replaced or deleted avatar stays in the **public** `avatars` bucket. `upsert` only replaces the same extension, and `anonymize_account()` nulls `avatar_url` without touching the file. The key is `{user_id}/avatar.{ext}` and the user id is in every `/fahrer/[id]` URL, so the picture of a deleted account stays fetchable by trying four extensions | **Fixed** | `uploadAvatar()` removes the other extensions; `deleteAccount()` removes all four |
+
+The avatar fix is forward-looking only. Objects orphaned **before** it —
+every account that already swapped a JPG for a PNG, and every account
+already deleted — are still in the bucket and still fetchable. Clearing
+them needs a one-off sweep of `avatars/` against `profiles.avatar_url`,
+which is a storage operation, not a migration, and has not been run.
 
 A1 is deliberately marked partial, and it is worth being precise about how
 partial. Migration `0059` adds a validating trigger, four `NOT VALID` bounds,

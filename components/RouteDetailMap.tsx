@@ -74,6 +74,14 @@ export default function RouteDetailMap({ route }: { route: RouteGeoJSON }) {
       ? "loading"
       : (worstCongestion(levels.filter((l): l is CongestionLevel => l !== null)) ?? "none");
 
+  // Stabile Referenz statt eines Inline-`[route]`: die Prop landet in der
+  // Abhängigkeitsliste des Effekts, der in RouteMap den Kartenausschnitt auf
+  // die Strecken legt (fitRoutes). Ein frisches Array bei jedem Render liess
+  // ihn bei jedem Umschalten von Tempolimits/Verkehr/3D erneut laufen — die
+  // Karte sprang dann auf den vollen Streckenausschnitt zurück und verwarf
+  // jedes Hineinzoomen des Nutzers.
+  const routesForMap = useMemo(() => [route], [route]);
+
   const trafficSegments = useMemo(() => {
     if (!levels) return [];
     return sliceRouteByTraffic(coordinates, levels)
@@ -86,7 +94,7 @@ export default function RouteDetailMap({ route }: { route: RouteGeoJSON }) {
     <div className="relative h-full w-full">
       <div className="h-full w-full" role="img" aria-label={`Kartenansicht der Strecke ${route.name}`}>
         <RouteMap
-          routes={[route]}
+          routes={routesForMap}
           showSpeedLimits={showSpeedLimits}
           showTraffic={showTraffic}
           show3D={show3D}

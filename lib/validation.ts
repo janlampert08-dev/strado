@@ -24,6 +24,16 @@ const BILD_MIME_ZU_ENDUNG = new Map<string, string>([
   ["image/gif", "gif"],
 ]);
 
+// Alle Endungen, die bildEndungFuerMime() je vergeben kann.
+//
+// Gebraucht beim Ersetzen eines Avatars: der Storage-Key ist
+// "{uid}/avatar.{endung}", das upsert trifft also nur die Datei mit
+// derselben Endung. Wer ein JPG durch ein PNG ersetzt, lässt das alte
+// avatar.jpg im — öffentlichen — Bucket zurück, wo es unter einer aus der
+// Nutzer-ID ableitbaren URL abrufbar bleibt. Die Liste sagt dem Aufrufer,
+// welche anderen Fassungen es aufzuräumen gilt.
+export const BILD_ENDUNGEN: readonly string[] = [...new Set(BILD_MIME_ZU_ENDUNG.values())];
+
 // Liefert die Dateiendung für einen Storage-Key aus dem gemeldeten
 // Content-Type statt aus foto.name.
 //

@@ -6,9 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { metadatenEntfernen } from "@/lib/imageMetadata";
 import { recomputePublicTracks } from "@/lib/publicTrack";
 import { istPremium } from "@/lib/premium";
-import { DEFAULT_PRIVACY_RADIUS_M, PRIVACY_RADIUS_OPTIONS } from "@/lib/track";
+import { PRIVACY_RADIUS_OPTIONS } from "@/lib/track";
 import { getClientIp, isRateLimitedByKey } from "@/lib/rateLimit";
-import { bildEndungFuerMime } from "@/lib/validation";
+import { BILD_ENDUNGEN, bildEndungFuerMime } from "@/lib/validation";
 
 export interface ProfileActionState {
   error: string | null;
@@ -72,19 +72,29 @@ export async function updateVisibilitySettings(
   if (!user) return { error: "Bitte melde dich zuerst an." };
 
   // Der Privatzonen-Radius kommt aus derselben Maske wie die übrigen
-  // Sichtbarkeits-Schalter. Nur die angebotenen Werte sind zulässig, alles
-  // andere fällt auf den Standard zurück.
+  // Sichtbarkeits-Schalter. Zulässig sind ausschliesslich die angebotenen
+  // Werte.
   //
   // Der Feldwert wird bewusst erst als Text geprüft: Number(null) und
   // Number("") ergeben 0, und 0 ist ein gültiger Radius ("Privatzone aus").
   // Ein Formular ohne dieses Feld würde die Privatzone also stillschweigend
   // abschalten — bei einer Datenschutz-Einstellung genau die falsche
   // Richtung.
+  //
+  // Ein unzulässiger Wert bricht ab, statt auf DEFAULT_PRIVACY_RADIUS_M
+  // zurückzufallen. Der Rückfall war für ein Konto mit 500 m eine
+  // Verengung des Schutzes auf 200 m — und weil recomputePublicTracks()
+  // direkt darunter alle bereits geteilten Fahrten mit dem neuen Radius neu
+  // zuschneidet, hätte er rückwirkend mehr Geometrie freigegeben, quittiert
+  // mit "Gespeichert.". Das <select> schickt immer einen der vier Werte;
+  // etwas anderes ist entweder ein Fehler oder ein manipulierter Request,
+  // und in beiden Fällen ist Nichtstun die richtige Antwort.
   const radiusRaw = formData.get("privatzone_radius_m");
   const radius = typeof radiusRaw === "string" && radiusRaw.trim() !== "" ? Number(radiusRaw) : NaN;
-  const privatzoneRadiusM = (PRIVACY_RADIUS_OPTIONS as readonly number[]).includes(radius)
-    ? radius
-    : DEFAULT_PRIVACY_RADIUS_M;
+  if (!(PRIVACY_RADIUS_OPTIONS as readonly number[]).includes(radius)) {
+    return { error: "Ungültiger Wert für die Privatzone. Bitte lade die Seite neu." };
+  }
+  const privatzoneRadiusM = radius;
 
   const { error } = await supabase
     .from("profiles")
@@ -181,6 +191,22 @@ export async function uploadAvatar(
     // contentType explizit, weil ein Uint8Array den Typ nicht mitbringt.
     .upload(path, bereinigt, { upsert: true, contentType: foto.type });
   if (uploadError) return { error: "Foto konnte nicht hochgeladen werden." };
+
+  // Fassungen mit ANDERER Endung entfernen. upsert:true ersetzt nur die
+  // Datei unter genau diesem Schlüssel — wer sein avatar.jpg durch ein PNG
+  // ersetzt, legt avatar.png daneben und lässt avatar.jpg liegen. Der
+  // avatars-Bucket ist öffentlich (0015), der Schlüssel besteht nur aus der
+  // Nutzer-ID und einer von vier Endungen, und die Nutzer-ID steht in jeder
+  // /fahrer/[id]-URL: das alte Bild bliebe also für jeden abrufbar, der die
+  // vier Endungen durchprobiert — auch dann, wenn es genau deshalb ersetzt
+  // wurde. Best effort: die Storage-Policy aus 0015 erlaubt dem Nutzer das
+  // Löschen im eigenen Ordner, ein Fehlschlag darf den Upload aber nicht
+  // rückgängig machen (das neue Bild steht bereits).
+  const veraltet = BILD_ENDUNGEN.filter((e) => e !== ext).map((e) => `${user.id}/avatar.${e}`);
+  const { error: aufraeumFehler } = await supabase.storage.from("avatars").remove(veraltet);
+  if (aufraeumFehler) {
+    console.error("Alte Avatar-Fassungen nicht entfernt", { userId: user.id }, aufraeumFehler);
+  }
 
   const { data } = supabase.storage.from("avatars").getPublicUrl(path);
   // Cache-Buster, damit ein ersetztes Avatar sofort neu geladen wird (die

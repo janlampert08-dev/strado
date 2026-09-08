@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getOrigin, safeInternalPath } from "@/lib/utils/url";
 import { getClientIp, isRateLimitedByKey } from "@/lib/rateLimit";
 import { stripe } from "@/lib/stripe";
+import { BILD_ENDUNGEN } from "@/lib/validation";
 
 export interface AuthFormState {
   error: string | null;
@@ -370,6 +371,27 @@ export async function deleteAccount(
     p_user_id: user.id,
   });
   if (anonymizeError) return { error: "Konto konnte nicht gelöscht werden." };
+
+  // Profilbild aus dem Storage nehmen. anonymize_account() nullt oben nur
+  // profiles.avatar_url — die Datei selbst bleibt davon unberührt im
+  // avatars-Bucket liegen, und der ist öffentlich (0015). Ihr Schlüssel ist
+  // "{user_id}/avatar.{endung}", die Nutzer-ID steht in jeder
+  // /fahrer/[id]-URL: das Bild eines gelöschten Kontos wäre also weiterhin
+  // für jeden abrufbar, der die vier möglichen Endungen durchprobiert.
+  //
+  // Über den session-gebundenen Client, nicht über den Admin-Client: die
+  // Storage-Policy aus 0015 erlaubt dem Nutzer genau das Löschen im eigenen
+  // Ordner, ein weiterer RLS-Bypass wäre hier unnötig. Die Session lebt noch
+  // (signOut steht unten).
+  //
+  // Best effort und ausdrücklich kein Abbruch: das Konto ist zu diesem
+  // Zeitpunkt bereits anonymisiert, ein Fehlschlag hier darf den Nutzer nicht
+  // in einen halb gelöschten Zustand zurückwerfen. Er wird protokolliert.
+  const avatarPfade = BILD_ENDUNGEN.map((endung) => `${user.id}/avatar.${endung}`);
+  const { error: avatarFehler } = await supabase.storage.from("avatars").remove(avatarPfade);
+  if (avatarFehler) {
+    console.error("Avatar bei Kontolöschung nicht entfernt", { userId: user.id }, avatarFehler);
+  }
 
   // Zugangsdaten entwerten: nur über den Admin-Client möglich (Supabase Auth
   // ist kein per-RLS steuerbares Postgres-Schema). Gerechtfertigt trotz
