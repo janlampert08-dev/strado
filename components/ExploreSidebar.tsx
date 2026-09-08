@@ -24,6 +24,7 @@ const SIGNATURE_ICONS: Record<SignatureKey, typeof Mountain> = {
 export default function ExploreSidebar({
   routes,
   loadError = false,
+  loggedIn,
   searchQuery,
   onSearchChange,
   signatures,
@@ -35,6 +36,7 @@ export default function ExploreSidebar({
 }: {
   routes: RouteGeoJSON[];
   loadError?: boolean;
+  loggedIn: boolean;
   searchQuery: string;
   onSearchChange: (value: string) => void;
   signatures: Map<string, RouteSignature>;
@@ -69,15 +71,30 @@ export default function ExploreSidebar({
           Erstbesucher sah ein Suchfeld, einen Chip und eine Liste und
           erfuhr nirgends, was Strado ist oder dass er Fahrten aufzeichnen
           kann. Für Suchmaschinen war die Seite damit ohne Überschrift.
-          sr-only wäre hier falsch — der Satz ist gerade für sehende
-          Erstbesucher gedacht. */}
-      <div className="flex flex-col gap-1">
-        <h1 className="text-lg font-semibold tracking-tight">Kuratierte Fahrstrecken</h1>
-        <p className="text-sm text-muted">
-          Handverlesene Kurven-, Pass- und Aussichtsstrecken in der Schweiz. Strecke wählen,
-          losfahren, Fahrt aufzeichnen — ein Konto brauchst du erst zum Speichern.
-        </p>
-      </div>
+          sr-only wäre für ihn falsch — der Satz ist gerade für sehende
+          Erstbesucher gedacht.
+
+          Wer angemeldet ist, weiss aber, was Strado ist, und bekäme den
+          Satz bei jedem Öffnen der App erneut vorgesetzt. Auf Mobile zählt
+          das doppelt: das Sheet zeigt in Peek-Höhe (SHEET_PEEK_PX in
+          ExploreView.tsx) nur wenige Zeilen, und ohne den Absatz sind das
+          Suchfeld und die ersten Strecken statt der Erklärung. Die <h1>
+          bleibt dann als sr-only stehen, damit die Seite ihre Überschrift
+          für Screenreader und Suchmaschinen behält — nur der erklärende
+          Absatz entfällt. */}
+      {loggedIn ? (
+        <h1 className="sr-only">Die schönsten Strecken der Schweiz</h1>
+      ) : (
+        <div className="flex flex-col gap-1">
+          <h1 className="text-lg font-semibold tracking-tight">
+            Die schönsten Strecken der Schweiz
+          </h1>
+          <p className="text-sm text-muted">
+            Kurven, Pässe, Aussicht — handverlesen. Aussuchen, losfahren, aufzeichnen. Ein Konto
+            brauchst du erst zum Speichern.
+          </p>
+        </div>
+      )}
 
       <input
         type="search"

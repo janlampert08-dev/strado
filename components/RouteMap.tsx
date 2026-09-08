@@ -234,6 +234,17 @@ function toTrackFeatureCollection(trail: [number, number][]): GeoJSON.FeatureCol
   };
 }
 
+// Kamerafahrten von Mapbox laufen in JS, nicht über CSS-Transitions — der
+// prefers-reduced-motion-Block in globals.css erreicht sie also nicht. Diese
+// Funktion ist die entsprechende Prüfung für jede Dauer, die hier gesetzt
+// wird: bei reduzierter Bewegung springt die Kamera, statt zu fahren.
+// Bewusst bei jedem Aufruf abgefragt statt einmal gecacht, damit ein
+// Umschalten der Systemeinstellung sofort greift.
+function bewegungsdauer(ms: number): number {
+  if (typeof window === "undefined") return ms;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : ms;
+}
+
 function fitToRoutes(map: mapboxgl.Map, routes: RouteGeoJSON[], animate: boolean) {
   if (routes.length === 0) return;
   const bounds = new mapboxgl.LngLatBounds();
@@ -242,14 +253,14 @@ function fitToRoutes(map: mapboxgl.Map, routes: RouteGeoJSON[], animate: boolean
       bounds.extend(coord as [number, number]);
     }
   }
-  map.fitBounds(bounds, { padding: 48, duration: animate ? 500 : 0 });
+  map.fitBounds(bounds, { padding: 48, duration: animate ? bewegungsdauer(500) : 0 });
 }
 
 function fitToTrail(map: mapboxgl.Map, trail: [number, number][], animate: boolean) {
   if (trail.length < 2) return;
   const bounds = new mapboxgl.LngLatBounds();
   for (const coord of trail) bounds.extend(coord);
-  map.fitBounds(bounds, { padding: 48, duration: animate ? 500 : 0 });
+  map.fitBounds(bounds, { padding: 48, duration: animate ? bewegungsdauer(500) : 0 });
 }
 
 export default function RouteMap({
@@ -262,6 +273,7 @@ export default function RouteMap({
   show3D = false,
   colors,
   hoveredRouteId = null,
+  flyToRouteId = null,
   trafficSegments = [],
   trail = [],
   fitTrail = false,
@@ -270,18 +282,52 @@ export default function RouteMap({
   centerOnFirstLocation = false,
   followLocation = false,
 }: {
+  // Alle Strecken, die gezeichnet werden. Die Reihenfolge ist gleichgültig,
+  // sie landen gemeinsam in einer Feature-Sammlung. Genau eine Strecke ist
+  // kein Sonderfall des Zeichnens, wohl aber für showSpeedLimits — siehe
+  // dort.
   routes: RouteGeoJSON[];
+  // null blendet den Standort-Marker aus, statt ihn auf einer alten Position
+  // stehen zu lassen.
   userLocation?: [number, number] | null;
   // GPS-Genauigkeitsradius in Metern (position.coords.accuracy) bzw.
   // Kompasskurs in Grad (position.coords.heading) — optional, da nicht jeder
   // Aufrufer sie hat (z.B. ExploreView ruft nur einmalig getCurrentPosition).
   userAccuracyM?: number | null;
   userHeadingDeg?: number | null;
+  // Tempolimit-Ebene einblenden. Sie wird nur gezeichnet, wenn GENAU EINE
+  // Strecke übergeben ist (und diese tempolimits trägt): die Segmente werden
+  // entlang einer Geometrie aufgetragen, für mehrere Linien gäbe es keine
+  // eindeutige. Bei mehr als einer Strecke bleibt die Ebene stumm leer —
+  // gedacht ist sie für die Detailkarte (RouteDetailMap).
   showSpeedLimits?: boolean;
+  // Stau-Ebene ein- und ausblenden. Nur der Schalter: die Daten kommen
+  // fertig eingefärbt über trafficSegments von aussen (siehe
+  // toTrafficFeatureCollection oben). Ohne Segmente schaltet das Flag eine
+  // leere Ebene sichtbar.
   showTraffic?: boolean;
+  // Geländerelief samt geneigter Kamera (Pitch und Bearing), nicht nur eine
+  // Schattierung. Das Umschalten bewegt also die Ansicht — bei reduzierter
+  // Bewegung springt sie, statt zu fahren (bewegungsdauer()).
   show3D?: boolean;
+  // Farbe je Strecken-ID, abgeleitet aus dem Signatur-Merkmal
+  // (lib/signature.ts), damit Kartenlinie und Sidebar-Karte dasselbe
+  // bedeuten. Fehlt der Eintrag, greift ein stabiler Hash der ID
+  // (colorForRoute) — nie der Listenindex, sonst wechselte eine Strecke beim
+  // Filtern die Farbe.
   colors?: Map<string, string>;
+  // Diese Strecke bekommt Halo und kräftige Linie. Teilt sich den
+  // Hervorhebungs-Layer mit flyToRouteId; gesetzt wird er vom Zeiger über
+  // der Seitenleiste, weshalb er beim Rendern Vorrang hat.
   hoveredRouteId?: string | null;
+  // Kartenausschnitt einmalig auf genau diese Strecke legen, sobald sich der
+  // Wert ändert — unabhängig von fitRoutes, das der gesamten (gefilterten)
+  // Liste folgt. Genutzt vom Zufallsvorschlag der Startseite
+  // (ExploreView.tsx). null lässt die Kamera in Ruhe.
+  flyToRouteId?: string | null;
+  // Fertig eingefärbte Stau-Abschnitte. RouteMap kennt Stau-Level und
+  // -Farben nicht selbst — sie kommen aus lib/traffic.ts über
+  // RouteDetailMap, genau wie die Signatur-Farben oben.
   trafficSegments?: { coords: [number, number][]; color: string }[];
   // Aufgezeichneter GPS-Track: live wachsend während einer Aufzeichnung
   // (FreeRideForm) oder fertig auf der Fahrt-Detailseite (CompletionMap).
@@ -320,6 +366,12 @@ export default function RouteMap({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const styleLoadedRef = useRef(false);
+  // Gegenstück zu styleLoadedRef als Zustand: eine Ref löst kein erneutes
+  // Rendern aus, ein Effekt, der auf styleLoadedRef.current abbricht, läuft
+  // also nie von selbst nach. Dieser Zähler steigt nach jedem erfolgreichen
+  // style.load und lässt genau die Effekte nachziehen, die ihn in ihren
+  // Abhängigkeiten führen.
+  const [stilGeneration, setStilGeneration] = useState(0);
   // Deckt die Lücke zwischen Container-Mount und dem ersten sichtbaren
   // Kartenbild ab (Style- und Tile-Ladezeit von Mapbox GL selbst, unabhängig
   // vom bereits vorhandenen Skeleton für den Code-Split in RouteDetailMap/
@@ -661,6 +713,7 @@ export default function RouteMap({
       }
 
       styleLoadedRef.current = true;
+      setStilGeneration((n) => n + 1);
       setIsReady(true);
     });
 
@@ -772,6 +825,27 @@ export default function RouteMap({
     );
   }, [hoveredRouteId, routes]);
 
+  // Zufallsvorschlag der Startseite: rein additiv neben fitRoutes — die
+  // Streckenliste selbst ändert sich dabei nicht, es wird also kein
+  // bestehendes Einpassen ersetzt, sondern eines nachgeschoben. Grösseres
+  // Padding als fitToRoutes (64 statt 48), weil hier eine einzelne Strecke
+  // gezeigt wird und die Meldung darüber Platz braucht.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !styleLoadedRef.current || !flyToRouteId) return;
+    const route = routesRef.current.find((r) => r.id === flyToRouteId);
+    if (!route) return;
+    const bounds = new mapboxgl.LngLatBounds();
+    for (const coord of route.geometry_geojson.coordinates) {
+      bounds.extend(coord as [number, number]);
+    }
+    map.fitBounds(bounds, { padding: 64, duration: bewegungsdauer(800) });
+    // stilGeneration in den Abhängigkeiten, damit ein Klick, der vor dem
+    // style.load eintrifft, nicht verpufft: der Effekt bricht dann oben ab
+    // und läuft nach, sobald der Stil steht. Ohne das erschiene der
+    // Vorschlag, aber die Kamera bliebe stehen.
+  }, [flyToRouteId, stilGeneration]);
+
   // Hält die gezeichnete Track-Linie aktuell — während einer Aufzeichnung
   // bei jedem neuen GPS-Punkt, auf der Detailseite einmalig.
   useEffect(() => {
@@ -817,10 +891,10 @@ export default function RouteMap({
     if (!map || !styleLoadedRef.current) return;
     if (show3D) {
       map.setTerrain({ source: TERRAIN_SOURCE, exaggeration: TERRAIN_EXAGGERATION });
-      map.easeTo({ pitch: TILTED_PITCH, bearing: TILTED_BEARING, duration: 800 });
+      map.easeTo({ pitch: TILTED_PITCH, bearing: TILTED_BEARING, duration: bewegungsdauer(800) });
     } else {
       map.setTerrain(null);
-      map.easeTo({ pitch: 0, bearing: 0, duration: 800 });
+      map.easeTo({ pitch: 0, bearing: 0, duration: bewegungsdauer(800) });
     }
   }, [show3D]);
 
@@ -885,7 +959,7 @@ export default function RouteMap({
       // Unabhängig von centerOnFirstLocation/hasCenteredOnLocationRef: ein
       // Aufrufer, der nur followLocation setzt (keine initiale Zentrierung),
       // soll trotzdem ab dem ersten Fix nachgeführt werden.
-      map.easeTo({ center: userLocation, duration: 800 });
+      map.easeTo({ center: userLocation, duration: bewegungsdauer(800) });
     }
 
     if (locationMarkerRef.current) {

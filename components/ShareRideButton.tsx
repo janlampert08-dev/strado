@@ -31,6 +31,7 @@ export default function ShareRideButton({
   durationSeconds,
   date,
   milestoneLabel = null,
+  shareUrl,
 }: {
   routeId: string | null;
   completionId: string;
@@ -43,6 +44,9 @@ export default function ShareRideButton({
   // Höchster aktuell erreichter Meilenstein des Besitzers (lib/achievements.ts),
   // vom Aufrufer nur für den eigenen Fahrten-Detailscreen mitgegeben.
   milestoneLabel?: string | null;
+  // Absoluter Pfad der Seite, auf die das geteilte Bild verweisen soll
+  // (z.B. /fahrten/<id>); der Host kommt vom Browser dazu.
+  shareUrl: string;
 }) {
   const [loading, setLoading] = useState(false);
 
@@ -68,7 +72,12 @@ export default function ShareRideButton({
             geometry_geojson: GeoLineString;
           }>();
 
-        if (!route) return;
+        // Ohne Geometrie gibt es kein Bild — der Knopf wird über finally
+        // wieder frei, damit ein zweiter Versuch möglich bleibt.
+        if (!route) {
+          console.warn("ShareRideButton: keine Streckengeometrie für", routeId);
+          return;
+        }
         coordinates = route.geometry_geojson.coordinates;
         name = route.name;
         regionLabel = route.region;
@@ -80,7 +89,10 @@ export default function ShareRideButton({
           .eq("completion_id", completionId)
           .maybeSingle<{ track_geojson: GeoLineString }>();
 
-        if (!track) return;
+        if (!track) {
+          console.warn("ShareRideButton: kein öffentlicher Track für", completionId);
+          return;
+        }
         coordinates = track.track_geojson.coordinates;
       }
 
@@ -96,20 +108,38 @@ export default function ShareRideButton({
       });
 
       const filename = `${slugify(name)}-${date}.jpg`;
+      const url = new URL(shareUrl, window.location.origin).toString();
 
       // Natives Share-Sheet bevorzugt (Instagram Story/DM, WhatsApp etc. ohne
       // Umweg über den Download-Ordner) — nur wenn der Browser das für genau
       // diese Datei unterstützt (nicht überall der Fall, z.B. Desktop-Firefox).
       // navigator.canShare mit files ist erst Web-Share-API-Level-2, deshalb
       // der optionale Zugriff statt eines direkten Aufrufs.
+      //
+      // Der Link zur Seite soll mit, und dafür braucht es drei Stufen, weil
+      // die Browser ihn unterschiedlich behandeln: Android Chrome hängt `url`
+      // selbst an `text` an — steht der Link dort schon, erscheint er doppelt,
+      // deshalb trägt Stufe 1 nur den Namen als Text. iOS Safari ignoriert
+      // `url` neben `files` oder lehnt die Kombination in canShare ab; dort
+      // muss der Link im Text stehen (Stufe 2). Bleibt beides aus, geht
+      // wenigstens das Bild allein (Stufe 3, wie bisher).
       const file = new File([blob], filename, { type: "image/jpeg" });
       const nav = navigator as Navigator & {
         canShare?: (data?: ShareData) => boolean;
         share?: (data: ShareData) => Promise<void>;
       };
-      if (nav.canShare?.({ files: [file] }) && nav.share) {
+      const stufen: ShareData[] = [
+        { files: [file], title: name, text: name, url },
+        { files: [file], title: name, text: `${name} – ${url}` },
+        { files: [file], title: name },
+      ];
+      // typeof statt Truthiness: lib.dom erklärt share für verpflichtend,
+      // tatsächlich fehlt es aber z.B. in Desktop-Firefox.
+      const payload =
+        typeof nav.share === "function" ? stufen.find((s) => nav.canShare?.(s)) : undefined;
+      if (payload) {
         try {
-          await nav.share({ files: [file], title: name });
+          await nav.share(payload);
           return;
         } catch (err) {
           // Nutzer hat den Share-Dialog abgebrochen — kein Fehler, kein
@@ -120,27 +150,38 @@ export default function ShareRideButton({
         }
       }
 
-      const url = URL.createObjectURL(blob);
+      const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url;
+      a.href = objectUrl;
       a.download = filename;
       a.click();
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(objectUrl);
     } finally {
       setLoading(false);
     }
   }
 
+  // Supabase-Abfrage plus Canvas-Rendering dauern auf dem Handy leicht ein,
+  // zwei Sekunden — ein blosses Ausgrauen liest sich in der Zeit wie "tot".
+  // Der Spinner hat dieselbe Kantenlänge wie das Icon, der Knopf springt nicht.
   return (
     <button
       type="button"
       title="Fahrt als Bild teilen"
       aria-label="Fahrt als Bild teilen"
+      aria-busy={loading}
       disabled={loading}
       onClick={handleShare}
       className="shrink-0 text-muted transition-colors duration-fast hover:text-accent disabled:opacity-50"
     >
-      <Share2 className="h-4 w-4" aria-hidden="true" />
+      {loading ? (
+        <span
+          aria-hidden="true"
+          className="block h-4 w-4 animate-spin rounded-full border-2 border-accent/30 border-t-accent"
+        />
+      ) : (
+        <Share2 className="h-4 w-4" aria-hidden="true" />
+      )}
     </button>
   );
 }

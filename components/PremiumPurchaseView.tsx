@@ -9,7 +9,6 @@ import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import { buttonVariants } from "@/components/ui/Button";
 import { LEGAL_URLS } from "@/lib/constants";
-import { GRUENDER_PLAETZE } from "@/lib/premiumLimits";
 import { betragText, jahresVorteilProzent, monatsAequivalentRappen } from "@/lib/premiumAngebot";
 import type { AboPlan, PremiumAngebot, PlanAngebot } from "@/lib/premiumLimits";
 
@@ -27,13 +26,14 @@ function planZeitraum(plan: AboPlan): string {
   return plan === "monat" ? "pro Monat" : "pro Jahr";
 }
 
+// Nur, was es gibt. Die frühere Liste versprach "Erweiterte Filter und
+// Statistiken" und ein Gold-Abzeichen — beides nicht ausgeliefert, und auf
+// einer Kaufseite ist ein versprochenes Feature eine Vertragsleistung.
 const VORTEILE = [
-  "Unbegrenzt viele private Strecken",
-  "Gold-Abzeichen neben deinem Namen — wenn du magst",
+  "Eigene Strecken erstellen — privat für dich oder öffentlich nach Review",
   "12 statt 6 Fotos pro Fahrt",
   "Unbegrenzt Strecken offline speichern",
-  "GPX-Export kuratierter Strecken mit einem Klick",
-  "Erweiterte Filter und Statistiken",
+  "GPX-Export kuratierter Strecken",
 ];
 
 // Einheitliche Abschnittsmarke für die ganze Seite — dieselbe Optik wie die
@@ -45,7 +45,7 @@ const ABSCHNITT_KLASSEN = "text-sm font-semibold tracking-wide text-muted upperc
 export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngebot }) {
   const router = useRouter();
   // Der Jahresplan steht vorne, wenn es ihn gibt: er ist der günstigere pro
-  // Monat, und beim Gründerpreis ist er zusätzlich begrenzt verfügbar.
+  // Monat.
   const [gewaehlt, setGewaehlt] = useState<AboPlan>(
     angebot.plaene.some((p) => p.plan === "jahr") ? "jahr" : "monat",
   );
@@ -82,14 +82,15 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
           <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
           Premium
         </span>
-        {/* Bewusst "unterstützen" und nicht "freischalten": der Funktions-
-            umfang allein trägt den Preis nicht, und so benannt zu werden ist
-            ehrlicher als eine Bezahlschranke vorzutäuschen, die es nicht
-            gibt — die Kernfunktionen bleiben kostenlos. */}
+        {/* Die Überschrift sagt weiterhin "unterstützen", der Text darunter
+            sagt "schaltet frei" — beides stimmt, und nur beides zusammen ist
+            ehrlich: seit eigene Strecken Premium sind (0077), gibt es eine
+            Bezahlschranke, und die soll hier nicht als reine Spende
+            verkleidet sein. Die Kernschleife bleibt trotzdem kostenlos. */}
         <h1 className="text-display font-semibold">Strado unterstützen</h1>
         <p className="text-sm text-muted">
-          Entdecken, Aufzeichnen, Bestenlisten und Feed bleiben kostenlos. Premium hebt Grenzen an
-          und ist vor allem eines: die Art, wie Strado sich trägt.
+          Entdecken, Aufzeichnen, Bestenlisten und Feed bleiben gratis. Premium schaltet eigene
+          Strecken frei — und ist die Art, wie Strado sich trägt.
         </p>
       </div>
 
@@ -113,7 +114,6 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
             angebot={p}
             gewaehlt={p.plan === gewaehlt}
             vorteilProzent={p.plan === "jahr" ? vorteilProzent : null}
-            gruenderPlaetzeFrei={angebot.gruenderPlaetzeFrei}
             onWaehlen={() => setGewaehlt(p.plan)}
           />
         ))}
@@ -180,25 +180,16 @@ function PlanOption({
   angebot,
   gewaehlt,
   vorteilProzent,
-  gruenderPlaetzeFrei,
   onWaehlen,
 }: {
   angebot: PlanAngebot;
   gewaehlt: boolean;
   /** Ersparnis gegenüber zwölf Monatszahlungen, nur für den Jahresplan. */
   vorteilProzent: number | null;
-  gruenderPlaetzeFrei: number;
   onWaehlen: () => void;
 }) {
   const istJahr = angebot.plan === "jahr";
-  // Der Gründerpreis schlägt das Prozent-Abzeichen: er ist die knappere und
-  // damit stärkere Aussage, und zwei Abzeichen nebeneinander lesen sich als
-  // Werbefläche statt als Preis.
-  const abzeichen = angebot.istGruenderpreis
-    ? "Gründerpreis"
-    : vorteilProzent !== null
-      ? `${vorteilProzent} % günstiger`
-      : null;
+  const abzeichen = vorteilProzent !== null ? `${vorteilProzent} % günstiger` : null;
 
   return (
     <label
@@ -225,11 +216,6 @@ function PlanOption({
         </span>
 
         <span className="flex flex-wrap items-baseline gap-x-2">
-          {angebot.istGruenderpreis && angebot.regulaerRappen !== null && (
-            <span className="text-sm text-muted line-through">
-              {betragText(angebot.regulaerRappen, angebot.waehrung)}
-            </span>
-          )}
           <span className="text-title font-semibold text-foreground">
             {betragText(angebot.betragRappen, angebot.waehrung)}
           </span>
@@ -240,16 +226,6 @@ function PlanOption({
           <span className="text-xs text-muted">
             entspricht {betragText(monatsAequivalentRappen(angebot.betragRappen), angebot.waehrung)}{" "}
             pro Monat
-          </span>
-        )}
-
-        {/* Die Knappheit gehört an den Plan, für den sie gilt — als eigener
-            Absatz unter der Auswahl war nicht ersichtlich, worauf sie sich
-            bezieht, sobald der Monatsplan gewählt war. */}
-        {angebot.istGruenderpreis && (
-          <span className="text-xs text-muted">
-            Noch {gruenderPlaetzeFrei} von {GRUENDER_PLAETZE} Plätzen frei. Der Preis bleibt,
-            solange das Abo ununterbrochen läuft.
           </span>
         )}
       </span>

@@ -12,6 +12,7 @@ import {
   Timer,
 } from "lucide-react";
 import Header from "@/components/Header";
+import PullToRefreshArea from "@/components/PullToRefreshArea";
 import MarkKudosSeen from "@/components/MarkKudosSeen";
 import VehicleGrid from "@/components/VehicleGrid";
 import AvatarUpload from "@/components/AvatarUpload";
@@ -19,6 +20,7 @@ import RideVisibilityToggle from "@/components/RideVisibilityToggle";
 import AchievementBadges from "@/components/AchievementBadges";
 import ActivityHeatmap from "@/components/ActivityHeatmap";
 import CountUp from "@/components/CountUp";
+import Begruessung from "@/components/Begruessung";
 import FollowCounts from "@/components/FollowCounts";
 import PremiumCard from "@/components/PremiumCard";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
@@ -193,6 +195,8 @@ export default async function ProfilPage() {
           zentrierte max-w-Element darin — sonst sitzt die native
           Browser-Scrollbar am Rand der Content-Spalte statt am echten
           Viewport-Rand, sobald das Fenster breiter als max-w ist. */}
+      {/* Ziehen zum Aktualisieren (nur Touch) — siehe PullToRefreshArea.tsx */}
+      <PullToRefreshArea>
       <div className="flex-1 overflow-y-auto">
         <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-5 py-8 sm:px-6 sm:py-10 lg:max-w-4xl">
         <div className="flex flex-col gap-4">
@@ -212,6 +216,7 @@ export default async function ProfilPage() {
             </Link>
           </div>
           <div className="flex flex-col gap-1.5">
+            <Begruessung />
             <h1 className="text-display font-semibold">
               {profile?.display_name ?? user.email}
             </h1>
@@ -232,7 +237,7 @@ export default async function ProfilPage() {
               href="/strecken/neu"
               className={buttonVariants({ variant: "primary", size: "sm", className: "w-full" })}
             >
-              + Strecke vorschlagen
+              + Strecke erstellen
             </Link>
             <Link
               href={`/fahrer/${user.id}`}
@@ -471,6 +476,7 @@ export default async function ProfilPage() {
         </div>
         </main>
       </div>
+      </PullToRefreshArea>
     </div>
   );
 }

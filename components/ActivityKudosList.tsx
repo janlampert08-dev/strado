@@ -24,7 +24,7 @@ export default function ActivityKudosList({
   const [kudosList] = useState(initialKudosList);
 
   if (kudosList.length === 0) {
-    return <EmptyState icon={Flame} title="Noch keine Kudos erhalten." />;
+    return <EmptyState icon={Flame} title="Noch keine Kudos — teile eine Fahrt, dann kommen sie." />;
   }
 
   return (
