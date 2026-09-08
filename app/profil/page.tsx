@@ -20,7 +20,6 @@ import RideVisibilityToggle from "@/components/RideVisibilityToggle";
 import AchievementBadges from "@/components/AchievementBadges";
 import ActivityHeatmap from "@/components/ActivityHeatmap";
 import CountUp from "@/components/CountUp";
-import Begruessung from "@/components/Begruessung";
 import FollowCounts from "@/components/FollowCounts";
 import PremiumCard from "@/components/PremiumCard";
 import { createClient } from "@/lib/supabase/server";
@@ -210,7 +209,6 @@ export default async function ProfilPage() {
             </Link>
           </div>
           <div className="flex flex-col gap-1.5">
-            <Begruessung />
             <h1 className="text-display font-semibold">
               {profile?.display_name ?? user.email}
             </h1>
