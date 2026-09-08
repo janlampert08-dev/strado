@@ -260,3 +260,22 @@ textarea {
 .marke-anschlag {
   animation: marke-anschlag 400ms var(--ease-standard);
 }
+
+/* Kudos geben (components/KudosButton.tsx): die Flamme ploppt einmal kurz
+   auf. Dieselbe Begründung wie oben — die Bewegung quittiert genau eine
+   Nutzeraktion und läuft danach nicht weiter. */
+@keyframes kudos-puls {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.kudos-puls {
+  animation: kudos-puls var(--duration-base) var(--ease-standard);
+}

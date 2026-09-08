@@ -19,10 +19,14 @@ export default function KudosButton({
   const [given, setGiven] = useState(initialGiven);
   const [count, setCount] = useState(initialCount);
   const [pending, startTransition] = useTransition();
+  // Kurzes Aufploppen der Flamme beim Geben — nur beim Geben, nicht beim
+  // Zuruecknehmen: quittiert wird die zustimmende Geste, nicht ihr Widerruf.
+  const [puls, setPuls] = useState(false);
 
   function handleClick() {
     const next = !given;
     setGiven(next);
+    if (next) setPuls(true);
     setCount((c) => c + (next ? 1 : -1));
     startTransition(async () => {
       const { ok } = await toggleKudos(completionId);
@@ -45,7 +49,16 @@ export default function KudosButton({
         given ? "text-accent" : "text-muted hover:text-foreground",
       )}
     >
-      <Flame className="h-3.5 w-3.5" aria-hidden="true" fill={given ? "currentColor" : "none"} />
+      {/* Die Klasse wird am Ende der Animation wieder abgeraeumt, damit ein
+          zweites Geben erneut ausloest. Bei reduzierter Bewegung kuerzt der
+          globale Block in globals.css die Dauer auf 0.01 ms — animationend
+          feuert dann sofort, die Flamme steht still. */}
+      <Flame
+        className={cn("h-3.5 w-3.5", puls && "kudos-puls")}
+        aria-hidden="true"
+        fill={given ? "currentColor" : "none"}
+        onAnimationEnd={() => setPuls(false)}
+      />
       <span className="font-mono tabular-nums">{count}</span>
     </button>
   );

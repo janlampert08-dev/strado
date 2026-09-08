@@ -278,6 +278,13 @@ export function useRideRecorder({
     if (hasStartedRef.current) return;
     hasStartedRef.current = true;
     setHasStarted(true);
+    // Kurzer Impuls zum tatsaechlichen Start der Zeitmessung — im
+    // Streckenmodus faellt der nicht mit dem Tippen auf "Strecke starten"
+    // zusammen, sondern mit dem Erreichen des Startpunkts, und genau dieser
+    // Moment ist am Lenker sonst nicht zu bemerken. Die Vibration API kennen
+    // praktisch nur Android-Browser; auf iOS und Desktop ist der optionale
+    // Aufruf ein No-op.
+    navigator.vibrate?.(10);
     startTimeRef.current = Date.now();
     intervalRef.current = setInterval(() => {
       setElapsedSeconds(Math.round((Date.now() - (startTimeRef.current ?? Date.now())) / 1000));
@@ -302,6 +309,9 @@ export function useRideRecorder({
   // am Ziel) nicht auf veraltete Werte aus dem ersten Render zugreift.
   const stop = useCallback(() => {
     releaseTracking();
+    // Gegenstueck zum Impuls beim Start (siehe beginActualTracking): die
+    // Aufzeichnung endet auch automatisch am Ziel, also ohne Tastendruck.
+    navigator.vibrate?.(10);
 
     const finalDistanceKm = distanceKmRef.current;
     const finalSeconds = startTimeRef.current
