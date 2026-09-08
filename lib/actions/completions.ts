@@ -125,15 +125,6 @@ function implausibilityReason(
   dauerSekunden: number,
 ): string | null {
   if (!(distanzKm > 0) || dauerSekunden <= 0) return "Ungültige Tracking-Daten.";
-  if (distanzKm / (dauerSekunden / 3600) > MAX_PLAUSIBLE_KMH) {
-    return "Unrealistische Durchschnittsgeschwindigkeit erkannt.";
-  }
-  if (dauerSekunden > MAX_RIDE_SECONDS) {
-    return "Diese Aufzeichnung ist unrealistisch lang — wurde sie vielleicht nicht beendet?";
-  }
-  if (maxJumpKm(trail) > MAX_JUMP_KM) {
-    return "Die Aufzeichnung enthält eine zu grosse Lücke zwischen zwei Punkten.";
-  }
 
   // Bewegungsprofil: stammt die Bewegung überhaupt von einem
   // Strassenfahrzeug, oder sieht sie nach Bahn/Flug aus (siehe
@@ -150,8 +141,25 @@ function implausibilityReason(
   // auf einer unbegrenzten Autobahn, und eine echte Fahrt abzulehnen wiegt
   // schwerer als ein Zug in der Liste. Im Zweifel (zu kurze/dünne
   // Aufzeichnung) fällt ohnehin kein Urteil.
+  //
+  // Steht vor der Tempoprüfung, weil diese Begründung die genauere ist: ein
+  // Flug reisst auch MAX_PLAUSIBLE_KMH (200), und stünde die Tempoprüfung
+  // davor, bekäme praktisch jeder Flug das allgemeine "Unrealistische
+  // Durchschnittsgeschwindigkeit erkannt." statt der Erklärung, die die
+  // Formulare live schon anzeigen. Am Ergebnis ändert die Reihenfolge
+  // nichts — beide Wege lehnen ab; sie entscheidet nur, was der Nutzer liest.
   const bewegung = bewerteBewegungsprofil(trail);
   if (bewegung.blockiert && bewegung.begruendung) return bewegung.begruendung;
+
+  if (distanzKm / (dauerSekunden / 3600) > MAX_PLAUSIBLE_KMH) {
+    return "Unrealistische Durchschnittsgeschwindigkeit erkannt.";
+  }
+  if (dauerSekunden > MAX_RIDE_SECONDS) {
+    return "Diese Aufzeichnung ist unrealistisch lang — wurde sie vielleicht nicht beendet?";
+  }
+  if (maxJumpKm(trail) > MAX_JUMP_KM) {
+    return "Die Aufzeichnung enthält eine zu grosse Lücke zwischen zwei Punkten.";
+  }
 
   return null;
 }

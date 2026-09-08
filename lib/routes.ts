@@ -58,13 +58,38 @@ function geometrieBox(route: KartenStrecke): Box | null {
   return { minLng, maxLng, minLat, maxLat };
 }
 
-// Die einander nächsten Werte zweier Intervalle. Überlappen sie, ist der
-// Abstand auf dieser Achse null — dann zählt nur noch die andere.
-function naechsteWerte(aMin: number, aMax: number, bMin: number, bMax: number): [number, number] {
-  if (aMax < bMin) return [aMax, bMin];
-  if (bMax < aMin) return [aMin, bMax];
-  const gemeinsam = Math.max(aMin, bMin);
+// Die einander nächsten Längengrade zweier Rechtecke. Überlappen sie, ist
+// der Abstand auf dieser Achse null — dann zählt nur noch die Breite.
+function naechsteLaengen(a: Box, b: Box): [number, number] {
+  if (a.maxLng < b.minLng) return [a.maxLng, b.minLng];
+  if (b.maxLng < a.minLng) return [a.minLng, b.maxLng];
+  const gemeinsam = Math.max(a.minLng, b.minLng);
   return [gemeinsam, gemeinsam];
+}
+
+// Die Breitengrade, an denen gemessen wird — als Liste, weil bei
+// überlappenden Breitenbändern mehr als ein Kandidat in Frage kommt.
+//
+// Auf der Breitenachse ist der Abstand dann zwar null, der Breitengrad
+// entscheidet aber trotzdem mit, wie weit eine Längendifferenz in
+// Kilometern ist: Meridiane laufen zu den Polen hin zusammen, ein Grad
+// Länge misst bei 47.5° weniger als bei 46.5°. Wer hier einfach den
+// unteren Rand des gemeinsamen Bandes nimmt, misst auf der Nordhalbkugel
+// den *weitesten* Punkt statt des nächsten und überschätzt den Abstand —
+// womit die Funktion genau die Zusicherung bräche, die sie unten gibt.
+// Deshalb kommen beide Ränder zurück und der Aufrufer nimmt den kleineren
+// der beiden Abstände.
+function breitenKandidaten(a: Box, b: Box): [number, number][] {
+  if (a.maxLat < b.minLat) return [[a.maxLat, b.minLat]];
+  if (b.maxLat < a.minLat) return [[a.minLat, b.maxLat]];
+  const unten = Math.max(a.minLat, b.minLat);
+  const oben = Math.min(a.maxLat, b.maxLat);
+  return unten === oben
+    ? [[unten, unten]]
+    : [
+        [unten, unten],
+        [oben, oben],
+      ];
 }
 
 // Kürzester Abstand zwischen zwei Rechtecken. Bewusst über die Rechtecke und
@@ -78,9 +103,12 @@ function naechsteWerte(aMin: number, aMax: number, bMin: number, bMax: number): 
 // (nie weiter als die echte Linie) und nimmt dafür ein paar Strecken mehr
 // auf, als nötig wären — auf einer Orientierungskarte der harmlosere Fehler.
 function boxAbstandKm(a: Box, b: Box): number {
-  const [lngA, lngB] = naechsteWerte(a.minLng, a.maxLng, b.minLng, b.maxLng);
-  const [latA, latB] = naechsteWerte(a.minLat, a.maxLat, b.minLat, b.maxLat);
-  return haversineKm([lngA, latA], [lngB, latB]);
+  const [lngA, lngB] = naechsteLaengen(a, b);
+  return Math.min(
+    ...breitenKandidaten(a, b).map(([latA, latB]) =>
+      haversineKm([lngA, latA], [lngB, latB]),
+    ),
+  );
 }
 
 // Wählt aus allen freigegebenen Strecken diejenigen aus, die rund um die
