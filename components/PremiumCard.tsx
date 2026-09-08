@@ -1,23 +1,15 @@
 import Link from "next/link";
 import SubmitButton from "@/components/ui/SubmitButton";
 import { createPortalSession } from "@/lib/actions/billing";
+import { datumCH } from "@/lib/format";
+import { planName } from "@/lib/premiumAngebot";
 import type { PremiumStatus } from "@/lib/premiumLimits";
 
-function datum(d: Date): string {
-  return new Intl.DateTimeFormat("de-CH", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(d);
-}
-
-// "gruender" bleibt, obwohl der Preis nicht mehr verkauft wird: die
-// Gründer-Abos laufen weiter und sollen weiterhin beim Namen genannt werden.
-const PLAN_NAME: Record<NonNullable<PremiumStatus["plan"]>, string> = {
-  monat: "Monatsabo",
-  jahr: "Jahresabo",
-  gruender: "Jahresabo zum Gründerpreis",
-};
+// Plan-Benennung und Datumsformat stehen in lib/, weil die Abschluss-Seite
+// (components/PremiumWillkommen.tsx) dasselbe Abo benennt. Standen sie hier,
+// gäbe es zwei Zuordnungen für dieselbe Sache — und die eine würde
+// irgendwann geändert und die andere nicht. Dort steht auch, warum
+// "gruender" bleibt, obwohl der Preis nicht mehr verkauft wird.
 
 // Zeigt den Abo-Zustand so, wie er ist — nicht nur "Premium: ja/nein".
 // Eine Kündigung, die bis zum Periodenende weiterläuft, und eine offene
@@ -39,7 +31,7 @@ export default function PremiumCard({ status }: { status: PremiumStatus }) {
           {status.inKulanzfrist && status.kulanzBis && (
             <p className="text-sm text-danger">
               Die letzte Zahlung hat nicht geklappt. Premium bleibt noch bis zum{" "}
-              {datum(status.kulanzBis)} aktiv — bitte hinterleg im Abo-Portal ein gültiges
+              {datumCH(status.kulanzBis)} aktiv — bitte hinterleg im Abo-Portal ein gültiges
               Zahlungsmittel.
             </p>
           )}
@@ -53,12 +45,12 @@ export default function PremiumCard({ status }: { status: PremiumStatus }) {
           <form action={createPortalSession} className="flex items-center justify-between gap-3">
             <p className="min-w-0 text-sm text-foreground">
               Premium
-              {status.plan && <> · {PLAN_NAME[status.plan]}</>}
+              {status.plan && <> · {planName(status.plan)}</>}
               {status.laeuftAbAm ? (
-                <> · <span className="text-muted">Gekündigt — läuft bis {datum(status.laeuftAbAm)}.</span></>
+                <> · <span className="text-muted">Gekündigt — läuft bis {datumCH(status.laeuftAbAm)}.</span></>
               ) : (
                 status.periodeEndetAm && (
-                  <> · <span className="text-muted">verlängert sich am {datum(status.periodeEndetAm)}</span></>
+                  <> · <span className="text-muted">verlängert sich am {datumCH(status.periodeEndetAm)}</span></>
                 )
               )}
             </p>

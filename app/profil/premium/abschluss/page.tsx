@@ -50,11 +50,13 @@ export default async function PremiumAbschlussPage({
 
   if (!user) redirect("/anmelden");
 
-  // Weder Premium noch etwas zu bestätigen: hier ist niemand nach einer
-  // Zahlung gelandet, sondern über einen alten Link oder eine abgelaufene
-  // Sitzung. Das Profil ist die ehrlichere Antwort als ein Gruss, der nicht
-  // stimmt.
-  if (!status.aktiv && !sitzung && !abo) redirect("/profil");
+  // Ohne Sitzungs- oder Abo-Kennung ist hier niemand nach einer Zahlung
+  // gelandet, sondern über ein Lesezeichen oder den Verlauf. Die Quittung
+  // hängt deshalb am Kaufvorgang und nicht am Zustand: wer seit Monaten
+  // Premium hat und diese Adresse aufruft, bekommt sonst Abzeichen,
+  // "Willkommen bei Premium" und "du trägst Strado jetzt mit" — und genau
+  // das nutzt den Moment ab, für den die Seite gebaut ist.
+  if (!sitzung && !abo) redirect("/profil");
 
   return (
     <div className="flex h-dvh flex-col">

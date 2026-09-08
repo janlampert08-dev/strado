@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Check, Sparkles } from "lucide-react";
 import Card from "@/components/ui/Card";
 import { buttonVariants } from "@/components/ui/Button";
+import { datumCH } from "@/lib/format";
+import { planName } from "@/lib/premiumAngebot";
 import { PREMIUM_VORTEILE } from "@/lib/premiumVorteile";
 import type { PremiumStatus } from "@/lib/premiumLimits";
 
@@ -18,21 +20,10 @@ import type { PremiumStatus } from "@/lib/premiumLimits";
 // Stripe verifizierte Bestätigung. Diese Komponente glaubt niemandem
 // etwas — sie stellt nur dar.
 
-// Dieselbe Benennung wie in components/PremiumCard.tsx auf der Profilseite:
-// wer hier "Jahresabo" liest, soll es dort wiederfinden.
-const PLAN_NAME: Record<NonNullable<PremiumStatus["plan"]>, string> = {
-  monat: "Monatsabo",
-  jahr: "Jahresabo",
-  gruender: "Jahresabo zum Gründerpreis",
-};
-
-function datum(d: Date): string {
-  return new Intl.DateTimeFormat("de-CH", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(d);
-}
+// Plan-Benennung und Datumsformat kommen aus lib/ und werden mit
+// components/PremiumCard.tsx auf der Profilseite geteilt: wer hier
+// "Jahresabo" liest, soll es dort wiederfinden — und dasselbe Datum
+// gleich mit.
 
 export default function PremiumWillkommen({
   status,
@@ -43,7 +34,7 @@ export default function PremiumWillkommen({
    *  soll deshalb nicht auf diese Angaben warten. */
   status: PremiumStatus | null;
 }) {
-  const plan = status?.plan ? PLAN_NAME[status.plan] : null;
+  const plan = status?.plan ? planName(status.plan) : null;
   const verlaengertAm = status?.laeuftAbAm ? null : (status?.periodeEndetAm ?? null);
 
   return (
@@ -76,7 +67,7 @@ export default function PremiumWillkommen({
         <p className="text-sm text-muted">
           {plan}
           {plan && verlaengertAm && " · "}
-          {verlaengertAm && <>verlängert sich am {datum(verlaengertAm)}</>}
+          {verlaengertAm && <>verlängert sich am {datumCH(verlaengertAm)}</>}
         </p>
       )}
 

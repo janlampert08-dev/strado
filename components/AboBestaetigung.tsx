@@ -40,7 +40,14 @@ import { fehlerMeldung } from "@/lib/checkoutFehler";
 // statt eines engen Takts: jeder Versuch kostet einen Stripe-Aufruf, und
 // nach gut einer halben Minute ist ein weiterer Versuch keine Frage der
 // Geduld mehr, sondern eine Frage an den Webhook.
-const WARTEZEITEN_MS = [0, 1_500, 2_500, 4_000, 6_000, 8_000, 10_000];
+const WARTEZEITEN_MS = [0, 1_500, 2_500, 4_000, 6_000, 8_000, 10_000] as const;
+
+// "Erneut prüfen" fragt genau einmal nach, statt die ganze Leiter noch
+// einmal zu durchlaufen. Sonst kostete jeder Tastendruck sieben weitere
+// Stripe-Aufrufe samt Schreibvorgang — auf einem Pfad, den jede angemeldete
+// Person beliebig oft auslösen kann. Wer nach der automatischen Runde noch
+// wartet, wartet auf den Webhook, nicht auf eine achte Nachfrage.
+const EINZELVERSUCH = [0] as const;
 
 function warte(ms: number): Promise<void> {
   return new Promise((fertig) => setTimeout(fertig, ms));
@@ -68,7 +75,7 @@ export default function AboBestaetigung({
 
   useEffect(() => {
     abgemeldet.current = false;
-    void schleife();
+    void schleife(WARTEZEITEN_MS);
     return () => {
       abgemeldet.current = true;
     };
@@ -94,13 +101,13 @@ export default function AboBestaetigung({
     }
   }
 
-  async function schleife() {
+  async function schleife(wartezeiten: readonly number[]) {
     if (laeuft.current) return;
     laeuft.current = true;
     setZustand("prueft");
 
     try {
-      for (const wartezeit of WARTEZEITEN_MS) {
+      for (const wartezeit of wartezeiten) {
         if (wartezeit > 0) await warte(wartezeit);
         if (abgemeldet.current) return;
 
@@ -170,7 +177,7 @@ export default function AboBestaetigung({
         nachgezogen, und du findest ihn jederzeit in deinem Profil.
       </p>
       <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" onClick={() => void schleife()}>
+        <Button type="button" size="sm" onClick={() => void schleife(EINZELVERSUCH)}>
           Erneut prüfen
         </Button>
         <Link href="/profil" className={buttonVariants({ variant: "secondary", size: "sm" })}>
