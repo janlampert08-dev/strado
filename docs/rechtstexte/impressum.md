@@ -1,19 +1,17 @@
 # Impressum
 
-> ## ⚠️ Ungeprüfter Entwurf — keine Rechtsberatung
+> ## Arbeitsfassung des veröffentlichten Impressums — keine Rechtsberatung
 >
-> Dieser Text ist ein **von einem KI-Assistenten erstellter, ungeprüfter
-> Entwurf**. Er stellt **keine Rechtsberatung** dar und darf in dieser Form
-> **nicht veröffentlicht** werden. Vor der Publikation muss er von einer
-> **qualifizierten Schweizer Anwältin oder einem qualifizierten Schweizer
-> Anwalt** geprüft und freigegeben werden.
+> Dieser Text ist von einem KI-Assistenten erstellt und **anwaltlich nicht
+> geprüft**; er stellt **keine Rechtsberatung** dar. Er ist seit dem
+> 2026-09-07 mit den tatsächlichen Angaben unter
+> `https://strado.ch/legal/impressum` veröffentlicht — Entscheid des
+> Inhabers, ohne vorgängige anwaltliche Prüfung zu publizieren.
 >
-> Alle Angaben in doppelten eckigen Klammern (`[[…]]`) sind **Platzhalter**.
-> Sie wurden bewusst **nicht** erfunden und müssen vor der Veröffentlichung
-> durch die echten Werte ersetzt werden. Eine vollständige Liste steht am
-> Ende dieses Dokuments.
+> Es gibt **keine Platzhalter** mehr in diesem Dokument (Stand 2026-09-07).
 >
-> Entwurfsdatum: 2026-09-06
+> Entwurfsdatum: 2026-09-06 · Stand der veröffentlichten Fassung:
+> 7. September 2026
 
 ---
 
@@ -41,24 +39,25 @@ Kontaktmöglichkeiten E-Mail oder Telefon.
 
 **Firma und Rechtsform**
 
-[[FIRMENNAME]] [[RECHTSFORM]]
+Jan Lampert
+Einzelunternehmen, nicht im Handelsregister eingetragen
 
 **Adresse**
 
-[[STRASSE_NR]]
-[[PLZ_ORT]]
+c/o Softsite AG
+Leutschenbachstrasse 45
+8050 Zürich
 Schweiz
 
 **Kontakt**
 
 E-Mail: contact@strado.ch
-Telefon: [[TELEFON]]
 
-> **Hinweis für die Fertigstellung:** Es genügt formal *eine* der beiden
-> Kontaktangaben. Für die TWINT-Freischaltung sollten dennoch beide angegeben
-> werden — die E-Mail-Adresse zwingend, weil Art. 3 Abs. 1 lit. s UWG sie
-> ausdrücklich verlangt. Wird auf die Telefonnummer verzichtet, ist die
-> gesamte Zeile zu entfernen, nicht der Platzhalter stehen zu lassen.
+> **Zur Kontaktangabe:** Es wird bewusst nur die E-Mail-Adresse genannt;
+> die Telefonzeile ist ersatzlos gestrichen (Entscheid 2026-09-07). Formal
+> genügt eine der beiden Kontaktangaben, die E-Mail-Adresse ist die
+> zwingende, weil Art. 3 Abs. 1 lit. s UWG sie ausdrücklich verlangt. Dass
+> `contact@strado.ch` Post empfängt, ist am 2026-09-07 bestätigt worden.
 
 ---
 
@@ -72,17 +71,18 @@ füllen und schon gar nicht mit dem Platzhalter zu belassen.
 
 | Angabe | Wert |
 | --- | --- |
-| Vertretungsberechtigte Person | [[VERTRETUNGSBERECHTIGTE_PERSON]] |
-| Unternehmens-Identifikationsnummer (UID) / Handelsregister | [[UID_NR]] |
-| MWST-Nummer | [[MWST_NR]] |
-| Verantwortlich für den Inhalt | [[VERTRETUNGSBERECHTIGTE_PERSON]] |
+| Vertretungsberechtigte Person | Jan Lampert |
+| Verantwortlich für den Inhalt | Jan Lampert |
 
-> **Zur MWST-Nummer:** Nach dem Kostenmodell in `docs/premium-plan.md`
-> (Abschnitt 5.4) beginnt die Mehrwertsteuerpflicht erst ab CHF 100'000
-> Jahresumsatz aus steuerbaren Leistungen. Solange diese Schwelle nicht
-> erreicht ist, gibt es keine MWST-Nummer und die Zeile entfällt. Die Preise
-> werden trotzdem von Anfang an als Endpreise inklusive allfälliger MWST
-> kommuniziert (siehe AGB Ziff. 4).
+> **Zu UID und MWST-Nummer:** Beide Zeilen sind gestrichen, nicht leer
+> gelassen (Entscheid 2026-09-07). Das Einzelunternehmen ist nicht im
+> Handelsregister eingetragen, und die Mehrwertsteuerpflicht beginnt erst ab
+> CHF 100'000 Jahresumsatz aus steuerbaren Leistungen (Kostenmodell in
+> `docs/premium-plan.md`, Abschnitt 5.4) — der Umsatz liegt darunter. Die
+> Preise werden trotzdem von Anfang an als Endpreise inklusive allfälliger
+> MWST kommuniziert (siehe AGB Ziff. 4), damit sich am ausgewiesenen Betrag
+> nichts ändert, falls die Steuerpflicht einmal eintritt. Entsteht sie,
+> gehören UID und MWST-Nummer hier wieder hinein — in beiden Fassungen.
 
 ---
 
@@ -95,8 +95,9 @@ füllen und schon gar nicht mit dem Platzhalter zu belassen.
 > drei Entwürfe sind am 2026-09-06 als HTML unter `legal/` im Repo
 > `janlampert08-dev/stradoinfo` veröffentlicht worden; `LEGAL_URLS` in
 > `lib/constants.ts` zeigt darauf. Die Entwürfe hier bleiben die Arbeitsfassung
-> — **wer den einen ändert, muss den anderen mitziehen.** Die Platzhalter
-> stehen in den HTML-Seiten als orange markierte `.todo`-Felder.
+> — **wer den einen ändert, muss den anderen mitziehen.** Seit dem 2026-09-07
+> sind die Platzhalter in beiden Fassungen eingesetzt; die orange markierten
+> `.todo`-Felder und die Entwurfsbanner der HTML-Seiten sind entfernt.
 >
 > **Die Domain ist registriert und ausgeliefert.** `strado.ch` liefert die
 > Rechtstexte unter `/legal/…` aus (die Apex-Domain antwortet mit 308 auf
@@ -108,25 +109,14 @@ füllen und schon gar nicht mit dem Platzhalter zu belassen.
 > Regel dahinter bleibt: unter der Überschrift „Impressum" steht nur eine
 > Adresse, die uns gehört und die antwortet.
 >
-> Offen aus Blocker 1 (`docs/premium-plan.md`, Abschnitt 8) sind nur noch
-> die Pflichtangaben in der Platzhalter-Tabelle unten, nicht mehr die
-> Domain.
+> Blocker 1 aus `docs/premium-plan.md`, Abschnitt 8, ist damit vollständig
+> erledigt: Domain und Pflichtangaben stehen.
 
 ---
 
 ## Verwendete Platzhalter
 
-| Platzhalter | Bedeutung | Beispielform |
-| --- | --- | --- |
-| `[[FIRMENNAME]]` | Firmenname der Betreiberin, wie im Handelsregister bzw. gegenüber Stripe/TWINT geführt | — |
-| `[[RECHTSFORM]]` | Rechtsform (z. B. Einzelunternehmen, GmbH, AG) | — |
-| `[[STRASSE_NR]]` | Strasse und Hausnummer des Geschäftssitzes | — |
-| `[[PLZ_ORT]]` | Postleitzahl und Ort des Geschäftssitzes | — |
-| `[[TELEFON]]` | Telefonnummer im internationalen Format | — |
-| `[[VERTRETUNGSBERECHTIGTE_PERSON]]` | Name der vertretungsberechtigten bzw. inhaltlich verantwortlichen Person | — |
-| `[[UID_NR]]` | Unternehmens-Identifikationsnummer / Handelsregisternummer | Form `CHE-###.###.###` |
-| `[[MWST_NR]]` | MWST-Nummer, nur bei bestehender Steuerpflicht | Form `CHE-###.###.### MWST` |
-
-Insgesamt **8 Platzhalter**. Vor der Veröffentlichung ist im gesamten
-Dokument nach der Zeichenfolge `[[` zu suchen, um sicherzustellen, dass kein
-Platzhalter übrig geblieben ist.
+Keine mehr. Alle Platzhalter sind am 2026-09-07 durch die tatsächlichen
+Werte ersetzt worden; eine Suche nach doppelten eckigen Klammern im gesamten
+Dokument muss leer bleiben und ist Teil der Prüfung vor jeder weiteren
+Änderung.

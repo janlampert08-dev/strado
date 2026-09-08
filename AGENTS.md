@@ -63,15 +63,22 @@ is what should be corrected.
     rather than split: the platform references (`agb.md` Ziff. 1.1,
     `datenschutz.md` 2.1) name both hosts explicitly, and the legal-text
     references (`impressum.md`, every `/legal/…` link) name `strado.ch`.
-    The remaining placeholders there are the company's own particulars.
+    As of 2026-09-07 every other placeholder there is resolved too, in both
+    the Markdown drafts and the published HTML: the provider is Jan
+    Lampert, Einzelunternehmen (not in the commercial register), c/o
+    Softsite AG, Leutschenbachstrasse 45, 8050 Zürich; contact is e-mail
+    only, there is no phone line; there is no UID and no MWST number (the
+    impressum carries no register section at all); Gerichtsstand is Zürich
+    (AGB Ziff. 16.4). `grep -r '\[\[' docs/rechtstexte/` must stay empty.
 
 - **The published pages now say Strado, and name `contact@strado.ch`.**
   `janlampert08-dev/stradoinfo` was renamed and merged on 2026-09-07, so
   the three legal pages linked from the sign-up form no longer carry the
-  old product name. One thing was *not* verified before that went live:
-  whether `contact@strado.ch` actually receives mail. It is the contact
-  channel the impressum names, which Art. 3 Abs. 1 lit. s UWG requires, so
-  confirm it accepts mail rather than assuming it.
+  old product name. `contact@strado.ch` was confirmed to receive mail on
+  2026-09-07 (owner-verified, not assumed). It is the *only* contact
+  channel the impressum names — the phone line was dropped on purpose —
+  and Art. 3 Abs. 1 lit. s UWG requires that channel to work, so a change
+  of mailbox is a legal-text change, not just an ops one.
 
 - **`NEXT_PUBLIC_SITE_URL` is set in Vercel, but a value set there does not
   reach a build that already happened.** Next.js inlines every
