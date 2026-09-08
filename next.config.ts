@@ -49,10 +49,10 @@ const nextConfig: NextConfig = {
           // Berechtigung. Das Payment Element läuft in einem iframe von
           // js.stripe.com und bietet dort Apple Pay / Google Pay über die
           // Payment Request API an. Mit payment=() verweigert der Browser
-          // das dem iframe, Stripe.js meldet die fehlende Berechtigung in
-          // der Konsole und blendet im Formular einen Hinweis ein — die
-          // Zahlung selbst lief zwar durch, aber mit einer Warnung, die
-          // ausgerechnet auf der Bezahlseite steht.
+          // das dem iframe; Stripe.js protokolliert die fehlende
+          // Berechtigung, und die Wallet-Zahlungsarten stehen nicht zur
+          // Verfügung. Karte und TWINT liefen davon unberührt weiter —
+          // deshalb fiel es nur als Warnung auf, nicht als Ausfall.
           //
           // Freigegeben wird deshalb genau so eng wie nötig: die eigene
           // Herkunft und js.stripe.com, kein "*". Das ist die Erlaubnis,
