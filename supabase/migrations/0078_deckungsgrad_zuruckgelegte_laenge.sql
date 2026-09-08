@@ -149,7 +149,7 @@ as $$
 $$;
 
 comment on function public.compute_route_coverage_percent(geography, geography) is
-  'PostGIS-Portierung von computeRouteCoverage (lib/routeCoverage.ts): das Minimum aus (a) dem Anteil der Streckengeometrie (100m-Schritte), der innerhalb von 80m eines Tracks liegt, und (b) der zurueckgelegten Laenge im Verhaeltnis zur Streckenlaenge. (b) kam mit 0077 dazu und schliesst Audit-Befund A1/3: ohne sie deckt eine nur einfach gefahrene Hin-und-zurueck-Strecke rechnerisch 100% ab. Reiner Anti-Faelschungs-Backstop fuer enforce_route_completion_coverage(), nicht fuer direkten RPC-Aufruf gedacht.';
+  'PostGIS-Portierung von computeRouteCoverage (lib/routeCoverage.ts): das Minimum aus (a) dem Anteil der Streckengeometrie (100m-Schritte), der innerhalb von 80m eines Tracks liegt, und (b) der zurueckgelegten Laenge im Verhaeltnis zur Streckenlaenge. (b) kam mit 0078 dazu und schliesst Audit-Befund A1/3: ohne sie deckt eine nur einfach gefahrene Hin-und-zurueck-Strecke rechnerisch 100% ab. Reiner Anti-Faelschungs-Backstop fuer enforce_route_completion_coverage(), nicht fuer direkten RPC-Aufruf gedacht.';
 
 -- Grants nach create or replace unveraendert wiederholt. Postgres behaelt sie
 -- beim Ersetzen zwar bei, aber 0047 und 0048 dieses Verzeichnisses handeln

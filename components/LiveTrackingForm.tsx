@@ -437,7 +437,7 @@ export default function LiveTrackingForm({
             onDiscard={handleExit}
             visibility={{
               publicDisabled: belowCoverageThreshold,
-              // Seit 0077 ist der Deckungsgrad das Minimum aus "berührt" und
+              // Seit 0078 ist der Deckungsgrad das Minimum aus "berührt" und
               // "zurückgelegte Länge". Der dritte Grund im Text ist der neue:
               // bei einer Strecke, die über dieselbe Strasse zurückführt, kann
               // alles berührt und trotzdem nur die Hälfte gefahren sein.
