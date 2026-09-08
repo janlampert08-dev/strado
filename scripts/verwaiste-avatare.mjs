@@ -43,18 +43,34 @@
 //
 // Das Skript ist idempotent: ein zweiter Lauf findet nichts mehr.
 //
-// NICHT AUSGEFÜHRT. Es hat in dieser Form noch nie gegen eine echte
-// Datenbank gelaufen. Erst mit --dry-run-Ausgabe prüfen, ob die Liste
-// plausibel ist (ein Konto ohne Profilbild hat schlicht keine Datei), und
-// vom Bucket ein Backup ziehen, bevor --loeschen drankommt.
+// STAND 2026-09-08. Das Skript selbst ist noch nie gelaufen; seine Auswahl
+// wurde aber gegen die Produktionsdatenbank per SQL nachgebaut und ergab
+// drei verwaiste Objekte von sechs — ein gelöschtes Konto (avatar.jpeg,
+// weder profiles- noch auth.users-Zeile vorhanden) und zwei durch eine
+// andere Endung ersetzte Bilder (avatar.jpg neben avatar.jpeg, avatar.JPG
+// neben avatar.jpg). Alle drei antworteten zu dem Zeitpunkt mit HTTP 200.
+//
+// Erst mit dem Probelauf prüfen, ob die Liste plausibel ist (ein Konto ohne
+// Profilbild hat schlicht keine Datei), und vom Bucket ein Backup ziehen,
+// bevor --loeschen drankommt.
 
 import { createClient } from "@supabase/supabase-js";
 
 const BUCKET = "avatars";
-// Muss zu BILD_ENDUNGEN in lib/validation.ts passen. Wird hier nur für die
-// Plausibilitätsmeldung am Ende gebraucht, nicht für die Entscheidung —
-// die trifft allein der Abgleich gegen profiles.avatar_url.
-const BEKANNTE_ENDUNGEN = ["jpg", "png", "webp", "gif"];
+// Die Form, die uploadAvatar() erzeugt: "{uuid}/avatar.{endung}".
+//
+// Bewusst NICHT gegen BILD_ENDUNGEN aus lib/validation.ts geprüft. Diese
+// Liste enthält nur, was bildEndungFuerMime() heute vergibt (jpg, png,
+// webp, gif); ältere Uploads leiteten die Endung aus foto.name ab, weshalb
+// im Bucket auch avatar.jpeg und avatar.JPG liegen. Eine Warnung an der
+// Endung hätte also genau die Altbestände angemeckert, um die es hier geht.
+//
+// Auffällig ist nicht eine ungewohnte Endung, sondern ein Pfad, der gar
+// nicht wie ein Avatar aussieht — der stammt dann wirklich nicht aus dem
+// Avatar-Upload. Nur für die Plausibilitätsmeldung; die Entscheidung trifft
+// allein der Abgleich gegen profiles.avatar_url.
+const AVATAR_PFADFORM =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/avatar\.[A-Za-z0-9]+$/i;
 const SEITENGROESSE = 100;
 
 const loeschen = process.argv.includes("--loeschen");
@@ -146,16 +162,15 @@ console.log(`Objekte im Bucket:      ${objekte.length}`);
 console.log(`Von Profilen referenziert: ${referenziert.size}`);
 console.log(`Verwaist:               ${verwaist.length}`);
 
-const unbekannteEndung = verwaist.filter(
-  (pfad) => !BEKANNTE_ENDUNGEN.includes(pfad.split(".").pop()?.toLowerCase() ?? ""),
-);
-if (unbekannteEndung.length > 0) {
+const fremdeForm = verwaist.filter((pfad) => !AVATAR_PFADFORM.test(pfad));
+if (fremdeForm.length > 0) {
   console.warn(
-    `\nAchtung: ${unbekannteEndung.length} verwaiste Objekte tragen eine Endung,\n` +
-      "die uploadAvatar() nie vergibt. Vor dem Löschen ansehen — sie stammen\n" +
-      "aus einem anderen Weg als dem Avatar-Upload.",
+    `\nAchtung: ${fremdeForm.length} verwaiste Objekte haben nicht die Form\n` +
+      '"{nutzer-id}/avatar.{endung}", die uploadAvatar() erzeugt. Vor dem\n' +
+      "Löschen ansehen — sie stammen aus einem anderen Weg als dem\n" +
+      "Avatar-Upload.",
   );
-  for (const pfad of unbekannteEndung) console.warn(`  ${pfad}`);
+  for (const pfad of fremdeForm) console.warn(`  ${pfad}`);
 }
 
 if (verwaist.length === 0) {

@@ -7,7 +7,8 @@ import { metadatenEntfernen } from "@/lib/imageMetadata";
 import { recomputePublicTracks } from "@/lib/publicTrack";
 import { PRIVACY_RADIUS_OPTIONS } from "@/lib/track";
 import { getClientIp, isRateLimitedByKey } from "@/lib/rateLimit";
-import { BILD_ENDUNGEN, bildEndungFuerMime } from "@/lib/validation";
+import { bildEndungFuerMime } from "@/lib/validation";
+import { AVATAR_BUCKET, avatareEntfernen } from "@/lib/avatarSpeicher";
 
 export interface ProfileActionState {
   error: string | null;
@@ -181,15 +182,24 @@ export async function uploadAvatar(
   // Fassungen mit ANDERER Endung entfernen. upsert:true ersetzt nur die
   // Datei unter genau diesem Schlüssel — wer sein avatar.jpg durch ein PNG
   // ersetzt, legt avatar.png daneben und lässt avatar.jpg liegen. Der
-  // avatars-Bucket ist öffentlich (0015), der Schlüssel besteht nur aus der
-  // Nutzer-ID und einer von vier Endungen, und die Nutzer-ID steht in jeder
-  // /fahrer/[id]-URL: das alte Bild bliebe also für jeden abrufbar, der die
-  // vier Endungen durchprobiert — auch dann, wenn es genau deshalb ersetzt
-  // wurde. Best effort: die Storage-Policy aus 0015 erlaubt dem Nutzer das
-  // Löschen im eigenen Ordner, ein Fehlschlag darf den Upload aber nicht
-  // rückgängig machen (das neue Bild steht bereits).
-  const veraltet = BILD_ENDUNGEN.filter((e) => e !== ext).map((e) => `${user.id}/avatar.${e}`);
-  const { error: aufraeumFehler } = await supabase.storage.from("avatars").remove(veraltet);
+  // avatars-Bucket ist öffentlich (0015), der Schlüssel besteht aus der
+  // Nutzer-ID, und die steht in jeder /fahrer/[id]-URL: das alte Bild bliebe
+  // also für jeden abrufbar — auch dann, wenn es genau deshalb ersetzt wurde.
+  //
+  // Der Ordner wird dafür aufgelistet statt aus BILD_ENDUNGEN zusammengesetzt.
+  // Die Endungsliste trifft nur, was bildEndungFuerMime() heute vergibt;
+  // ältere Uploads leiteten sie aus foto.name ab und haben avatar.jpeg und
+  // avatar.JPG hinterlassen, an denen das Aufräumen vorbeigriff. Begründung
+  // in lib/avatarSpeicher.ts.
+  //
+  // Best effort: die Storage-Policy aus 0015 erlaubt dem Nutzer das Löschen
+  // im eigenen Ordner, ein Fehlschlag darf den Upload aber nicht rückgängig
+  // machen (das neue Bild steht bereits).
+  const { fehler: aufraeumFehler } = await avatareEntfernen(
+    supabase.storage.from(AVATAR_BUCKET),
+    user.id,
+    path,
+  );
   if (aufraeumFehler) {
     console.error("Alte Avatar-Fassungen nicht entfernt", { userId: user.id }, aufraeumFehler);
   }
