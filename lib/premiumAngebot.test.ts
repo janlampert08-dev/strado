@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { betragText, jahresVorteilProzent, monatsAequivalentRappen } from "./premiumAngebot";
+import {
+  betragText,
+  jahresVorteilProzent,
+  monatsAequivalentRappen,
+  planTitel,
+  planZeitraum,
+  verlaengerungsZeitraum,
+} from "./premiumAngebot";
 import type { PlanAngebot } from "./premiumLimits";
 
 function plan(betragRappen: number, teil: Partial<PlanAngebot> = {}): PlanAngebot {
@@ -73,5 +80,23 @@ describe("jahresVorteilProzent", () => {
   it("bleibt still, solange ein Plan fehlt", () => {
     expect(jahresVorteilProzent(undefined, plan(4900))).toBeNull();
     expect(jahresVorteilProzent(plan(490, { plan: "monat" }), undefined)).toBeNull();
+  });
+});
+
+describe("Benennung der Pläne", () => {
+  it("benennt beide Pläne, ohne sie zu verwechseln", () => {
+    expect(planTitel("monat")).toBe("Monatlich");
+    expect(planTitel("jahr")).toBe("Jährlich");
+    expect(planZeitraum("monat")).toBe("pro Monat");
+    expect(planZeitraum("jahr")).toBe("pro Jahr");
+  });
+
+  it("nennt den Verlängerungszeitraum passend zum Plan", () => {
+    // Der Satz auf der Kaufseite und im Bezahlfenster lautet "verlängert
+    // sich automatisch um …". Steht dort der Zeitraum des anderen Plans,
+    // ist das keine Beschriftung daneben, sondern eine falsche Angabe zur
+    // Vertragslaufzeit.
+    expect(verlaengerungsZeitraum("monat")).toBe("einen Monat");
+    expect(verlaengerungsZeitraum("jahr")).toBe("zwölf Monate");
   });
 });
