@@ -38,8 +38,31 @@ const NICHT_BERECHTIGT: ModerationResult = {
   error: "Dafür fehlt dir die Berechtigung. Bitte lade die Seite neu.",
 };
 
+// Ein echter Datenbankfehler: Wiederholen kann helfen.
 function fehlgeschlagen(was: string): ModerationResult {
   return { error: `${was} hat nicht geklappt. Bitte versuche es noch einmal.` };
+}
+
+// Kein Fehler, aber null getroffene Zeilen. Das hat zwei Ursachen, und sie
+// sind von hier aus nicht zu unterscheiden:
+//
+//   1. RLS hat die Zeile herausgefiltert — die Aktion war nicht erlaubt.
+//   2. Die Zeile gibt es nicht mehr — ein anderer Moderator war schneller,
+//      oder sie ist per FK-Cascade mitgegangen.
+//
+// Deshalb eine eigene Meldung statt "Bitte versuche es noch einmal": im
+// zweiten Fall ist das gewünschte Ergebnis bereits erreicht, und ein zweiter
+// Versuch führt zwangsläufig zu derselben Antwort. Neu laden klärt beide
+// Fälle — ist die Zeile weg, verschwindet sie aus der Warteschlange; fehlt
+// die Berechtigung, steht sie noch da.
+//
+// Bewusst NICHT als Erfolg gewertet: dann wäre eine von RLS abgelehnte
+// Aktion wieder von einer gelungenen ununterscheidbar, und genau das war der
+// Befund, der diese count-Prüfung überhaupt eingeführt hat.
+function nichtGetroffen(was: string): ModerationResult {
+  return {
+    error: `${was} hat keine Zeile getroffen — entweder ist der Eintrag schon weg, oder dir fehlt die Berechtigung. Bitte lade die Seite neu.`,
+  };
 }
 
 // Der gemeinsame Kopf jeder Aktion: Session prüfen, Moderatorenrolle prüfen.
@@ -66,7 +89,8 @@ export async function approveRoute(routeId: string): Promise<ModerationResult> {
     .update({ status_ok: true, abgelehnt_am: null }, { count: "exact" })
     .eq("id", routeId);
 
-  if (error || count === 0) return fehlgeschlagen("Das Freischalten");
+  if (error) return fehlgeschlagen("Das Freischalten");
+  if (count === 0) return nichtGetroffen("Das Freischalten");
 
   revalidatePath("/moderation");
   revalidatePath("/");
@@ -86,7 +110,8 @@ export async function rejectRoute(routeId: string): Promise<ModerationResult> {
     )
     .eq("id", routeId);
 
-  if (error || count === 0) return fehlgeschlagen("Das Ablehnen");
+  if (error) return fehlgeschlagen("Das Ablehnen");
+  if (count === 0) return nichtGetroffen("Das Ablehnen");
 
   revalidatePath("/moderation");
   revalidatePath("/");
@@ -114,7 +139,8 @@ export async function dismissRouteReport(reportId: string): Promise<ModerationRe
     )
     .eq("id", reportId);
 
-  if (error || count === 0) return fehlgeschlagen("Das Ignorieren der Meldung");
+  if (error) return fehlgeschlagen("Das Ignorieren der Meldung");
+  if (count === 0) return nichtGetroffen("Das Ignorieren der Meldung");
 
   revalidatePath("/moderation");
   return OK;
@@ -136,7 +162,8 @@ export async function dismissRatingReport(reportId: string): Promise<ModerationR
     )
     .eq("id", reportId);
 
-  if (error || count === 0) return fehlgeschlagen("Das Ignorieren der Meldung");
+  if (error) return fehlgeschlagen("Das Ignorieren der Meldung");
+  if (count === 0) return nichtGetroffen("Das Ignorieren der Meldung");
 
   revalidatePath("/moderation");
   return OK;
@@ -158,7 +185,8 @@ export async function deleteReportedRoute(routeId: string): Promise<ModerationRe
     .delete({ count: "exact" })
     .eq("id", routeId);
 
-  if (error || count === 0) return fehlgeschlagen("Das Löschen der Strecke");
+  if (error) return fehlgeschlagen("Das Löschen der Strecke");
+  if (count === 0) return nichtGetroffen("Das Löschen der Strecke");
 
   revalidatePath("/moderation");
   revalidatePath("/");
@@ -185,7 +213,8 @@ export async function deleteReportedRating(ratingId: string): Promise<Moderation
     .delete({ count: "exact" })
     .eq("id", ratingId);
 
-  if (error || count === 0) return fehlgeschlagen("Das Löschen des Kommentars");
+  if (error) return fehlgeschlagen("Das Löschen des Kommentars");
+  if (count === 0) return nichtGetroffen("Das Löschen des Kommentars");
 
   revalidatePath("/moderation");
   if (rating) revalidatePath(`/strecken/${rating.route_id}`);
@@ -208,7 +237,8 @@ export async function dismissCompletionReport(reportId: string): Promise<Moderat
     )
     .eq("id", reportId);
 
-  if (error || count === 0) return fehlgeschlagen("Das Ignorieren der Meldung");
+  if (error) return fehlgeschlagen("Das Ignorieren der Meldung");
+  if (count === 0) return nichtGetroffen("Das Ignorieren der Meldung");
 
   revalidatePath("/moderation");
   return OK;
@@ -234,7 +264,8 @@ export async function unpublishReportedCompletion(
     .update({ ist_oeffentlich: false, track_oeffentlich: null }, { count: "exact" })
     .eq("id", completionId);
 
-  if (error || count === 0) return fehlgeschlagen("Das Verbergen der Fahrt");
+  if (error) return fehlgeschlagen("Das Verbergen der Fahrt");
+  if (count === 0) return nichtGetroffen("Das Verbergen der Fahrt");
 
   // Offene Meldungen zu dieser Fahrt sind damit erledigt — sonst bliebe die
   // Warteschlange voll mit Fahrten, um die sich schon jemand gekümmert hat.

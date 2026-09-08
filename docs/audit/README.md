@@ -23,8 +23,8 @@ found. What changed since is tracked here instead, and only here.
 | A4, A5, A6 and everything in §B | Open except the rows below | — |
 | §B — dark mode never redefines `--color-danger/success/warning` | **Fixed** | `app/globals.css`: both dark blocks now set `#ef4444` / `#22c55e` / `#f59e0b` (5.23 / 8.63 / 9.16 on the background) |
 | §B — light `--color-muted` at 3.11:1 | **Fixed** | `app/globals.css`: `#666b74`, 5.13:1 on the background and 4.92:1 on `--color-surface` |
-| §B — `lib/actions/moderation.ts` returns `void` and never looks at an error | **Fixed** | every action returns `ModerationResult`; a zero-row hit counts as a failure, and `ModerationActions` / `ReportedContentActions` render it |
-| §B — React 19 wipes the file input across five forms | **Fixed for the photo case** | `MultiPhotoInput` re-applies `input.files` on the form's `reset` event. The other four forms use controlled fields and were never affected |
+| §B — `lib/actions/moderation.ts` returns `void` and never looks at an error | **Fixed** | every action returns `ModerationResult`; `ModerationActions` / `ReportedContentActions` render it. A DB error and a zero-row hit are reported separately — zero rows means either RLS denied it or the row is already gone, and "try again" is the wrong advice for the second |
+| §B — React 19 wipes the file input across five forms | **Fixed for the photo case only** | `MultiPhotoInput` re-applies `input.files` on the form's `reset` event. **The rest is still open** — see the correction below |
 | §B (performance) — `RouteMap`'s `trafficSegments = []` / `trail = []` defaults | **Fixed** | module-scope constants; `RouteDetailMap` also memoises its `routes={[route]}` |
 | §B — password change requires no re-authentication | **Fixed** | `updatePassword` verifies the current password unless the session came from a reset link; the marker is set server-side in `app/auth/callback/route.ts` (`lib/passwortWiederherstellung.ts`) |
 | §B (performance) — `auth.getUser()` is not memoised (60 call sites, 4 modules use `cache()`) | **Fixed for pages** | thirteen page components now call the memoised `getCurrentUser()`. Route Handlers and Server Actions stay on the direct call by design |
@@ -40,6 +40,26 @@ in the privacy boundary and share one shape: an error that silently produced
 | `privacyRadiusM()` fell back to the 200 m default on a read error, and discarded the error unexamined. For an account set to 500 m that is 300 m less cropping at exactly the two ends of the track where the home address is | **Fixed** | `lib/publicTrack.ts` falls back to `MAX_PRIVACY_RADIUS_M` and logs; covered by `lib/publicTrack.test.ts` |
 | `updateVisibilitySettings()` fell back to the same default for an out-of-range form value, then re-cropped every already-shared ride with it — a silent widening, reported as "Gespeichert." | **Fixed** | `lib/actions/profile.ts` rejects the submission instead |
 | A replaced or deleted avatar stays in the **public** `avatars` bucket. `upsert` only replaces the same extension, and `anonymize_account()` nulls `avatar_url` without touching the file. The key is `{user_id}/avatar.{ext}` and the user id is in every `/fahrer/[id]` URL, so the picture of a deleted account stays fetchable by trying four extensions | **Fixed** | `uploadAvatar()` removes the other extensions; `deleteAccount()` removes all four |
+
+A correction to this table's own earlier wording, raised in review on
+#149 and confirmed by grepping the components: it previously claimed "the
+other four forms use controlled fields and were never affected". That is
+**wrong**. `AnmeldenForm` and `RegistrierenForm` have uncontrolled
+`email` / `password` / `display_name` fields, so React 19's post-action
+`form.reset()` does clear typed input after a failed sign-in or sign-up —
+exactly what the audit described. What *is* true, and is the reason the
+photo case was singled out:
+
+- `RideSummaryForm` — every field is controlled, so nothing is lost there
+  except the file input, which is what `MultiPhotoInput` now restores.
+- `AvatarUpload` — the other `<input type="file">` in the app. It submits
+  on change and shows no preview, so a cleared input is visible rather
+  than silent; the person picks a file again. Different mechanism, not a
+  silent loss.
+- `AnmeldenForm`, `RegistrierenForm`, `PasswortVergessenForm`,
+  `PasswortAendernForm`, `RatingSection` — uncontrolled text fields,
+  still cleared on a failed submit. Annoying, not silent: the person sees
+  the empty field. Open.
 
 The avatar fix is forward-looking only. Objects orphaned **before** it —
 every account that already swapped a JPG for a PNG, and every account

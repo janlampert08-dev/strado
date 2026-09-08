@@ -73,7 +73,18 @@ export default function MultiPhotoInput({
   // Anfangswert geschlossen bleibt.
   useEffect(() => {
     const form = inputRef.current?.form;
-    if (!form) return;
+    if (!form) {
+      // Ohne umgebendes <form> greift die Wiederherstellung still nicht —
+      // und der Ausfall sähe genau aus wie der Fehler, den sie behebt:
+      // Vorschauen sichtbar, null Dateien abgeschickt. Ein Effekt ohne
+      // Dependencies merkt einen später eingehängten Input nicht, deshalb
+      // hier wenigstens laut sein. Heute unerreichbar (die einzige
+      // Verwendung steht in RideSummaryForm innerhalb des Formulars).
+      console.warn(
+        "MultiPhotoInput steht ausserhalb eines <form> — ausgewählte Fotos gehen nach einem fehlgeschlagenen Absenden verloren.",
+      );
+      return;
+    }
 
     function handleReset() {
       queueMicrotask(() => syncInputFiles(entriesRef.current));
