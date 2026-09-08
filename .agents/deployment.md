@@ -182,6 +182,73 @@ Verification runs against the deployed URL, not localhost.
       is added to it. A checklist that does not grow after an incident is
       the reason the next incident looks the same.
 
+## Open switch-overs — read this before calling the product launched
+
+These are known, deliberate gaps: the code is shipped and correct, but the
+environment around it is not yet the one it will run in. They are listed here
+rather than in a ticket because this is the file the next deploy opens. Each
+was measured on 2026-09-08, not assumed.
+
+### Stripe still runs against the sandbox account
+
+Production is wired to the **sandbox** Stripe account, not the live one. The
+evidence is in the data: every row in `public.subscriptions` carries a price id
+belonging to `acct_…1xloovE5j4` (confirmed `livemode: false` by reading the
+price back), while the live account holds **zero** subscriptions. Three
+production profiles therefore have `ist_premium = true` from test payments.
+
+Nothing here is broken — it is pre-launch state. But the switch is one change
+with five parts, and doing four of them is worse than doing none:
+
+- [ ] Live `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` and the
+      live `STRIPE_PREMIUM_PRICE_ID_*` in Vercel Production. The publishable
+      key is `NEXT_PUBLIC_*`, so this needs a **rebuild**, not a redeploy.
+- [ ] **Register the live webhook endpoint.** The live account currently has
+      none — neither a v1 `webhook_endpoint` nor a v2 event destination. Only
+      the sandbox has one, and it points at `strado-orcin.vercel.app`. Point
+      the live one at `https://app.strado.ch/api/stripe/webhook` with the same
+      seven events the sandbox endpoint subscribes to, and put *that
+      endpoint's* secret in `STRIPE_WEBHOOK_SECRET` — the secret is
+      per-endpoint, sandbox and live values are not interchangeable.
+      Without it: cancellations, payment failures, renewals and
+      asynchronously-completed payments never reach the app. A purchase still
+      works, but only because `confirmSubscription()` writes when the buyer
+      returns to the confirmation page — whoever does not return has paid and
+      has no Premium. That is finding A5's shape, re-entering through the
+      environment instead of the code.
+- [ ] **Pick the right monthly price.** The live account has two active
+      CHF 4.90 monthly prices. The one without a `lookup_key` carries
+      `tax_behavior: unspecified`; the intended one is
+      `cornice_premium_monat` with `tax_behavior: inclusive`. Wrong id means
+      wrong tax treatment on every invoice.
+- [ ] **TWINT.** AGB Ziff. 12 names TWINT as an accepted payment method; in
+      the live account it is `available: false` and switched off, which is an
+      account-activation matter, not a code one. Either get it enabled before
+      launch or change the AGB — a published term naming a payment method that
+      does not exist is the wrong half to leave standing.
+- [ ] **Clean up the test-mode leftovers** once live keys are in: the four
+      sandbox `subscriptions` rows and the three `ist_premium` flags derived
+      from them. Left in place they make the nightly `premium-abgleich` chase
+      subscription ids that do not exist in the live account.
+
+### Preview deployments have no Supabase configuration
+
+`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are set
+for Production but not for Preview, so every preview build throws
+"Your project's URL and Key are required to create a Supabase client!" on `/`
+(six occurrences across five visitors, last seen 2026-09-08). This is not
+cosmetic: it disables the "verify on Preview first" step this document asks
+for in section 1, which is precisely the step that would have caught the
+sandbox/live confusion above. Set both for Preview and redeploy a preview to
+confirm.
+
+### Supabase Auth: leaked-password protection is off
+
+`get_advisors(type: "security")` reports `auth_leaked_password_protection` as
+disabled. It is a single switch in the Supabase dashboard (Auth → Passwords)
+that checks new passwords against HaveIBeenPwned. There is no migration for
+it and no MCP tool — it has to be clicked.
+
 ## A deploy is not done when
 
 - The code is on `main` but the migration it needs is not applied. This

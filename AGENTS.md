@@ -119,14 +119,20 @@ is what should be corrected.
   `@vercel/analytics`). `script-src` trägt weiterhin `'unsafe-inline'` und
   `'unsafe-eval'`; der Ersatz durch Nonces verlangt die CSP pro Anfrage in
   `proxy.ts` und macht jede Seite dynamisch — offen, bewusst.
-- **Migrations are applied by hand and the newest ones are not applied.**
-  Green CI means nothing about the live schema. See
-  `supabase/migrations/README.md` and `.agents/deployment.md`.
+- **Migrations are applied by hand.** Green CI means nothing about the live
+  schema — nothing applies a migration for you. As of 2026-09-08 the repo and
+  the production database do match: `0059_fahrtstatistiken`,
+  `0060_private_strecken` and the new `0079` were applied and verified against
+  the objects. The two files that remain un-applied (`0042`, `0058`) are
+  superseded by `0076` and must **not** be applied — see
+  `supabase/migrations/README.md`, which is the only place that distinction
+  survives, plus `.agents/deployment.md`.
 - **Migration numbers are not unique.** `0034`, `0041`, `0053`, `0054`, `0059`
   and `0060` each exist twice — six pairs, not four. Reconciling a deploy by
   version number alone is ambiguous, so check the objects. In the `0059` and
-  `0060` pairs the un-applied half is the security migration (the fixes for
-  audit findings A1 and A3). `scripts/check-migration-prefixes.mjs` runs in CI
+  `0060` pairs the second half was the security migration (the fixes for audit
+  findings A1 and A3); both were applied on 2026-09-08, so each of the six
+  prefixes now has both halves live. `scripts/check-migration-prefixes.mjs` runs in CI
   and fails on a *new* collision; the six existing pairs are listed there as
   legacy.
 - **Open audit findings are tracked in
@@ -225,8 +231,15 @@ breaking changes from earlier versions (see the block at the top of this file).
   so component tests are not currently possible)
 - **ESLint** ^9 with `eslint-config-next`
 
-Node.js: Next.js 16 requires **Node >= 20.9**. CI and local development
-should use a current LTS release (Node 22).
+Node.js: Next.js 16 requires **Node >= 20.9**; this repo runs on **Node
+24.x** (current Active LTS). One source of truth, three consumers: `.nvmrc`
+holds the version, `package.json` → `engines.node` mirrors it, and CI reads
+`.nvmrc` via `node-version-file`. Vercel honours `engines.node` over its own
+project setting, so the build environment follows the repo instead of a
+dashboard field nobody sees in a diff. Before this was pinned, CI ran 22 and
+Vercel ran 24 — a gap that already cost one red production build (`@types/geojson`,
+PR #154), because a build that passes on one runtime is not evidence about
+the other.
 
 ## Architecture
 

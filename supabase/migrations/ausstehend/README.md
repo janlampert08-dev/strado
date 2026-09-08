@@ -42,9 +42,13 @@ Datenbank atomar und würde am Zeitpunkt des Anwendungs-Deployments nichts
 ### Zusätzlich vorher prüfen
 
 Der Grant wird an fünf Stellen vergeben (`0042:67`, `0045:203`,
-`0047:47`, `0048:25`, `0058:120`). `0058` ist **nicht eingespielt** —
-wird es später nachgezogen, erteilt es den Grant erneut und macht diesen
-Entzug rückgängig.
+`0047:47`, `0048:25`, `0058:120`). `0042` und `0058` sind nicht eingespielt
+und werden es seit der Neubewertung vom 2026-09-08 auch nicht mehr: `0076`
+enthält ihren gesamten Inhalt, und ein Nachziehen würde diesen Entzug
+rückgängig machen sowie die Löschfunktion auf den Stand vor `0076`
+zurückdrehen. Begründung in `../README.md`, Abschnitt „Neu bewertet: 0042 und
+0058 sind Altlast, nicht Rückstand". Damit ist der Entzug hier dauerhaft, wenn
+er einmal läuft — vorher war er es nur, solange niemand `0058` nachzog.
 
 ```sql
 -- Läuft der Entzug ins Leere, weil eine spätere Migration ihn zurückholt?
