@@ -10,13 +10,13 @@ import type { TrailPoint } from "@/lib/geo";
 const PRUEF_INTERVALL_MS = 30_000;
 
 // Früher Hinweis während einer laufenden Aufzeichnung: "das hier sieht nach
-// Zug/Flug aus und lässt sich am Ende nicht speichern". Reiner Komfort — die
-// Kontrolle sitzt serverseitig in lib/actions/completions.ts, die hier
-// gezeigte Begründung stammt aber aus derselben Funktion, damit die Aussage
-// unterwegs und beim Speichern dieselbe ist.
+// Zug oder Flug aus". Der Text stammt aus derselben Funktion, die auch der
+// Server befragt, damit die Aussage unterwegs und beim Speichern dieselbe
+// ist — und er sagt bereits selbst, ob gespeichert werden kann (Flug: nein;
+// Bahn: doch, mit Bitte um Ehrlichkeit).
 //
-// Der Sinn ist genau diese Frühwarnung: wer erst im Fazit erfährt, dass
-// nichts gespeichert werden kann, hat die Fahrt umsonst aufgezeichnet.
+// Der Sinn ist die Frühwarnung: wer erst im Fazit erfährt, dass eine
+// Flugaufzeichnung nicht speicherbar ist, hat sie umsonst gemacht.
 export function useBewegungswarnung(
   active: boolean,
   liveTrailPoints: TrailPoint[],
@@ -41,7 +41,7 @@ export function useBewegungswarnung(
       // Einmal gezeigt, bleibt der Hinweis stehen: der Trail wächst weiter,
       // und ein Hinweis, der zwischendurch verschwindet, wirkt wie ein
       // Fehler statt wie eine Warnung.
-      if (!profil.plausibel && profil.begruendung) setWarnung(profil.begruendung);
+      if (profil.begruendung) setWarnung(profil.begruendung);
     }, PRUEF_INTERVALL_MS);
 
     return () => clearInterval(interval);

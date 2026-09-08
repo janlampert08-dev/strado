@@ -88,6 +88,7 @@ describe("bewerteBewegungsprofil", () => {
   it("lässt eine kurvige Bergstrecke durch", () => {
     const profil = bewerteBewegungsprofil(bergstrasse());
     expect(profil.plausibel).toBe(true);
+    expect(profil.blockiert).toBe(false);
     expect(profil.art).toBe("strassenfahrzeug");
     // Die Kurvigkeit ist das Sicherheitsnetz gegen Falsch-Positive: eine
     // Passstrasse liegt um Grössenordnungen über der Bahn-Schwelle.
@@ -97,23 +98,31 @@ describe("bewerteBewegungsprofil", () => {
   it("lässt eine schnelle Autobahnetappe durch", () => {
     const profil = bewerteBewegungsprofil(autobahnetappe());
     expect(profil.plausibel).toBe(true);
+    expect(profil.blockiert).toBe(false);
     expect(profil.art).toBe("strassenfahrzeug");
     expect(profil.kennzahlen.zeitanteilUeberBahnTempo).toBeLessThan(0.5);
     expect(profil.kennzahlen.distanzKm).toBeGreaterThan(100);
   });
 
-  it("erkennt eine Bahnfahrt und begründet sie", () => {
+  it("erkennt eine Bahnfahrt, warnt aber nur", () => {
     const profil = bewerteBewegungsprofil(bahnfahrt());
     expect(profil.art).toBe("bahn");
     expect(profil.plausibel).toBe(false);
+    // Der Kern der Entscheidung: dieselben vier Bedingungen erfüllt auch eine
+    // kurvenfreie Etappe auf einer unbegrenzten Autobahn. Deshalb Hinweis
+    // statt Ablehnung — sonst kostet der Grenzfall eine echte Fahrt.
+    expect(profil.blockiert).toBe(false);
     expect(profil.begruendung).toContain(`${BAHN_TEMPO_KMH} km/h`);
     expect(profil.kennzahlen.zeitanteilUeberBahnTempo).toBeGreaterThan(0.9);
   });
 
-  it("erkennt einen Flug als Flug, nicht als Bahnfahrt", () => {
+  it("erkennt einen Flug als Flug, nicht als Bahnfahrt, und blockiert ihn", () => {
     const profil = bewerteBewegungsprofil(flug());
     expect(profil.art).toBe("flug");
     expect(profil.plausibel).toBe(false);
+    // Zwei Minuten über 300 km/h hat keine Strasse — hier darf das Speichern
+    // scheitern.
+    expect(profil.blockiert).toBe(true);
     expect(profil.begruendung).toContain("Flug");
   });
 

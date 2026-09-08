@@ -111,15 +111,16 @@ export default function LiveTrackingForm({
   const [gastVerwerfenOffen, setGastVerwerfenOffen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  // Früher Hinweis während der Fahrt (Komfort) und die abschliessende
-  // Beurteilung des fertigen Trails im Fazit. Massgeblich ist beides nicht —
-  // abgelehnt wird serverseitig in logTrackedCompletion, mit derselben
-  // Begründung.
+  // Früher Hinweis während der Fahrt und die abschliessende Beurteilung des
+  // fertigen Trails im Fazit. Massgeblich ist beides nicht: abgelehnt wird
+  // serverseitig in logTrackedCompletion, und auch dort nur ein Flug — das
+  // Bahn-Verdikt fragt bloss nach (siehe lib/bewegungsprofil.ts).
   const bewegungswarnung = useBewegungswarnung(phase === "tracking", recorder.liveTrailPoints);
-  const bewegungBlockiert = useMemo(() => {
+  const bewegungsbefund = useMemo(() => {
     if (phase !== "finished") return null;
     const profil = bewerteBewegungsprofil(finishedTrail);
-    return profil.plausibel ? null : profil.begruendung;
+    if (!profil.begruendung) return null;
+    return { blockiert: profil.blockiert, text: profil.begruendung };
   }, [phase, finishedTrail]);
 
   const coveragePercent = useMemo(() => {
@@ -414,10 +415,14 @@ export default function LiveTrackingForm({
             mit Begründung, damit nicht nur "ging nicht" übrig bleibt. Das
             Formular bleibt bedienbar: die Ablehnung entscheidet der Server,
             nicht diese Anzeige. */}
-        {bewegungBlockiert && (
+        {bewegungsbefund && (
           <Card surface className="flex flex-col gap-2 p-4 text-sm">
-            <p className="font-medium text-foreground">Diese Fahrt lässt sich nicht speichern.</p>
-            <p className="text-muted">{bewegungBlockiert}</p>
+            <p className="font-medium text-foreground">
+              {bewegungsbefund.blockiert
+                ? "Diese Fahrt lässt sich nicht speichern."
+                : "Sieht das nach einer Autofahrt aus?"}
+            </p>
+            <p className="text-muted">{bewegungsbefund.text}</p>
           </Card>
         )}
 

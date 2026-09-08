@@ -84,14 +84,16 @@ export default function FreeRideForm({
   // beim Speichern (logFreeRide).
   const liveLapHint = useLiveLapHint(phase === "tracking", recorder.liveTrailPoints, routes);
 
-  // Früher Hinweis während der Fahrt (Komfort) und die abschliessende
-  // Beurteilung des fertigen Trails im Fazit. Abgelehnt wird serverseitig in
-  // logFreeRide, mit derselben Begründung.
+  // Früher Hinweis während der Fahrt und die abschliessende Beurteilung des
+  // fertigen Trails im Fazit. Massgeblich ist beides nicht: abgelehnt wird
+  // serverseitig in logFreeRide, und auch dort nur ein Flug — das
+  // Bahn-Verdikt fragt bloss nach (siehe lib/bewegungsprofil.ts).
   const bewegungswarnung = useBewegungswarnung(phase === "tracking", recorder.liveTrailPoints);
-  const bewegungBlockiert = useMemo(() => {
+  const bewegungsbefund = useMemo(() => {
     if (phase !== "finished") return null;
     const profil = bewerteBewegungsprofil(recorder.finishedTrail);
-    return profil.plausibel ? null : profil.begruendung;
+    if (!profil.begruendung) return null;
+    return { blockiert: profil.blockiert, text: profil.begruendung };
   }, [phase, recorder.finishedTrail]);
 
   const [titel, setTitel] = useState("");
@@ -233,14 +235,20 @@ export default function FreeRideForm({
             </div>
           </dl>
 
-          {/* Was der Server beim Speichern ohnehin ablehnt, steht hier schon —
-              mit Begründung, damit nicht nur "ging nicht" übrig bleibt. Das
-              Formular bleibt bedienbar: die Ablehnung entscheidet der
-              Server, nicht diese Anzeige. */}
-          {bewegungBlockiert && (
+          {/* Zwei Fälle in einer Karte: was der Server ohnehin ablehnt
+              (Flug), steht hier schon mit Begründung, damit nicht nur "ging
+              nicht" übrig bleibt — und der Grenzfall (Bahn), der bewusst
+              nur fragt und das Speichern nicht anrührt. Das Formular bleibt
+              in beiden Fällen bedienbar: entschieden wird auf dem Server,
+              nicht in dieser Anzeige. */}
+          {bewegungsbefund && (
             <Card surface className="flex flex-col gap-2 p-4 text-sm">
-              <p className="font-medium text-foreground">Diese Fahrt lässt sich nicht speichern.</p>
-              <p className="text-muted">{bewegungBlockiert}</p>
+              <p className="font-medium text-foreground">
+                {bewegungsbefund.blockiert
+                  ? "Diese Fahrt lässt sich nicht speichern."
+                  : "Sieht das nach einer Autofahrt aus?"}
+              </p>
+              <p className="text-muted">{bewegungsbefund.text}</p>
             </Card>
           )}
 

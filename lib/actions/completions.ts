@@ -143,11 +143,15 @@ function implausibilityReason(
   // freie Fahrt) und auch die automatisch erkannten Streckenabschnitte
   // innerhalb einer freien Fahrt dieselbe Prüfung durchlaufen.
   //
-  // NEUE GESCHÄFTSREGEL: Fahrten können dadurch abgelehnt werden. Im
-  // Zweifel (zu kurze/dünne Aufzeichnung) fällt kein Urteil und es bleibt
-  // beim bisherigen Verhalten.
+  // NEUE GESCHÄFTSREGEL: Fahrten können dadurch abgelehnt werden — aber nur
+  // die eindeutigen. Abgewiesen wird ausschliesslich, was `blockiert` setzt,
+  // heute also der Flug. Das Bahn-Verdikt warnt im Client und kommt hier
+  // bewusst nicht an: seine Bedingungen erfüllt auch eine kurvenfreie Etappe
+  // auf einer unbegrenzten Autobahn, und eine echte Fahrt abzulehnen wiegt
+  // schwerer als ein Zug in der Liste. Im Zweifel (zu kurze/dünne
+  // Aufzeichnung) fällt ohnehin kein Urteil.
   const bewegung = bewerteBewegungsprofil(trail);
-  if (!bewegung.plausibel && bewegung.begruendung) return bewegung.begruendung;
+  if (bewegung.blockiert && bewegung.begruendung) return bewegung.begruendung;
 
   return null;
 }

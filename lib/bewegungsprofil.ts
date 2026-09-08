@@ -14,8 +14,18 @@ import { MAX_JUMP_KM, MOVING_MIN_KMH } from "@/lib/track";
 // wird, verliert echte Arbeit — eine nicht erkannte Zugfahrt kostet nur
 // einen falschen Eintrag. Deshalb sind alle Schwellen so gesetzt, dass eine
 // schnelle, legale (und auch eine deutlich zu schnelle) Autobahnetappe
-// durchgeht, und jede Ablehnung braucht mehrere unabhängige Signale
+// durchgeht, und jedes Verdikt braucht mehrere unabhängige Signale
 // gleichzeitig.
+//
+// Daraus folgen zwei Stufen, und der Unterschied ist der ganze Punkt:
+//
+//   blockiert  — nur "flug". Zwei Minuten über 300 km/h hat keine Strasse
+//                der Welt, in keinem Land. Hier ist ein Irrtum praktisch
+//                ausgeschlossen, also darf das Speichern scheitern.
+//   warnt      — "bahn". Die vier Bedingungen treffen auch auf eine
+//                kurvenfreie Etappe auf einer unbegrenzten deutschen
+//                Autobahn zu. Solche Grenzfälle bekommen einen Hinweis und
+//                sonst nichts: gespeichert wird trotzdem.
 
 /**
  * Ein Trail-Punkt, optional mit der GPS-Genauigkeit des Fixes. Der Recorder
@@ -49,9 +59,15 @@ export interface Bewegungskennzahlen {
 
 export interface Bewegungsprofil {
   art: Bewegungsart;
-  /** false nur bei "bahn"/"flug" — "unbestimmt" lässt immer durch. */
+  /** false bei "bahn" und "flug" — "unbestimmt" lässt immer durch. Sagt, ob
+   *  das Muster zu einem Strassenfahrzeug passt, nicht, ob gespeichert
+   *  werden darf. Das entscheidet `blockiert`. */
   plausibel: boolean;
-  /** Deutscher Klartext fürs UI; null, wenn nichts dagegen spricht. */
+  /** Ob das Speichern daran scheitert. Nur "flug" blockiert; siehe die
+   *  Begründung bei FLUG_TEMPO_KMH. */
+  blockiert: boolean;
+  /** Deutscher Klartext fürs UI; null, wenn nichts dagegen spricht. Bei
+   *  "bahn" ein Hinweis, bei "flug" die Ablehnung. */
   begruendung: string | null;
   kennzahlen: Bewegungskennzahlen;
 }
@@ -95,6 +111,10 @@ const MAX_LUECKE_KM = MAX_JUMP_KM;
 // hält das im öffentlichen Verkehr, auch nicht auf einer unbegrenzten
 // Autobahn. Bewusst weit oberhalb jeder Auto-Höchstgeschwindigkeit, damit
 // ein Messfehler bei Tempo 250 nicht als Flug endet.
+//
+// Das ist der einzige Fall, der das Speichern verhindert. Er lässt sich
+// nicht mit einer Autofahrt verwechseln, egal in welchem Land: es gibt keine
+// Strasse, auf der man zwei Minuten lang über 300 fährt.
 export const FLUG_TEMPO_KMH = 300;
 export const FLUG_MIN_SEKUNDEN = 120;
 
@@ -110,6 +130,15 @@ export const FLUG_MIN_SEKUNDEN = 120;
 //    Absicherung gegen den teuersten Irrtum: eine kurvige Landstrasse oder
 //    Passstrasse liegt um ein Vielfaches darüber und kann so nie als Bahn
 //    gelten, egal wie schnell gefahren wurde.
+//
+// Dieses Verdikt WARNT nur, es blockiert nicht. Der Grund ist der Grenzfall,
+// den keine Schwelle sauber trennt: eine kurvenfreie Etappe auf einer
+// unbegrenzten deutschen Autobahn erfüllt dieselben vier Bedingungen wie
+// eine Zugfahrt. In der Schweiz wäre dieselbe Fahrt weit über dem Limit —
+// aber eine Fahrt abzulehnen, die es wirklich gab, wiegt schwerer als ein
+// Zug, der als Fahrt in der Liste steht. Wer die Warnung sieht und trotzdem
+// speichert, hat eine bewusste Entscheidung getroffen; wer eine echte Fahrt
+// verliert, hat keine.
 export const BAHN_TEMPO_KMH = 140;
 export const BAHN_MIN_ZEITANTEIL = 0.5;
 export const BAHN_MIN_DISTANZ_KM = 20;
@@ -249,7 +278,7 @@ function kurvigkeitGradProKm(punkte: BewegungsPunkt[]): number {
 }
 
 function unbestimmt(kennzahlen: Bewegungskennzahlen): Bewegungsprofil {
-  return { art: "unbestimmt", plausibel: true, begruendung: null, kennzahlen };
+  return { art: "unbestimmt", plausibel: true, blockiert: false, begruendung: null, kennzahlen };
 }
 
 /**
@@ -296,6 +325,7 @@ export function bewerteBewegungsprofil(punkte: BewegungsPunkt[]): Bewegungsprofi
     return {
       art: "flug",
       plausibel: false,
+      blockiert: true,
       begruendung:
         `Diese Aufzeichnung sieht nach einem Flug aus: ${Math.round(kennzahlen.sekundenUeberFlugTempo / 60)} Minuten lang lag das Tempo über ${FLUG_TEMPO_KMH} km/h. ` +
         "Als Auto- oder Motorradfahrt lässt sie sich deshalb nicht speichern.",
@@ -312,12 +342,19 @@ export function bewerteBewegungsprofil(punkte: BewegungsPunkt[]): Bewegungsprofi
     return {
       art: "bahn",
       plausibel: false,
+      blockiert: false,
       begruendung:
         `Diese Aufzeichnung sieht nach einer Zug- oder Bahnfahrt aus: über ${Math.round(distanzKm)} km lag das Tempo mehr als die Hälfte der Zeit über ${BAHN_TEMPO_KMH} km/h, und die Linienführung ist nahezu kurvenfrei. ` +
-        "Als Auto- oder Motorradfahrt lässt sie sich deshalb nicht speichern.",
+        "Speichern kannst du sie trotzdem — auf einer unbegrenzten Autobahn sieht eine echte Fahrt genauso aus. Bitte nur, wenn du sie wirklich gefahren bist.",
       kennzahlen,
     };
   }
 
-  return { art: "strassenfahrzeug", plausibel: true, begruendung: null, kennzahlen };
+  return {
+    art: "strassenfahrzeug",
+    plausibel: true,
+    blockiert: false,
+    begruendung: null,
+    kennzahlen,
+  };
 }
