@@ -31,8 +31,10 @@ export function isExpandedAfterDrag(height: number, peekPx: number, maxHeight: n
 
 /**
  * Entscheidet einmal pro Wischgeste, wem sie gehört. `deltaY` ist positiv,
- * wenn der Finger nach oben wandert (startY - aktuelles Y), `scrollTop` die
- * Position des gescrollten Elements unter dem Finger.
+ * wenn der Finger nach oben wandert (startY - aktuelles Y), `deltaX` nach
+ * derselben Konvention positiv nach links; ausgewertet wird davon nur der
+ * Betrag. `scrollTop` ist die Position des gescrollten Elements unter dem
+ * Finger.
  *
  * Die Regel ist die gewohnte Bottom-Sheet-Mechanik: eingeklappt zieht ein
  * Wisch nach oben das Sheet auf, statt die paar sichtbaren Zeilen zu scrollen;

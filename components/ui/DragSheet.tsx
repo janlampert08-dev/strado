@@ -215,7 +215,7 @@ export default function DragSheet({
       }
       const touch = e.touches[0];
       const deltaY = gesture.startY - touch.clientY;
-      const deltaX = touch.clientX - gesture.startX;
+      const deltaX = gesture.startX - touch.clientX;
 
       if (gesture.mode === null) {
         if (
