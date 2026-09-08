@@ -6,12 +6,14 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { logTrackedCompletion, type CompletionFormState } from "@/lib/actions/completions";
 import { useRideRecorder } from "@/components/useRideRecorder";
+import { useBewegungswarnung } from "@/components/useBewegungswarnung";
 import {
   GUEST_TRACKING_USER_ID,
   issueGuestContinuationToken,
 } from "@/lib/trackingStorage";
 import { interpolateElevation } from "@/lib/elevation";
 import { computeRouteCoverage, COVERAGE_THRESHOLD_PERCENT } from "@/lib/routeCoverage";
+import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
 import { formatDuration } from "@/lib/format";
 import RideSummaryForm from "@/components/RideSummaryForm";
 import type { RouteGeoJSON, Vehicle } from "@/types/database";
@@ -108,6 +110,17 @@ export default function LiveTrackingForm({
   // einzige Kopie der Fahrt ist.
   const [gastVerwerfenOffen, setGastVerwerfenOffen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  // Früher Hinweis während der Fahrt (Komfort) und die abschliessende
+  // Beurteilung des fertigen Trails im Fazit. Massgeblich ist beides nicht —
+  // abgelehnt wird serverseitig in logTrackedCompletion, mit derselben
+  // Begründung.
+  const bewegungswarnung = useBewegungswarnung(phase === "tracking", recorder.liveTrailPoints);
+  const bewegungBlockiert = useMemo(() => {
+    if (phase !== "finished") return null;
+    const profil = bewerteBewegungsprofil(finishedTrail);
+    return profil.plausibel ? null : profil.begruendung;
+  }, [phase, finishedTrail]);
 
   const coveragePercent = useMemo(() => {
     if (phase !== "finished") return null;
@@ -303,6 +316,13 @@ export default function LiveTrackingForm({
             </p>
           )}
           {recorder.locationError && <p role="alert" className="text-sm text-danger">{recorder.locationError}</p>}
+          {/* Zug/Flug erkannt: lieber jetzt sagen, dass diese Aufzeichnung
+              nicht gespeichert werden kann, als erst im Fazit. */}
+          {bewegungswarnung && (
+            <p role="status" className="text-sm text-danger">
+              {bewegungswarnung}
+            </p>
+          )}
           {/* Vorwarnung statt einer Überraschung am Ziel — siehe
               FreeRideForm.tsx. */}
           {istGast && (
@@ -389,6 +409,17 @@ export default function LiveTrackingForm({
               Bisherige Bestzeit: {formatDuration(personalBestSeconds ?? 0)}
             </p>
           ))}
+
+        {/* Was der Server beim Speichern ohnehin ablehnt, steht hier schon —
+            mit Begründung, damit nicht nur "ging nicht" übrig bleibt. Das
+            Formular bleibt bedienbar: die Ablehnung entscheidet der Server,
+            nicht diese Anzeige. */}
+        {bewegungBlockiert && (
+          <Card surface className="flex flex-col gap-2 p-4 text-sm">
+            <p className="font-medium text-foreground">Diese Fahrt lässt sich nicht speichern.</p>
+            <p className="text-muted">{bewegungBlockiert}</p>
+          </Card>
+        )}
 
         {/* Dasselbe Anmelde-Gate wie bei der freien Fahrt: aufzeichnen darf
             jeder, ein Konto braucht erst das Speichern. Die Aufzeichnung
