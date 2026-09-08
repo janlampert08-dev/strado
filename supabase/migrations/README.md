@@ -105,15 +105,95 @@ für beide Hälften einzeln.
 prüfen, sondern auch in allen offenen PRs — dort entsteht die Kollision.
 Lässt sie sich nicht vermeiden, gehört sie im selben Commit in diese Tabelle.
 
-## Nicht eingespielt (Stand: 2026-09-06)
+## Eingespielt: 0059_fahrtstatistiken und 0060_private_strecken (2026-09-08)
 
-`0059_fahrtstatistiken_serverseitig_erzwingen.sql` und
-`0060_private_strecken_aus_oeffentlichen_views.sql` sind nach `main` gemergt,
-aber **noch nirgends angewendet** — kein SQL ist im Rahmen des Audits gegen
-eine Datenbank gelaufen. Sie schließen zwei Audit-Befunde (A1 teilweise, A3
-vollständig, siehe `docs/audit/README.md`), solange sie nicht eingespielt
-sind, gilt in Produktion aber weiterhin der Zustand davor. Beide brauchen
-einen Lauf gegen einen Supabase-Branch, bevor sie an Produktion gehen.
+Die beiden Sicherheitsmigrationen aus den doppelten Präfixen sind seit
+2026-09-08 in Produktion, Ledger-Einträge unter ihren Dateinamen. Der
+Abschnitt hier hiess bis dahin „Nicht eingespielt (Stand: 2026-09-06)" und
+beschrieb den Gegenzustand — sie schliessen Audit-Befund A1 (Bein 1) und A3.
+
+Vorher gezählt statt gehofft; alle fünf Zahlen waren **0**:
+
+| Vorprüfung | Ergebnis |
+| --- | --- |
+| Zeilen ausserhalb der vier Bänder aus `0059` (Distanz, Dauer, Höhenmeter, Tempo) | 0 |
+| Zeilen ausserhalb des Track-Distanz-Bandes (`0.9 × st_length` … `3 × st_length + 1`) | 0 |
+| öffentliche freie Fahrten ohne Track | 0 |
+| Strecken mit `ist_privat = true and status_ok = true` | 0 |
+| Fahrten auf nicht freigegebenen oder privaten Strecken | 0 |
+
+Deshalb verschwindet aus keiner der drei Views eine sichtbare Zeile, und
+keine Bestandszeile wird durch die `NOT VALID`-Constraints eingefroren. Die
+Namen der vier Constraints kollidieren nicht mit denen aus `0074` — geprüft,
+bevor `add constraint` lief, weil ein Namenskonflikt die ganze Migration
+abgebrochen hätte.
+
+Gegenprobe nach dem Einspielen:
+
+| Prüfung | Ergebnis |
+| --- | --- |
+| Trigger `route_completions_enforce_stats` vorhanden | ja |
+| `enforce_route_completion_stats` EXECUTE | nur `postgres`, `service_role` |
+| die vier Constraints vorhanden | 4 von 4 |
+| `route_leaderboard` / `route_photos` / `leaderboard_completions` tragen den Filter | ja / ja / ja |
+| Zeilen in diesen Views danach | 3 / 0 / 7 (unverändert) |
+
+Was damit **nicht** erledigt ist: A1 Bein 2 — `dauer_sekunden` bleibt eine
+clientseitige Uhr. `0059` benennt das am Dateiende selbst als Restrisiko, und
+es braucht eine Produktänderung (serverseitig gestartete Fahrt), keine
+Migration.
+
+## Neu bewertet: 0042 und 0058 sind Altlast, nicht Rückstand
+
+Beide standen hier als „nicht eingespielt" mit der Begründung, `0058` setze
+`profiles.geloescht_am` voraus und `0042` lege die Spalte an. Diese Begründung
+ist **überholt**: `0076_anonymize_account_parametrisiert.sql` legt die Spalte
+selbst an (`add column if not exists`, ausdrücklich „damit diese Migration
+unabhängig davon läuft, ob 0042/0058 je nachgezogen werden"). Am 2026-09-08 in
+`information_schema.columns` nachgesehen — die Spalte existiert.
+
+Damit dreht sich die Frage um: nicht mehr „warum geht 0058 nicht?", sondern
+„was fehlt noch aus 0058?" — und die Antwort ist **nichts**. Der Vergleich
+Zeile für Zeile:
+
+| Beitrag von `0058` | Zustand heute |
+| --- | --- |
+| `geloescht_am` anlegen | erledigt durch `0076` |
+| `display_name = null` statt Platzhaltername | in `anonymize_account()` (`0076`) |
+| `stripe_customer_id = null` | ebenda |
+| Sichtbarkeits-Flags, `is_moderator`, `ist_premium` auf false | ebenda |
+| `vehicles` löschen, Tracks nullen | ebenda (aus `0045` übernommen) |
+| — | `0076` löscht zusätzlich die `subscriptions`-Zeile, was `0058` nicht tut |
+
+**Keine der beiden Dateien darf noch eingespielt werden**, und das ist eine
+schärfere Aussage als „muss nicht". `0058` enthält ein
+`create or replace function public.anonymize_own_account()` mit dem alten,
+eigenständigen Rumpf. Ein Einspielen würde die dünne Hülle aus `0076`
+überschreiben, die Löschung damit auf den Stand vor `0076` zurückdrehen
+(stehenbleibende `subscriptions`-Zeile → `premium_abgleich()` setzt das
+gelöschte Konto nachts wieder auf Premium) und obendrein den Grant an
+`authenticated` neu erteilen, den `supabase/migrations/ausstehend/` gerade
+entziehen soll. Dieselbe Falle wie bei `0042`, nur eine Migration weiter.
+
+Sie bleiben im Verzeichnis liegen, weil eine Migrationshistorie append-only
+ist (Kernregel 9) — aber als Historie, nicht als offener Posten.
+
+## Eingespielt: 0079 (2026-09-08)
+
+`0079_kontingent_trigger_execute_entziehen.sql` entzieht
+`private_strecke_kontingent_pruefen()` das EXECUTE-Recht von `PUBLIC`, `anon`
+und `authenticated`. `0067` hatte die Trigger-Funktion angelegt und den Entzug
+vergessen — genau die Falle, die weiter unten unter „Was aus einer Migration
+heraus nicht geht" beschrieben ist, diesmal in der Variante „gar nicht erst
+versucht". Der Supabase-Advisor meldete sie unter
+`anon_security_definer_function_executable`.
+
+Gemessen, nicht angenommen: vorher `PUBLIC, anon, authenticated, postgres,
+service_role`, nachher `postgres, service_role`. Damit steht sie wie jede
+andere Trigger-Funktion im Schema (`enforce_completion_cooldown`,
+`enforce_completion_photo_limit`, `enforce_rating_cooldown`,
+`enforce_route_proposal_cooldown`, `handle_new_user`). `darf_private_strecke_anlegen()`
+behält `authenticated` — die ist bewusst für den angemeldeten Aufrufer da.
 
 ## Was aus einer Migration heraus nicht geht
 

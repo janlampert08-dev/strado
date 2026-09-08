@@ -79,6 +79,14 @@ live project, and neither was used while writing it. Treat its first run
 as a deploy step: read the dry-run list before letting it delete
 anything.
 
+The backlog it would clear was measured against production on 2026-09-08 and
+is real, not hypothetical: six objects in `avatars/`, of which **three** have
+no profile pointing at them — `…9e5867c8/avatar.jpeg` (no `profiles` row at
+all, i.e. a deleted account), `…ce4f33eb/avatar.jpg` and `…dba30312/avatar.JPG`
+(both superseded by a different extension). All three answered **HTTP 200** on
+the public storage URL when checked. Nothing has been deleted; the sweep is
+still pending.
+
 A1's three legs have moved apart and are worth taking one at a time. The
 original recommendation — "`REVOKE INSERT` and route all writes through a
 `SECURITY DEFINER` function" — has since been **overtaken and deliberately
@@ -104,9 +112,12 @@ simplification must never alter a metric, so `st_length(track)` would shorten
 every recorded distance. Hence a validating band rather than a derivation. The
 migration enumerates the same residual risks at its end.
 
-Neither migration has been applied. No SQL was executed against any database at
-any point in this audit or its follow-up work, so both still need a run against
-a Supabase branch before they go anywhere near production.
+Both migrations were applied to production on 2026-09-08, after counting the
+affected rows first (all five pre-checks came back 0) and verifying the
+objects afterwards — trigger, four constraints, and the filter present in all
+three views, with no view losing a row. The row counts and the exact checks are
+in `supabase/migrations/README.md`. A1's second leg stays open regardless: it
+needs a server-recorded ride start, not a migration.
 
 | Report | Scope |
 | --- | --- |
