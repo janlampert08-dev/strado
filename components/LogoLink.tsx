@@ -65,6 +65,10 @@ export default function LogoLink() {
   // die Farbe, damit die Marke keine Hover-Farbe der Leiste erbt, h-[18px]
   // entspricht der früheren Texthöhe.
   const marke = <Wortmarke className={cn("h-[18px] w-auto", anschlag && "marke-anschlag")} />;
+  // cursor-pointer nur auf dem Button-Zweig: es ist dieselbe Marke wie auf
+  // jeder anderen Seite, und dort ist sie ein Link. Ohne die Klasse bekäme
+  // sie ausgerechnet auf der Startseite den Standard-Cursor eines Buttons
+  // und fühlte sich anders an als zwei Klicks vorher.
   const klassen = "shrink-0 text-foreground";
 
   // Auf der Startseite ist das hier kein Link: es führt nirgendwohin,
@@ -79,7 +83,7 @@ export default function LogoLink() {
         type="button"
         onPointerDown={handlePointerDown}
         onClick={vorschlagen}
-        className={klassen}
+        className={cn(klassen, "cursor-pointer")}
         aria-label="Zufällige Strecke vorschlagen"
       >
         {marke}
