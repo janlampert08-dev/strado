@@ -12,6 +12,7 @@ import {
   planTitel,
   planZeitraum,
 } from "@/lib/premiumAngebot";
+import { PREMIUM_VORTEILE } from "@/lib/premiumVorteile";
 import type { AboPlan, PremiumAngebot, PlanAngebot } from "@/lib/premiumLimits";
 
 // Betrag so anzeigen, wie Stripe ihn führt — nicht aus einer zweiten Liste
@@ -22,15 +23,10 @@ import type { AboPlan, PremiumAngebot, PlanAngebot } from "@/lib/premiumLimits";
 // demselben Grund dort — die Zahlungsseite (app/profil/premium/zahlung)
 // braucht denselben Titel für denselben Plan.
 
-// Nur, was es gibt. Die frühere Liste versprach "Erweiterte Filter und
-// Statistiken" und ein Gold-Abzeichen — beides nicht ausgeliefert, und auf
-// einer Kaufseite ist ein versprochenes Feature eine Vertragsleistung.
-const VORTEILE = [
-  "Eigene Strecken erstellen — privat für dich oder öffentlich nach Review",
-  "12 statt 6 Fotos pro Fahrt",
-  "Unbegrenzt Strecken offline speichern",
-  "GPX-Export kuratierter Strecken",
-];
+// Die Liste steht in lib/premiumVorteile.ts, weil die Abschluss-Seite
+// (components/PremiumWillkommen.tsx) sie ebenfalls zeigt: was hier
+// versprochen wird, wird dort quittiert — zwei Kopien würden auseinander
+// driften. Dort steht auch, warum nur hineingehört, was es tatsächlich gibt.
 
 // Einheitliche Abschnittsmarke für die ganze Seite — dieselbe Optik wie die
 // Überschrift in PremiumCard.tsx, damit "Was Premium dazugibt", "Plan
@@ -92,7 +88,7 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
       <section className="flex flex-col gap-3">
         <h2 className={ABSCHNITT_KLASSEN}>Was Premium dazugibt</h2>
         <ul className="flex flex-col gap-2.5 text-sm text-foreground">
-          {VORTEILE.map((vorteil) => (
+          {PREMIUM_VORTEILE.map((vorteil) => (
             <li key={vorteil} className="flex items-start gap-2.5">
               <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
               <span>{vorteil}</span>

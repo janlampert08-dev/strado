@@ -429,8 +429,30 @@ async function schreibeAboZustand(
   // neueren Zustand geschrieben. Das Abo ist bezahlt und verifiziert, der
   // Kauf gilt also trotzdem als erfolgreich.
   if (angewendet !== false) {
-    revalidatePath("/profil");
-    revalidatePath("/profil/einstellungen");
+    // revalidatePath ist eine Mutation und darf laut Next.js ausschliesslich
+    // aus einer Server Action oder einem Route Handler kommen, niemals aus
+    // einem Render. Kommt sie doch aus einem Render, wirft sie — und bei
+    // einer Seite heisst das: Fehlerseite statt Inhalt. Genau so ist der
+    // Abschluss am 2026-09-08 gescheitert, weil die Abschluss-Seite die
+    // Bestätigung im Render aufrief (behoben: sie läuft jetzt über
+    // components/AboBestaetigung.tsx).
+    //
+    // Die richtige Antwort darauf ist der Aufrufer, nicht dieses try — die
+    // Cache-Auffrischung ist aber Komfort und nie Korrektheit: der
+    // Abo-Zustand steht zu diesem Zeitpunkt bereits in der Datenbank.
+    // Deshalb darf ein falsch platzierter Aufruf hier höchstens die
+    // Auffrischung kosten und nicht die Seite, auf der jemand gerade
+    // bezahlt hat.
+    try {
+      revalidatePath("/profil");
+      revalidatePath("/profil/einstellungen");
+    } catch (err) {
+      console.error(
+        "Abo-Zustand geschrieben, aber revalidatePath fehlgeschlagen — " +
+          "wird die Bestätigung aus einem Render aufgerufen?",
+        err,
+      );
+    }
   }
   return true;
 }
