@@ -7,6 +7,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getOrigin, safeInternalPath } from "@/lib/utils/url";
 import { getClientIp, isRateLimitedByKey } from "@/lib/rateLimit";
 import { stripe } from "@/lib/stripe";
+import { BILD_ENDUNGEN } from "@/lib/validation";
+import {
+  PASSWORT_AENDERN_PFAD,
+  istWiederherstellung,
+  verbraucheWiederherstellung,
+} from "@/lib/passwortWiederherstellung";
 
 export interface AuthFormState {
   error: string | null;
@@ -200,8 +206,13 @@ export async function requestPasswordReset(
   // next ist hier ein fest verdrahteter interner Pfad, kein Nutzereingabewert
   // — dieselbe origin+next-Konkatenation wie beim bestehenden E-Mail-
   // Bestätigungslink in signUp() (siehe app/auth/callback/route.ts).
+  //
+  // Über die Konstante statt als Literal: der Callback setzt das
+  // Wiederherstellungs-Merkmal nur für exakt diesen Pfad. Liefen die beiden
+  // auseinander, käme niemand mehr durch den Zurücksetzen-Fluss — er
+  // landete auf der Seite, die ihn nach dem alten Passwort fragt.
   await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/auth/callback?next=/profil/passwort-aendern`,
+    redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(PASSWORT_AENDERN_PFAD)}`,
   });
 
   // resetPasswordForEmail liefert bei unbekannter Adresse ebenfalls keinen
@@ -215,6 +226,22 @@ export interface UpdatePasswordState {
   error: string | null;
 }
 
+// Verlangt das aktuelle Passwort — ausser die Sitzung stammt gerade aus
+// einem Zurücksetzen-Link.
+//
+// Vorher genügte die blosse Anmeldung. Damit war eine unbeaufsichtigt offene
+// Sitzung auf einem geteilten Gerät ein übernommenes Konto: Passwort neu
+// setzen, fertig, die eigentliche Besitzerin ausgesperrt. Genau diese
+// Begründung steht seit jeher über deleteAccount() weiter unten, das
+// deshalb eine Passwort-Neueingabe verlangt — sie gilt hier genauso, und
+// das Ergebnis ist sogar unangenehmer: eine gelöschte Kontohülle lässt sich
+// nicht weiterbenutzen, ein übernommenes Konto schon.
+//
+// Die Ausnahme ist der Fall, für den diese Seite ursprünglich gebaut wurde:
+// wer sein Passwort vergessen hat, kann es nicht eingeben. Dass genau das
+// vorliegt, stellt nicht das Formular fest, sondern der Server — beim
+// Einlösen des Links in app/auth/callback/route.ts. Siehe
+// lib/passwortWiederherstellung.ts.
 export async function updatePassword(
   _prevState: UpdatePasswordState,
   formData: FormData,
@@ -230,8 +257,43 @@ export async function updatePassword(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Der Link ist abgelaufen. Bitte fordere einen neuen an." };
 
+  if (!(await istWiederherstellung(user.id))) {
+    // Ohne E-Mail-Adresse liesse sich nicht gegenprüfen. Kommt bei einem
+    // regulären Konto nicht vor (dieselbe Absicherung wie in
+    // deleteAccount), wäre aber der falsche Moment, um es durchzuwinken.
+    if (!user.email) {
+      return { error: "Passwort konnte nicht geändert werden." };
+    }
+
+    const aktuellesPasswort = String(formData.get("aktuelles_passwort") ?? "").slice(
+      0,
+      MAX_PASSWORD_LENGTH,
+    );
+    if (!aktuellesPasswort) {
+      return { error: "Bitte gib dein aktuelles Passwort ein." };
+    }
+
+    // Die Prüfung unten ist ein Passwortversuch wie jeder andere und
+    // gehört deshalb gebremst — sonst wäre diese Aktion ein Orakel zum
+    // Durchprobieren, das die Limits in signIn() umgeht. Pro Konto, weil
+    // hier immer schon eine Session existiert.
+    if (isRateLimitedByKey(`pwaendern:${user.id}`, 5, 5 * 60_000)) {
+      return { error: TOO_MANY_ATTEMPTS_ERROR };
+    }
+
+    const { error: reauthError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: aktuellesPasswort,
+    });
+    if (reauthError) return { error: "Das aktuelle Passwort ist falsch." };
+  }
+
   const { error } = await supabase.auth.updateUser({ password });
   if (error) return { error: "Passwort konnte nicht geändert werden." };
+
+  // Verbrauchen, nicht ablaufen lassen: die Ausnahme galt für diesen einen
+  // Wechsel. Muss vor dem redirect() stehen — das wirft.
+  await verbraucheWiederherstellung();
 
   redirect("/profil");
 }
@@ -370,6 +432,27 @@ export async function deleteAccount(
     p_user_id: user.id,
   });
   if (anonymizeError) return { error: "Konto konnte nicht gelöscht werden." };
+
+  // Profilbild aus dem Storage nehmen. anonymize_account() nullt oben nur
+  // profiles.avatar_url — die Datei selbst bleibt davon unberührt im
+  // avatars-Bucket liegen, und der ist öffentlich (0015). Ihr Schlüssel ist
+  // "{user_id}/avatar.{endung}", die Nutzer-ID steht in jeder
+  // /fahrer/[id]-URL: das Bild eines gelöschten Kontos wäre also weiterhin
+  // für jeden abrufbar, der die vier möglichen Endungen durchprobiert.
+  //
+  // Über den session-gebundenen Client, nicht über den Admin-Client: die
+  // Storage-Policy aus 0015 erlaubt dem Nutzer genau das Löschen im eigenen
+  // Ordner, ein weiterer RLS-Bypass wäre hier unnötig. Die Session lebt noch
+  // (signOut steht unten).
+  //
+  // Best effort und ausdrücklich kein Abbruch: das Konto ist zu diesem
+  // Zeitpunkt bereits anonymisiert, ein Fehlschlag hier darf den Nutzer nicht
+  // in einen halb gelöschten Zustand zurückwerfen. Er wird protokolliert.
+  const avatarPfade = BILD_ENDUNGEN.map((endung) => `${user.id}/avatar.${endung}`);
+  const { error: avatarFehler } = await supabase.storage.from("avatars").remove(avatarPfade);
+  if (avatarFehler) {
+    console.error("Avatar bei Kontolöschung nicht entfernt", { userId: user.id }, avatarFehler);
+  }
 
   // Zugangsdaten entwerten: nur über den Admin-Client möglich (Supabase Auth
   // ist kein per-RLS steuerbares Postgres-Schema). Gerechtfertigt trotz

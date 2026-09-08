@@ -6,15 +6,17 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { logTrackedCompletion, type CompletionFormState } from "@/lib/actions/completions";
 import { useRideRecorder } from "@/components/useRideRecorder";
+import { useBewegungswarnung } from "@/components/useBewegungswarnung";
 import {
   GUEST_TRACKING_USER_ID,
   issueGuestContinuationToken,
 } from "@/lib/trackingStorage";
 import { interpolateElevation } from "@/lib/elevation";
 import { computeRouteCoverage, COVERAGE_THRESHOLD_PERCENT } from "@/lib/routeCoverage";
+import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
 import { formatDuration } from "@/lib/format";
 import RideSummaryForm from "@/components/RideSummaryForm";
-import type { RouteGeoJSON, Vehicle } from "@/types/database";
+import type { KartenStrecke, RouteGeoJSON, Vehicle } from "@/types/database";
 import { buttonVariants } from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Skeleton from "@/components/ui/Skeleton";
@@ -35,6 +37,7 @@ const initialState: CompletionFormState = { error: null };
 // sich diese Komponente mit FreeRideForm (freie Fahrt ohne Strecke).
 export default function LiveTrackingForm({
   route,
+  kontextStrecken,
   userId,
   vehicles,
   personalBestSeconds,
@@ -43,6 +46,13 @@ export default function LiveTrackingForm({
   onExit,
 }: {
   route: RouteGeoJSON;
+  // Umliegende freigegebene Strecken, nur zur Orientierung auf der Karte
+  // ("was liegt hier sonst noch?"), gedimmt hinter der gefahrenen Strecke.
+  // Weder anklickbar noch massgeblich für den Kartenausschnitt, und ohne
+  // jeden Einfluss auf Start-/Zielgate (lib/tracking.ts) oder Deckungsgrad
+  // (lib/routeCoverage.ts) — dasselbe Muster wie bei der freien Fahrt
+  // (FreeRideForm.tsx).
+  kontextStrecken: KartenStrecke[];
   // Nur für den localStorage-Schlüssel der Wiederherstellung — die Fahrt
   // selbst wird serverseitig dem angemeldeten Nutzer zugeordnet.
   //
@@ -64,11 +74,15 @@ export default function LiveTrackingForm({
   const action = logTrackedCompletion.bind(null, route.id);
   const [state, formAction, pending] = useActionState(action, initialState);
 
-  // Stabile Array-Referenz für RouteMap — ein neues [route]-Literal bei
-  // jedem Render würde RouteMaps "routes"-Effekt (Kartenausschnitt neu
-  // fitten) bei jedem GPS-Update erneut auslösen und die Ansicht ständig
-  // zurücksetzen, obwohl sich die Strecke selbst nie ändert.
-  const routes = useMemo(() => [route], [route]);
+  // Stabile Array-Referenz für RouteMap — ein neues Literal bei jedem Render
+  // würde RouteMaps "routes"-Effekt (Kartenausschnitt neu fitten) bei jedem
+  // GPS-Update erneut auslösen und die Ansicht ständig zurücksetzen, obwohl
+  // sich weder die gefahrene Strecke noch die Kontext-Strecken je ändern.
+  //
+  // Die gefahrene Strecke steht zuerst; hervorgehoben wird sie ohnehin über
+  // primaryRouteId (RouteMap), das zugleich den Kartenausschnitt auf sie
+  // allein einpasst.
+  const routes = useMemo(() => [route, ...kontextStrecken], [route, kontextStrecken]);
   const gate = useMemo(
     () => ({
       startPoint: route.start_geojson.coordinates as [number, number],
@@ -96,6 +110,18 @@ export default function LiveTrackingForm({
   // einzige Kopie der Fahrt ist.
   const [gastVerwerfenOffen, setGastVerwerfenOffen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  // Früher Hinweis während der Fahrt und die abschliessende Beurteilung des
+  // fertigen Trails im Fazit. Massgeblich ist beides nicht: abgelehnt wird
+  // serverseitig in logTrackedCompletion, und auch dort nur ein Flug — das
+  // Bahn-Verdikt fragt bloss nach (siehe lib/bewegungsprofil.ts).
+  const bewegungswarnung = useBewegungswarnung(phase === "tracking", recorder.liveTrailPoints);
+  const bewegungsbefund = useMemo(() => {
+    if (phase !== "finished") return null;
+    const profil = bewerteBewegungsprofil(finishedTrail);
+    if (!profil.begruendung) return null;
+    return { blockiert: profil.blockiert, text: profil.begruendung };
+  }, [phase, finishedTrail]);
 
   const coveragePercent = useMemo(() => {
     if (phase !== "finished") return null;
@@ -224,6 +250,10 @@ export default function LiveTrackingForm({
             // die Strecke bleibt dagegen an — siehe centerOnFirstLocation
             // weiter unten.
             routesClickable={false}
+            // Hebt die gefahrene Strecke hervor und lässt die Kontext-Strecken
+            // zurücktreten — und hält vor allem den Kartenausschnitt auf der
+            // gefahrenen Strecke, statt auf alle mitgezeichneten einzupassen.
+            primaryRouteId={route.id}
             userLocation={recorder.position}
             userAccuracyM={recorder.accuracyM}
             userHeadingDeg={recorder.headingDeg}
@@ -287,6 +317,18 @@ export default function LiveTrackingForm({
             </p>
           )}
           {recorder.locationError && <p role="alert" className="text-sm text-danger">{recorder.locationError}</p>}
+          {/* Zug/Flug erkannt: lieber jetzt sagen, dass diese Aufzeichnung
+              nicht gespeichert werden kann, als erst im Fazit. */}
+          {/* Wie bei der freien Fahrt: rot nur, wenn das Speichern daran
+              scheitert. Eine mutmassliche Bahnfahrt fragt bloss nach. */}
+          {bewegungswarnung && (
+            <p
+              role="status"
+              className={`text-sm ${bewegungswarnung.blockiert ? "text-danger" : "text-muted"}`}
+            >
+              {bewegungswarnung.text}
+            </p>
+          )}
           {/* Vorwarnung statt einer Überraschung am Ziel — siehe
               FreeRideForm.tsx. */}
           {istGast && (
@@ -300,7 +342,7 @@ export default function LiveTrackingForm({
               <button
                 type="button"
                 onClick={recorder.stop}
-                className={buttonVariants({ variant: "accent" })}
+                className={buttonVariants({ variant: "accent", size: "lg" })}
               >
                 Strecke beenden
               </button>
@@ -309,7 +351,7 @@ export default function LiveTrackingForm({
                 <button
                   type="button"
                   onClick={handleExit}
-                  className={buttonVariants({ variant: "secondary" })}
+                  className={buttonVariants({ variant: "secondary", size: "lg" })}
                 >
                   Abbrechen
                 </button>
@@ -374,6 +416,21 @@ export default function LiveTrackingForm({
             </p>
           ))}
 
+        {/* Was der Server beim Speichern ohnehin ablehnt, steht hier schon —
+            mit Begründung, damit nicht nur "ging nicht" übrig bleibt. Das
+            Formular bleibt bedienbar: die Ablehnung entscheidet der Server,
+            nicht diese Anzeige. */}
+        {bewegungsbefund && (
+          <Card surface className="flex flex-col gap-2 p-4 text-sm">
+            <p className="font-medium text-foreground">
+              {bewegungsbefund.blockiert
+                ? "Diese Fahrt lässt sich nicht speichern."
+                : "Sieht das nach einer Autofahrt aus?"}
+            </p>
+            <p className="text-muted">{bewegungsbefund.text}</p>
+          </Card>
+        )}
+
         {/* Dasselbe Anmelde-Gate wie bei der freien Fahrt: aufzeichnen darf
             jeder, ein Konto braucht erst das Speichern. Die Aufzeichnung
             liegt bis dahin unter dem Gast-Schlüssel im Browser und wird nach
@@ -437,7 +494,11 @@ export default function LiveTrackingForm({
             onDiscard={handleExit}
             visibility={{
               publicDisabled: belowCoverageThreshold,
-              publicDisabledHint: `Diese Fahrt deckt nur ${coveragePercent}% der offiziellen Strecke ab — evtl. abgekürzt oder am falschen Punkt gestartet/beendet. Sie bleibt privat gespeichert, kann aber nicht öffentlich geteilt werden.`,
+              // Seit 0078 ist der Deckungsgrad das Minimum aus "berührt" und
+              // "zurückgelegte Länge". Der dritte Grund im Text ist der neue:
+              // bei einer Strecke, die über dieselbe Strasse zurückführt, kann
+              // alles berührt und trotzdem nur die Hälfte gefahren sein.
+              publicDisabledHint: `Diese Fahrt deckt nur ${coveragePercent}% der offiziellen Strecke ab — evtl. abgekürzt, am falschen Punkt gestartet/beendet, oder die Strecke führt zurück und du bist nur eine Richtung gefahren. Sie bleibt privat gespeichert, kann aber nicht öffentlich geteilt werden.`,
               publicHint:
                 "Öffentlich: erscheint auf Bestenlisten und deinem öffentlichen Profil. Später jederzeit umschaltbar.",
               privateHint:

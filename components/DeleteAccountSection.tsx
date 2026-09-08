@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
@@ -17,10 +18,27 @@ export default function DeleteAccountSection() {
   const [state, formAction, pending] = useActionState(deleteAccount, initialState);
 
   return (
-    <div className="mt-2 border-t border-border pt-3">
-      <Button type="button" variant="danger" size="sm" onClick={() => setOpen(true)}>
+    // Gefahrenzone, standardmässig zugeklappt: der rote Button soll nicht
+    // dauerhaft neben "Passwort ändern" stehen, als wäre er eine Einstellung
+    // wie jede andere. Natives <details> wie die Unterabschnitte der
+    // Profilseite (app/profil/page.tsx, SectionSummary) — gleiche Klassen,
+    // kein eigener State.
+    <details className="group mt-2 border-t border-border pt-3">
+      <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
         Konto löschen
-      </Button>
+        <ChevronDown
+          className="h-4 w-4 text-muted transition-transform duration-fast group-open:rotate-180"
+          aria-hidden="true"
+        />
+      </summary>
+      <div className="mt-3 flex flex-col gap-3">
+        <p className="text-sm text-muted">
+          Entfernt dein Profil und deine GPS-Tracks endgültig; Fahrten und Bewertungen bleiben anonym.
+        </p>
+        <Button type="button" variant="danger" size="sm" className="self-start" onClick={() => setOpen(true)}>
+          Konto löschen
+        </Button>
+      </div>
 
       <Dialog open={open} onClose={() => setOpen(false)} title="Konto endgültig löschen">
         <p className="mb-4 text-sm text-muted">
@@ -50,6 +68,6 @@ export default function DeleteAccountSection() {
           </div>
         </form>
       </Dialog>
-    </div>
+    </details>
   );
 }

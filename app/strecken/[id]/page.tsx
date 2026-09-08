@@ -13,7 +13,7 @@ import ElevationProfile from "@/components/ElevationProfile";
 import PhotoGallery from "@/components/PhotoGallery";
 import RouteLeaderboardPreview from "@/components/RouteLeaderboardPreview";
 import OfflineRouteButton from "@/components/OfflineRouteButton";
-import { getRoute } from "@/lib/routes";
+import { getKontextStrecken, getRoute } from "@/lib/routes";
 import { formatKm } from "@/lib/format";
 import { getRatings, getOwnRating } from "@/lib/ratings";
 import { getPersonalBestSeconds } from "@/lib/completions";
@@ -23,7 +23,7 @@ import { isModerator } from "@/lib/moderation";
 import { getPremiumStatus, maxFotosProFahrt } from "@/lib/premium";
 import { getRouteLeaderboard } from "@/lib/leaderboard";
 import { fetchCurrentWeather } from "@/lib/weather";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { KATEGORIEN } from "@/lib/constants";
 import { averageTempolimit, estimateRouteDurationMinutes, formatMinutes } from "@/lib/geo";
 import type { Vehicle } from "@/types/database";
@@ -73,16 +73,25 @@ export default async function StreckeDetailPage({
   const { fortsetzen } = await searchParams;
   const supabase = await createClient();
 
-  // getRoute() und auth.getUser() sind voneinander unabhängig (Routenabruf
+  // getRoute() und getCurrentUser() sind voneinander unabhängig (Routenabruf
   // braucht den Nutzer nicht, RLS entscheidet allein über die route_id) —
   // parallel statt nacheinander gestartet.
-  const [route, {
-    data: { user },
-  }] = await Promise.all([getRoute(id), supabase.auth.getUser()]);
+  //
+  // getCurrentUser() statt supabase.auth.getUser(): der Aufruf ist bei
+  // @supabase/ssr ein Netzwerk-Roundtrip gegen GoTrue, und auf dieser Seite
+  // brauchen ihn ausser der Seite selbst auch <Header /> und
+  // getPremiumStatus(). Ueber den request-weiten cache() wird daraus einer
+  // statt dreier.
+  const [route, user] = await Promise.all([getRoute(id), getCurrentUser()]);
 
   if (!route) notFound();
 
-  const [ratings, ownRating, favorite, vehicles, personalBestSeconds, photos, leaderboard, weather, moderator, premiumStatus] =
+  // kontextStrecken: die umliegenden Strecken für die Karte des
+  // Aufzeichnungsschirms (siehe GefahrenSection/LiveTrackingForm). Sie werden
+  // hier serverseitig mitgeladen, weil GefahrenSection eine Client-Komponente
+  // ist und selbst nicht abfragen kann — im selben Promise.all wie alles
+  // andere, also ohne die Antwortzeit zu verlängern.
+  const [ratings, ownRating, favorite, vehicles, personalBestSeconds, photos, leaderboard, weather, moderator, premiumStatus, kontextStrecken] =
     await Promise.all([
       getRatings(id),
       user ? getOwnRating(id, user.id) : Promise.resolve(null),
@@ -100,6 +109,7 @@ export default async function StreckeDetailPage({
       fetchCurrentWeather(route.start_geojson.coordinates as [number, number]),
       user ? isModerator(user.id) : Promise.resolve(false),
       getPremiumStatus(),
+      getKontextStrecken(route),
     ]);
 
   // Strukturierte Daten für die Streckenseite — der einzige öffentlich
@@ -212,6 +222,7 @@ export default async function StreckeDetailPage({
             hingehört. */}
         <GefahrenSection
           route={route}
+          kontextStrecken={kontextStrecken}
           userId={user?.id ?? null}
           vehicles={vehicles}
           personalBestSeconds={personalBestSeconds}

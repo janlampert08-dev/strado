@@ -11,7 +11,7 @@ import Skeleton from "@/components/ui/Skeleton";
 import { haversineKm } from "@/lib/geo";
 import { matchesSearch } from "@/lib/search";
 import { computeSignatures } from "@/lib/signature";
-import type { RouteGeoJSON } from "@/types/database";
+import type { ExploreRoute } from "@/types/database";
 
 // URL-Sync für den Suchtext wird debounced (siehe searchInput-Effekt unten),
 // damit nicht jeder Tastendruck einen router.replace() (und damit einen
@@ -59,7 +59,7 @@ export default function ExploreView({
   loadError = false,
   loggedIn,
 }: {
-  routes: RouteGeoJSON[];
+  routes: ExploreRoute[];
   loadError?: boolean;
   loggedIn: boolean;
 }) {
@@ -102,7 +102,7 @@ export default function ExploreView({
   const [hoveredRouteId, setHoveredRouteId] = useState<string | null>(null);
   // Vom Logo angestossener Zufallsvorschlag (LogoLink.tsx): auf der
   // Startseite führt ein Klick auf die Wortmarke sonst nirgendwohin.
-  const [zufallsstrecke, setZufallsstrecke] = useState<RouteGeoJSON | null>(null);
+  const [zufallsstrecke, setZufallsstrecke] = useState<ExploreRoute | null>(null);
 
   // Bottom-Sheet-Container (nur < md relevant — ab md greift die feste
   // Liste-links/Karte-rechts-Aufteilung unverändert, siehe Klassen unten).

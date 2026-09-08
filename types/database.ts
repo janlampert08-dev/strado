@@ -78,15 +78,36 @@ export interface Route {
 
 // Zeilenform von public.routes_geojson (siehe 0002_routes_geojson_view.sql) —
 // dieselben Felder wie Route, aber die geography-Spalten als GeoJSON statt WKB.
-export interface RouteGeoJSON {
+/**
+ * Das Minimum, das components/RouteMap.tsx braucht, um eine Strecke zu
+ * zeichnen: Linie, Start- und Zielpunkt, Name fürs Popup, Rundfahrt-Flag für
+ * die Endpunkte. Herausgezogen, damit Aufrufer, die nur zeichnen wollen,
+ * nicht die ganze Zeile mitschicken müssen — Höhenprofil, Tempolimits und
+ * Charaktertext sind zusammen um ein Vielfaches grösser als alles hier und
+ * haben auf einer Karte nichts verloren (siehe getKontextStrecken in
+ * lib/routes.ts).
+ *
+ * Damit ist der Typ zugleich das, was RouteMap von einer Strecke verlangt:
+ * eine schlank geladene Zeile (ExploreRoute) erfüllt ihn ebenso wie eine
+ * vollständige (RouteGeoJSON erweitert ihn), die Karte fordert also keine
+ * Spalte ein, die sie nicht anfasst.
+ */
+export interface KartenStrecke {
   id: string;
   name: string;
-  region: string;
-  start_ort: string;
-  ziel_ort: string;
   start_geojson: GeoPoint;
   ziel_geojson: GeoPoint;
   geometry_geojson: GeoLineString;
+  ist_rundfahrt: boolean;
+  /** Optional, weil die Tempolimit-Ebene ohnehin nur bei genau einer Strecke
+   *  gezeichnet wird — Kontext-Strecken schicken sie deshalb nicht mit. */
+  tempolimits?: TempolimitSegment[] | null;
+}
+
+export interface RouteGeoJSON extends KartenStrecke {
+  region: string;
+  start_ort: string;
+  ziel_ort: string;
   hoehe_m: number | null;
   laenge_km: number;
   max_steigung_prozent: number | null;
@@ -97,11 +118,39 @@ export interface RouteGeoJSON {
   charakter_text: string | null;
   tempolimits: TempolimitSegment[] | null;
   hoehenprofil: HoehenprofilPunkt[] | null;
-  ist_rundfahrt: boolean;
   erstellt_von: string | null;
   created_at: string;
   ist_privat: boolean;
 }
+
+// Genau die Spalten, die die Explore-Ansicht und der Orientierungs-Layer der
+// freien Fahrt brauchen (app/page.tsx, app/fahrten/neu/page.tsx).
+//
+// getRoutes() lud vorher select("*") und schickte damit für JEDE Strecke auch
+// hoehenprofil, charakter_text, kategorien und die Verwaltungsspalten in die
+// RSC-Nutzlast der Startseite — Felder, die dort keine Komponente anfasst.
+// Die Geometrie muss mit (die Karte zeichnet sie), das Höhenprofil nicht.
+//
+// Als Pick<> statt als eigenes Interface, damit die Spaltennamen nur an einer
+// Stelle stehen und eine spätere Änderung an RouteGeoJSON hier sofort auffällt.
+export type ExploreRoute = Pick<
+  RouteGeoJSON,
+  | "id"
+  | "name"
+  | "region"
+  | "start_ort"
+  | "ziel_ort"
+  | "start_geojson"
+  | "ziel_geojson"
+  | "geometry_geojson"
+  | "hoehe_m"
+  | "laenge_km"
+  | "max_steigung_prozent"
+  | "kehren"
+  | "saison_status"
+  | "tempolimits"
+  | "ist_rundfahrt"
+>;
 
 export interface RouteRating {
   id: string;

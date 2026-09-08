@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isRateLimited } from "@/lib/rateLimit";
 import { computeRouteCoverage, COVERAGE_THRESHOLD_PERCENT } from "@/lib/routeCoverage";
 import { computeTrailStats, type TrailPoint } from "@/lib/geo";
+import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
 import {
   MAX_JUMP_KM,
   MAX_RIDE_SECONDS,
@@ -124,6 +125,32 @@ function implausibilityReason(
   dauerSekunden: number,
 ): string | null {
   if (!(distanzKm > 0) || dauerSekunden <= 0) return "Ungültige Tracking-Daten.";
+
+  // Bewegungsprofil: stammt die Bewegung überhaupt von einem
+  // Strassenfahrzeug, oder sieht sie nach Bahn/Flug aus (siehe
+  // lib/bewegungsprofil.ts)? Bewusst hier und nicht nur im Client: der
+  // Client-Hinweis ist Komfort, diese Stelle ist die Kontrolle. Sie sitzt in
+  // implausibilityReason, weil damit beide Speicherwege (Streckenfahrt und
+  // freie Fahrt) und auch die automatisch erkannten Streckenabschnitte
+  // innerhalb einer freien Fahrt dieselbe Prüfung durchlaufen.
+  //
+  // NEUE GESCHÄFTSREGEL: Fahrten können dadurch abgelehnt werden — aber nur
+  // die eindeutigen. Abgewiesen wird ausschliesslich, was `blockiert` setzt,
+  // heute also der Flug. Das Bahn-Verdikt warnt im Client und kommt hier
+  // bewusst nicht an: seine Bedingungen erfüllt auch eine kurvenfreie Etappe
+  // auf einer unbegrenzten Autobahn, und eine echte Fahrt abzulehnen wiegt
+  // schwerer als ein Zug in der Liste. Im Zweifel (zu kurze/dünne
+  // Aufzeichnung) fällt ohnehin kein Urteil.
+  //
+  // Steht vor der Tempoprüfung, weil diese Begründung die genauere ist: ein
+  // Flug reisst auch MAX_PLAUSIBLE_KMH (200), und stünde die Tempoprüfung
+  // davor, bekäme praktisch jeder Flug das allgemeine "Unrealistische
+  // Durchschnittsgeschwindigkeit erkannt." statt der Erklärung, die die
+  // Formulare live schon anzeigen. Am Ergebnis ändert die Reihenfolge
+  // nichts — beide Wege lehnen ab; sie entscheidet nur, was der Nutzer liest.
+  const bewegung = bewerteBewegungsprofil(trail);
+  if (bewegung.blockiert && bewegung.begruendung) return bewegung.begruendung;
+
   if (distanzKm / (dauerSekunden / 3600) > MAX_PLAUSIBLE_KMH) {
     return "Unrealistische Durchschnittsgeschwindigkeit erkannt.";
   }
@@ -133,6 +160,7 @@ function implausibilityReason(
   if (maxJumpKm(trail) > MAX_JUMP_KM) {
     return "Die Aufzeichnung enthält eine zu grosse Lücke zwischen zwei Punkten.";
   }
+
   return null;
 }
 

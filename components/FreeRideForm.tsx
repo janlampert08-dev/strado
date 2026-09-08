@@ -8,6 +8,7 @@ import { Route as RouteIcon } from "lucide-react";
 import { logFreeRide, type FreeRideFormState } from "@/lib/actions/completions";
 import { useRideRecorder } from "@/components/useRideRecorder";
 import { useLiveLapHint } from "@/components/useLiveLapHint";
+import { useBewegungswarnung } from "@/components/useBewegungswarnung";
 import {
   FREE_RIDE_STORAGE_KEY,
   GUEST_TRACKING_USER_ID,
@@ -16,7 +17,8 @@ import {
 import RideSummaryForm from "@/components/RideSummaryForm";
 import { formatDuration } from "@/lib/format";
 import { movingSeconds, publicationBlockReason } from "@/lib/track";
-import type { RouteGeoJSON, Vehicle } from "@/types/database";
+import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
+import type { ExploreRoute, Vehicle } from "@/types/database";
 import { fieldClassName } from "@/components/ui/Input";
 import { buttonVariants } from "@/components/ui/Button";
 import Skeleton from "@/components/ui/Skeleton";
@@ -58,7 +60,7 @@ export default function FreeRideForm({
   // Karte folgt der GPS-Position). Ein Streckenbezug entsteht daraus nicht —
   // eine freie Fahrt bleibt eine freie Fahrt, auch wenn sie zufällig über
   // eine kuratierte Strecke führt.
-  routes: RouteGeoJSON[];
+  routes: ExploreRoute[];
   // Der Marker aus ?fortsetzen=<token>, mit dem sich die Rückkehr aus dem
   // Anmelde-Gate ausweist — nur damit darf die als Gast aufgezeichnete Fahrt
   // an dieses Konto übergehen (siehe adoptGuestTrackingSnapshot).
@@ -81,6 +83,18 @@ export default function FreeRideForm({
   // Streckenabschnitte bleibt ausschliesslich die serverseitige Erkennung
   // beim Speichern (logFreeRide).
   const liveLapHint = useLiveLapHint(phase === "tracking", recorder.liveTrailPoints, routes);
+
+  // Früher Hinweis während der Fahrt und die abschliessende Beurteilung des
+  // fertigen Trails im Fazit. Massgeblich ist beides nicht: abgelehnt wird
+  // serverseitig in logFreeRide, und auch dort nur ein Flug — das
+  // Bahn-Verdikt fragt bloss nach (siehe lib/bewegungsprofil.ts).
+  const bewegungswarnung = useBewegungswarnung(phase === "tracking", recorder.liveTrailPoints);
+  const bewegungsbefund = useMemo(() => {
+    if (phase !== "finished") return null;
+    const profil = bewerteBewegungsprofil(recorder.finishedTrail);
+    if (!profil.begruendung) return null;
+    return { blockiert: profil.blockiert, text: profil.begruendung };
+  }, [phase, recorder.finishedTrail]);
 
   const [titel, setTitel] = useState("");
   // Dieselbe Rückfrage wie im angemeldeten Pfad (RideSummaryForm).
@@ -220,6 +234,23 @@ export default function FreeRideForm({
               </dd>
             </div>
           </dl>
+
+          {/* Zwei Fälle in einer Karte: was der Server ohnehin ablehnt
+              (Flug), steht hier schon mit Begründung, damit nicht nur "ging
+              nicht" übrig bleibt — und der Grenzfall (Bahn), der bewusst
+              nur fragt und das Speichern nicht anrührt. Das Formular bleibt
+              in beiden Fällen bedienbar: entschieden wird auf dem Server,
+              nicht in dieser Anzeige. */}
+          {bewegungsbefund && (
+            <Card surface className="flex flex-col gap-2 p-4 text-sm">
+              <p className="font-medium text-foreground">
+                {bewegungsbefund.blockiert
+                  ? "Diese Fahrt lässt sich nicht speichern."
+                  : "Sieht das nach einer Autofahrt aus?"}
+              </p>
+              <p className="text-muted">{bewegungsbefund.text}</p>
+            </Card>
+          )}
 
           {/* Das Anmelde-Gate des Kernloops: aufzeichnen darf jeder, ein
               Konto braucht erst das Speichern. Bewusst hier und nicht schon
@@ -406,13 +437,25 @@ export default function FreeRideForm({
               : `„${liveLapHint.routeName}" wird erkannt · ${Math.round(liveLapHint.fraction * 100)}%`}
           </p>
         )}
+        {/* Zug oder Flug erkannt. Der Ton hängt an der Folge: ein Flug
+            lässt sich am Ende nicht speichern (rot), eine mutmassliche
+            Bahnfahrt schon — die fragt nur nach und darf deshalb nicht wie
+            ein Fehler aussehen. */}
+        {bewegungswarnung && (
+          <p
+            role="status"
+            className={`text-sm ${bewegungswarnung.blockiert ? "text-danger" : "text-muted"}`}
+          >
+            {bewegungswarnung.text}
+          </p>
+        )}
         {recorder.locationError && <p role="alert" className="text-sm text-danger">{recorder.locationError}</p>}
         <div className="flex flex-wrap items-center justify-between gap-3">
           {recorder.hasStarted ? (
             <button
               type="button"
               onClick={recorder.stop}
-              className={buttonVariants({ variant: "accent" })}
+              className={buttonVariants({ variant: "accent", size: "lg" })}
             >
               Fahrt beenden
             </button>
@@ -420,7 +463,7 @@ export default function FreeRideForm({
             <button
               type="button"
               onClick={handleExit}
-              className={buttonVariants({ variant: "secondary" })}
+              className={buttonVariants({ variant: "secondary", size: "lg" })}
             >
               Abbrechen
             </button>

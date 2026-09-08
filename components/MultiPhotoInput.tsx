@@ -56,6 +56,44 @@ export default function MultiPhotoInput({
     if (inputRef.current) inputRef.current.files = dt.files;
   }
 
+  // React 19 setzt ein <form action={…}> nach jedem Lauf der Action zurück —
+  // auch nach einem Fehlschlag, und auch dann, wenn die Seite stehen bleibt
+  // (react-dom ruft dafür form.reset() auf). Für die Vorschauen hier ist das
+  // unsichtbar: die liegen in React-State und überleben. input.files liegt
+  // dagegen im DOM und ist danach LEER.
+  //
+  // Der Fazit-Screen zeigt nach einem gescheiterten Speichern also weiter n
+  // Fotos an, während ein zweiter Tap auf "Fahrt speichern" null Fotos
+  // mitschickt — stiller Datenverlust genau in dem Moment, in dem der Nutzer
+  // es noch einmal versucht. Deshalb nach dem Reset wieder auffüllen.
+  //
+  // Der reset-Event feuert VOR dem eigentlichen Zurücksetzen (HTML-Standard),
+  // die Zuweisung muss also einen Tick später laufen. entriesRef statt
+  // entries, damit der einmal registrierte Listener nicht über den
+  // Anfangswert geschlossen bleibt.
+  useEffect(() => {
+    const form = inputRef.current?.form;
+    if (!form) {
+      // Ohne umgebendes <form> greift die Wiederherstellung still nicht —
+      // und der Ausfall sähe genau aus wie der Fehler, den sie behebt:
+      // Vorschauen sichtbar, null Dateien abgeschickt. Ein Effekt ohne
+      // Dependencies merkt einen später eingehängten Input nicht, deshalb
+      // hier wenigstens laut sein. Heute unerreichbar (die einzige
+      // Verwendung steht in RideSummaryForm innerhalb des Formulars).
+      console.warn(
+        "MultiPhotoInput steht ausserhalb eines <form> — ausgewählte Fotos gehen nach einem fehlgeschlagenen Absenden verloren.",
+      );
+      return;
+    }
+
+    function handleReset() {
+      queueMicrotask(() => syncInputFiles(entriesRef.current));
+    }
+
+    form.addEventListener("reset", handleReset);
+    return () => form.removeEventListener("reset", handleReset);
+  }, []);
+
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     if (files.length === 0) return;

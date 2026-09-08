@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Header from "@/components/Header";
 import PremiumPurchaseView from "@/components/PremiumPurchaseView";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumAngebot } from "@/lib/actions/billing";
 import { getPremiumStatus } from "@/lib/premium";
 
@@ -12,10 +12,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Premium – Strado" };
 
 export default async function PremiumPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) redirect("/anmelden");
 

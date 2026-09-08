@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bildEndungFuerMime, isValidUuid } from "@/lib/validation";
+import { BILD_ENDUNGEN, bildEndungFuerMime, isValidUuid } from "@/lib/validation";
 
 describe("isValidUuid", () => {
   it("accepts a well-formed v4 uuid", () => {
@@ -53,5 +53,27 @@ describe("bildEndungFuerMime", () => {
     expect(bildEndungFuerMime("toString")).toBeNull();
     expect(bildEndungFuerMime("__proto__")).toBeNull();
     expect(bildEndungFuerMime("hasOwnProperty")).toBeNull();
+  });
+});
+
+// Die Liste steuert das Aufräumen alter Avatar-Fassungen (uploadAvatar und
+// deleteAccount): Fehlt eine Endung darin, bleibt genau diese Datei nach dem
+// Ersetzen bzw. nach der Kontolöschung im öffentlichen avatars-Bucket
+// liegen. Sie muss deshalb deckungsgleich mit dem sein, was
+// bildEndungFuerMime() überhaupt vergeben kann.
+describe("BILD_ENDUNGEN", () => {
+  it("enthält jede Endung, die bildEndungFuerMime vergeben kann", () => {
+    const vergeben = ["image/jpeg", "image/png", "image/webp", "image/gif"].map((mime) =>
+      bildEndungFuerMime(mime),
+    );
+    for (const endung of vergeben) {
+      expect(endung).not.toBeNull();
+      expect(BILD_ENDUNGEN).toContain(endung as string);
+    }
+  });
+
+  it("enthält keine Endung, die nie vergeben wird", () => {
+    expect(BILD_ENDUNGEN).toHaveLength(new Set(BILD_ENDUNGEN).size);
+    expect(BILD_ENDUNGEN).not.toContain("svg");
   });
 });

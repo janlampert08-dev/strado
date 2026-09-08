@@ -11,8 +11,6 @@ function totalsRow(overrides: Partial<LeaderboardUserTotalsRow>): LeaderboardUse
     user_id: "u1",
     display_name: "Alice",
     avatar_url: null,
-    ist_premium: false,
-    zeigt_premium_badge: false,
     fahrten_count: 3,
     hoehenmeter: 2000,
     km: 40,
@@ -28,8 +26,6 @@ function routeRow(overrides: Partial<RouteLeaderboardRow>): RouteLeaderboardRow 
     display_name: "Alice",
     avatar_url: null,
     dauer_sekunden: 1000,
-    ist_premium: false,
-    zeigt_premium_badge: false,
     ...overrides,
   };
 }
@@ -48,7 +44,6 @@ describe("toEntry", () => {
       name: "Alice",
       avatarUrl: null,
       value: 5,
-      isPremiumBadge: false,
     });
   });
 
@@ -61,34 +56,6 @@ describe("toEntry", () => {
       "https://example.com/a.jpg",
     );
     expect(toEntry(totalsRow({ avatar_url: null }), 1).avatarUrl).toBeNull();
-  });
-
-  // Das Abzeichen verlangt BEIDES: ein laufendes Abo und das eigene Opt-in.
-  // Die Wahrheitstabelle steht ausgeschrieben da, weil beide Hälften je eine
-  // eigene Zusage tragen — die eine, dass niemand ohne Abo ein Abzeichen
-  // bekommt, die andere, dass niemand gegen seinen Willen markiert wird.
-  it("shows the premium badge only with an active subscription AND the opt-in", () => {
-    expect(
-      toEntry(totalsRow({ ist_premium: true, zeigt_premium_badge: true }), 1).isPremiumBadge,
-    ).toBe(true);
-  });
-
-  it("hides the badge when the subscription has ended, even with the opt-in still set", () => {
-    expect(
-      toEntry(totalsRow({ ist_premium: false, zeigt_premium_badge: true }), 1).isPremiumBadge,
-    ).toBe(false);
-  });
-
-  it("hides the badge for a paying user who did not opt in", () => {
-    expect(
-      toEntry(totalsRow({ ist_premium: true, zeigt_premium_badge: false }), 1).isPremiumBadge,
-    ).toBe(false);
-  });
-
-  it("hides the badge when neither holds", () => {
-    expect(
-      toEntry(totalsRow({ ist_premium: false, zeigt_premium_badge: false }), 1).isPremiumBadge,
-    ).toBe(false);
   });
 
   it("uses the value passed in rather than re-reading a metric off the row", () => {

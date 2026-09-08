@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import LiveTrackingForm from "@/components/LiveTrackingForm";
-import type { RouteGeoJSON, Vehicle } from "@/types/database";
+import type { KartenStrecke, RouteGeoJSON, Vehicle } from "@/types/database";
+import { buttonVariants } from "@/components/ui/Button";
 
 export default function GefahrenSection({
   route,
+  kontextStrecken,
   userId,
   vehicles,
   personalBestSeconds,
@@ -13,6 +15,11 @@ export default function GefahrenSection({
   maxPhotos,
 }: {
   route: RouteGeoJSON;
+  // Umliegende freigegebene Strecken, die auf der Aufzeichnungskarte zur
+  // Orientierung mitgezeichnet werden (serverseitig ausgewählt, siehe
+  // getKontextStrecken in lib/routes.ts). Rein darstellend: sie sind dort
+  // weder anklickbar noch für Start-/Zielgate oder Deckungsgrad relevant.
+  kontextStrecken: KartenStrecke[];
   // null heisst abgemeldeter Besucher — aufzeichnen darf er, das Konto
   // verlangt erst das Speichern (siehe LiveTrackingForm.tsx).
   userId: string | null;
@@ -50,10 +57,15 @@ export default function GefahrenSection({
   if (!open) {
     return (
       <div className="flex justify-center border-t border-border pt-6">
+        {/* Handgebaute Pille durch die Design-System-Variante ersetzt (Kernregel
+            14): dieselbe Höhe wie zuvor, aber jetzt aus derselben Quelle wie
+            die übrigen Bedienelemente der Aufzeichnung — px-10 statt px-6
+            bleibt als Zusatz, weil diese eine Schaltfläche bewusst breiter
+            steht als die im Vollbild. */}
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="rounded-full border border-accent bg-accent px-10 py-3.5 text-base font-medium text-background transition-transform duration-fast active:scale-95 hover:opacity-90"
+          className={buttonVariants({ variant: "accent", size: "lg", className: "px-10" })}
         >
           Strecke starten
         </button>
@@ -64,6 +76,7 @@ export default function GefahrenSection({
   return (
     <LiveTrackingForm
       route={route}
+      kontextStrecken={kontextStrecken}
       userId={userId}
       vehicles={vehicles}
       personalBestSeconds={personalBestSeconds}

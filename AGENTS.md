@@ -37,8 +37,11 @@ is what should be corrected.
   Founder seats (Gründerpreis) were sold until 2026-09-07 and are no longer
   offered: the DB functions from `0065`–`0069` remain but are no longer
   called, and `STRIPE_PREMIUM_PRICE_ID_GRUENDER` only names existing
-  subscriptions. `lib/leaderboard.ts` evaluates `ist_premium && zeigt_premium_badge`
-  for the badge. This section previously said the opposite — that the Premium
+  subscriptions. The "Gold-Abzeichen" opt-in was removed on 2026-09-07 — it
+  was never rendered by any component; the column
+  `profiles.zeigt_premium_badge` remains in the schema and the views, but no
+  longer reaches the app: `lib/leaderboard.ts` neither selects nor evaluates
+  it. This section previously said the opposite — that the Premium
   components were commented out and re-enabling them was the active workstream
   — which is why the paid path went unaudited until 2026-09-07: a security
   pass scoped from this file skipped it as not-yet-shipped. Treat everything

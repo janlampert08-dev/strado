@@ -42,22 +42,40 @@ export default function ReportedContentActions({
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  // Siehe ModerationActions.tsx: die Aktionen melden ihren Ausgang, ein
+  // Fehlschlag darf nicht als "erledigt" durchgehen.
+  const [fehler, setFehler] = useState<string | null>(null);
 
   const { dismiss, act: remove, label } = ACTIONS[type];
 
+  function ausfuehren(aktion: () => Promise<{ error: string | null }>) {
+    setFehler(null);
+    startTransition(async () => {
+      const { error } = await aktion();
+      setFehler(error);
+    });
+  }
+
   return (
-    <div className="flex gap-2">
-      <Button
-        variant="secondary"
-        size="sm"
-        onClick={() => startTransition(() => dismiss(reportId))}
-        disabled={pending}
-      >
-        Ignorieren
-      </Button>
-      <Button variant="danger" size="sm" onClick={() => setConfirmOpen(true)} disabled={pending}>
-        {label}
-      </Button>
+    <div className="flex flex-col gap-2">
+      <div className="flex gap-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => ausfuehren(() => dismiss(reportId))}
+          disabled={pending}
+        >
+          Ignorieren
+        </Button>
+        <Button variant="danger" size="sm" onClick={() => setConfirmOpen(true)} disabled={pending}>
+          {label}
+        </Button>
+      </div>
+      {fehler && (
+        <p role="alert" className="text-xs text-danger">
+          {fehler}
+        </p>
+      )}
       <ConfirmDialog
         open={confirmOpen}
         title={label}
@@ -68,7 +86,7 @@ export default function ReportedContentActions({
         onCancel={() => setConfirmOpen(false)}
         onConfirm={() => {
           setConfirmOpen(false);
-          startTransition(() => remove(targetId));
+          ausfuehren(() => remove(targetId));
         }}
       />
     </div>

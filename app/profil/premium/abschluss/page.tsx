@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import Header from "@/components/Header";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/server";
 import { confirmSubscription } from "@/lib/actions/billing";
 import { buttonVariants } from "@/components/ui/Button";
 
@@ -24,10 +24,7 @@ export default async function PremiumAbschlussPage({
 }) {
   const { abo } = await searchParams;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) redirect("/anmelden");
 

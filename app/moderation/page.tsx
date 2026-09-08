@@ -3,7 +3,7 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import ModerationActions from "@/components/ModerationActions";
 import ReportedContentActions from "@/components/ReportedContentActions";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/server";
 import {
   isModerator,
   getPendingRoutes,
@@ -22,10 +22,7 @@ const REPORT_REASON_LABEL: Record<string, string> = {
 };
 
 export default async function ModerationPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) redirect("/anmelden");
   if (!(await isModerator(user.id))) redirect("/");
