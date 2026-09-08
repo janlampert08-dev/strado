@@ -5,7 +5,7 @@
 // Tests bleiben bestehen, damit die Filter wieder eingehängt werden können,
 // ohne sie neu zu schreiben.
 import { KATEGORIEN } from "@/lib/constants";
-import type { Kategorie, RouteGeoJSON } from "@/types/database";
+import type { ExploreRoute, Kategorie } from "@/types/database";
 
 export interface AdvancedFilters {
   minKm: number | null;
@@ -36,7 +36,7 @@ export function countActiveFilters(f: AdvancedFilters): number {
 // Alle Filter UND-verknüpft — jeder engt eine andere Eigenschaft ein, im
 // Gegensatz zur ODER-Verknüpfung der Kategorie-Chips (lib/search.ts bzw.
 // ExploreView.tsx), die dieselbe Eigenschaft (Kategorie) mehrfach abdecken.
-export function applyAdvancedFilters(routes: RouteGeoJSON[], f: AdvancedFilters): RouteGeoJSON[] {
+export function applyAdvancedFilters<T extends ExploreRoute>(routes: T[], f: AdvancedFilters): T[] {
   let filtered = routes;
   if (f.minKm !== null) filtered = filtered.filter((r) => r.laenge_km >= f.minKm!);
   if (f.maxKm !== null) filtered = filtered.filter((r) => r.laenge_km <= f.maxKm!);

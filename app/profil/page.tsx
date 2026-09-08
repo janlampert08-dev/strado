@@ -21,7 +21,7 @@ import ActivityHeatmap from "@/components/ActivityHeatmap";
 import CountUp from "@/components/CountUp";
 import FollowCounts from "@/components/FollowCounts";
 import PremiumCard from "@/components/PremiumCard";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
 import { getFollowCounts, getFollowerProfiles, getFollowingProfiles } from "@/lib/follows";
 import { formatDuration, formatKm } from "@/lib/format";
@@ -65,9 +65,7 @@ function SectionSummary({
 
 export default async function ProfilPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) {
     redirect("/anmelden");

@@ -6,7 +6,7 @@ import KudosButton from "@/components/KudosButton";
 import ProfileSearch from "@/components/ProfileSearch";
 import { getFeed, type FeedScope } from "@/lib/feed";
 import { freieFahrtTitel } from "@/lib/completions";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/server";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import { buttonVariants } from "@/components/ui/Button";
@@ -28,10 +28,7 @@ export default async function FeedPage({
   const { scope: scopeParam } = await searchParams;
   const scope: FeedScope = scopeParam === "following" ? "following" : "global";
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   const feed = await getFeed(scope, user?.id ?? null);
 

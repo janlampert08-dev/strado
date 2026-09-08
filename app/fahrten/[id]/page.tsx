@@ -25,7 +25,7 @@ import { freieFahrtTitel, getCompletionDetail, getDetectedSegments } from "@/lib
 import { getRoute } from "@/lib/routes";
 import { getKudosForCompletions } from "@/lib/kudos";
 import { featuredMilestone, getUserAchievementStats } from "@/lib/achievements";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/server";
 import { formatDuration } from "@/lib/format";
 import { publicationBlockReason } from "@/lib/track";
 import Card from "@/components/ui/Card";
@@ -36,10 +36,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   const completion = await getCompletionDetail(id, user?.id ?? null);
   if (!completion) return { title: "Fahrt – Strado" };
 
@@ -111,10 +108,7 @@ export default async function FahrtDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   const completion = await getCompletionDetail(id, user?.id ?? null);
   if (!completion) notFound();

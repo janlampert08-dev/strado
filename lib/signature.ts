@@ -7,7 +7,7 @@
 // Farbe (Karte + Liste) — die Farbe transportiert also Bedeutung statt nur
 // Unterscheidbarkeit.
 import { averageTempolimit } from "@/lib/geo";
-import type { RouteGeoJSON } from "@/types/database";
+import type { ExploreRoute } from "@/types/database";
 
 export type SignatureKey = "kehren" | "steigung" | "hoehe" | "tempo" | "laenge";
 
@@ -65,7 +65,7 @@ export function withAlpha(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-function formatSignature(key: SignatureKey, route: RouteGeoJSON): string {
+function formatSignature(key: SignatureKey, route: ExploreRoute): string {
   switch (key) {
     case "kehren":
       return `${route.kehren} Kehren`;
@@ -86,7 +86,7 @@ function formatSignature(key: SignatureKey, route: RouteGeoJSON): string {
 // Signatur-Merkmal je Strecke. Sollte immer auf dem ungefilterten Bestand
 // aufgerufen werden — sonst würde z.B. eine Textsuche die Perzentile (und
 // damit Merkmal/Farbe) einzelner Strecken verschieben.
-export function computeSignatures(routes: RouteGeoJSON[]): Map<string, RouteSignature> {
+export function computeSignatures(routes: ExploreRoute[]): Map<string, RouteSignature> {
   const kehrenDichte = routes.map((r) =>
     r.kehren !== null && r.laenge_km > 0 ? r.kehren / r.laenge_km : null,
   );
