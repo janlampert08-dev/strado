@@ -176,25 +176,36 @@ datenschutzrechtliche Prüfung der Umkehrung auf Opt-out (Art. 7 DSG,
 Art. 25 DSGVO) steht weiterhin aus und ist als offener Punkt 12 in der
 Datenschutzerklärung vermerkt.
 
-## Nicht eingespielt: 0077 (Stand: 2026-09-07)
+## Eingespielt: 0077 (2026-09-08, vor dem Deploy)
 
-`0077_strecken_erstellen_premium.sql` ist mit dem Code in diesem Branch
-entstanden und **noch nicht eingespielt**. Sie zieht die INSERT-Policy auf
-`routes` auf `ist_premium or is_moderator` zusammen — eigene Strecken
-anlegen wird damit Premium (Produktentscheid 2026-09-07, bewusster Bruch
-mit dem additiven Gating aus `docs/premium-plan.md` Abschnitt 4; die AGB
-ziehen in einem eigenen PR nach).
+`0077_strecken_erstellen_premium.sql` ist **eingespielt**, Ledger-Eintrag
+`20260908073158` unter dem Namen `0077_strecken_erstellen_premium`. Sie
+zieht die INSERT-Policy auf `routes` auf `ist_premium or is_moderator`
+zusammen — eigene Strecken anlegen ist damit Premium (Produktentscheid
+2026-09-07, bewusster Bruch mit dem additiven Gating aus
+`docs/premium-plan.md` Abschnitt 4; die AGB ziehen in einem eigenen PR
+nach). Verifiziert über `pg_policies`: `with_check` trägt den
+`exists(...)`-Teil auf `profiles`.
 
-**Mit dem Deploy dieses Codes einspielen oder danach — nicht vorher
-allein.** Die Policy wirkt sofort und unabhängig davon, welcher
-Code läuft: eingespielt, solange der alte Code ausgeliefert ist, sehen
-kostenlose Konten weiterhin das Formular, und das Speichern scheitert mit
-„Strecke konnte nicht gespeichert werden" statt mit dem Premium-Hinweis,
-den erst der neue Code zeigt. Umgekehrt (Code ohne Migration) bleibt der
-Direktweg über PostgREST für kostenlose Konten offen — die Server Action
-allein ist nur die höfliche Hälfte der Schranke.
+**Sie ist auf ausdrückliche Anweisung vor dem Deploy dieses Codes
+eingespielt worden — die Reihenfolge, vor der der Rest dieses Abschnitts
+warnt.** Bis der Code aus diesem Branch ausgeliefert ist, gilt deshalb:
+kostenlose Konten sehen weiterhin das Formular, und das Speichern
+scheitert mit „Strecke konnte nicht gespeichert werden" statt mit dem
+Premium-Hinweis, den erst der neue Code zeigt. Das ist ein
+Übergangszustand, kein Fehler — er endet mit dem Deploy. Der Rückweg,
+falls das Fenster zu lang wird:
 
-Nach dem Einspielen als `authenticated` prüfen, nicht als `postgres`:
+```sql
+alter policy "Angemeldete Nutzer können Strecken vorschlagen" on public.routes
+  with check ((erstellt_von = (select auth.uid())) and (status_ok = false));
+```
+
+Umgekehrt (Code ohne Migration) wäre der Direktweg über PostgREST für
+kostenlose Konten offen geblieben — die Server Action allein ist nur die
+höfliche Hälfte der Schranke.
+
+Gegenprobe als `authenticated`, nicht als `postgres`:
 
 ```sql
 select policyname, cmd, with_check
