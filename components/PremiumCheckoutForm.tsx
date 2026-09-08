@@ -245,23 +245,43 @@ function CheckoutInner({
     setSubmitting(true);
     setError(null);
 
-    const antwort = await checkout.confirm({
-      // returnUrl ist auch bei redirect: "if_required" nötig, sobald das
-      // Payment Element eine Weiterleitungs-Zahlungsart anbieten kann. TWINT
-      // ist genau das — und für ein Schweizer Produkt die wichtigste.
-      //
-      // Die Session trägt bereits eine return_url mit der
-      // {CHECKOUT_SESSION_ID}-Vorlage (siehe createCheckoutSession). Hier
-      // steht dieselbe Adresse noch einmal mit der bereits bekannten
-      // Session-ID: das nimmt der Rückweg der Zahlungsart, auf die es
-      // ankommt, jede Abhängigkeit davon, dass die Vorlage ersetzt wird.
-      //
-      // "if_required" bleibt: Kartenzahlungen werden weiterhin ohne
-      // Seitenwechsel bestätigt, und nur die Zahlungsarten, die es brauchen,
-      // laufen über die Weiterleitung.
-      returnUrl: `${window.location.origin}/profil/premium/abschluss?sitzung=${encodeURIComponent(sessionId)}`,
-      redirect: "if_required",
-    });
+    // try/catch wie beim Anlegen der Session: wirft confirm() eine Ausnahme
+    // (Netzabbruch, ein von der CSP blockierter Weiterleitungs-Sprung, ein
+    // Fehler in Stripe.js), blieb submitting sonst für immer auf true — der
+    // Button stand dauerhaft auf "Wird verarbeitet…", ohne Fehler und ohne
+    // Weg nach vorn. Genau dieses Bild hat der Kauf im Live-Konto gezeigt.
+    let antwort: StripeCheckoutConfirmResult;
+    try {
+      antwort = await checkout.confirm({
+        // returnUrl ist auch bei redirect: "if_required" nötig, sobald das
+        // Payment Element eine Weiterleitungs-Zahlungsart anbieten kann.
+        // TWINT ist genau das — und für ein Schweizer Produkt die wichtigste.
+        //
+        // Die Session trägt bereits eine return_url mit der
+        // {CHECKOUT_SESSION_ID}-Vorlage (siehe createCheckoutSession). Hier
+        // steht dieselbe Adresse noch einmal mit der bereits bekannten
+        // Session-ID: das nimmt der Rückweg der Zahlungsart, auf die es
+        // ankommt, jede Abhängigkeit davon, dass die Vorlage ersetzt wird.
+        //
+        // "if_required" bleibt: Kartenzahlungen werden weiterhin ohne
+        // Seitenwechsel bestätigt, und nur die Zahlungsarten, die es
+        // brauchen, laufen über die Weiterleitung.
+        returnUrl: `${window.location.origin}/profil/premium/abschluss?sitzung=${encodeURIComponent(sessionId)}`,
+        redirect: "if_required",
+      });
+    } catch {
+      // Bewusst als "nicht durchgelaufen" behandelt, aber mit dem Hinweis
+      // auf die Doppelbuchung: geworfen hat der Aufruf, bevor Stripe ein
+      // Ergebnis geliefert hat, und ob dabei schon etwas angestossen wurde,
+      // weiss die Oberfläche nicht. Ein zweiter Versuch läuft auf derselben
+      // Session weiter, es entsteht also keine zweite Zahlung.
+      setError(
+        "Die Zahlung liess sich gerade nicht bestätigen. Versuch es noch einmal — " +
+          "abgebucht wird nichts doppelt.",
+      );
+      setSubmitting(false);
+      return;
+    }
 
     if (antwort.type === "error") {
       setError(fehlertext(antwort.error) ?? antwort.error.message ?? "Zahlung fehlgeschlagen.");
