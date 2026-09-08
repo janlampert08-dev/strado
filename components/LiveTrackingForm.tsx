@@ -300,7 +300,7 @@ export default function LiveTrackingForm({
               <button
                 type="button"
                 onClick={recorder.stop}
-                className={buttonVariants({ variant: "accent" })}
+                className={buttonVariants({ variant: "accent", size: "lg" })}
               >
                 Strecke beenden
               </button>
@@ -309,7 +309,7 @@ export default function LiveTrackingForm({
                 <button
                   type="button"
                   onClick={handleExit}
-                  className={buttonVariants({ variant: "secondary" })}
+                  className={buttonVariants({ variant: "secondary", size: "lg" })}
                 >
                   Abbrechen
                 </button>
