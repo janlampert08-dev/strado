@@ -189,15 +189,15 @@ Versions below are read directly from `package.json` — verify there before
 relying on version-specific behavior, especially for Next.js 16, which has
 breaking changes from earlier versions (see the block at the top of this file).
 
-- **Next.js** 16.3.3 (App Router, Turbopack build)
+- **Next.js** 16.3.4 (App Router, Turbopack build)
 - **React** 19.2.8 / **react-dom** 19.2.8
 - **TypeScript** ^5
 - **Tailwind CSS** ^4 (via `@tailwindcss/postcss`)
-- **Supabase**: `@supabase/supabase-js` ^2.112.4, `@supabase/ssr` ^0.12.5
-- **Stripe**: `stripe` ^22.6.0 (server), `@stripe/stripe-js` ^9.14.0 /
+- **Supabase**: `@supabase/supabase-js` ^2.114.0, `@supabase/ssr` ^0.12.5
+- **Stripe**: `stripe` ^22.6.1 (server), `@stripe/stripe-js` ^9.15.0 /
   `@stripe/react-stripe-js` ^6.8.2 (client, Payment Element)
 - **Mapbox GL** ^3.29.0 (routing/maps, `mapbox-gl` + `@types/mapbox-gl`)
-- **lucide-react** ^1.38.0 (icons — wrapped in `components/NavIcons.tsx` /
+- **lucide-react** ^1.39.0 (icons — wrapped in `components/NavIcons.tsx` /
   `components/VisibilityIcons.tsx`, don't import it directly in new code)
 - **@vercel/analytics** ^2.0.1 (`<Analytics />` in `app/layout.tsx`; the only
   telemetry in the app — there is no Sentry or other error reporting)
