@@ -20,6 +20,11 @@ import {
   type SheetGesture,
 } from "@/lib/dragSheet";
 
+// So lange nach der letzten Ziehbewegung gilt ein Klick als Nachwehe der
+// Wischgeste. Der vom Browser nachgereichte Klick kommt unmittelbar nach dem
+// touchend, eine echte Bedienung frühestens deutlich später.
+const CLICK_SUPPRESSION_MS = 400;
+
 // Gemeinsame Bottom-Sheet-Mechanik (Mobile): zwischen einer Peek- und einer
 // (fast) Vollhöhe auf-/zuziehbar. Zwei Wege führen dorthin — der Ziehgriff
 // (ziehen oder tippen) und, seit dieser Fassung, die Wischgeste im Inhalt
@@ -58,7 +63,12 @@ export default function DragSheet({
   // darf beim Loslassen nicht auch noch klicken. Browser unterdrücken den
   // Klick nach einem abgefangenen touchmove meist selbst — "meist" reicht
   // hier nicht, weil der Fehlfall eine ungewollte Navigation wäre.
-  const suppressClickRef = useRef(false);
+  //
+  // Bewusst ein Zeitfenster und keine Flagge: eine Flagge, die nur ein
+  // folgender Klick löscht, bliebe nach einem Wisch, der auf keinem
+  // klickbaren Element endet, stehen — und verschluckte dann die nächste
+  // Aktivierung per Tastatur, die ohne pointerdown daherkommt.
+  const suppressClickUntilRef = useRef(0);
 
   const sheetHeight = expanded ? `calc(100% - ${expandedGapPx}px)` : `${peekPx}px`;
 
@@ -156,8 +166,23 @@ export default function DragSheet({
       return null;
     }
 
-    function onTouchStart(e: TouchEvent) {
+    // Beendet eine laufende Geste: rastet ein, wenn sie das Sheet gezogen
+    // hat, und gibt die gezogene Höhe wieder frei. Eine Geste einfach
+    // fallen zu lassen ginge nicht — dragHeight bliebe stehen und das Sheet
+    // klebte auf der zuletzt gezogenen Höhe fest.
+    function settle() {
+      const current = gesture;
       gesture = null;
+      if (!current || current.mode !== "sheet") return;
+      setExpanded(isExpandedAfterDrag(current.height, peekPx, maxHeightPx()));
+      setDragHeight(null);
+    }
+
+    function onTouchStart(e: TouchEvent) {
+      // Ein zweiter Finger, der auf dem Sheet aufsetzt, beendet die laufende
+      // Geste hier — nicht erst beim Loslassen, wo sie sonst noch einmal
+      // einrasten würde.
+      settle();
       // Ab md ist der Wrapper display:contents — dort gibt es kein Sheet,
       // also auch keine Geste.
       if (getComputedStyle(sheet).display === "contents") return;
@@ -179,7 +204,15 @@ export default function DragSheet({
     }
 
     function onTouchMove(e: TouchEvent) {
-      if (!gesture || e.touches.length !== 1) return;
+      if (!gesture) return;
+      // Ein zweiter Finger — auch einer, der ausserhalb des Sheets aufsetzt
+      // und hier gar kein touchstart auslöst — macht aus dem Wisch eine
+      // andere Geste (Pinch). Sie endet damit sofort, statt beim Loslassen
+      // auf der zuletzt gemessenen Höhe einzurasten.
+      if (e.touches.length !== 1) {
+        settle();
+        return;
+      }
       const touch = e.touches[0];
       const deltaY = gesture.startY - touch.clientY;
       const deltaX = touch.clientX - gesture.startX;
@@ -209,18 +242,14 @@ export default function DragSheet({
       // Unterhalb der Tap-Schwelle bleibt die Höhe stehen: eine Berührung mit
       // ein paar Pixeln Wackeln soll das Sheet nicht sichtbar zucken lassen.
       if (Math.abs(deltaY) <= DRAG_TAP_THRESHOLD_PX) return;
-      suppressClickRef.current = true;
+      suppressClickUntilRef.current = Date.now() + CLICK_SUPPRESSION_MS;
       const next = clampSheetHeight(gesture.startHeight + deltaY, peekPx, maxHeightPx());
       gesture.height = next;
       setDragHeight(next);
     }
 
     function onTouchEnd() {
-      const current = gesture;
-      gesture = null;
-      if (!current || current.mode !== "sheet") return;
-      setExpanded(isExpandedAfterDrag(current.height, peekPx, maxHeightPx()));
-      setDragHeight(null);
+      settle();
     }
 
     sheet.addEventListener("touchstart", onTouchStart, { passive: true });
@@ -238,12 +267,9 @@ export default function DragSheet({
   return (
     <div
       ref={sheetRef}
-      onPointerDownCapture={() => {
-        suppressClickRef.current = false;
-      }}
       onClickCapture={(e) => {
-        if (!suppressClickRef.current) return;
-        suppressClickRef.current = false;
+        if (Date.now() > suppressClickUntilRef.current) return;
+        suppressClickUntilRef.current = 0;
         e.preventDefault();
         e.stopPropagation();
       }}
