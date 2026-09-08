@@ -220,17 +220,34 @@ export type RouteApiZeile = Pick<
   | "kategorien"
   | "saison_status"
   | "tempolimits"
->;
+> &
+  // Nur gesetzt, wenn der Aufrufer es ausdrücklich anfordert — siehe
+  // listRoutesForApi().
+  Partial<Pick<RouteGeoJSON, "hoehenprofil">>;
 
-export async function listRoutesForApi(): Promise<RouteApiZeile[]> {
+// mitHoehenprofil nur auf ausdrückliche Anforderung (?hoehenprofil=1 am
+// Endpunkt): das Profil ist nach der Geometrie der grösste Posten pro
+// Strecke — bis zu 81 Punkte, siehe buildHoehenprofil() — und wächst mit
+// jeder freigegebenen Strecke mit. Wer nur die Liste will, soll dafür nicht
+// zahlen; wer wie die Info-Seite ein Profil zeichnen will, spart sich einen
+// zweiten Abruf mitsamt vollständiger Geometrie.
+export async function listRoutesForApi(mitHoehenprofil = false): Promise<RouteApiZeile[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("routes_geojson")
-    .select(
-      "id, name, region, start_ort, ziel_ort, ist_rundfahrt, laenge_km, hoehe_m, max_steigung_prozent, kehren, kategorien, saison_status, tempolimits",
-    )
-    .eq("status_ok", true)
-    .order("name");
+  // Beide Spaltenlisten ausgeschrieben statt eine aus der anderen
+  // zusammengesetzt: der Typ-Parser von postgrest-js liest den Select-String
+  // zur Compile-Zeit und versteht nur ein Literal, kein `${...}`.
+  const abfrage = mitHoehenprofil
+    ? supabase
+        .from("routes_geojson")
+        .select(
+          "id, name, region, start_ort, ziel_ort, ist_rundfahrt, laenge_km, hoehe_m, max_steigung_prozent, kehren, kategorien, saison_status, tempolimits, hoehenprofil",
+        )
+    : supabase
+        .from("routes_geojson")
+        .select(
+          "id, name, region, start_ort, ziel_ort, ist_rundfahrt, laenge_km, hoehe_m, max_steigung_prozent, kehren, kategorien, saison_status, tempolimits",
+        );
+  const { data, error } = await abfrage.eq("status_ok", true).order("name");
 
   if (error) {
     console.error("Strecken konnten nicht geladen werden:", error.message);
