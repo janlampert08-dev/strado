@@ -26,6 +26,11 @@ export const STRECKEN = {
     laenge: "5.7 km", hoehe: "477 m", steigung: "4.4%", kehren: "3",
     profil: [[0,473],[0.21,477],[0.5,469],[1.06,473],[1.59,461],[2.03,454],[2.52,450],[2.96,446],[3.22,443],[3.29,442],[3.58,446],[3.89,458],[4.26,467],[4.7,470],[5,468],[5.46,472],[5.65,473]],
   },
+  flughafen: {
+    name: "Flughafen Loop", region: "Zürich", start: "Oberglatt ZH", ziel: "Oberglatt ZH", rund: true,
+    laenge: "22.5 km", hoehe: "445 m", steigung: "3.7%", kehren: "9",
+    profil: [[0,432],[2.46,424],[3.17,421],[6.52,426],[9.13,441],[10.34,432],[11.06,437],[12.07,438],[13.45,437],[14.35,430],[15.63,424],[17.43,421],[19.49,421],[21.41,423],[22.46,432]],
+  },
   greifensee: {
     name: "Greifensee Schleife", region: "Zürich", start: "Fällanden", ziel: "Fällanden", rund: true,
     laenge: "18.7 km", hoehe: "462 m", steigung: "1.9%", kehren: "3",
