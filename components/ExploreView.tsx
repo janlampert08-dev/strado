@@ -9,7 +9,7 @@ import Skeleton from "@/components/ui/Skeleton";
 import { haversineKm } from "@/lib/geo";
 import { matchesSearch } from "@/lib/search";
 import { computeSignatures } from "@/lib/signature";
-import type { RouteGeoJSON } from "@/types/database";
+import type { ExploreRoute } from "@/types/database";
 
 // URL-Sync für den Suchtext wird debounced (siehe searchInput-Effekt unten),
 // damit nicht jeder Tastendruck einen router.replace() (und damit einen
@@ -52,7 +52,7 @@ export default function ExploreView({
   loadError = false,
   loggedIn,
 }: {
-  routes: RouteGeoJSON[];
+  routes: ExploreRoute[];
   loadError?: boolean;
   loggedIn: boolean;
 }) {

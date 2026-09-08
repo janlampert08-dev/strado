@@ -16,7 +16,7 @@ import {
 import RideSummaryForm from "@/components/RideSummaryForm";
 import { formatDuration } from "@/lib/format";
 import { movingSeconds, publicationBlockReason } from "@/lib/track";
-import type { RouteGeoJSON, Vehicle } from "@/types/database";
+import type { ExploreRoute, Vehicle } from "@/types/database";
 import { fieldClassName } from "@/components/ui/Input";
 import { buttonVariants } from "@/components/ui/Button";
 import Skeleton from "@/components/ui/Skeleton";
@@ -58,7 +58,7 @@ export default function FreeRideForm({
   // Karte folgt der GPS-Position). Ein Streckenbezug entsteht daraus nicht —
   // eine freie Fahrt bleibt eine freie Fahrt, auch wenn sie zufällig über
   // eine kuratierte Strecke führt.
-  routes: RouteGeoJSON[];
+  routes: ExploreRoute[];
   // Der Marker aus ?fortsetzen=<token>, mit dem sich die Rückkehr aus dem
   // Anmelde-Gate ausweist — nur damit darf die als Gast aufgezeichnete Fahrt
   // an dieses Konto übergehen (siehe adoptGuestTrackingSnapshot).

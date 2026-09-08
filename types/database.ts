@@ -103,6 +103,44 @@ export interface RouteGeoJSON {
   ist_privat: boolean;
 }
 
+// Genau die Spalten, die die Explore-Ansicht und der Orientierungs-Layer der
+// freien Fahrt brauchen (app/page.tsx, app/fahrten/neu/page.tsx).
+//
+// getRoutes() lud vorher select("*") und schickte damit für JEDE Strecke auch
+// hoehenprofil, charakter_text, kategorien und die Verwaltungsspalten in die
+// RSC-Nutzlast der Startseite — Felder, die dort keine Komponente anfasst.
+// Die Geometrie muss mit (die Karte zeichnet sie), das Höhenprofil nicht.
+//
+// Als Pick<> statt als eigenes Interface, damit die Spaltennamen nur an einer
+// Stelle stehen und eine spätere Änderung an RouteGeoJSON hier sofort auffällt.
+export type ExploreRoute = Pick<
+  RouteGeoJSON,
+  | "id"
+  | "name"
+  | "region"
+  | "start_ort"
+  | "ziel_ort"
+  | "start_geojson"
+  | "ziel_geojson"
+  | "geometry_geojson"
+  | "hoehe_m"
+  | "laenge_km"
+  | "max_steigung_prozent"
+  | "kehren"
+  | "saison_status"
+  | "tempolimits"
+  | "ist_rundfahrt"
+>;
+
+// Was RouteMap tatsächlich von einer Strecke liest — bewusst enger als
+// RouteGeoJSON, damit die Karte auch mit einer schlank geladenen Zeile
+// (ExploreRoute) aufgerufen werden kann und nicht Spalten verlangt, die sie
+// gar nicht anfasst.
+export type MapRoute = Pick<
+  RouteGeoJSON,
+  "id" | "name" | "geometry_geojson" | "start_geojson" | "ziel_geojson" | "ist_rundfahrt" | "tempolimits"
+>;
+
 export interface RouteRating {
   id: string;
   route_id: string;
