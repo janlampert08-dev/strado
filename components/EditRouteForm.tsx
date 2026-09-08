@@ -32,12 +32,12 @@ export default function EditRouteForm({
     <form action={formAction} className="mx-auto flex w-full max-w-md flex-col gap-4 px-6 py-10">
       <div>
         <h1 className="text-display font-semibold">
-          {adminMode ? "Strecke bearbeiten (Moderation)" : "Vorschlag bearbeiten"}
+          {adminMode ? "Strecke bearbeiten (Moderation)" : "Strecke bearbeiten"}
         </h1>
         <p className="mt-1 text-sm text-muted">
           {adminMode
             ? "Der Streckenverlauf selbst kann hier nicht geändert werden. Änderungen sind sofort für alle sichtbar."
-            : "Der Streckenverlauf selbst kann hier nicht geändert werden — bei Problemen mit der Route lieber neu vorschlagen. Nach dem Speichern geht der Vorschlag erneut zur Prüfung."}
+            : "Der Streckenverlauf selbst kann hier nicht geändert werden — bei Problemen mit der Route lieber neu erstellen. Nach dem Speichern geht die Strecke erneut zur Prüfung."}
         </p>
       </div>
 

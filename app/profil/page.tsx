@@ -226,7 +226,7 @@ export default async function ProfilPage() {
               href="/strecken/neu"
               className={buttonVariants({ variant: "primary", size: "sm", className: "w-full" })}
             >
-              + Strecke vorschlagen
+              + Strecke erstellen
             </Link>
             <Link
               href={`/fahrer/${user.id}`}

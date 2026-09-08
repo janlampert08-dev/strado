@@ -7,8 +7,6 @@ function plan(betragRappen: number, teil: Partial<PlanAngebot> = {}): PlanAngebo
     plan: "jahr",
     betragRappen,
     waehrung: "chf",
-    istGruenderpreis: false,
-    regulaerRappen: null,
     ...teil,
   };
 }
@@ -57,10 +55,6 @@ describe("jahresVorteilProzent", () => {
     // CHF 4.90 × 12 = CHF 58.80 gegenüber CHF 49.00 — die zwei Gratismonate
     // aus docs/premium-plan.md, Abschnitt 6.
     expect(jahresVorteilProzent(plan(490, { plan: "monat" }), plan(4900))).toBe(17);
-  });
-
-  it("rechnet den Gründerpreis gegen denselben Monatspreis", () => {
-    expect(jahresVorteilProzent(plan(490, { plan: "monat" }), plan(3900))).toBe(34);
   });
 
   it("behauptet keinen Vorteil, wenn der Jahresplan nicht günstiger ist", () => {
