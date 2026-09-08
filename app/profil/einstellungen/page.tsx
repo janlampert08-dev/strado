@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { KeyRound, Lock, LogOut, MapPin, Palette, Scale } from "lucide-react";
+import { KeyRound, Lock, LogOut, MapPin, Palette, Scale, Sparkles } from "lucide-react";
 import Header from "@/components/Header";
 import VisibilitySettings from "@/components/VisibilitySettings";
 import { DEFAULT_PRIVACY_RADIUS_M } from "@/lib/track";
@@ -8,6 +8,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import DeleteProposalButton from "@/components/DeleteProposalButton";
 import DeleteAccountSection from "@/components/DeleteAccountSection";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { getPremiumStatus } from "@/lib/premium";
 import Card from "@/components/ui/Card";
 import Button, { buttonVariants } from "@/components/ui/Button";
 import { LEGAL_URLS } from "@/lib/constants";
@@ -30,7 +31,7 @@ export default async function EinstellungenPage() {
 
   if (!user) redirect("/anmelden");
 
-  const [{ data: profile }, { data: ownRoutes }] = await Promise.all([
+  const [{ data: profile }, { data: ownRoutes }, premiumStatus] = await Promise.all([
     supabase
       .from("profiles")
       .select(
@@ -52,6 +53,7 @@ export default async function EinstellungenPage() {
           ist_privat: boolean;
         }[]
       >(),
+    getPremiumStatus(),
   ]);
 
   return (
@@ -159,6 +161,36 @@ export default async function EinstellungenPage() {
               </form>
             </Card>
           </section>
+
+          {/* Nur für Abonnenten: ohne Abo gibt es hier nichts zu verwalten,
+              und "Abo-Status, Rechnungen, Kündigung" verspräche etwas, das
+              es für dieses Konto nicht gibt. Der Kauf-Einstieg liegt
+              bewusst nicht hier, sondern auf der Profilseite (PremiumCard,
+              "Premium holen") — Einstellungen bleiben frei von Werbung.
+              app/profil/einstellungen/abo leitet ohne Abo entsprechend auf
+              die Kaufseite um.
+
+              Der Zustand entscheidet hier nur über die Sichtbarkeit; die
+              Zahlen dazu (Plan, Verlängerungsdatum, Kulanzfrist) stehen
+              ausschliesslich in PremiumCard. Zwei Quellen fürs selbe Datum
+              wären eine, die auseinanderlaufen kann. */}
+          {premiumStatus.aktiv && (
+            <section className="flex flex-col gap-3">
+              <h2 className="flex items-center gap-1.5 text-sm font-semibold tracking-wide text-muted uppercase">
+                <Sparkles className="h-4 w-4" aria-hidden="true" />
+                Premium
+              </h2>
+              <Card className="flex items-center justify-between gap-3 p-4">
+                <p className="text-sm text-muted">Abo-Status, Rechnungen, Kündigung.</p>
+                <Link
+                  href="/profil/einstellungen/abo"
+                  className={buttonVariants({ variant: "secondary", size: "sm", className: "shrink-0" })}
+                >
+                  Abo verwalten
+                </Link>
+              </Card>
+            </section>
+          )}
 
           <section className="flex flex-col gap-3">
             <h2 className="flex items-center gap-1.5 text-sm font-semibold tracking-wide text-muted uppercase">

@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type Stripe from "stripe";
+import Stripe from "stripe";
 import {
   aktivesAboAusSession,
+  checkoutIdempotencyKey,
   istEigeneBezahlteSession,
+  istIdempotencyKonflikt,
+  istUnbekannterCustomer,
   passendeOffeneSession,
   preisVonSession,
 } from "@/lib/stripeCheckout";
@@ -117,6 +120,121 @@ describe("istEigeneBezahlteSession", () => {
 
   it("weist eine Einmalzahlung ab", () => {
     expect(istEigeneBezahlteSession(session({ mode: "payment" }), "cus_ich")).toBe(false);
+  });
+});
+
+describe("istUnbekannterCustomer", () => {
+  it("erkennt einen unbekannten Customer", () => {
+    const fehler = new Stripe.errors.StripeInvalidRequestError({
+      code: "resource_missing",
+      param: "customer",
+    });
+    expect(istUnbekannterCustomer(fehler)).toBe(true);
+  });
+
+  it("weist denselben Fehlercode zu einem anderen Parameter ab", () => {
+    // resource_missing kommt auch für andere Felder vor (z.B. eine Preis-ID)
+    // — nur "customer" heisst "veraltete ID, neu anlegen und wiederholen".
+    const fehler = new Stripe.errors.StripeInvalidRequestError({
+      code: "resource_missing",
+      param: "price",
+    });
+    expect(istUnbekannterCustomer(fehler)).toBe(false);
+  });
+
+  it("weist einen anderen Stripe-Fehlercode ab", () => {
+    const fehler = new Stripe.errors.StripeInvalidRequestError({
+      code: "parameter_invalid_empty",
+      param: "customer",
+    });
+    expect(istUnbekannterCustomer(fehler)).toBe(false);
+  });
+
+  it("weist einen Fehler ab, der kein Stripe-Fehler ist", () => {
+    expect(istUnbekannterCustomer(new Error("Netzabbruch"))).toBe(false);
+    expect(istUnbekannterCustomer("resource_missing")).toBe(false);
+    expect(istUnbekannterCustomer(null)).toBe(false);
+  });
+});
+
+describe("istIdempotencyKonflikt", () => {
+  it("erkennt den Konflikt aus einem wiederverwendeten Key", () => {
+    const fehler = new Stripe.errors.StripeIdempotencyError({
+      message: "Keys for idempotent requests can only be used with the same parameters",
+    });
+    expect(istIdempotencyKonflikt(fehler)).toBe(true);
+  });
+
+  it("weist einen anderen Stripe-Fehler ab", () => {
+    const fehler = new Stripe.errors.StripeInvalidRequestError({
+      code: "resource_missing",
+      param: "customer",
+    });
+    expect(istIdempotencyKonflikt(fehler)).toBe(false);
+  });
+
+  it("weist einen Fehler ab, der kein Stripe-Fehler ist", () => {
+    expect(istIdempotencyKonflikt(new Error("Netzabbruch"))).toBe(false);
+    expect(istIdempotencyKonflikt(null)).toBe(false);
+  });
+});
+
+describe("checkoutIdempotencyKey", () => {
+  const basis = {
+    userId: "u1",
+    plan: "monat",
+    customerId: "cus_alt",
+    preisId: "price_monat",
+    jetzt: 1_788_884_190_256,
+  };
+
+  it("liefert für denselben Aufruf denselben Schlüssel", () => {
+    // Der Doppelklick, den der Key abfangen soll: zwei Anfragen, gleiche
+    // Parameter, kurz hintereinander — beide müssen dieselbe Session
+    // bekommen statt zwei anzulegen.
+    expect(checkoutIdempotencyKey(basis)).toBe(checkoutIdempotencyKey({ ...basis, jetzt: basis.jetzt + 1_000 }));
+  });
+
+  // Der Kern des Fixes: der Selbstheilungs-Versuch nach einem unbekannten
+  // Customer legt einen neuen Customer an und ruft erneut auf. Bliebe der
+  // Schlüssel gleich, wiese Stripe den zweiten Aufruf mit einem
+  // idempotency_error ab, statt die Session anzulegen.
+  it("ändert sich mit dem Customer", () => {
+    expect(checkoutIdempotencyKey({ ...basis, customerId: "cus_neu" })).not.toBe(
+      checkoutIdempotencyKey(basis),
+    );
+  });
+
+  it("ändert sich mit der Preis-ID und dem Plan", () => {
+    expect(checkoutIdempotencyKey({ ...basis, preisId: "price_jahr" })).not.toBe(
+      checkoutIdempotencyKey(basis),
+    );
+    expect(checkoutIdempotencyKey({ ...basis, plan: "jahr" })).not.toBe(
+      checkoutIdempotencyKey(basis),
+    );
+  });
+
+  it("läuft nach einer Stunde ab", () => {
+    expect(checkoutIdempotencyKey({ ...basis, jetzt: basis.jetzt + 3_600_000 })).not.toBe(
+      checkoutIdempotencyKey(basis),
+    );
+  });
+
+  it("erzwingt mit zusatz einen frischen Schlüssel", () => {
+    expect(checkoutIdempotencyKey({ ...basis, zusatz: "abc" })).not.toBe(
+      checkoutIdempotencyKey(basis),
+    );
+  });
+
+  it("bleibt unter Stripes Längengrenze von 255 Zeichen", () => {
+    const lang = checkoutIdempotencyKey({
+      userId: "b91e66d4-b652-4e1b-809a-a00b86d0ff31",
+      plan: "monat",
+      customerId: "cus_QwErTyUiOpAsDfGh",
+      preisId: "price_1PxYzAbCdEfGhIjKlMnOpQrS",
+      zusatz: "3f8a1c22-9b4d-4e7a-8f21-5c6d7e8f9a0b",
+    });
+    expect(lang.length).toBeLessThanOrEqual(255);
   });
 });
 

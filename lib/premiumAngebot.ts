@@ -13,7 +13,19 @@
 // Währung), genau wie Stripe sie führt. Gerechnet wird ausschliesslich mit
 // dem, was getPremiumAngebot() aus Stripe gelesen hat — nie mit einer
 // zweiten Preisliste im Code.
-import type { PlanAngebot } from "./premiumLimits";
+import type { AboPlan, PlanAngebot } from "./premiumLimits";
+
+/** Anzeigename des Plans — von der Planauswahl und der Zahlungsseite geteilt,
+ *  damit beide denselben Titel für denselben Plan zeigen. */
+export function planTitel(plan: AboPlan): string {
+  return plan === "monat" ? "Monatlich" : "Jährlich";
+}
+
+/** Zeitraum-Zusatz neben dem Betrag ("pro Monat" / "pro Jahr"), ebenfalls
+ *  von Planauswahl und Zahlungsseite geteilt. */
+export function planZeitraum(plan: AboPlan): string {
+  return plan === "monat" ? "pro Monat" : "pro Jahr";
+}
 
 /**
  * Schreibt einen Betrag in der kleinsten Einheit als Währungsbetrag aus.

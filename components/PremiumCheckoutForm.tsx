@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useSyncExternalStore, type FormEvent } from "react";
+import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import {
   CheckoutElementsProvider,
   PaymentElement,
@@ -31,21 +32,47 @@ type ElementsOptionen = NonNullable<StripeCheckoutElementsSdkOptions["elementsOp
 // Ableitung zur Laufzeit (getComputedStyle) wäre möglich, brächte aber
 // color-mix()-Ergebnisse in unklaren Farbräumen an eine fremde Bibliothek —
 // zwei gepflegte Paletten sind der ehrlichere Weg.
+//
+// Ziel ist, dass die Felder von einem Feld der App nicht zu unterscheiden
+// sind. Massgeblich ist fieldClassName() in components/ui/Input.tsx:
+// rounded-lg (--radius-lg, 16px), 1px Rahmen in --color-border,
+// durchsichtiger Grund, 14px Text, und im Fokus ein Akzentrahmen plus
+// ring-2 ring-accent/15. Genau das bilden die Regeln unten nach; ein Ring
+// ist in CSS ein box-shadow mit 2px Ausbreitung, deshalb steht er dort.
 function appearance(dunkel: boolean): ElementsOptionen["appearance"] {
   const farben = dunkel
     ? {
         background: "#0B0B0D",
         text: "#F2F2F4",
+        // --color-muted im Dunkelmodus.
         textSecondary: "#8F95A3",
         accent: "#6B83FF",
-        border: "rgba(242,242,244,0.32)",
+        // --color-border: 14 % der Vordergrundfarbe. Vorher standen hier
+        // 32 % — das ist --color-border-strong und liess die Felder
+        // deutlich kantiger wirken als jedes Feld der App daneben.
+        border: "rgba(242,242,244,0.14)",
+        // Fokusring wie ring-accent/15.
+        ring: "rgba(107,131,255,0.15)",
+        // --color-danger im Dunkelmodus. #DC2626 (der helle Wert) kommt
+        // auf #0B0B0D nur auf 4.07:1 und fällt damit unter AA — genau der
+        // Grund, aus dem globals.css im Dunkelmodus auf #EF4444 wechselt.
+        danger: "#EF4444",
+        // --color-accent-subtle, die Fläche des gewählten Tabs.
+        accentSubtle: "#191C2F",
       }
     : {
         background: "#FAFAFA",
         text: "#131316",
-        textSecondary: "#8A8F98",
+        // --color-muted. Vorher #8A8F98 — der Wert, den globals.css wegen
+        // 3.11:1 auf dem Hintergrund ausdrücklich ersetzt hat; er stand
+        // hier noch, weil diese Palette beim Wechsel übersehen wurde.
+        textSecondary: "#666B74",
         accent: "#3D5AFE",
-        border: "rgba(19,19,22,0.3)",
+        // --color-border: 12 % der Vordergrundfarbe (vorher 30 %).
+        border: "rgba(19,19,22,0.12)",
+        ring: "rgba(61,90,254,0.15)",
+        danger: "#DC2626",
+        accentSubtle: "#EBEDFA",
       };
 
   return {
@@ -55,18 +82,40 @@ function appearance(dunkel: boolean): ElementsOptionen["appearance"] {
       colorBackground: farben.background,
       colorText: farben.text,
       colorTextSecondary: farben.textSecondary,
-      colorDanger: "#DC2626",
+      colorDanger: farben.danger,
       fontFamily: "'Inter', sans-serif",
       fontSizeBase: "14px",
-      borderRadius: "12px",
+      // --radius-lg, also dasselbe rounded-lg wie jedes Eingabefeld und
+      // jede Card der App. Vorher 12px, was neben einem App-Feld sichtbar
+      // eckiger aussah.
+      borderRadius: "16px",
       spacingUnit: "4px",
     },
     rules: {
-      ".Input": { border: `1px solid ${farben.border}`, boxShadow: "none" },
-      ".Input:focus": { border: `1px solid ${farben.accent}`, boxShadow: "none" },
+      // px-3 py-2 wie fieldClassName; Stripe rechnet Innenabstände sonst
+      // aus spacingUnit hoch und kommt auf andere Werte als die App.
+      ".Input": {
+        border: `1px solid ${farben.border}`,
+        boxShadow: "none",
+        padding: "8px 12px",
+      },
+      ".Input:focus": {
+        border: `1px solid ${farben.accent}`,
+        boxShadow: `0 0 0 2px ${farben.ring}`,
+      },
+      ".Input--invalid": {
+        border: `1px solid ${farben.danger}`,
+        boxShadow: "none",
+      },
       ".Label": { color: farben.textSecondary, fontSize: "12px" },
-      ".Tab": { border: `1px solid ${farben.border}`, borderRadius: "12px" },
-      ".Tab--selected": { border: `1px solid ${farben.accent}`, boxShadow: "none" },
+      ".Tab": { border: `1px solid ${farben.border}`, boxShadow: "none" },
+      // Wie die Planauswahl auf der Kaufseite: Akzentrahmen auf getönter
+      // Fläche (border-accent bg-accent-subtle in PremiumPurchaseView).
+      ".Tab--selected": {
+        border: `1px solid ${farben.accent}`,
+        backgroundColor: farben.accentSubtle,
+        boxShadow: "none",
+      },
     },
   };
 }
@@ -196,23 +245,43 @@ function CheckoutInner({
     setSubmitting(true);
     setError(null);
 
-    const antwort = await checkout.confirm({
-      // returnUrl ist auch bei redirect: "if_required" nötig, sobald das
-      // Payment Element eine Weiterleitungs-Zahlungsart anbieten kann. TWINT
-      // ist genau das — und für ein Schweizer Produkt die wichtigste.
-      //
-      // Die Session trägt bereits eine return_url mit der
-      // {CHECKOUT_SESSION_ID}-Vorlage (siehe createCheckoutSession). Hier
-      // steht dieselbe Adresse noch einmal mit der bereits bekannten
-      // Session-ID: das nimmt der Rückweg der Zahlungsart, auf die es
-      // ankommt, jede Abhängigkeit davon, dass die Vorlage ersetzt wird.
-      //
-      // "if_required" bleibt: Kartenzahlungen werden weiterhin ohne
-      // Seitenwechsel bestätigt, und nur die Zahlungsarten, die es brauchen,
-      // laufen über die Weiterleitung.
-      returnUrl: `${window.location.origin}/profil/premium/abschluss?sitzung=${encodeURIComponent(sessionId)}`,
-      redirect: "if_required",
-    });
+    // try/catch wie beim Anlegen der Session: wirft confirm() eine Ausnahme
+    // (Netzabbruch, ein von der CSP blockierter Weiterleitungs-Sprung, ein
+    // Fehler in Stripe.js), blieb submitting sonst für immer auf true — der
+    // Button stand dauerhaft auf "Wird verarbeitet…", ohne Fehler und ohne
+    // Weg nach vorn. Genau dieses Bild hat der Kauf im Live-Konto gezeigt.
+    let antwort: StripeCheckoutConfirmResult;
+    try {
+      antwort = await checkout.confirm({
+        // returnUrl ist auch bei redirect: "if_required" nötig, sobald das
+        // Payment Element eine Weiterleitungs-Zahlungsart anbieten kann.
+        // TWINT ist genau das — und für ein Schweizer Produkt die wichtigste.
+        //
+        // Die Session trägt bereits eine return_url mit der
+        // {CHECKOUT_SESSION_ID}-Vorlage (siehe createCheckoutSession). Hier
+        // steht dieselbe Adresse noch einmal mit der bereits bekannten
+        // Session-ID: das nimmt der Rückweg der Zahlungsart, auf die es
+        // ankommt, jede Abhängigkeit davon, dass die Vorlage ersetzt wird.
+        //
+        // "if_required" bleibt: Kartenzahlungen werden weiterhin ohne
+        // Seitenwechsel bestätigt, und nur die Zahlungsarten, die es
+        // brauchen, laufen über die Weiterleitung.
+        returnUrl: `${window.location.origin}/profil/premium/abschluss?sitzung=${encodeURIComponent(sessionId)}`,
+        redirect: "if_required",
+      });
+    } catch {
+      // Bewusst als "nicht durchgelaufen" behandelt, aber mit dem Hinweis
+      // auf die Doppelbuchung: geworfen hat der Aufruf, bevor Stripe ein
+      // Ergebnis geliefert hat, und ob dabei schon etwas angestossen wurde,
+      // weiss die Oberfläche nicht. Ein zweiter Versuch läuft auf derselben
+      // Session weiter, es entsteht also keine zweite Zahlung.
+      setError(
+        "Die Zahlung liess sich gerade nicht bestätigen. Versuch es noch einmal — " +
+          "abgebucht wird nichts doppelt.",
+      );
+      setSubmitting(false);
+      return;
+    }
 
     if (antwort.type === "error") {
       setError(fehlertext(antwort.error) ?? antwort.error.message ?? "Zahlung fehlgeschlagen.");
@@ -305,49 +374,67 @@ type SessionState =
 export default function PremiumCheckoutForm({
   plan,
   beworbenerPreis,
-  onSuccess,
 }: {
   plan: AboPlan;
   /** Was die Kaufseite für diesen Plan ausgezeichnet hat. Dient nur dem
    *  Vergleich: weicht der tatsächlich vergebene Preis davon ab, muss die
    *  Abweichung sichtbar werden, bevor jemand bestätigt. */
   beworbenerPreis: number;
-  onSuccess: () => void;
 }) {
   const [state, setState] = useState<SessionState>({ status: "bereitzustarten" });
   const dunkel = useDunklesSchema();
+  const router = useRouter();
 
-  // Die Checkout-Session wird erst angelegt, wenn ausdrücklich bezahlt werden
-  // soll — nicht beim Öffnen der Seite. Eine Session bei jedem Seitenaufruf
-  // anzulegen hiesse, bei Stripe offene Sessions fürs blosse Hinschauen zu
-  // stapeln.
-  async function starten() {
-    // Aus demselben Grund kein zweiter Aufruf, solange der erste läuft: ein
-    // hektischer Doppelklick würde sonst zwei Sessions anlegen.
-    if (state.status === "laedt") return;
-    setState({ status: "laedt" });
-    const result = await createCheckoutSession(plan);
-    setState(
-      result.ok
+  // Reine Netzabfrage ohne setState — verwendet sowohl vom Auto-Start beim
+  // Erreichen dieser Seite (Effekt unten) als auch von "Noch einmal
+  // versuchen". try/catch fängt eine unerwartete Ausnahme (Netzabbruch,
+  // Fehler in der Server Action selbst) ab: ohne dieses Netz blieb der
+  // Zustand in so einem Fall für immer auf "laedt" stehen — das Formular
+  // zeigte endlos "Zahlung wird vorbereitet…", ohne dass je ein Fehler oder
+  // ein Weg nach vorn erschien.
+  async function ladeCheckoutErgebnis(): Promise<SessionState> {
+    try {
+      const result = await createCheckoutSession(plan);
+      return result.ok
         ? {
             status: "bereit",
             clientSecret: result.clientSecret,
             sessionId: result.sessionId,
             preis: result.preis,
           }
-        : { status: "fehler", text: result.error },
-    );
+        : { status: "fehler", text: result.error };
+    } catch {
+      return {
+        status: "fehler",
+        text: "Zahlung konnte gerade nicht vorbereitet werden. Bitte versuch es noch einmal.",
+      };
+    }
   }
 
-  if (state.status === "bereitzustarten") {
-    return (
-      <Button type="button" onClick={starten}>
-        Weiter zur Zahlung
-      </Button>
-    );
+  // Für "Noch einmal versuchen": kein zweiter Aufruf, solange der erste
+  // läuft — ein hektischer Doppelklick würde sonst zwei Sessions anlegen
+  // (abgefangen ausserdem serverseitig über den Idempotency-Key, siehe
+  // createCheckoutSession).
+  async function starten() {
+    if (state.status === "laedt") return;
+    setState({ status: "laedt" });
+    setState(await ladeCheckoutErgebnis());
   }
 
-  if (state.status === "laedt") {
+  // Diese Komponente lebt auf ihrer eigenen Seite
+  // (app/profil/premium/zahlung), die erst erreicht wird, nachdem auf der
+  // Kaufseite ein Plan gewählt und "Weiter zur Zahlung" angetippt wurde. Die
+  // Session anzulegen ist an dieser Stelle also bereits die Handlung, die
+  // dieser Klick ausgelöst hat — kein zweiter Tastendruck hier nötig. Ohne
+  // synchrones setState im Effekt selbst (das löst Render-Kaskaden aus,
+  // react-hooks/set-state-in-effect) — der Anfangszustand
+  // "bereitzustarten" zeigt bereits dasselbe Skelett wie "laedt".
+  useEffect(() => {
+    ladeCheckoutErgebnis().then(setState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (state.status === "bereitzustarten" || state.status === "laedt") {
     return <CheckoutSkeleton />;
   }
 
@@ -392,7 +479,11 @@ export default function PremiumCheckoutForm({
           elementsOptions: { appearance: appearance(dunkel), fonts: FONTS },
         }}
       >
-        <CheckoutInner sessionId={state.sessionId} preis={state.preis} onSuccess={onSuccess} />
+        <CheckoutInner
+          sessionId={state.sessionId}
+          preis={state.preis}
+          onSuccess={() => router.push("/profil")}
+        />
       </CheckoutElementsProvider>
     </div>
   );

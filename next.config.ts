@@ -110,14 +110,33 @@ const nextConfig: NextConfig = {
       ["frame-src", "https://*.stripe.com", "https://m.stripe.network"],
       ["frame-ancestors", "'none'"],
       ["base-uri", "'self'"],
-      // billing.stripe.com ist die einzige fremde Adresse, auf die ein
-      // Formular der App führt: <form action={createPortalSession}> in
-      // components/PremiumCard.tsx legt eine Portal-Sitzung an und leitet auf
-      // deren URL weiter (lib/actions/billing.ts). Mit Javascript ist das eine
-      // Navigation und form-action gar nicht zuständig; ohne Javascript wird
-      // daraus ein echter Formular-POST mit Weiterleitung, und den blockieren
-      // Firefox und Safari unter form-action 'self'.
-      ["form-action", "'self'", "https://billing.stripe.com"],
+      // Zwei Formulare der App führen auf eine fremde Adresse, beide zu
+      // Stripe:
+      //
+      // 1. <form action={createPortalSession}> in components/PremiumCard.tsx
+      //    legt eine Portal-Sitzung an und leitet auf deren URL weiter
+      //    (billing.stripe.com, lib/actions/billing.ts). Mit Javascript ist
+      //    das eine Navigation und form-action gar nicht zuständig; ohne
+      //    Javascript wird daraus ein echter Formular-POST mit Weiterleitung,
+      //    und den blockieren Firefox und Safari unter form-action 'self'.
+      //
+      // 2. checkout.confirm() für eine Weiterleitungs-Zahlungsart, also für
+      //    TWINT — die für ein Schweizer Produkt wichtigste. Stripe.js schickt
+      //    dafür ein Formular an einen eigenen Zwischenhost (hooks. bzw.
+      //    checkout.stripe.com), von dem aus es weiter zur Bank geht. Genau
+      //    dieser erste Sprung stand hier nicht in der Liste: unter
+      //    form-action 'self' https://billing.stripe.com blockierte Safari
+      //    ihn stillschweigend, das Bezahl-Formular blieb auf "Wird
+      //    verarbeitet…" stehen, und im Log war nichts zu sehen, weil der
+      //    Verstoss nur in der Browser-Konsole landet.
+      //
+      // Deshalb jetzt die Wildcard über Stripes eigene Domain statt einer
+      // Aufzählung einzelner Hosts — dieselbe Begründung wie oben bei
+      // connect-src und frame-src: welchen Zwischenhost Stripe für eine
+      // Zahlungsart wählt, ist deren Sache und kann sich ändern. Nur der
+      // erste Sprung braucht die Erlaubnis; danach gilt die CSP der
+      // Stripe-Seite, nicht mehr unsere.
+      ["form-action", "'self'", "https://*.stripe.com"],
       ["object-src", "'none'"],
     ]
       .map((direktive) => direktive.join(" "))
