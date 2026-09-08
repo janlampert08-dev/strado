@@ -144,12 +144,13 @@ export async function POST(req: Request) {
   }
 
   try {
-    // checkout.session.completed wird vom heutigen Payment-Element-Fluss
-    // nicht mehr erzeugt, bleibt aber vorerst stehen: Stripe wiederholt
-    // automatisch bis zu drei Tage, von Hand bis zu 15 (Dashboard) bzw. 30
-    // Tage (CLI). Ein entfernter Zweig würde eine solche Zustellung nur als
-    // erledigt markieren, ohne Premium zu setzen. Erst entfernen, wenn seit
-    // dem letzten möglichen Alt-Ereignis 30 Tage vergangen sind.
+    // Seit der Umstellung auf die Checkout Sessions API entsteht dieses
+    // Ereignis wieder bei jedem Kauf (lib/actions/billing.ts →
+    // createCheckoutSession). Es ist nicht der einzige Weg — das Abo löst
+    // ohnehin customer.subscription.created aus —, aber es ist das früheste,
+    // und schreiben tun beide denselben, frisch von Stripe geholten Zustand.
+    // Doppelte Zustellung ist über den Anspruch oben abgefangen, mehrfaches
+    // Schreiben desselben Zustands über apply_subscription_state.
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
       const aboId = typeof session.subscription === "string" ? session.subscription : null;

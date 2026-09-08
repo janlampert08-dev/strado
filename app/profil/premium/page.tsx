@@ -18,7 +18,7 @@ export default async function PremiumPage() {
 
   // Wer schon Premium hat, hat hier nichts zu suchen — das Abo verwaltet er
   // über das Kundenportal auf der Profilseite. Ein zweiter Abschluss würde
-  // in createSubscriptionIntent ohnehin abgewiesen, aber eine Kaufseite, die
+  // in createCheckoutSession ohnehin abgewiesen, aber eine Kaufseite, die
   // gar nicht erst erscheint, ist die klarere Antwort.
   const status = await getPremiumStatus();
   if (status.aktiv) redirect("/profil");

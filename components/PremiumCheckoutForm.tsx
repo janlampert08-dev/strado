@@ -1,15 +1,24 @@
 "use client";
 
 import { useState, useSyncExternalStore, type FormEvent } from "react";
-import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
-import type { StripeElementsOptions } from "@stripe/stripe-js";
+import {
+  CheckoutElementsProvider,
+  PaymentElement,
+  useCheckoutElements,
+} from "@stripe/react-stripe-js/checkout";
+import type {
+  StripeCheckoutConfirmResult,
+  StripeCheckoutElementsSdkOptions,
+} from "@stripe/stripe-js";
 import { getStripe } from "@/lib/stripeClient";
 import Button from "@/components/ui/Button";
 import Skeleton from "@/components/ui/Skeleton";
-import { createSubscriptionIntent, confirmSubscription } from "@/lib/actions/billing";
+import { createCheckoutSession, confirmCheckoutSession } from "@/lib/actions/billing";
 import { isDarkTheme, subscribeToThemeChange } from "@/lib/theme";
 import { betragText } from "@/lib/premiumAngebot";
 import type { AboPlan, VergebenerPreis } from "@/lib/premiumLimits";
+
+type ElementsOptionen = NonNullable<StripeCheckoutElementsSdkOptions["elementsOptions"]>;
 
 // Das Payment Element rendert in einem Stripe-eigenen iframe und erbt weder
 // die CSS-Variablen aus app/globals.css noch das Farbschema der Seite — die
@@ -22,7 +31,7 @@ import type { AboPlan, VergebenerPreis } from "@/lib/premiumLimits";
 // Ableitung zur Laufzeit (getComputedStyle) wäre möglich, brächte aber
 // color-mix()-Ergebnisse in unklaren Farbräumen an eine fremde Bibliothek —
 // zwei gepflegte Paletten sind der ehrlichere Weg.
-function appearance(dunkel: boolean): StripeElementsOptions["appearance"] {
+function appearance(dunkel: boolean): ElementsOptionen["appearance"] {
   const farben = dunkel
     ? {
         background: "#0B0B0D",
@@ -62,34 +71,38 @@ function appearance(dunkel: boolean): StripeElementsOptions["appearance"] {
   };
 }
 
-const FONTS: NonNullable<StripeElementsOptions["fonts"]> = [
+const FONTS: NonNullable<ElementsOptionen["fonts"]> = [
   { cssSrc: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" },
 ];
 
 // Liest das wirksame Farbschema und folgt jedem Wechsel — der manuellen Wahl
 // (ThemeToggle) genauso wie einer umgestellten Systemeinstellung. Der
 // Server-Snapshot ist "hell": auf dem Server gibt es kein Farbschema, und
-// react-stripe-js aktualisiert das Erscheinungsbild ohnehin, sobald der
-// Client den echten Wert kennt.
+// der CheckoutElementsProvider reicht ein geändertes appearance an
+// changeAppearance() weiter, sobald der Client den echten Wert kennt.
 function useDunklesSchema(): boolean {
   return useSyncExternalStore(subscribeToThemeChange, isDarkTheme, () => false);
 }
 
-// Stripe-Fehlercodes in Sätze übersetzen, die sagen, was jetzt zu tun ist.
-// Die Meldungen von Stripe sind englisch und technisch ("Your card was
+type ConfirmFehler = Extract<StripeCheckoutConfirmResult, { type: "error" }>["error"];
+
+// Stripe-Fehler in Sätze übersetzen, die sagen, was jetzt zu tun ist. Die
+// Meldungen von Stripe sind englisch und technisch ("Your card was
 // declined."); wer hier gerade bezahlen wollte, braucht den nächsten
 // Schritt, nicht die Diagnose.
 //
-// Der Rückfall auf submitError.message ist Absicht: Stripe kennt mehr Fälle,
-// als hier stehen, und eine ungenaue englische Meldung ist immer noch
-// besser als "Zahlung fehlgeschlagen." ohne jeden Hinweis.
-function fehlertext(code: string | undefined, declineCode: string | undefined): string | null {
-  if (declineCode === "insufficient_funds") {
-    return "Die Karte hat kein Guthaben mehr. Versuch es mit einer anderen Zahlungsart.";
-  }
-  switch (code) {
-    case "card_declined":
-      return "Deine Bank hat die Zahlung abgelehnt. Versuch es mit einer anderen Karte oder mit TWINT.";
+// Checkout meldet einen abgelehnten Zahlungsversuch als code
+// "paymentFailed" und reicht den Decline-Code der Bank durch — feiner
+// aufgeschlüsselt wird es hier nicht mehr. Der Rückfall auf error.message
+// ist Absicht: Stripe kennt mehr Fälle, als hier stehen, und eine ungenaue
+// englische Meldung ist immer noch besser als "Zahlung fehlgeschlagen."
+// ohne jeden Hinweis.
+function fehlertext(fehler: ConfirmFehler): string | null {
+  if (fehler.code !== "paymentFailed") return null;
+
+  switch (fehler.paymentFailed.declineCode) {
+    case "insufficient_funds":
+      return "Die Karte hat kein Guthaben mehr. Versuch es mit einer anderen Zahlungsart.";
     case "expired_card":
       return "Diese Karte ist abgelaufen.";
     case "incorrect_cvc":
@@ -100,10 +113,11 @@ function fehlertext(code: string | undefined, declineCode: string | undefined): 
       return "Diese Kartennummer stimmt nicht.";
     case "processing_error":
       return "Bei der Bank ist etwas schiefgelaufen. Versuch es in ein paar Minuten noch einmal.";
-    case "payment_intent_authentication_failure":
-      return "Die Bestätigung bei deiner Bank wurde abgebrochen. Starte die Zahlung noch einmal.";
+    case "card_not_supported":
+    case "currency_not_supported":
+      return "Diese Karte wird für dieses Abo nicht unterstützt. Versuch es mit einer anderen Karte oder mit TWINT.";
     default:
-      return null;
+      return "Deine Bank hat die Zahlung abgelehnt. Versuch es mit einer anderen Karte oder mit TWINT.";
   }
 }
 
@@ -112,23 +126,21 @@ function preisText(preis: VergebenerPreis): string {
 }
 
 function CheckoutInner({
-  subscriptionId,
+  sessionId,
   preis,
   onSuccess,
 }: {
-  subscriptionId: string;
+  sessionId: string;
   preis: VergebenerPreis;
   onSuccess: () => void;
 }) {
-  const stripe = useStripe();
-  const elements = useElements();
+  const checkoutStatus = useCheckoutElements();
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   // Getrennt von `submitting`: nach einer erfolgten Zahlung darf der
   // Bezahl-Button nicht wieder aktiv werden, auch wenn die Bestätigung noch
-  // aussteht. Ein zweiter confirmPayment auf denselben PaymentIntent
-  // scheitert nur noch — mit einer englischen Stripe-Rohmeldung, die
-  // fehlertext() nicht übersetzt.
+  // aussteht. Ein zweiter confirm() auf dieselbe Session scheitert nur noch —
+  // mit einer englischen Stripe-Rohmeldung, die fehlertext() nicht übersetzt.
   const [bezahlt, setBezahlt] = useState(false);
   const [pruefen, setPruefen] = useState(false);
 
@@ -136,7 +148,7 @@ function CheckoutInner({
   // Fall, dass die Zahlung durch ist, die Bestätigung bei Stripe aber noch
   // ein paar Sekunden braucht — bei TWINT der Normalfall.
   //
-  // try/finally, weil confirmSubscription eine Server Action ist und nicht
+  // try/finally, weil confirmCheckoutSession eine Server Action ist und nicht
   // nur false zurückgeben, sondern auch werfen kann (Netzabbruch, Fehler in
   // der Action selbst). Ohne finally bliebe `pruefen` dann auf true und die
   // Schaltfläche für immer deaktiviert — ausgerechnet auf dem Bildschirm, wo
@@ -146,7 +158,7 @@ function CheckoutInner({
     setPruefen(true);
     setError(null);
     try {
-      const bestaetigt = await confirmSubscription(subscriptionId);
+      const bestaetigt = await confirmCheckoutSession(sessionId);
       if (bestaetigt) {
         onSuccess();
         return;
@@ -165,63 +177,73 @@ function CheckoutInner({
     }
   }
 
+  if (checkoutStatus.type === "loading") {
+    return <CheckoutSkeleton />;
+  }
+
+  if (checkoutStatus.type === "error") {
+    return (
+      <p role="alert" className="text-sm text-danger">
+        {checkoutStatus.error.message}
+      </p>
+    );
+  }
+
+  const checkout = checkoutStatus.checkout;
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!stripe || !elements) return;
     setSubmitting(true);
     setError(null);
 
-    const { error: submitError, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      // return_url ist auch bei redirect: "if_required" PFLICHT, sobald das
+    const antwort = await checkout.confirm({
+      // returnUrl ist auch bei redirect: "if_required" nötig, sobald das
       // Payment Element eine Weiterleitungs-Zahlungsart anbieten kann. TWINT
-      // ist genau das — und für ein Schweizer Produkt die wichtigste. Ohne
-      // die Angabe bricht Stripe.js die Bestätigung mit einem
-      // Integrationsfehler ab, sobald jemand TWINT wählt.
+      // ist genau das — und für ein Schweizer Produkt die wichtigste.
+      //
+      // Die Session trägt bereits eine return_url mit der
+      // {CHECKOUT_SESSION_ID}-Vorlage (siehe createCheckoutSession). Hier
+      // steht dieselbe Adresse noch einmal mit der bereits bekannten
+      // Session-ID: das nimmt der Rückweg der Zahlungsart, auf die es
+      // ankommt, jede Abhängigkeit davon, dass die Vorlage ersetzt wird.
       //
       // "if_required" bleibt: Kartenzahlungen werden weiterhin ohne
       // Seitenwechsel bestätigt, und nur die Zahlungsarten, die es brauchen,
       // laufen über die Weiterleitung.
-      confirmParams: {
-        return_url: `${window.location.origin}/profil/premium/abschluss?abo=${encodeURIComponent(subscriptionId)}`,
-      },
+      returnUrl: `${window.location.origin}/profil/premium/abschluss?sitzung=${encodeURIComponent(sessionId)}`,
       redirect: "if_required",
     });
 
-    if (submitError) {
-      setError(
-        fehlertext(submitError.code, submitError.decline_code) ??
-          submitError.message ??
-          "Zahlung fehlgeschlagen.",
-      );
+    if (antwort.type === "error") {
+      setError(fehlertext(antwort.error) ?? antwort.error.message ?? "Zahlung fehlgeschlagen.");
       setSubmitting(false);
       return;
     }
 
-    // "processing" gilt als Erfolg: TWINT und einige Bankverfahren
-    // bestätigen nicht sofort. confirmSubscription unten prüft den
-    // tatsächlichen Zustand bei Stripe nach — steht das Abo dort noch nicht
-    // auf active, kommt false zurück und der Text unten erklärt das.
-    if (paymentIntent?.status === "succeeded" || paymentIntent?.status === "processing") {
-      // Ab hier ist Geld geflossen (oder fliesst). Der Bezahl-Button bleibt
-      // dauerhaft gesperrt, unabhängig davon, wie die Bestätigung ausgeht.
-      setBezahlt(true);
-      const confirmed = await confirmSubscription(subscriptionId);
-      if (confirmed) {
+    // Ab hier ist Geld geflossen (oder fliesst). Der Bezahl-Button bleibt
+    // dauerhaft gesperrt, unabhängig davon, wie die Bestätigung ausgeht.
+    setBezahlt(true);
+
+    // Der Status der Session ist noch nicht die ganze Wahrheit: TWINT und
+    // einige Bankverfahren bestätigen nicht sofort. confirmCheckoutSession
+    // prüft den tatsächlichen Zustand bei Stripe nach — steht die Session
+    // dort noch nicht auf complete/paid, kommt false zurück und der Text
+    // unten erklärt das.
+    try {
+      const bestaetigt = await confirmCheckoutSession(sessionId);
+      if (bestaetigt) {
         onSuccess();
         return;
       }
-      setError(
-        "Die Zahlung läuft, ist aber noch nicht bestätigt. Das kann bei TWINT einen Moment " +
-          "dauern. Abgebucht wird nichts doppelt.",
-      );
-      setSubmitting(false);
-      return;
-    } else if (paymentIntent?.status === "requires_action") {
-      setError("Die Bestätigung bei deiner Bank steht noch aus. Bitte schliess sie ab.");
-    } else {
-      setError("Zahlung konnte nicht abgeschlossen werden.");
+    } catch {
+      // Fällt in denselben Zwischenstand wie eine noch nicht verbuchte
+      // Zahlung: der Weg nach vorn ist die Schaltfläche "Erneut prüfen".
     }
+
+    setError(
+      "Die Zahlung läuft, ist aber noch nicht bestätigt. Das kann bei TWINT einen Moment " +
+        "dauern. Abgebucht wird nichts doppelt.",
+    );
     setSubmitting(false);
   }
 
@@ -243,7 +265,7 @@ function CheckoutInner({
               hier ist der Moment, in dem die Zahlungspflicht ausgelöst wird,
               und der Betrag darf dafür nicht weiter oben auf der Seite
               stehen bleiben. */}
-          <Button type="submit" disabled={!stripe || submitting} aria-busy={submitting}>
+          <Button type="submit" disabled={submitting} aria-busy={submitting}>
             {submitting ? "Wird verarbeitet…" : `Zahlungspflichtig abonnieren — ${preisText(preis)}`}
           </Button>
           <p className="text-center text-xs text-muted">
@@ -255,12 +277,29 @@ function CheckoutInner({
   );
 }
 
-type IntentState =
+// Platzhalter in der Form, die das Payment Element gleich einnimmt: der
+// frühere einzeilige Hinweis liess die Seite in dem Moment springen, in dem
+// das Formular erschien. aria-live meldet den Zustand denen, die den Sprung
+// ohnehin nicht sehen.
+function CheckoutSkeleton() {
+  return (
+    <div className="flex flex-col gap-3" aria-busy="true">
+      <p role="status" aria-live="polite" className="text-sm text-muted">
+        Zahlung wird vorbereitet…
+      </p>
+      <Skeleton className="h-11 rounded-md" />
+      <Skeleton className="h-11 rounded-md" />
+      <Skeleton className="h-10 w-full rounded-full" />
+    </div>
+  );
+}
+
+type SessionState =
   // Noch nichts angefordert — die Seite steht offen, bei Stripe ist nichts
   // passiert.
   | { status: "bereitzustarten" }
   | { status: "laedt" }
-  | { status: "bereit"; clientSecret: string; subscriptionId: string; preis: VergebenerPreis }
+  | { status: "bereit"; clientSecret: string; sessionId: string; preis: VergebenerPreis }
   | { status: "fehler"; text: string };
 
 export default function PremiumCheckoutForm({
@@ -275,24 +314,25 @@ export default function PremiumCheckoutForm({
   beworbenerPreis: number;
   onSuccess: () => void;
 }) {
-  const [state, setState] = useState<IntentState>({ status: "bereitzustarten" });
+  const [state, setState] = useState<SessionState>({ status: "bereitzustarten" });
   const dunkel = useDunklesSchema();
 
-  // Das Abo wird erst angelegt, wenn ausdrücklich bezahlt werden soll —
-  // nicht beim Öffnen der Seite. Ein Abo bei jedem Seitenaufruf anzulegen
-  // hiesse, bei Stripe unbezahlte Abos fürs blosse Hinschauen zu stapeln.
+  // Die Checkout-Session wird erst angelegt, wenn ausdrücklich bezahlt werden
+  // soll — nicht beim Öffnen der Seite. Eine Session bei jedem Seitenaufruf
+  // anzulegen hiesse, bei Stripe offene Sessions fürs blosse Hinschauen zu
+  // stapeln.
   async function starten() {
     // Aus demselben Grund kein zweiter Aufruf, solange der erste läuft: ein
-    // hektischer Doppelklick würde sonst zwei Abos anlegen.
+    // hektischer Doppelklick würde sonst zwei Sessions anlegen.
     if (state.status === "laedt") return;
     setState({ status: "laedt" });
-    const result = await createSubscriptionIntent(plan);
+    const result = await createCheckoutSession(plan);
     setState(
       result.ok
         ? {
             status: "bereit",
             clientSecret: result.clientSecret,
-            subscriptionId: result.subscriptionId,
+            sessionId: result.sessionId,
             preis: result.preis,
           }
         : { status: "fehler", text: result.error },
@@ -308,20 +348,7 @@ export default function PremiumCheckoutForm({
   }
 
   if (state.status === "laedt") {
-    // Platzhalter in der Form, die das Payment Element gleich einnimmt: der
-    // frühere einzeilige Hinweis liess die Seite in dem Moment springen, in
-    // dem das Formular erschien. aria-live meldet den Zustand denen, die den
-    // Sprung ohnehin nicht sehen.
-    return (
-      <div className="flex flex-col gap-3" aria-busy="true">
-        <p role="status" aria-live="polite" className="text-sm text-muted">
-          Zahlung wird vorbereitet…
-        </p>
-        <Skeleton className="h-11 rounded-md" />
-        <Skeleton className="h-11 rounded-md" />
-        <Skeleton className="h-10 w-full rounded-full" />
-      </div>
-    );
+    return <CheckoutSkeleton />;
   }
 
   if (state.status === "fehler") {
@@ -338,8 +365,8 @@ export default function PremiumCheckoutForm({
   }
 
   // Zwischen dem Rendern der Kaufseite und diesem Klick kann der Preis bei
-  // Stripe geändert worden sein — die Seite liest ihn beim Öffnen, das Abo
-  // entsteht jetzt. Dann muss der neue Betrag dastehen, bevor jemand
+  // Stripe geändert worden sein — die Seite liest ihn beim Öffnen, die
+  // Session entsteht jetzt. Dann muss der neue Betrag dastehen, bevor jemand
   // bestätigt: eine Seite, die den einen Betrag auszeichnet, während ein
   // anderer abgebucht wird, ist ein falsch ausgezeichneter Preis und kein
   // Anzeigefehler.
@@ -354,20 +381,19 @@ export default function PremiumCheckoutForm({
           abgebucht wird.
         </p>
       )}
-      {/* Kein key auf dem Schema: react-stripe-js reicht ein geändertes
-          appearance an elements.update() weiter. Ein Neuaufbau würde beim
+      {/* Kein key auf dem Schema: der Provider reicht ein geändertes
+          appearance an changeAppearance() weiter. Ein Neuaufbau würde beim
           Wechsel auf Dunkel — automatisch etwa bei Sonnenuntergang — mitten
           im Bezahlen die bereits eingetippten Kartendaten verwerfen. */}
-      <Elements
+      <CheckoutElementsProvider
         stripe={getStripe()}
-        options={{ clientSecret: state.clientSecret, appearance: appearance(dunkel), fonts: FONTS }}
+        options={{
+          clientSecret: state.clientSecret,
+          elementsOptions: { appearance: appearance(dunkel), fonts: FONTS },
+        }}
       >
-        <CheckoutInner
-          subscriptionId={state.subscriptionId}
-          preis={state.preis}
-          onSuccess={onSuccess}
-        />
-      </Elements>
+        <CheckoutInner sessionId={state.sessionId} preis={state.preis} onSuccess={onSuccess} />
+      </CheckoutElementsProvider>
     </div>
   );
 }

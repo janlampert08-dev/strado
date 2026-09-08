@@ -10,18 +10,28 @@ import { siteUrl } from "@/lib/siteUrl";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe";
 import { KULANZ_TAGE, leseAboZustand } from "@/lib/stripeWebhook";
+import {
+  aktivesAboAusSession,
+  istEigeneBezahlteSession,
+  passendeOffeneSession,
+  preisVonSession,
+} from "@/lib/stripeCheckout";
 import type { AboPlan, PlanAngebot, PremiumAngebot, VergebenerPreis } from "@/lib/premiumLimits";
 import type Stripe from "stripe";
 
 // Ein Customer-Feld kann bei Stripe die ID oder das ausgeklappte Objekt
-// sein (auch ein gelöschter Customer). Nur die ID interessiert hier.
-function idVonCustomer(customer: Stripe.Subscription["customer"]): string | null {
+// sein (auch ein gelöschter Customer). Nur die ID interessiert hier. Beide
+// Trägertypen stehen im Union, weil sowohl ein Abo als auch eine
+// Checkout-Session gegen den eigenen Customer geprüft wird.
+function idVonCustomer(
+  customer: Stripe.Subscription["customer"] | Stripe.Checkout.Session["customer"],
+): string | null {
   if (!customer) return null;
   return typeof customer === "string" ? customer : customer.id;
 }
 
 // Legt bei Bedarf einen Stripe-Customer an (einmalig pro Nutzer) und
-// speichert die ID am Profil — sowohl der Webhook als auch confirmSubscription
+// speichert die ID am Profil — sowohl der Webhook als auch die Bestätigung
 // (unten) brauchen diese Zuordnung. Liest/schreibt stripe_customer_id über
 // den Service-Role-Client statt der eingeloggten Nutzer-Session: die Spalte
 // ist seit der RLS-Härtung (siehe Migration 0027) für anon/authenticated
@@ -55,11 +65,14 @@ async function getOrCreateStripeCustomerId(
   return customer.id;
 }
 
-export type SubscriptionIntentResult =
+export type CheckoutSessionResult =
   | {
       ok: true;
+      /** Initialisiert das Checkout-SDK im Browser (CheckoutElementsProvider).
+       *  Gehört nicht in eine URL und nicht ins Log. */
       clientSecret: string;
-      subscriptionId: string;
+      /** Wird nach der Zahlung an confirmCheckoutSession zurückgereicht. */
+      sessionId: string;
       /** Der Preis, der für dieses Abo tatsächlich gilt — nicht der, den die
        *  Kaufseite beim Rendern gezeigt hat. Siehe VergebenerPreis. */
       preis: VergebenerPreis;
@@ -138,8 +151,8 @@ async function betrag(
 }
 
 // Nur lesend — die Kaufseite darf beliebig oft geöffnet werden, ohne dass
-// bei Stripe etwas entsteht; ein Abo wird erst in createSubscriptionIntent
-// angelegt.
+// bei Stripe etwas entsteht; eine Checkout-Session entsteht erst in
+// createCheckoutSession.
 export async function getPremiumAngebot(): Promise<PremiumAngebot> {
   const [monat, jahr] = await Promise.all([betrag(monatsPreis()), betrag(jahresPreis())]);
 
@@ -155,22 +168,20 @@ export async function getPremiumAngebot(): Promise<PremiumAngebot> {
   return { plaene };
 }
 
-function clientSecretVon(subscription: Stripe.Subscription): string | null {
-  // Seit API-Version 2025-03-31.basil hängt das PaymentIntent-Client-Secret
-  // nicht mehr unter invoice.payment_intent, sondern unter
-  // invoice.confirmation_secret (siehe das Pinning in lib/stripe.ts).
-  const invoice = subscription.latest_invoice;
-  if (!invoice || typeof invoice !== "object") return null;
-  return invoice.confirmation_secret?.client_secret ?? null;
-}
-
-// Erzeugt ein Abo im Status "incomplete" und gibt das zugehörige PaymentIntent-
-// Client-Secret zurück — das Payment Element (PremiumCheckoutForm) sammelt
-// die Zahlungsdaten direkt eingebettet im eigenen UI, statt zu Stripes
-// gehosteter Checkout-Seite umzuleiten.
-export async function createSubscriptionIntent(
+// Legt eine Checkout-Session im Modus "elements" an und gibt deren
+// Client-Secret zurück. Damit initialisiert der Browser das Checkout-SDK
+// (components/PremiumCheckoutForm.tsx), rendert das Payment Element
+// eingebettet im eigenen UI und bestätigt über checkout.confirm() — ohne
+// Umleitung auf Stripes gehostete Seite.
+//
+// Der frühere Weg legte hier selbst ein Abo mit payment_behavior:
+// "default_incomplete" an und reichte das PaymentIntent-Client-Secret der
+// ersten Rechnung durch. Die Checkout Sessions API übernimmt genau diesen
+// Aufbau: das Abo entsteht erst, wenn die Session bezahlt ist, und Stripe
+// verwaltet Rechnung, Zahlungsarten und Wiederaufnahme selbst.
+export async function createCheckoutSession(
   plan: AboPlan = "monat",
-): Promise<SubscriptionIntentResult> {
+): Promise<CheckoutSessionResult> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -184,90 +195,194 @@ export async function createSubscriptionIntent(
     return { ok: false, error: "Unbekannter Plan." };
   }
 
+  const preisId = preisIdFuer(plan);
+  if (!preisId) return { ok: false, error: "Dieser Plan ist zurzeit nicht verfügbar." };
+
   const customerId = await getOrCreateStripeCustomerId(user.id, user.email);
 
-  // Ohne diese Prüfung legte jeder Aufruf ein neues Abo an: wer die
-  // Kaufseite zweimal öffnet oder neu lädt, erzeugte zwei incomplete-Abos —
+  // Ohne diese Prüfung legte jeder Aufruf eine neue Session an: wer die
+  // Kaufseite zweimal öffnet oder neu lädt, erzeugte zwei offene Sessions —
   // und wer beide bezahlt, zahlt doppelt für dasselbe Konto.
   //
   // Gezielt nach Status abfragen statt status "all" mit einer Seitengrenze:
   // ein Konto mit vielen beendeten Abos hätte sonst genau das laufende aus
   // der ersten Seite verdrängt, und daneben wäre ein zweites entstanden.
-  const [aktive, testphase, unbezahlte] = await Promise.all([
+  const [aktive, testphase, offeneSessions] = await Promise.all([
     getStripe().subscriptions.list({ customer: customerId, status: "active", limit: 1 }),
     getStripe().subscriptions.list({ customer: customerId, status: "trialing", limit: 1 }),
-    getStripe().subscriptions.list({
-      customer: customerId,
-      status: "incomplete",
-      limit: 20,
-      expand: ["data.latest_invoice.confirmation_secret"],
-    }),
+    getStripe().checkout.sessions.list({ customer: customerId, status: "open", limit: 20 }),
   ]);
 
   if (aktive.data.length > 0 || testphase.data.length > 0) {
     return { ok: false, error: "Du hast bereits ein aktives Premium-Abo." };
   }
 
-  const preisId = preisIdFuer(plan);
-  if (!preisId) return { ok: false, error: "Dieser Plan ist zurzeit nicht verfügbar." };
-
-  // Den tatsächlich geltenden Betrag mitliefern. Ohne ihn bestätigt jemand
-  // eine Zahlung über die Zahl, die beim Öffnen der Seite galt — und wenn
-  // der Preis bei Stripe inzwischen ein anderer ist, ist das die falsche.
-  //
-  // Schlägt die Abfrage fehl, wird hier abgebrochen statt auf 0 zurückzufallen.
-  // Der Rückfall stand vorher da und war der gefährlichere Weg: das Abo entsteht
-  // bei Stripe trotzdem mit der echten Preis-ID, auf der Schaltfläche stünde
-  // aber "CHF 0.00" — und abgebucht würde der volle Betrag. Lieber gar kein
-  // Kauf als ein Kauf zum falsch ausgezeichneten Preis.
-  const vergeben = await betrag(plan === "monat" ? monatsPreis() : jahresPreis());
-  if (!vergeben) return { ok: false, error: "Dieser Plan ist zurzeit nicht verfügbar." };
-  const preis: VergebenerPreis = {
-    betragRappen: vergeben.rappen,
-    waehrung: vergeben.waehrung,
-  };
-
-  // Ein noch unbezahltes Abo für denselben Plan wiederverwenden, statt
-  // daneben ein zweites anzulegen.
-  const offen = unbezahlte.data.find(
-    (abo) =>
-      abo.items.data.some((position) => position.price.id === preisId) &&
-      clientSecretVon(abo) !== null,
-  );
-  if (offen) {
-    return { ok: true, clientSecret: clientSecretVon(offen)!, subscriptionId: offen.id, preis };
+  // Eine noch offene Session für denselben Preis wiederverwenden, statt
+  // daneben eine zweite anzulegen — siehe passendeOffeneSession.
+  const offen = passendeOffeneSession(offeneSessions.data, preisId);
+  const offenerPreis = offen ? preisVonSession(offen) : null;
+  if (offen && offenerPreis) {
+    return {
+      ok: true,
+      clientSecret: offen.client_secret!,
+      sessionId: offen.id,
+      preis: offenerPreis,
+    };
   }
 
-  const subscription = await getStripe().subscriptions.create(
+  const session = await getStripe().checkout.sessions.create(
     {
+      mode: "subscription",
+      // "elements" statt "hosted_page": das Payment Element sammelt die
+      // Zahlungsdaten eingebettet im eigenen UI. Für diesen Modus ist
+      // return_url Pflicht.
+      ui_mode: "elements",
       customer: customerId,
-      items: [{ price: preisId }],
-      payment_behavior: "default_incomplete",
-      payment_settings: { save_default_payment_method: "on_subscription" },
-      expand: ["latest_invoice.confirmation_secret"],
+      line_items: [{ price: preisId, quantity: 1 }],
+      // Rückweg für Zahlungsarten mit Weiterleitung (TWINT, Bankverfahren).
+      // {CHECKOUT_SESSION_ID} ersetzt Stripe beim Umleiten durch die ID
+      // dieser Session — die Abschluss-Seite braucht sie, um den Zustand
+      // nachzuprüfen.
+      return_url: `${siteUrl()}/profil/premium/abschluss?sitzung={CHECKOUT_SESSION_ID}`,
+      metadata: { supabase_user_id: user.id, plan, price_id: preisId },
     },
     {
       // Fängt den Doppelklick ab, bei dem zwei Anfragen die Prüfung oben
-      // gleichzeitig passieren: beide bekommen dann dasselbe Abo zurück.
+      // gleichzeitig passieren: beide bekommen dann dieselbe Session zurück.
       // Auf eine Stunde begrenzt, damit ein späteres, absichtliches
       // Neuabschliessen nicht auf einer alten Antwort hängen bleibt.
-      idempotencyKey: `abo:${user.id}:${plan}:${Math.floor(Date.now() / 3_600_000)}`,
+      idempotencyKey: `checkout:${user.id}:${plan}:${Math.floor(Date.now() / 3_600_000)}`,
     },
   );
 
-  const clientSecret = clientSecretVon(subscription);
+  const clientSecret = session.client_secret;
   if (!clientSecret) {
     return { ok: false, error: "Zahlung konnte nicht vorbereitet werden." };
   }
 
-  return { ok: true, clientSecret, subscriptionId: subscription.id, preis };
+  // Rückfall auf den Katalogpreis, falls die Session keinen Gesamtbetrag
+  // trägt. Abgebrochen wird erst, wenn auch der fehlt: lieber gar kein Kauf
+  // als ein Kauf zum falsch ausgezeichneten Preis.
+  const vergeben = preisVonSession(session);
+  if (vergeben) {
+    return { ok: true, clientSecret, sessionId: session.id, preis: vergeben };
+  }
+
+  const katalog = await betrag(plan === "monat" ? monatsPreis() : jahresPreis());
+  if (!katalog) {
+    console.error("Checkout-Session ohne Betrag", { sessionId: session.id, plan });
+    return { ok: false, error: "Dieser Plan ist zurzeit nicht verfügbar." };
+  }
+  return {
+    ok: true,
+    clientSecret,
+    sessionId: session.id,
+    preis: { betragRappen: katalog.rappen, waehrung: katalog.waehrung },
+  };
 }
 
-// Nach erfolgreicher Bestätigung des Payment Elements im Browser (kein
-// Redirect nötig) wird der Abo-Status direkt bei Stripe verifiziert, statt
-// sich allein auf das Webhook-Event zu verlassen (siehe Begründung in der
-// vorherigen Checkout-Variante — funktioniert unabhängig davon, ob Stripe
-// diese lokale Dev-Umgebung per Webhook erreichen kann).
+// Schreibt den Abo-Zustand aus einem bereits bei Stripe verifizierten Abo in
+// die Datenbank. Gemeinsamer Schluss beider Bestätigungswege unten.
+//
+// Beide Zustände gemeinsam schreiben. Früher setzte diese Stelle nur
+// profiles.ist_premium — Premium war damit sofort aktiv, während es zu dem
+// Abo keine Zeile in subscriptions gab und die Anwendung weder Plan noch
+// Periodenende noch Kulanzfrist kannte. apply_subscription_state erledigt
+// beides in einer Transaktion (0059_premium_abo_zustand.sql).
+async function schreibeAboZustand(
+  admin: ReturnType<typeof createAdminClient>,
+  subscription: Stripe.Subscription,
+  abgerufenAm: string,
+): Promise<boolean> {
+  const zustand = leseAboZustand(subscription);
+  if (!zustand) return false;
+
+  const { data: angewendet, error } = await admin.rpc("apply_subscription_state", {
+    p_stripe_customer_id: zustand.stripeCustomerId,
+    p_stripe_subscription_id: zustand.stripeSubscriptionId,
+    p_status: zustand.status,
+    p_price_id: zustand.priceId,
+    p_current_period_end: zustand.currentPeriodEnd,
+    p_cancel_at_period_end: zustand.cancelAtPeriodEnd,
+    p_stripe_fetched_at: abgerufenAm,
+    p_kulanz_aktion: "unveraendert",
+    p_kulanz_invoice_id: null,
+    p_kulanz_tage: KULANZ_TAGE,
+  });
+
+  if (error) return false;
+
+  // false heisst hier: der Webhook war schneller und hat bereits einen
+  // neueren Zustand geschrieben. Das Abo ist bezahlt und verifiziert, der
+  // Kauf gilt also trotzdem als erfolgreich.
+  if (angewendet !== false) {
+    revalidatePath("/profil");
+    revalidatePath("/profil/einstellungen");
+  }
+  return true;
+}
+
+// Nach erfolgreicher Bestätigung im Browser (checkout.confirm, ohne
+// Weiterleitung) oder nach der Rückkehr von einer Weiterleitungs-Zahlungsart
+// wird der Zustand direkt bei Stripe verifiziert, statt sich allein auf das
+// Webhook-Event zu verlassen — das funktioniert unabhängig davon, ob Stripe
+// diese Umgebung per Webhook erreichen kann.
+export async function confirmCheckoutSession(sessionId: string): Promise<boolean> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return false;
+
+  // Wie oben: stripe_customer_id/ist_premium sind für anon/authenticated
+  // weder lesbar noch beschreibbar (Migration 0027) — der Service-Role-Client
+  // ist hier sicher, weil user.id aus der bereits verifizierten Session
+  // stammt und der Premium-Status erst nach der Stripe-Verifikation unten
+  // gesetzt wird, nicht anhand von Client-Eingaben.
+  const admin = createAdminClient();
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("stripe_customer_id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!profile?.stripe_customer_id) return false;
+
+  let session: Stripe.Checkout.Session;
+  try {
+    session = await getStripe().checkout.sessions.retrieve(sessionId, {
+      expand: ["subscription"],
+    });
+  } catch {
+    return false;
+  }
+  const abgerufenAm = new Date().toISOString();
+
+  // Die Session muss dem eigenen Customer gehören und tatsächlich bezahlt
+  // sein: sessionId kommt aus dem Browser bzw. aus der Adresszeile, ist also
+  // eine Nutzereingabe. Ohne diese Prüfung liesse sich mit einer fremden
+  // Session-ID Premium für das eigene Konto einschalten. Begründung der
+  // einzelnen Bedingungen in lib/stripeCheckout.ts.
+  if (!istEigeneBezahlteSession(session, profile.stripe_customer_id)) return false;
+
+  const subscription = aktivesAboAusSession(session);
+  if (!subscription) return false;
+
+  return schreibeAboZustand(admin, subscription, abgerufenAm);
+}
+
+// Übergangsweg aus dem vorherigen Payment-Intent-Fluss.
+//
+// Bis zur Umstellung auf die Checkout Sessions API zeigte die return_url auf
+// /profil/premium/abschluss?abo=<Abo-ID>. Wer eine Weiterleitungs-Zahlung
+// (TWINT, Bankverfahren) begonnen hat, bevor diese Fassung ausgeliefert
+// wurde, kehrt danach mit genau dieser Adresse zurück — dann ist das hier
+// der einzige Weg, seine bereits erfolgte Zahlung zu bestätigen. Ohne diesen
+// Zweig stünde er vor einer Seite, die seine Zahlung nicht kennt.
+//
+// Entfernen, sobald keine solche Weiterleitung mehr unterwegs sein kann;
+// Stripe lässt eine begonnene Zahlung höchstens wenige Tage offen.
 export async function confirmSubscription(subscriptionId: string): Promise<boolean> {
   const supabase = await createClient();
   const {
@@ -315,37 +430,7 @@ export async function confirmSubscription(subscriptionId: string): Promise<boole
   const invoicePaid = invoice && typeof invoice === "object" && invoice.status === "paid";
   if (!invoicePaid) return false;
 
-  // Beide Zustände gemeinsam schreiben. Früher setzte diese Stelle nur
-  // profiles.ist_premium — Premium war damit sofort aktiv, während es zu dem
-  // Abo keine Zeile in subscriptions gab und die Anwendung weder Plan noch
-  // Periodenende noch Kulanzfrist kannte. apply_subscription_state erledigt
-  // beides in einer Transaktion (0059_premium_abo_zustand.sql).
-  const zustand = leseAboZustand(subscription);
-  if (!zustand) return false;
-
-  const { data: angewendet, error } = await admin.rpc("apply_subscription_state", {
-    p_stripe_customer_id: zustand.stripeCustomerId,
-    p_stripe_subscription_id: zustand.stripeSubscriptionId,
-    p_status: zustand.status,
-    p_price_id: zustand.priceId,
-    p_current_period_end: zustand.currentPeriodEnd,
-    p_cancel_at_period_end: zustand.cancelAtPeriodEnd,
-    p_stripe_fetched_at: abgerufenAm,
-    p_kulanz_aktion: "unveraendert",
-    p_kulanz_invoice_id: null,
-    p_kulanz_tage: KULANZ_TAGE,
-  });
-
-  if (error) return false;
-
-  // false heisst hier: der Webhook war schneller und hat bereits einen
-  // neueren Zustand geschrieben. Das Abo ist bezahlt und verifiziert, der
-  // Kauf gilt also trotzdem als erfolgreich.
-  if (angewendet === false) return true;
-
-  revalidatePath("/profil");
-  revalidatePath("/profil/einstellungen");
-  return true;
+  return schreibeAboZustand(admin, subscription, abgerufenAm);
 }
 
 // Stripes gehostetes Kundenportal — dort verwaltet/kündigt der Nutzer sein
