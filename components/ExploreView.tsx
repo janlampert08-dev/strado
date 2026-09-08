@@ -57,9 +57,11 @@ const SHEET_EXPANDED_GAP_PX = 96;
 export default function ExploreView({
   routes,
   loadError = false,
+  loggedIn,
 }: {
   routes: RouteGeoJSON[];
   loadError?: boolean;
+  loggedIn: boolean;
 }) {
   // Der Suchtext wird nicht in eigenem State gehalten *statt* in der URL,
   // sondern zusätzlich: die URL ist die "single source of truth" (teilbar,
@@ -234,6 +236,7 @@ export default function ExploreView({
         <ExploreSidebar
           routes={visibleRoutes}
           loadError={loadError}
+          loggedIn={loggedIn}
           searchQuery={searchInput}
           onSearchChange={setSearchInput}
           signatures={signatures}

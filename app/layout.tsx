@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
+import { BESCHREIBUNG, SLOGAN } from "@/lib/constants";
 import "./globals.css";
 
 const inter = Inter({
@@ -31,8 +32,7 @@ export const metadata: Metadata = {
   // Der Titel der Startseite kommt aus app/page.tsx; dieser hier greift für
   // alle Seiten ohne eigenes generateMetadata.
   title: "Strado",
-  description:
-    "Kuratierte Kurven-, Pass- und Aussichtsstrecken in der Schweiz. Fahrten per GPS aufzeichnen, Bestzeiten vergleichen, Touren teilen.",
+  description: BESCHREIBUNG,
   // Bis hierher gab es im ganzen Projekt kein einziges openGraph- oder
   // twitter-Feld (grep über app/**). Die App hat aber einen ausdrücklichen
   // Teilen-Knopf und öffentliche Fahrt-URLs — geteilte Links rendern in
@@ -43,9 +43,8 @@ export const metadata: Metadata = {
     type: "website",
     locale: "de_CH",
     siteName: "Strado",
-    title: "Strado — kuratierte Fahrstrecken für Auto und Motorrad",
-    description:
-      "Handverlesene Kurven- und Passstrecken in der Schweiz. Aufzeichnen, vergleichen, teilen.",
+    title: `Strado — ${SLOGAN}`,
+    description: BESCHREIBUNG,
   },
   twitter: {
     card: "summary_large_image",
