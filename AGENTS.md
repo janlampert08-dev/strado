@@ -55,6 +55,15 @@ is what should be corrected.
     `?abo=` branch of the return page are the leftovers of the previous flow,
     kept only until no redirect payment started before the switch can still
     be in flight — see `.agents/payments.md`.
+  - **The return page confirms from the browser, not during render.**
+    `app/profil/premium/abschluss/page.tsx` only reads
+    (`getPremiumStatus()`) and shows the confirmation;
+    `components/AboBestaetigung.tsx` calls the confirmation Server Action
+    and retries while a TWINT payment settles. Until 2026-09-08 the page
+    called it during its own render, and because the confirmation ends in
+    `revalidatePath()` — a mutation Next.js forbids in a render — every
+    successful redirect payment landed on an error page after the money had
+    moved. Nothing here may confirm, write or revalidate from a render.
 - **The domains are live and every link now points at them.** `strado.ch`
   serves the info page and the legal texts under `/legal/…`, `app.strado.ch`
   serves the application, and `contact@strado.ch` is the contact address.

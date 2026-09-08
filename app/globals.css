@@ -273,11 +273,13 @@ textarea {
 /* Bewegung — die einzigen @keyframes der App.
    Bis hierher kam die App ohne eigene Keyframes aus: Bewegung entstand
    ausschliesslich aus Tailwind-Utilities (transition-colors, active:scale-95,
-   animate-pulse). Die beiden Regeln unten sind Ausnahmen mit einem klaren
+   animate-pulse). Die Regeln unten sind Ausnahmen mit einem klaren
    Anlass — sie quittieren eine Nutzeraktion in dem Moment, in dem sie
-   passiert. Beide werden vom prefers-reduced-motion-Block weiter unten
+   passiert. Alle werden vom prefers-reduced-motion-Block weiter unten
    miterfasst; die auslösenden Komponenten prüfen die Abfrage zusätzlich
-   selbst, damit gar nicht erst eine Klasse gesetzt wird. */
+   selbst, damit gar nicht erst eine Klasse gesetzt wird — ausser den beiden
+   Abschluss-Regeln ganz unten, die nur einmal beim Betreten einer Seite
+   laufen und deshalb allein am Media-Query hängen. */
 
 /* Antippen der Wortmarke (components/LogoLink.tsx): eine kurze Neigung nach
    vorne, begleitet von einem Farbwisch in den Akzentton. Über color statt
@@ -324,6 +326,50 @@ textarea {
 
 .kudos-puls {
   animation: kudos-puls var(--duration-base) var(--ease-standard);
+}
+
+/* Abo abgeschlossen (components/PremiumWillkommen.tsx): das Abzeichen fährt
+   einmal auf, ein Ring läuft darum nach aussen aus. Der Anlass ist derselbe
+   wie oben — eine Quittung, kein Zierrat: das hier ist der Moment
+   unmittelbar nach einer Zahlung, und er soll sich nach etwas anfühlen.
+   Beide laufen genau einmal beim Betreten der Seite und danach nie wieder.
+
+   `both` als fill-mode, damit das Abzeichen vor dem Start nicht kurz in
+   voller Grösse aufblitzt. Im prefers-reduced-motion-Block läuft die
+   Animation mit 0.01 ms durch und `both` hält den Endzustand — also
+   sichtbares Abzeichen, unsichtbarer Ring. Genau richtig. */
+@keyframes abschluss-abzeichen {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.abschluss-abzeichen {
+  animation: abschluss-abzeichen 420ms var(--ease-standard) both;
+}
+
+@keyframes abschluss-ring {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.85);
+    opacity: 0;
+  }
+}
+
+.abschluss-ring {
+  animation: abschluss-ring 900ms var(--ease-standard) 160ms both;
 }
 
 /* Reduzierte Bewegung — App-weit, und bis hierher gab es das nirgends

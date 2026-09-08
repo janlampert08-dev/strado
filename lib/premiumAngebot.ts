@@ -13,12 +13,38 @@
 // Währung), genau wie Stripe sie führt. Gerechnet wird ausschliesslich mit
 // dem, was getPremiumAngebot() aus Stripe gelesen hat — nie mit einer
 // zweiten Preisliste im Code.
-import type { AboPlan, PlanAngebot } from "./premiumLimits";
+import type { AboPlan, AboPlanKennung, PlanAngebot } from "./premiumLimits";
 
 /** Anzeigename des Plans — von der Planauswahl und der Zahlungsseite geteilt,
  *  damit beide denselben Titel für denselben Plan zeigen. */
 export function planTitel(plan: AboPlan): string {
   return plan === "monat" ? "Monatlich" : "Jährlich";
+}
+
+/**
+ * Name eines ABGESCHLOSSENEN Abos — nicht zu verwechseln mit planTitel()
+ * darüber, und deshalb bewusst eine andere Vokabel: vor dem Kauf wählt man
+ * zwischen "Monatlich" und "Jährlich", danach hat man ein "Monatsabo" oder
+ * ein "Jahresabo". Beides ist richtig, keines ersetzt das andere.
+ *
+ * Geteilt von components/PremiumCard.tsx (Profilseite) und
+ * components/PremiumWillkommen.tsx (Abschluss-Seite): wer nach der Zahlung
+ * "Jahresabo" liest, soll es im Profil wiederfinden. Zwei Kopien derselben
+ * Zuordnung würden genau das irgendwann brechen.
+ *
+ * "gruender" bleibt, obwohl der Preis seit 2026-09-07 nicht mehr verkauft
+ * wird: die Gründer-Abos laufen weiter und sollen weiterhin beim Namen
+ * genannt werden.
+ */
+export function planName(plan: AboPlanKennung): string {
+  switch (plan) {
+    case "monat":
+      return "Monatsabo";
+    case "jahr":
+      return "Jahresabo";
+    case "gruender":
+      return "Jahresabo zum Gründerpreis";
+  }
 }
 
 /** Zeitraum-Zusatz neben dem Betrag ("pro Monat" / "pro Jahr"), ebenfalls
