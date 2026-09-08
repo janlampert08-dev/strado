@@ -24,6 +24,14 @@ export default async function AboVerwaltenPage() {
 
   const status = await getPremiumStatus();
 
+  // Ohne Abo gibt es hier nichts zu verwalten. Statt einer Seite mit dem
+  // Titel "Abo verwalten", die in Wahrheit für Premium wirbt, geht es
+  // direkt auf die Kaufseite — dieselbe Stelle, auf die die Profilseite
+  // ohne Abo führt. Der Einstellungsabschnitt, der hierher verlinkt, ist
+  // ohne Abo ohnehin ausgeblendet; diese Prüfung fängt den direkten Aufruf
+  // der Adresse ab.
+  if (!status.aktiv) redirect("/profil/premium");
+
   return (
     <div className="flex h-dvh flex-col">
       <Header back="/profil/einstellungen" />

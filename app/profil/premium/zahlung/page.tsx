@@ -79,13 +79,8 @@ export default async function PremiumZahlungPage({
           <p>
             Das Abo verlängert sich automatisch um{" "}
             {gewaehlt.plan === "monat" ? "einen Monat" : "zwölf Monate"}, bis du kündigst. Kündigen
-            kannst du jederzeit ohne Frist in deinem Profil — Premium läuft dann bis zum Ende der
+            kannst du jederzeit ohne Frist in deinem Profil. Premium läuft danach bis zum Ende der
             bezahlten Periode weiter.
-          </p>
-          <p>
-            Nicht zufrieden? Innerhalb von 14 Tagen nach dem ersten Abschluss bekommst du den Betrag
-            auf formlose Anfrage zurück. Das ist eine freiwillige Zusage, kein gesetzliches
-            Widerrufsrecht.
           </p>
           <p>
             Es gelten die{" "}
