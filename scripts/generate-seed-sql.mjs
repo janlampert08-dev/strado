@@ -79,17 +79,17 @@ const META = {
     kategorien: ["freie_fahrt"],
     saison_status: "ganzjaehrig",
     charakter_text:
-      "Runde um Oerlikon: vom Bahnhof durch Neu-Oerlikon in den Glattpark und über die Schaffhauserstrasse zurück.",
+      "Runde durch Neu-Oerlikon und den Glattpark: Binzmühle-, Thurgauer-, Glattpark- und Hagenholzstrasse, zurück über die Wallisellenstrasse.",
   },
-  "seebach-sprint": {
-    name: "Seebach Sprint",
+  "seebach-loop": {
+    name: "Seebach Loop",
     region: "Kanton Zürich",
     start_ort: "Zürich Seebach",
     ziel_ort: "Zürich Seebach",
     kategorien: ["freie_fahrt"],
     saison_status: "ganzjaehrig",
     charakter_text:
-      "Über die Birchstrasse nordwärts nach Glattbrugg und zurück — der schnellste Abschnitt liegt ausserorts.",
+      "Runde durchs Dorf Seebach: über die Glatttal- auf die Birchstrasse, zurück über Köschenrüti und die Seebacherstrasse.",
   },
   "aussersihl-cruise": {
     name: "Aussersihl Cruise",
@@ -99,7 +99,7 @@ const META = {
     kategorien: [],
     saison_status: "ganzjaehrig",
     charakter_text:
-      "Stadtrunde durch den Kreis 4 und über die Kalkbreite. Durchgehend Tempo 30/50 und voller Einbahnen — hier zählt der Charakter, nicht das Tempo.",
+      "Stadtrunde durch Kreis 4 und Sihlfeld: Badener-, Zurlinden-, Aemtler- und Hohlstrasse. Durchgehend Tempo 30/50 und voller Einbahnen — hier zählt der Charakter, nicht das Tempo.",
   },
   "hoengger-hoehenzug": {
     name: "Höngger Höhenzug",
@@ -109,7 +109,7 @@ const META = {
     kategorien: ["kurvig", "scenic"],
     saison_status: "ganzjaehrig",
     charakter_text:
-      "Von der Limmat hinauf auf die Höngger Terrasse, durch die Rebberge nach Frankental und zurück zum Meierhofplatz.",
+      "Von der Limmat hinauf auf die Höngger Terrasse, über Winzer- und Frankentalerstrasse durch die Rebberge und über die Regensdorferstrasse zurück zum Meierhofplatz.",
   },
   "schwamendinger-schlaufe": {
     name: "Schwamendinger Schlaufe",
@@ -119,7 +119,7 @@ const META = {
     kategorien: ["freie_fahrt"],
     saison_status: "ganzjaehrig",
     charakter_text:
-      "Über die Überlandstrasse nach Osten und über die Weststrasse zurück — die schnellen Achsen am nordöstlichen Stadtrand.",
+      "Über die Überlandstrasse nach Osten bis Wallisellen und über die Weststrasse zurück — die schnellen Achsen am nordöstlichen Stadtrand.",
   },
   "witiker-runde": {
     name: "Witiker Runde",
@@ -129,7 +129,7 @@ const META = {
     kategorien: ["kurvig", "scenic"],
     saison_status: "ganzjaehrig",
     charakter_text:
-      "Höhenrunde über Witikon und den Zollikerberg: die Forchstrasse hinauf, durchs Trichtenhausertal und über die Katzenschwanzstrasse zurück.",
+      "Höhenrunde über Witikon und den Zollikerberg: die Witikonerstrasse hinauf, über die Katzenschwanzstrasse ins Trichtenhausertal und über die Forchstrasse zurück.",
   },
   "zimmerberg-rundfahrt": {
     name: "Zimmerberg-Rundfahrt",

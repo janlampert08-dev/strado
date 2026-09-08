@@ -51,78 +51,91 @@ const DEFAULT_KMH_INNERORTS = 50;
 // Runde identisch. Die Zwischenpunkte sind bewusst grosszügig gesetzt: OSRM
 // verbindet sie über das echte Strassennetz, sie sollen die Runde nur in die
 // gewünschte Richtung zwingen, nicht den Verlauf Meter für Meter vorgeben.
+// Wegpunkte je Strecke, als Strassenname plus ungefährer Ort. Verbindlich
+// ist der **Name**: pinneAufStrasse() sucht den nächstgelegenen Punkt genau
+// dieser Strasse, `bei` grenzt nur ein, welches Stück gemeint ist (eine
+// Strasse zieht sich über Kilometer).
+//
+// Eine rohe Koordinate direkt an OSRM zu geben funktioniert nicht gut genug:
+// OSRM schnappt sie an den nächstbesten Weg, und das war beim ersten Anlauf
+// mehrfach der falsche — der Fritz-Heeb-Weg statt der Birchstrasse, der
+// Kienastenwiesweg 173 m neben der gemeinten Strasse. OSRM muss jeden
+// Wegpunkt berühren, fährt also in die Stichstrasse hinein und wieder
+// heraus. Bei der Witikon-Runde waren so 30 % der Strecke doppelt befahren.
+//
+// Alle sechs sind Runden: der erste Wegpunkt wird automatisch auch der
+// letzte, er steht deshalb nicht zweimal in der Liste.
 const LOKALE_STRECKEN = {
   "oerliker-orbit": {
     // Zürich Oerlikon (Kreis 11): Bahnhof → Neu-Oerlikon → Glattpark →
     // Leutschenbach → zurück über die Schaffhauserstrasse.
     waypoints: [
-      [8.5445, 47.4118], // Bahnhof Oerlikon
-      [8.5405, 47.4143], // Birch-/Binzmühlestrasse
-      [8.5536, 47.4166], // Thurgauerstrasse
-      [8.5620, 47.4188], // Glattparkstrasse
-      [8.557, 47.4148], // Hagenholzstrasse
-      [8.558, 47.4106], // Wallisellenstrasse
-      [8.5479, 47.4034], // Berninaplatz
-      [8.5445, 47.4118],
+      { strasse: "Schaffhauserstrasse", bei: [8.546, 47.4118] }, // Bahnhof Oerlikon
+      { strasse: "Binzmühlestrasse", bei: [8.5426, 47.4137] },
+      { strasse: "Thurgauerstrasse", bei: [8.5536, 47.4166] },
+      { strasse: "Glattparkstrasse", bei: [8.5605, 47.4184] },
+      { strasse: "Hagenholzstrasse", bei: [8.5565, 47.4147] },
+      { strasse: "Wallisellenstrasse", bei: [8.558, 47.4106] },
     ],
-    expectedKm: 9,
+    expectedKm: 7,
   },
-  "seebach-sprint": {
-    // Zürich Seebach (Kreis 11): über die Birchstrasse Richtung Glattbrugg
-    // und zurück — der Nordteil ist ausserorts und entsprechend schneller.
+  "seebach-loop": {
+    // Zürich Seebach (Kreis 11): Schaffhauserstrasse → Glatttalstrasse →
+    // Birchstrasse → über Köschenrüti zurück durchs Dorf.
+    //
+    // Die naheliegende Variante — über die Birchstrasse nordwärts nach
+    // Glattbrugg und zurück — ist keine Runde, sondern eine Stichfahrt:
+    // nördlich von Seebach queren Glatt und Bahnlinie, und es gibt in der
+    // Nähe keine zweite Querung. Jeder Anlauf dorthin fuhr rund ein Drittel
+    // der Strecke zweimal, was der doppelt-Guard in processRoute meldet.
     waypoints: [
-      [8.5487, 47.4247], // Bahnhof Seebach
-      [8.5502, 47.4313], // Birchstrasse Nord
-      [8.5537, 47.4385], // Flughofstrasse
-      [8.5574, 47.435], // Europastrasse
-      [8.5567, 47.4207], // Thurgauerstrasse
-      [8.5468, 47.4269], // Glatttalstrasse
-      [8.5487, 47.4247],
+      { strasse: "Schaffhauserstrasse", bei: [8.5517, 47.4231] },
+      { strasse: "Glatttalstrasse", bei: [8.5468, 47.4269] },
+      { strasse: "Birchstrasse", bei: [8.547, 47.4285] },
+      { strasse: "Köschenrütistrasse", bei: [8.5329, 47.4285] },
+      { strasse: "Seebacherstrasse", bei: [8.5387, 47.421] },
     ],
-    expectedKm: 8,
+    expectedKm: 5,
   },
   "aussersihl-cruise": {
-    // Zürich Aussersihl (Kreis 4) mit dem Zipfel Kreis 3 an der Kalkbreite:
-    // Helvetiaplatz → Zurlindenstrasse → Hardstrasse → Hohlstrasse →
-    // Militärstrasse → Langstrasse → zurück. Durchgehend Tempo 30/50 und
-    // voller Einbahnen — die Runde lebt vom Stadtcharakter, nicht vom Tempo.
+    // Zürich Aussersihl (Kreis 4) mit dem Zipfel Kreis 3 um die Kalkbreite.
+    // Durchgehend Tempo 30/50 und voller Einbahnen — die Runde lebt vom
+    // Stadtcharakter, nicht vom Tempo.
     //
-    // Der Weg über die Kalkbreite ist kein Umweg aus Geschmacksgründen: die
-    // Langstrasse zwischen Bäcker- und Militärstrasse ist von 05:30 bis
-    // 22:00 für Autos und Motorräder gesperrt. Eine Runde, die dort
-    // durchführt, wäre tagsüber nicht befahrbar; die Wegpunkte führen die
-    // Route deshalb bewusst darum herum. Der Guard in processRoute prüft
-    // das nach.
+    // Die Langstrasse fehlt bewusst, obwohl sie die bekannteste Adresse des
+    // Quartiers ist: ihr Stück zwischen Bäcker- und Militärstrasse ist von
+    // 05:30 bis 22:00 für Autos und Motorräder gesperrt
+    // (motorcar:conditional=no). Jede Führung, die die Langstrasse der Länge
+    // nach nimmt, quert dieses Stück und wäre tagsüber nicht befahrbar. Die
+    // Runde geht deshalb aussen herum — über Badener-, Zurlinden- und
+    // Birmensdorferstrasse. Der Guard in processRoute prüft das nach.
     waypoints: [
-      [8.5265, 47.3775], // Helvetiaplatz
-      [8.5168, 47.3727], // Kalkbreitestrasse
-      [8.5183, 47.3706], // Zurlindenstrasse
-      [8.5124, 47.3803], // Hardstrasse
-      [8.523, 47.3805], // Hohlstrasse
-      [8.5297, 47.3785], // Militärstrasse
-      [8.5252, 47.3756], // Stauffacherstrasse
-      [8.5265, 47.3775],
+      { strasse: "Badenerstrasse", bei: [8.5222, 47.3757] }, // Helvetiaplatz
+      { strasse: "Zurlindenstrasse", bei: [8.5192, 47.3709] },
+      { strasse: "Birmensdorferstrasse", bei: [8.518, 47.3706] },
+      { strasse: "Hardstrasse", bei: [8.5124, 47.3803] },
+      { strasse: "Hohlstrasse", bei: [8.5214, 47.3798] },
+      { strasse: "Stauffacherstrasse", bei: [8.5252, 47.3756] },
     ],
     expectedKm: 6,
   },
   "hoengger-hoehenzug": {
     // Zürich Höngg (Kreis 10): die Terrasse über der Limmat — hinunter ans
     // Wasser, über Winzer- und Frankentalerstrasse durch die Rebberge nach
-    // Frankental und über die Regensdorferstrasse zurück auf den
-    // Meierhofplatz.
+    // Frankental und über die Regensdorferstrasse zurück.
     //
     // Die naheliegendere Runde über den Käferberg-Kamm (Emil-Klöti-Strasse
-    // hinüber zur Waidbadstrasse) gibt es nicht: zwischen den beiden Strassen
-    // liegt nur ein Waldweg, und Hönggerbergring wie Wolfgang-Pauli-Strasse
-    // sind mit motor_vehicle=no getaggt. OSRM nimmt den Waldweg trotzdem —
-    // der abseits-Guard in processRoute hat genau das aufgedeckt.
+    // hinüber zur Waidbadstrasse) gibt es nicht: zwischen den beiden
+    // Strassen liegt nur ein Waldweg, und Hönggerbergring wie
+    // Wolfgang-Pauli-Strasse sind mit motor_vehicle=no getaggt. OSRM nimmt
+    // den Waldweg trotzdem — der abseits-Guard in processRoute hat genau das
+    // aufgedeckt.
     waypoints: [
-      [8.4997, 47.4019], // Meierhofplatz Höngg
-      [8.5028, 47.3975], // Am Wasser
-      [8.4894, 47.4021], // Winzerstrasse
-      [8.48, 47.4099], // Frankentalerstrasse
-      [8.4887, 47.4103], // Regensdorferstrasse
-      [8.4997, 47.4019],
+      { strasse: "Limmattalstrasse", bei: [8.4997, 47.4019] }, // Meierhofplatz
+      { strasse: "Am Wasser", bei: [8.5026, 47.3974] },
+      { strasse: "Winzerstrasse", bei: [8.4889, 47.4019] },
+      { strasse: "Frankentalerstrasse", bei: [8.4796, 47.4099] },
+      { strasse: "Regensdorferstrasse", bei: [8.4879, 47.4094] },
     ],
     expectedKm: 7,
   },
@@ -130,33 +143,32 @@ const LOKALE_STRECKEN = {
     // Zürich Schwamendingen (Kreis 12) und Wallisellen: Überlandstrasse
     // ostwärts, zurück über die Weststrasse.
     waypoints: [
-      [8.5739, 47.4049], // Winterthurerstrasse
-      [8.5877, 47.4067], // Ueberlandstrasse
-      [8.5947, 47.4083], // Neue Winterthurerstrasse
-      [8.5806, 47.4137], // Weststrasse
-      [8.5703, 47.4118], // Aubruggstrasse
-      [8.5739, 47.4049],
+      { strasse: "Winterthurerstrasse", bei: [8.5742, 47.4043] },
+      { strasse: "Ueberlandstrasse", bei: [8.5874, 47.4069] },
+      { strasse: "Neue Winterthurerstrasse", bei: [8.5942, 47.409] },
+      { strasse: "Weststrasse", bei: [8.5822, 47.4135] },
+      { strasse: "Aubruggstrasse", bei: [8.5703, 47.4116] },
     ],
     expectedKm: 8,
   },
   "witiker-runde": {
-    // Zürich Witikon (Kreis 7) und der Zollikerberg: Forchstrasse hinauf,
-    // durchs Trichtenhausertal und über die Katzenschwanzstrasse zurück.
+    // Zürich Witikon (Kreis 7) und der Zollikerberg: über die
+    // Katzenschwanzstrasse nach Nordosten, durchs Trichtenhausertal und über
+    // die Forchstrasse zurück.
     //
     // Die ursprünglich geplante sechste Runde lag am Katzensee (Affoltern).
     // Sie ist gestrichen: jede Variante dort führte über den Büsiseeweg und
     // einen weiteren Flurweg — zusammen rund 1,4 km, die OSRM als Abkürzung
     // nimmt und die für den allgemeinen Motorfahrzeugverkehr nicht offen
-    // sind. Ein durchgehend befahrener Ring in dieser Grössenordnung
-    // existiert dort schlicht nicht.
+    // sind. Ein durchgehend befahrbarer Ring dieser Grösse existiert dort
+    // schlicht nicht.
     waypoints: [
-      [8.5876, 47.3617], // Witikon, Witikonerstrasse
-      [8.6009, 47.3675], // Trichtenhausen
-      [8.6083, 47.3548], // Zollikerberg
-      [8.5836, 47.3494], // Katzenschwanzstrasse
-      [8.5876, 47.3617],
+      { strasse: "Witikonerstrasse", bei: [8.5891, 47.3601] },
+      { strasse: "Katzenschwanzstrasse", bei: [8.5985, 47.364] },
+      { strasse: "Trichtenhausenstrasse", bei: [8.6002, 47.3543] },
+      { strasse: "Forchstrasse", bei: [8.5802, 47.3519] },
     ],
-    expectedKm: 12,
+    expectedKm: 9,
   },
 };
 
@@ -188,6 +200,62 @@ async function withRetry(label, fn) {
     }
   }
   throw new Error(`${label}: ${lastError}`);
+}
+
+// Wie weit ein gepinnter Wegpunkt höchstens von seinem `bei` entfernt sein
+// darf. Grosszügig, weil `bei` bewusst nur grob gesetzt ist — aber eng
+// genug, dass ein Tippfehler im Strassennamen (der dann eine gleichnamige
+// Strasse im nächsten Quartier trifft) auffällt statt still danebenzugehen.
+const MAX_PIN_ABSTAND_M = 400;
+
+// Löst die Wegpunkte einer Strecke zu Koordinaten auf, die garantiert auf
+// der benannten Strasse liegen. Eine Overpass-Abfrage je Strecke, nicht je
+// Wegpunkt.
+async function pinneAufStrasse(waypoints) {
+  const [s, w, n, e] = bboxOf(waypoints.map((wp) => wp.bei), 0.02);
+  const namen = [...new Set(waypoints.map((wp) => wp.strasse))];
+  const teile = namen
+    .map(
+      (name) =>
+        `way["highway"~"^(${BEFAHRBARE_KLASSEN.join("|")})$"]["name"="${name.replace(/"/g, '\\"')}"](${s},${w},${n},${e});`,
+    )
+    .join("");
+  const ql = `[out:json][timeout:90];(${teile});out geom;`;
+
+  const elements = await withRetry("Overpass (Wegpunkte)", async () => {
+    const res = await fetch(OVERPASS_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain",
+        "User-Agent": "strado-route-seed/1.0 (contact@strado.ch)",
+      },
+      body: ql,
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return (await res.json()).elements ?? [];
+  });
+
+  return waypoints.map((wp) => {
+    let punkt = null;
+    let abstand = Infinity;
+    for (const el of elements) {
+      if (el.tags?.name !== wp.strasse) continue;
+      for (const g of el.geometry ?? []) {
+        const d = haversine([g.lon, g.lat], wp.bei);
+        if (d < abstand) {
+          abstand = d;
+          punkt = [g.lon, g.lat];
+        }
+      }
+    }
+    if (!punkt) throw new Error(`Wegpunkt "${wp.strasse}" nicht gefunden`);
+    if (abstand > MAX_PIN_ABSTAND_M) {
+      throw new Error(
+        `Wegpunkt "${wp.strasse}" liegt ${Math.round(abstand)} m von seinem Ankerpunkt entfernt — falsche Strasse getroffen?`,
+      );
+    }
+    return punkt;
+  });
 }
 
 // continue_straight=false ist für Runden zwingend: sonst darf OSRM an einem
@@ -471,9 +539,41 @@ function buildSpeedSegments(coords, gitter) {
   };
 }
 
+// Anteil der Strecke, der in beide Richtungen befahren wird. Bei einer Runde
+// gehört der nahe null; ein hoher Wert heisst, dass OSRM irgendwo in eine
+// Stichstrasse hinein- und wieder herausfährt, weil ein Wegpunkt nicht auf
+// der Durchgangslinie liegt.
+function anteilDoppeltBefahren(coords) {
+  const gesehen = new Set();
+  let gesamt = 0;
+  let doppelt = 0;
+  for (let i = 0; i < coords.length - 1; i++) {
+    const laenge = haversine(coords[i], coords[i + 1]);
+    gesamt += laenge;
+    const a = coords[i].join(",");
+    const b = coords[i + 1].join(",");
+    // Richtungsunabhängig: hin und zurück ist derselbe Strassenabschnitt.
+    const schluessel = a < b ? `${a}|${b}` : `${b}|${a}`;
+    if (gesehen.has(schluessel)) doppelt += laenge;
+    else gesehen.add(schluessel);
+  }
+  return gesamt ? doppelt / gesamt : 0;
+}
+
+const MAX_DOPPELT_ANTEIL = 0.1;
+
 async function processRoute(key, definition) {
-  const route = await fetchDrivingRoute(definition.waypoints);
+  const gepinnt = await pinneAufStrasse(definition.waypoints);
+  // Alle diese Strecken sind Runden — der Startpunkt ist auch der Zielpunkt.
+  const route = await fetchDrivingRoute([...gepinnt, gepinnt[0]]);
   const coords = route.geometry.coordinates;
+
+  const doppeltAnteil = anteilDoppeltBefahren(coords);
+  if (doppeltAnteil > MAX_DOPPELT_ANTEIL) {
+    throw new Error(
+      `${(doppeltAnteil * 100).toFixed(1)} % der Strecke doppelt befahren — ein Wegpunkt liegt wohl nicht auf der Durchgangslinie`,
+    );
+  }
 
   const { gitter, wayCount } = await fetchStrassenGitter(coords);
   const { segments, unbekanntKm, abseitsKm, konflikte, abseitsWege } =
@@ -526,6 +626,7 @@ async function processRoute(key, definition) {
     geschlossenM,
     segmente: segments.length,
     avgKmh,
+    doppeltProzent: Number((doppeltAnteil * 100).toFixed(1)),
     unbekanntProzent: Number(((unbekanntKm / lengthKm) * 100).toFixed(1)),
   };
 }
