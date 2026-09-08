@@ -25,9 +25,9 @@ export const SLIDESHOWS = [
     slides: [
       {
         typ: "hook",
-        marker: "Kanton Zürich",
-        titel: "Du fährst sie alle.\nUnd kennst deine\nZeit auf keiner.",
-        subline: "Sieben vermessene Strecken. Wisch weiter. →",
+        marker: "Zürich",
+        titel: "Deine Zeit ist gut.\nBis du sie\nvergleichst.",
+        subline: "Sieben Strecken. Eine Bestenliste pro Fahrzeugklasse. →",
       },
       { typ: "strecke", strecke: "zberg" },
       { typ: "strecke", strecke: "binzmer" },
@@ -43,7 +43,7 @@ export const SLIDESHOWS = [
       {
         typ: "cta",
         titel: "Jetzt du.",
-        text: "Strecke wählen, fahren, deine Zeit steht in der Liste.",
+        text: "Strecke wählen, fahren — und deine Zeit steht neben denen, die dasselbe fahren.",
         fussnote: "Kein App Store. Link auf, losfahren.",
       },
     ],
@@ -84,8 +84,8 @@ export const SLIDESHOWS = [
     slides: [
       {
         typ: "hook",
-        marker: "Kanton Zürich",
-        titel: "Die beste Strecke\nim Kanton kennt\ngenau einer.",
+        marker: "Zürich",
+        titel: "Die beste Strecke\nin Zürich kennt\ngenau einer.",
         subline: "Und der schickt sie dir nicht.",
       },
       {
@@ -108,7 +108,7 @@ export const SLIDESHOWS = [
       {
         typ: "cta",
         titel: "Jetzt weisst du\nes auch.",
-        text: "Sieben Strecken im Kanton Zürich, mit Karte, Höhenprofil und Bestenliste.",
+        text: "Sieben Strecken in Zürich, mit Karte, Höhenprofil und Bestenliste.",
         fussnote: "app.strado.ch — kein App Store, kein Download.",
       },
     ],

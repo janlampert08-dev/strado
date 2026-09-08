@@ -23,8 +23,9 @@
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { SLIDESHOWS, STRECKEN } from "./daten.mjs";
+import { VERLAEUFE } from "../verlaeufe.mjs";
 import {
-  FARBEN, esc, zeilen, fuss, kopf, marke, profilPfade, rendern, schriften,
+  FARBEN, esc, zeilen, fuss, kopf, marke, rendern, schriften, verlaufPfad,
 } from "../gemeinsam.mjs";
 
 const HIER = dirname(fileURLToPath(import.meta.url));
@@ -65,9 +66,11 @@ const PASSE_AN = `(() => {
 function slideStrecke(slide, m) {
   const s = STRECKEN[slide.strecke];
   if (!s) throw new Error(`Unbekannte Strecke: ${slide.strecke}`);
+  const verlauf = VERLAEUFE[slide.strecke];
+  if (!verlauf) throw new Error(`Kein Verlauf fuer ${slide.strecke} — hole-verlaeufe.mjs laufen lassen.`);
   const W = SPALTE;
-  const H = 300;
-  const p = profilPfade(s.profil, W, H);
+  const H = 620;
+  const v = verlaufPfad(verlauf, W, H);
   // 2 x 2 statt 4 x 1 wie im Instagram-Format: in einer 830 px breiten Spalte
   // wird eine vierspaltige Zahlenreihe auf dem Telefon zu klein zum Lesen.
   const werte = [
@@ -82,29 +85,24 @@ function slideStrecke(slide, m) {
       <p class="eyebrow">${esc(s.region)}${s.rund ? " · Rundfahrt" : ""}</p>
       <h1 class="titel-strecke" data-zeilen="1">${esc(s.name)}</h1>
       <p class="orte">${s.rund ? `Start/Ziel: ${esc(s.start)}` : `${esc(s.start)} → ${esc(s.ziel)}`}</p>
-      <div class="profil">
+      <div class="verlauf">
         <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true">
           <defs>
-            <linearGradient id="fl" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="${FARBEN.akzent}" stop-opacity="0.28"/>
-              <stop offset="1" stop-color="${FARBEN.akzent}" stop-opacity="0"/>
-            </linearGradient>
-            <filter id="glow" x="-20%" y="-40%" width="140%" height="200%">
-              <feGaussianBlur stdDeviation="10" result="b"/>
+            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="12" result="b"/>
               <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
             </filter>
           </defs>
-          <path d="${p.flaeche}" fill="url(#fl)"/>
-          <path d="${p.linie}" fill="none" stroke="${FARBEN.akzent}" stroke-width="6"
+          <path d="${v.d}" fill="none" stroke="${FARBEN.akzent}" stroke-width="7"
                 stroke-linejoin="round" stroke-linecap="round" filter="url(#glow)"/>
-          <circle cx="${p.gx}" cy="${p.gy}" r="9" fill="${FARBEN.ink}"/>
+          ${s.rund
+            ? `<circle cx="${v.sx}" cy="${v.sy}" r="13" fill="${FARBEN.ink}"/>`
+            : `<circle cx="${v.sx}" cy="${v.sy}" r="13" fill="${FARBEN.ink}"/>
+               <circle cx="${v.zx}" cy="${v.zy}" r="13" fill="none" stroke="${FARBEN.ink}" stroke-width="6"/>`}
         </svg>
-        <div class="profil-fuss">
-          <span>${p.mMin} m</span><span>${p.gipfelM} m bei km ${p.gipfelKm}</span><span>${p.mMax} m</span>
-        </div>
       </div>
       <dl class="werte">
-        ${werte.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}
+        ${werte.map(([k, v2]) => `<div><dt>${esc(k)}</dt><dd>${esc(v2)}</dd></div>`).join("")}
       </dl>
     </main>
     ${fuss(m)}`;
@@ -170,9 +168,6 @@ const BAUER = {
 function seite(slide, m, fontCss) {
   const bauer = BAUER[slide.typ];
   if (!bauer) throw new Error(`Unbekannter Slide-Typ: ${slide.typ}`);
-  // Das Dekor unterhalb der sicheren Zone — dieselbe Linie auf jeder Slide,
-  // damit die Slideshow beim Wischen ruhig bleibt.
-  const deko = profilPfade(STRECKEN.nordwest.profil, 1080, 260);
   return `<!doctype html><html lang="de"><head><meta charset="utf-8"><style>
 ${fontCss}
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -193,11 +188,9 @@ body { width: ${BREITE}px; height: ${HOEHE}px; overflow: hidden;
 .titel-strecke { font-size: 84px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.03;
   margin-top: 20px; }
 .orte { font-size: 32px; color: ${FARBEN.muted}; margin-top: 18px; }
-.profil { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; }
-.profil svg { width: 100%; height: auto; }
-.profil-fuss { display: flex; justify-content: space-between; margin-top: 16px;
-  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 24px; font-weight: 500;
-  color: ${FARBEN.muted}; }
+.verlauf { flex: 1; display: flex; align-items: center; justify-content: center;
+  min-height: 0; margin: 30px 0 10px; }
+.verlauf svg { width: 100%; height: 100%; }
 .werte { display: grid; grid-template-columns: 1fr 1fr; gap: 34px 40px; margin-top: 20px; }
 .werte > div { border-top: 1px solid ${FARBEN.rand}; padding-top: 20px; }
 .werte dt { font-size: 22px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
@@ -231,14 +224,11 @@ body { width: ${BREITE}px; height: ${HOEHE}px; overflow: hidden;
   color: ${FARBEN.muted}; }
 .fuss { flex: none; display: flex; align-items: center; gap: 14px; margin-top: 40px; padding-top: 32px;
   border-top: 1px solid ${FARBEN.rand}; font-size: 30px; font-weight: 500; }
-/* Unterhalb der sicheren Zone. Wird von der TikTok-Oberflaeche verdeckt und
-   traegt deshalb keine Information. */
-.deko { position: absolute; left: 0; bottom: 96px; width: 100%; }
-</style></head><body><div class="karte">${bauer(slide, m)}
-<svg class="deko" viewBox="0 0 1080 260" width="1080" height="260" aria-hidden="true">
-  <path d="${deko.linie}" fill="none" stroke="${FARBEN.akzent}" stroke-width="4"
-        stroke-linejoin="round" stroke-linecap="round" opacity="0.14"/>
-</svg></div></body></html>`;
+/* Unterhalb der sicheren Zone steht bewusst nichts mehr. Ein angeschnittenes
+   Dekor sass hier frueher; seit die Karten den Streckenverlauf zeigen, sah es
+   nach einer zweiten, halb abgeschnittenen Strecke aus statt nach Dekor. Der
+   Streifen ist im Post ohnehin von Caption und Musikzeile verdeckt. */
+</style></head><body><div class="karte">${bauer(slide, m)}</div></body></html>`;
 }
 
 // --- Lauf --------------------------------------------------------------------

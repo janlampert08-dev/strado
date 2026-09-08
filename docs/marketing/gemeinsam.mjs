@@ -116,6 +116,48 @@ export function profilPfade(profil, w, h, pt = 16, pb = 6) {
   };
 }
 
+// --- Streckenverlauf ---------------------------------------------------------
+// Web-Mercator in Metern, dieselbe Projektion wie jede Karte. Wird auch von
+// hole-verlaeufe.mjs zum Ausduennen gebraucht.
+const ERDRADIUS = 6378137;
+export function mercator([lon, lat]) {
+  return [
+    (lon * Math.PI / 180) * ERDRADIUS,
+    Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI / 180) / 2)) * ERDRADIUS,
+  ];
+}
+
+// Bildet einen Verlauf aus [lon, lat] auf eine Flaeche von w x h ab.
+// Das Seitenverhaeltnis bleibt erhalten und der Verlauf wird zentriert —
+// eine gestreckte Strecke waere schlicht die falsche Strecke. rand haelt die
+// Linienenden und die Punkte von der Kante weg.
+export function verlaufPfad(verlauf, w, h, rand = 26) {
+  const punkte = verlauf.map(mercator);
+  const xs = punkte.map((p) => p[0]);
+  const ys = punkte.map((p) => p[1]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const spanneX = Math.max(maxX - minX, 1);
+  const spanneY = Math.max(maxY - minY, 1);
+  const skala = Math.min((w - 2 * rand) / spanneX, (h - 2 * rand) / spanneY);
+  // y gespiegelt: Mercator waechst nach Norden, SVG nach unten.
+  const versatzX = (w - spanneX * skala) / 2;
+  const versatzY = (h - spanneY * skala) / 2;
+  const abb = ([x, y]) => [
+    versatzX + (x - minX) * skala,
+    versatzY + (maxY - y) * skala,
+  ];
+  const bild = punkte.map(abb);
+  const d = bild
+    .map(([x, y], i) => `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`)
+    .join(" ");
+  const [sx, sy] = bild[0];
+  const [zx, zy] = bild[bild.length - 1];
+  // Start und Ziel liegen bei einer Rundfahrt aufeinander; die Zeichnung
+  // setzt dann nur einen Punkt (siehe render.mjs).
+  return { d, sx: sx.toFixed(1), sy: sy.toFixed(1), zx: zx.toFixed(1), zy: zy.toFixed(1) };
+}
+
 export const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 export const zeilen = (s) => esc(s).replace(/\n/g, "<br>");
 

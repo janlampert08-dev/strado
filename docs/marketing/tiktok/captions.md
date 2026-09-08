@@ -21,24 +21,31 @@ riskant nicht dasselbe ist — siehe „Wo die Grenze liegt".
 
 | # | Hook | Reibung | Achtung |
 | --- | --- | --- | --- |
-| 1 | **„Du fährst sie alle. Und kennst deine Zeit auf keiner."** | Vorwurf an den Zuschauer, und er stimmt. Führt direkt ins Produkt. | — *(gerendert: `01-deine-zeit`)* |
+| 1 | **„Deine Zeit ist gut. Bis du sie vergleichst."** | Der Vergleich ist der Haken, nicht die Strecke. Nimmt dem Zuschauer erst recht, was er zu wissen glaubt — und liefert im selben Atemzug, wo er es nachprüfen kann. | — *(gerendert: `01-deine-zeit`)* |
 | 2 | **„Du wohnst seit Jahren in Zürich. Und kennst drei Strassen."** | Lokaler Callout. Wer sich angesprochen fühlt, wischt weiter, um sich zu widersprechen. | — *(gerendert: `02-drei-strassen`)* |
-| 3 | **„Die beste Strecke im Kanton kennt genau einer. Und der schickt sie dir nicht."** | FOMO plus Insider. Passt zur Gründergeschichte. | — *(gerendert: `03-kennt-nur-einer`)* |
-| 4 | „Vergleiche deine Zeit auf dem Zürichberg." | Deine Ausgangsidee. Klar, aber sie teilt nur mit — es gibt nichts, dem man widersprechen will. | Als **zweite** Zeile stark, als erste schwach. In Slideshow 1 steckt sie genau dort. |
-| 5 | „Sonntagsausfahrt? Du fährst dieselbe Runde wie alle anderen." | Trifft die Gewohnheit, nicht die Person. Angenehm gemein. | — |
-| 6 | „Ich habe jede Kurve im Kanton Zürich vermessen." | Autoritäts-Hook, das TikTok-Format schlechthin. Und es stimmt: die Zahlen sind gerechnet, nicht geschätzt. | Nur solange es stimmt. Bei einer neuen Strecke ohne Vermessung fällt der Satz in sich zusammen. |
-| 7 | „Deine Lieblingsstrecke steht in einem Chatverlauf von 2021." | Sehr spezifisch, deshalb wahr für viele. Beste Kommentar-Quote der Liste. | — |
-| 8 | „Niemand fragt dich, was du fährst. Nur wo." | Identität statt Technik. Am nächsten an der Marke. | Am wenigsten provokativ — gut als zweiter Post, schwach als erster. |
-| 9 | „7 Strecken im Kanton Zürich. Auf fünf davon warst du noch nie." | Zahl plus Wette. Lädt zum Gegenbeweis in den Kommentaren ein. | — |
-| 10 | „Strava kennt jeden Veloweg. Und keine einzige gute Kurve." | Vergleichs-Hook, zieht am meisten Reichweite und am meisten Streit. | Vergleichende Werbung ist zulässig, solange sie nicht herabsetzend oder irreführend ist (Art. 3 Abs. 1 lit. e UWG). Diese Formulierung beschreibt einen Unterschied — „Strava ist Müll" wäre die andere Seite der Linie. |
-| 11 | „Alle reden von der Route 66. Wir haben den Albis." | Lokalstolz mit Augenzwinkern. | Nur posten, wenn der Albispass tatsächlich in der App liegt. Er steckt in `supabase/seed/0001_routes.sql`, aber die sieben Strecken der App sind andere — vorher nachsehen. |
-| 12 | „Kein App Store. Kein Abo. Link auf und fahren." | Konvertiert am besten von allen. | Provoziert null. Gehört auf die letzte Slide, nicht auf die erste. |
+| 3 | **„Die beste Strecke in Zürich kennt genau einer. Und der schickt sie dir nicht."** | FOMO plus Insider. Passt zur Gründergeschichte. | — *(gerendert: `03-kennt-nur-einer`)* |
+| 4 | „Du fährst die Strecke seit Jahren. Jemand fährt sie besser." | Vergleich als Behauptung über eine konkrete Person — die schärfste Variante der Nummer 1. | Formuliert Überlegenheit, nicht Tempo. Sobald daraus „schneller" wird, kippt sie in die Liste unten. |
+| 5 | „Auf deiner Hausstrecke bist du nicht die Referenz." | Kurz, kalt, sehr teilbar. | — |
+| 6 | „Vergleiche deine Zeit auf dem Zürichberg." | Deine Ausgangsidee. Klar, aber sie teilt nur mit — es gibt nichts, dem man widersprechen will. | Als **zweite** Zeile stark, als erste schwach. Nummer 1 ist dieselbe Idee mit Widerhaken. |
+| 7 | „Sonntagsausfahrt? Du fährst dieselbe Runde wie alle anderen." | Trifft die Gewohnheit, nicht die Person. Angenehm gemein. | — |
+| 8 | „Ich habe jede Kurve in Zürich vermessen." | Autoritäts-Hook, das TikTok-Format schlechthin. Und es stimmt: die Zahlen sind gerechnet, nicht geschätzt. | Nur solange es stimmt. Bei einer neuen Strecke ohne Vermessung fällt der Satz in sich zusammen. |
+| 9 | „Deine Lieblingsstrecke steht in einem Chatverlauf von 2021." | Sehr spezifisch, deshalb wahr für viele. Beste Kommentar-Quote der Liste. | — |
+| 10 | „Niemand fragt dich, was du fährst. Nur wo." | Identität statt Technik. Am nächsten an der Marke. | Am wenigsten provokativ — gut als zweiter Post, schwach als erster. |
+| 11 | „Sieben Strecken in Zürich. Auf fünf davon warst du noch nie." | Zahl plus Wette. Lädt zum Gegenbeweis in den Kommentaren ein. | — |
+| 12 | „Strava kennt jeden Veloweg. Und keine einzige gute Kurve." | Vergleichs-Hook, zieht am meisten Reichweite und am meisten Streit. | Vergleichende Werbung ist zulässig, solange sie nicht herabsetzend oder irreführend ist (Art. 3 Abs. 1 lit. e UWG). Diese Formulierung beschreibt einen Unterschied — „Strava ist Müll" wäre die andere Seite der Linie. |
+| 13 | „Kein App Store. Kein Abo. Link auf und fahren." | Konvertiert am besten von allen. | Provoziert null. Gehört auf die letzte Slide, nicht auf die erste. |
 
 ### Wo die Grenze liegt
 
 Provokativ heisst hier: **die Behauptung ist frech, nicht die Fahrweise.**
-Alle zwölf Hooks oben provozieren über Ortskenntnis, Gewohnheit oder
-Zugehörigkeit. Keiner provoziert über Tempo — und das ist kein Zufall.
+Alle Hooks oben provozieren über Ortskenntnis, Gewohnheit, Zugehörigkeit
+oder den Vergleich als solchen. Keiner provoziert über Tempo — und das ist
+kein Zufall.
+
+Der Unterschied ist schmal und trotzdem eindeutig. „Jemand fährt sie
+besser" ist eine Aussage über eine Rangliste. „Jemand fährt sie schneller
+als du — trau dich" ist eine Aufforderung. Das Erste ist das Produkt, das
+Zweite ist das Problem.
 
 Diese Zeilen sind draussen, auch wenn sie „ziehen" würden:
 
@@ -70,20 +77,23 @@ Beispielzeiten so gewählt, wie `README.md` es beschreibt.
 
 ---
 
-## 1 · `01-deine-zeit` — Du fährst sie alle
+## 1 · `01-deine-zeit` — Deine Zeit ist gut. Bis du sie vergleichst.
 
 **Dateien:** `out/01-deine-zeit-01.png` … `-08.png` (8 Slides, in dieser Reihenfolge)
 
-Aufbau: Hook → fünf Strecken → Bestenliste → Schluss.
+Aufbau: Hook → fünf Strecken → Bestenliste → Schluss. Der Post ist auf den
+Vergleich gebaut: die Strecken-Slides zeigen, worum es geht, die
+Bestenlisten-Slide zeigt, wogegen.
 
-> Du fährst sie alle. Und kennst deine Zeit auf keiner.
+> Deine Zeit ist gut. Bis du sie vergleichst.
 >
-> Sieben Strecken im Kanton Zürich, alle vermessen: Länge, Höhenmeter,
-> maximale Steigung, Kehren, das ganze Höhenprofil. Nicht geschätzt, sondern
-> aus den Daten der Strecke gerechnet.
+> Sieben Strecken in Zürich, alle vermessen: Streckenverlauf, Länge,
+> Höhenmeter, maximale Steigung, Kehren. Nicht geschätzt, sondern aus den
+> Daten der Strecke gerechnet.
 >
-> Danach steht deine Zeit in der Bestenliste — sortiert nach Fahrzeugklasse,
-> damit der Vergleich auch einer ist.
+> Danach steht deine Zeit in der Bestenliste — sortiert nach Fahrzeugklasse.
+> Ein Töff gehört nicht in dieselbe Liste wie ein Kombi, sonst sagt der
+> Vergleich nur, wer das schnellere Fahrzeug hat.
 >
 > Gratis im Browser: app.strado.ch
 >
@@ -91,8 +101,8 @@ Aufbau: Hook → fünf Strecken → Bestenliste → Schluss.
 >
 > #strado #zürich #kurvenstrecke #töfffahren #ausfahrt #schweiz
 
-**Alt-Text (Slide 1):** Dunkle Grafik mit dem Schriftzug „Du fährst sie alle.
-Und kennst deine Zeit auf keiner."
+**Alt-Text (Slide 1):** Dunkle Grafik mit dem Schriftzug „Deine Zeit ist gut.
+Bis du sie vergleichst."
 
 ---
 
@@ -107,8 +117,7 @@ zielt und nicht auf Klicks.
 > Du wohnst seit Jahren in Zürich. Und kennst drei Strassen.
 >
 > Binzmer Backfire, Dietlikon Dash, Greifensee Schleife, Nordwestschleife,
-> A3 Asphalt — mit Höhenprofil, Kehren und Steigung. Alle im Kanton, alle
-> vermessen.
+> A3 Asphalt — mit Streckenverlauf, Kehren und Steigung. Alle vermessen.
 >
 > Und jetzt die Frage, wegen der ich das poste: welche fehlt? Schreib sie in
 > die Kommentare — Start, Ziel, und warum sie sich lohnt. Die meistgenannte
@@ -133,21 +142,21 @@ Kommentar, und sag Bescheid, wenn eine davon wirklich reinkommt.
 Aufbau: Hook → warum es Strado gibt → vier Strecken → Bestenliste → Schluss.
 Das ist der Post mit Geschichte; er läuft langsamer an und bleibt länger.
 
-> Die beste Strecke im Kanton kennt genau einer. Und der schickt sie dir nicht.
+> Die beste Strecke in Zürich kennt genau einer. Und der schickt sie dir nicht.
 >
 > Nicht aus Bosheit — sie stand einfach nie irgendwo. Sie stand in Köpfen und
 > in Chatverläufen, die man nach drei Wochen nicht mehr findet. Jede Ausfahrt
 > fing mit derselben Frage an: wo fahren wir eigentlich hin?
 >
-> Deshalb gibt es Strado. Die Strecken an einem Ort, mit Karte und
-> Höhenprofil, und danach eine Bestenliste pro Fahrzeugklasse.
+> Deshalb gibt es Strado. Die Strecken an einem Ort, mit Verlauf und Karte,
+> und danach eine Bestenliste pro Fahrzeugklasse.
 >
 > Gestartet in Zürich. app.strado.ch
 >
 > #strado #zürich #buildinpublic #kurvenstrecke #töfffahren #schweiz
 
-**Alt-Text (Slide 1):** Dunkle Grafik mit dem Schriftzug „Die beste Strecke im
-Kanton kennt genau einer."
+**Alt-Text (Slide 1):** Dunkle Grafik mit dem Schriftzug „Die beste Strecke in
+Zürich kennt genau einer."
 
 ---
 
