@@ -13,7 +13,7 @@
 // Währung), genau wie Stripe sie führt. Gerechnet wird ausschliesslich mit
 // dem, was getPremiumAngebot() aus Stripe gelesen hat — nie mit einer
 // zweiten Preisliste im Code.
-import type { PlanAngebot } from "./premiumLimits";
+import type { AboPlan, PlanAngebot } from "./premiumLimits";
 
 /**
  * Schreibt einen Betrag in der kleinsten Einheit als Währungsbetrag aus.
@@ -65,4 +65,37 @@ export function jahresVorteilProzent(
   const zwoelfMonate = monat.betragRappen * 12;
   if (zwoelfMonate <= 0 || jahr.betragRappen >= zwoelfMonate) return null;
   return Math.round((1 - jahr.betragRappen / zwoelfMonate) * 100);
+}
+
+// ---------------------------------------------------------------------------
+// Benennung der Pläne
+// ---------------------------------------------------------------------------
+//
+// Hier und nicht in der Komponente, weil zwei Stellen dieselben Wörter
+// brauchen: die Kaufseite (PremiumPurchaseView) und das Bezahlfenster
+// darüber (PremiumCheckoutForm). Zwei Kopien liefen auseinander, sobald
+// eine davon umformuliert wird — und "verlängert sich um zwölf Monate" ist
+// eine Vertragsangabe, keine Beschriftung.
+
+/** Der Name des Plans in der Auswahl und in der Kopfzeile des Bezahlfensters. */
+export function planTitel(plan: AboPlan): string {
+  return plan === "monat" ? "Monatlich" : "Jährlich";
+}
+
+/** Der Zeitraum hinter dem Preis: "CHF 49.00 pro Jahr". */
+export function planZeitraum(plan: AboPlan): string {
+  return plan === "monat" ? "pro Monat" : "pro Jahr";
+}
+
+/**
+ * Der Zeitraum, um den sich das Abo automatisch verlängert — im Akkusativ,
+ * weil er immer im Satz "verlängert sich automatisch um …" steht.
+ *
+ * Die Angabe ist pflichtig (Dauerschuldverhältnis mit automatischer
+ * Verlängerung) und muss vor dem Auslösen der Zahlungspflicht sichtbar
+ * sein. Sie steht deshalb sowohl auf der Kaufseite als auch im
+ * Bezahlfenster.
+ */
+export function verlaengerungsZeitraum(plan: AboPlan): string {
+  return plan === "monat" ? "einen Monat" : "zwölf Monate";
 }

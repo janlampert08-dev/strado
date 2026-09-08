@@ -9,28 +9,28 @@ import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import { buttonVariants } from "@/components/ui/Button";
 import { LEGAL_URLS } from "@/lib/constants";
-import { betragText, jahresVorteilProzent, monatsAequivalentRappen } from "@/lib/premiumAngebot";
+import {
+  betragText,
+  jahresVorteilProzent,
+  monatsAequivalentRappen,
+  planTitel,
+  planZeitraum,
+  verlaengerungsZeitraum,
+} from "@/lib/premiumAngebot";
 import type { AboPlan, PremiumAngebot, PlanAngebot } from "@/lib/premiumLimits";
 
 // Betrag so anzeigen, wie Stripe ihn führt — nicht aus einer zweiten Liste
 // im Code. Weicht die beworbene Zahl vom abgebuchten Betrag ab, ist das kein
-// Anzeigefehler, sondern ein falsch ausgezeichneter Preis. Das Formatieren
-// und das Rechnen dazu liegt in lib/premiumAngebot.ts, weil es dort geprüft
-// werden kann (Vitest kennt nur lib/).
-
-function planTitel(plan: AboPlan): string {
-  return plan === "monat" ? "Monatlich" : "Jährlich";
-}
-
-function planZeitraum(plan: AboPlan): string {
-  return plan === "monat" ? "pro Monat" : "pro Jahr";
-}
+// Anzeigefehler, sondern ein falsch ausgezeichneter Preis. Das Formatieren,
+// das Rechnen und die Benennung der Pläne liegen in lib/premiumAngebot.ts,
+// weil es dort geprüft werden kann (Vitest kennt nur lib/) und weil das
+// Bezahlfenster dieselben Wörter braucht.
 
 // Nur, was es gibt. Die frühere Liste versprach "Erweiterte Filter und
 // Statistiken" und ein Gold-Abzeichen — beides nicht ausgeliefert, und auf
 // einer Kaufseite ist ein versprochenes Feature eine Vertragsleistung.
 const VORTEILE = [
-  "Eigene Strecken erstellen — privat für dich oder öffentlich nach Review",
+  "Eigene Strecken erstellen — privat oder öffentlich nach Review",
   "12 statt 6 Fotos pro Fahrt",
   "Unbegrenzt Strecken offline speichern",
   "GPX-Export kuratierter Strecken",
@@ -90,7 +90,7 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
         <h1 className="text-display font-semibold">Strado unterstützen</h1>
         <p className="text-sm text-muted">
           Entdecken, Aufzeichnen, Bestenlisten und Feed bleiben gratis. Premium schaltet eigene
-          Strecken frei — und ist die Art, wie Strado sich trägt.
+          Strecken frei — und trägt Strado.
         </p>
       </div>
 
@@ -121,58 +121,77 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
 
       <section className="flex flex-col gap-3">
         {/* Die Pflichtangaben vor dem Kauf, nicht danach: automatische
-            Verlängerung, Kündigungsweg, Widerrufslage. Sie stehen hier im Text
-            und nicht nur im verlinkten Dokument, weil ein Link auf 16 Ziffern
-            AGB niemand vor dem Bezahlen liest — und unmittelbar über der
-            Schaltfläche, die die Zahlungspflicht auslöst, nicht irgendwo
-            weiter oben auf der Seite. */}
+            Verlängerung, Kündigungsweg, Widerrufslage. Sie stehen hier im
+            Text und nicht nur im verlinkten Dokument, weil ein Link auf 16
+            Ziffern AGB niemand vor dem Bezahlen liest. Knapper als zuvor,
+            aber vollständig — gekürzt wurde die Formulierung, nicht der
+            Inhalt. Dieselben Angaben stehen noch einmal im Bezahlfenster,
+            weil dort die Schaltfläche sitzt, die die Zahlungspflicht
+            auslöst. */}
         <h2 className={ABSCHNITT_KLASSEN}>Bevor du bestätigst</h2>
         <Card surface className="flex flex-col gap-2 px-4 py-3 text-sm text-muted">
           <p>
-            Das Abo verlängert sich automatisch um{" "}
-            {gewaehlt === "monat" ? "einen Monat" : "zwölf Monate"}, bis du kündigst. Kündigen
-            kannst du jederzeit ohne Frist in deinem Profil — Premium läuft dann bis zum Ende der
-            bezahlten Periode weiter.
+            Verlängert sich automatisch um {verlaengerungsZeitraum(gewaehlt)}, bis du kündigst.
+            Kündigen kannst du jederzeit ohne Frist in deinem Profil; Premium läuft bis zum Ende
+            der bezahlten Periode weiter.
           </p>
           <p>
-            Nicht zufrieden? Innerhalb von 14 Tagen nach dem ersten Abschluss bekommst du den Betrag
-            auf formlose Anfrage zurück. Das ist eine freiwillige Zusage, kein gesetzliches
+            14 Tage Geld zurück auf formlose Anfrage — freiwillige Zusage, kein gesetzliches
             Widerrufsrecht.
-          </p>
-          <p>
-            Es gelten die{" "}
-            <a
-              href={LEGAL_URLS.agb}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2 hover:text-foreground"
-            >
-              AGB
-            </a>{" "}
-            und die{" "}
-            <a
-              href={LEGAL_URLS.datenschutz}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2 hover:text-foreground"
-            >
-              Datenschutzerklärung
-            </a>
-            .
           </p>
         </Card>
 
         {/* key auf dem Plan: wechselt die Wahl, muss ein bereits vorbereitetes
             Payment Element verworfen werden — sonst zahlte man den Betrag des
-            zuvor gewählten Plans. */}
+            zuvor gewählten Plans. Ein offenes Bezahlfenster geht dabei zu,
+            was richtig ist: es zeigte den alten Betrag.
+
+            Übergeben wird `aktiv` statt `gewaehlt` samt Preis daneben, damit
+            Plan und ausgezeichneter Betrag garantiert aus derselben Zeile des
+            Angebots stammen. */}
         <PremiumCheckoutForm
           key={gewaehlt}
-          plan={gewaehlt}
-          beworbenerPreis={aktiv.betragRappen}
+          angebot={aktiv}
           onSuccess={() => router.push("/profil")}
         />
+
+        {/* Wer hier steht, gibt gleich Zahlungsdaten ein — dann gehören der
+            Zahlungsabwickler und die Rechtstexte in Sichtweite und nicht ins
+            Impressum irgendeiner anderen Seite. */}
+        <p className="text-center text-xs text-muted">
+          Zahlung über Stripe
+          <Trenner />
+          <Rechtslink href={LEGAL_URLS.impressum}>Impressum</Rechtslink>
+          <Trenner />
+          <Rechtslink href={LEGAL_URLS.agb}>AGB</Rechtslink>
+          <Trenner />
+          <Rechtslink href={LEGAL_URLS.datenschutz}>Datenschutz</Rechtslink>
+        </p>
       </section>
     </div>
+  );
+}
+
+/** Trennt die Fusszeile optisch, ohne dass ein Screenreader "Mittelpunkt"
+ *  vorliest. */
+function Trenner() {
+  return (
+    <span aria-hidden="true" className="px-1.5">
+      ·
+    </span>
+  );
+}
+
+function Rechtslink({ href, children }: { href: string; children: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="underline underline-offset-2 hover:text-foreground"
+    >
+      {children}
+    </a>
   );
 }
 
