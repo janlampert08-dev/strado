@@ -1,18 +1,29 @@
 import { NextResponse } from "next/server";
 import { listRoutesForApi } from "@/lib/routes";
 import { averageTempolimit, estimateRouteDurationMinutes } from "@/lib/geo";
+import { OEFFENTLICHE_API_HEADER } from "@/lib/apiCors";
 import { getClientIp, isRateLimitedByKey } from "@/lib/rateLimit";
 
 // Öffentliche API für Strecken inkl. Tempolimit-Daten, damit externe Clients
 // (oder eine künftige Mobile-App) optimale Strecken vorschlagen können, ohne
 // direkt auf die Datenbank zuzugreifen. Komplett unauthentifiziert — daher
 // IP-basiertes Rate Limiting statt des nutzergebundenen isRateLimited.
+//
+// ?hoehenprofil=1 hängt jeder Strecke ihr Höhenprofil an. Standardmässig
+// bleibt es weg, weil es die Antwort um ein Vielfaches aufbläht (siehe
+// listRoutesForApi()). Die Info-Seite auf strado.ch zeichnet damit ihre
+// Vorzeigestrecke, ohne die Streckendetails einzeln nachladen zu müssen.
 export async function GET(request: Request) {
   if (isRateLimitedByKey(`api:strecken:liste:${getClientIp(request.headers)}`, 60, 60_000)) {
-    return NextResponse.json({ error: "Zu viele Anfragen." }, { status: 429 });
+    return NextResponse.json(
+      { error: "Zu viele Anfragen." },
+      { status: 429, headers: OEFFENTLICHE_API_HEADER },
+    );
   }
 
-  const routes = await listRoutesForApi();
+  const mitHoehenprofil =
+    new URL(request.url).searchParams.get("hoehenprofil") === "1";
+  const routes = await listRoutesForApi(mitHoehenprofil);
 
   const data = routes.map((r) => ({
     id: r.id,
@@ -34,7 +45,8 @@ export async function GET(request: Request) {
       r.kategorien,
       r.tempolimits,
     ),
+    ...(mitHoehenprofil ? { hoehenprofil: r.hoehenprofil ?? null } : {}),
   }));
 
-  return NextResponse.json({ routes: data });
+  return NextResponse.json({ routes: data }, { headers: OEFFENTLICHE_API_HEADER });
 }

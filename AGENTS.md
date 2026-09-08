@@ -349,7 +349,15 @@ additional care and review before merging changes to them:
   GPS tracks. This is the privacy boundary for every published ride: a
   regression here exposes riders' home addresses.
 - `/app/api/strecken/` — three fully unauthenticated public endpoints,
-  protected only by IP rate limiting and `lib/validation.ts`.
+  protected only by IP rate limiting and `lib/validation.ts`. The list and
+  the detail endpoint additionally answer with
+  `Access-Control-Allow-Origin: *` (`lib/apiCors.ts`), so a browser on any
+  origin — the info page on `strado.ch` above all — may read them. That is
+  safe only as long as no credentials ride along: never add
+  `Access-Control-Allow-Credentials` there, and never let these endpoints
+  answer with anything beyond the anonymous RLS view. The leaderboard
+  endpoint deliberately carries no such header.
+- `/lib/apiCors.ts` — that header, in one place.
 - `/lib/rateLimit.ts` — abuse-prevention cooldown checks (per-user, DB
   backed) and the per-IP limiter the public API depends on.
 - `/lib/validation.ts` — `isValidUuid`, the input guard on those endpoints.
