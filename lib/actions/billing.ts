@@ -214,10 +214,17 @@ export async function createSubscriptionIntent(
   // Den tatsächlich geltenden Betrag mitliefern. Ohne ihn bestätigt jemand
   // eine Zahlung über die Zahl, die beim Öffnen der Seite galt — und wenn
   // der Preis bei Stripe inzwischen ein anderer ist, ist das die falsche.
+  //
+  // Schlägt die Abfrage fehl, wird hier abgebrochen statt auf 0 zurückzufallen.
+  // Der Rückfall stand vorher da und war der gefährlichere Weg: das Abo entsteht
+  // bei Stripe trotzdem mit der echten Preis-ID, auf der Schaltfläche stünde
+  // aber "CHF 0.00" — und abgebucht würde der volle Betrag. Lieber gar kein
+  // Kauf als ein Kauf zum falsch ausgezeichneten Preis.
   const vergeben = await betrag(plan === "monat" ? monatsPreis() : jahresPreis());
+  if (!vergeben) return { ok: false, error: "Dieser Plan ist zurzeit nicht verfügbar." };
   const preis: VergebenerPreis = {
-    betragRappen: vergeben?.rappen ?? 0,
-    waehrung: vergeben?.waehrung ?? "chf",
+    betragRappen: vergeben.rappen,
+    waehrung: vergeben.waehrung,
   };
 
   // Ein noch unbezahltes Abo für denselben Plan wiederverwenden, statt

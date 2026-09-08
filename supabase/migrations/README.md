@@ -185,8 +185,8 @@ anlegen wird damit Premium (Produktentscheid 2026-09-07, bewusster Bruch
 mit dem additiven Gating aus `docs/premium-plan.md` Abschnitt 4; die AGB
 ziehen in einem eigenen PR nach).
 
-**Vor dem Deploy dieses Codes einspielen, oder zusammen damit — nicht
-vorher allein.** Die Policy wirkt sofort und unabhängig davon, welcher
+**Mit dem Deploy dieses Codes einspielen oder danach — nicht vorher
+allein.** Die Policy wirkt sofort und unabhängig davon, welcher
 Code läuft: eingespielt, solange der alte Code ausgeliefert ist, sehen
 kostenlose Konten weiterhin das Formular, und das Speichern scheitert mit
 „Strecke konnte nicht gespeichert werden" statt mit dem Premium-Hinweis,
