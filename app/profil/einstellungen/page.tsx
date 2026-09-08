@@ -1,6 +1,15 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { KeyRound, Lock, LogOut, MapPin, Palette, Scale } from "lucide-react";
+import {
+  FlaskConical,
+  KeyRound,
+  Lock,
+  LogOut,
+  MapPin,
+  Palette,
+  Scale,
+  Sparkles,
+} from "lucide-react";
 import Header from "@/components/Header";
 import VisibilitySettings from "@/components/VisibilitySettings";
 import { DEFAULT_PRIVACY_RADIUS_M } from "@/lib/track";
@@ -8,6 +17,10 @@ import ThemeToggle from "@/components/ThemeToggle";
 import DeleteProposalButton from "@/components/DeleteProposalButton";
 import DeleteAccountSection from "@/components/DeleteAccountSection";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { getPremiumStatus } from "@/lib/premium";
+import { isModerator } from "@/lib/moderation";
+import { istStaging, STAGING_URL } from "@/lib/staging";
+import { getOrigin } from "@/lib/utils/url";
 import Card from "@/components/ui/Card";
 import Button, { buttonVariants } from "@/components/ui/Button";
 import { LEGAL_URLS } from "@/lib/constants";
@@ -30,7 +43,16 @@ export default async function EinstellungenPage() {
 
   if (!user) redirect("/anmelden");
 
-  const [{ data: profile }, { data: ownRoutes }] = await Promise.all([
+  // Der Moderator-Status ist pro Request memoisiert (lib/moderation.ts) und
+  // wird auf dieser Seite ohnehin schon vom <Header /> abgefragt — die
+  // zusätzliche Abfrage hier kostet also nichts.
+  const [
+    { data: profile },
+    { data: ownRoutes },
+    premiumStatus,
+    istMod,
+    origin,
+  ] = await Promise.all([
     supabase
       .from("profiles")
       .select(
@@ -52,7 +74,17 @@ export default async function EinstellungenPage() {
           ist_privat: boolean;
         }[]
       >(),
+    getPremiumStatus(),
+    isModerator(user.id),
+    getOrigin(),
   ]);
+
+  // Der Einstieg in die Staging-Umgebung — nur für Moderatoren, und nur von
+  // der Produktion aus: auf Staging selbst wäre der Link ein Verweis auf die
+  // Seite, auf der man schon steht. Das Gate in proxy.ts weist ohnehin jeden
+  // ab, der dort kein Moderator ist; dieser Link ist die Auffindbarkeit, nicht
+  // die Absicherung.
+  const zeigeStagingLink = istMod && !istStaging(new URL(origin).hostname);
 
   return (
     <div className="flex h-dvh flex-col">
@@ -67,8 +99,9 @@ export default async function EinstellungenPage() {
               Privatsphäre
             </h2>
             <p className="text-sm text-muted">
-              Legt fest, was andere auf deinem Profil sehen. Ob eine einzelne Fahrt öffentlich
-              ist, entscheidest du beim Speichern oder in &bdquo;Getrackte Fahrten&ldquo;.
+              Legt fest, was andere auf deinem Profil sehen. Ob eine einzelne
+              Fahrt öffentlich ist, entscheidest du beim Speichern oder in
+              &bdquo;Getrackte Fahrten&ldquo;.
             </p>
             <VisibilitySettings
               zeigtFahrzeuge={profile?.zeigt_fahrzeuge ?? true}
@@ -77,7 +110,9 @@ export default async function EinstellungenPage() {
               zeigtHoehenmeter={profile?.zeigt_hoehenmeter ?? true}
               zeigtDistanz={profile?.zeigt_distanz ?? true}
               zeigtFollowerListe={profile?.zeigt_follower_liste ?? true}
-              privatzoneRadiusM={profile?.privatzone_radius_m ?? DEFAULT_PRIVACY_RADIUS_M}
+              privatzoneRadiusM={
+                profile?.privatzone_radius_m ?? DEFAULT_PRIVACY_RADIUS_M
+              }
             />
           </section>
 
@@ -87,7 +122,9 @@ export default async function EinstellungenPage() {
               Darstellung
             </h2>
             <Card className="flex flex-col gap-3 p-4">
-              <p className="text-sm text-muted">Farbschema für die ganze App.</p>
+              <p className="text-sm text-muted">
+                Farbschema für die ganze App.
+              </p>
               <ThemeToggle />
             </Card>
           </section>
@@ -113,7 +150,10 @@ export default async function EinstellungenPage() {
                       ? "text-danger"
                       : "text-muted";
                   return (
-                    <li key={route.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                    <li
+                      key={route.id}
+                      className="flex items-center justify-between gap-3 px-4 py-3"
+                    >
                       <Link
                         href={`/strecken/${route.id}`}
                         className="truncate transition-colors duration-fast hover:text-accent"
@@ -121,7 +161,9 @@ export default async function EinstellungenPage() {
                         {route.name}
                       </Link>
                       <div className="flex shrink-0 items-center gap-3">
-                        <span className={`text-sm font-medium ${color}`}>{label}</span>
+                        <span className={`text-sm font-medium ${color}`}>
+                          {label}
+                        </span>
                         {!route.status_ok && (
                           <Link
                             href={`/strecken/${route.id}/bearbeiten`}
@@ -130,7 +172,9 @@ export default async function EinstellungenPage() {
                             Bearbeiten
                           </Link>
                         )}
-                        {route.abgelehnt_am && <DeleteProposalButton routeId={route.id} />}
+                        {route.abgelehnt_am && (
+                          <DeleteProposalButton routeId={route.id} />
+                        )}
                       </div>
                     </li>
                   );
@@ -151,14 +195,57 @@ export default async function EinstellungenPage() {
               Sitzung
             </h2>
             <Card className="flex flex-col gap-3 p-4">
-              <p className="text-sm text-muted">Du bist auf diesem Gerät angemeldet.</p>
+              <p className="text-sm text-muted">
+                Du bist auf diesem Gerät angemeldet.
+              </p>
               <form action="/auth/abmelden" method="post">
-                <Button type="submit" variant="secondary" size="sm" className="self-start">
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  size="sm"
+                  className="self-start"
+                >
                   Abmelden
                 </Button>
               </form>
             </Card>
           </section>
+
+          {/* Nur für Abonnenten: ohne Abo gibt es hier nichts zu verwalten,
+              und "Abo-Status, Rechnungen, Kündigung" verspräche etwas, das
+              es für dieses Konto nicht gibt. Der Kauf-Einstieg liegt
+              bewusst nicht hier, sondern auf der Profilseite (PremiumCard,
+              "Premium holen") — Einstellungen bleiben frei von Werbung.
+              app/profil/einstellungen/abo leitet ohne Abo entsprechend auf
+              die Kaufseite um.
+
+              Der Zustand entscheidet hier nur über die Sichtbarkeit; die
+              Zahlen dazu (Plan, Verlängerungsdatum, Kulanzfrist) stehen
+              ausschliesslich in PremiumCard. Zwei Quellen fürs selbe Datum
+              wären eine, die auseinanderlaufen kann. */}
+          {premiumStatus.aktiv && (
+            <section className="flex flex-col gap-3">
+              <h2 className="flex items-center gap-1.5 text-sm font-semibold tracking-wide text-muted uppercase">
+                <Sparkles className="h-4 w-4" aria-hidden="true" />
+                Premium
+              </h2>
+              <Card className="flex items-center justify-between gap-3 p-4">
+                <p className="text-sm text-muted">
+                  Abo-Status, Rechnungen, Kündigung.
+                </p>
+                <Link
+                  href="/profil/einstellungen/abo"
+                  className={buttonVariants({
+                    variant: "secondary",
+                    size: "sm",
+                    className: "shrink-0",
+                  })}
+                >
+                  Abo verwalten
+                </Link>
+              </Card>
+            </section>
+          )}
 
           <section className="flex flex-col gap-3">
             <h2 className="flex items-center gap-1.5 text-sm font-semibold tracking-wide text-muted uppercase">
@@ -172,13 +259,40 @@ export default async function EinstellungenPage() {
               </p>
               <Link
                 href="/profil/passwort-aendern"
-                className={buttonVariants({ variant: "secondary", size: "sm", className: "self-start" })}
+                className={buttonVariants({
+                  variant: "secondary",
+                  size: "sm",
+                  className: "self-start",
+                })}
               >
                 Passwort ändern
               </Link>
               <DeleteAccountSection />
             </Card>
           </section>
+
+          {zeigeStagingLink && (
+            <section className="flex flex-col gap-3">
+              <h2 className="flex items-center gap-1.5 text-sm font-semibold tracking-wide text-muted uppercase">
+                <FlaskConical className="h-4 w-4" aria-hidden="true" />
+                Moderation
+              </h2>
+              <Card className="flex flex-col gap-2 p-4">
+                <a
+                  href={STAGING_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-accent underline underline-offset-2 self-start"
+                >
+                  Staging-Umgebung öffnen
+                </a>
+                <p className="text-xs text-muted">
+                  Vorabversion mit eigener Datenbank und Test-Zahlungen. Nur für
+                  Moderatoren erreichbar.
+                </p>
+              </Card>
+            </section>
+          )}
 
           <section className="flex flex-col gap-3">
             <h2 className="flex items-center gap-1.5 text-sm font-semibold tracking-wide text-muted uppercase">
