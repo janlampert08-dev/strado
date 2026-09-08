@@ -304,10 +304,21 @@ area**; each is a few hundred lines at most.
 `README.md` is the human setup guide and is not a substitute for any of
 these.
 
+## Release Flow
+
+As of 2026-09-08, `staging` is the integration branch: individual feature
+and fix branches land there first via PR, not directly on `main`. Changes
+sit on `staging` and get tested there. Once verified, several individual
+features/fixes are promoted from `staging` to `main` together, in one
+batch — not one PR to `main` per feature. `main` stays the deploy branch:
+it only ever advances via a batch promotion from a tested `staging`, never
+via a single feature branch merged straight into it.
+
 ## Core Rules
 
 1. Never modify `main` directly. Every change lands via a pull request.
-2. Every feature/fix uses a dedicated branch, named for what it does.
+2. Every feature/fix uses a dedicated branch, named for what it does, and
+   targets `staging` first (see Release Flow above) — not `main`.
 3. Every branch results in a PR — no direct pushes to `main`.
 4. Never commit secrets, API keys, tokens, or credentials of any kind —
    not in code, not in migrations, not in comments, not in test fixtures.
