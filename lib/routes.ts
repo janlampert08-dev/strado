@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { haversineKm } from "@/lib/geo";
 import type { GeoLineString, RouteGeoJSON } from "@/types/database";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -18,6 +19,74 @@ export async function getRoutes(): Promise<{ routes: RouteGeoJSON[]; error: bool
   }
 
   return { routes: (data as RouteGeoJSON[]) ?? [], error: false };
+}
+
+// Umkreis um die gefahrene Strecke, in dem umliegende Strecken auf der
+// Aufzeichnungskarte als Orientierung mitgezeichnet werden. 25 km decken die
+// Nachbarschaft einer Passfahrt ab (Anfahrt, Parallelrouten im selben Tal),
+// ohne die halbe Schweiz mitzuschicken.
+export const KONTEXT_UMKREIS_KM = 25;
+// Harte Obergrenze für die Anzahl. Jede Strecke bringt ihre volle Geometrie
+// mit (RouteMap braucht sie), deshalb bindet nicht der Umkreis allein die
+// Datenmenge, sondern diese Zahl: zwölf Linien sind auf einer Karte noch
+// lesbar, und mehr hilft der Orientierung ohnehin nicht.
+export const KONTEXT_MAX_STRECKEN = 12;
+
+// Mittelpunkt der Bounding-Box einer Streckengeometrie — als Bezugspunkt
+// besser als der Startpunkt, weil eine 40 km lange Strecke sonst je nach
+// Fahrtrichtung einen ganz anderen Umkreis aufspannen würde.
+function geometrieMittelpunkt(route: RouteGeoJSON): [number, number] {
+  const coords = route.geometry_geojson.coordinates as [number, number][];
+  let minLng = Infinity;
+  let maxLng = -Infinity;
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  for (const [lng, lat] of coords) {
+    if (lng < minLng) minLng = lng;
+    if (lng > maxLng) maxLng = lng;
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+  }
+  if (!Number.isFinite(minLng) || !Number.isFinite(minLat)) {
+    return route.start_geojson.coordinates as [number, number];
+  }
+  return [(minLng + maxLng) / 2, (minLat + maxLat) / 2];
+}
+
+// Wählt aus allen freigegebenen Strecken diejenigen aus, die rund um die
+// gefahrene Strecke liegen — die Auswahl selbst, ohne Datenbankzugriff, damit
+// getRoutes() die einzige Abfrage bleibt (dieselbe wie auf der Explore-Karte).
+// Die gefahrene Strecke ist nicht enthalten: sie wird auf dem
+// Aufzeichnungsschirm gesondert übergeben und hervorgehoben.
+export function waehleKontextStrecken(
+  alle: RouteGeoJSON[],
+  route: RouteGeoJSON,
+  umkreisKm: number = KONTEXT_UMKREIS_KM,
+  maxAnzahl: number = KONTEXT_MAX_STRECKEN,
+): RouteGeoJSON[] {
+  const bezug = geometrieMittelpunkt(route);
+  return alle
+    .filter((kandidat) => kandidat.id !== route.id)
+    .map((kandidat) => ({
+      kandidat,
+      distanzKm: haversineKm(bezug, geometrieMittelpunkt(kandidat)),
+    }))
+    .filter(({ distanzKm }) => distanzKm <= umkreisKm)
+    .sort((a, b) => a.distanzKm - b.distanzKm)
+    .slice(0, maxAnzahl)
+    .map(({ kandidat }) => kandidat);
+}
+
+// Die umliegenden Strecken für die Karte des Aufzeichnungsschirms
+// (components/LiveTrackingForm.tsx). Bewusst über getRoutes() statt über eine
+// eigene Abfrage: es ist dieselbe Liste, die die Explore-Karte zeigt, samt
+// derselben RLS-Sicht auf freigegebene/private Strecken. Ein Ladefehler
+// kostet nur die Orientierungshilfe, nicht die Aufzeichnung — dann bleibt die
+// Karte bei der gefahrenen Strecke allein (gleiches Verhalten wie bei der
+// freien Fahrt, siehe app/fahrten/neu/page.tsx).
+export async function getKontextStrecken(route: RouteGeoJSON): Promise<RouteGeoJSON[]> {
+  const { routes } = await getRoutes();
+  return waehleKontextStrecken(routes, route);
 }
 
 // Nur was die Sitemap braucht. getRoutes() liefert sonst für jede Strecke

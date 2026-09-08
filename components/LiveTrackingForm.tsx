@@ -35,6 +35,7 @@ const initialState: CompletionFormState = { error: null };
 // sich diese Komponente mit FreeRideForm (freie Fahrt ohne Strecke).
 export default function LiveTrackingForm({
   route,
+  kontextStrecken,
   userId,
   vehicles,
   personalBestSeconds,
@@ -43,6 +44,13 @@ export default function LiveTrackingForm({
   onExit,
 }: {
   route: RouteGeoJSON;
+  // Umliegende freigegebene Strecken, nur zur Orientierung auf der Karte
+  // ("was liegt hier sonst noch?"), gedimmt hinter der gefahrenen Strecke.
+  // Weder anklickbar noch massgeblich für den Kartenausschnitt, und ohne
+  // jeden Einfluss auf Start-/Zielgate (lib/tracking.ts) oder Deckungsgrad
+  // (lib/routeCoverage.ts) — dasselbe Muster wie bei der freien Fahrt
+  // (FreeRideForm.tsx).
+  kontextStrecken: RouteGeoJSON[];
   // Nur für den localStorage-Schlüssel der Wiederherstellung — die Fahrt
   // selbst wird serverseitig dem angemeldeten Nutzer zugeordnet.
   //
@@ -64,11 +72,15 @@ export default function LiveTrackingForm({
   const action = logTrackedCompletion.bind(null, route.id);
   const [state, formAction, pending] = useActionState(action, initialState);
 
-  // Stabile Array-Referenz für RouteMap — ein neues [route]-Literal bei
-  // jedem Render würde RouteMaps "routes"-Effekt (Kartenausschnitt neu
-  // fitten) bei jedem GPS-Update erneut auslösen und die Ansicht ständig
-  // zurücksetzen, obwohl sich die Strecke selbst nie ändert.
-  const routes = useMemo(() => [route], [route]);
+  // Stabile Array-Referenz für RouteMap — ein neues Literal bei jedem Render
+  // würde RouteMaps "routes"-Effekt (Kartenausschnitt neu fitten) bei jedem
+  // GPS-Update erneut auslösen und die Ansicht ständig zurücksetzen, obwohl
+  // sich weder die gefahrene Strecke noch die Kontext-Strecken je ändern.
+  //
+  // Die gefahrene Strecke steht zuerst; hervorgehoben wird sie ohnehin über
+  // primaryRouteId (RouteMap), das zugleich den Kartenausschnitt auf sie
+  // allein einpasst.
+  const routes = useMemo(() => [route, ...kontextStrecken], [route, kontextStrecken]);
   const gate = useMemo(
     () => ({
       startPoint: route.start_geojson.coordinates as [number, number],
@@ -224,6 +236,10 @@ export default function LiveTrackingForm({
             // die Strecke bleibt dagegen an — siehe centerOnFirstLocation
             // weiter unten.
             routesClickable={false}
+            // Hebt die gefahrene Strecke hervor und lässt die Kontext-Strecken
+            // zurücktreten — und hält vor allem den Kartenausschnitt auf der
+            // gefahrenen Strecke, statt auf alle mitgezeichneten einzupassen.
+            primaryRouteId={route.id}
             userLocation={recorder.position}
             userAccuracyM={recorder.accuracyM}
             userHeadingDeg={recorder.headingDeg}

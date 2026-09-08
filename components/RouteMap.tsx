@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import mapboxgl from "mapbox-gl";
+import type { DataDrivenPropertyValueSpecification } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { ZURICH_CENTER, DEFAULT_ZOOM } from "@/lib/constants";
 import { sliceRouteBySpeed, speedColor } from "@/lib/speed";
@@ -66,6 +67,23 @@ function colorForRoute(id: string): string {
 // Bedeutung: gleiches Merkmal, gleiche Farbe.
 function resolveColor(colors: Map<string, string> | undefined, id: string): string {
   return colors?.get(id) ?? colorForRoute(id);
+}
+
+// Deckkraft der Kontext-Strecken, sobald eine Strecke als primär markiert ist
+// (primaryRouteId, siehe unten): auf dem Aufzeichnungsschirm sollen die
+// umliegenden Strecken orientieren, nicht ablenken. 0.35 bleibt im hellen wie
+// im dunklen Kartenstil erkennbar, tritt aber klar hinter die hervorgehobene
+// Linie zurück.
+const CONTEXT_ROUTE_OPACITY = 0.35;
+
+// Volle Deckkraft für die primäre Strecke, gedimmt für alle anderen. Ohne
+// primaryRouteId bleibt es bei der bisherigen Darstellung (alles voll
+// sichtbar) — der Ausdruck ist dann eine schlichte Konstante. Greift für
+// Streckenlinien wie Endpunkte, weil beide Feature-Sammlungen dieselbe
+// "id"-Eigenschaft tragen.
+function routeOpacity(primaryRouteId: string | null): DataDrivenPropertyValueSpecification<number> {
+  if (!primaryRouteId) return 1;
+  return ["case", ["==", ["get", "id"], primaryRouteId], 1, CONTEXT_ROUTE_OPACITY];
 }
 
 function mapStyleForTheme(): string {
@@ -234,6 +252,16 @@ function toTrackFeatureCollection(trail: [number, number][]): GeoJSON.FeatureCol
   };
 }
 
+// Worauf sich der Kartenausschnitt einpasst: gibt es eine primäre Strecke,
+// dann ausschliesslich auf sie. Auf dem Aufzeichnungsschirm sind die übrigen
+// Strecken blosser Kontext — ein Einpassen auf sie alle würde die gefahrene
+// Strecke zur Briefmarke schrumpfen lassen.
+function fitTargets(routes: RouteGeoJSON[], primaryRouteId: string | null): RouteGeoJSON[] {
+  if (!primaryRouteId) return routes;
+  const primary = routes.find((r) => r.id === primaryRouteId);
+  return primary ? [primary] : routes;
+}
+
 function fitToRoutes(map: mapboxgl.Map, routes: RouteGeoJSON[], animate: boolean) {
   if (routes.length === 0) return;
   const bounds = new mapboxgl.LngLatBounds();
@@ -262,6 +290,7 @@ export default function RouteMap({
   show3D = false,
   colors,
   hoveredRouteId = null,
+  primaryRouteId = null,
   trafficSegments = [],
   trail = [],
   fitTrail = false,
@@ -282,6 +311,14 @@ export default function RouteMap({
   show3D?: boolean;
   colors?: Map<string, string>;
   hoveredRouteId?: string | null;
+  // Die "eigene" Strecke unter mehreren: sie wird wie ein Hover hervorgehoben
+  // (derselbe Highlight-Layer), alle übrigen treten in der Deckkraft zurück,
+  // und der Kartenausschnitt passt sich nur auf sie ein. Für den
+  // Aufzeichnungsschirm einer Streckenfahrt gedacht, wo die umliegenden
+  // Strecken der Orientierung dienen, die gefahrene aber die Hauptlinie
+  // bleiben muss. Ohne diesen Wert ändert sich nichts am bisherigen
+  // Verhalten (Explore-Karte, Detailkarte).
+  primaryRouteId?: string | null;
   trafficSegments?: { coords: [number, number][]; color: string }[];
   // Aufgezeichneter GPS-Track: live wachsend während einer Aufzeichnung
   // (FreeRideForm) oder fertig auf der Fahrt-Detailseite (CompletionMap).
@@ -389,6 +426,11 @@ export default function RouteMap({
     hoveredRouteIdRef.current = hoveredRouteId;
   }, [hoveredRouteId]);
 
+  const primaryRouteIdRef = useRef(primaryRouteId);
+  useEffect(() => {
+    primaryRouteIdRef.current = primaryRouteId;
+  }, [primaryRouteId]);
+
   useEffect(() => {
     if (!containerRef.current || mapRef.current || !MAPBOX_TOKEN) return;
     mapboxgl.accessToken = MAPBOX_TOKEN;
@@ -463,6 +505,7 @@ export default function RouteMap({
           paint: {
             "line-color": ["get", "color"],
             "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2, 14, 4],
+            "line-opacity": routeOpacity(primaryRouteIdRef.current),
           },
         },
         firstSymbolId,
@@ -563,9 +606,15 @@ export default function RouteMap({
 
       // Hervorhebungs-Layer für den per Sidebar-Hover markierten Track: weisser
       // Halo (analog zum Stroke der Endpunkt-Punkte) plus farbige Linie darüber,
-      // damit ein Hover auf der Karte sofort auffindbar ist.
-      const hoveredRoute = hoveredRouteIdRef.current
-        ? routesRef.current.find((r) => r.id === hoveredRouteIdRef.current)
+      // damit ein Hover auf der Karte sofort auffindbar ist. Derselbe Layer
+      // trägt die primäre Strecke (primaryRouteId) — statt eines dritten
+      // Linien-Renderings daneben.
+      // Hover hat Vorrang vor der primären Strecke — beide bedienen denselben
+      // Layer, aber gleichzeitig treten sie nirgends auf (die Explore-Karte
+      // kennt keine primäre Strecke, der Aufzeichnungsschirm keinen Hover).
+      const highlightId = hoveredRouteIdRef.current ?? primaryRouteIdRef.current;
+      const hoveredRoute = highlightId
+        ? routesRef.current.find((r) => r.id === highlightId)
         : undefined;
       map.addSource(HIGHLIGHT_SOURCE, {
         type: "geojson",
@@ -623,6 +672,11 @@ export default function RouteMap({
             "circle-color": ["get", "color"],
             "circle-stroke-width": 1.5,
             "circle-stroke-color": "#FAFAFA",
+            // Auch die Start-/Zielpunkte der Kontext-Strecken treten zurück;
+            // ohne das blieben ausgerechnet die auffälligsten Elemente der
+            // fremden Strecken in voller Deckkraft stehen.
+            "circle-opacity": routeOpacity(primaryRouteIdRef.current),
+            "circle-stroke-opacity": routeOpacity(primaryRouteIdRef.current),
           },
         },
         firstSymbolId,
@@ -653,7 +707,7 @@ export default function RouteMap({
       // Kartenansicht der Nutzerin erhalten bleiben statt zurückzuspringen.
       if (!hasFitBounds) {
         if (routesRef.current.length > 0 && fitRoutesRef.current) {
-          fitToRoutes(map, routesRef.current, false);
+          fitToRoutes(map, fitTargets(routesRef.current, primaryRouteIdRef.current), false);
         } else {
           fitToTrail(map, trailRef.current, false);
         }
@@ -740,20 +794,26 @@ export default function RouteMap({
         : { type: "FeatureCollection", features: [] },
     );
 
-    if (fitRoutes) fitToRoutes(map, routes, true);
-  }, [routes, colors, fitRoutes]);
+    map.setPaintProperty(ROUTES_LINE_LAYER, "line-opacity", routeOpacity(primaryRouteId));
+    map.setPaintProperty(ENDPOINTS_LAYER, "circle-opacity", routeOpacity(primaryRouteId));
+    map.setPaintProperty(ENDPOINTS_LAYER, "circle-stroke-opacity", routeOpacity(primaryRouteId));
 
-  // Markiert die per Sidebar-Hover (oder Tastaturfokus) ausgewählte Strecke auf
-  // der Karte — eigener Source/Layer statt feature-state, weil hier ohnehin
-  // eine ganze Strecke (nicht nur ein Feature-Property) ausgetauscht wird.
+    if (fitRoutes) fitToRoutes(map, fitTargets(routes, primaryRouteId), true);
+  }, [routes, colors, fitRoutes, primaryRouteId]);
+
+  // Markiert die per Sidebar-Hover (oder Tastaturfokus) ausgewählte bzw. die
+  // primäre Strecke auf der Karte — eigener Source/Layer statt feature-state,
+  // weil hier ohnehin eine ganze Strecke (nicht nur ein Feature-Property)
+  // ausgetauscht wird.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !styleLoadedRef.current) return;
     const source = map.getSource(HIGHLIGHT_SOURCE) as mapboxgl.GeoJSONSource | undefined;
     if (!source) return;
 
-    const route = hoveredRouteId
-      ? routesRef.current.find((r) => r.id === hoveredRouteId)
+    const highlightId = hoveredRouteId ?? primaryRouteId;
+    const route = highlightId
+      ? routesRef.current.find((r) => r.id === highlightId)
       : undefined;
 
     source.setData(
@@ -770,7 +830,7 @@ export default function RouteMap({
           }
         : { type: "FeatureCollection", features: [] },
     );
-  }, [hoveredRouteId, routes]);
+  }, [hoveredRouteId, primaryRouteId, routes]);
 
   // Hält die gezeichnete Track-Linie aktuell — während einer Aufzeichnung
   // bei jedem neuen GPS-Punkt, auf der Detailseite einmalig.

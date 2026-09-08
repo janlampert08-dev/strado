@@ -6,6 +6,7 @@ import type { RouteGeoJSON, Vehicle } from "@/types/database";
 
 export default function GefahrenSection({
   route,
+  kontextStrecken,
   userId,
   vehicles,
   personalBestSeconds,
@@ -13,6 +14,11 @@ export default function GefahrenSection({
   maxPhotos,
 }: {
   route: RouteGeoJSON;
+  // Umliegende freigegebene Strecken, die auf der Aufzeichnungskarte zur
+  // Orientierung mitgezeichnet werden (serverseitig ausgewählt, siehe
+  // getKontextStrecken in lib/routes.ts). Rein darstellend: sie sind dort
+  // weder anklickbar noch für Start-/Zielgate oder Deckungsgrad relevant.
+  kontextStrecken: RouteGeoJSON[];
   // null heisst abgemeldeter Besucher — aufzeichnen darf er, das Konto
   // verlangt erst das Speichern (siehe LiveTrackingForm.tsx).
   userId: string | null;
@@ -64,6 +70,7 @@ export default function GefahrenSection({
   return (
     <LiveTrackingForm
       route={route}
+      kontextStrecken={kontextStrecken}
       userId={userId}
       vehicles={vehicles}
       personalBestSeconds={personalBestSeconds}
