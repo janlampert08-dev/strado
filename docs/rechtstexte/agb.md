@@ -471,6 +471,13 @@ des Geräts können Werte verfälschen oder eine Fahrt unbrauchbar machen.
 fehlenden, unvollständigen oder ungenauen Aufzeichnung entsteht kein Anspruch;
 im Übrigen gilt Ziff. 13.
 
+**12.5 Zurückweisung einer Aufzeichnung.** Die Anbieterin darf eine
+Aufzeichnung beim Speichern zurückweisen, wenn deren Werte oder Bewegungsmuster
+nicht von einer Fahrt mit einem Strassenfahrzeug stammen können — etwa bei
+unrealistischer Durchschnittsgeschwindigkeit, unrealistischer Dauer oder zu
+grossen Lücken zwischen zwei Messpunkten. Die Zurückweisung wird begründet
+angezeigt; ein Anspruch auf Speicherung besteht in diesen Fällen nicht.
+
 ## 13. Haftung
 
 **13.1** Die Anbieterin haftet für Schäden, die sie oder ihre Hilfspersonen
