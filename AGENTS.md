@@ -47,6 +47,14 @@ is what should be corrected.
   pass scoped from this file skipped it as not-yet-shipped. Treat everything
   under `app/profil/premium/`, `lib/actions/billing.ts`, `lib/stripe*` and the
   webhook as production code.
+  - **The purchase runs on the Checkout Sessions API**
+    (`ui_mode: "elements"`), not on Payment Intents: `createCheckoutSession()`
+    creates the session, `components/PremiumCheckoutForm.tsx` drives it with
+    `CheckoutElementsProvider` / `checkout.confirm()`, and Stripe creates the
+    subscription once the session is paid. `confirmSubscription()` and the
+    `?abo=` branch of the return page are the leftovers of the previous flow,
+    kept only until no redirect payment started before the switch can still
+    be in flight — see `.agents/payments.md`.
 - **The domains are live and every link now points at them.** `strado.ch`
   serves the info page and the legal texts under `/legal/…`, `app.strado.ch`
   serves the application, and `contact@strado.ch` is the contact address.

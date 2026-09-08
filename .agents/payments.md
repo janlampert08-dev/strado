@@ -12,14 +12,33 @@ extend.
 - `lib/stripe.ts` (server SDK), `lib/stripeClient.ts` (client SDK loader).
 - `lib/stripeWebhook.ts` — `wasAlreadyProcessed`, the event-ID dedup that
   the idempotency rule below depends on.
+- `lib/stripeCheckout.ts` — the pure predicates behind the purchase path:
+  which open Checkout Session may be reused, whether a returned session is
+  the caller's own *and* paid, and whether its subscription is active.
+  These live outside `lib/actions/` because a `"use server"` file may only
+  export async functions and so cannot be unit-tested; the tests are in
+  `lib/stripeCheckout.test.ts`.
 - `lib/actions/billing.ts` — subscription creation/confirmation, customer
   portal.
 
-Note the premium **UI** is currently commented out and
-`app/profil/premium/` redirects away, while everything above stays live.
-`docs/premium-plan.md` is the plan to re-enable it — read it before
-changing anything here, so your change lands with that plan rather than
-across it.
+**The purchase runs on the Checkout Sessions API**, not on Payment Intents.
+`createCheckoutSession()` creates a `mode: "subscription"`,
+`ui_mode: "elements"` session and hands the client its `client_secret`;
+`components/PremiumCheckoutForm.tsx` initializes the Checkout SDK with it
+(`CheckoutElementsProvider` from `@stripe/react-stripe-js/checkout`),
+renders the Payment Element and confirms with `checkout.confirm()`. The
+subscription is created by Stripe when the session is paid — nothing here
+calls `subscriptions.create` any more. `confirmCheckoutSession()` verifies
+the result server-side.
+
+`confirmSubscription()` is the leftover of the previous Payment-Intent
+flow, kept only so a redirect payment (TWINT) begun before the switch can
+still be confirmed when it returns to `?abo=`. Remove it — and the `?abo=`
+branch in `app/profil/premium/abschluss/page.tsx` — once no such payment
+can be in flight. Don't build anything new on it.
+
+`docs/premium-plan.md` is the older plan document and predates this; where
+it disagrees with the code, the code wins (`AGENTS.md`).
 
 ## Rules
 
@@ -36,10 +55,12 @@ across it.
   sending a notification, creating a row), it needs explicit dedup —
   don't assume "we haven't seen duplicates yet" is a guarantee.
 - **Subscription state**: derive `ist_premium` from Stripe's own
-  subscription status (`active`/`trialing` per the webhook;
-  `active` + paid invoice per the manual confirmation path in
-  `confirmSubscription`), not from client-supplied state. The client only
-  supplies IDs (customer ID, subscription ID) — never a trust-me boolean.
+  subscription status (`active`/`trialing` per the webhook; `active` +
+  a `complete`/`paid` Checkout Session per the manual confirmation path in
+  `confirmCheckoutSession`), not from client-supplied state. The client only
+  supplies IDs (checkout session ID) — never a trust-me boolean. Every such
+  ID reaches the server from the browser or the address bar, so bind it to
+  the caller's own `stripe_customer_id` before acting on it.
 - **No client-side secrets.** `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` is the
   only Stripe value that belongs in client code. `STRIPE_SECRET_KEY`,
   `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PREMIUM_PRICE_ID` are server-only.

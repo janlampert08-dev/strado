@@ -53,8 +53,8 @@ erfunden werden. Ohne sie gibt es keine TWINT-Freischaltung.
 | --- | --- | --- |
 | Stripe-Server-SDK | `lib/stripe.ts` | aktiv, ohne `apiVersion`-Pinning |
 | Stripe-Client-SDK | `lib/stripeClient.ts` | vorhanden, nur von auskommentiertem Code referenziert |
-| Abo anlegen (Payment Element) | `lib/actions/billing.ts` → `createSubscriptionIntent` | funktionsfähig |
-| Abo verifizieren nach Zahlung | `lib/actions/billing.ts` → `confirmSubscription` | funktionsfähig, prüft Status **und** bezahlte Rechnung |
+| Abo anlegen (Payment Element) | `lib/actions/billing.ts` → `createCheckoutSession` | funktionsfähig; seit der Umstellung auf die Checkout Sessions API, davor `createSubscriptionIntent` |
+| Abo verifizieren nach Zahlung | `lib/actions/billing.ts` → `confirmCheckoutSession` | funktionsfähig, prüft Session **und** Abo-Status |
 | Kundenportal | `lib/actions/billing.ts` → `createPortalSession` | funktionsfähig |
 | Webhook inkl. Signaturprüfung | `app/api/stripe/webhook/route.ts` | aktiv, Signatur wird geprüft |
 | Idempotenz-Tabelle | `supabase/migrations/0026_*` | vorhanden (`stripe_webhook_events`) |
@@ -123,6 +123,8 @@ nacheinander je den frisch geholten Zustand schreiben und das Ergebnis
 unabhängig von der Reihenfolge derselbe ist.
 
 **3.4 Jeder Aufruf von `createSubscriptionIntent()` legt ein neues Abo an.**
+(Heute `createCheckoutSession()`; die offene Checkout-Session tritt an die
+Stelle des `incomplete`-Abos und wird genauso wiederverwendet.)
 Wer die Kaufseite zweimal öffnet oder neu lädt, erzeugt zwei `incomplete`-Abos;
 bezahlt er beide, laufen zwei Abos parallel auf denselben Customer.
 → Vor dem Anlegen bestehende `active`/`trialing`/`incomplete`-Abos des Customers
