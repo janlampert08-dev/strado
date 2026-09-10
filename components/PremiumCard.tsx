@@ -47,7 +47,7 @@ export default function PremiumCard({ status }: { status: PremiumStatus }) {
               Premium
               {status.plan && <> · {planName(status.plan)}</>}
               {status.laeuftAbAm ? (
-                <> · <span className="text-muted">Gekündigt — läuft bis {datumCH(status.laeuftAbAm)}.</span></>
+                <> · <span className="text-muted">Gekündigt — gültig bis {datumCH(status.laeuftAbAm)}.</span></>
               ) : (
                 status.periodeEndetAm && (
                   <> · <span className="text-muted">verlängert sich am {datumCH(status.periodeEndetAm)}</span></>
