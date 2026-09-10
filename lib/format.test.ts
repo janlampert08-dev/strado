@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { formatDuration, todayInZurich } from "@/lib/format";
+import { datumCH, formatDuration, todayInZurich } from "@/lib/format";
 
 describe("formatDuration", () => {
   it("formats sub-hour durations as mm:ss", () => {
@@ -41,5 +41,19 @@ describe("todayInZurich", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-14T10:00:00Z"));
     expect(todayInZurich()).toBe("2026-06-14");
+  });
+});
+
+describe("datumCH", () => {
+  it("schreibt ein Datum schweizerisch: Tag.Monat.Jahr, zweistellig", () => {
+    expect(datumCH(new Date("2026-09-08T12:00:00Z"))).toBe("08.09.2026");
+  });
+
+  it("bleibt bei der Schweizer Schreibweise, egal wo die Laufzeit steht", () => {
+    // Der Punkt der festen Locale: käme sie aus der Umgebung, zeigte die
+    // eine Seite 08.09.2026 und die andere 9/8/2026 — und Server und
+    // Client könnten sich unterscheiden, was React als Hydrationsfehler
+    // meldet.
+    expect(datumCH(new Date("2026-01-02T12:00:00Z"))).toBe("02.01.2026");
   });
 });

@@ -4,3 +4,9 @@
 // bleiben. lucide-react ist tree-shakeable (Einzel-Imports), daher kein
 // Bundle-Size-Nachteil ggü. den bisherigen 5 Icons.
 export { MapPin as MapPinIcon, Trophy as RankingIcon, User as PersonIcon, Plus as PlusIcon, ShieldCheck as ShieldIcon, Users as FeedIcon, Circle as RecordIcon } from "lucide-react";
+
+// Kein Nav-Icon, steht aber hier, weil AGENTS.md → Stack genau diese Datei
+// (neben VisibilityIcons.tsx) als Ort für den Wrapper nennt und eine dritte
+// Wrapper-Datei für ein einzelnes Icon schlimmer wäre. Genutzt von
+// components/PremiumBadge.tsx.
+export { Sparkles as SparklesIcon } from "lucide-react";

@@ -34,8 +34,17 @@ the result server-side.
 `confirmSubscription()` is the leftover of the previous Payment-Intent
 flow, kept only so a redirect payment (TWINT) begun before the switch can
 still be confirmed when it returns to `?abo=`. Remove it — and the `?abo=`
-branch in `app/profil/premium/abschluss/page.tsx` — once no such payment
-can be in flight. Don't build anything new on it.
+branch in `components/AboBestaetigung.tsx` — once no such payment can be
+in flight. Don't build anything new on it.
+
+**Both confirmations are Server Actions and must be called as such.** They
+write the subscription state and then call `revalidatePath()`; Next.js
+throws on a revalidation during render, so calling them from a page's
+render kills the page. `app/profil/premium/abschluss/page.tsx` did exactly
+that until 2026-09-08 — every successful redirect payment ended on an error
+page, after the money had moved. The page now only reads
+(`getPremiumStatus()`); `components/AboBestaetigung.tsx` does the
+confirming from the browser.
 
 `docs/premium-plan.md` is the older plan document and predates this; where
 it disagrees with the code, the code wins (`AGENTS.md`).

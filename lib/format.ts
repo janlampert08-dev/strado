@@ -14,6 +14,25 @@ export function formatKm(laengeKm: number): string {
   return laengeKm.toFixed(1);
 }
 
+// Datum, wie es in der Oberfläche steht: 08.09.2026. Bisher stand dieselbe
+// Formatierung wortgleich in zwei Komponenten (PremiumCard, dann auch
+// PremiumWillkommen) — beide zeigen Abo-Daten, und ein Abo-Datum, das an
+// zwei Stellen unterschiedlich aussieht, liest sich wie zwei verschiedene
+// Angaben.
+//
+// Feste Locale statt der des Browsers: das Publikum ist die Schweiz, und
+// eine Laufzeit ohne vollständige Locale-Daten (oder ein Server in einer
+// anderen Region) soll nicht plötzlich 9/8/2026 zeigen — schon gar nicht
+// unterschiedlich auf Server und Client, was React als Hydrationsfehler
+// meldet.
+export function datumCH(d: Date): string {
+  return new Intl.DateTimeFormat("de-CH", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(d);
+}
+
 // Kalenderdatum (YYYY-MM-DD) in der Zeitzone Europe/Zurich statt UTC — für
 // eine Fahrt, die spätabends oder früh morgens Ortszeit eingetragen wird,
 // weicht das UTC-Datum sonst um einen Tag vom tatsächlichen lokalen Tag ab

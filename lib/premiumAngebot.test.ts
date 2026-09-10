@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { betragText, jahresVorteilProzent, monatsAequivalentRappen } from "./premiumAngebot";
+import { betragText, jahresVorteilProzent, monatsAequivalentRappen, planName } from "./premiumAngebot";
 import type { PlanAngebot } from "./premiumLimits";
 
 function plan(betragRappen: number, teil: Partial<PlanAngebot> = {}): PlanAngebot {
@@ -73,5 +73,20 @@ describe("jahresVorteilProzent", () => {
   it("bleibt still, solange ein Plan fehlt", () => {
     expect(jahresVorteilProzent(undefined, plan(4900))).toBeNull();
     expect(jahresVorteilProzent(plan(490, { plan: "monat" }), undefined)).toBeNull();
+  });
+});
+
+// Die Zuordnung stand bis 2026-09-08 wortgleich in PremiumCard und
+// PremiumWillkommen. Sie steht jetzt einmal — und wird hier festgehalten,
+// damit sie nicht unbemerkt umbenannt wird: es ist der Name, unter dem
+// jemand sein bezahltes Abo im Profil wiederfindet.
+describe("planName", () => {
+  it("benennt das abgeschlossene Abo, nicht die Auswahl davor", () => {
+    expect(planName("monat")).toBe("Monatsabo");
+    expect(planName("jahr")).toBe("Jahresabo");
+  });
+
+  it("nennt den Gründerpreis beim Namen — Bestandsabos laufen weiter", () => {
+    expect(planName("gruender")).toBe("Jahresabo zum Gründerpreis");
   });
 });
