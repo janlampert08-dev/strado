@@ -31,7 +31,7 @@ riskant nicht dasselbe ist — siehe „Wo die Grenze liegt".
 | 8 | „Ich habe jede Kurve in Zürich vermessen." | Autoritäts-Hook, das TikTok-Format schlechthin. Und es stimmt: die Zahlen sind gerechnet, nicht geschätzt. | Nur solange es stimmt. Bei einer neuen Strecke ohne Vermessung fällt der Satz in sich zusammen. |
 | 9 | „Deine Lieblingsstrecke steht in einem Chatverlauf von 2021." | Sehr spezifisch, deshalb wahr für viele. Beste Kommentar-Quote der Liste. | — |
 | 10 | „Niemand fragt dich, was du fährst. Nur wo." | Identität statt Technik. Am nächsten an der Marke. | Am wenigsten provokativ — gut als zweiter Post, schwach als erster. |
-| 11 | „Sieben Strecken in Zürich. Auf fünf davon warst du noch nie." | Zahl plus Wette. Lädt zum Gegenbeweis in den Kommentaren ein. | — |
+| 11 | „Zwölf Strecken in Zürich. Auf zehn davon warst du noch nie." | Zahl plus Wette. Lädt zum Gegenbeweis in den Kommentaren ein. | — |
 | 12 | „Strava kennt jeden Veloweg. Und keine einzige gute Kurve." | Vergleichs-Hook, zieht am meisten Reichweite und am meisten Streit. | Vergleichende Werbung ist zulässig, solange sie nicht herabsetzend oder irreführend ist (Art. 3 Abs. 1 lit. e UWG). Diese Formulierung beschreibt einen Unterschied — „Strava ist Müll" wäre die andere Seite der Linie. |
 | 13 | „Kein App Store. Kein Abo. Link auf und fahren." | Konvertiert am besten von allen. | Provoziert null. Gehört auf die letzte Slide, nicht auf die erste. |
 
@@ -87,7 +87,7 @@ Ranglisten-Slide zeigt, wogegen.
 
 > Deine Zeit ist gut. Bis du sie vergleichst.
 >
-> Sieben Strecken in Zürich, alle vermessen: Streckenverlauf, Länge,
+> Zwölf Strecken in Zürich, alle vermessen: Streckenverlauf, Länge,
 > Höhenmeter, maximale Steigung, Kehren. Nicht geschätzt, sondern aus den
 > Daten der Strecke gerechnet.
 >
@@ -115,7 +115,7 @@ zielt und nicht auf Klicks.
 
 > Du wohnst seit Jahren in Zürich. Und kennst drei Strassen.
 >
-> Binzmer Backfire, Dietlikon Dash, Greifensee Schleife, Nordwestschleife,
+> Flughafen Loop, Dietlikon Dash, Greifensee Schleife, Nordwestschleife,
 > A3 Asphalt — mit Streckenverlauf, Kehren und Steigung. Alle vermessen.
 >
 > Und jetzt die Frage, wegen der ich das poste: welche fehlt? Schreib sie in
