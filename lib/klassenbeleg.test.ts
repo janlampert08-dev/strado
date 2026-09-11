@@ -25,6 +25,31 @@ function trail(abschnitte: { kmh: number; sekunden: number }[]): TrailPoint[] {
   return punkte;
 }
 
+// Dieselben Abschnitte, aber zwischen je zwei liegt ein Segment, das
+// fensterBilden() verwirft: 6 km in einer Sekunde, also weit über
+// MAX_JUMP_KM. So sieht eine Aufzeichnung aus, die zwischendurch den Empfang
+// verloren hat — der Track springt, und wie lange die Lücke in Wirklichkeit
+// gedauert hat, steht nirgends.
+function trailMitLücken(abschnitte: { kmh: number; sekunden: number }[]): TrailPoint[] {
+  const punkte: TrailPoint[] = [];
+  let lng = 8.5;
+  let t = Date.UTC(2026, 8, 11, 9, 0, 0);
+  for (const abschnitt of abschnitte) {
+    if (punkte.length > 0) {
+      lng += 6000 / METER_PRO_GRAD_LNG;
+      t += 1000;
+    }
+    punkte.push({ lng, lat: 47, t });
+    const meterProSekunde = abschnitt.kmh / 3.6;
+    for (let i = 0; i < abschnitt.sekunden; i++) {
+      lng += meterProSekunde / METER_PRO_GRAD_LNG;
+      t += 1000;
+      punkte.push({ lng, lat: 47, t });
+    }
+  }
+  return punkte;
+}
+
 // Ein gleichmässig steigendes Höhenprofil über die angegebene Länge.
 function steigungsprofil(laengeKm: number, prozent: number): { km: number; m: number }[] {
   const punkte: { km: number; m: number }[] = [];
@@ -177,5 +202,45 @@ describe("belegeMotorklasse — Steigung", () => {
     const flach = belege("motorrad", abschnitte);
     const bergab = belege("motorrad", abschnitte, steigungsprofil(laengeKm, -9));
     expect(bergab.kennzahlen.leistungKw).toBeCloseTo(flach.kennzahlen.leistungKw, 1);
+  });
+});
+describe("belegeMotorklasse — Lücken in der Aufzeichnung", () => {
+  // Verliert ein Gerät den Empfang, fehlt ein Stück Track. fensterBilden()
+  // verwirft das Segment über die Lücke — aber die anerkannten Sekunden
+  // davor und danach liegen dann direkt nebeneinander, obwohl dazwischen
+  // unbekannt viel Zeit vergangen ist. Würde daraus eine Beschleunigung
+  // abgeleitet, sähe jedes Wiedereinsetzen des Signals nach einem
+  // Kavalierstart aus.
+
+  it("leitet über eine verworfene Lücke hinweg keine Beschleunigung ab", () => {
+    // Lang genug für ein Urteil — unter den Mindestgrössen liefert die
+    // Funktion gar keine Kennzahlen, und die Prüfung unten liefe leer.
+    const langsam = { kmh: 30, sekunden: 150 };
+    const schnell = { kmh: 174, sekunden: 150 };
+    const mitLücke = belegeMotorklasse("auto", trailMitLücken([langsam, schnell]));
+
+    // 174 km/h konstant verlangen für einen Kleinwagen unter den Annahmen
+    // dieser Datei rund 37 kW. Alles deutlich darüber wäre aus der Lücke
+    // erfunden — vor der Korrektur stand hier das Vierfache.
+    expect(mitLücke.kennzahlen.spitzenleistungKw).toBeLessThan(50);
+  });
+
+  it("stuft eine Fahrt mit mehreren Empfangslücken nicht hoch", () => {
+    // Drei Lücken liefern drei erfundene Fenster à 10 s — zusammen genau
+    // die NACHWEIS_SEKUNDEN, an denen sich sonst die Einzelausreisser
+    // brechen. Genau hier würde aus dem Messfehler eine Klasse.
+    const langsam = { kmh: 30, sekunden: 30 };
+    const schnell = { kmh: 174, sekunden: 30 };
+    const mitLücken = belegeMotorklasse(
+      "auto",
+      trailMitLücken([langsam, schnell, langsam, schnell, langsam, schnell]),
+    );
+    // Gegenprobe: dasselbe Tempo ohne jede Lücke, lang genug für ein
+    // Urteil. Beide müssen in derselben Klasse landen — die Lücken dürfen
+    // nichts hinzuerfinden, was die durchgehende Fahrt nicht hergibt.
+    const durchgehend = belege("auto", [{ kmh: schnell.kmh, sekunden: 150 }]);
+
+    expect(mitLücken.klasse).toBe("auto_bis110");
+    expect(mitLücken.klasse).toBe(durchgehend.klasse);
   });
 });

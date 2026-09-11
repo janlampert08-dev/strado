@@ -29,24 +29,61 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Reihenfolge der Motorklassen-Migrationen
+
+Beide gehören **vor** den Deploy des Codes, der sie braucht, und in dieser
+Reihenfolge:
+
+| # | Datei | gehört eingespielt |
+| --- | --- | --- |
+| 1 | `0080_motorklassen.sql` | vor dem Deploy von PR 1 |
+| 2 | `0081_freie_fahrt_motorklasse_belegt.sql` | unmittelbar nach 0080, vor dem Deploy von PR 2 |
+
+Warum die Reihenfolge hier ausdrücklich steht: Die beiden Abschnitte unten
+sind nach Neuigkeit sortiert, also 0081 vor 0080 — die Lesereihenfolge ist
+nicht die Einspielreihenfolge.
+
 ## Noch NICHT eingespielt: 0081_freie_fahrt_motorklasse_belegt (Stand 2026-09-11)
 
 Neu mit PR „Motorklassen: belegte Klasse aus dem Track“. Erweitert
 `save_free_ride_with_segments` (0050) um `motorklasse_belegt` in beiden
-INSERTs — sonst würde der zusätzliche jsonb-Schlüssel aus
-`lib/actions/completions.ts` stillschweigend ignoriert und die Klasse einer
-freien Fahrt nie belegt. **Setzt 0080 voraus** (die Spalte muss existieren)
-und gehört unmittelbar danach eingespielt.
+INSERTs. **Setzt 0080 voraus** (die Spalte muss existieren) und gehört
+unmittelbar danach eingespielt.
+
+**Auch diese Migration muss vor dem Deploy von PR 2 liegen, nicht nur mit ihm
+zusammen — und der Ausfall ist hier ein stiller.** `logFreeRide()` in
+`lib/actions/completions.ts` schickt `motorklasse_belegt` im jsonb-Argument
+mit. Eine PostgreSQL-Funktion liest aus einem `jsonb` nur die Schlüssel, nach
+denen sie fragt; ein unbekannter Schlüssel löst keinen Fehler aus, sondern
+wird ignoriert. Läuft der Code also gegen die alte Fassung der Funktion, wird
+jede freie Fahrt ohne Belegwert gespeichert — ohne Fehlermeldung, ohne
+Log-Eintrag, und nachtragen lässt es sich nicht: der rohe Trail mit
+Zeitstempeln existiert nur während des Speicherns (0044). Die Fahrten aus
+diesem Fenster sind dauerhaft unbelegt.
 
 `create or replace` erhält die Rechte: der Entzug für `anon` aus 0051 und das
 `EXECUTE` für `authenticated` aus 0050 bleiben. Keine Datenänderung.
 
-Danach prüfen, dass beide Spalten in der Funktionsdefinition stehen:
+Danach prüfen, dass **beide** INSERTs die Spalte tragen — nicht nur, dass der
+Name irgendwo in der Definition vorkommt:
 
 ```sql
-select pg_get_functiondef(oid) ~ 'motorklasse_belegt' as ok
-  from pg_proc where proname = 'save_free_ride_with_segments';
+-- Die Definition an jedem INSERT auf route_completions aufteilen: es muss
+-- genau zwei geben (Fahrt und Segmente), und jeder muss die Spalte nennen.
+select (count(*) = 2) and bool_and(teil like '%motorklasse_belegt%') as ok
+  from unnest(
+         (string_to_array(
+            pg_get_functiondef(
+              'public.save_free_ride_with_segments(jsonb,jsonb)'::regprocedure),
+            'insert into public.route_completions'))[2:]
+       ) as teil;
 ```
+
+Die Signatur steht ausgeschrieben, damit die Abfrage nicht versehentlich eine
+gleichnamige Funktion in einem anderen Schema prüft; existiert die Funktion
+nicht, bricht der Cast mit einem Fehler ab statt leer zurückzukommen. Der Test
+ist textuell und hängt daran, wie 0081 die INSERTs schreibt — wer die
+Migration umformuliert, passt ihn mit an.
 
 ## Noch NICHT eingespielt: 0080_motorklassen (Stand 2026-09-11)
 

@@ -169,6 +169,14 @@ export default async function FahrtDetailPage({
   const hoehenprofil = istFreieFahrt ? completion.hoehenprofil : (route?.hoehenprofil ?? null);
   const VehicleIcon = completion.vehicle?.typ === "motorrad" ? Bike : Car;
 
+  // Die gewertete Klasse sieht nur der Fahrer selbst (siehe CompletionDetail).
+  // Sie hängt bewusst NICHT am Fahrzeug: fahrzeug_id ist `on delete set null`,
+  // die Klasse an der Fahrt bleibt beim Löschen des Fahrzeugs aber stehen
+  // (Trigger aus 0080). Eine Fahrt ohne Fahrzeug kann also sehr wohl eine
+  // Klasse tragen — und dann gehört sie angezeigt, sonst verschwindet für den
+  // Fahrer die Information, in welcher Rangliste seine Zeit steht.
+  const gewerteteKlasse = completion.isOwner ? completion.motorklasseGewertet : null;
+
   return (
     <div className="flex h-dvh flex-col">
       <Header back={completion.isOwner ? "/profil" : `/fahrer/${completion.userId}`} />
@@ -301,30 +309,31 @@ export default async function FahrtDetailPage({
 
           {detectedSegments.length > 0 && <DetectedSegmentsCard segments={detectedSegments} />}
 
-          {(completion.vehicle || completion.abdeckungProzent !== null || completion.notiz) && (
+          {(completion.vehicle ||
+            gewerteteKlasse !== null ||
+            completion.abdeckungProzent !== null ||
+            completion.notiz) && (
             <Card surface className="flex flex-col gap-4 p-4">
-              {completion.vehicle && (
+              {(completion.vehicle || gewerteteKlasse !== null) && (
                 <div className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-background">
-                    <VehicleIcon className="h-5 w-5 text-muted" aria-hidden="true" />
-                  </span>
+                  {completion.vehicle && (
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-background">
+                      <VehicleIcon className="h-5 w-5 text-muted" aria-hidden="true" />
+                    </span>
+                  )}
                   <div className="flex min-w-0 flex-col gap-1">
-                    <p className="text-sm font-medium text-foreground">
-                      {completion.vehicle.marke} {completion.vehicle.modell}
-                    </p>
-                    {/* Nur für den Fahrer selbst (siehe CompletionDetail):
-                        die gewertete Klasse und, wenn sie von der
-                        angegebenen abweicht, warum. */}
-                    {completion.isOwner && completion.motorklasseGewertet && (
-                      <MotorklasseBadge klasse={completion.motorklasseGewertet} />
+                    {completion.vehicle && (
+                      <p className="text-sm font-medium text-foreground">
+                        {completion.vehicle.marke} {completion.vehicle.modell}
+                      </p>
                     )}
+                    {gewerteteKlasse !== null && <MotorklasseBadge klasse={gewerteteKlasse} />}
                   </div>
                 </div>
               )}
-              {completion.isOwner &&
-                completion.motorklasseGewertet !== null &&
+              {gewerteteKlasse !== null &&
                 completion.motorklasse !== null &&
-                completion.motorklasseGewertet !== completion.motorklasse && (
+                gewerteteKlasse !== completion.motorklasse && (
                   <p className="text-sm leading-relaxed text-muted">
                     Angegeben war{" "}
                     <span className="font-medium text-foreground">
@@ -333,7 +342,7 @@ export default async function FahrtDetailPage({
                     . Diese Fahrt hat mehr Motorleistung verlangt, als diese Klasse hergibt, und
                     wird deshalb in{" "}
                     <span className="font-medium text-foreground">
-                      {motorklasseLabel(completion.motorklasseGewertet)}
+                      {motorklasseLabel(gewerteteKlasse)}
                     </span>{" "}
                     gewertet. Wenn das nicht stimmt, liegt es meist an der Leistungsangabe des
                     Fahrzeugs — trag das Fahrzeug mit dem richtigen Wert neu ein.

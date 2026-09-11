@@ -50,7 +50,13 @@
 //
 //   SUPABASE_URL=https://<projekt>.supabase.co \
 //   SUPABASE_SECRET_KEY=<service-role-key> \
-//   node scripts/motorklassen-kalibrierung.mjs [--limit 1000]
+//   node scripts/motorklassen-kalibrierung.mjs [--limit N]
+//
+// Ohne --limit läuft es über den GESAMTEN Bestand (seitenweise). Das ist der
+// einzige Modus, der einen Abnahmebefund trägt: eine Stichprobe kann eine
+// Hochstufung finden, aber nie belegen, dass es keine gibt. --limit N ist
+// deshalb ausdrücklich als Stichprobe gekennzeichnet und meldet das in der
+// Ausgabe mit.
 //
 // Der Service-Role-Key ist nötig, weil das Skript fremde Fahrten und fremde
 // Fahrzeuge lesen muss — unter RLS sieht jede Rolle nur die eigenen. Er
@@ -86,27 +92,68 @@ if (!url || !key) {
   process.exit(1);
 }
 
+// Der Service-Role-Key hängt an dieser Adresse — er umgeht RLS vollständig
+// (AGENTS.md, Supabase-Regeln). Er darf deshalb nur über eine verschlüsselte
+// Verbindung gehen. Ein vertippter oder aus einer alten Anleitung kopierter
+// http-Wert würde ihn sonst im Klartext über das Netz schicken; die Ausnahme
+// ist der lokale Supabase-Stack, der überhaupt nicht über ein Netz geht.
+let ziel;
+try {
+  ziel = new URL(url);
+} catch {
+  console.error("SUPABASE_URL ist keine gültige Adresse.");
+  process.exit(1);
+}
+const istLokal = ["localhost", "127.0.0.1", "[::1]", "::1"].includes(ziel.hostname);
+if (ziel.protocol !== "https:" && !istLokal) {
+  console.error(
+    `SUPABASE_URL muss https sein (ist: ${ziel.protocol}). Der Service-Role-Key\n` +
+      "geht sonst unverschlüsselt über das Netz.",
+  );
+  process.exit(1);
+}
+
+// Ohne --limit wird der gesamte Bestand geprüft; mit --limit N nur die N
+// neuesten Fahrten, und das Ergebnis ist dann eine Stichprobe.
 const limitIndex = process.argv.indexOf("--limit");
-const limit = limitIndex === -1 ? 1000 : Number(process.argv[limitIndex + 1]);
-if (!Number.isInteger(limit) || limit <= 0) {
+const stichprobe = limitIndex !== -1;
+const limit = stichprobe ? Number(process.argv[limitIndex + 1]) : null;
+if (stichprobe && (!Number.isInteger(limit) || limit <= 0)) {
   console.error("--limit braucht eine positive ganze Zahl.");
   process.exit(1);
 }
 
 const supabase = createClient(url, key, { auth: { persistSession: false } });
 
-const { data: fahrten, error } = await supabase
-  .from("route_completions")
-  .select(
-    "id, datum, distanz_km, dauer_sekunden, motorklasse, motorklasse_belegt, motorklasse_gewertet, vehicles(typ, marke, modell, hubraum_ccm, leistung_kw)",
-  )
-  .not("motorklasse", "is", null)
-  .order("datum", { ascending: false })
-  .limit(limit);
+// Seitenweise lesen: PostgREST deckelt eine Antwort ohnehin, und ein
+// stillschweigend abgeschnittener Bestand wäre hier der schlimmste Fehler —
+// das Skript würde Entwarnung geben für Fahrten, die es nie gesehen hat.
+// Sortiert wird zusätzlich nach id, weil datum ein Tagesdatum ist: ohne
+// eindeutigen Zweitschlüssel ist die Reihenfolge zwischen zwei Seiten nicht
+// stabil und Zeilen könnten doppelt oder gar nicht auftauchen.
+const SEITE = 1000;
+const fahrten = [];
+for (let von = 0; ; von += SEITE) {
+  const obergrenze = stichprobe ? Math.min(von + SEITE, limit) : von + SEITE;
+  if (obergrenze <= von) break;
 
-if (error) {
-  console.error("Abfrage fehlgeschlagen:", error.message);
-  process.exit(1);
+  const { data, error } = await supabase
+    .from("route_completions")
+    .select(
+      "id, datum, distanz_km, dauer_sekunden, motorklasse, motorklasse_belegt, motorklasse_gewertet, vehicles(typ, marke, modell, hubraum_ccm, leistung_kw)",
+    )
+    .not("motorklasse", "is", null)
+    .order("datum", { ascending: false })
+    .order("id", { ascending: true })
+    .range(von, obergrenze - 1);
+
+  if (error) {
+    console.error("Abfrage fehlgeschlagen:", error.message);
+    process.exit(1);
+  }
+
+  fahrten.push(...data);
+  if (data.length < obergrenze - von) break;
 }
 
 const mitBeleg = fahrten.filter((f) => f.motorklasse_belegt !== null);
@@ -114,14 +161,23 @@ const hochgestuft = fahrten.filter(
   (f) => f.motorklasse_gewertet !== null && f.motorklasse_gewertet !== f.motorklasse,
 );
 
+const umfang = stichprobe
+  ? `STICHPROBE: nur die ${fahrten.length} neuesten Fahrten (--limit ${limit}).`
+  : `Vollständiger Bestand: ${fahrten.length} Fahrten mit Klasse.`;
+
 console.log(
-  `${fahrten.length} Fahrten mit Klasse geprüft, davon ${mitBeleg.length} mit Belegwert.\n` +
+  `${umfang} Davon ${mitBeleg.length} mit Belegwert.\n` +
     "Fahrten ohne Belegwert stammen entweder von vor dieser Prüfung oder waren\n" +
     "zu kurz für ein Urteil — beides ist der Normalfall und kein Fehler.\n",
 );
 
 if (hochgestuft.length === 0) {
-  console.log("Keine Fahrt wurde hochgestuft. Die Schwellen halten für diesen Bestand.");
+  console.log(
+    stichprobe
+      ? "In dieser Stichprobe wurde keine Fahrt hochgestuft. Das ist KEIN Abnahmebefund:\n" +
+          "ältere Fahrten wurden nicht angesehen. Für die Abnahme ohne --limit laufen lassen."
+      : "Keine Fahrt wurde hochgestuft. Die Schwellen halten für den gesamten Bestand.",
+  );
   process.exit(0);
 }
 
