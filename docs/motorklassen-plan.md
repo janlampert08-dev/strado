@@ -2,9 +2,9 @@
 
 Ranglisten, die einen 125er-Roller nicht mehr gegen einen Porsche antreten
 lassen. Dieses Dokument ist die Referenz für das ganze Vorhaben; es umfasst
-vier Pull Requests, von denen PR 1 und PR 2 umgesetzt sind.
+vier Pull Requests, von denen PR 1 bis PR 3 umgesetzt sind.
 
-Stand: 2026-09-11 (PR 1 und PR 2 umgesetzt). Wenn der Code diesem Dokument widerspricht, gewinnt der
+Stand: 2026-09-11 (PR 1 bis PR 3 umgesetzt). Wenn der Code diesem Dokument widerspricht, gewinnt der
 Code — dann gehört diese Datei korrigiert.
 
 ## Problem
@@ -256,12 +256,22 @@ Keine neuen Primitive — Chips sind eine `Button`-Variante, die Klassenpille
 
 - **„Alle“ ist die Voreinstellung.** Ohne `?klasse=` sieht die Seite aus wie
   heute; niemand verliert eine Rangliste, in der er gerade vorne steht.
-- **Auswahl über die URL**, nicht über React-State: Die Seite bleibt Server
-  Component, der Zurück-Knopf funktioniert, „A1“ ist teilbar.
+- **Auswahl über die URL** auf `/leaderboards`, wo die Listen die Seite
+  ausmachen: Die Seite bleibt Server Component, der Zurück-Knopf
+  funktioniert, „A1“ ist teilbar.
+  **Auf der Streckenseite dagegen über Client-State** (umgesetzt in
+  `RouteLeaderboardPreview`): Diese Seite lädt Karte, Fotos, Bewertungen und
+  Wetter mit, und die alle bei jedem Chip-Tipp neu zu berechnen wäre teuer
+  für einen Filter, der nur eine Kartenliste betrifft. Der ungefilterte Stand
+  kommt weiterhin serverseitig herein, die erste Ansicht ist also sofort
+  vollständig; erst ein Klassen-Chip holt über den öffentlichen Endpunkt
+  nach.
 - **„Meine Klasse“ ist ein Sprung, keine Vorauswahl.** Automatisch
   umzuschalten hiesse, dass ein geteilter Link bei jedem anders aussieht.
 - **Auf der Streckenseite nur belegte Klassen.** Global alle sechs Chips (der
   leere Zustand lädt ein), pro Strecke wären fünf leere Chips nur Rauschen.
+  Bei weniger als zwei belegten Klassen verschwindet die Leiste ganz — „Alle“
+  und die eine Klasse wären dieselbe Liste.
 - **Leerer Zustand fordert auf:** „Noch keine Zeit in A1 auf dieser Strecke —
   du kannst die erste sein.“
 - **Klasse und Spitzenwert stehen nebeneinander.** „A1 · Spitze 168 km/h“
@@ -278,7 +288,7 @@ läuft**: Die Prüfmechanik landet vor der ersten Rangliste.
 | --- | --- | --- |
 | 1 | Migration 0080, `lib/motorklassen.ts` + Tests, die zwei Felder im Fahrzeugformular (auch inline im Fahrt-Fazit), Klassenpille in Garage und Fahrzeugwahl. Keine Rangliste ändert sich. | **umgesetzt** |
 | 2 | `lib/klassenbeleg.ts` + Tests, Anbindung in `completions.ts` für beide Fahrtarten, Migration 0081 (RPC der freien Fahrt), Anzeige der Wertung und ihrer Begründung für den Fahrer, `scripts/motorklassen-kalibrierung.mjs`. | **umgesetzt** |
-| 3 | Streckenbestzeiten nach Klasse: Chip-Leiste, `?klasse=` im öffentlichen Endpunkt mit strikter Katalogprüfung. Kann ohne Wartezeit kommen, siehe Sicherheitsabstand. | offen |
+| 3 | Streckenbestzeiten nach Klasse: Chip-Leiste auf Streckenseite und Chooser, `?klasse=` im öffentlichen Endpunkt mit strikter Katalogprüfung. | **umgesetzt** |
 | 4 | Globale Ranglisten nach Klasse, „Meine Klasse“, plus Migration 0082 (Backfill). | offen |
 
 Ein Meldegrund musste nicht dazukommen: `falsche_angaben` steht seit 0043
@@ -325,6 +335,7 @@ bekommen eine Klasse, die übrigen bleiben ohne.
 ## Was die Testsuite nicht abdeckt
 
 Vitest läuft mit `environment: "node"`, es gibt kein jsdom. Abgesichert sind
-`lib/motorklassen.ts` und `lib/klassenbeleg.ts`. Chips, Pillen,
+`lib/motorklassen.ts`, `lib/klassenbeleg.ts` und die reinen Helfer in
+`lib/leaderboard.ts`. Chips, Pillen,
 Formularfelder und Filterleisten haben **keine** automatisierte Abdeckung —
 das gehört in jede PR-Beschreibung so benannt, nicht impliziert.

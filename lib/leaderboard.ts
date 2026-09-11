@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Motorklasse } from "@/types/database";
 
 export interface LeaderboardEntry {
   userId: string;
@@ -108,6 +109,10 @@ export interface RouteTimeEntry {
   name: string;
   avatarUrl: string | null;
   dauerSekunden: number;
+  // Die gewertete Motorklasse (0080). null für Fahrten, deren Fahrzeug keine
+  // Leistungsangabe trägt oder die vor der Einführung entstanden sind — die
+  // erscheinen weiterhin in "Alle", aber in keiner Klassenliste.
+  klasse: Motorklasse | null;
 }
 
 export interface RouteLeaderboardRow {
@@ -116,6 +121,7 @@ export interface RouteLeaderboardRow {
   display_name: string | null;
   avatar_url: string | null;
   dauer_sekunden: number;
+  motorklasse: Motorklasse | null;
 }
 
 const ROUTE_TOP_N = 10;
@@ -149,12 +155,30 @@ export function dedupeRouteLeaderboardRows(
 
 // Nur Fahrten mit aktivem Opt-in (route_leaderboard-View, siehe
 // 0014_route_leaderboard_optin.sql) — sortiert nach kürzester Zeit.
-export async function getRouteLeaderboard(routeId: string): Promise<RouteTimeEntry[]> {
+//
+// klasse filtert auf eine Motorklasse (0080). Die View führt dafür
+// motorklasse_gewertet, nicht die deklarierte Klasse: gewertet wird die
+// höhere aus Angabe und dem, was der Track belegt. Ohne klasse bleibt die
+// Liste wie bisher — "Alle" ist die Voreinstellung, niemand verliert eine
+// Rangliste, in der er gerade vorne steht.
+//
+// Die Deduplizierung auf die schnellste Fahrt pro Nutzer läuft NACH dem
+// Filter: wer seine Bestzeit im Porsche und eine langsamere auf dem Roller
+// gefahren ist, soll in der Rollerklasse mit der Rollerzeit erscheinen und
+// nicht gar nicht.
+export async function getRouteLeaderboard(
+  routeId: string,
+  klasse?: Motorklasse | null,
+): Promise<RouteTimeEntry[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("route_leaderboard")
-    .select("completion_id, user_id, display_name, avatar_url, dauer_sekunden")
-    .eq("route_id", routeId)
+    .select("completion_id, user_id, display_name, avatar_url, dauer_sekunden, motorklasse")
+    .eq("route_id", routeId);
+
+  if (klasse) query = query.eq("motorklasse", klasse);
+
+  const { data, error } = await query
     .order("dauer_sekunden", { ascending: true })
     .limit(ROUTE_FETCH_LIMIT);
 
@@ -169,5 +193,36 @@ export async function getRouteLeaderboard(routeId: string): Promise<RouteTimeEnt
     // Bereits serverseitig mit zeigt_avatar verrechnet (0028_leaderboard_avatar.sql).
     avatarUrl: r.avatar_url,
     dauerSekunden: r.dauer_sekunden,
+    klasse: r.motorklasse,
   }));
+}
+
+// Welche Motorklassen auf dieser Strecke überhaupt geteilte Zeiten haben —
+// für die Chip-Leiste. Global sind alle sechs Klassen sichtbar (ein leerer
+// Zustand lädt zum Mitmachen ein), pro Strecke wären fünf leere Chips nur
+// Rauschen.
+//
+// Bewusst dieselbe Abfrage wie oben statt eines eigenen "distinct": auf
+// route_leaderboard gibt es ohnehin nur die freigegebenen Fahrten einer
+// Strecke, und PostgREST kennt kein DISTINCT. Das Zusammenfassen übernimmt
+// klassenAusZeilen() — rein und damit testbar.
+export function klassenAusZeilen(zeilen: { motorklasse: Motorklasse | null }[]): Motorklasse[] {
+  const gefunden = new Set<Motorklasse>();
+  for (const zeile of zeilen) {
+    if (zeile.motorklasse) gefunden.add(zeile.motorklasse);
+  }
+  return [...gefunden];
+}
+
+export async function getRouteLeaderboardKlassen(routeId: string): Promise<Motorklasse[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("route_leaderboard")
+    .select("motorklasse")
+    .eq("route_id", routeId)
+    .not("motorklasse", "is", null)
+    .limit(ROUTE_FETCH_LIMIT);
+
+  if (error || !data) return [];
+  return klassenAusZeilen(data as { motorklasse: Motorklasse | null }[]);
 }

@@ -21,7 +21,7 @@ import { getRoutePhotos } from "@/lib/photos";
 import { isFavorite } from "@/lib/favorites";
 import { isModerator } from "@/lib/moderation";
 import { getPremiumStatus, maxFotosProFahrt } from "@/lib/premium";
-import { getRouteLeaderboard } from "@/lib/leaderboard";
+import { getRouteLeaderboard, getRouteLeaderboardKlassen } from "@/lib/leaderboard";
 import { fetchCurrentWeather } from "@/lib/weather";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { KATEGORIEN } from "@/lib/constants";
@@ -98,7 +98,7 @@ export default async function StreckeDetailPage({
   // hier serverseitig mitgeladen, weil GefahrenSection eine Client-Komponente
   // ist und selbst nicht abfragen kann — im selben Promise.all wie alles
   // andere, also ohne die Antwortzeit zu verlängern.
-  const [ratings, ownRating, favorite, vehicles, personalBestSeconds, photos, leaderboard, weather, moderator, premiumStatus, kontextStrecken] =
+  const [ratings, ownRating, favorite, vehicles, personalBestSeconds, photos, leaderboard, leaderboardKlassen, weather, moderator, premiumStatus, kontextStrecken] =
     await Promise.all([
       getRatings(id),
       user ? getOwnRating(id, user.id) : Promise.resolve(null),
@@ -113,6 +113,7 @@ export default async function StreckeDetailPage({
       user ? getPersonalBestSeconds(id, user.id) : Promise.resolve(null),
       getRoutePhotos(id),
       getRouteLeaderboard(id),
+      getRouteLeaderboardKlassen(id),
       fetchCurrentWeather(route.start_geojson.coordinates as [number, number]),
       user ? isModerator(user.id) : Promise.resolve(false),
       getPremiumStatus(),
@@ -324,7 +325,11 @@ export default async function StreckeDetailPage({
           </Card>
         </dl>
 
-        <RouteLeaderboardPreview entries={leaderboard.slice(0, 5)} />
+        <RouteLeaderboardPreview
+          routeId={id}
+          entries={leaderboard}
+          klassen={leaderboardKlassen}
+        />
 
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
