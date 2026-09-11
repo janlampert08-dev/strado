@@ -6,10 +6,9 @@ import DragSheet from "@/components/ui/DragSheet";
 // Gleiche Bottom-Sheet-Mechanik wie auf der Startseite (ExploreView.tsx):
 // Mobile zeigt die Karte vollflächig, das Detail-Panel liegt als per
 // Ziehgriff auf-/zuziehbares Sheet darüber (Peek zeigt Titel + Aktionen,
-// aufgezogen die vollen Details). Ab md: zurück zur ursprünglichen
-// Liste-links/Karte-rechts-Aufteilung, siehe DragSheet.tsx.
+// aufgezogen die vollen Details über die ganze Karte). Ab md: zurück zur
+// ursprünglichen Liste-links/Karte-rechts-Aufteilung, siehe DragSheet.tsx.
 const SHEET_PEEK_PX = 320;
-const SHEET_EXPANDED_GAP_PX = 96;
 
 export default function RouteDetailLayout({
   map,
@@ -39,7 +38,6 @@ export default function RouteDetailLayout({
       <DragSheet
         containerRef={containerRef}
         peekPx={SHEET_PEEK_PX}
-        expandedGapPx={SHEET_EXPANDED_GAP_PX}
         handleLabels={{ expand: "Details ausklappen", collapse: "Details einklappen" }}
       >
         {/* pb reserviert unter md zusätzlich Platz für die fixierte

@@ -3,7 +3,6 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Check } from "lucide-react";
-import BackButton from "@/components/BackButton";
 import DragSheet from "@/components/ui/DragSheet";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import { GlobeIcon, LockIcon } from "@/components/VisibilityIcons";
@@ -34,8 +33,12 @@ const initialState: ProposeRouteState = { error: null };
 // der primäre Bedienweg (Tippen setzt Wegpunkte), die Peek-Höhe zeigt daher
 // bewusst nur Titel + Hinweistext + Wegpunkt-Zähler, den Rest des
 // Formulars füllt man erst nach dem Aufziehen aus.
-const SHEET_PEEK_PX = 280;
-const SHEET_EXPANDED_GAP_PX = 96;
+//
+// 340 statt der früheren 280: seit die Seite die gewohnte Kopfleiste rendert
+// (app/strecken/neu/page.tsx), liegt deren BottomNav über den unteren gut
+// 60px des Sheets. Ohne den Ausgleich fiele der Schritt-Indikator aus der
+// Peek-Ansicht.
+const SHEET_PEEK_PX = 340;
 
 type StepState = "done" | "active" | "upcoming";
 
@@ -147,7 +150,7 @@ export default function NeueStreckeForm() {
   }
 
   return (
-    <main ref={containerRef} className="relative flex h-dvh flex-1 flex-col overflow-hidden md:flex-row">
+    <main ref={containerRef} className="relative flex flex-1 flex-col overflow-hidden md:flex-row">
       <div
         className="absolute inset-0 md:static md:order-first md:h-auto md:flex-1"
         aria-label="Karte zum Setzen der Wegpunkte — auf die Karte tippen, um einen Punkt zu setzen."
@@ -162,15 +165,12 @@ export default function NeueStreckeForm() {
       <DragSheet
         containerRef={containerRef}
         peekPx={SHEET_PEEK_PX}
-        expandedGapPx={SHEET_EXPANDED_GAP_PX}
         handleLabels={{ expand: "Formular ausklappen", collapse: "Formular einklappen" }}
       >
         <form
           action={formAction}
           className="flex w-full flex-1 flex-col gap-4 overflow-y-auto overscroll-y-contain border-border px-6 pt-8 pb-[calc(2rem+var(--safe-bottom))] md:max-w-sm md:border-r lg:max-w-md"
         >
-          <BackButton fallbackHref="/" />
-
           <div>
             <h1 className="text-display font-semibold">Strecke erstellen</h1>
             <p className="mt-1 text-sm text-muted">
@@ -379,11 +379,15 @@ export default function NeueStreckeForm() {
 
               {/* Sticky statt im normalen Fluss — bei ausgeklapptem Sheet
                   sonst je nach Bildschirmhöhe erst nach Scrollen erreichbar.
-                  pb reserviert zusätzlich den sicheren Bereich (Home-
-                  Indicator) — sonst sitzt der Button auf iPhones ohne
-                  Home-Taste direkt auf dessen Geste-Leiste, siehe
-                  --safe-bottom in globals.css. */}
-              <div className="sticky bottom-0 -mx-6 -mb-[calc(2rem+var(--safe-bottom))] mt-2 border-t border-border bg-background px-6 pt-4 pb-[calc(1rem+var(--safe-bottom))]">
+
+                  Der bottom-Versatz ist die Höhe der BottomNav (3.75rem plus
+                  sicherer Bereich, siehe BottomNav.tsx): die Leiste ist
+                  fixiert und läge sonst über dem Absenden-Knopf. Ab md gibt
+                  es sie nicht (md:hidden), dort sitzt die Leiste wieder am
+                  unteren Rand und reserviert den sicheren Bereich selbst —
+                  sonst klebte der Knopf auf iPhones ohne Home-Taste direkt
+                  auf der Geste-Leiste, siehe --safe-bottom in globals.css. */}
+              <div className="sticky bottom-[calc(3.75rem+var(--safe-bottom))] -mx-6 -mb-[calc(2rem+var(--safe-bottom))] mt-2 border-t border-border bg-background px-6 pt-4 pb-4 md:bottom-0 md:pb-[calc(1rem+var(--safe-bottom))]">
                 {state.error && (
                   <p role="alert" className="mb-3 text-sm text-danger">
                     {state.error}
