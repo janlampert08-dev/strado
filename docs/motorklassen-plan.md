@@ -2,9 +2,9 @@
 
 Ranglisten, die einen 125er-Roller nicht mehr gegen einen Porsche antreten
 lassen. Dieses Dokument ist die Referenz für das ganze Vorhaben; es umfasst
-vier Pull Requests, von denen PR 1 bis PR 3 umgesetzt sind.
+vier Pull Requests, alle umgesetzt.
 
-Stand: 2026-09-11 (PR 1 bis PR 3 umgesetzt). Wenn der Code diesem Dokument widerspricht, gewinnt der
+Stand: 2026-09-11 (alle vier PRs umgesetzt). Wenn der Code diesem Dokument widerspricht, gewinnt der
 Code — dann gehört diese Datei korrigiert.
 
 ## Problem
@@ -289,7 +289,7 @@ läuft**: Die Prüfmechanik landet vor der ersten Rangliste.
 | 1 | Migration 0080, `lib/motorklassen.ts` + Tests, die zwei Felder im Fahrzeugformular (auch inline im Fahrt-Fazit), Klassenpille in Garage und Fahrzeugwahl. Keine Rangliste ändert sich. | **umgesetzt** |
 | 2 | `lib/klassenbeleg.ts` + Tests, Anbindung in `completions.ts` für beide Fahrtarten, Migration 0081 (RPC der freien Fahrt), Anzeige der Wertung und ihrer Begründung für den Fahrer, `scripts/motorklassen-kalibrierung.mjs`. | **umgesetzt** |
 | 3 | Streckenbestzeiten nach Klasse: Chip-Leiste auf Streckenseite und Chooser, `?klasse=` im öffentlichen Endpunkt mit strikter Katalogprüfung. | **umgesetzt** |
-| 4 | Globale Ranglisten nach Klasse, „Meine Klasse“, plus Migration 0082 (Backfill). | offen |
+| 4 | Globale Ranglisten nach Klasse, „Meine Klasse“, plus Migration 0082 (Backfill, nur freie Fahrten). | **umgesetzt** |
 
 Ein Meldegrund musste nicht dazukommen: `falsche_angaben` steht seit 0043
 bzw. 0046 für Strecken, Bewertungen und Fahrten bereit und deckt eine
@@ -300,6 +300,23 @@ hat noch niemand eine Leistung eingetragen, ein Backfill wäre dort
 wirkungslos. Ein `update … set motorklasse = motorklasse` löst den Trigger
 für Altfahrten aus; nur Fahrten, die den Tempo-Deckel ihrer Klasse einhalten,
 bekommen eine Klasse, die übrigen bleiben ohne.
+
+> **Befund bei der Umsetzung: der Backfill darf Streckenfahrten nicht
+> anfassen.** Auf `route_completions` liegt seit 0052 der Trigger
+> `route_completions_recompute_coverage`, der bei **jedem** UPDATE einer
+> Streckenfahrt den Deckungsgrad neu rechnet und danach
+> `ist_oeffentlich := ist_oeffentlich and coverage >= 75` setzt. Seit 0078
+> ist die Formel eine andere als zum Zeitpunkt der Bestandsfahrten — eine
+> Hin-und-zurück-Strecke, die einst 100 % erreichte, misst heute 50 %. Ein
+> Backfill über Streckenfahrten hätte also öffentliche Bestandsfahrten still
+> auf privat gesetzt: eine Geschäftsregeländerung als Nebenwirkung einer
+> Klassen-Migration, und ein Sichtbarkeitsverlust, den kein Nutzer veranlasst
+> hat. `docs/audit/README.md` hält zu 0078 ausdrücklich fest, dass bestehende
+> Zeilen nicht neu bewertet werden. **0082 beschränkt sich deshalb auf freie
+> Fahrten**, wo der Coverage-Trigger sofort zurückkehrt. Streckenfahrten
+> bekommen ihre Klasse erst beim nächsten regulären Schreiben — alles andere
+> verlangt zuerst einen bewussten Entscheid über die Neubewertung des
+> Deckungsgrads.
 
 ## Ausserhalb dieses Vorhabens
 

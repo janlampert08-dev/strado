@@ -29,6 +29,39 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Noch NICHT eingespielt: 0082_motorklasse_backfill_freie_fahrten (Stand 2026-09-11)
+
+Neu mit PR „Motorklassen: globale Ranglisten“. Traegt die Motorklasse fuer
+bestehende **freie** Fahrten nach, indem ein UPDATE den Trigger aus 0080
+ausloest. **Setzt 0080 voraus.**
+
+Vor dem Einspielen zaehlen — die zweite Zahl ist die erwartete Wirkung:
+
+```sql
+select count(*) from public.route_completions
+ where art = 'frei' and fahrzeug_id is not null and motorklasse is null;
+
+select count(*) from public.route_completions rc
+  join public.vehicles v on v.id = rc.fahrzeug_id
+ where rc.art = 'frei' and rc.motorklasse is null and v.leistung_kw is not null;
+```
+
+Ist die zweite Zahl 0, ist die Migration ein No-op — der Normalfall direkt
+nach 0080, weil dann noch niemand eine Leistung eingetragen hat. Sie ist
+idempotent und kann spaeter gefahrlos erneut laufen; sinnvoll ist das erst,
+wenn Fahrzeuge Leistungsangaben tragen.
+
+**Streckenfahrten sind bewusst ausgenommen.** Der Trigger
+`route_completions_recompute_coverage` (0052) feuert auf jedem UPDATE und
+setzt fuer `art = 'strecke'` `ist_oeffentlich := ist_oeffentlich and
+coverage >= 75` — mit der seit 0078 geaenderten Formel. Ein Backfill ueber
+Streckenfahrten wuerde also oeffentliche Bestandsfahrten still auf privat
+setzen. `docs/audit/README.md` haelt zu 0078 fest: „Existing rows are not
+re-scored; the trigger only runs on write." Das bleibt so.
+
+Die Migration meldet ihr Ergebnis per `raise notice` (gesetzt / uebersprungen)
+— diese Zeile gehoert nach dem Lauf ins Protokoll.
+
 ## Noch NICHT eingespielt: 0081_freie_fahrt_motorklasse_belegt (Stand 2026-09-11)
 
 Neu mit PR „Motorklassen: belegte Klasse aus dem Track“. Erweitert
