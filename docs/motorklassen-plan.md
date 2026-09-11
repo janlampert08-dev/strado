@@ -272,6 +272,14 @@ Keine neuen Primitive — Chips sind eine `Button`-Variante, die Klassenpille
   leere Zustand lädt ein), pro Strecke wären fünf leere Chips nur Rauschen.
   Bei weniger als zwei belegten Klassen verschwindet die Leiste ganz — „Alle“
   und die eine Klasse wären dieselbe Liste.
+  Ermittelt wird das mit **je einer Existenzabfrage pro Katalogklasse**, nicht
+  aus einem Ausschnitt über alle Zeiten der Strecke: PostgREST kennt kein
+  DISTINCT, die View gibt keine Reihenfolge vor, und bei einer Strecke mit
+  mehr geteilten Zeiten als dem Abfragelimit könnte eine belegte Klasse aus
+  dem Ausschnitt fallen. Ihr Chip fehlte dann, und ihre Rangliste wäre über
+  die Oberfläche nicht mehr erreichbar — ein Fehler, der erst bei einer
+  beliebten Strecke auftritt und dort still bleibt. Gefunden hat ihn die
+  CodeRabbit-Review zu PR 3.
 - **Leerer Zustand fordert auf:** „Noch keine Zeit in A1 auf dieser Strecke —
   du kannst die erste sein.“
 - **Klasse und Spitzenwert stehen nebeneinander.** „A1 · Spitze 168 km/h“
@@ -335,7 +343,9 @@ bekommen eine Klasse, die übrigen bleiben ohne.
 ## Was die Testsuite nicht abdeckt
 
 Vitest läuft mit `environment: "node"`, es gibt kein jsdom. Abgesichert sind
-`lib/motorklassen.ts`, `lib/klassenbeleg.ts` und die reinen Helfer in
-`lib/leaderboard.ts`. Chips, Pillen,
+`lib/motorklassen.ts` und `lib/klassenbeleg.ts`. Die Klassen-Abfragen in
+`lib/leaderboard.ts` sind reine Datenbankzugriffe ohne testbaren Kern —
+`getRouteLeaderboardKlassen()` war kurzzeitig als Ausschnitt plus reiner
+Zusammenfassung gebaut, was zwar testbar, aber falsch war (siehe unten). Chips, Pillen,
 Formularfelder und Filterleisten haben **keine** automatisierte Abdeckung —
 das gehört in jede PR-Beschreibung so benannt, nicht impliziert.
