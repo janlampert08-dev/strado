@@ -150,14 +150,19 @@ comment on function public.motorklasse_hoehere(text, text) is
 --                          Client kann sie schreiben, PostgreSQL weist jeden
 --                          INSERT ab, der sie mitliefert.
 --
---    Warum motorklasse_belegt ungeschuetzt bleiben darf, obwohl INSERT auf
+--    motorklasse_belegt bleibt client-schreibbar, obwohl INSERT auf
 --    route_completions weiterhin an authenticated vergeben ist (Audit A1):
---    gewertet wird das MAXIMUM. Ein zu niedrig gesetzter Belegwert bewirkt
---    nichts, ein zu hoher schadet nur dem Absender selbst. Die Spalte ist
---    damit die eine Stelle, an der ein freier Schreibzugriff folgenlos ist.
---    UPDATE ist ohnehin nicht gegrantet: 0046 hat UPDATE auf der Tabelle
---    entzogen und nur ist_oeffentlich, notiz und track_oeffentlich neu
---    vergeben — neue Spalten erben daraus kein Recht.
+--    gewertet wird das MAXIMUM, ein zu niedrig gesetzter Wert bewirkt also
+--    nichts und ein zu hoher schadet nur dem Absender selbst. UPDATE ist
+--    ohnehin nicht gegrantet: 0046 hat UPDATE auf der Tabelle entzogen und
+--    nur ist_oeffentlich, notiz und track_oeffentlich neu vergeben — neue
+--    Spalten erben daraus kein Recht.
+--
+--    Folgenlos ist dieser Schreibzugriff aber NUR, weil der Tempo-Deckel in
+--    set_motorklasse() die gewertete und nicht die deklarierte Klasse prueft
+--    (siehe dort). Ohne das koennte ein Insert ohne fahrzeug_id ueber
+--    motorklasse_belegt allein in einer Klasse landen, deren Deckel nie
+--    geprueft wird.
 -- ---------------------------------------------------------------------------
 alter table public.route_completions
   add column motorklasse text,
@@ -206,10 +211,23 @@ set search_path = ''
 as $$
 declare
   v_klasse text;
+  v_gewertet text;
   v_kmh numeric;
   v_max_kmh numeric;
 begin
-  if new.fahrzeug_id is null then
+  -- Einmal abgeleitet, bleibt die Klasse. Das ist nicht Bequemlichkeit,
+  -- sondern der Kern des Entwurfs: Die Klasse haengt an der FAHRT, damit sie
+  -- ein spaeteres Loeschen oder Aendern des Fahrzeugs ueberlebt.
+  --
+  -- Ohne diesen Zweig zerstoerte der Fremdschluessel genau das, was er
+  -- schuetzen soll: route_completions.fahrzeug_id ist "on delete set null"
+  -- (0001). Wer sein Fahrzeug loescht, loest damit ein UPDATE auf JEDER
+  -- seiner Fahrten aus — dieser BEFORE-Trigger feuert mit, faende kein
+  -- Fahrzeug mehr und setzte die Klasse auf null. Die Fahrten fielen
+  -- stillschweigend aus allen Klassenlisten.
+  if tg_op = 'UPDATE' and old.motorklasse is not null then
+    v_klasse := old.motorklasse;
+  elsif new.fahrzeug_id is null then
     v_klasse := null;
   else
     select public.motorklasse(v.typ, v.hubraum_ccm, v.leistung_kw)
@@ -220,6 +238,10 @@ begin
   end if;
 
   new.motorklasse := v_klasse;
+
+  -- Bewusst KEIN vorzeitiges return oben: der Tempo-Deckel unten muss auch
+  -- auf dem Update-Pfad greifen, sonst liesse sich eine Fahrt ueber ein
+  -- Update in eine Klasse schieben, die ihr Tempo nicht hergibt.
 
   -- Klassenabhaengiger Deckel fuer das Durchschnittstempo, als Ergaenzung zur
   -- pauschalen 200-km/h-Grenze aus 0059. Grob — ein Durchschnitt versteckt
@@ -235,7 +257,19 @@ begin
   --
   -- Fuer eine ehrliche Fahrt darf das nie feuern. Wie die Exceptions in 0059
   -- ist das der Backstop, nicht die Benutzerfuehrung.
-  v_max_kmh := case new.motorklasse
+  --
+  -- Geprueft wird die GEWERTETE Klasse, nicht die deklarierte — dieselbe
+  -- Rechnung wie in der generierten Spalte motorklasse_gewertet. Der
+  -- Unterschied ist keine Feinheit: motorklasse_belegt ist client-schreibbar
+  -- (INSERT ist laut Audit-Befund A1 weiterhin gegrantet), und bei einer
+  -- Fahrt ohne fahrzeug_id bleibt die deklarierte Klasse null. Ein direkter
+  -- PostgREST-Insert mit motorklasse_belegt = 'moto_a1' und ohne Fahrzeug
+  -- landete damit in der A1-Rangliste, waehrend der Deckel auf new.motorklasse
+  -- (null) ins Leere liefe — die Fahrt kaeme mit allem durch, was unter der
+  -- pauschalen 200er-Grenze aus 0059 liegt.
+  v_gewertet := public.motorklasse_hoehere(v_klasse, new.motorklasse_belegt);
+
+  v_max_kmh := case v_gewertet
     when 'moto_a1'  then 95
     when 'moto_a35' then 130
     else null
@@ -256,7 +290,7 @@ end;
 $$;
 
 comment on function public.set_motorklasse() is
-  'Leitet route_completions.motorklasse aus dem referenzierten eigenen Fahrzeug ab (ignoriert den Clientwert) und lehnt ein fuer die Klasse unmoegliches Durchschnittstempo ab. Gegenstueck zu enforce_route_completion_stats() (0059).';
+  'Leitet route_completions.motorklasse aus dem referenzierten eigenen Fahrzeug ab (ignoriert den Clientwert), friert sie auf dem Update-Pfad ein (damit "on delete set null" auf fahrzeug_id sie nicht loescht) und lehnt ein fuer die GEWERTETE Klasse unmoegliches Durchschnittstempo ab. Gegenstueck zu enforce_route_completion_stats() (0059).';
 
 -- Reine Trigger-Funktion: feuert unabhaengig von EXECUTE-Rechten (siehe 0047
 -- Abschnitt A) — der Entzug schliesst nur den unnoetigen direkten RPC-Weg.

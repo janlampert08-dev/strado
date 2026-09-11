@@ -31,11 +31,22 @@ ob die Namen zusammenpassen.
 
 ## Noch NICHT eingespielt: 0080_motorklassen (Stand 2026-09-11)
 
-Neu mit PR „Motorklassen: Datenmodell und Klassenformel“. Der Code, der sie
-braucht, kommt in späteren PRs — PR 1 selbst läuft auch ohne die Migration,
-zeigt dann aber überall „Ohne Klasse“ an und das Anlegen eines Fahrzeugs
-schlägt fehl, sobald `hubraum_ccm`/`leistung_kw` mitgeschickt werden. Also
-zusammen mit dem Deploy von PR 1 einspielen.
+Neu mit PR „Motorklassen: Datenmodell und Klassenformel“.
+
+**Diese Migration muss VOR dem Deploy von PR 1 eingespielt sein, nicht nur
+zusammen mit ihm.** `insertVehicleFromFormData()` in `lib/actions/vehicles.ts`
+— die gemeinsame Grundlage von `addVehicle` und `addVehicleInline` — schickt
+`hubraum_ccm` und `leistung_kw` bei **jedem** Insert mit, auch wenn beide
+Felder leer sind und `null` übertragen wird. Auf dem Schema vor 0080 gibt es
+diese Spalten nicht, also schlägt **jedes** Anlegen eines Fahrzeugs fehl, nicht
+nur eines mit Leistungsangabe. Eine frühere Fassung dieses Abschnitts sagte
+„schlägt fehl, sobald `hubraum_ccm`/`leistung_kw` mitgeschickt werden“ — das
+klang nach einer Bedingung und war eine Fehleinschätzung; gefunden hat sie die
+CodeRabbit-Review zu PR 1.
+
+Das Fahrzeug-Anlegen ist Teil des Kern-Loops (Schritt 5, Fahrt-Fazit): Ohne die
+Migration bricht der Weg dorthin ab, sobald jemand ein Fahrzeug hinzufügen
+will.
 
 Vor dem Einspielen zählen — die Migration entstand ohne Datenbankzugriff, die
 Zahlen sind nicht erhoben:
