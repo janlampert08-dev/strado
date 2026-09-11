@@ -2,22 +2,15 @@ import { describe, it, expect } from "vitest";
 import {
   einstiegsPfad,
   einstiegsUrl,
-  findeCreatorLink,
   normalisiereCode,
-  type CreatorLink,
+  pruefeCreatorLinkEingabe,
 } from "./creatorLinks";
+import type { CreatorLinkZiel } from "@/types/database";
 
-const MAX: CreatorLink = {
-  code: "max",
-  name: "Max Muster",
-  kanal: "tiktok",
-  kampagne: "start26",
-};
+const MAX: CreatorLinkZiel = { code: "max", kanal: "tiktok", kampagne: "start26" };
 
 // Ohne Kampagne: der Normalfall, solange es nur einen Anlauf gibt.
-const LEA: CreatorLink = { code: "lea-moto", name: "Lea", kanal: "instagram" };
-
-const LINKS = [MAX, LEA];
+const LEA: CreatorLinkZiel = { code: "lea-moto", kanal: "instagram", kampagne: null };
 
 describe("normalisiereCode", () => {
   it("nimmt einen einfachen Code an", () => {
@@ -50,21 +43,6 @@ describe("normalisiereCode", () => {
     expect(normalisiereCode("")).toBeNull();
     expect(normalisiereCode(null)).toBeNull();
     expect(normalisiereCode(undefined)).toBeNull();
-  });
-});
-
-describe("findeCreatorLink", () => {
-  it("findet über den normalisierten Code", () => {
-    expect(findeCreatorLink("MAX", LINKS)).toBe(MAX);
-    expect(findeCreatorLink("lea-moto", LINKS)).toBe(LEA);
-  });
-
-  it("liefert null für einen unbekannten Code", () => {
-    expect(findeCreatorLink("gibtsnicht", LINKS)).toBeNull();
-  });
-
-  it("liefert null für einen ungültigen Code, ohne die Liste zu befragen", () => {
-    expect(findeCreatorLink("../max", LINKS)).toBeNull();
   });
 });
 
@@ -123,5 +101,82 @@ describe("einstiegsUrl", () => {
 
   it("erzeugt keinen doppelten Schrägstrich", () => {
     expect(einstiegsUrl("https://app.strado.ch/", "max")).toBe("https://app.strado.ch/c/max");
+  });
+});
+
+describe("pruefeCreatorLinkEingabe", () => {
+  const gueltig = { code: "max", name: "Max Muster", kanal: "tiktok", kampagne: "start26" };
+
+  it("nimmt eine vollständige Eingabe an", () => {
+    const ergebnis = pruefeCreatorLinkEingabe(gueltig);
+    expect(ergebnis).toEqual({ ok: true, wert: gueltig });
+  });
+
+  it("normalisiert Code und Kanal und schneidet den Namen", () => {
+    const ergebnis = pruefeCreatorLinkEingabe({
+      code: " MAX ",
+      name: "  Max Muster  ",
+      kanal: " TikTok ",
+      kampagne: " Start26 ",
+    });
+    expect(ergebnis).toEqual({
+      ok: true,
+      wert: { code: "max", name: "Max Muster", kanal: "tiktok", kampagne: "start26" },
+    });
+  });
+
+  // Leer heisst "keine Kampagne". Sonst stünde ein utm_campaign= ohne Wert
+  // in jeder Adresse dieses Creators.
+  it("macht aus einer leeren Kampagne null", () => {
+    for (const kampagne of ["", "   ", null, undefined]) {
+      const ergebnis = pruefeCreatorLinkEingabe({ ...gueltig, kampagne });
+      expect(ergebnis).toMatchObject({ ok: true, wert: { kampagne: null } });
+    }
+  });
+
+  it("weist einen ungültigen Code ab", () => {
+    for (const code of ["", "m", "max/admin", "Max Muster", "max.1", "m".repeat(33)]) {
+      expect(pruefeCreatorLinkEingabe({ ...gueltig, code })).toMatchObject({ ok: false });
+    }
+  });
+
+  it("weist einen fehlenden Namen ab", () => {
+    for (const name of ["", "   ", null]) {
+      expect(pruefeCreatorLinkEingabe({ ...gueltig, name })).toMatchObject({ ok: false });
+    }
+  });
+
+  it("weist einen zu langen Namen ab", () => {
+    expect(pruefeCreatorLinkEingabe({ ...gueltig, name: "a".repeat(81) })).toMatchObject({
+      ok: false,
+    });
+  });
+
+  it("weist einen ungültigen Kanal ab", () => {
+    for (const kanal of ["", "t", "tik tok", "tiktok!", "a".repeat(33)]) {
+      expect(pruefeCreatorLinkEingabe({ ...gueltig, kanal })).toMatchObject({ ok: false });
+    }
+  });
+
+  it("weist eine ungültige Kampagne ab", () => {
+    expect(pruefeCreatorLinkEingabe({ ...gueltig, kampagne: "start 26" })).toMatchObject({
+      ok: false,
+    });
+  });
+
+  // Der geprüfte Wert geht unverändert in die Tabelle. Was hier durchkommt,
+  // muss deshalb auch die CHECK-Constraints aus 0080 erfüllen — sonst wäre
+  // die Fehlermeldung ein roher PostgREST-Fehler.
+  it("liefert nur Werte, die zu den CHECK-Constraints aus 0080 passen", () => {
+    const ergebnis = pruefeCreatorLinkEingabe({
+      code: "LEA-Moto-2",
+      name: "Lea",
+      kanal: "INSTAGRAM",
+      kampagne: null,
+    });
+    expect(ergebnis.ok).toBe(true);
+    if (!ergebnis.ok) return;
+    expect(ergebnis.wert.code).toMatch(/^[a-z0-9-]{2,32}$/);
+    expect(ergebnis.wert.kanal).toMatch(/^[a-z0-9_-]{2,32}$/);
   });
 });

@@ -2,25 +2,26 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/Header";
 import CopyButton from "@/components/CopyButton";
+import CreatorLinkForm from "@/components/CreatorLinkForm";
+import CreatorLinkActions from "@/components/CreatorLinkActions";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
+import SectionHeading from "@/components/ui/SectionHeading";
 import { LinkIcon } from "@/components/NavIcons";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { isModerator } from "@/lib/moderation";
-import { CREATOR_LINKS, einstiegsPfad, einstiegsUrl } from "@/lib/creatorLinks";
+import { alleCreatorLinks, einstiegsPfad, einstiegsUrl } from "@/lib/creatorLinks";
 import { siteUrl } from "@/lib/siteUrl";
 
 export const metadata = { title: "Creator-Links – Strado" };
 
-// Übersicht der vergebenen Einstiegslinks: die fertige Adresse zum Kopieren
-// und das Ziel, auf das sie auflöst. Reine Anzeige — vergeben werden die
-// Codes in lib/creatorLinks.ts, und das ist in Phase 1 Absicht (siehe die
-// Begründung dort).
+// Verwaltung der Einstiegscodes: anlegen, deaktivieren, löschen, Adresse
+// kopieren.
 //
-// Derselbe Zugriffsschutz wie /moderation: Anmeldung plus Moderator-Status.
-// Er ist hier eine Bequemlichkeit und keine Geheimhaltung — die Links sind
-// dafür gedacht, öffentlich verteilt zu werden. Er hält die Seite aus dem
-// Weg von allen, die sie nichts angeht.
+// Derselbe Zugriffsschutz wie /moderation — und hier ist er keine
+// Bequemlichkeit mehr, sondern die zweite Schranke vor den Schreibaktionen.
+// Die erste ist die RLS-Policy aus 0080, die dritte die isModerator-Prüfung
+// in jeder Server Action (lib/actions/creatorLinks.ts).
 export default async function CreatorLinksPage() {
   const user = await getCurrentUser();
 
@@ -31,6 +32,8 @@ export default async function CreatorLinksPage() {
   // staging.strado.ch kopierter Link auf Staging, und dort kommt ausser
   // Moderatoren niemand hinein (proxy.ts).
   const basis = siteUrl();
+  const links = await alleCreatorLinks();
+  const aktive = links.filter((link) => link.aktiv).length;
 
   return (
     <div className="flex h-dvh flex-col">
@@ -40,7 +43,8 @@ export default async function CreatorLinksPage() {
           <div>
             <h1 className="text-display font-semibold">Creator-Links</h1>
             <p className="text-sm text-muted">
-              {CREATOR_LINKS.length} {CREATOR_LINKS.length === 1 ? "Link" : "Links"} vergeben
+              {links.length} {links.length === 1 ? "Code" : "Codes"}
+              {links.length > 0 && `, ${aktive} davon aktiv`}
             </p>
           </div>
 
@@ -51,47 +55,75 @@ export default async function CreatorLinksPage() {
               <code className="font-mono text-foreground">utm_content</code> gruppieren.
             </p>
             <p>
-              Gezählt werden <strong className="text-foreground">Aufrufe, keine Registrierungen</strong>.
-              Wie der Schritt dorthin aussähe, steht in{" "}
+              Gezählt werden{" "}
+              <strong className="text-foreground">Aufrufe, keine Registrierungen</strong>. Wie
+              der Schritt dorthin aussähe, steht in{" "}
               <code className="font-mono text-foreground">docs/creator-links-plan.md</code>.
             </p>
           </Card>
 
-          {CREATOR_LINKS.length === 0 ? (
-            <EmptyState
-              icon={LinkIcon}
-              title="Noch kein Code vergeben. Neue Codes kommen in lib/creatorLinks.ts dazu — ein Eintrag pro Creator."
-            />
-          ) : (
-            <div className="flex flex-col gap-3">
-              {CREATOR_LINKS.map((link) => {
+          <div className="flex flex-col gap-3">
+            <SectionHeading>Neuen Link anlegen</SectionHeading>
+            <CreatorLinkForm />
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <SectionHeading>Vergeben</SectionHeading>
+            {links.length === 0 ? (
+              <EmptyState
+                icon={LinkIcon}
+                title="Noch kein Code vergeben. Leg oben den ersten an — danach steht hier die fertige Adresse zum Kopieren."
+              />
+            ) : (
+              links.map((link) => {
                 const adresse = einstiegsUrl(basis, link.code);
                 const ziel = einstiegsPfad(link);
                 return (
                   <Card key={link.code} className="flex flex-col gap-3 p-4">
-                    <div>
-                      <p className="font-medium">{link.name}</p>
-                      <p className="text-sm text-muted">
-                        {link.kanal}
-                        {link.kampagne ? ` · ${link.kampagne}` : ""}
-                      </p>
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <div>
+                        <p className="font-medium">{link.name}</p>
+                        <p className="text-sm text-muted">
+                          {link.kanal}
+                          {link.kampagne ? ` · ${link.kampagne}` : ""}
+                        </p>
+                      </div>
+                      {!link.aktiv && (
+                        <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted">
+                          Deaktiviert
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
                       {/* break-all, weil die Adresse auf einem Telefon sonst
                           seitlich aus der Karte läuft. */}
-                      <code className="min-w-0 flex-1 font-mono text-sm break-all">{adresse}</code>
+                      <code className="min-w-0 flex-1 font-mono text-sm break-all">
+                        {adresse}
+                      </code>
                       <CopyButton text={adresse} />
                     </div>
 
                     <p className="text-xs text-muted">
-                      Leitet weiter auf <span className="font-mono break-all">{ziel}</span>
+                      {link.aktiv ? (
+                        <>
+                          Leitet weiter auf <span className="font-mono break-all">{ziel}</span>
+                        </>
+                      ) : (
+                        <>Leitet ohne Zuordnung auf die Startseite.</>
+                      )}
                     </p>
+
+                    <CreatorLinkActions
+                      code={link.code}
+                      aktiv={link.aktiv}
+                      name={link.name}
+                    />
                   </Card>
                 );
-              })}
-            </div>
-          )}
+              })
+            )}
+          </div>
 
           <p className="text-sm">
             <Link href="/moderation" className="text-accent hover:underline">

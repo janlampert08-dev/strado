@@ -1,6 +1,8 @@
+import { createClient } from "@/lib/supabase/server";
 import { safeInternalPath } from "@/lib/utils/url";
+import type { CreatorLink, CreatorLinkZiel } from "@/types/database";
 
-// Creator-Einstiegslinks — Phase 1 aus docs/creator-links-plan.md.
+// Creator-Einstiegslinks (siehe docs/creator-links-plan.md).
 //
 // Ein Creator bekommt genau eine kurze Adresse, app.strado.ch/c/<code>.
 // app/c/[code]/route.ts leitet sie in die App weiter und hängt dabei die
@@ -15,38 +17,21 @@ import { safeInternalPath } from "@/lib/utils/url";
 // Ausgewertet wird in Vercel Web Analytics — der einzigen Telemetrie der App
 // (siehe <Analytics /> in app/layout.tsx) — durch Gruppieren nach
 // utm_content. Das misst **Aufrufe, keine Registrierungen**: der Schritt
-// dorthin ist Phase 2 und kostet Cookie, Migration und eine Änderung der
-// Datenschutzerklärung. Wer hier etwas anbaut, sollte den Plan vorher lesen.
-
-export interface CreatorLink {
-  /** Der Teil hinter /c/ — Kleinbuchstaben, Ziffern, Bindestrich. */
-  code: string;
-  /** Wer dahintersteckt. Erscheint nur in der Moderationsansicht. */
-  name: string;
-  /** Wird zu utm_source, z.B. "tiktok" oder "instagram". */
-  kanal: string;
-  /** Optional die Aktion, zu der der Link gehört (utm_campaign). */
-  kampagne?: string;
-}
-
-// Bewusst eine Konstante und keine Tabelle: bei einer Handvoll Creator
-// kostet ein Datenbank-Roundtrip pro Klick mehr, als er einbringt, und ein
-// neuer Creator ist ein Ein-Zeilen-PR. Sobald der Trigger aus Phase 2
-// denselben Code prüfen muss, zieht eine Tabelle nach — eine SQL-Funktion
-// kann keine TypeScript-Konstante lesen.
+// dorthin ist Phase 2 und braucht Cookie, Trigger und eine Änderung der
+// Datenschutzerklärung.
 //
-// Leer, weil noch kein Code vergeben ist. Ein Eintrag sieht so aus:
-//
-//   { code: "max", name: "Max Muster", kanal: "tiktok", kampagne: "start26" }
-//
-// Der Code steht anschliessend in der Moderationsansicht unter
-// /moderation/creator mit der fertigen Adresse zum Kopieren.
-export const CREATOR_LINKS: readonly CreatorLink[] = [];
+// Die Codes standen zunächst in einer Konstanten hier. Seit sie über
+// /moderation/creator verwaltet werden, stehen sie in public.creator_links
+// (Migration 0080) — sonst wäre "einen Creator anlegen" ein Deploy.
 
 // Eng gefasst, weil der Wert unverändert in eine URL und in die Auswertung
 // wandert: keine Grossbuchstaben (sonst zählte "Max" getrennt von "max"),
 // keine Punkte oder Schrägstriche (sonst sähe ein Code wie ein Pfad aus).
+// Dieselben Muster stehen als CHECK-Constraints in 0080 — die Anwendung ist
+// die erste Schranke, die Datenbank die letzte.
 const CODE_MUSTER = /^[a-z0-9-]{2,32}$/;
+const KANAL_MUSTER = /^[a-z0-9_-]{2,32}$/;
+const NAME_MAX = 80;
 
 const UTM_MEDIUM = "creator";
 
@@ -59,15 +44,6 @@ export function normalisiereCode(roh: string | null | undefined): string | null 
   return CODE_MUSTER.test(code) ? code : null;
 }
 
-export function findeCreatorLink(
-  roh: string | null | undefined,
-  links: readonly CreatorLink[] = CREATOR_LINKS,
-): CreatorLink | null {
-  const code = normalisiereCode(roh);
-  if (!code) return null;
-  return links.find((link) => link.code === code) ?? null;
-}
-
 // Das interne Weiterleitungsziel inklusive UTM-Parametern.
 //
 // `ziel` ist der optionale ?z=-Parameter für einen Tiefenlink (etwa direkt
@@ -76,7 +52,7 @@ export function findeCreatorLink(
 // Open-Redirect-Schutz, den die App für jedes ?next= schon hat. Ohne ihn
 // wäre /c/max?z=https://boese.example eine Weiterleitung auf fremdes Gebiet,
 // ausgestellt von einer Domain, der die Leute vertrauen.
-export function einstiegsPfad(link: CreatorLink, ziel?: FormDataEntryValue | null): string {
+export function einstiegsPfad(link: CreatorLinkZiel, ziel?: FormDataEntryValue | null): string {
   const pfad = safeInternalPath(ziel) ?? "/";
 
   // Gegen eine Wegwerf-Basis auflösen, damit ein Query-String oder ein
@@ -104,4 +80,115 @@ export function einstiegsPfad(link: CreatorLink, ziel?: FormDataEntryValue | nul
 // der auf staging.strado.ch zeigt, weil ihn jemand von dort kopiert hat.
 export function einstiegsUrl(basis: string, code: string): string {
   return `${basis.replace(/\/+$/, "")}/c/${code}`;
+}
+
+// ---------------------------------------------------------------------------
+// Eingabeprüfung für das Formular unter /moderation/creator
+// ---------------------------------------------------------------------------
+
+export interface CreatorLinkEingabe {
+  code: string;
+  name: string;
+  kanal: string;
+  kampagne: string | null;
+}
+
+export type EingabePruefung =
+  | { ok: true; wert: CreatorLinkEingabe }
+  | { ok: false; fehler: string };
+
+// Rein und damit testbar — die Server Action ruft sie auf, bevor sie
+// schreibt. Sie ersetzt die CHECK-Constraints aus 0080 nicht, sondern
+// ersetzt deren Fehlermeldung: ein verletzter Constraint käme als
+// PostgREST-Fehler zurück, den niemand lesen will.
+export function pruefeCreatorLinkEingabe(roh: {
+  code?: FormDataEntryValue | null;
+  name?: FormDataEntryValue | null;
+  kanal?: FormDataEntryValue | null;
+  kampagne?: FormDataEntryValue | null;
+}): EingabePruefung {
+  const code = normalisiereCode(typeof roh.code === "string" ? roh.code : null);
+  if (!code) {
+    return {
+      ok: false,
+      fehler:
+        "Der Code darf nur Kleinbuchstaben, Ziffern und Bindestriche enthalten (2–32 Zeichen).",
+    };
+  }
+
+  const name = (typeof roh.name === "string" ? roh.name : "").trim();
+  if (!name) return { ok: false, fehler: "Bitte gib an, wer hinter dem Link steckt." };
+  if (name.length > NAME_MAX) {
+    return { ok: false, fehler: `Der Name darf höchstens ${NAME_MAX} Zeichen lang sein.` };
+  }
+
+  const kanal = (typeof roh.kanal === "string" ? roh.kanal : "").trim().toLowerCase();
+  if (!KANAL_MUSTER.test(kanal)) {
+    return {
+      ok: false,
+      fehler: "Der Kanal darf nur Kleinbuchstaben, Ziffern, Bindestriche und _ enthalten (2–32 Zeichen).",
+    };
+  }
+
+  // Leer heisst "keine Kampagne" und nicht "leere Kampagne" — sonst stünde
+  // ein utm_campaign= ohne Wert in jeder Adresse.
+  const kampagneRoh = (typeof roh.kampagne === "string" ? roh.kampagne : "").trim().toLowerCase();
+  if (kampagneRoh && !KANAL_MUSTER.test(kampagneRoh)) {
+    return {
+      ok: false,
+      fehler:
+        "Die Kampagne darf nur Kleinbuchstaben, Ziffern, Bindestriche und _ enthalten (2–32 Zeichen).",
+    };
+  }
+
+  return { ok: true, wert: { code, name, kanal, kampagne: kampagneRoh || null } };
+}
+
+// ---------------------------------------------------------------------------
+// Datenbank
+// ---------------------------------------------------------------------------
+
+// Die ganze Liste für die Moderationsansicht. Über den session-gebundenen
+// Client: RLS gibt nur Moderatoren eine Zeile (0080), die Seite prüft den
+// Status zusätzlich selbst (Defense-in-Depth wie in lib/actions/moderation.ts).
+export async function alleCreatorLinks(): Promise<CreatorLink[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("creator_links")
+    .select("code, name, kanal, kampagne, aktiv, erstellt_am")
+    .order("erstellt_am", { ascending: false })
+    .returns<CreatorLink[]>();
+
+  if (error) {
+    console.error("Creator-Links konnten nicht gelesen werden", error);
+    return [];
+  }
+  return data ?? [];
+}
+
+// Der öffentliche Weg: nur aktive Codes, nur die drei Felder, die die
+// Weiterleitung braucht. Über die SECURITY DEFINER-Funktion aus 0080 und
+// nicht über die Tabelle — die Begründung steht ausführlich dort und kurz
+// hier: `name` ist personenbezogen, Spalten-Rechte vergibt Postgres pro
+// Rolle, und Moderator wie Normalnutzer sind beide `authenticated`.
+export async function creatorLinkAufloesen(
+  rohCode: string | null | undefined,
+): Promise<CreatorLinkZiel | null> {
+  const code = normalisiereCode(rohCode);
+  if (!code) return null;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("creator_link_aufloesen", { p_code: code });
+
+  if (error) {
+    console.error("Creator-Link konnte nicht aufgelöst werden", { code }, error);
+    return null;
+  }
+
+  // Eine SQL-Funktion mit RETURNS TABLE liefert über PostgREST ein Array —
+  // hier mit höchstens einer Zeile, weil code der Primärschlüssel ist. Die
+  // Array-Prüfung statt eines Casts, weil types/database.ts heute
+  // `Database = any` exportiert und der Client die Form nicht kennt.
+  const zeilen: CreatorLinkZiel[] = Array.isArray(data) ? data : [];
+  return zeilen[0] ?? null;
 }

@@ -7,10 +7,10 @@ geklickt", sondern „wie viele haben sich registriert und sind geblieben".
 Ausgangslage: ausser `<Analytics />` von Vercel (`app/layout.tsx`) gibt es
 keine Telemetrie. Kein Sentry, kein PostHog, kein Plausible.
 
-**Stand:** Phase 0 und Phase 1 sind umgesetzt (`lib/creatorLinks.ts`,
-`app/c/[code]/route.ts`, `app/moderation/creator/page.tsx`). Phase 2 und 3
-sind weiterhin Plan. Die Liste der Codes in `lib/creatorLinks.ts` ist leer,
-solange kein Code vergeben ist.
+**Stand:** Phase 0 und Phase 1 sind umgesetzt. Die Codes werden unter
+`/moderation/creator` verwaltet und liegen in `public.creator_links`
+(Migration `0080` — **noch nicht eingespielt**, siehe
+`supabase/migrations/README.md`). Phase 2 und 3 sind weiterhin Plan.
 
 ## Warum UTM allein nicht reicht
 
@@ -109,8 +109,14 @@ Phase 2 bauen, sobald Phase 1 zeigt, dass überhaupt Klicks kommen.
 ## Phase 1 — `/c/<code>` als einziger Einstiegspunkt
 
 **Umgesetzt.** Ein Route Handler unter `app/c/[code]/route.ts`, der prüft,
-protokolliert (ab Phase 2) und weiterleitet. Der Rest dieses Abschnitts
-beschreibt, was dort steht und warum.
+protokolliert (ab Phase 2) und weiterleitet, plus eine Verwaltungsansicht
+für Moderatoren. Der Rest dieses Abschnitts beschreibt, was dort steht und
+warum.
+
+Die Codes standen zunächst in einer TypeScript-Konstanten. Das war richtig,
+solange niemand sie ändern können musste — sobald sie über eine Oberfläche
+verwaltet werden, wäre „einen Creator anlegen" ein Deploy. Seit `0080`
+liegen sie deshalb in `public.creator_links`.
 
 ### Warum ein Route Handler und nicht ein Query-Parameter auf `/`
 
@@ -131,17 +137,27 @@ Klicks pro Tag gehört dort nichts hinein.
 mit `environment: "node"` sie erreicht:
 
 ```ts
-// Die Liste der gültigen Codes. In Phase 1 bewusst eine Konstante und keine
-// Tabelle: kein DB-Roundtrip pro Klick, testbar, und ein neuer Creator ist
-// ein Ein-Zeilen-PR. Ab Phase 2 zieht eine Tabelle nach, weil der
-// DB-Trigger denselben Code prüfen muss und keine TS-Konstante lesen kann.
-export const CREATOR_LINKS: readonly CreatorLink[] = [];
+// Rein und damit unter Vitest testbar:
+export function normalisiereCode(roh): string | null;           // Format, kleingeschrieben
+export function einstiegsPfad(link, ziel?): string;             // Pfad + UTM
+export function einstiegsUrl(basis, code): string;              // nur für die Anzeige
+export function pruefeCreatorLinkEingabe(roh): EingabePruefung; // das Formular
 
-export function normalisiereCode(roh): string | null;          // Format, kleingeschrieben
-export function findeCreatorLink(roh, links?): CreatorLink | null;
-export function einstiegsPfad(link, ziel?): string;            // Pfad + UTM
-export function einstiegsUrl(basis, code): string;             // nur für die Anzeige
+// Datenbank (0080):
+export async function alleCreatorLinks(): Promise<CreatorLink[]>;        // Moderation, per RLS
+export async function creatorLinkAufloesen(roh): Promise<CreatorLinkZiel | null>; // oeffentlich, per RPC
 ```
+
+**Warum der öffentliche Weg über eine `SECURITY DEFINER`-Funktion läuft und
+nicht über die Tabelle:** die nötige Trennung verläuft zwischen *Spalten*,
+nicht zwischen Zeilen. `name` ist personenbezogen und darf die
+Moderationsansicht nicht verlassen; `code`/`kanal`/`kampagne` sind es nicht.
+Spaltenrechte vergibt Postgres aber pro **Rolle** — und ein Moderator ist
+dieselbe Rolle `authenticated` wie jeder andere eingeloggte Nutzer. Eine
+Policy, die dem eingeloggten Besucher den aktiven Link zeigt, zeigte ihm
+damit zwangsläufig auch den Namen. `creator_link_aufloesen(text)` gibt genau
+das preis, was ein Klick ohnehin offenlegt, für genau einen Code, den der
+Aufrufer bereits kennt — und kann nicht auflisten.
 
 `einstiegsPfad()` baut `/` (oder das über `?z=` mitgegebene interne Ziel)
 und hängt die UTM-Parameter aus Phase 0 an — so sieht Vercel Web Analytics
@@ -180,12 +196,24 @@ Gross-/Kleinschreibung, UTM-Aufbau, Erhalt eines vorhandenen Query-Strings im
 Ziel, Überschreiben eines im Ziel untergeschobenen `utm_content`, Abweisung
 externer `?z=`-Ziele.
 
-**`app/moderation/creator/page.tsx`** plus `components/CopyButton.tsx`: die
-Übersicht für Moderatoren — jede vergebene Adresse zum Kopieren und das Ziel,
-auf das sie auflöst. Die Basis kommt aus `siteUrl()` und nicht aus dem Host
-der Anfrage, sonst zeigte ein von `staging.strado.ch` kopierter Link auf
-Staging. Reine Anzeige: vergeben werden die Codes weiterhin in
-`lib/creatorLinks.ts`.
+**`app/moderation/creator/page.tsx`** plus `components/CreatorLinkForm.tsx`,
+`components/CreatorLinkActions.tsx` und `components/CopyButton.tsx`: die
+Verwaltung — anlegen, deaktivieren, löschen, Adresse kopieren. Die Basis der
+angezeigten Adresse kommt aus `siteUrl()` und nicht aus dem Host der Anfrage,
+sonst zeigte ein von `staging.strado.ch` kopierter Link auf Staging.
+
+**`lib/actions/creatorLinks.ts`**: die Schreibaktionen. Drei Schranken
+hintereinander, wie `lib/actions/moderation.ts` sie schon zieht — die
+RLS-Policy aus `0080`, die `isModerator()`-Prüfung in jeder Aktion und der
+Zugriffsschutz der Seite. Ein Treffer von null Zeilen gilt als Fehler: RLS
+verweigert nicht mit einem Fehler, sondern filtert die Zeile aus dem UPDATE
+heraus, und ohne `count` wäre „darf nicht" von „hat geklappt" nicht zu
+unterscheiden.
+
+**Deaktivieren statt löschen** ist der Normalfall: ein Code, der einmal in
+einer Caption stand, wird weiter angeklickt. Inaktiv heisst, dass
+`creator_link_aufloesen()` ihn nicht mehr findet — der Besucher landet ohne
+Zuordnung in der App statt auf einer Fehlerseite.
 
 Keine Änderung an `proxy.ts` nötig — der Matcher deckt `/c/...` bereits ab,
 und `updateSession()` stört nicht.
@@ -253,22 +281,11 @@ eine Zeile schreiben liesse.
 
 ### c) Migration `0080_creator_herkunft.sql`
 
-Drei Objekte und eine Trigger-Änderung:
+Die Tabelle `creator_links` gibt es seit `0080` bereits (Phase 1). Für
+Phase 2 kommen dazu:
 
 ```sql
--- 1. Die Quelle der Wahrheit für gültige Codes.
-create table public.creator_links (
-  code text primary key check (code ~ '^[a-z0-9-]{2,32}$'),
-  name text not null,
-  kanal text,
-  aktiv boolean not null default true,
-  erstellt_am timestamptz not null default now()
-);
-alter table public.creator_links enable row level security;
--- Keine Policy für anon/authenticated: niemand ausser service_role und
--- (optional) Moderatoren muss diese Liste lesen können.
-
--- 2. Wer kam über wen.
+-- Wer kam über wen.
 create table public.registrierung_herkunft (
   user_id uuid primary key references auth.users (id) on delete cascade,
   code text not null references public.creator_links (code),

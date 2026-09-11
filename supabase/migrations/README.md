@@ -29,6 +29,38 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Offen: 0080 (noch nicht eingespielt)
+
+`0080_creator_links.sql` legt die Tabelle der Creator-Einstiegscodes an
+(`/c/<code>`, verwaltet unter `/moderation/creator`) plus die
+`SECURITY DEFINER`-Funktion `creator_link_aufloesen(text)`, über die der
+öffentliche Weg läuft.
+
+**Der Code dazu ist bereits gemergt und funktioniert ohne die Tabelle
+nicht.** Ohne sie liefert `/c/<code>` für jeden Code die Startseite ohne
+Zuordnung, und `/moderation/creator` zeigt eine leere Liste — beides ohne
+sichtbaren Fehler. Das ist genau das Muster, das weiter oben unter
+„Nachgezogene Migrationen" steht: grünes CI sagt nichts über das Schema.
+
+Reihenfolge wie üblich: erst Staging-Datenbank, dann Produktion.
+
+Gegengeprüft wird an den Objekten, nicht am Ledger:
+
+```sql
+-- Tabelle da?
+select count(*) from public.creator_links;
+
+-- Funktion da, und hat anon nur sie und nicht die Tabelle?
+select has_function_privilege('anon', 'public.creator_link_aufloesen(text)', 'execute') as fn,
+       has_table_privilege('anon', 'public.creator_links', 'select')                    as tabelle;
+-- erwartet: fn = true, tabelle = false
+```
+
+Die Migration wurde vor dem Merge gegen ein leeres Postgres 16 mit
+nachgebildeter `auth`/`profiles`-Umgebung durchgespielt: Constraints,
+Policy, Grants und die Funktion verhalten sich wie beschrieben. Das ersetzt
+die Einspielung nicht, es ersetzt nur die Überraschung dabei.
+
 ## Nachgezogene Migrationen (2026-09-02/03)
 
 Bei einer vollständigen Prüfung der Datenbank fiel auf, dass mehrere bereits
