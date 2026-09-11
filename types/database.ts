@@ -382,6 +382,23 @@ export interface PublicCompletionPhoto {
   display_name: string | null;
 }
 
+// Die drei Felder, die eine Weiterleitung unter /c/<code> braucht — genau
+// das, was creator_link_aufloesen(text) zurückgibt (0080). Ohne `name`:
+// die Spalte ist personenbezogen und verlässt die Moderationsansicht nicht.
+export interface CreatorLinkZiel {
+  code: string;
+  kanal: string;
+  kampagne: string | null;
+}
+
+// Zeilenform von public.creator_links, wie sie die Moderationsansicht
+// unter /moderation/creator zeigt. Nur für Moderatoren lesbar (RLS, 0080).
+export interface CreatorLink extends CreatorLinkZiel {
+  name: string;
+  aktiv: boolean;
+  erstellt_am: string;
+}
+
 // Minimales Database-Interface für den generischen Supabase-Client-Typparameter.
 // Wird in Phase 2/3 durch generierte Typen ersetzt.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
