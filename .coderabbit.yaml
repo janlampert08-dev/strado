@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=https://www.coderabbit.ai/integrations/schema.v2.json
+
+# Konfiguration fuer CodeRabbit (automatische PR-Reviews).
+#
+# Warum im Repo und nicht in der CodeRabbit-UI: eine Einstellung, die nur im
+# Dashboard steht, taucht in keinem Diff auf und niemand sieht ihre Aenderung
+# im Review. Dasselbe Argument, mit dem .nvmrc die Node-Version haelt statt
+# eines Vercel-Projektfeldes (AGENTS.md -> Stack).
+#
+# ACHTUNG bei Aenderungen: diese Datei hat Vorrang vor den UI-Einstellungen
+# und ERSETZT sie, sie ergaenzt sie nicht. Was hier fehlt, faellt auf den
+# Default zurueck — nicht auf den UI-Wert. Ein Schluessel, den man hier
+# weglaesst, uebernimmt also nicht stillschweigend, was im Dashboard stand.
+# Den aufgeloesten Stand samt Herkunft jeder Einstellung zeigt der Befehl
+# `@coderabbitai configuration` als Kommentar in einem PR.
+reviews:
+  # Die UI fuehrte "CHILL" (ausgewiesen in den Review-Kommentaren, etwa auf
+  # #181 und #182). Das ist zugleich der Default — hier trotzdem ausdruecklich
+  # festgeschrieben, damit der Wechsel von der UI auf diese Datei am Verhalten
+  # nichts aendert und ein spaeter geaenderter Default es nicht unbemerkt tut.
+  profile: chill
+
+  auto_review:
+    # Der eigentliche Grund fuer diese Datei.
+    #
+    # base_branches nennt die Basis-Branches *neben* dem Default-Branch: main
+    # wird als Default-Branch ohnehin geprueft und gehoert deshalb nicht in
+    # diese Liste; staging wurde bisher uebersprungen.
+    #
+    # Seit staging der Integrationsbranch ist (AGENTS.md -> Release Flow),
+    # zielt jeder Feature-PR dorthin. CodeRabbit hat sie damit alle
+    # ausgelassen — "Auto reviews are disabled on base/target branches other
+    # than the default branch", so auf #181 — und nur noch die
+    # Batch-Promotion nach main gesehen. Das ist genau umgekehrt zur Absicht
+    # des Ablaufs: geprueft werden soll die einzelne Aenderung, nicht das
+    # Sammelpaket, in dem sie untergeht.
+    base_branches:
+      - staging
