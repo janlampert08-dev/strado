@@ -116,6 +116,27 @@ const MIN_STEIGUNG = 0.02;
 // eine halbe Minute zusammengerechnet ist es nicht.
 const NACHWEIS_SEKUNDEN = 30;
 
+// Sicherheitsabstand auf die Klassengrenze: hochgestuft wird erst, wenn die
+// geschätzte Leistung die Grenze um 30 % überschreitet.
+//
+// Der Grund ist nicht Physik, sondern Datenlage. Die Schwellen hier sind
+// gerechnet, nicht an echten Strado-Fahrten geeicht — und eichen lässt sich
+// rückwirkend nichts, weil der gespeicherte Track keine Zeitstempel trägt
+// (0044, lib/track.ts). Solange zu wenige Fahrten für eine Eichung im Betrieb
+// anfallen, ersetzt dieser Abstand die fehlende Evidenz.
+//
+// Die Richtung ist dieselbe wie bei allen Annahmen oben: Er macht die
+// Prüfung stumpfer, nie schärfer. Eine ehrliche Fahrt wird dadurch noch
+// unwahrscheinlicher hochgestuft; eine Falschangabe kommt weiter durch, wenn
+// sie knapp ist. Das ist bewusst so gewichtet — eine falsche Hochstufung
+// kostet das Vertrauen eines echten Fahrers, eine verpasste Falschangabe
+// einen Ranglisteneintrag.
+//
+// Sobald genug Fahrten mit Belegwert vorliegen (siehe
+// scripts/motorklassen-kalibrierung.mjs), gehört dieser Wert überprüft und
+// darf sinken.
+const SICHERHEITSABSTAND = 1.3;
+
 // Mindestgrösse der Aufzeichnung, analog zu bewegungsprofil.ts. Darunter
 // gibt es kein Urteil — und "kein Urteil" heisst hier: keine Hochstufung.
 const MIN_PUNKTE = 20;
@@ -349,8 +370,17 @@ export function belegeMotorklasse(
   // bleibt bewusst offen: aus einem Trail lässt sich kein Hubraum ablesen,
   // und motorklasseFor() wertet ein fehlendes ccm als A1-fähig, also als die
   // NIEDRIGSTE Klasse — wieder die sichere Richtung.
+  //
+  // Der Sicherheitsabstand greift hier, nicht schon bei der Schätzung: Die
+  // Kennzahlen oben bleiben die ungeschönte Messung (und damit für den
+  // Kalibrierungslauf brauchbar), nur die daraus abgeleitete Klasse ist
+  // vorsichtiger.
   return {
-    klasse: motorklasseFor({ typ, hubraum_ccm: null, leistung_kw: nachgewiesen }),
+    klasse: motorklasseFor({
+      typ,
+      hubraum_ccm: null,
+      leistung_kw: nachgewiesen / SICHERHEITSABSTAND,
+    }),
     kennzahlen,
   };
 }

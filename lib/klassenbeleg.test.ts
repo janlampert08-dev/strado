@@ -75,10 +75,22 @@ describe("belegeMotorklasse — die belegte Klasse ist eine Untergrenze", () => 
     expect(beleg.klasse).toBe("auto_bis110");
   });
 
+  it("hält den Sicherheitsabstand zur Klassengrenze ein", () => {
+    // 130 km/h Dauertempo verlangen rund 11.8 kW und lägen damit knapp über
+    // der A1-Grenze von 11 kW. Genau dieser Grenzfall darf NICHT hochstufen:
+    // die Schwellen sind gerechnet, nicht an echten Fahrten geeicht, und
+    // solange das so ist, ersetzt der Abstand die fehlende Evidenz.
+    const beleg = belege("motorrad", [{ kmh: 130, sekunden: 300 }]);
+    expect(beleg.kennzahlen.leistungKw).toBeGreaterThan(11);
+    expect(beleg.klasse).toBe("moto_a1");
+  });
+
   it("widerlegt A1 bei Dauertempo, das 11 kW nicht hergeben", () => {
-    // 150 km/h über mehrere Minuten. Allein der Luftwiderstand verlangt
-    // dort ein Mehrfaches dessen, was ein A1-Fahrzeug leistet — egal wie
-    // günstig man Masse und Stirnfläche annimmt.
+    // 150 km/h über mehrere Minuten: rund 17.8 kW. Das reisst die A1-Grenze
+    // auch mit dem Sicherheitsabstand (11 × 1.3 = 14.3 kW). Allein der
+    // Luftwiderstand verlangt dort ein Mehrfaches dessen, was ein
+    // A1-Fahrzeug leistet — egal wie günstig man Masse und Stirnfläche
+    // annimmt.
     const beleg = belege("motorrad", [{ kmh: 150, sekunden: 300 }]);
     expect(beleg.kennzahlen.leistungKw).toBeGreaterThan(11);
     expect(beleg.klasse).not.toBe("moto_a1");

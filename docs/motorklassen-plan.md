@@ -165,25 +165,28 @@ verlustarmer Antrieb. Erst wenn selbst darunter mehr Leistung nötig war, als
 die Klasse hergibt, ist die Deklaration widerlegt. Was die umgesetzte
 `belegeMotorklasse()` tatsächlich liefert:
 
+Dazu kommt ein **Sicherheitsabstand von 30 %** auf die Klassengrenze:
+Hochgestuft wird erst, wenn die Schätzung die Grenze um dieses Mass
+überschreitet. Der Grund ist nicht Physik, sondern Datenlage — siehe den
+nächsten Abschnitt. Was dabei herauskommt:
+
 | Fahrt | Geschätzte Mindestleistung | Klasse belegt |
 | --- | --- | --- |
-| Motorrad, 45 km/h flach | 0.7 kW | A1 |
 | Motorrad, 90 km/h flach | 4.2 kW | A1 |
 | Motorrad, 90 km/h an 9 % | 8.4 kW | A1 |
-| Motorrad, 110 km/h flach | 7.3 kW | A1 |
-| Motorrad, 130 km/h flach | 11.8 kW | **A1 widerlegt** |
-| Auto, 120 km/h flach | 13.8 kW | bis 150 PS |
+| Motorrad, 130 km/h flach | 11.8 kW | A1 (Abstand greift) |
+| Motorrad, 150 km/h flach | 17.8 kW | **A1 widerlegt** |
 | Auto, 120 km/h an 8 % | 41.6 kW | bis 150 PS |
-| Auto, sechsmal 30→120 km/h | 101.3 kW | bis 150 PS |
-| Auto, zwölfmal 60→140 km/h | 111.3 kW | **150–300 PS** |
+| Auto, zwölfmal 60→140 km/h | 111.3 kW | bis 150 PS (Abstand greift) |
+| Auto, zwanzigmal 50→160 km/h | 172.1 kW | **150–300 PS** |
 
 > **Korrektur gegenüber der ersten Fassung dieses Dokuments.** Dort stand,
 > 90 km/h an 8 % Steigung seien für ein A1-Fahrzeug unmöglich (≈ 11.7 kW).
 > Das galt für mittlere Annahmen (250 kg, c_w·A 0.6). Der umgesetzte Code
 > rechnet mit Untergrenzen und kommt dort auf 8.4 kW — die Fahrt ist also
 > **nicht** widerlegt. Die Konsequenz ist ehrlich zu benennen: **Für A1 lässt
-> sich in der Ebene erst oberhalb von rund 130 km/h Dauertempo etwas
-> beweisen**, während ein echter 125er bei 100 bis 110 läuft. In dieser Lücke
+> sich in der Ebene erst ab rund 140 km/h Dauertempo etwas beweisen**
+> (mit Sicherheitsabstand), während ein echter 125er bei 100 bis 110 läuft. In dieser Lücke
 > bleibt eine Falschangabe unentdeckt. Der Ausgleich dafür ist der Deckel auf
 > das **Durchschnittstempo** in `set_motorklasse()` (0080, A1: 95 km/h): Der
 > greift auf jedem Schreibpfad und fasst den anderen Fall — dauerhaft zu
@@ -203,11 +206,25 @@ es geht.
 Die Eichung läuft deshalb vorwärts: Die Prüfung rechnet beim Speichern (wo
 der rohe Trail noch vorliegt) und schreibt nach `motorklasse_belegt`.
 `scripts/motorklassen-kalibrierung.mjs` liest, was dabei herauskam, und
-meldet jede Hochstufung. **Folge für die Reihenfolge:** Zwischen dem
-Einspielen von PR 2 und dem Scharfschalten der Filter (PR 3) muss Zeit
-liegen, und der Skriptlauf dazwischen ist ein Arbeitsschritt, kein
-Formalakt. Jede gemeldete Zeile ist so lange ein Fehler, bis jemand sie am
-konkreten Fahrzeug nachvollzogen hat.
+meldet jede Hochstufung. Jede gemeldete Zeile ist so lange ein Fehler, bis
+jemand sie am konkreten Fahrzeug nachvollzogen hat.
+
+**Und wenn zu wenige Fahrten anfallen, um überhaupt zu eichen?** Das ist die
+Lage zum Startzeitpunkt, und sie ist der Grund für den Sicherheitsabstand von
+30 % oben: Er ersetzt die fehlende Evidenz, indem er die Prüfung stumpfer
+macht. Zwei Überlegungen tragen diese Wahl:
+
+- Schummeln lohnt sich proportional zum Publikum. Bei wenigen Nutzern ist die
+  Falschangabe kaum ein reales Problem — die unfaire Rangliste dagegen schon,
+  denn die sieht jeder sofort. Die unkalibrierte Prüfung darf das Feature
+  also nicht aufhalten.
+- Der teure Fehler ist nicht „Schummler nicht erkannt", sondern „ehrliche
+  Fahrt hochgestuft". Bei einer Handvoll Nutzern ist eine falsche Hochstufung
+  sofort ein spürbarer Anteil der Nutzerbasis, der der App misstraut.
+
+**Folge für die Reihenfolge:** PR 3 muss nicht auf einen Kalibrierungslauf
+warten. Was stattdessen ansteht, sobald Fahrten vorliegen: den Abstand
+überprüfen und senken.
 
 ### Zwei Ebenen, weil die Datenbank die Physik nicht kann
 
@@ -261,7 +278,7 @@ läuft**: Die Prüfmechanik landet vor der ersten Rangliste.
 | --- | --- | --- |
 | 1 | Migration 0080, `lib/motorklassen.ts` + Tests, die zwei Felder im Fahrzeugformular (auch inline im Fahrt-Fazit), Klassenpille in Garage und Fahrzeugwahl. Keine Rangliste ändert sich. | **umgesetzt** |
 | 2 | `lib/klassenbeleg.ts` + Tests, Anbindung in `completions.ts` für beide Fahrtarten, Migration 0081 (RPC der freien Fahrt), Anzeige der Wertung und ihrer Begründung für den Fahrer, `scripts/motorklassen-kalibrierung.mjs`. | **umgesetzt** |
-| 3 | Streckenbestzeiten nach Klasse: Chip-Leiste, `?klasse=` im öffentlichen Endpunkt mit strikter Katalogprüfung. Erst **nach** einem Kalibrierungslauf. | offen |
+| 3 | Streckenbestzeiten nach Klasse: Chip-Leiste, `?klasse=` im öffentlichen Endpunkt mit strikter Katalogprüfung. Kann ohne Wartezeit kommen, siehe Sicherheitsabstand. | offen |
 | 4 | Globale Ranglisten nach Klasse, „Meine Klasse“, plus Migration 0082 (Backfill). | offen |
 
 Ein Meldegrund musste nicht dazukommen: `falsche_angaben` steht seit 0043
