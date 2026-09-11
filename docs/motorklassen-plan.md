@@ -209,6 +209,20 @@ nächsten Abschnitt. Was dabei herauskommt:
 > schnell über die ganze Fahrt statt in der Spitze. Zusammen decken die
 > beiden die zwei Formen ab; einzeln keine.
 
+Genau weil der Beschleunigungsterm der schärfste ist, ist er auch der
+empfindlichste gegen Lücken in der Aufzeichnung. `fensterBilden()` verwirft
+Segmente, die unmöglich sind (Sprung, Ausreissertempo, zu ungenauer Fix) —
+und dann liegen die anerkannten Sekunden davor und danach direkt
+nebeneinander, obwohl dazwischen unbekannt viel echte Zeit vergangen ist.
+Würde daraus eine Beschleunigung abgeleitet, sähe jedes Wiedereinsetzen des
+GPS-Signals nach einem Kavalierstart aus. Deshalb beendet ein verworfenes
+Segment das laufende Fenster, und das erste Fenster nach einer Lücke wird
+ohne Beschleunigungsterm bewertet. Das kostet Härte und kann keinen Nachweis
+erfinden — dieselbe Richtung wie jede andere Annahme hier. Gefunden hat das
+die CodeRabbit-Review zu PR 2; `lib/klassenbeleg.test.ts` hält beide Fälle
+fest (eine Lücke, und drei Lücken, die zusammen die NACHWEIS_SEKUNDEN
+füllen würden).
+
 ### Die Eichung läuft vorwärts, nicht rückwirkend
 
 Der Plan sah vor, die Schwellen gegen den bestehenden Fahrtenbestand zu

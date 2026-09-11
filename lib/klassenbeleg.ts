@@ -150,6 +150,12 @@ interface Fenster {
   /** Kumulierte Distanz ab Start am Fensteranfang bzw. -ende, in km. */
   vonKm: number;
   bisKm: number;
+  /**
+   * Ob zwischen diesem Fenster und dem vorigen ein Segment verworfen wurde.
+   * Dann liegt zwischen den beiden Fenstern unbekannt viel echte Zeit, und
+   * eine Tempodifferenz darf nicht als Beschleunigung gelesen werden.
+   */
+  nachLücke: boolean;
 }
 
 interface Punkt {
@@ -169,20 +175,48 @@ function fensterBilden(punkte: Punkt[]): Fenster[] {
   let kumuliertKm = 0;
   let vonKm = 0;
 
+  // Ein verworfenes Segment BEENDET das laufende Fenster, statt es
+  // stillschweigend zu überbrücken. Sonst verschmelzen die Punkte vor und
+  // nach einer Lücke zu EINEM Fenster: die gezählten Sekunden sind dann
+  // kürzer als die tatsächlich vergangene Zeit, und eine gemächliche
+  // Tempoänderung sieht aus wie Herausbeschleunigen aus dem Stand. Genau
+  // dieser Beschleunigungsterm treibt die Leistungsschätzung am stärksten
+  // hoch (siehe leistungKw) — eine Lücke könnte also eine Hochstufung
+  // erfinden, die nie gefahren wurde. Ein Fenster wegzuwerfen kostet
+  // umgekehrt höchstens einen Nachweis und kann keinen erzeugen: die
+  // sichere Richtung, wie überall in dieser Datei.
+  let luecke = false;
+  const fensterVerwerfen = () => {
+    km = 0;
+    sekunden = 0;
+    vonKm = kumuliertKm;
+    luecke = true;
+  };
+
   for (let i = 1; i < punkte.length; i++) {
     const vorher = punkte[i - 1];
     const jetzt = punkte[i];
     const dt = (jetzt.t - vorher.t) / 1000;
-    if (dt <= 0) continue;
+    if (dt <= 0) {
+      fensterVerwerfen();
+      continue;
+    }
     if (
       (vorher.acc !== undefined && vorher.acc > MAX_GENAUIGKEIT_M) ||
       (jetzt.acc !== undefined && jetzt.acc > MAX_GENAUIGKEIT_M)
     ) {
+      fensterVerwerfen();
       continue;
     }
     const dkm = haversineKm([vorher.lng, vorher.lat], [jetzt.lng, jetzt.lat]);
-    if (dkm > MAX_JUMP_KM) continue;
-    if (dkm / (dt / 3600) > AUSREISSER_TEMPO_KMH) continue;
+    if (dkm > MAX_JUMP_KM) {
+      fensterVerwerfen();
+      continue;
+    }
+    if (dkm / (dt / 3600) > AUSREISSER_TEMPO_KMH) {
+      fensterVerwerfen();
+      continue;
+    }
 
     km += dkm;
     sekunden += dt;
@@ -195,10 +229,12 @@ function fensterBilden(punkte: Punkt[]): Fenster[] {
         meter: km * 1000,
         vonKm,
         bisKm: kumuliertKm,
+        nachLücke: luecke,
       });
       km = 0;
       sekunden = 0;
       vonKm = kumuliertKm;
+      luecke = false;
     }
   }
 
@@ -314,8 +350,15 @@ export function belegeMotorklasse(
 
     // Beschleunigung gegenüber dem vorigen Fenster. Nur positive Werte:
     // Bremsen verlangt keine Motorleistung.
+    //
+    // Über eine Lücke hinweg gar nicht: dort zählt f.sekunden nur die
+    // anerkannte Zeit, während in Wirklichkeit beliebig viel mehr vergangen
+    // sein kann. Eine gemächliche Tempoänderung sähe dann aus wie ein
+    // Kavalierstart — und der Beschleunigungsterm ist der, der die
+    // Schätzung am stärksten hochtreibt. Lieber ein Fenster ohne diesen
+    // Term als einen erfundenen Nachweis.
     let beschleunigung = 0;
-    const vorher = fenster[i - 1];
+    const vorher = f.nachLücke ? undefined : fenster[i - 1];
     if (vorher && vorher.sekunden > 0) {
       const dv = tempoMs - vorher.kmh / 3.6;
       const dt = (f.sekunden + vorher.sekunden) / 2;
