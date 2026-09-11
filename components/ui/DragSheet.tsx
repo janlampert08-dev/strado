@@ -25,12 +25,17 @@ import {
 // touchend, eine echte Bedienung frühestens deutlich später.
 const CLICK_SUPPRESSION_MS = 400;
 
-// Gemeinsame Bottom-Sheet-Mechanik (Mobile): zwischen einer Peek- und einer
-// (fast) Vollhöhe auf-/zuziehbar. Zwei Wege führen dorthin — der Ziehgriff
-// (ziehen oder tippen) und, seit dieser Fassung, die Wischgeste im Inhalt
-// selbst: eingeklappt zieht ein Wisch nach oben das Sheet auf, aufgeklappt
-// scrollt derselbe Wisch den Inhalt, und ein Wisch nach unten am Anfang des
-// Inhalts klappt wieder ein. Vorher liess sich das Sheet nur über den Griff
+// Gemeinsame Bottom-Sheet-Mechanik (Mobile): zwischen einer Peek- und der
+// vollen Höhe des Containers auf-/zuziehbar. Aufgezogen liegt das Sheet damit
+// vollständig über der Karte — bis diese Fassung blieb oben ein Streifen Karte
+// stehen (expandedGapPx, 96px), der den Inhalt auf kleinen Geräten um eine
+// Handvoll Zeilen beschnitt, ohne dass der Streifen für die Orientierung
+// gereicht hätte. Der Weg zurück zur Karte ist derselbe wie vorher (Griff oder
+// Wisch nach unten), und die Kopfleiste bleibt sichtbar: das Sheet füllt nur
+// den Container unter ihr. Zwei Wege führen hinauf — der Ziehgriff (ziehen
+// oder tippen) und die Wischgeste im Inhalt selbst: eingeklappt zieht ein
+// Wisch nach oben das Sheet auf, aufgeklappt scrollt derselbe Wisch den
+// Inhalt, und ein Wisch nach unten am Anfang des Inhalts klappt wieder ein. Vorher liess sich das Sheet nur über den Griff
 // öffnen, was in der eingeklappten Ansicht wie eine tote Fläche wirkte.
 // Extrahiert aus ExploreView.tsx, damit dieselbe Geste konsistent auf
 // mehreren Seiten läuft (Explore-Liste, Routendetail) statt der Algorithmus
@@ -40,14 +45,12 @@ const CLICK_SUPPRESSION_MS = 400;
 export default function DragSheet({
   containerRef,
   peekPx,
-  expandedGapPx = 96,
   handleLabels,
   className = "",
   children,
 }: {
   containerRef: RefObject<HTMLElement | null>;
   peekPx: number;
-  expandedGapPx?: number;
   handleLabels: { expand: string; collapse: string };
   className?: string;
   children: ReactNode;
@@ -70,12 +73,11 @@ export default function DragSheet({
   // Aktivierung per Tastatur, die ohne pointerdown daherkommt.
   const suppressClickUntilRef = useRef(0);
 
-  const sheetHeight = expanded ? `calc(100% - ${expandedGapPx}px)` : `${peekPx}px`;
+  const sheetHeight = expanded ? "100%" : `${peekPx}px`;
 
   const maxHeightPx = useCallback(() => {
-    const containerHeight = containerRef.current?.clientHeight ?? window.innerHeight;
-    return containerHeight - expandedGapPx;
-  }, [containerRef, expandedGapPx]);
+    return containerRef.current?.clientHeight ?? window.innerHeight;
+  }, [containerRef]);
 
   const onPointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
