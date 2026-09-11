@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   dedupeRouteLeaderboardRows,
-  klassenAusZeilen,
   toEntry,
   type LeaderboardUserTotalsRow,
   type RouteLeaderboardRow,
@@ -109,31 +108,5 @@ describe("dedupeRouteLeaderboardRows", () => {
     expect(result.map((r) => r.user_id)).toEqual(
       Array.from({ length: 10 }, (_, i) => `u${i}`),
     );
-  });
-});
-
-// Speist die Chip-Leiste der Streckenbestzeiten: pro Strecke sollen nur die
-// Klassen erscheinen, in denen wirklich jemand eine Zeit geteilt hat.
-describe("klassenAusZeilen", () => {
-  it("fasst mehrfach vorkommende Klassen zu einer zusammen", () => {
-    expect(
-      klassenAusZeilen([
-        { motorklasse: "moto_a1" },
-        { motorklasse: "auto_bis110" },
-        { motorklasse: "moto_a1" },
-      ]),
-    ).toEqual(["moto_a1", "auto_bis110"]);
-  });
-
-  it("lässt Fahrten ohne Klasse weg", () => {
-    // Eine Fahrt ohne Fahrzeug oder ohne Leistungsangabe zählt weiter in
-    // "Alle", darf aber keinen leeren Chip erzeugen.
-    expect(klassenAusZeilen([{ motorklasse: null }, { motorklasse: "moto_a" }])).toEqual([
-      "moto_a",
-    ]);
-  });
-
-  it("liefert für eine Strecke ohne geteilte Zeiten nichts", () => {
-    expect(klassenAusZeilen([])).toEqual([]);
   });
 });

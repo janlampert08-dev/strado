@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { MOTORKLASSEN } from "@/lib/motorklassen";
 import type { Motorklasse } from "@/types/database";
 
 export interface LeaderboardEntry {
@@ -216,27 +217,38 @@ export async function getRouteLeaderboard(
 // Zustand lädt zum Mitmachen ein), pro Strecke wären fünf leere Chips nur
 // Rauschen.
 //
-// Bewusst dieselbe Abfrage wie oben statt eines eigenen "distinct": auf
-// route_leaderboard gibt es ohnehin nur die freigegebenen Fahrten einer
-// Strecke, und PostgREST kennt kein DISTINCT. Das Zusammenfassen übernimmt
-// klassenAusZeilen() — rein und damit testbar.
-export function klassenAusZeilen(zeilen: { motorklasse: Motorklasse | null }[]): Motorklasse[] {
-  const gefunden = new Set<Motorklasse>();
-  for (const zeile of zeilen) {
-    if (zeile.motorklasse) gefunden.add(zeile.motorklasse);
-  }
-  return [...gefunden];
-}
-
+// Je Katalogklasse eine Existenzabfrage mit limit(1), parallel — nicht ein
+// Ausschnitt über alle Zeiten der Strecke. Der naheliegende Weg (einmal
+// motorklasse über die ganze View holen und in JS zusammenfassen) braucht
+// ein limit, weil PostgREST kein DISTINCT kennt, und die View gibt keine
+// Reihenfolge vor: Bei einer Strecke mit mehr geteilten Zeiten als dem
+// Limit könnte eine belegte Klasse ausserhalb des Ausschnitts liegen. Ihr
+// Chip fehlte dann, und ihre Rangliste wäre über die Oberfläche gar nicht
+// mehr erreichbar — ein Fehler, der erst bei einer beliebten Strecke
+// auftritt und dort still bleibt.
+//
+// Sechs Abfragen klingen nach viel und sind es nicht: jede liest höchstens
+// eine Zeile über den Index aus 0080 (route_id, motorklasse_gewertet,
+// dauer_sekunden), und sie laufen gemeinsam. Die Zahl ist durch den Katalog
+// fest begrenzt, nicht durch die Datenmenge.
+//
+// Die Reihenfolge entspricht dem Katalog; MotorklassenChips sortiert
+// ohnehin danach.
 export async function getRouteLeaderboardKlassen(routeId: string): Promise<Motorklasse[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("route_leaderboard")
-    .select("motorklasse")
-    .eq("route_id", routeId)
-    .not("motorklasse", "is", null)
-    .limit(ROUTE_FETCH_LIMIT);
 
-  if (error || !data) return [];
-  return klassenAusZeilen(data as { motorklasse: Motorklasse | null }[]);
+  const treffer = await Promise.all(
+    MOTORKLASSEN.map(async (klasse) => {
+      const { data, error } = await supabase
+        .from("route_leaderboard")
+        .select("motorklasse")
+        .eq("route_id", routeId)
+        .eq("motorklasse", klasse.id)
+        .limit(1);
+
+      return !error && data && data.length > 0 ? klasse.id : null;
+    }),
+  );
+
+  return treffer.filter((klasse): klasse is Motorklasse => klasse !== null);
 }
