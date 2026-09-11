@@ -468,12 +468,19 @@ export default async function ProfilPage() {
             <VehicleGrid vehicles={(vehicles as Vehicle[]) ?? []} />
           </section>
 
-          {/* Zuunterst und ohne Unterbrechung der Kernschleife: die Karte
-              zeigt den Abo-Zustand und, ohne Abo, einen einzelnen Hinweis.
-              Kein Banner über den Fahrten, kein Einschub zwischen Strecke
-              und Aufzeichnung — was zahlende Nutzer erst hervorbringt, ist
-              die Nutzung selbst. */}
-          <PremiumCard status={premiumStatus} />
+          {/* Zuunterst und ohne Unterbrechung der Kernschleife: ohne Abo ein
+              einzelner Hinweis mit dem Kauf-Einstieg. Kein Banner über den
+              Fahrten, kein Einschub zwischen Strecke und Aufzeichnung — was
+              zahlende Nutzer erst hervorbringt, ist die Nutzung selbst.
+
+              Mit Abo steht hier nichts: die Verwaltung (Abo-Zustand,
+              Rechnungen, Kündigung, Zahlungsmittel) liegt ausschliesslich
+              unter Einstellungen → Abo verwalten
+              (app/profil/einstellungen/abo). Vorher gab es sie an beiden
+              Stellen — das Profil ist die öffentliche Selbstdarstellung,
+              nicht der Ort für Abrechnung, und zwei Einstiege ins
+              Stripe-Portal sind einer zu viel. */}
+          {!premiumStatus.aktiv && <PremiumCard status={premiumStatus} />}
         </div>
         </main>
       </div>
