@@ -4,7 +4,9 @@ import { useEffect, useRef, useState, useTransition, type ReactNode } from "reac
 import { addVehicleInline } from "@/lib/actions/vehicles";
 import { GlobeIcon, LockIcon } from "@/components/VisibilityIcons";
 import MultiPhotoInput from "@/components/MultiPhotoInput";
-import type { Vehicle } from "@/types/database";
+import type { FahrzeugTyp, Vehicle } from "@/types/database";
+import MotorklasseBadge from "@/components/MotorklasseBadge";
+import { motorklasseFor, motorklasseLabel } from "@/lib/motorklassen";
 import { fieldClassName } from "@/components/ui/Input";
 import { buttonVariants } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/Dialog";
@@ -63,11 +65,13 @@ export default function RideSummaryForm({
   const [vehicleList, setVehicleList] = useState<Vehicle[]>(vehicles);
   const [selectedVehicleId, setSelectedVehicleId] = useState("");
   const [showAddVehicle, setShowAddVehicle] = useState(false);
-  const [newVehicleTyp, setNewVehicleTyp] = useState("auto");
+  const [newVehicleTyp, setNewVehicleTyp] = useState<FahrzeugTyp>("auto");
   const [newVehicleMarke, setNewVehicleMarke] = useState("");
   const [newVehicleModell, setNewVehicleModell] = useState("");
   const [newVehicleGetriebe, setNewVehicleGetriebe] = useState("manuell");
   const [newVehicleBaujahr, setNewVehicleBaujahr] = useState("");
+  const [newVehicleHubraum, setNewVehicleHubraum] = useState("");
+  const [newVehicleLeistung, setNewVehicleLeistung] = useState("");
   const [addVehicleError, setAddVehicleError] = useState<string | null>(null);
   const [addVehiclePending, startAddVehicleTransition] = useTransition();
   const [isOnline, setIsOnline] = useState(() =>
@@ -90,6 +94,10 @@ export default function RideSummaryForm({
     formData.set("modell", newVehicleModell);
     formData.set("getriebe", newVehicleGetriebe);
     formData.set("baujahr", newVehicleBaujahr);
+    // Hubraum nur beim Motorrad: er trennt dort A1 von A 35 kW und geht bei
+    // einem Auto in keine Klasse ein.
+    formData.set("hubraum_ccm", newVehicleTyp === "motorrad" ? newVehicleHubraum : "");
+    formData.set("leistung_kw", newVehicleLeistung);
 
     startAddVehicleTransition(async () => {
       const result = await addVehicleInline(formData);
@@ -103,6 +111,8 @@ export default function RideSummaryForm({
       setNewVehicleMarke("");
       setNewVehicleModell("");
       setNewVehicleBaujahr("");
+      setNewVehicleHubraum("");
+      setNewVehicleLeistung("");
     });
   }
 
@@ -133,6 +143,19 @@ export default function RideSummaryForm({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOnline]);
+
+  // Klasse des gewählten Fahrzeugs; undefined heisst "kein Fahrzeug
+  // gewählt" und unterdrückt die Pille ganz, null heisst "gewählt, aber
+  // ohne Leistungsangabe" und zeigt sie als "Ohne Klasse".
+  const gewaehltesFahrzeug = vehicleList.find((v) => v.id === selectedVehicleId);
+  const gewaehlteKlasse = gewaehltesFahrzeug ? motorklasseFor(gewaehltesFahrzeug) : undefined;
+  const neueFahrzeugKlasse = motorklasseFor({
+    typ: newVehicleTyp,
+    hubraum_ccm: newVehicleHubraum.trim() ? Number(newVehicleHubraum) : null,
+    leistung_kw: newVehicleLeistung.trim()
+      ? Number(newVehicleLeistung.trim().replace(",", "."))
+      : null,
+  });
 
   return (
     <form
@@ -165,12 +188,22 @@ export default function RideSummaryForm({
             className={fieldClassName()}
           >
             <option value="">—</option>
-            {vehicleList.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.marke} {v.modell}
-              </option>
-            ))}
+            {vehicleList.map((v) => {
+              const klasse = motorklasseFor(v);
+              return (
+                <option key={v.id} value={v.id}>
+                  {v.marke} {v.modell}
+                  {klasse && ` · ${motorklasseLabel(klasse)}`}
+                </option>
+              );
+            })}
           </select>
+        )}
+        {/* Vor dem Speichern sichtbar machen, in welcher Klasse diese Fahrt
+            antritt — die Klasse wird beim Speichern eingefroren und lässt
+            sich danach nicht mehr wechseln. */}
+        {gewaehlteKlasse !== undefined && (
+          <MotorklasseBadge klasse={gewaehlteKlasse} regelAnzeigen />
         )}
         {vehicleList.length === 0 && <input type="hidden" name="fahrzeug_id" value="" />}
 
@@ -191,7 +224,7 @@ export default function RideSummaryForm({
             <div className="grid grid-cols-2 gap-2">
               <select
                 value={newVehicleTyp}
-                onChange={(e) => setNewVehicleTyp(e.target.value)}
+                onChange={(e) => setNewVehicleTyp(e.target.value as FahrzeugTyp)}
                 className={fieldClassName()}
               >
                 <option value="auto">Auto</option>
@@ -229,6 +262,27 @@ export default function RideSummaryForm({
               onChange={(e) => setNewVehicleBaujahr(e.target.value)}
               className={fieldClassName("font-mono")}
             />
+            {newVehicleTyp === "motorrad" && (
+              <input
+                type="number"
+                placeholder="Hubraum in cm³ (optional)"
+                min={1}
+                max={10000}
+                inputMode="numeric"
+                value={newVehicleHubraum}
+                onChange={(e) => setNewVehicleHubraum(e.target.value)}
+                className={fieldClassName("font-mono")}
+              />
+            )}
+            <input
+              type="text"
+              placeholder="Leistung in kW (optional)"
+              inputMode="decimal"
+              value={newVehicleLeistung}
+              onChange={(e) => setNewVehicleLeistung(e.target.value)}
+              className={fieldClassName("font-mono")}
+            />
+            <MotorklasseBadge klasse={neueFahrzeugKlasse} regelAnzeigen />
             {addVehicleError && (
               <p role="alert" className="text-xs text-danger">
                 {addVehicleError}

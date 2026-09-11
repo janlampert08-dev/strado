@@ -4,6 +4,16 @@
 
 export type FahrzeugTyp = "auto" | "motorrad";
 export type Getriebe = "manuell" | "automatik";
+// Die Motorklasse, in der eine Fahrt gewertet wird. Schlüssel und Grenzwerte
+// stehen in lib/motorklassen.ts und — als zweite Quelle derselben Wahrheit —
+// in public.motorklasse() (0080_motorklassen.sql).
+export type Motorklasse =
+  | "moto_a1"
+  | "moto_a35"
+  | "moto_a"
+  | "auto_bis110"
+  | "auto_bis220"
+  | "auto_ueber220";
 export type Kategorie = "kurvig" | "scenic" | "passstrasse" | "freie_fahrt";
 export type SaisonStatus = "ganzjaehrig" | "saisonal";
 
@@ -45,6 +55,10 @@ export interface Vehicle {
   modell: string;
   getriebe: Getriebe;
   baujahr: number | null;
+  // Beide optional (0080). Ohne leistung_kw hat das Fahrzeug keine
+  // Motorklasse; hubraum_ccm braucht nur die Abgrenzung von A1.
+  hubraum_ccm: number | null;
+  leistung_kw: number | null;
   created_at: string;
 }
 

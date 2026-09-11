@@ -29,6 +29,58 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Noch NICHT eingespielt: 0080_motorklassen (Stand 2026-09-11)
+
+Neu mit PR „Motorklassen: Datenmodell und Klassenformel“.
+
+**Diese Migration muss VOR dem Deploy von PR 1 eingespielt sein, nicht nur
+zusammen mit ihm.** `insertVehicleFromFormData()` in `lib/actions/vehicles.ts`
+— die gemeinsame Grundlage von `addVehicle` und `addVehicleInline` — schickt
+`hubraum_ccm` und `leistung_kw` bei **jedem** Insert mit, auch wenn beide
+Felder leer sind und `null` übertragen wird. Auf dem Schema vor 0080 gibt es
+diese Spalten nicht, also schlägt **jedes** Anlegen eines Fahrzeugs fehl, nicht
+nur eines mit Leistungsangabe. Eine frühere Fassung dieses Abschnitts sagte
+„schlägt fehl, sobald `hubraum_ccm`/`leistung_kw` mitgeschickt werden“ — das
+klang nach einer Bedingung und war eine Fehleinschätzung; gefunden hat sie die
+CodeRabbit-Review zu PR 1.
+
+Das Fahrzeug-Anlegen ist Teil des Kern-Loops (Schritt 5, Fahrt-Fazit): Ohne die
+Migration bricht der Weg dorthin ab, sobald jemand ein Fahrzeug hinzufügen
+will.
+
+Vor dem Einspielen zählen — die Migration entstand ohne Datenbankzugriff, die
+Zahlen sind nicht erhoben:
+
+```sql
+select count(*) from public.route_completions;  -- STORED generated column
+select count(*) from public.vehicles;           -- schreibt die Tabelle einmal neu
+```
+
+In **einer** Sitzung einspielen: Spalten, Funktionen, Trigger und Views hängen
+voneinander ab. Danach prüfen, dass alle Objekte existieren:
+
+```sql
+select proname from pg_proc
+ where proname in ('motorklasse','motorklasse_rang','motorklasse_hoehere',
+                   'set_motorklasse','vehicles_leistung_einfrieren');
+select tgname from pg_trigger
+ where tgname in ('route_completions_motorklasse','vehicles_leistung_gesperrt');
+select column_name, is_generated from information_schema.columns
+ where table_name = 'route_completions' and column_name like 'motorklasse%';
+select count(*) from public.leaderboard_klassen_totals;
+```
+
+Der letzte Punkt ist der wichtigste und nicht selbstverständlich:
+`motorklasse_gewertet` ist `generated always … stored` und wird aus einer
+Spalte berechnet, die ein BEFORE-Trigger setzt. PostgreSQL berechnet
+generierte Spalten nach den BEFORE-Triggern — nach dem Einspielen mit einer
+echten Testfahrt gegenprüfen, dass `motorklasse_gewertet` tatsächlich gefüllt
+ist und nicht null bleibt.
+
+Keine der drei `create or replace view` benennt eine Spalte um; die Views
+hängen nur an. Grants bleiben deshalb erhalten, und
+`leaderboard_user_totals` braucht keine Änderung.
+
 ## Nachgezogene Migrationen (2026-09-02/03)
 
 Bei einer vollständigen Prüfung der Datenbank fiel auf, dass mehrere bereits
