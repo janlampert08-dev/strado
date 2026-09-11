@@ -7,7 +7,15 @@ import TrackLeaderboardChooser from "@/components/TrackLeaderboardChooser";
 import Avatar from "@/components/Avatar";
 import { getGlobalLeaderboards, type LeaderboardEntry } from "@/lib/leaderboard";
 import { listRouteChoices } from "@/lib/routes";
-import { getCurrentUser } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import MotorklassenChips, { chipClassName } from "@/components/MotorklassenChips";
+import {
+  MOTORKLASSEN,
+  istMotorklasse,
+  motorklasseFor,
+  motorklassendefinition,
+} from "@/lib/motorklassen";
+import type { Motorklasse, Vehicle } from "@/types/database";
 import { MEDAL_COLORS } from "@/lib/constants";
 import Card from "@/components/ui/Card";
 
@@ -73,13 +81,53 @@ function LeaderboardSection({
   );
 }
 
-export default async function LeaderboardsPage() {
+// Alle sechs Klassen sind hier immer sichtbar — anders als auf der
+// Streckenseite, wo nur belegte Klassen erscheinen. Global ist eine leere
+// Klassenliste eine Einladung ("sei die erste"), keine Lücke.
+const ALLE_KLASSEN: Motorklasse[] = MOTORKLASSEN.map((k) => k.id);
+
+function klassenHref(klasse: Motorklasse | null): string {
+  return klasse ? `/leaderboards?klasse=${klasse}` : "/leaderboards";
+}
+
+export default async function LeaderboardsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ klasse?: string }>;
+}) {
+  // Strikte Allowlist wie am öffentlichen Endpunkt: ein unbekannter Wert
+  // führt zur Gesamtwertung, nicht zu einer leeren Seite oder einem Fehler.
+  const { klasse: klasseRoh } = await searchParams;
+  const klasse = istMotorklasse(klasseRoh) ? klasseRoh : null;
+
+  const user = await getCurrentUser();
+  const supabase = await createClient();
+
   const [
     { meisteFahrten, meisteHoehenmeter, meisteKm, meisteStrecken },
     routes,
-    user,
-  ] = await Promise.all([getGlobalLeaderboards(), listRouteChoices(), getCurrentUser()]);
+    eigeneFahrzeuge,
+  ] = await Promise.all([
+    getGlobalLeaderboards(klasse),
+    listRouteChoices(),
+    user
+      ? supabase
+          .from("vehicles")
+          .select("*")
+          .eq("user_id", user.id)
+          .then((r) => (r.data as Vehicle[]) ?? [])
+      : Promise.resolve([] as Vehicle[]),
+  ]);
   const currentUserId = user?.id ?? null;
+
+  // "Meine Klasse" nur, wenn sie eindeutig ist: Wer ein Auto UND ein Motorrad
+  // fährt, hat keine eine Klasse, und eine willkürlich gewählte wäre
+  // schlechter als gar keine Abkürzung. Die sechs Chips stehen daneben.
+  const eigeneKlassen = new Set(
+    eigeneFahrzeuge.map((f) => motorklasseFor(f)).filter((k): k is Motorklasse => k !== null),
+  );
+  const meineKlasse = eigeneKlassen.size === 1 ? [...eigeneKlassen][0] : null;
+  const klassenZusatz = klasse ? ` · ${motorklassendefinition(klasse).label}` : "";
 
   return (
     <div className="flex h-dvh flex-col">
@@ -88,38 +136,67 @@ export default async function LeaderboardsPage() {
       <PullToRefreshArea>
       <div className="flex-1 overflow-y-auto">
         <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-5 py-8 sm:px-6 sm:py-10 lg:max-w-5xl">
-        <div>
-          <h1 className="text-display font-semibold">Bestenlisten</h1>
-          <p className="mt-1 text-sm text-muted">
-            Nach Distanz, Höhenmetern, Anzahl aufgezeichneter Fahrten und Anzahl unterschiedlicher
-            Strecken. Streckenbestzeiten unten zeigen nur Fahrten, die freiwillig dafür geteilt
-            wurden.
-          </p>
+        <div className="flex flex-col gap-3">
+          <div>
+            <h1 className="text-display font-semibold">Bestenlisten</h1>
+            <p className="mt-1 text-sm text-muted">
+              Nach Distanz, Höhenmetern, Anzahl aufgezeichneter Fahrten und Anzahl
+              unterschiedlicher Strecken. Streckenbestzeiten unten zeigen nur Fahrten, die
+              freiwillig dafür geteilt wurden.
+            </p>
+          </div>
+          <MotorklassenChips
+            klassen={ALLE_KLASSEN}
+            aktiv={klasse}
+            hrefFor={klassenHref}
+            label="Bestenlisten nach Motorklasse filtern"
+            vorne={
+              meineKlasse && meineKlasse !== klasse ? (
+                <Link
+                  href={klassenHref(meineKlasse)}
+                  scroll={false}
+                  className={chipClassName(false)}
+                >
+                  Meine Klasse
+                </Link>
+              ) : null
+            }
+          />
+          {klasse && (
+            <p className="text-sm text-muted">
+              Gewertet wird die Klasse, in der eine Fahrt gefahren wurde —{" "}
+              <span className="font-medium text-foreground">
+                {motorklassendefinition(klasse).label}
+              </span>{" "}
+              heisst {motorklassendefinition(klasse).regel}. Fahrten ohne Leistungsangabe am
+              Fahrzeug zählen weiterhin in der Gesamtwertung mit.
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col gap-8 sm:grid sm:grid-cols-2 sm:items-start sm:gap-6 xl:grid-cols-4">
           <LeaderboardSection
-            title="Meiste Fahrten"
+            title={`Meiste Fahrten${klassenZusatz}`}
             entries={meisteFahrten}
             unit="Fahrten"
             currentUserId={currentUserId}
           />
           <LeaderboardSection
-            title="Meiste Höhenmeter"
+            title={`Meiste Höhenmeter${klassenZusatz}`}
             entries={meisteHoehenmeter}
             unit="m"
             format={(v) => Math.round(v).toLocaleString("de-CH")}
             currentUserId={currentUserId}
           />
           <LeaderboardSection
-            title="Meiste km gefahren"
+            title={`Meiste km gefahren${klassenZusatz}`}
             entries={meisteKm}
             unit="km"
             format={(v) => v.toFixed(0)}
             currentUserId={currentUserId}
           />
           <LeaderboardSection
-            title="Entdecker"
+            title={`Entdecker${klassenZusatz}`}
             entries={meisteStrecken}
             unit="Strecken"
             currentUserId={currentUserId}

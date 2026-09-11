@@ -31,17 +31,67 @@ ob die Namen zusammenpassen.
 
 ## Reihenfolge der Motorklassen-Migrationen
 
-Beide gehören **vor** den Deploy des Codes, der sie braucht, und in dieser
-Reihenfolge:
+Alle drei gehören **vor** den Deploy des Codes, der sie braucht, und in
+dieser Reihenfolge:
 
 | # | Datei | gehört eingespielt |
 | --- | --- | --- |
 | 1 | `0080_motorklassen.sql` | vor dem Deploy von PR 1 |
 | 2 | `0081_freie_fahrt_motorklasse_belegt.sql` | unmittelbar nach 0080, vor dem Deploy von PR 2 |
+| 3 | `0082_motorklasse_backfill_freie_fahrten.sql` | nach 0080; an keinem Deploy hängend, und direkt nach 0080 ohnehin ein No-op |
 
-Warum die Reihenfolge hier ausdrücklich steht: Die beiden Abschnitte unten
-sind nach Neuigkeit sortiert, also 0081 vor 0080 — die Lesereihenfolge ist
-nicht die Einspielreihenfolge.
+Warum die Reihenfolge hier ausdrücklich steht: Die Abschnitte unten sind
+nach Neuigkeit sortiert, also 0082 vor 0081 vor 0080 — die Lesereihenfolge
+ist nicht die Einspielreihenfolge.
+
+## Noch NICHT eingespielt: 0082_motorklasse_backfill_freie_fahrten (Stand 2026-09-11)
+
+Neu mit PR „Motorklassen: globale Ranglisten“. Traegt die Motorklasse fuer
+bestehende **freie** Fahrten nach, indem ein UPDATE den Trigger aus 0080
+ausloest. **Setzt 0080 voraus.**
+
+Vor dem Einspielen zaehlen — die zweite Zahl ist die erwartete Wirkung:
+
+```sql
+select count(*) from public.route_completions
+ where art = 'frei' and fahrzeug_id is not null and motorklasse is null;
+
+select count(*) from public.route_completions rc
+  join public.vehicles v on v.id = rc.fahrzeug_id
+ where rc.art = 'frei' and rc.motorklasse is null and v.leistung_kw is not null;
+```
+
+Ist die zweite Zahl 0, ist die Migration ein No-op — der Normalfall direkt
+nach 0080, weil dann noch niemand eine Leistung eingetragen hat. Sie ist
+idempotent und kann spaeter gefahrlos erneut laufen; sinnvoll ist das erst,
+wenn Fahrzeuge Leistungsangaben tragen.
+
+Die zweite Zahl ist zugleich die Zahl der Zeilen, die überhaupt geschrieben
+werden: Fahrten an Fahrzeugen ohne Leistungsangabe fasst die Migration nicht
+an, weil `public.motorklasse()` dafür immer `null` liefert (0080) und ein
+UPDATE die Zeile also nur schreiben würde, ohne etwas ändern zu können.
+
+**Streckenfahrten sind bewusst ausgenommen.** Der Trigger
+`route_completions_recompute_coverage` (0052) feuert auf jedem UPDATE und
+setzt fuer `art = 'strecke'` `ist_oeffentlich := ist_oeffentlich and
+coverage >= 75` — mit der seit 0078 geaenderten Formel. Ein Backfill ueber
+Streckenfahrten wuerde also oeffentliche Bestandsfahrten still auf privat
+setzen. `docs/audit/README.md` haelt zu 0078 fest: „Existing rows are not
+re-scored; the trigger only runs on write." Das bleibt so.
+
+Die Migration meldet ihr Ergebnis per `raise notice` mit **drei** Zahlen —
+diese Zeile gehört nach dem Lauf ins Protokoll:
+
+| Zahl | bedeutet |
+| --- | --- |
+| gesetzt | Fahrten, die jetzt tatsächlich eine Klasse tragen |
+| uebersprungen | Fahrten, die am klassenabhängigen Tempo-Deckel aus 0080 scheiterten und unverändert ohne Klasse bleiben |
+| unberuehrt | Fahrten, deren Fahrzeug keine Leistungsangabe trägt — gar nicht erst geschrieben |
+
+Die dritte Zahl kam durch die CodeRabbit-Review zu PR 4 dazu: vorher zählte
+die Migration diese Fahrten als „gesetzt“ und meldete damit eine Wirkung, die
+es nicht gab. Wer die erste Zahl als Deploy-Protokoll liest, hätte sich auf
+eine falsche Zahl verlassen.
 
 ## Noch NICHT eingespielt: 0081_freie_fahrt_motorklasse_belegt (Stand 2026-09-11)
 
