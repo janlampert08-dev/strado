@@ -17,10 +17,30 @@ this document can drift out of date, the codebase is the source of truth.
 
 ## Product
 
-Strado is a curated car and motorcycle route platform, initially focused on
-Switzerland/Zürich. Users discover and propose scenic driving/riding routes,
-track completions ("Fahrten"), rate routes, compete on leaderboards, and can
-subscribe to a Premium tier (Stripe) for additional features.
+Strado is a curated car and motorcycle route platform, launching **Zürich
+first** — the canton and what is within a comfortable Sunday of it, not
+Switzerland as a whole. Users discover and propose scenic driving/riding
+routes, track completions ("Fahrten"), rate routes, compete on leaderboards,
+and can subscribe to a Premium tier (Stripe) for additional features.
+
+The Zürich-first scope is a growth decision, not a stage we are waiting to
+outgrow, and it is the reason to resist "while we're here" additions of
+routes elsewhere. A rider who recognises the place on a shared ride — *that's
+the road above my village* — forwards it to someone who also drives it; a
+rider who recognises nothing has nothing to forward. Word of mouth is local
+before it is national, so density inside one region beats coverage across
+many, and a half-empty national map reads as an abandoned product while a
+full regional one reads as a finished one. Two consequences for everyday
+work:
+
+- **The place name is the unit of recognition.** Whatever a non-user sees
+  first — the share image from `lib/shareImage.ts`, the OG images, route
+  titles — leads with *where* the ride was, not with its statistics. Distance
+  and elevation are for the rider who was there; the name is for the person
+  deciding whether to tap.
+- **Proximity is worth more than reach.** When judging a promotion channel,
+  the question is what share of its audience lives within driving distance of
+  a route that already exists in the app — not how large that audience is.
 
 The UI, the code comments, and the migration filenames are **German**. Match
 that when adding to them; this document and the `.agents/` role files are the
