@@ -29,6 +29,25 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Noch NICHT eingespielt: 0081_freie_fahrt_motorklasse_belegt (Stand 2026-09-11)
+
+Neu mit PR „Motorklassen: belegte Klasse aus dem Track“. Erweitert
+`save_free_ride_with_segments` (0050) um `motorklasse_belegt` in beiden
+INSERTs — sonst würde der zusätzliche jsonb-Schlüssel aus
+`lib/actions/completions.ts` stillschweigend ignoriert und die Klasse einer
+freien Fahrt nie belegt. **Setzt 0080 voraus** (die Spalte muss existieren)
+und gehört unmittelbar danach eingespielt.
+
+`create or replace` erhält die Rechte: der Entzug für `anon` aus 0051 und das
+`EXECUTE` für `authenticated` aus 0050 bleiben. Keine Datenänderung.
+
+Danach prüfen, dass beide Spalten in der Funktionsdefinition stehen:
+
+```sql
+select pg_get_functiondef(oid) ~ 'motorklasse_belegt' as ok
+  from pg_proc where proname = 'save_free_ride_with_segments';
+```
+
 ## Noch NICHT eingespielt: 0080_motorklassen (Stand 2026-09-11)
 
 Neu mit PR „Motorklassen: Datenmodell und Klassenformel“. Der Code, der sie

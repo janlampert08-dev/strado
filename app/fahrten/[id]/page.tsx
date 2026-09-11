@@ -29,6 +29,8 @@ import { getCurrentUser } from "@/lib/supabase/server";
 import { formatDuration } from "@/lib/format";
 import { publicationBlockReason } from "@/lib/track";
 import Card from "@/components/ui/Card";
+import MotorklasseBadge from "@/components/MotorklasseBadge";
+import { motorklasseLabel } from "@/lib/motorklassen";
 
 export async function generateMetadata({
   params,
@@ -306,11 +308,37 @@ export default async function FahrtDetailPage({
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-background">
                     <VehicleIcon className="h-5 w-5 text-muted" aria-hidden="true" />
                   </span>
-                  <p className="text-sm font-medium text-foreground">
-                    {completion.vehicle.marke} {completion.vehicle.modell}
-                  </p>
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <p className="text-sm font-medium text-foreground">
+                      {completion.vehicle.marke} {completion.vehicle.modell}
+                    </p>
+                    {/* Nur für den Fahrer selbst (siehe CompletionDetail):
+                        die gewertete Klasse und, wenn sie von der
+                        angegebenen abweicht, warum. */}
+                    {completion.isOwner && completion.motorklasseGewertet && (
+                      <MotorklasseBadge klasse={completion.motorklasseGewertet} />
+                    )}
+                  </div>
                 </div>
               )}
+              {completion.isOwner &&
+                completion.motorklasseGewertet !== null &&
+                completion.motorklasse !== null &&
+                completion.motorklasseGewertet !== completion.motorklasse && (
+                  <p className="text-sm leading-relaxed text-muted">
+                    Angegeben war{" "}
+                    <span className="font-medium text-foreground">
+                      {motorklasseLabel(completion.motorklasse)}
+                    </span>
+                    . Diese Fahrt hat mehr Motorleistung verlangt, als diese Klasse hergibt, und
+                    wird deshalb in{" "}
+                    <span className="font-medium text-foreground">
+                      {motorklasseLabel(completion.motorklasseGewertet)}
+                    </span>{" "}
+                    gewertet. Wenn das nicht stimmt, liegt es meist an der Leistungsangabe des
+                    Fahrzeugs — trag das Fahrzeug mit dem richtigen Wert neu ein.
+                  </p>
+                )}
               {completion.abdeckungProzent !== null && (
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between text-sm">
