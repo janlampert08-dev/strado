@@ -90,7 +90,8 @@ Tabellen-Rewrite.
 `motorklasse_belegt` darf client-schreibbar bleiben, obwohl `INSERT` auf
 `route_completions` weiterhin gegrantet ist (Audit A1): Gewertet wird das
 Maximum, ein zu niedriger Wert bewirkt also nichts und ein zu hoher schadet
-nur dem Absender selbst.
+nur dem Absender selbst. **Folgenlos ist das aber nur, weil der Tempo-Deckel
+die gewertete Klasse prüft** — siehe oben.
 
 ### Funktionen und Trigger
 
@@ -104,6 +105,21 @@ nur dem Absender selbst.
   (`v.user_id = new.user_id`), die RLS ohnehin freigibt. Der Vergleich auf
   `new.user_id` ist die eigentliche Absicherung — ein Fremdschlüssel allein
   verlangt kein Leserecht.
+
+  Zwei Eigenschaften, die die CodeRabbit-Review zu PR 1 erst erzwungen hat:
+
+  - **Auf dem Update-Pfad friert die Klasse ein.** `fahrzeug_id` ist
+    `on delete set null` — wer sein Fahrzeug löscht, löst damit ein UPDATE auf
+    *jeder* seiner Fahrten aus. Die erste Fassung des Triggers fand dann kein
+    Fahrzeug mehr und setzte die Klasse auf `null`: der Fremdschlüssel
+    zerstörte genau das, wogegen die Spalte an der Fahrt gedacht war.
+  - **Der Tempo-Deckel prüft die gewertete, nicht die deklarierte Klasse.**
+    `motorklasse_belegt` ist client-schreibbar, und ohne `fahrzeug_id` bleibt
+    die deklarierte Klasse `null`. Ein direkter Insert mit
+    `motorklasse_belegt = 'moto_a1'` und ohne Fahrzeug landete sonst in der
+    A1-Rangliste, während der Deckel auf `null` ins Leere lief — die Fahrt
+    käme mit allem durch, was unter der pauschalen 200er-Grenze aus 0059
+    liegt.
 - `public.vehicles_leistung_einfrieren()` — sperrt `typ`/`hubraum_ccm`/
   `leistung_kw` an einem Fahrzeug, auf das bereits eine Fahrt verweist.
   Korrektur läuft über ein neues Fahrzeug, was in der Garage sichtbar ist.
