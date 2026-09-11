@@ -1,6 +1,8 @@
 import { Bike, Car } from "lucide-react";
 import type { Vehicle } from "@/types/database";
 import DeleteVehicleButton from "@/components/DeleteVehicleButton";
+import MotorklasseBadge from "@/components/MotorklasseBadge";
+import { motorklasseFor } from "@/lib/motorklassen";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 
@@ -37,6 +39,10 @@ export default function VehicleGrid({
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {vehicles.map((vehicle) => {
         const Icon = TYP_ICON[vehicle.typ];
+        // Aus den gespeicherten Werten abgeleitet statt mitgeführt: die
+        // Klasse eines Fahrzeugs ist kein eigener Zustand, sondern eine
+        // Funktion von typ/hubraum/leistung (lib/motorklassen.ts).
+        const klasse = motorklasseFor(vehicle);
         return (
           <Card
             key={vehicle.id}
@@ -54,6 +60,9 @@ export default function VehicleGrid({
                 {GETRIEBE_LABEL[vehicle.getriebe]}
                 {vehicle.baujahr && ` · ${vehicle.baujahr}`}
               </p>
+              {/* Unter der Zeile statt rechts daneben: bei 375 px bliebe
+                  neben Marke/Modell und dem Löschen-Knopf kein Platz. */}
+              <MotorklasseBadge klasse={klasse} className="mt-1" />
             </div>
             {editable && <DeleteVehicleButton vehicleId={vehicle.id} />}
           </Card>
