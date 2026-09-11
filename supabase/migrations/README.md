@@ -66,6 +66,11 @@ nach 0080, weil dann noch niemand eine Leistung eingetragen hat. Sie ist
 idempotent und kann spaeter gefahrlos erneut laufen; sinnvoll ist das erst,
 wenn Fahrzeuge Leistungsangaben tragen.
 
+Die zweite Zahl ist zugleich die Zahl der Zeilen, die überhaupt geschrieben
+werden: Fahrten an Fahrzeugen ohne Leistungsangabe fasst die Migration nicht
+an, weil `public.motorklasse()` dafür immer `null` liefert (0080) und ein
+UPDATE die Zeile also nur schreiben würde, ohne etwas ändern zu können.
+
 **Streckenfahrten sind bewusst ausgenommen.** Der Trigger
 `route_completions_recompute_coverage` (0052) feuert auf jedem UPDATE und
 setzt fuer `art = 'strecke'` `ist_oeffentlich := ist_oeffentlich and
@@ -74,8 +79,19 @@ Streckenfahrten wuerde also oeffentliche Bestandsfahrten still auf privat
 setzen. `docs/audit/README.md` haelt zu 0078 fest: „Existing rows are not
 re-scored; the trigger only runs on write." Das bleibt so.
 
-Die Migration meldet ihr Ergebnis per `raise notice` (gesetzt / uebersprungen)
-— diese Zeile gehoert nach dem Lauf ins Protokoll.
+Die Migration meldet ihr Ergebnis per `raise notice` mit **drei** Zahlen —
+diese Zeile gehört nach dem Lauf ins Protokoll:
+
+| Zahl | bedeutet |
+| --- | --- |
+| gesetzt | Fahrten, die jetzt tatsächlich eine Klasse tragen |
+| uebersprungen | Fahrten, die am klassenabhängigen Tempo-Deckel aus 0080 scheiterten und unverändert ohne Klasse bleiben |
+| unberuehrt | Fahrten, deren Fahrzeug keine Leistungsangabe trägt — gar nicht erst geschrieben |
+
+Die dritte Zahl kam durch die CodeRabbit-Review zu PR 4 dazu: vorher zählte
+die Migration diese Fahrten als „gesetzt“ und meldete damit eine Wirkung, die
+es nicht gab. Wer die erste Zahl als Deploy-Protokoll liest, hätte sich auf
+eine falsche Zahl verlassen.
 
 ## Noch NICHT eingespielt: 0081_freie_fahrt_motorklasse_belegt (Stand 2026-09-11)
 

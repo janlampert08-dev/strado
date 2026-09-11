@@ -71,15 +71,46 @@ declare
   v_id uuid;
   v_gesetzt int := 0;
   v_uebersprungen int := 0;
+  v_ohne_leistung int := 0;
 begin
+  -- Fahrten an Fahrzeugen ohne Leistungsangabe: zaehlen, aber NICHT
+  -- anfassen. public.motorklasse() gibt fuer p_kw is null immer null zurueck
+  -- (0080, erste when-Zeile), ein UPDATE wuerde die Zeile also schreiben,
+  -- ohne dass eine Klasse entstehen kann.
+  --
+  -- Beides ist wichtig. Nicht schreiben: jede angefasste Zeile ist Risiko
+  -- (drei BEFORE-Trigger feuern mit), und eine Zeile anzufassen, die sich
+  -- nachweislich nicht aendern kann, ist reines Risiko ohne Gegenwert.
+  -- Trotzdem zaehlen: die Notice unten ist das Deploy-Protokoll, und "wie
+  -- viele Fahrten haben eine Klasse bekommen" ist eine andere Frage als "wie
+  -- viele Zeilen wurden geschrieben". Eine fruehere Fassung zaehlte diese
+  -- Fahrten als "gesetzt" und meldete damit eine Wirkung, die es nicht gab —
+  -- gefunden hat das die CodeRabbit-Review zu PR 4.
+  select count(*)
+    into v_ohne_leistung
+    from public.route_completions rc
+    join public.vehicles v on v.id = rc.fahrzeug_id
+   where rc.art = 'frei'
+     and rc.motorklasse is null
+     and v.leistung_kw is null;
+
   for v_id in
+    -- Der Join traegt die Bedingung "fahrzeug_id is not null" schon; er ist
+    -- sicher, weil fahrzeug_id `on delete set null` ist und ein geloeschtes
+    -- Fahrzeug die Spalte deshalb leert, statt eine tote Referenz zu lassen.
     select rc.id
       from public.route_completions rc
+      join public.vehicles v on v.id = rc.fahrzeug_id
      where rc.art = 'frei'
-       and rc.fahrzeug_id is not null
        -- Idempotent: bereits klassifizierte Fahrten bleiben unberuehrt, ein
        -- zweiter Lauf findet nur noch das, was beim ersten uebrig blieb.
        and rc.motorklasse is null
+       -- Ohne Leistungsangabe entsteht keine Klasse (siehe oben). Mit ihr
+       -- entsteht immer eine: vehicles.typ ist seit 0001 auf 'auto' und
+       -- 'motorrad' eingeschraenkt, und fuer beide liefert
+       -- public.motorklasse() einen Wert. v_gesetzt zaehlt damit genau die
+       -- Fahrten, die tatsaechlich eine Klasse tragen.
+       and v.leistung_kw is not null
   loop
     begin
       update public.route_completions
@@ -97,8 +128,8 @@ begin
     end;
   end loop;
 
-  raise notice 'Motorklasse nachgetragen: % Fahrten gesetzt, % uebersprungen.',
-    v_gesetzt, v_uebersprungen;
+  raise notice 'Motorklasse nachgetragen: % Fahrten gesetzt, % uebersprungen (Tempo-Deckel), % unberuehrt (Fahrzeug ohne Leistungsangabe).',
+    v_gesetzt, v_uebersprungen, v_ohne_leistung;
 end;
 $$;
 
@@ -114,5 +145,7 @@ $$;
 -- 2. Sie ruehrt Streckenfahrten nicht an (Begruendung oben).
 --
 -- 3. Sie korrigiert nichts an Fahrzeugen. Wer keine Leistung eingetragen
---    hat, bleibt ohne Klasse — die Angabe ist freiwillig.
+--    hat, bleibt ohne Klasse — die Angabe ist freiwillig. Diese Fahrten
+--    werden gar nicht erst geschrieben und erscheinen in der Notice als
+--    dritte Zahl.
 -- =====================================================================
