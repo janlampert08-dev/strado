@@ -49,6 +49,11 @@ export default async function ModerationPage() {
               ? "unveröffentlichter Streckenvorschlag"
               : "unveröffentlichte Streckenvorschläge"}
           </p>
+          <p className="mt-1 text-sm">
+            <Link href="/moderation/creator" className="text-accent hover:underline">
+              Creator-Links
+            </Link>
+          </p>
         </div>
 
         {routes.length === 0 ? (

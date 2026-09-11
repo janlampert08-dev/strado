@@ -5,8 +5,12 @@ ist, **ob es etwas gebracht hat** — und zwar nicht nur „wie viele haben
 geklickt", sondern „wie viele haben sich registriert und sind geblieben".
 
 Ausgangslage: ausser `<Analytics />` von Vercel (`app/layout.tsx`) gibt es
-keine Telemetrie. Kein Sentry, kein PostHog, kein Plausible. Dieses Dokument
-ist ein Plan, kein Code — es ist noch nichts davon umgesetzt.
+keine Telemetrie. Kein Sentry, kein PostHog, kein Plausible.
+
+**Stand:** Phase 0 und Phase 1 sind umgesetzt (`lib/creatorLinks.ts`,
+`app/c/[code]/route.ts`, `app/moderation/creator/page.tsx`). Phase 2 und 3
+sind weiterhin Plan. Die Liste der Codes in `lib/creatorLinks.ts` ist leer,
+solange kein Code vergeben ist.
 
 ## Warum UTM allein nicht reicht
 
@@ -39,6 +43,25 @@ für den Creator, zwei Messsysteme dahinter.
 | 1 — `/c/<code>` | Wie viele Aufrufe pro Creator? | ~ halber Tag | nein | nein |
 | 2 — Herkunft bis zur Registrierung | Wie viele **Konten** pro Creator? | ~ 1–2 Tage | ja | **ja** |
 | 3 — Auswertung | Welcher Creator bringt zahlende Nutzer? | ~ Stunden | nein | nein |
+
+### Wenn die App gerade erst gestartet ist
+
+Die Reihenfolge ist nicht nur Bequemlichkeit. Phase 2 misst einen Trichter,
+durch den in den ersten Wochen noch nichts fliesst — und sie ist der
+teuerste Teil des Plans. Der Auslöser, ab dem sie sich lohnt: der erste
+Creator, dessen Link im Vercel-Dashboard mehr als ein paar Dutzend Besucher
+bringt.
+
+Was das Warten unbedenklich macht: Führ eine simple Liste mit **Creator,
+Kanal, Code, Datum des Posts**. Zusammen mit `profiles.created_at`, das seit
+`0001` existiert, lässt sich die Registrierungs-Korrelation jederzeit
+**rückwirkend** rechnen — „Max hat am 15.9. gepostet, an dem Tag 14
+Registrierungen statt sonst einer". Bei 10–50 Registrierungen ist das genau
+genug für die Entscheidung, ob Phase 2 gebaut wird.
+
+Was das Warten wirklich kostet: die Zuordnung *einzelner Konten* für die
+Zeit vor Phase 2. Die braucht man erst, wenn pro zahlendem Abo vergütet
+werden soll.
 
 Nach Phase 1 lässt sich anhalten und beobachten. Phase 2 ist der eigentliche
 Punkt der Übung, kostet aber eine Migration *und* eine Änderung an der
@@ -85,8 +108,9 @@ Phase 2 bauen, sobald Phase 1 zeigt, dass überhaupt Klicks kommen.
 
 ## Phase 1 — `/c/<code>` als einziger Einstiegspunkt
 
-Ein Route Handler unter `app/c/[code]/route.ts`, der prüft, protokolliert
-(ab Phase 2) und weiterleitet.
+**Umgesetzt.** Ein Route Handler unter `app/c/[code]/route.ts`, der prüft,
+protokolliert (ab Phase 2) und weiterleitet. Der Rest dieses Abschnitts
+beschreibt, was dort steht und warum.
 
 ### Warum ein Route Handler und nicht ein Query-Parameter auf `/`
 
@@ -103,31 +127,39 @@ Klicks pro Tag gehört dort nichts hinein.
 
 ### Dateien
 
-**`lib/creatorLinks.ts`** (neu, reine Funktionen — deshalb in `lib/`, wo
-Vitest mit `environment: "node"` sie erreicht):
+**`lib/creatorLinks.ts`** — reine Funktionen, deshalb in `lib/`, wo Vitest
+mit `environment: "node"` sie erreicht:
 
 ```ts
 // Die Liste der gültigen Codes. In Phase 1 bewusst eine Konstante und keine
 // Tabelle: kein DB-Roundtrip pro Klick, testbar, und ein neuer Creator ist
-// ein Ein-Zeilen-PR. Ab Phase 2 zieht die Tabelle creator_links nach, weil
-// der DB-Trigger denselben Code prüfen muss und keine TS-Konstante lesen kann.
-export const CREATOR_CODES = { max: { name: "…", kanal: "tiktok" } } as const;
+// ein Ein-Zeilen-PR. Ab Phase 2 zieht eine Tabelle nach, weil der
+// DB-Trigger denselben Code prüfen muss und keine TS-Konstante lesen kann.
+export const CREATOR_LINKS: readonly CreatorLink[] = [];
 
-export function istBekannterCode(roh: string): boolean;   // Format + Mitgliedschaft
-export function einstiegsZiel(code: string, ziel?: string): string; // Pfad + UTM
+export function normalisiereCode(roh): string | null;          // Format, kleingeschrieben
+export function findeCreatorLink(roh, links?): CreatorLink | null;
+export function einstiegsPfad(link, ziel?): string;            // Pfad + UTM
+export function einstiegsUrl(basis, code): string;             // nur für die Anzeige
 ```
 
-`einstiegsZiel()` baut `/` (oder das über `?z=` mitgegebene interne Ziel)
+`einstiegsPfad()` baut `/` (oder das über `?z=` mitgegebene interne Ziel)
 und hängt die UTM-Parameter aus Phase 0 an — so sieht Vercel Web Analytics
 den Besuch weiterhin mit vollständiger Herkunft, obwohl der Creator nur
 `app.strado.ch/c/max` verteilt hat. **Ein Link, beide Messsysteme.**
+
+Ein Code wird kleingeschrieben statt abgewiesen: wer ihn aus einem Video
+abtippt, tippt ihn irgendwann gross, und `/c/MAX` soll denselben Creator
+treffen statt ohne Zuordnung auf der Startseite zu landen. Alles andere —
+Punkte, Schrägstriche, Leerzeichen — wird abgewiesen und nicht bereinigt,
+dieselbe Haltung wie in `safeInternalPath()`.
 
 Das `?z=`-Ziel läuft durch `safeInternalPath()` aus `lib/utils/url.ts` — den
 Open-Redirect-Schutz, den die App schon hat (`AGENTS.md` Regel 14: vorhandene
 Helfer nutzen). Ohne das wäre `/c/max?z=https://boese.example` ein
 Weiterleitungs-Missbrauch auf einer Domain, der Leute vertrauen.
 
-**`app/c/[code]/route.ts`** (neu, dünn):
+**`app/c/[code]/route.ts`** — dünn:
 
 ```ts
 export async function GET(request, { params }) {
@@ -143,11 +175,24 @@ export async function GET(request, { params }) {
 }
 ```
 
-**`lib/creatorLinks.test.ts`** (neu): Format-Prüfung, unbekannte Codes,
-Gross-/Kleinschreibung, UTM-Aufbau, `?z=`-Abweisung bei externen Zielen.
+**`lib/creatorLinks.test.ts`**: Format-Prüfung, unbekannte Codes,
+Gross-/Kleinschreibung, UTM-Aufbau, Erhalt eines vorhandenen Query-Strings im
+Ziel, Überschreiben eines im Ziel untergeschobenen `utm_content`, Abweisung
+externer `?z=`-Ziele.
+
+**`app/moderation/creator/page.tsx`** plus `components/CopyButton.tsx`: die
+Übersicht für Moderatoren — jede vergebene Adresse zum Kopieren und das Ziel,
+auf das sie auflöst. Die Basis kommt aus `siteUrl()` und nicht aus dem Host
+der Anfrage, sonst zeigte ein von `staging.strado.ch` kopierter Link auf
+Staging. Reine Anzeige: vergeben werden die Codes weiterhin in
+`lib/creatorLinks.ts`.
 
 Keine Änderung an `proxy.ts` nötig — der Matcher deckt `/c/...` bereits ab,
 und `updateSession()` stört nicht.
+
+Kein Rate Limit auf dem Handler, anders als bei `/api/strecken/**`: er liest
+keine Datenbank, schreibt nichts und ruft nichts Fremdes auf. Sobald Phase 2
+dort ein Cookie setzt, ist diese Begründung hinfällig.
 
 ### Die Link-Form
 
