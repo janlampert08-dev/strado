@@ -26,6 +26,7 @@ function routeRow(overrides: Partial<RouteLeaderboardRow>): RouteLeaderboardRow 
     display_name: "Alice",
     avatar_url: null,
     dauer_sekunden: 1000,
+    motorklasse: null,
     ...overrides,
   };
 }
