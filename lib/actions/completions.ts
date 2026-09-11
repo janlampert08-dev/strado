@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { belegeMotorklasse } from "@/lib/klassenbeleg";
 import { createClient } from "@/lib/supabase/server";
 import { isRateLimited } from "@/lib/rateLimit";
 import { computeRouteCoverage, COVERAGE_THRESHOLD_PERCENT } from "@/lib/routeCoverage";
@@ -35,6 +36,7 @@ import {
 import { todayInZurich } from "@/lib/format";
 import { detectLaps, type DetectedLap, type RouteCandidate } from "@/lib/lapDetection";
 import { bildEndungFuerMime } from "@/lib/validation";
+import type { FahrzeugTyp, Motorklasse } from "@/types/database";
 
 export interface CompletionFormState {
   error: string | null;
@@ -343,9 +345,10 @@ export async function logTrackedCompletion(
   // Fotos hochladen und Höhenmeter ableiten sind unabhängige externe
   // Aufrufe (Storage bzw. swisstopo) — parallel statt nacheinander, gleiches
   // Muster wie bei der freien Fahrt weiter unten (deriveElevation).
-  const [uploaded, elevation] = await Promise.all([
+  const [uploaded, elevation, fahrzeugTyp] = await Promise.all([
     uploadFotos(supabase, user.id, fotos),
     deriveElevation(streckenKoordinaten),
+    fahrzeugTypLaden(supabase, fahrzeugId, user.id),
   ]);
   if ("error" in uploaded) return { error: uploaded.error };
   const uploadedUrls = uploaded.urls;
@@ -375,6 +378,14 @@ export async function logTrackedCompletion(
       // wie freie Fahrten (statt der Scheitelhöhe der Strecke) — deshalb
       // hier ab jetzt ebenfalls berechnet, nicht mehr nur bei logFreeRide.
       hoehenmeter_aufstieg: elevation.hoehenmeter_aufstieg,
+      // Was die Fahrt an Motorleistung mindestens verlangt hat, übersetzt in
+      // eine Motorklasse (0080). Die Datenbank bildet daraus und aus der
+      // deklarierten Klasse das Maximum — eine zu niedrig angegebene
+      // Leistung bringt damit nichts, eine ehrliche Fahrt verliert nichts.
+      // Das Höhenprofil ist hier ohnehin schon berechnet und geht mit ein;
+      // fehlt es (swisstopo kennt nur Schweizer Koordinaten), wird flach
+      // gerechnet, was die Schätzung senkt und nicht hebt.
+      motorklasse_belegt: belegteKlasse(fahrzeugTyp, trail, elevation.hoehenprofil),
       // Ab 0044 wird der gefahrene Track gespeichert statt nach der
       // Berechnung verworfen — vereinfacht (die Kennzahlen oben stammen
       // weiterhin aus den Rohpunkten). Nur für den Besitzer lesbar.
@@ -424,6 +435,44 @@ export interface FreeRideFormState {
   // Gespeichertes. Der Fazit-Screen zeigt das kurz an, bevor er wie gewohnt
   // auf die neue Fahrt weiterleitet.
   partialAttempts?: PartialAttemptSummary[];
+}
+
+// Fahrzeugtyp der Fahrt, für die Leistungsschätzung aus dem Track. Explizit
+// auf den eigenen Nutzer gefiltert statt allein auf RLS zu vertrauen — die
+// zweite SELECT-Policy auf vehicles ("Fahrzeuge sichtbar wenn freigegeben",
+// 0015) liefert RLS-seitig auch fremde freigegebene Fahrzeuge, und eine
+// Fahrt darf die Annahmen eines fremden Fahrzeugs nicht erben. Derselbe
+// Grundsatz wie in app/profil/page.tsx und in set_motorklasse() (0080).
+async function fahrzeugTypLaden(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  fahrzeugId: string | null,
+  userId: string,
+): Promise<FahrzeugTyp | null> {
+  if (!fahrzeugId) return null;
+  const { data } = await supabase
+    .from("vehicles")
+    .select("typ")
+    .eq("id", fahrzeugId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  return (data as { typ: FahrzeugTyp } | null)?.typ ?? null;
+}
+
+// Die aus dem Track belegte Motorklasse (lib/klassenbeleg.ts).
+//
+// Sie wirkt ausschliesslich nach oben: die Datenbank verrechnet sie in der
+// generierten Spalte motorklasse_gewertet mit der deklarierten Klasse zum
+// Maximum (0080). Ein zu niedriger oder fehlender Wert bewirkt deshalb
+// nichts — was auch der Grund ist, warum diese Spalte anders als die
+// übrigen Kennzahlen nicht gegen einen direkten PostgREST-Schreibweg
+// abgesichert werden muss.
+function belegteKlasse(
+  typ: FahrzeugTyp | null,
+  trail: TrailPoint[],
+  hoehenprofil?: { km: number; m: number }[] | null,
+): Motorklasse | null {
+  if (!typ) return null;
+  return belegeMotorklasse(typ, trail, hoehenprofil).klasse;
 }
 
 // Höhenprofil und Anstieg einer Fahrt (frei oder Strecke), best effort: der
@@ -480,6 +529,7 @@ interface DetectedSegmentPayload {
   bewegte_zeit_sekunden: number;
   abdeckung_prozent: number;
   track: string | null;
+  motorklasse_belegt: string | null;
 }
 
 // Muss zum v_max_segments-Limit der RPC-Funktion in
@@ -503,6 +553,7 @@ function buildDetectedSegments(
   trail: TrailPoint[],
   laps: DetectedLap[],
   candidates: RouteDetectionCandidate[],
+  fahrzeugTyp: FahrzeugTyp | null,
 ): { payloads: DetectedSegmentPayload[]; summaries: DetectedSegmentSummary[] } {
   const payloads: DetectedSegmentPayload[] = [];
   const summaries: DetectedSegmentSummary[] = [];
@@ -534,6 +585,12 @@ function buildDetectedSegments(
       bewegte_zeit_sekunden: movingSeconds(subTrail),
       abdeckung_prozent: abdeckungProzent,
       track: toEwktLineString(toCoordinates(simplifyTrack(subTrail))),
+      // Je Segment aus dem EIGENEN Trail-Ausschnitt, nicht aus der ganzen
+      // Fahrt: sonst würde die Spitzenleistung einer schnellen Etappe eine
+      // ruhige Runde auf einer anderen Strecke mit hochstufen. Ohne
+      // Höhenprofil (es gibt keines je Segment) wird flach gerechnet — die
+      // Schätzung fällt damit niedriger aus, also auf die sichere Seite.
+      motorklasse_belegt: belegteKlasse(fahrzeugTyp, subTrail),
     });
     summaries.push({ routeId: route.id, routeName: route.name, distanzKm: distanceKm, dauerSekunden: durationSeconds });
   }
@@ -609,9 +666,10 @@ export async function logFreeRide(
 
   // Ortsbezug und Höhendaten parallel — beide sind externe Aufrufe, die die
   // Antwortzeit sonst nacheinander verlängern würden.
-  const [ort, elevation] = await Promise.all([
+  const [ort, elevation, fahrzeugTyp] = await Promise.all([
     reverseGeocode(coordinates[0]).catch(() => null),
     deriveElevation(coordinates),
+    fahrzeugTypLaden(supabase, fahrzeugId, user.id),
   ]);
 
   const uploaded = await uploadFotos(supabase, user.id, fotos);
@@ -635,7 +693,7 @@ export async function logFreeRide(
         isLoop: r.ist_rundfahrt,
       }));
       const { laps, partialAttempts } = detectLaps(simplifiedTrail, routeCandidates);
-      const built = buildDetectedSegments(trail, laps, candidates);
+      const built = buildDetectedSegments(trail, laps, candidates, fahrzeugTyp);
       segmentPayloads = built.payloads;
       segmentSummaries = built.summaries;
 
@@ -667,6 +725,9 @@ export async function logFreeRide(
     region: ort?.region ?? null,
     hoehenmeter_aufstieg: elevation.hoehenmeter_aufstieg,
     hoehenprofil: elevation.hoehenprofil,
+    // Siehe logTrackedCompletion: wirkt nur nach oben, die Datenbank bildet
+    // das Maximum mit der deklarierten Klasse (0080).
+    motorklasse_belegt: belegteKlasse(fahrzeugTyp, trail, elevation.hoehenprofil),
     track,
     track_oeffentlich: istOeffentlich
       ? await publicTrackEwkt(supabase, user.id, coordinates)

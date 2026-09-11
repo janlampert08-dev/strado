@@ -2,9 +2,9 @@
 
 Ranglisten, die einen 125er-Roller nicht mehr gegen einen Porsche antreten
 lassen. Dieses Dokument ist die Referenz für das ganze Vorhaben; es umfasst
-vier Pull Requests, von denen PR 1 umgesetzt ist.
+vier Pull Requests, von denen PR 1 und PR 2 umgesetzt sind.
 
-Stand: 2026-09-11. Wenn der Code diesem Dokument widerspricht, gewinnt der
+Stand: 2026-09-11 (PR 1 und PR 2 umgesetzt). Wenn der Code diesem Dokument widerspricht, gewinnt der
 Code — dann gehört diese Datei korrigiert.
 
 ## Problem
@@ -170,22 +170,91 @@ teurer sind als Falsch-Negative.
 
 ### Das Signal ist die Steigung, nicht die Höchstgeschwindigkeit
 
-In der Ebene und bergab kann ein Roller kurz mithalten; am Berg schlägt das
-Leistungsgewicht unmittelbar durch — und Bergstrassen sind das, was Strado
-aufzeichnet. Für einen A1-Roller (11 kW, ~250 kg mit Fahrer, c_w·A ≈ 0.6 m²):
+Drei Terme gehen in die Schätzung ein: Hangabtrieb, Luftwiderstand (mit v³)
+und **Beschleunigung** (m·a·v). Der dritte ist in der Praxis der schärfste —
+ein 125er kann eine Tonne Masse nicht auf Landstrassentempo katapultieren,
+auch wenn er nie besonders schnell wird.
 
-| Situation | Nötige Leistung am Rad | Mit 11 kW? |
+Jede unbekannte Grösse wird so angesetzt, dass die geschätzte Leistung **zu
+niedrig** herauskommt: leichtes Fahrzeug, schlanke Stirnfläche, dünne Luft,
+verlustarmer Antrieb. Erst wenn selbst darunter mehr Leistung nötig war, als
+die Klasse hergibt, ist die Deklaration widerlegt. Was die umgesetzte
+`belegeMotorklasse()` tatsächlich liefert:
+
+Dazu kommt ein **Sicherheitsabstand von 30 %** auf die Klassengrenze:
+Hochgestuft wird erst, wenn die Schätzung die Grenze um dieses Mass
+überschreitet. Der Grund ist nicht Physik, sondern Datenlage — siehe den
+nächsten Abschnitt. Was dabei herauskommt:
+
+| Fahrt | Geschätzte Mindestleistung | Klasse belegt |
 | --- | --- | --- |
-| 70 km/h an 8 % Steigung | ≈ 7.4 kW | machbar |
-| 100 km/h in der Ebene | ≈ 9.1 kW | am Anschlag |
-| 90 km/h an 8 % Steigung | ≈ 11.7 kW | **unmöglich** |
-| 130 km/h in der Ebene | ≈ 19 kW | **unmöglich** |
+| Motorrad, 90 km/h flach | 4.2 kW | A1 |
+| Motorrad, 90 km/h an 9 % | 8.4 kW | A1 |
+| Motorrad, 130 km/h flach | 11.8 kW | A1 (Abstand greift) |
+| Motorrad, 150 km/h flach | 17.8 kW | **A1 widerlegt** |
+| Auto, 120 km/h an 8 % | 41.6 kW | bis 150 PS |
+| Auto, zwölfmal 60→140 km/h | 111.3 kW | bis 150 PS (Abstand greift) |
+| Auto, zwanzigmal 50→160 km/h | 172.1 kW | **150–300 PS** |
 
-> **Diese Werte sind am Schreibtisch gerechnet und nicht gegen echte
-> Strado-Tracks kalibriert.** Vor dem Merge von PR 2 laufen die Schwellen über
-> den vorhandenen Fahrtenbestand, mit einer Abnahmebedingung: **keine
-> bestehende Fahrt darf hochgestuft werden**, solange ihr Fahrzeug plausibel
-> ist. Erst dann ist die Schwelle brauchbar.
+> **Korrektur gegenüber der ersten Fassung dieses Dokuments.** Dort stand,
+> 90 km/h an 8 % Steigung seien für ein A1-Fahrzeug unmöglich (≈ 11.7 kW).
+> Das galt für mittlere Annahmen (250 kg, c_w·A 0.6). Der umgesetzte Code
+> rechnet mit Untergrenzen und kommt dort auf 8.4 kW — die Fahrt ist also
+> **nicht** widerlegt. Die Konsequenz ist ehrlich zu benennen: **Für A1 lässt
+> sich in der Ebene erst ab rund 140 km/h Dauertempo etwas beweisen**
+> (mit Sicherheitsabstand), während ein echter 125er bei 100 bis 110 läuft. In dieser Lücke
+> bleibt eine Falschangabe unentdeckt. Der Ausgleich dafür ist der Deckel auf
+> das **Durchschnittstempo** in `set_motorklasse()` (0080, A1: 95 km/h): Der
+> greift auf jedem Schreibpfad und fasst den anderen Fall — dauerhaft zu
+> schnell über die ganze Fahrt statt in der Spitze. Zusammen decken die
+> beiden die zwei Formen ab; einzeln keine.
+
+Genau weil der Beschleunigungsterm der schärfste ist, ist er auch der
+empfindlichste gegen Lücken in der Aufzeichnung. `fensterBilden()` verwirft
+Segmente, die unmöglich sind (Sprung, Ausreissertempo, zu ungenauer Fix) —
+und dann liegen die anerkannten Sekunden davor und danach direkt
+nebeneinander, obwohl dazwischen unbekannt viel echte Zeit vergangen ist.
+Würde daraus eine Beschleunigung abgeleitet, sähe jedes Wiedereinsetzen des
+GPS-Signals nach einem Kavalierstart aus. Deshalb beendet ein verworfenes
+Segment das laufende Fenster, und das erste Fenster nach einer Lücke wird
+ohne Beschleunigungsterm bewertet. Das kostet Härte und kann keinen Nachweis
+erfinden — dieselbe Richtung wie jede andere Annahme hier. Gefunden hat das
+die CodeRabbit-Review zu PR 2; `lib/klassenbeleg.test.ts` hält beide Fälle
+fest (eine Lücke, und drei Lücken, die zusammen die NACHWEIS_SEKUNDEN
+füllen würden).
+
+### Die Eichung läuft vorwärts, nicht rückwirkend
+
+Der Plan sah vor, die Schwellen gegen den bestehenden Fahrtenbestand zu
+prüfen. **Das geht nicht.** Strado speichert den Track als vereinfachte
+Geometrie **ohne Zeitstempel** (0044, `lib/track.ts`); Tempo und
+Beschleunigung — die beiden Grössen, aus denen die Schätzung besteht —
+lassen sich daraus nicht rekonstruieren. Wer sie aus `dauer_sekunden`
+gleichmässig über die Punkte verteilt, glättet genau die Spitzen weg, um die
+es geht.
+
+Die Eichung läuft deshalb vorwärts: Die Prüfung rechnet beim Speichern (wo
+der rohe Trail noch vorliegt) und schreibt nach `motorklasse_belegt`.
+`scripts/motorklassen-kalibrierung.mjs` liest, was dabei herauskam, und
+meldet jede Hochstufung. Jede gemeldete Zeile ist so lange ein Fehler, bis
+jemand sie am konkreten Fahrzeug nachvollzogen hat.
+
+**Und wenn zu wenige Fahrten anfallen, um überhaupt zu eichen?** Das ist die
+Lage zum Startzeitpunkt, und sie ist der Grund für den Sicherheitsabstand von
+30 % oben: Er ersetzt die fehlende Evidenz, indem er die Prüfung stumpfer
+macht. Zwei Überlegungen tragen diese Wahl:
+
+- Schummeln lohnt sich proportional zum Publikum. Bei wenigen Nutzern ist die
+  Falschangabe kaum ein reales Problem — die unfaire Rangliste dagegen schon,
+  denn die sieht jeder sofort. Die unkalibrierte Prüfung darf das Feature
+  also nicht aufhalten.
+- Der teure Fehler ist nicht „Schummler nicht erkannt", sondern „ehrliche
+  Fahrt hochgestuft". Bei einer Handvoll Nutzern ist eine falsche Hochstufung
+  sofort ein spürbarer Anteil der Nutzerbasis, der der App misstraut.
+
+**Folge für die Reihenfolge:** PR 3 muss nicht auf einen Kalibrierungslauf
+warten. Was stattdessen ansteht, sobald Fahrten vorliegen: den Abstand
+überprüfen und senken.
 
 ### Zwei Ebenen, weil die Datenbank die Physik nicht kann
 
@@ -238,9 +307,13 @@ läuft**: Die Prüfmechanik landet vor der ersten Rangliste.
 | PR | Inhalt | Status |
 | --- | --- | --- |
 | 1 | Migration 0080, `lib/motorklassen.ts` + Tests, die zwei Felder im Fahrzeugformular (auch inline im Fahrt-Fazit), Klassenpille in Garage und Fahrzeugwahl. Keine Rangliste ändert sich. | **umgesetzt** |
-| 2 | `lib/klassenbeleg.ts` + Tests, Anbindung in `completions.ts`, Anzeige der Wertung und ihrer Begründung, Meldegrund. Enthält den Kalibrierungslauf. | offen |
-| 3 | Streckenbestzeiten nach Klasse: Chip-Leiste, `?klasse=` im öffentlichen Endpunkt mit strikter Katalogprüfung. | offen |
-| 4 | Globale Ranglisten nach Klasse, „Meine Klasse“, plus Migration 0081 (Backfill). | offen |
+| 2 | `lib/klassenbeleg.ts` + Tests, Anbindung in `completions.ts` für beide Fahrtarten, Migration 0081 (RPC der freien Fahrt), Anzeige der Wertung und ihrer Begründung für den Fahrer, `scripts/motorklassen-kalibrierung.mjs`. | **umgesetzt** |
+| 3 | Streckenbestzeiten nach Klasse: Chip-Leiste, `?klasse=` im öffentlichen Endpunkt mit strikter Katalogprüfung. Kann ohne Wartezeit kommen, siehe Sicherheitsabstand. | offen |
+| 4 | Globale Ranglisten nach Klasse, „Meine Klasse“, plus Migration 0082 (Backfill). | offen |
+
+Ein Meldegrund musste nicht dazukommen: `falsche_angaben` steht seit 0043
+bzw. 0046 für Strecken, Bewertungen und Fahrten bereit und deckt eine
+unplausible Fahrzeugklasse mit ab.
 
 Der Backfill gehört bewusst **separat und später**: Zum Zeitpunkt von 0080
 hat noch niemand eine Leistung eingetragen, ein Backfill wäre dort
@@ -281,7 +354,7 @@ bekommen eine Klasse, die übrigen bleiben ohne.
 
 ## Was die Testsuite nicht abdeckt
 
-Vitest läuft mit `environment: "node"`, es gibt kein jsdom. Abgesichert ist
-nur `lib/motorklassen.ts` (und ab PR 2 `lib/klassenbeleg.ts`). Chips, Pillen,
+Vitest läuft mit `environment: "node"`, es gibt kein jsdom. Abgesichert sind
+`lib/motorklassen.ts` und `lib/klassenbeleg.ts`. Chips, Pillen,
 Formularfelder und Filterleisten haben **keine** automatisierte Abdeckung —
 das gehört in jede PR-Beschreibung so benannt, nicht impliziert.
