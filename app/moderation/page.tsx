@@ -19,7 +19,8 @@ import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import SectionHeading from "@/components/ui/SectionHeading";
 import { buttonVariants } from "@/components/ui/Button";
-import { MapPinIcon, ShieldIcon, LinkIcon, FeedbackIcon } from "@/components/NavIcons";
+import { MapPinIcon, ShieldIcon, LinkIcon, FeedbackIcon, MailIcon } from "@/components/NavIcons";
+import { POSTFACH_URL } from "@/lib/constants";
 
 export const metadata = { title: "Moderation – Strado" };
 
@@ -210,13 +211,31 @@ export default async function ModerationPage() {
                   : `${offeneVorgaenge} ${offeneVorgaenge === 1 ? "offener Vorgang" : "offene Vorgänge"}`}
               </p>
             </div>
-            <Link
-              href="/moderation/creator"
-              className={buttonVariants({ variant: "secondary", size: "sm" })}
-            >
-              <LinkIcon className="h-4 w-4" aria-hidden="true" />
-              Creator-Links
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              {/* Fremdes Ziel, deshalb ein gewöhnliches <a> statt next/link
+                  und ein eigener Tab: die Warteschlange, die gerade
+                  abgearbeitet wird, soll beim Nachsehen im Postfach nicht
+                  verloren gehen. Ohne gesetzte MODERATION_POSTFACH_URL
+                  (siehe lib/constants.ts) erscheint der Link nicht. */}
+              {POSTFACH_URL && (
+                <a
+                  href={POSTFACH_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={buttonVariants({ variant: "secondary", size: "sm" })}
+                >
+                  <MailIcon className="h-4 w-4" aria-hidden="true" />
+                  Postfach
+                </a>
+              )}
+              <Link
+                href="/moderation/creator"
+                className={buttonVariants({ variant: "secondary", size: "sm" })}
+              >
+                <LinkIcon className="h-4 w-4" aria-hidden="true" />
+                Creator-Links
+              </Link>
+            </div>
           </div>
 
           <nav aria-label="Abschnitte" className="grid grid-cols-3 gap-2 sm:gap-3">

@@ -124,6 +124,54 @@ export const LEGAL_URLS = {
   agb: `${LEGAL_BASE_URL}/legal/agb`,
 } as const;
 
+// Das Postfach hinter contact@strado.ch (Infomaniak kSuite) — verlinkt im
+// Kopf von /moderation, direkt neben den Creator-Links. Der Anlass ist das
+// Feedback weiter unten auf derselben Seite: geantwortet wird per Mail, und
+// die Adresse ist zugleich der einzige Kontaktkanal, den das Impressum
+// nennt (Art. 3 Abs. 1 lit. s UWG) — sie gehört also ohnehin in die Runde
+// einer Moderatorin.
+//
+// Aus der Umgebung statt fest im Code, weil dieses Repository öffentlich
+// ist: die Adresse enthält die kSuite-Kontonummer. Kein Zugangsdatum — ohne
+// Anmeldung kommt dort niemand hinein —, aber nichts, was ohne Not dauerhaft
+// in einer öffentlichen Historie stehen muss.
+//
+// Ohne NEXT_PUBLIC_-Präfix und damit erst zur Laufzeit gelesen: der Wert
+// wird ausschliesslich in einer Server Component gebraucht (siehe
+// app/moderation/page.tsx), und ein NEXT_PUBLIC_-Wert würde beim Build
+// eingefroren (siehe die Anmerkung zu NEXT_PUBLIC_SITE_URL in AGENTS.md).
+// Die Kehrseite: in einer Client Component ist die Konstante immer null.
+//
+// null statt "" bei fehlendem oder unbrauchbarem Wert — die Seite blendet
+// den Link dann aus, statt eine kaputte Adresse anzubieten. Wie bei
+// legaleBasisUrl() nur https und keine Ausnahme für localhost: das Ziel ist
+// eine fremde, extern gehostete Oberfläche.
+function postfachUrl(): string | null {
+  const konfiguriert = process.env.MODERATION_POSTFACH_URL?.trim();
+  if (!konfiguriert) return null;
+
+  let geprueft: URL;
+  try {
+    geprueft = new URL(konfiguriert);
+  } catch {
+    console.warn(
+      `MODERATION_POSTFACH_URL ist keine gültige URL (${konfiguriert}) — der Postfach-Link wird ausgeblendet.`,
+    );
+    return null;
+  }
+
+  if (geprueft.protocol !== "https:") {
+    console.warn(
+      `MODERATION_POSTFACH_URL muss https sein (${konfiguriert}) — der Postfach-Link wird ausgeblendet.`,
+    );
+    return null;
+  }
+
+  return geprueft.toString();
+}
+
+export const POSTFACH_URL = postfachUrl();
+
 // Kategorien für "Feedback senden" (Einstellungen → Feedback). Feste Werte
 // statt Freitext aus demselben Grund wie bei REPORT_REASONS: die Liste in
 // /moderation soll sortier- und auswertbar bleiben. Die Werte sind
