@@ -79,3 +79,18 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Seiten rendern (Smoke)
+        # Ruft jede Seite der gebauten App einmal auf und schlägt an, wenn
+        # beim Rendern etwas geworfen hat.
+        #
+        # Warum das nach dem Build nötig ist: /leaderboards ging am
+        # 2026-09-13 mit "Etwas ist schiefgelaufen" in Produktion, obwohl
+        # Lint, Tests und Build grün waren — eine Server-Komponente reichte
+        # eine Funktion an eine Client-Komponente. `next build` rendert eine
+        # dynamische Seite nie, es gibt mangels jsdom keine Komponententests,
+        # und der HTTP-Status war 200. Erst die Server-Ausgabe verriet es.
+        #
+        # Braucht keine echten Zugangsdaten: der Fehler hängt am Rendern,
+        # nicht an den Daten. Die Platzhalter oben genügen.
+        run: node scripts/smoke-render.mjs
