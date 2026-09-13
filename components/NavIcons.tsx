@@ -10,3 +10,7 @@ export { MapPin as MapPinIcon, Trophy as RankingIcon, User as PersonIcon, Plus a
 // Wrapper-Datei für ein einzelnes Icon schlimmer wäre. Genutzt von
 // components/PremiumBadge.tsx.
 export { Sparkles as SparklesIcon } from "lucide-react";
+
+// Ebenfalls kein Nav-Icon, aus demselben Grund hier: der Leerzustand der
+// Creator-Links unter /moderation/creator.
+export { Link2 as LinkIcon } from "lucide-react";
