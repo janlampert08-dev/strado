@@ -48,19 +48,28 @@ export function toEntry(row: LeaderboardUserTotalsRow, value: number): Leaderboa
   };
 }
 
-// Holt direkt die Top TOP_N Nutzer für eine Metrik aus
-// leaderboard_user_totals — sortiert und begrenzt die Datenbank selbst
-// (order/limit), statt wie zuvor die komplette Tabelle zu laden und in JS
-// zu sortieren.
+// Holt direkt die Top TOP_N Nutzer für eine Metrik — sortiert und begrenzt
+// die Datenbank selbst (order/limit), statt die komplette Tabelle zu laden
+// und in JS zu sortieren.
+//
+// Ohne Klasse kommt die Gesamtwertung aus leaderboard_user_totals (eine
+// Zeile pro Nutzer), mit Klasse aus leaderboard_klassen_totals (eine Zeile
+// pro Nutzer UND Klasse, 0080). Zwei Views statt einer, weil jemand mit
+// Auto und Motorrad sonst in der Gesamtwertung doppelt erschiene und "Alle"
+// keine Gesamtsumme mehr wäre.
 async function topByMetric(
   supabase: SupabaseClient,
   metric: "fahrten_count" | "hoehenmeter" | "km" | "strecken_count",
+  klasse?: Motorklasse | null,
 ): Promise<LeaderboardEntry[]> {
-  const { data, error } = await supabase
-    .from("leaderboard_user_totals")
-    .select(
-      "user_id, display_name, avatar_url, fahrten_count, hoehenmeter, km, strecken_count",
-    )
+  const spalten =
+    "user_id, display_name, avatar_url, fahrten_count, hoehenmeter, km, strecken_count";
+
+  const query = klasse
+    ? supabase.from("leaderboard_klassen_totals").select(spalten).eq("motorklasse", klasse)
+    : supabase.from("leaderboard_user_totals").select(spalten);
+
+  const { data, error } = await query
     .order(metric, { ascending: false, nullsFirst: false })
     .limit(TOP_N);
 
@@ -78,13 +87,18 @@ async function topByMetric(
 // leaderboard_completions liefert kein Datum; ein Rolling-Window wäre eine
 // eigene View-Änderung und ist nicht Teil dieser Phase.
 //
+// Mit einer Motorklasse (0080) zählen nur Fahrten dieser Klasse; ohne bleibt
+// es die Gesamtwertung über alles, also genau die Liste von vor der
+// Einführung der Klassen. "Alle" ist damit die Voreinstellung, und niemand
+// verliert eine Rangliste, in der er gerade vorne steht.
+//
 // Seit 0056_freie_fahrten_in_bestenlisten.sql zählen auch freie Fahrten
 // (art = 'frei') in fahrten_count/hoehenmeter/km mit — vorher (0044) waren
 // die vier Listen ausschliesslich streckenbasiert. strecken_count bleibt
 // unverändert streckenbasiert: count(distinct route_id) in
 // leaderboard_user_totals ignoriert NULL-route_id (freie Fahrten) von
 // selbst, ohne eigenen Filter.
-export async function getGlobalLeaderboards(): Promise<{
+export async function getGlobalLeaderboards(klasse?: Motorklasse | null): Promise<{
   meisteFahrten: LeaderboardEntry[];
   meisteHoehenmeter: LeaderboardEntry[];
   meisteKm: LeaderboardEntry[];
@@ -95,10 +109,10 @@ export async function getGlobalLeaderboards(): Promise<{
   // Vier unabhängige, jeweils auf TOP_N Zeilen begrenzte Abfragen statt
   // einer einzigen "alles laden"-Abfrage — parallel gestartet.
   const [meisteFahrten, meisteHoehenmeter, meisteKm, meisteStrecken] = await Promise.all([
-    topByMetric(supabase, "fahrten_count"),
-    topByMetric(supabase, "hoehenmeter"),
-    topByMetric(supabase, "km"),
-    topByMetric(supabase, "strecken_count"),
+    topByMetric(supabase, "fahrten_count", klasse),
+    topByMetric(supabase, "hoehenmeter", klasse),
+    topByMetric(supabase, "km", klasse),
+    topByMetric(supabase, "strecken_count", klasse),
   ]);
 
   return { meisteFahrten, meisteHoehenmeter, meisteKm, meisteStrecken };
