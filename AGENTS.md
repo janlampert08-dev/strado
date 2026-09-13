@@ -245,18 +245,18 @@ relying on version-specific behavior, especially for Next.js 16, which has
 breaking changes from earlier versions (see the block at the top of this file).
 
 - **Next.js** 16.3.4 (App Router, Turbopack build)
-- **React** 19.2.8 / **react-dom** 19.2.8
+- **React** 19.3.0 / **react-dom** 19.3.0
 - **TypeScript** ^5
 - **Tailwind CSS** ^4 (via `@tailwindcss/postcss`)
-- **Supabase**: `@supabase/supabase-js` ^2.114.0, `@supabase/ssr` ^0.12.5
-- **Stripe**: `stripe` ^22.6.1 (server), `@stripe/stripe-js` ^9.15.0 /
-  `@stripe/react-stripe-js` ^6.8.2 (client, Payment Element)
-- **Mapbox GL** ^3.29.0 (routing/maps, `mapbox-gl` + `@types/mapbox-gl`)
-- **lucide-react** ^1.39.0 (icons — wrapped in `components/NavIcons.tsx` /
+- **Supabase**: `@supabase/supabase-js` ^2.116.0, `@supabase/ssr` ^0.12.7
+- **Stripe**: `stripe` ^22.6.1 (server), `@stripe/stripe-js` ^9.16.0 /
+  `@stripe/react-stripe-js` ^6.9.0 (client, Payment Element)
+- **Mapbox GL** ^3.30.0 (routing/maps, `mapbox-gl` + `@types/mapbox-gl`)
+- **lucide-react** ^1.43.0 (icons — wrapped in `components/NavIcons.tsx` /
   `components/VisibilityIcons.tsx`, don't import it directly in new code)
 - **@vercel/analytics** ^2.0.1 (`<Analytics />` in `app/layout.tsx`; the only
   telemetry in the app — there is no Sentry or other error reporting)
-- **Vitest** ^4.1.11 (unit tests, `environment: "node"` — there is no jsdom,
+- **Vitest** ^5.0.0 (unit tests, `environment: "node"` — there is no jsdom,
   so component tests are not currently possible)
 - **ESLint** ^9 with `eslint-config-next`
 
