@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useLinkStatus } from "next/link";
 import { MOTORKLASSEN } from "@/lib/motorklassen";
 import type { Motorklasse } from "@/types/database";
 import { cn } from "@/lib/utils/cn";
@@ -138,7 +139,7 @@ function Chip({
         scroll={false}
         className={chipClassName(aktiv)}
       >
-        {children}
+        <ChipInhalt>{children}</ChipInhalt>
       </Link>
     );
   }
@@ -153,5 +154,27 @@ function Chip({
     >
       {children}
     </button>
+  );
+}
+
+// Sofortige Rückmeldung auf den Tipp, solange die neue Liste unterwegs ist.
+//
+// Die Ladegrenzen in app/leaderboards/page.tsx sind die eigentliche
+// Verbesserung — die Leiste bleibt beim Klassenwechsel stehen, statt mit der
+// ganzen Seite durch ein Skelett ersetzt zu werden. Diese Anzeige deckt die
+// kurze Spanne davor ab, in der sonst gar nichts passiert.
+//
+// useLinkStatus verlangt einen Nachfahren des Links, deshalb diese eigene
+// kleine Komponente. Gedimmt wird nur die Deckkraft eines Elements, das
+// ohnehin immer dasteht: Die Next-Doku warnt ausdrücklich davor, hier etwas
+// ein- und auszublenden — das verschöbe bei jedem Klick das Layout der
+// ganzen Leiste. Ist das Ziel bereits vorgeladen, entfällt der Zustand
+// ohnehin, und man sieht nichts.
+function ChipInhalt({ children }: { children: React.ReactNode }) {
+  const { pending } = useLinkStatus();
+  return (
+    <span className={cn("transition-opacity duration-fast", pending && "opacity-60")}>
+      {children}
+    </span>
   );
 }
