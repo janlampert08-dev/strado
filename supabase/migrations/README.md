@@ -195,6 +195,38 @@ andere Trigger-Funktion im Schema (`enforce_completion_cooldown`,
 `enforce_route_proposal_cooldown`, `handle_new_user`). `darf_private_strecke_anlegen()`
 behält `authenticated` — die ist bewusst für den angemeldeten Aufrufer da.
 
+## Offen: 0083_feedback (Stand: 2026-09-13)
+
+`0083_feedback.sql` legt die Tabelle `public.feedback` samt Policies,
+Spalten-Grants und Cooldown-Trigger an — die Datenbankseite von „Feedback
+senden" in den Einstellungen. Sie ist **noch nirgends eingespielt**, weder
+auf Staging noch in Produktion.
+
+Was ohne sie passiert, ist der Fall aus dem Abschnitt ganz oben, nur diesmal
+vorher notiert: die Seite lädt, der Dialog geht auf, und das Absenden
+scheitert an einer Tabelle, die es nicht gibt — der Nutzer sieht „Das hat
+nicht geklappt", der Grund steht nur im Serverlog. Die Reihenfolge ist
+deshalb Schema zuerst, Code danach (siehe `.agents/deployment.md` §1), und
+Staging vor Produktion.
+
+Nach dem Einspielen gegenprüfen — die Grants sind hier der Punkt, nicht die
+blosse Existenz der Tabelle:
+
+| Prüfung | Erwartet |
+| --- | --- |
+| `feedback` existiert, RLS aktiv | ja |
+| Policies auf `feedback` (`pg_policies`) | 3 (insert für authenticated, select/update für Moderatoren) |
+| `with_check` der Update-Policy | `bearbeitet_von = auth.uid()` — nicht leer (sonst der Defekt aus 0071) |
+| Spalten-Grants `authenticated` auf `feedback` (`aclexplode`) | INSERT nur auf `user_id`, `kategorie`, `nachricht`; UPDATE nur auf `status`, `bearbeitet_am`, `bearbeitet_von`; SELECT auf der Tabelle |
+| Grants für `anon` auf `feedback` | keine |
+| Trigger `feedback_cooldown` vorhanden | ja |
+| EXECUTE auf `enforce_feedback_cooldown()` | nur `postgres`, `service_role` — `has_function_privilege('anon', …, 'EXECUTE')` muss false sein |
+
+Der Präfix `0083` ist bewusst gewählt statt `0080`: `0080` liegt in zwei
+offenen Branches (`claude/creator-tracking-links-plan-j6oiwl`,
+`claude/motorklassen-vergleich-feature-20uan8`), `0081` und `0082` je in
+einem weiteren. Das siebte Kollisionspaar entsteht hier also nicht.
+
 ## Was aus einer Migration heraus nicht geht
 
 `public.spatial_ref_sys` (PostGIS-Referenztabelle) gehört `supabase_admin`,

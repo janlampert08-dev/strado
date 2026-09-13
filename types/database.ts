@@ -2,6 +2,11 @@
 // Sobald ein Supabase-Projekt verknüpft ist, können diese durch
 // `npx supabase gen types typescript --linked` ersetzt/aktualisiert werden.
 
+// Die Feedback-Kategorien leben in lib/constants.ts, weil das Formular
+// (components/FeedbackDialog.tsx) sie als Auswahlliste braucht — hier nur
+// der davon abgeleitete Typ, damit es keine zweite Werteliste gibt.
+import type { FeedbackKategorie } from "@/lib/feedback";
+
 export type FahrzeugTyp = "auto" | "motorrad";
 export type Getriebe = "manuell" | "automatik";
 export type Kategorie = "kurvig" | "scenic" | "passstrasse" | "freie_fahrt";
@@ -380,6 +385,23 @@ export interface PublicCompletionPhoto {
   foto_url: string;
   position: number;
   display_name: string | null;
+}
+
+// Zeilenform von public.feedback (siehe 0083_feedback.sql) — Rückmeldungen
+// aus den Einstellungen. Einsenden darf jeder Angemeldete, lesen und
+// bearbeiten nur Moderatoren; die Spalten-Grants der Migration lassen beim
+// Einsenden nur user_id, kategorie und nachricht zu.
+export type FeedbackStatus = "offen" | "erledigt";
+
+export interface Feedback {
+  id: string;
+  user_id: string;
+  kategorie: FeedbackKategorie;
+  nachricht: string;
+  status: FeedbackStatus;
+  erstellt_am: string;
+  bearbeitet_am: string | null;
+  bearbeitet_von: string | null;
 }
 
 // Minimales Database-Interface für den generischen Supabase-Client-Typparameter.

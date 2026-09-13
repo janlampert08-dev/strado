@@ -123,3 +123,20 @@ export const LEGAL_URLS = {
   datenschutz: `${LEGAL_BASE_URL}/legal/datenschutz`,
   agb: `${LEGAL_BASE_URL}/legal/agb`,
 } as const;
+
+// Kategorien für "Feedback senden" (Einstellungen → Feedback). Feste Werte
+// statt Freitext aus demselben Grund wie bei REPORT_REASONS: die Liste in
+// /moderation soll sortier- und auswertbar bleiben. Die Werte sind
+// gleichlautend in der CHECK-Beschränkung von 0083_feedback.sql verankert —
+// wer hier einen hinzufügt, braucht dort eine neue Migration.
+//
+// Steht aus demselben Grund hier und nicht in lib/actions/feedback.ts: eine
+// Datei mit "use server" darf nur async Functions exportieren, eine
+// Konstante käme im Client-Bundle als undefined an (siehe die ausführliche
+// Begründung bei REPORT_REASONS oben).
+export const FEEDBACK_KATEGORIEN = [
+  { value: "fehler", label: "Fehler melden" },
+  { value: "idee", label: "Idee oder Wunsch" },
+  { value: "lob", label: "Lob" },
+  { value: "sonstiges", label: "Sonstiges" },
+] as const;
