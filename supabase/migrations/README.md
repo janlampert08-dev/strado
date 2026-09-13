@@ -187,6 +187,39 @@ Keine der drei `create or replace view` benennt eine Spalte um; die Views
 hängen nur an. Grants bleiben deshalb erhalten, und
 `leaderboard_user_totals` braucht keine Änderung.
 
+
+## Offen: 0084_creator_links (noch nicht eingespielt)
+
+`0080_creator_links.sql` legt die Tabelle der Creator-Einstiegscodes an
+(`/c/<code>`, verwaltet unter `/moderation/creator`) plus die
+`SECURITY DEFINER`-Funktion `creator_link_aufloesen(text)`, über die der
+öffentliche Weg läuft.
+
+**Der Code dazu ist bereits gemergt und funktioniert ohne die Tabelle
+nicht.** Ohne sie liefert `/c/<code>` für jeden Code die Startseite ohne
+Zuordnung, und `/moderation/creator` zeigt eine leere Liste — beides ohne
+sichtbaren Fehler. Das ist genau das Muster, das weiter oben unter
+„Nachgezogene Migrationen" steht: grünes CI sagt nichts über das Schema.
+
+Reihenfolge wie üblich: erst Staging-Datenbank, dann Produktion.
+
+Gegengeprüft wird an den Objekten, nicht am Ledger:
+
+```sql
+-- Tabelle da?
+select count(*) from public.creator_links;
+
+-- Funktion da, und hat anon nur sie und nicht die Tabelle?
+select has_function_privilege('anon', 'public.creator_link_aufloesen(text)', 'execute') as fn,
+       has_table_privilege('anon', 'public.creator_links', 'select')                    as tabelle;
+-- erwartet: fn = true, tabelle = false
+```
+
+Die Migration wurde vor dem Merge gegen ein leeres Postgres 16 mit
+nachgebildeter `auth`/`profiles`-Umgebung durchgespielt: Constraints,
+Policy, Grants und die Funktion verhalten sich wie beschrieben. Das ersetzt
+die Einspielung nicht, es ersetzt nur die Überraschung dabei.
+
 ## Nachgezogene Migrationen (2026-09-02/03)
 
 Bei einer vollständigen Prüfung der Datenbank fiel auf, dass mehrere bereits
@@ -401,10 +434,19 @@ müsste: dass der Cooldown-Trigger bei einer zweiten Einsendung innerhalb von
 60 Sekunden tatsächlich `cooldown_active` wirft. Sein Aufbau entspricht
 Zeile für Zeile den Triggern aus `0024`/`0041`, die laufen.
 
-Der Präfix `0083` war bewusst gewählt statt `0080`: `0080` liegt in zwei
-offenen Branches (`claude/creator-tracking-links-plan-j6oiwl`,
+Der Präfix `0083` war bewusst gewählt statt `0080`: `0080` lag damals in
+zwei offenen Branches (`claude/creator-tracking-links-plan-j6oiwl`,
 `claude/motorklassen-vergleich-feature-20uan8`), `0081` und `0082` je in
-einem weiteren. Das siebte Kollisionspaar entsteht hier also nicht.
+einem weiteren.
+
+Beim Zusammenführen auf `staging` ist genau diese Kollision dann doch
+aufgetreten — zwei Dateien mit dem Präfix `0080`, jede für sich grün,
+zusammen rot. Aufgelöst durch Umbenennen der Creator-Migration auf
+`0084`; die Motorklassen-Seite behielt `0080`, weil `0081` und `0082`
+auf ihr aufbauen und sonst drei Dateien statt einer umzunummerieren
+gewesen wären. Keine der beiden war eingespielt, das Umbenennen fällt
+also nicht unter Kernregel 9. Das siebte Kollisionspaar ist damit nicht
+entstanden.
 
 ## Was aus einer Migration heraus nicht geht
 
