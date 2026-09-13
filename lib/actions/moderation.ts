@@ -293,3 +293,31 @@ export async function unpublishReportedCompletion(
   revalidatePath(`/fahrten/${completionId}`);
   return OK;
 }
+
+// Feedback (0083_feedback.sql) — eingesandt über lib/actions/feedback.ts,
+// hier nur das Abhaken durch die Moderation. Es gibt bewusst keine zweite
+// Aktion daneben: eine Rückmeldung wird gelesen und ist damit erledigt,
+// löschen muss man sie nicht (und der Absender sieht ohnehin keinen
+// Zustand).
+export async function markFeedbackErledigt(feedbackId: string): Promise<ModerationResult> {
+  const kontext = await alsModerator();
+  if ("error" in kontext) return kontext;
+
+  const { error, count } = await kontext.supabase
+    .from("feedback")
+    .update(
+      {
+        status: "erledigt",
+        bearbeitet_am: new Date().toISOString(),
+        bearbeitet_von: kontext.userId,
+      },
+      { count: "exact" },
+    )
+    .eq("id", feedbackId);
+
+  if (error) return fehlgeschlagen("Das Abhaken der Rückmeldung");
+  if (count === 0) return nichtGetroffen("Das Abhaken der Rückmeldung");
+
+  revalidatePath("/moderation");
+  return OK;
+}

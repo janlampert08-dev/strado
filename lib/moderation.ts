@@ -186,3 +186,56 @@ export async function getOpenCompletionReports(): Promise<CompletionReportWithCo
     ];
   });
 }
+
+export interface FeedbackEintrag {
+  id: string;
+  kategorie: string;
+  nachricht: string;
+  // Anzeigename des Absenders, soweit gesetzt — für eine mögliche Rückfrage.
+  absender: string | null;
+  erstelltAm: string;
+}
+
+// Offene Rückmeldungen aus den Einstellungen (0083_feedback.sql). Sichtbar
+// sind sie ausschliesslich Moderatoren — das erzwingt die Select-Policy der
+// Migration, nicht diese Funktion; /moderation prüft zusätzlich vorher (wie
+// bei allem anderen auf der Seite auch).
+//
+// Getrennte Folgeabfrage für die Absendernamen statt eines embedded Selects,
+// wie bei getOpenRouteReports oben — aus demselben Grund.
+export async function getOpenFeedback(): Promise<FeedbackEintrag[]> {
+  const supabase = await createClient();
+  const { data: eintraege } = await supabase
+    .from("feedback")
+    .select("id, user_id, kategorie, nachricht, erstellt_am")
+    .eq("status", "offen")
+    .order("erstellt_am", { ascending: true })
+    .returns<
+      {
+        id: string;
+        user_id: string;
+        kategorie: string;
+        nachricht: string;
+        erstellt_am: string;
+      }[]
+    >();
+
+  if (!eintraege || eintraege.length === 0) return [];
+
+  const userIds = [...new Set(eintraege.map((e) => e.user_id))];
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, display_name")
+    .in("id", userIds);
+  const nameById = new Map((profile ?? []).map((p) => [p.id, p.display_name]));
+
+  return eintraege.map((e) => ({
+    id: e.id,
+    kategorie: e.kategorie,
+    nachricht: e.nachricht,
+    // null bleibt null: ein gelöschtes Konto trägt keinen Namen mehr
+    // (0058), und ein erfundener Platzhalter wäre hier irreführend.
+    absender: nameById.get(e.user_id) ?? null,
+    erstelltAm: e.erstellt_am,
+  }));
+}
