@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/Header";
@@ -15,6 +16,13 @@ import {
 } from "@/lib/moderation";
 import { formatKm, datumCH } from "@/lib/format";
 import Card from "@/components/ui/Card";
+import EmptyState from "@/components/ui/EmptyState";
+import SectionHeading from "@/components/ui/SectionHeading";
+import { buttonVariants } from "@/components/ui/Button";
+import { MapPinIcon, ShieldIcon, LinkIcon, FeedbackIcon, MailIcon } from "@/components/NavIcons";
+import { POSTFACH_URL } from "@/lib/constants";
+
+export const metadata = { title: "Moderation – Strado" };
 
 // Wie REPORT_REASON_LABEL: die Werte kommen aus der Datenbank, die
 // Beschriftungen stehen in lib/constants.ts (FEEDBACK_KATEGORIEN). Hier als
@@ -35,6 +43,74 @@ const REPORT_REASON_LABEL: Record<string, string> = {
   sonstiges: "Sonstiges",
 };
 
+/** Art des Eintrags — die eine Angabe, die beim Überfliegen zuerst gebraucht
+ *  wird ("Strecke oder Kommentar oder Fahrt?"). Dieselbe Pille wie im Profil
+ *  und auf /moderation/creator, hier aber in der Vordergrundfarbe: sie ist
+ *  hier eine Einordnung, kein Nebenhinweis. */
+function Kennzeichen({ children }: { children: ReactNode }) {
+  return (
+    <span className="rounded-full border border-border px-2 py-0.5 text-xs font-medium">
+      {children}
+    </span>
+  );
+}
+
+/** Fremder Text, über den entschieden werden soll — Charaktertext eines
+ *  Vorschlags, gemeldeter Kommentar, Fahrtnotiz, Rückmeldung.
+ *
+ *  Vorher stand all das als gewöhnlicher Fliesstext in der Karte, nur durch
+ *  „…“ und ein vorangestelltes "Meldungsgrund:" von der Oberfläche der App
+ *  selbst getrennt. Genau diese Grenze muss ein Moderationswerkzeug aber
+ *  zeigen: was jemand geschrieben hat, und was die App dazu sagt. Der
+ *  Randstrich macht sie sichtbar, die Beschriftung benennt die Herkunft.
+ *
+ *  whitespace-pre-line, weil all diese Texte getippter Fliesstext sind und
+ *  ihre Absätze zur Aussage gehören. */
+function Zitat({ label, children }: { label?: string; children: ReactNode }) {
+  return (
+    <div className="border-l-2 border-border pl-3">
+      {label && <p className="text-xs text-muted">{label}</p>}
+      <blockquote className="text-sm whitespace-pre-line text-foreground">{children}</blockquote>
+    </div>
+  );
+}
+
+/** Abschnittsmarke mit Anzahl — dieselbe Zählpille wie im Profil. */
+function AbschnittKopf({ title, count }: { title: string; count: number }) {
+  return (
+    <div className="flex items-center gap-2">
+      <SectionHeading>{title}</SectionHeading>
+      <span className="rounded-full border border-border px-1.5 py-0.5 font-mono text-xs tabular-nums text-muted">
+        {count}
+      </span>
+    </div>
+  );
+}
+
+/** Sprungmarke auf einen der drei Abschnitte.
+ *
+ *  Der Zweck ist nicht Zierrat, sondern die Länge der Seite: bei zwanzig
+ *  offenen Vorschlägen liegt das Feedback mehrere Bildschirmhöhen weiter
+ *  unten, und bis hierher stand nirgends, ob dort überhaupt etwas wartet.
+ *  Eine leere Warteschlange bleibt gedämpft, eine gefüllte tritt hervor. */
+function Sprungmarke({ href, label, count }: { href: string; label: string; count: number }) {
+  return (
+    <a
+      href={href}
+      className="flex flex-col gap-0.5 rounded-lg border border-border px-3 py-2.5 transition-colors duration-fast hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+    >
+      <span className="text-xs text-muted">{label}</span>
+      <span
+        className={`font-mono text-title font-semibold tabular-nums ${
+          count === 0 ? "text-muted" : "text-foreground"
+        }`}
+      >
+        {count}
+      </span>
+    </a>
+  );
+}
+
 export default async function ModerationPage() {
   const user = await getCurrentUser();
 
@@ -49,186 +125,221 @@ export default async function ModerationPage() {
     getOpenFeedback(),
   ]);
 
-  const offeneMeldungen = routeReports.length + ratingReports.length + completionReports.length;
+  // Die drei Meldungsarten in eine Liste, chronologisch. Vorher standen sie
+  // als drei Blöcke untereinander — wer die Warteschlange von oben abarbeitet,
+  // sah damit zuerst jede Streckenmeldung, egal wie frisch, und die älteste
+  // gemeldete Fahrt zuletzt. Die Reihenfolge in einer Warteschlange sollte
+  // das Alter sein, nicht die Sorte; die Sorte steht jetzt als Kennzeichen an
+  // der Karte. Jede Teilliste kommt bereits aufsteigend nach erstellt_am aus
+  // lib/moderation.ts, das Zusammenführen erhält das nur.
+  const meldungen = [
+    ...routeReports.map((report) => ({
+      key: `strecke-${report.id}`,
+      art: "Strecke",
+      grund: report.grund,
+      erstelltAm: report.erstelltAm,
+      href: `/strecken/${report.routeId}`,
+      titel: report.routeName,
+      // Bei einer gemeldeten Strecke gibt es keinen zitierbaren Text — was
+      // beurteilt werden soll, ist die Strecke hinter dem Link.
+      inhalt: null as string | null,
+      begruendung: report.kommentar,
+      aktionen: (
+        <ReportedContentActions
+          reportId={report.id}
+          targetId={report.routeId}
+          type="route"
+          deleteConfirmDescription={`"${report.routeName}" wird endgültig gelöscht. Das kann nicht rückgängig gemacht werden.`}
+        />
+      ),
+    })),
+    ...ratingReports.map((report) => ({
+      key: `kommentar-${report.id}`,
+      art: "Kommentar",
+      grund: report.grund,
+      erstelltAm: report.erstelltAm,
+      href: `/strecken/${report.routeId}`,
+      titel: report.routeName,
+      inhalt: report.ratingKommentar,
+      begruendung: report.kommentar,
+      aktionen: (
+        <ReportedContentActions
+          reportId={report.id}
+          targetId={report.ratingId}
+          type="rating"
+          deleteConfirmDescription="Der Kommentar wird endgültig gelöscht. Das kann nicht rückgängig gemacht werden."
+        />
+      ),
+    })),
+    ...completionReports.map((report) => ({
+      key: `fahrt-${report.id}`,
+      art: report.istFreieFahrt ? "Freie Fahrt" : "Fahrt",
+      grund: report.grund,
+      erstelltAm: report.erstelltAm,
+      href: `/fahrten/${report.completionId}`,
+      titel: report.fahrtTitel,
+      inhalt: report.fahrtNotiz,
+      begruendung: report.kommentar,
+      aktionen: (
+        <ReportedContentActions
+          reportId={report.id}
+          targetId={report.completionId}
+          type="completion"
+          deleteConfirmDescription="Die Fahrt verschwindet aus Feed und öffentlichem Profil, inklusive ihrer Karte. Der Fahrer behält seine Aufzeichnung."
+        />
+      ),
+    })),
+  ].sort((a, b) => a.erstelltAm.localeCompare(b.erstelltAm));
+
+  const offeneVorgaenge = routes.length + meldungen.length + feedback.length;
 
   return (
     <div className="flex h-dvh flex-col">
       <Header />
       <div className="flex-1 overflow-y-auto">
-        <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-10">
-        <div>
-          <h1 className="text-display font-semibold">Moderation</h1>
-          <p className="text-sm text-muted">
-            {routes.length}{" "}
-            {routes.length === 1
-              ? "unveröffentlichter Streckenvorschlag"
-              : "unveröffentlichte Streckenvorschläge"}
-          </p>
-          <p className="mt-1 text-sm">
-            <Link href="/moderation/creator" className="text-accent hover:underline">
-              Creator-Links
-            </Link>
-          </p>
-        </div>
+        {/* Innenabstände wie auf jeder anderen Inhaltsseite (Feed, Profil,
+            Bestenlisten) und wie im Skelett nebenan — px-6 py-10 auch auf dem
+            Telefon war der Ausreisser, und das Skelett sprang beim Auflösen
+            entsprechend. */}
+        <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-5 py-8 sm:px-6 sm:py-10">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h1 className="text-display font-semibold">Moderation</h1>
+              <p className="text-sm text-muted">
+                {offeneVorgaenge === 0
+                  ? "Nichts offen — die Warteschlange ist leer."
+                  : `${offeneVorgaenge} ${offeneVorgaenge === 1 ? "offener Vorgang" : "offene Vorgänge"}`}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {/* Fremdes Ziel, deshalb ein gewöhnliches <a> statt next/link
+                  und ein eigener Tab: die Warteschlange, die gerade
+                  abgearbeitet wird, soll beim Nachsehen im Postfach nicht
+                  verloren gehen. Ohne gesetzte MODERATION_POSTFACH_URL
+                  (siehe lib/constants.ts) erscheint der Link nicht. */}
+              {POSTFACH_URL && (
+                <a
+                  href={POSTFACH_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={buttonVariants({ variant: "secondary", size: "sm" })}
+                >
+                  <MailIcon className="h-4 w-4" aria-hidden="true" />
+                  Postfach
+                </a>
+              )}
+              <Link
+                href="/moderation/creator"
+                className={buttonVariants({ variant: "secondary", size: "sm" })}
+              >
+                <LinkIcon className="h-4 w-4" aria-hidden="true" />
+                Creator-Links
+              </Link>
+            </div>
+          </div>
 
-        {routes.length === 0 ? (
-          <p className="text-sm text-muted">Keine offenen Vorschläge.</p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {routes.map((route) => (
-              <Card key={route.id} className="flex flex-col gap-3 p-4">
-                <div className="flex items-baseline justify-between">
-                  <div>
+          <nav aria-label="Abschnitte" className="grid grid-cols-3 gap-2 sm:gap-3">
+            <Sprungmarke href="#vorschlaege" label="Vorschläge" count={routes.length} />
+            <Sprungmarke href="#meldungen" label="Meldungen" count={meldungen.length} />
+            <Sprungmarke href="#feedback" label="Feedback" count={feedback.length} />
+          </nav>
+
+          <section id="vorschlaege" className="flex scroll-mt-4 flex-col gap-3">
+            <AbschnittKopf title="Streckenvorschläge" count={routes.length} />
+
+            {routes.length === 0 ? (
+              <EmptyState icon={MapPinIcon} title="Kein Streckenvorschlag wartet auf Freigabe." />
+            ) : (
+              routes.map((route) => (
+                <Card key={route.id} className="flex flex-col gap-3 p-4">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                     <Link
                       href={`/strecken/${route.id}`}
                       className="font-medium transition-colors duration-fast hover:text-accent"
                     >
                       {route.name}
                     </Link>
-                    <p className="text-sm text-muted">
-                      {route.region} · {route.start_ort} → {route.ziel_ort} ·{" "}
-                      <span className="font-mono tabular-nums">{formatKm(route.laenge_km)} km</span>
-                    </p>
+                    {/* Das Einreichungsdatum stand bisher nirgends. In einer
+                        Warteschlange ist das Alter aber die Angabe, nach der
+                        entschieden wird, was als Nächstes drankommt. */}
+                    <span className="font-mono text-xs tabular-nums text-muted">
+                      {datumCH(new Date(route.created_at))}
+                    </span>
                   </div>
-                </div>
-                {route.charakter_text && (
-                  <p className="text-sm text-foreground">{route.charakter_text}</p>
-                )}
-                <ModerationActions routeId={route.id} />
-              </Card>
-            ))}
-          </div>
-        )}
-
-        <div className="mt-4">
-          <h2 className="text-display font-semibold">Gemeldete Inhalte</h2>
-          <p className="text-sm text-muted">
-            {offeneMeldungen} {offeneMeldungen === 1 ? "offene Meldung" : "offene Meldungen"}
-          </p>
-        </div>
-
-        {offeneMeldungen === 0 ? (
-          <p className="text-sm text-muted">Keine offenen Meldungen.</p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {routeReports.map((report) => (
-              <Card key={report.id} className="flex flex-col gap-3 p-4">
-                <div>
-                  <p className="text-xs font-semibold tracking-wide text-muted uppercase">
-                    Strecke gemeldet · {REPORT_REASON_LABEL[report.grund] ?? report.grund}
+                  <p className="text-sm text-muted">
+                    {route.region} · {route.start_ort} → {route.ziel_ort} ·{" "}
+                    <span className="font-mono tabular-nums">{formatKm(route.laenge_km)} km</span>
                   </p>
+                  {route.charakter_text && <Zitat>{route.charakter_text}</Zitat>}
+                  <ModerationActions routeId={route.id} />
+                </Card>
+              ))
+            )}
+          </section>
+
+          <section id="meldungen" className="flex scroll-mt-4 flex-col gap-3">
+            <AbschnittKopf title="Gemeldete Inhalte" count={meldungen.length} />
+
+            {meldungen.length === 0 ? (
+              <EmptyState icon={ShieldIcon} title="Keine offenen Meldungen." />
+            ) : (
+              meldungen.map((meldung) => (
+                <Card key={meldung.key} className="flex flex-col gap-3 p-4">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <Kennzeichen>{meldung.art}</Kennzeichen>
+                    <span className="text-xs text-muted">
+                      {REPORT_REASON_LABEL[meldung.grund] ?? meldung.grund}
+                    </span>
+                    <span className="ml-auto font-mono text-xs tabular-nums text-muted">
+                      {datumCH(new Date(meldung.erstelltAm))}
+                    </span>
+                  </div>
                   <Link
-                    href={`/strecken/${report.routeId}`}
+                    href={meldung.href}
                     className="font-medium transition-colors duration-fast hover:text-accent"
                   >
-                    {report.routeName}
+                    {meldung.titel}
                   </Link>
-                  {report.kommentar && (
-                    <p className="mt-1 text-sm text-foreground">„{report.kommentar}“</p>
+                  {meldung.inhalt && <Zitat label="Gemeldeter Inhalt">{meldung.inhalt}</Zitat>}
+                  {meldung.begruendung && (
+                    <Zitat label="Begründung der Meldung">{meldung.begruendung}</Zitat>
                   )}
-                </div>
-                <ReportedContentActions
-                  reportId={report.id}
-                  targetId={report.routeId}
-                  type="route"
-                  deleteConfirmDescription={`"${report.routeName}" wird endgültig gelöscht. Das kann nicht rückgängig gemacht werden.`}
-                />
-              </Card>
-            ))}
-            {ratingReports.map((report) => (
-              <Card key={report.id} className="flex flex-col gap-3 p-4">
-                <div>
-                  <p className="text-xs font-semibold tracking-wide text-muted uppercase">
-                    Kommentar gemeldet · {REPORT_REASON_LABEL[report.grund] ?? report.grund}
-                  </p>
-                  <Link
-                    href={`/strecken/${report.routeId}`}
-                    className="font-medium transition-colors duration-fast hover:text-accent"
-                  >
-                    {report.routeName}
-                  </Link>
-                  {report.ratingKommentar && (
-                    <p className="mt-1 text-sm text-foreground">„{report.ratingKommentar}“</p>
-                  )}
-                  {report.kommentar && (
-                    <p className="mt-1 text-sm text-muted">Meldungsgrund: „{report.kommentar}“</p>
-                  )}
-                </div>
-                <ReportedContentActions
-                  reportId={report.id}
-                  targetId={report.ratingId}
-                  type="rating"
-                  deleteConfirmDescription="Der Kommentar wird endgültig gelöscht. Das kann nicht rückgängig gemacht werden."
-                />
-              </Card>
-            ))}
-            {completionReports.map((report) => (
-              <Card key={report.id} className="flex flex-col gap-3 p-4">
-                <div>
-                  <p className="text-xs font-semibold tracking-wide text-muted uppercase">
-                    {report.istFreieFahrt ? "Freie Fahrt" : "Fahrt"} gemeldet ·{" "}
-                    {REPORT_REASON_LABEL[report.grund] ?? report.grund}
-                  </p>
-                  <Link
-                    href={`/fahrten/${report.completionId}`}
-                    className="font-medium transition-colors duration-fast hover:text-accent"
-                  >
-                    {report.fahrtTitel}
-                  </Link>
-                  {report.fahrtNotiz && (
-                    <p className="mt-1 text-sm text-foreground">„{report.fahrtNotiz}“</p>
-                  )}
-                  {report.kommentar && (
-                    <p className="mt-1 text-sm text-muted">Meldungsgrund: „{report.kommentar}“</p>
-                  )}
-                </div>
-                <ReportedContentActions
-                  reportId={report.id}
-                  targetId={report.completionId}
-                  type="completion"
-                  deleteConfirmDescription="Die Fahrt verschwindet aus Feed und öffentlichem Profil, inklusive ihrer Karte. Der Fahrer behält seine Aufzeichnung."
-                />
-              </Card>
-            ))}
-          </div>
-        )}
+                  {meldung.aktionen}
+                </Card>
+              ))
+            )}
+          </section>
 
-        {/* Rückmeldungen aus den Einstellungen (0083_feedback.sql). Bewusst
-            ein eigener Abschnitt statt einer vierten Sorte unter "Gemeldete
-            Inhalte": Feedback ist keine Meldung über jemanden, und die
-            Zählung oben soll nicht durch etwas steigen, das niemanden
-            betrifft. */}
-        <div className="mt-4">
-          <h2 className="text-display font-semibold">Feedback</h2>
-          <p className="text-sm text-muted">
-            {feedback.length}{" "}
-            {feedback.length === 1 ? "offene Rückmeldung" : "offene Rückmeldungen"}
-          </p>
-        </div>
+          {/* Rückmeldungen aus den Einstellungen (0083_feedback.sql). Bewusst
+              ein eigener Abschnitt statt einer vierten Sorte unter "Gemeldete
+              Inhalte": Feedback ist keine Meldung über jemanden, und die
+              Zählung oben soll nicht durch etwas steigen, das niemanden
+              betrifft. */}
+          <section id="feedback" className="flex scroll-mt-4 flex-col gap-3">
+            <AbschnittKopf title="Feedback" count={feedback.length} />
 
-        {feedback.length === 0 ? (
-          <p className="text-sm text-muted">Keine offenen Rückmeldungen.</p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {feedback.map((eintrag) => (
-              <Card key={eintrag.id} className="flex flex-col gap-3 p-4">
-                <div>
-                  <p className="text-xs font-semibold tracking-wide text-muted uppercase">
-                    {FEEDBACK_KATEGORIE_LABEL[eintrag.kategorie] ?? eintrag.kategorie} ·{" "}
-                    {datumCH(new Date(eintrag.erstelltAm))}
-                    {eintrag.absender && ` · ${eintrag.absender}`}
-                  </p>
-                  {/* whitespace-pre-line: eine Rückmeldung ist getippter
-                      Fliesstext, ihre Absätze sind Teil der Aussage. */}
-                  <p className="mt-1 text-sm whitespace-pre-line text-foreground">
-                    {eintrag.nachricht}
-                  </p>
-                </div>
-                <FeedbackActions feedbackId={eintrag.id} />
-              </Card>
-            ))}
-          </div>
-        )}
+            {feedback.length === 0 ? (
+              <EmptyState icon={FeedbackIcon} title="Keine offenen Rückmeldungen." />
+            ) : (
+              feedback.map((eintrag) => (
+                <Card key={eintrag.id} className="flex flex-col gap-3 p-4">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <Kennzeichen>
+                      {FEEDBACK_KATEGORIE_LABEL[eintrag.kategorie] ?? eintrag.kategorie}
+                    </Kennzeichen>
+                    {eintrag.absender && (
+                      <span className="text-xs text-muted">von {eintrag.absender}</span>
+                    )}
+                    <span className="ml-auto font-mono text-xs tabular-nums text-muted">
+                      {datumCH(new Date(eintrag.erstelltAm))}
+                    </span>
+                  </div>
+                  <Zitat>{eintrag.nachricht}</Zitat>
+                  <FeedbackActions feedbackId={eintrag.id} />
+                </Card>
+              ))
+            )}
+          </section>
         </main>
       </div>
     </div>

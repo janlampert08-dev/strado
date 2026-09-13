@@ -27,7 +27,10 @@ export default function ModerationActions({ routeId }: { routeId: string }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex gap-2">
+      {/* flex-wrap: drei Schaltflächen nebeneinander passen auf einem
+          schmalen Telefon (320 px) nicht mehr in eine Zeile, ohne dass die
+          Beschriftungen abgeschnitten werden. */}
+      <div className="flex flex-wrap gap-2">
         <Button
           size="sm"
           onClick={() => ausfuehren(() => approveRoute(routeId))}
