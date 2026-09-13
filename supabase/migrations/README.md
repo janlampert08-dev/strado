@@ -195,34 +195,55 @@ andere Trigger-Funktion im Schema (`enforce_completion_cooldown`,
 `enforce_route_proposal_cooldown`, `handle_new_user`). `darf_private_strecke_anlegen()`
 behält `authenticated` — die ist bewusst für den angemeldeten Aufrufer da.
 
-## Offen: 0083_feedback (Stand: 2026-09-13)
+## Eingespielt: 0083_feedback (2026-09-13)
 
 `0083_feedback.sql` legt die Tabelle `public.feedback` samt Policies,
 Spalten-Grants und Cooldown-Trigger an — die Datenbankseite von „Feedback
-senden" in den Einstellungen. Sie ist **noch nirgends eingespielt**, weder
-auf Staging noch in Produktion.
+senden" in den Einstellungen. Eingespielt in **Produktion** am 2026-09-13,
+vor dem Deploy des Codes, der sie braucht (PR #202).
 
-Was ohne sie passiert, ist der Fall aus dem Abschnitt ganz oben, nur diesmal
-vorher notiert: die Seite lädt, der Dialog geht auf, und das Absenden
-scheitert an einer Tabelle, die es nicht gibt — der Nutzer sieht „Das hat
-nicht geklappt", der Grund steht nur im Serverlog. Die Reihenfolge ist
-deshalb Schema zuerst, Code danach (siehe `.agents/deployment.md` §1), und
-Staging vor Produktion.
+**Ohne Staging-Probe.** Der Abschnitt „The staging environment" in
+`AGENTS.md` beschreibt eine eigene Supabase-Instanz für Staging; von der
+Sitzung aus, die diese Migration eingespielt hat, war sie nicht erreichbar —
+das verknüpfte Supabase-Konto führt genau ein Projekt, und dessen Ledger ist
+der Produktionsstand. Ob das Staging-Projekt unter einem anderen
+Supabase-Konto liegt oder nicht mehr existiert, ist damit **nicht**
+beantwortet; wer das nächste Mal eine Migration einspielt, klärt es besser
+vorher, statt es wie hier zu umgehen.
 
-Nach dem Einspielen gegenprüfen — die Grants sind hier der Punkt, nicht die
-blosse Existenz der Tabelle:
+Vertretbar war es, weil die Migration rein additiv ist: sie legt nur neue
+Objekte an, fasst keine bestehende Tabelle und keine bestehende Zeile an.
+Der Weg zurück wäre `drop table public.feedback cascade` plus
+`drop function public.enforce_feedback_cooldown()`.
 
-| Prüfung | Erwartet |
+**Der Ledger-Eintrag heisst `20260913122119 0083_feedback`**, nicht `0083` —
+das MCP-Werkzeug `apply_migration` stempelt einen Zeitstempel als `version`.
+Ein `select ... where version = '0083'` findet also nichts, obwohl die
+Migration läuft. Dasselbe Muster wie bei den Einträgen ab
+`20260901151128` weiter oben; massgeblich sind die Objekte.
+
+Gegenprobe nach dem Einspielen, alles gemessen statt angenommen:
+
+| Prüfung | Ergebnis |
 | --- | --- |
-| `feedback` existiert, RLS aktiv | ja |
-| Policies auf `feedback` (`pg_policies`) | 3 (insert für authenticated, select/update für Moderatoren) |
-| `with_check` der Update-Policy | `bearbeitet_von = auth.uid()` — nicht leer (sonst der Defekt aus 0071) |
-| Spalten-Grants `authenticated` auf `feedback` (`aclexplode`) | INSERT nur auf `user_id`, `kategorie`, `nachricht`; UPDATE nur auf `status`, `bearbeitet_am`, `bearbeitet_von`; SELECT auf der Tabelle |
-| Grants für `anon` auf `feedback` | keine |
-| Trigger `feedback_cooldown` vorhanden | ja |
-| EXECUTE auf `enforce_feedback_cooldown()` | nur `postgres`, `service_role` — `has_function_privilege('anon', …, 'EXECUTE')` muss false sein |
+| `feedback` existiert, RLS aktiv | ja / `relrowsecurity = true` |
+| Policies (`pg_policies`) | 3: INSERT (authenticated), SELECT + UPDATE (Moderatoren) |
+| `with_check` der Update-Policy | `bearbeitet_von = auth.uid()` — gesetzt, also nicht der Defekt aus 0071 |
+| Grants `authenticated` | `INSERT(user_id, kategorie, nachricht)`, `SELECT`, `UPDATE(status, bearbeitet_am, bearbeitet_von)` |
+| Grants `anon` | keine (kein Eintrag) |
+| Check-Constraints | 3: `kategorie`, `char_length(nachricht) 10…2000`, `status` |
+| Fremdschlüssel | `user_id` → `auth.users` ON DELETE CASCADE, `bearbeitet_von` → ON DELETE SET NULL |
+| Index | `feedback_status_erstellt_am_idx (status, erstellt_am)` |
+| Trigger | `feedback_cooldown` vorhanden |
+| `has_function_privilege(…, 'enforce_feedback_cooldown()', 'EXECUTE')` | `anon` false, `authenticated` false |
+| Zeilen | 0 |
 
-Der Präfix `0083` ist bewusst gewählt statt `0080`: `0080` liegt in zwei
+Nicht geprüft, weil dafür in die Produktionstabelle geschrieben werden
+müsste: dass der Cooldown-Trigger bei einer zweiten Einsendung innerhalb von
+60 Sekunden tatsächlich `cooldown_active` wirft. Sein Aufbau entspricht
+Zeile für Zeile den Triggern aus `0024`/`0041`, die laufen.
+
+Der Präfix `0083` war bewusst gewählt statt `0080`: `0080` liegt in zwei
 offenen Branches (`claude/creator-tracking-links-plan-j6oiwl`,
 `claude/motorklassen-vergleich-feature-20uan8`), `0081` und `0082` je in
 einem weiteren. Das siebte Kollisionspaar entsteht hier also nicht.
