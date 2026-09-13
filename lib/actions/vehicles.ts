@@ -24,6 +24,11 @@ const GETRIEBE_TYPEN: Getriebe[] = ["manuell", "automatik"];
 const MAX_MARKE_MODELL_LENGTH = 60;
 const MIN_BAUJAHR = 1900;
 const MAX_BAUJAHR = 2100;
+// Müssen mit den Check-Constraints aus 0080_motorklassen.sql übereinstimmen.
+// Beide Angaben sind freiwillig: ohne leistung_kw hat das Fahrzeug keine
+// Motorklasse und die Fahrt zählt weiterhin nur in der Gesamtwertung.
+const MAX_HUBRAUM_CCM = 10000;
+const MAX_LEISTUNG_KW = 2000;
 const ADD_VEHICLE_COOLDOWN_MS = 2000;
 
 async function insertVehicleFromFormData(formData: FormData): Promise<InsertVehicleResult> {
@@ -42,6 +47,14 @@ async function insertVehicleFromFormData(formData: FormData): Promise<InsertVehi
   const getriebe = String(formData.get("getriebe") ?? "");
   const baujahrRaw = String(formData.get("baujahr") ?? "").trim();
   const baujahr = baujahrRaw ? Number(baujahrRaw) : null;
+  const hubraumRaw = String(formData.get("hubraum_ccm") ?? "").trim();
+  const hubraumCcm = hubraumRaw ? Number(hubraumRaw) : null;
+  // Komma als Dezimaltrennzeichen zulassen — auf einem Schweizer Handy ist
+  // das die naheliegende Eingabe, und Number("11,5") wäre NaN.
+  const leistungRaw = String(formData.get("leistung_kw") ?? "")
+    .trim()
+    .replace(",", ".");
+  const leistungKw = leistungRaw ? Number(leistungRaw) : null;
 
   if (!marke || !modell) {
     return { error: "Marke und Modell sind erforderlich.", vehicle: null };
@@ -61,6 +74,24 @@ async function insertVehicleFromFormData(formData: FormData): Promise<InsertVehi
   if (baujahr !== null && (!Number.isInteger(baujahr) || baujahr < MIN_BAUJAHR || baujahr > MAX_BAUJAHR)) {
     return { error: `Baujahr muss zwischen ${MIN_BAUJAHR} und ${MAX_BAUJAHR} liegen.`, vehicle: null };
   }
+  if (
+    hubraumCcm !== null &&
+    (!Number.isInteger(hubraumCcm) || hubraumCcm <= 0 || hubraumCcm > MAX_HUBRAUM_CCM)
+  ) {
+    return {
+      error: `Hubraum muss eine ganze Zahl zwischen 1 und ${MAX_HUBRAUM_CCM} cm³ sein.`,
+      vehicle: null,
+    };
+  }
+  if (
+    leistungKw !== null &&
+    (!Number.isFinite(leistungKw) || leistungKw <= 0 || leistungKw > MAX_LEISTUNG_KW)
+  ) {
+    return {
+      error: `Leistung muss zwischen 1 und ${MAX_LEISTUNG_KW} kW liegen.`,
+      vehicle: null,
+    };
+  }
 
   if (
     await isRateLimited(supabase, "vehicles", "created_at", "user_id", user.id, ADD_VEHICLE_COOLDOWN_MS)
@@ -77,6 +108,8 @@ async function insertVehicleFromFormData(formData: FormData): Promise<InsertVehi
       modell,
       getriebe: getriebe as Getriebe,
       baujahr,
+      hubraum_ccm: hubraumCcm,
+      leistung_kw: leistungKw,
     })
     .select()
     .single();

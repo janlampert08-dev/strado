@@ -29,6 +29,290 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Reihenfolge der Motorklassen-Migrationen
+
+Alle drei gehören **vor** den Deploy des Codes, der sie braucht, und in
+dieser Reihenfolge:
+
+| # | Datei | gehört eingespielt |
+| --- | --- | --- |
+| 1 | `0080_motorklassen.sql` | vor dem Deploy von PR 1 |
+| 2 | `0081_freie_fahrt_motorklasse_belegt.sql` | unmittelbar nach 0080, vor dem Deploy von PR 2 |
+| 3 | `0082_motorklasse_backfill_freie_fahrten.sql` | nach 0080; an keinem Deploy hängend, und direkt nach 0080 ohnehin ein No-op |
+
+Warum die Reihenfolge hier ausdrücklich steht: Die Abschnitte unten sind
+nach Neuigkeit sortiert, also 0082 vor 0081 vor 0080 — die Lesereihenfolge
+ist nicht die Einspielreihenfolge.
+
+## Eingespielt: 0080, 0081, 0082 und 0084 (2026-09-13, Produktion)
+
+Alle vier in einer Sitzung, in dieser Reihenfolge, **vor** dem Deploy des
+Codes, der sie braucht — der Motorklassen- und Creator-Code lag zu diesem
+Zeitpunkt auf `staging`, nicht auf `main`. Ledger-Einträge (`apply_migration`
+stempelt einen Zeitstempel als `version`, nicht die Dateinummer — eine Suche
+nach `0080` findet sie also nicht):
+
+| Datei | Ledger-`version` |
+| --- | --- |
+| `0080_motorklassen` | `20260913184239` |
+| `0081_freie_fahrt_motorklasse_belegt` | `20260913190118` |
+| `0082_motorklasse_backfill_freie_fahrten` | `20260913191520` |
+| `0084_creator_links` | `20260913191653` |
+
+**Mengengerüst vorab erhoben** (die Zahlen, die `0080` und `0082` im Kopf
+verlangen): `route_completions` 9 Zeilen, `vehicles` 6 Zeilen. Der
+Tabellen-Rewrite durch die `STORED`-Spalte betraf damit 9 Zeilen.
+
+### Gegenprobe, alles zurückgelesen statt angenommen
+
+| Prüfung | Ergebnis |
+| --- | --- |
+| `vehicles.hubraum_ccm` / `leistung_kw` | ✅ `integer` / `numeric` |
+| `route_completions.motorklasse_gewertet` | ✅ `is_generated = ALWAYS` |
+| Funktionen 0080 (5 Stück) | ✅ alle vorhanden |
+| Formel-Stichprobe | ✅ `motorrad 11kW/125→moto_a1`, `11kW/250→moto_a35`, `auto 111kW→auto_bis220`, ohne kW → `NULL` |
+| Trigger | ✅ `route_completions_motorklasse`, `vehicles_leistung_gesperrt` |
+| Indizes | ✅ beide partiellen Indizes |
+| `EXECUTE` auf `set_motorklasse()` | ✅ `anon` false, `authenticated` false |
+| Views tragen `motorklasse` **als letzte Spalte** | ✅ `leaderboard_completions`, `route_leaderboard` |
+| `save_free_ride_with_segments` | ✅ `SECURITY INVOKER`, `motorklasse_belegt` in **beiden** INSERTs, Grants aus 0050/0051 erhalten (`anon` false, `authenticated` true) |
+| `0082`-Wirkung | ✅ **0 Zeilen** — kein Fahrzeug trägt `leistung_kw`, der dokumentierte No-op-Fall |
+| `creator_links` RLS + Policy | ✅ `relrowsecurity = true`, 1 Policy, 4 CHECK-Constraints |
+| `creator_links` Grants | ✅ `anon` **keine**, `authenticated` `INSERT/SELECT/UPDATE/DELETE` |
+| `creator_link_aufloesen` | ✅ `SECURITY DEFINER`, `search_path=public, pg_temp`, `EXECUTE` von `PUBLIC` entzogen, an `anon` vergeben |
+| Nutzdaten unverändert | ✅ 9 Fahrten / 6 Fahrzeuge vor und nach |
+
+**Verhaltenstest als `anon`** (in einer Transaktion mit `rollback`, Testzeile
+danach nachweislich weg) — das ist die Zusage aus dem Creator-PR, hier gegen
+die echte Datenbank statt gegen ein Wegwerf-Postgres:
+
+| Fall | Ergebnis |
+| --- | --- |
+| Rückgabesignatur | `TABLE(code text, kanal text, kampagne text)` — `name` fehlt **strukturell** |
+| bekannter Code | `code / kanal / kampagne`, **kein `name`** |
+| unbekannter Code | keine Zeile |
+| `null` als Code | keine Zeile — kein Auflisten möglich |
+| direkter Tabellenzugriff als `anon` | verweigert, kein Grant |
+
+### Ohne Staging-Probe — und diesmal ist geklärt, warum
+
+`0083` musste diese Abweichung schon einmal benennen. Jetzt ist die offene
+Frage beantwortet: Das verknüpfte Supabase-Konto führt **genau ein Projekt**
+(`Strado`, `stecakpnuijbvjsniqto`). Ein eigenes Staging-Projekt existiert
+darunter nicht. Entweder liegt es unter einem fremden Konto oder es gibt es
+nicht mehr — so oder so ist `staging.strado.ch` aus diesem Konto heraus nicht
+getrennt probefahrbar. **Das gehört entschieden, bevor eine Migration kommt,
+die nicht rein additiv ist:** hier waren alle vier additiv (nur neue Objekte,
+keine bestehende Tabelle umgebaut, keine Zeile inhaltlich geändert), bei einer
+destruktiven Migration wäre das Fehlen der Generalprobe ein Stopp-Grund.
+
+Weg zurück, falls nötig: `0084` per `drop table public.creator_links cascade`
+plus `drop function public.creator_link_aufloesen(text)`; `0080` per Droppen
+der zwei Trigger, fünf Funktionen, zwei Indizes und fünf Spalten;
+`0081` durch Wiedereinspielen der Fassung aus `0050`. `0082` hat nichts
+geschrieben und braucht keinen Rückweg.
+
+### Nebenbefund, nicht durch diese Migrationen verursacht
+
+`leaderboard_klassen_totals` trägt für `anon` neben `SELECT` auch
+`INSERT/UPDATE/DELETE/TRUNCATE` — die Supabase-Default-Privilegien, die `0034`
+und `0084` mit „erst entziehen, dann gezielt geben“ umgehen; `0080` vergibt
+nur `SELECT`, ohne vorher zu entziehen. **Folgenlos:**
+`pg_relation_is_updatable` liefert für die View `0`, PostgreSQL weist jeden
+Schreibversuch also unabhängig vom Grant ab, und `INSTEAD OF`-Trigger gibt es
+keine. Bemerkenswert ist vor allem, dass **alle** bestehenden Views dasselbe
+Bild zeigen (`leaderboard_completions`, `leaderboard_user_totals`,
+`route_leaderboard`, `public_fahrten`) — der Grant-Zuschnitt ist also
+Hausstand, nicht Regression. Aufräumen wäre ein eigener Vorgang über alle
+Views hinweg, kein Anhängsel an diese Migration.
+
+## Eingespielt: 0082_motorklasse_backfill_freie_fahrten (2026-09-13)
+
+*Die Überschrift stand bis zum 2026-09-13 auf „Noch NICHT eingespielt“.
+Der Abschnitt darunter beschreibt weiterhin die Vorab-Überlegungen; das
+Ergebnis des Laufs steht oben unter „Eingespielt: 0080, 0081, 0082 und
+0084“.*
+
+Neu mit PR „Motorklassen: globale Ranglisten“. Traegt die Motorklasse fuer
+bestehende **freie** Fahrten nach, indem ein UPDATE den Trigger aus 0080
+ausloest. **Setzt 0080 voraus.**
+
+Vor dem Einspielen zaehlen — die zweite Zahl ist die erwartete Wirkung:
+
+```sql
+select count(*) from public.route_completions
+ where art = 'frei' and fahrzeug_id is not null and motorklasse is null;
+
+select count(*) from public.route_completions rc
+  join public.vehicles v on v.id = rc.fahrzeug_id
+ where rc.art = 'frei' and rc.motorklasse is null and v.leistung_kw is not null;
+```
+
+Ist die zweite Zahl 0, ist die Migration ein No-op — der Normalfall direkt
+nach 0080, weil dann noch niemand eine Leistung eingetragen hat. Sie ist
+idempotent und kann spaeter gefahrlos erneut laufen; sinnvoll ist das erst,
+wenn Fahrzeuge Leistungsangaben tragen.
+
+Die zweite Zahl ist zugleich die Zahl der Zeilen, die überhaupt geschrieben
+werden: Fahrten an Fahrzeugen ohne Leistungsangabe fasst die Migration nicht
+an, weil `public.motorklasse()` dafür immer `null` liefert (0080) und ein
+UPDATE die Zeile also nur schreiben würde, ohne etwas ändern zu können.
+
+**Streckenfahrten sind bewusst ausgenommen.** Der Trigger
+`route_completions_recompute_coverage` (0052) feuert auf jedem UPDATE und
+setzt fuer `art = 'strecke'` `ist_oeffentlich := ist_oeffentlich and
+coverage >= 75` — mit der seit 0078 geaenderten Formel. Ein Backfill ueber
+Streckenfahrten wuerde also oeffentliche Bestandsfahrten still auf privat
+setzen. `docs/audit/README.md` haelt zu 0078 fest: „Existing rows are not
+re-scored; the trigger only runs on write." Das bleibt so.
+
+Die Migration meldet ihr Ergebnis per `raise notice` mit **drei** Zahlen —
+diese Zeile gehört nach dem Lauf ins Protokoll:
+
+| Zahl | bedeutet |
+| --- | --- |
+| gesetzt | Fahrten, die jetzt tatsächlich eine Klasse tragen |
+| uebersprungen | Fahrten, die am klassenabhängigen Tempo-Deckel aus 0080 scheiterten und unverändert ohne Klasse bleiben |
+| unberuehrt | Fahrten, deren Fahrzeug keine Leistungsangabe trägt — gar nicht erst geschrieben |
+
+Die dritte Zahl kam durch die CodeRabbit-Review zu PR 4 dazu: vorher zählte
+die Migration diese Fahrten als „gesetzt“ und meldete damit eine Wirkung, die
+es nicht gab. Wer die erste Zahl als Deploy-Protokoll liest, hätte sich auf
+eine falsche Zahl verlassen.
+
+## Eingespielt: 0081_freie_fahrt_motorklasse_belegt (2026-09-13)
+
+*Überschrift am 2026-09-13 umgestellt, siehe oben.*
+
+Neu mit PR „Motorklassen: belegte Klasse aus dem Track“. Erweitert
+`save_free_ride_with_segments` (0050) um `motorklasse_belegt` in beiden
+INSERTs. **Setzt 0080 voraus** (die Spalte muss existieren) und gehört
+unmittelbar danach eingespielt.
+
+**Auch diese Migration muss vor dem Deploy von PR 2 liegen, nicht nur mit ihm
+zusammen — und der Ausfall ist hier ein stiller.** `logFreeRide()` in
+`lib/actions/completions.ts` schickt `motorklasse_belegt` im jsonb-Argument
+mit. Eine PostgreSQL-Funktion liest aus einem `jsonb` nur die Schlüssel, nach
+denen sie fragt; ein unbekannter Schlüssel löst keinen Fehler aus, sondern
+wird ignoriert. Läuft der Code also gegen die alte Fassung der Funktion, wird
+jede freie Fahrt ohne Belegwert gespeichert — ohne Fehlermeldung, ohne
+Log-Eintrag, und nachtragen lässt es sich nicht: der rohe Trail mit
+Zeitstempeln existiert nur während des Speicherns (0044). Die Fahrten aus
+diesem Fenster sind dauerhaft unbelegt.
+
+`create or replace` erhält die Rechte: der Entzug für `anon` aus 0051 und das
+`EXECUTE` für `authenticated` aus 0050 bleiben. Keine Datenänderung.
+
+Danach prüfen, dass **beide** INSERTs die Spalte tragen — nicht nur, dass der
+Name irgendwo in der Definition vorkommt:
+
+```sql
+-- Die Definition an jedem INSERT auf route_completions aufteilen: es muss
+-- genau zwei geben (Fahrt und Segmente), und jeder muss die Spalte nennen.
+select (count(*) = 2) and bool_and(teil like '%motorklasse_belegt%') as ok
+  from unnest(
+         (string_to_array(
+            pg_get_functiondef(
+              'public.save_free_ride_with_segments(jsonb,jsonb)'::regprocedure),
+            'insert into public.route_completions'))[2:]
+       ) as teil;
+```
+
+Die Signatur steht ausgeschrieben, damit die Abfrage nicht versehentlich eine
+gleichnamige Funktion in einem anderen Schema prüft; existiert die Funktion
+nicht, bricht der Cast mit einem Fehler ab statt leer zurückzukommen. Der Test
+ist textuell und hängt daran, wie 0081 die INSERTs schreibt — wer die
+Migration umformuliert, passt ihn mit an.
+
+## Eingespielt: 0080_motorklassen (2026-09-13)
+
+*Überschrift am 2026-09-13 umgestellt, siehe oben.*
+
+Neu mit PR „Motorklassen: Datenmodell und Klassenformel“.
+
+**Diese Migration muss VOR dem Deploy von PR 1 eingespielt sein, nicht nur
+zusammen mit ihm.** `insertVehicleFromFormData()` in `lib/actions/vehicles.ts`
+— die gemeinsame Grundlage von `addVehicle` und `addVehicleInline` — schickt
+`hubraum_ccm` und `leistung_kw` bei **jedem** Insert mit, auch wenn beide
+Felder leer sind und `null` übertragen wird. Auf dem Schema vor 0080 gibt es
+diese Spalten nicht, also schlägt **jedes** Anlegen eines Fahrzeugs fehl, nicht
+nur eines mit Leistungsangabe. Eine frühere Fassung dieses Abschnitts sagte
+„schlägt fehl, sobald `hubraum_ccm`/`leistung_kw` mitgeschickt werden“ — das
+klang nach einer Bedingung und war eine Fehleinschätzung; gefunden hat sie die
+CodeRabbit-Review zu PR 1.
+
+Das Fahrzeug-Anlegen ist Teil des Kern-Loops (Schritt 5, Fahrt-Fazit): Ohne die
+Migration bricht der Weg dorthin ab, sobald jemand ein Fahrzeug hinzufügen
+will.
+
+Vor dem Einspielen zählen — die Migration entstand ohne Datenbankzugriff, die
+Zahlen sind nicht erhoben:
+
+```sql
+select count(*) from public.route_completions;  -- STORED generated column
+select count(*) from public.vehicles;           -- schreibt die Tabelle einmal neu
+```
+
+In **einer** Sitzung einspielen: Spalten, Funktionen, Trigger und Views hängen
+voneinander ab. Danach prüfen, dass alle Objekte existieren:
+
+```sql
+select proname from pg_proc
+ where proname in ('motorklasse','motorklasse_rang','motorklasse_hoehere',
+                   'set_motorklasse','vehicles_leistung_einfrieren');
+select tgname from pg_trigger
+ where tgname in ('route_completions_motorklasse','vehicles_leistung_gesperrt');
+select column_name, is_generated from information_schema.columns
+ where table_name = 'route_completions' and column_name like 'motorklasse%';
+select count(*) from public.leaderboard_klassen_totals;
+```
+
+Der letzte Punkt ist der wichtigste und nicht selbstverständlich:
+`motorklasse_gewertet` ist `generated always … stored` und wird aus einer
+Spalte berechnet, die ein BEFORE-Trigger setzt. PostgreSQL berechnet
+generierte Spalten nach den BEFORE-Triggern — nach dem Einspielen mit einer
+echten Testfahrt gegenprüfen, dass `motorklasse_gewertet` tatsächlich gefüllt
+ist und nicht null bleibt.
+
+Keine der drei `create or replace view` benennt eine Spalte um; die Views
+hängen nur an. Grants bleiben deshalb erhalten, und
+`leaderboard_user_totals` braucht keine Änderung.
+
+
+## Eingespielt: 0084_creator_links (2026-09-13)
+
+*Überschrift am 2026-09-13 umgestellt, siehe oben.*
+
+`0080_creator_links.sql` legt die Tabelle der Creator-Einstiegscodes an
+(`/c/<code>`, verwaltet unter `/moderation/creator`) plus die
+`SECURITY DEFINER`-Funktion `creator_link_aufloesen(text)`, über die der
+öffentliche Weg läuft.
+
+**Der Code dazu ist bereits gemergt und funktioniert ohne die Tabelle
+nicht.** Ohne sie liefert `/c/<code>` für jeden Code die Startseite ohne
+Zuordnung, und `/moderation/creator` zeigt eine leere Liste — beides ohne
+sichtbaren Fehler. Das ist genau das Muster, das weiter oben unter
+„Nachgezogene Migrationen" steht: grünes CI sagt nichts über das Schema.
+
+Reihenfolge wie üblich: erst Staging-Datenbank, dann Produktion.
+
+Gegengeprüft wird an den Objekten, nicht am Ledger:
+
+```sql
+-- Tabelle da?
+select count(*) from public.creator_links;
+
+-- Funktion da, und hat anon nur sie und nicht die Tabelle?
+select has_function_privilege('anon', 'public.creator_link_aufloesen(text)', 'execute') as fn,
+       has_table_privilege('anon', 'public.creator_links', 'select')                    as tabelle;
+-- erwartet: fn = true, tabelle = false
+```
+
+Die Migration wurde vor dem Merge gegen ein leeres Postgres 16 mit
+nachgebildeter `auth`/`profiles`-Umgebung durchgespielt: Constraints,
+Policy, Grants und die Funktion verhalten sich wie beschrieben. Das ersetzt
+die Einspielung nicht, es ersetzt nur die Überraschung dabei.
+
 ## Nachgezogene Migrationen (2026-09-02/03)
 
 Bei einer vollständigen Prüfung der Datenbank fiel auf, dass mehrere bereits
@@ -243,10 +527,19 @@ müsste: dass der Cooldown-Trigger bei einer zweiten Einsendung innerhalb von
 60 Sekunden tatsächlich `cooldown_active` wirft. Sein Aufbau entspricht
 Zeile für Zeile den Triggern aus `0024`/`0041`, die laufen.
 
-Der Präfix `0083` war bewusst gewählt statt `0080`: `0080` liegt in zwei
-offenen Branches (`claude/creator-tracking-links-plan-j6oiwl`,
+Der Präfix `0083` war bewusst gewählt statt `0080`: `0080` lag damals in
+zwei offenen Branches (`claude/creator-tracking-links-plan-j6oiwl`,
 `claude/motorklassen-vergleich-feature-20uan8`), `0081` und `0082` je in
-einem weiteren. Das siebte Kollisionspaar entsteht hier also nicht.
+einem weiteren.
+
+Beim Zusammenführen auf `staging` ist genau diese Kollision dann doch
+aufgetreten — zwei Dateien mit dem Präfix `0080`, jede für sich grün,
+zusammen rot. Aufgelöst durch Umbenennen der Creator-Migration auf
+`0084`; die Motorklassen-Seite behielt `0080`, weil `0081` und `0082`
+auf ihr aufbauen und sonst drei Dateien statt einer umzunummerieren
+gewesen wären. Keine der beiden war eingespielt, das Umbenennen fällt
+also nicht unter Kernregel 9. Das siebte Kollisionspaar ist damit nicht
+entstanden.
 
 ## Was aus einer Migration heraus nicht geht
 
