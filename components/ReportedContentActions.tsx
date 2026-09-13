@@ -58,7 +58,9 @@ export default function ReportedContentActions({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex gap-2">
+      {/* flex-wrap wie in ModerationActions.tsx — "Fahrt verbergen" neben
+          "Ignorieren" wird auf einem schmalen Telefon sonst gequetscht. */}
+      <div className="flex flex-wrap gap-2">
         <Button
           variant="secondary"
           size="sm"

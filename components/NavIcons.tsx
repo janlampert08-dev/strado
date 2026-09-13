@@ -14,3 +14,7 @@ export { Sparkles as SparklesIcon } from "lucide-react";
 // Ebenfalls kein Nav-Icon, aus demselben Grund hier: der Leerzustand der
 // Creator-Links unter /moderation/creator.
 export { Link2 as LinkIcon } from "lucide-react";
+
+// Ebenso: der Leerzustand des Feedback-Abschnitts unter /moderation und,
+// daneben im Kopf derselben Seite, der Link ins Postfach.
+export { MessageSquare as FeedbackIcon, Mail as MailIcon } from "lucide-react";
