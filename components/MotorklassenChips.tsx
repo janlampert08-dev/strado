@@ -25,22 +25,35 @@ import { cn } from "@/lib/utils/cn";
 //   onChange — die Auswahl lebt im Client-State. Für die Streckenseite, die
 //              Karte, Fotos, Bewertungen und Wetter mitlädt und die nicht
 //              bei jedem Chip-Tipp komplett neu berechnet werden soll.
-//   hrefFor  — die Auswahl steht in der URL. Für /leaderboards, wo die
+//   hrefs    — die Auswahl steht in der URL. Für /leaderboards, wo die
 //              Listen die Seite ausmachen: die Seite bleibt Server
 //              Component, der Zurück-Knopf funktioniert, und ein Link auf
 //              eine Klasse ist teilbar.
+//
+// Warum `hrefs` eine fertige Zuordnung ist und keine Funktion: Diese Datei
+// ist "use client", /leaderboards ist eine Server Component. React kann
+// keine Funktion über diese Grenze reichen — der Versuch endet mit
+// "Functions cannot be passed directly to Client Components", und zwar
+// beim Rendern, also erst bei einer echten Anfrage. Weder `next build`
+// noch die Testsuite sehen das. Eine Zuordnung aus Zeichenketten ist
+// serialisierbar, und der Typ schliesst den Rückfall aus.
 export default function MotorklassenChips({
   klassen,
   aktiv,
   onChange,
-  hrefFor,
+  hrefs,
   label,
   vorne,
 }: {
   klassen: Motorklasse[];
   aktiv: Motorklasse | null;
   onChange?: (klasse: Motorklasse | null) => void;
-  hrefFor?: (klasse: Motorklasse | null) => string;
+  /**
+   * Ziel je Chip, vorberechnet von der Seite. Schlüssel ist die Klassen-ID,
+   * für "Alle" die Konstante {@link CHIP_ALLE}. Bewusst keine Funktion —
+   * siehe oben.
+   */
+  hrefs?: Record<string, string>;
   /** Für Screenreader: worauf sich die Auswahl bezieht. */
   label: string;
   /** Zusätzlicher Chip ganz vorn, z.B. "Meine Klasse". */
@@ -61,7 +74,7 @@ export default function MotorklassenChips({
       className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1"
     >
       {vorne}
-      <Chip aktiv={aktiv === null} onChange={onChange} hrefFor={hrefFor} wert={null}>
+      <Chip aktiv={aktiv === null} onChange={onChange} href={hrefs?.[CHIP_ALLE]} wert={null}>
         Alle
       </Chip>
       {sichtbar.map((k) => (
@@ -69,7 +82,7 @@ export default function MotorklassenChips({
           key={k.id}
           aktiv={aktiv === k.id}
           onChange={onChange}
-          hrefFor={hrefFor}
+          href={hrefs?.[k.id]}
           wert={k.id}
           title={k.regel}
         >
@@ -79,6 +92,10 @@ export default function MotorklassenChips({
     </div>
   );
 }
+
+// Schlüssel des "Alle"-Eintrags in `hrefs`. Als Konstante, damit Seite und
+// Leiste sich nicht über eine abgetippte Zeichenkette verständigen müssen.
+export const CHIP_ALLE = "alle";
 
 // Die Chip-Optik an einer Stelle, damit die beiden Betriebsarten und der
 // "Meine Klasse"-Chip nicht auseinanderlaufen.
@@ -97,21 +114,21 @@ function Chip({
   aktiv,
   wert,
   onChange,
-  hrefFor,
+  href,
   title,
   children,
 }: {
   aktiv: boolean;
   wert: Motorklasse | null;
   onChange?: (klasse: Motorklasse | null) => void;
-  hrefFor?: (klasse: Motorklasse | null) => string;
+  href?: string;
   title?: string;
   children: React.ReactNode;
 }) {
-  if (hrefFor) {
+  if (href) {
     return (
       <Link
-        href={hrefFor(wert)}
+        href={href}
         title={title}
         // Kein aria-pressed an einem Link: aktiv heisst hier "das ist die
         // Seite, auf der du gerade bist".

@@ -8,7 +8,7 @@ import Avatar from "@/components/Avatar";
 import { getGlobalLeaderboards, type LeaderboardEntry } from "@/lib/leaderboard";
 import { listRouteChoices } from "@/lib/routes";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
-import MotorklassenChips, { chipClassName } from "@/components/MotorklassenChips";
+import MotorklassenChips, { CHIP_ALLE, chipClassName } from "@/components/MotorklassenChips";
 import {
   MOTORKLASSEN,
   istMotorklasse,
@@ -90,6 +90,16 @@ function klassenHref(klasse: Motorklasse | null): string {
   return klasse ? `/leaderboards?klasse=${klasse}` : "/leaderboards";
 }
 
+// Die Ziele aller Chips einmal vorberechnen. MotorklassenChips ist
+// "use client", diese Seite eine Server Component — eine Funktion darf diese
+// Grenze nicht überqueren, eine Zuordnung aus Zeichenketten schon. Die Form
+// der Adresse bleibt damit hier, wo auch die Gegenprüfung des Parameters
+// steht (istMotorklasse oben).
+const KLASSEN_HREFS: Record<string, string> = {
+  [CHIP_ALLE]: klassenHref(null),
+  ...Object.fromEntries(ALLE_KLASSEN.map((k) => [k, klassenHref(k)])),
+};
+
 export default async function LeaderboardsPage({
   searchParams,
 }: {
@@ -148,7 +158,7 @@ export default async function LeaderboardsPage({
           <MotorklassenChips
             klassen={ALLE_KLASSEN}
             aktiv={klasse}
-            hrefFor={klassenHref}
+            hrefs={KLASSEN_HREFS}
             label="Bestenlisten nach Motorklasse filtern"
             vorne={
               meineKlasse && meineKlasse !== klasse ? (
