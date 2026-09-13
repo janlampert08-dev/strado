@@ -1,47 +1,36 @@
 import Skeleton from "@/components/ui/Skeleton";
-import Card from "@/components/ui/Card";
 import PageSkeleton from "@/components/ui/PageSkeleton";
+import LeaderboardListsSkeleton from "@/components/LeaderboardListsSkeleton";
 
-// Spiegelt app/leaderboards/page.tsx: Überschrift im text-display-Grad mit
-// erklärendem Absatz, darunter die Ranglisten-Sections. Eine Rangliste ist
-// eine Card mit getrennten Zeilen (divide-y), nicht acht einzelne Karten —
-// das zeichnete diese Datei vorher, und beim Auflösen sprang die ganze
-// Liste um mehrere Trennlinien zusammen.
-
-function LeaderboardSectionSkeleton() {
-  return (
-    <section className="flex flex-col gap-3">
-      <Skeleton className="h-4 w-32 rounded-sm" />
-      <Card className="divide-y divide-border">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-2 px-4 py-3">
-            <Skeleton className="h-4 w-4 shrink-0 rounded-sm" />
-            <Skeleton className="h-6 w-6 shrink-0 rounded-full" />
-            <Skeleton className="h-4 flex-1 rounded-sm" />
-            <Skeleton className="h-4 w-16 shrink-0 rounded-sm" />
-          </div>
-        ))}
-      </Card>
-    </section>
-  );
-}
+// Spiegelt app/leaderboards/page.tsx: Überschrift im text-display-Grad,
+// darunter die Chip-Leiste, darunter die Ranglisten.
+//
+// Der erklärende Absatz unter der Überschrift ist entfallen, hier wie dort —
+// ein Skelett, das eine Zeile zeichnet, die es nicht mehr gibt, erzeugt beim
+// Auflösen genau den Sprung, den es verhindern soll.
+//
+// Die Listen kommen aus components/LeaderboardListsSkeleton.tsx, weil die
+// Suspense-Grenze in page.tsx dasselbe Bild braucht. Zwei Kopien liefen
+// auseinander.
 
 export default function Loading() {
   return (
     <PageSkeleton maxWidth="max-w-2xl lg:max-w-5xl">
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-3">
         <Skeleton className="h-9 w-56 rounded-md" />
-        <Skeleton className="h-4 w-full rounded-sm" />
-        <Skeleton className="h-4 w-3/4 rounded-sm" />
+        {/* Die Chip-Leiste: sieben Pillen in h-9 wie in
+            components/MotorklassenChips.tsx ("Alle" plus sechs Klassen).
+            Die Breiten stehen ausgeschrieben und nicht als `w-${n}`:
+            Tailwind liest den Quelltext statisch, eine zusammengebaute
+            Klasse entsteht gar nicht erst. */}
+        <div className="flex gap-1.5 overflow-hidden pb-1">
+          {["w-14", "w-20", "w-24", "w-20", "w-24", "w-28", "w-24"].map((w, i) => (
+            <Skeleton key={i} className={`h-9 shrink-0 rounded-full ${w}`} />
+          ))}
+        </div>
       </div>
 
-      {/* Auf schmalen Viewports untereinander, ab sm zweispaltig, ab xl
-          vierspaltig — wie die echten vier Ranglisten. Gezeichnet wird nur
-          die erste: alles darunter liegt beim Laden ohnehin unter der
-          Falz, und vier volle Listen wären mehr Flimmern als Information. */}
-      <div className="flex flex-col gap-8 sm:grid sm:grid-cols-2 sm:items-start sm:gap-6 xl:grid-cols-4">
-        <LeaderboardSectionSkeleton />
-      </div>
+      <LeaderboardListsSkeleton />
     </PageSkeleton>
   );
 }
