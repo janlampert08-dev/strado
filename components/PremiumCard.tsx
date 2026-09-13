@@ -21,6 +21,12 @@ import type { PremiumStatus } from "@/lib/premiumLimits";
 // zahlt, braucht hier keine Werbung, nur den Stand und den Weg ins Portal.
 // Nur die Kulanz-Warnung bleibt ein voller Absatz — sie ist die eine
 // Information, die nicht klein sein darf.
+//
+// Welcher Zweig wo erscheint, entscheidet der Aufrufer, und die beiden
+// überschneiden sich nicht: der Abonnenten-Zweig läuft nur auf
+// app/profil/einstellungen/abo, der Werbe-Zweig nur auf der Profilseite
+// (die die Karte mit Abo gar nicht mehr rendert). Abrechnung gehört zu den
+// Einstellungen, Werbung nicht.
 export default function PremiumCard({ status }: { status: PremiumStatus }) {
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-border bg-surface px-4 py-4">

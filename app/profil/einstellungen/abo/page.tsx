@@ -5,10 +5,10 @@ import { getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
 
 // Der Abo-Zustand kommt aus der Datenbank (Webhook/Reconciliation-Cron
-// halten sie aktuell), nicht live von Stripe — dieselbe Quelle wie
-// PremiumCard auf der Profilseite. Trotzdem dynamisch: eine gerade erst
-// zurückgekehrte Kündigung oder ein frisch abgeschlossenes Abo soll ohne
-// zwischengespeicherte Antwort sichtbar sein.
+// halten sie aktuell), nicht live von Stripe — dieselbe Quelle, aus der
+// die Profilseite entscheidet, ob sie den Kauf-Einstieg zeigt. Trotzdem
+// dynamisch: eine gerade erst zurückgekehrte Kündigung oder ein frisch
+// abgeschlossenes Abo soll ohne zwischengespeicherte Antwort sichtbar sein.
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Abo verwalten – Strado" };
@@ -18,6 +18,9 @@ export const metadata = { title: "Abo verwalten – Strado" };
 // Zahlungsmittel-Wechsel bleiben Stripes gehostetes Kundenportal (siehe
 // createPortalSession in lib/actions/billing.ts): eine eigene Nachbildung
 // davon lohnt sich nicht, dieselbe Abwägung wie dort.
+//
+// Für Abonnenten ist das die einzige Stelle mit "Abo verwalten": die
+// Profilseite zeigt die Karte nur noch ohne Abo (Kauf-Einstieg).
 export default async function AboVerwaltenPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/anmelden");

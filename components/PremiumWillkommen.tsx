@@ -21,7 +21,7 @@ import type { PremiumStatus } from "@/lib/premiumLimits";
 // etwas — sie stellt nur dar.
 
 // Plan-Benennung und Datumsformat kommen aus lib/ und werden mit
-// components/PremiumCard.tsx auf der Profilseite geteilt: wer hier
+// components/PremiumCard.tsx unter Einstellungen → Abo geteilt: wer hier
 // "Jahresabo" liest, soll es dort wiederfinden — und dasselbe Datum
 // gleich mit.
 
