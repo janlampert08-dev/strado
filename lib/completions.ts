@@ -8,6 +8,7 @@ import type {
   FahrtTrack,
   GeoLineString,
   HoehenprofilPunkt,
+  Motorklasse,
   PublicCompletionPhoto,
   PublicFahrt,
   PublicFahrtTrack,
@@ -164,6 +165,14 @@ export interface CompletionDetail {
   // Fahrt" auf der Detailseite. Bewusst nur für den Besitzer geladen (siehe
   // unten): public_fahrten führt die Spalte absichtlich nicht.
   parentCompletionId: string | null;
+  // Die Motorklassen der Fahrt (0080), bewusst NUR für den Besitzer geladen.
+  // Die gewertete Klasse ist zwar über die Bestenlisten-Views öffentlich —
+  // der Vergleich "angegeben X, gewertet Y" ist es nicht: er liest sich wie
+  // ein Vorwurf, und der häufigste Grund für eine Abweichung ist ein
+  // Tippfehler in der Leistungsangabe, nicht Betrug. Er gehört deshalb an
+  // den Fahrer selbst und an niemanden sonst.
+  motorklasse: Motorklasse | null;
+  motorklasseGewertet: Motorklasse | null;
 }
 
 // Für die Fahrt-Detailseite (app/fahrten/[id]/page.tsx) — zwei Pfade, je
@@ -231,6 +240,8 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
     // Nur für den Besitzer selbst gesetzt — siehe parentCompletionId weiter
     // unten und der Kommentar auf CompletionDetail.parentCompletionId.
     let ownParentCompletionId: string | null = null;
+    let ownMotorklasse: Motorklasse | null = null;
+    let ownMotorklasseGewertet: Motorklasse | null = null;
     if (viewerId === row.user_id) {
       const [
         { data: own, error: ownError },
@@ -238,12 +249,14 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
       ] = await Promise.all([
         supabase
           .from("route_completions")
-          .select("hoehenprofil, parent_completion_id")
+          .select("hoehenprofil, parent_completion_id, motorklasse, motorklasse_gewertet")
           .eq("id", row.completion_id)
           .eq("user_id", viewerId)
           .maybeSingle<{
             hoehenprofil: HoehenprofilPunkt[] | null;
             parent_completion_id: string | null;
+            motorklasse: Motorklasse | null;
+            motorklasse_gewertet: Motorklasse | null;
           }>(),
         supabase
           .from("fahrt_tracks")
@@ -257,6 +270,8 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
       ownHoehenprofil = own?.hoehenprofil ?? null;
       ownTrack = ownTrackRow?.track_geojson ?? null;
       ownParentCompletionId = own?.parent_completion_id ?? null;
+      ownMotorklasse = own?.motorklasse ?? null;
+      ownMotorklasseGewertet = own?.motorklasse_gewertet ?? null;
     }
 
     return {
@@ -303,6 +318,8 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
       // oben, nur dann geladen) bleibt er erhalten, auch wenn diese
       // Streckenfahrt öffentlich ist und deshalb über public_fahrten läuft.
       parentCompletionId: ownParentCompletionId,
+      motorklasse: ownMotorklasse,
+      motorklasseGewertet: ownMotorklasseGewertet,
     };
   }
 
@@ -311,7 +328,7 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
   const { data: own, error: eigeneFahrtError } = await supabase
     .from("route_completions")
     .select(
-      "id, art, route_id, user_id, datum, dauer_sekunden, distanz_km, ist_oeffentlich, abdeckung_prozent, notiz, titel, start_ort, region, bewegte_zeit_sekunden, hoehenmeter_aufstieg, hoehenprofil, parent_completion_id, vehicles(typ, marke, modell)",
+      "id, art, route_id, user_id, datum, dauer_sekunden, distanz_km, ist_oeffentlich, abdeckung_prozent, notiz, titel, start_ort, region, bewegte_zeit_sekunden, hoehenmeter_aufstieg, hoehenprofil, parent_completion_id, motorklasse, motorklasse_gewertet, vehicles(typ, marke, modell)",
     )
     .eq("id", id)
     .eq("user_id", viewerId)
@@ -333,6 +350,8 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
       hoehenmeter_aufstieg: number | null;
       hoehenprofil: HoehenprofilPunkt[] | null;
       parent_completion_id: string | null;
+      motorklasse: Motorklasse | null;
+      motorklasse_gewertet: Motorklasse | null;
       vehicles: { typ: string; marke: string; modell: string } | null;
     }>();
 
@@ -396,5 +415,7 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
     hoehenprofil: own.hoehenprofil,
     track,
     parentCompletionId: own.parent_completion_id,
+    motorklasse: own.motorklasse,
+    motorklasseGewertet: own.motorklasse_gewertet,
   };
 });
