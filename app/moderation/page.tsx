@@ -3,6 +3,7 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import ModerationActions from "@/components/ModerationActions";
 import ReportedContentActions from "@/components/ReportedContentActions";
+import FeedbackActions from "@/components/FeedbackActions";
 import { getCurrentUser } from "@/lib/supabase/server";
 import {
   isModerator,
@@ -10,9 +11,22 @@ import {
   getOpenRouteReports,
   getOpenRatingReports,
   getOpenCompletionReports,
+  getOpenFeedback,
 } from "@/lib/moderation";
-import { formatKm } from "@/lib/format";
+import { formatKm, datumCH } from "@/lib/format";
 import Card from "@/components/ui/Card";
+
+// Wie REPORT_REASON_LABEL: die Werte kommen aus der Datenbank, die
+// Beschriftungen stehen in lib/constants.ts (FEEDBACK_KATEGORIEN). Hier als
+// Nachschlagetabelle statt eines find() über die Konstante, damit ein
+// künftiger Wert ohne Beschriftung als sich selbst angezeigt wird, statt zu
+// verschwinden.
+const FEEDBACK_KATEGORIE_LABEL: Record<string, string> = {
+  fehler: "Fehler",
+  idee: "Idee oder Wunsch",
+  lob: "Lob",
+  sonstiges: "Sonstiges",
+};
 
 const REPORT_REASON_LABEL: Record<string, string> = {
   unangemessen: "Unangemessener Inhalt",
@@ -27,11 +41,12 @@ export default async function ModerationPage() {
   if (!user) redirect("/anmelden");
   if (!(await isModerator(user.id))) redirect("/");
 
-  const [routes, routeReports, ratingReports, completionReports] = await Promise.all([
+  const [routes, routeReports, ratingReports, completionReports, feedback] = await Promise.all([
     getPendingRoutes(),
     getOpenRouteReports(),
     getOpenRatingReports(),
     getOpenCompletionReports(),
+    getOpenFeedback(),
   ]);
 
   const offeneMeldungen = routeReports.length + ratingReports.length + completionReports.length;
@@ -168,6 +183,43 @@ export default async function ModerationPage() {
                   type="completion"
                   deleteConfirmDescription="Die Fahrt verschwindet aus Feed und öffentlichem Profil, inklusive ihrer Karte. Der Fahrer behält seine Aufzeichnung."
                 />
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Rückmeldungen aus den Einstellungen (0083_feedback.sql). Bewusst
+            ein eigener Abschnitt statt einer vierten Sorte unter "Gemeldete
+            Inhalte": Feedback ist keine Meldung über jemanden, und die
+            Zählung oben soll nicht durch etwas steigen, das niemanden
+            betrifft. */}
+        <div className="mt-4">
+          <h2 className="text-display font-semibold">Feedback</h2>
+          <p className="text-sm text-muted">
+            {feedback.length}{" "}
+            {feedback.length === 1 ? "offene Rückmeldung" : "offene Rückmeldungen"}
+          </p>
+        </div>
+
+        {feedback.length === 0 ? (
+          <p className="text-sm text-muted">Keine offenen Rückmeldungen.</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {feedback.map((eintrag) => (
+              <Card key={eintrag.id} className="flex flex-col gap-3 p-4">
+                <div>
+                  <p className="text-xs font-semibold tracking-wide text-muted uppercase">
+                    {FEEDBACK_KATEGORIE_LABEL[eintrag.kategorie] ?? eintrag.kategorie} ·{" "}
+                    {datumCH(new Date(eintrag.erstelltAm))}
+                    {eintrag.absender && ` · ${eintrag.absender}`}
+                  </p>
+                  {/* whitespace-pre-line: eine Rückmeldung ist getippter
+                      Fliesstext, ihre Absätze sind Teil der Aussage. */}
+                  <p className="mt-1 text-sm whitespace-pre-line text-foreground">
+                    {eintrag.nachricht}
+                  </p>
+                </div>
+                <FeedbackActions feedbackId={eintrag.id} />
               </Card>
             ))}
           </div>
