@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Trophy } from "lucide-react";
@@ -18,6 +19,7 @@ import {
 import type { Motorklasse, Vehicle } from "@/types/database";
 import { MEDAL_COLORS } from "@/lib/constants";
 import Card from "@/components/ui/Card";
+import LeaderboardListsSkeleton from "@/components/LeaderboardListsSkeleton";
 
 export const metadata: Metadata = { title: "Bestenlisten – Strado" };
 
@@ -100,6 +102,100 @@ const KLASSEN_HREFS: Record<string, string> = {
   ...Object.fromEntries(ALLE_KLASSEN.map((k) => [k, klassenHref(k)])),
 };
 
+
+// Ab hier drei Bausteine, die jeweils ihre eigenen Daten holen. Der Grund
+// ist die Bedienung, nicht die Ordnung: Solange die Seite selbst auf
+// Sitzung, Fahrzeuge, Ranglisten und Streckenliste wartete, konnte sie erst
+// rendern, wenn alle vier da waren — und bei jedem Klick auf einen
+// Klassen-Chip ersetzte app/leaderboards/loading.tsx die *ganze* Seite
+// samt Chip-Leiste durch ein Skelett. Ein Filterklick fühlte sich damit an
+// wie ein Seitenneuaufbau.
+//
+// Jetzt hängt die Hülle (Überschrift und Chips) nur noch am
+// URL-Parameter. Sie steht sofort, die Chip-Leiste bleibt stehen, und nur
+// die Listen darunter tauschen sich hinter ihrer eigenen Grenze aus.
+// Genau das empfiehlt die Next-Doku zu useLinkStatus: die Ursache mit einer
+// Ladegrenze beheben, statt am Link herumzudoktern.
+//
+// getCurrentUser() ist in React cache() gewickelt (lib/supabase/server.ts),
+// die mehrfachen Aufrufe kosten deshalb keinen zusätzlichen Roundtrip.
+
+// Der Abkürzungs-Chip ganz vorn. Eigene Grenze, weil er als Einziges die
+// Fahrzeuge des Nutzers braucht — ohne sie wartete die ganze Leiste darauf.
+async function MeineKlasseChip({ aktiv }: { aktiv: Motorklasse | null }) {
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const supabase = await createClient();
+  const { data } = await supabase.from("vehicles").select("*").eq("user_id", user.id);
+
+  // "Meine Klasse" nur, wenn sie eindeutig ist: Wer ein Auto UND ein
+  // Motorrad fährt, hat keine eine Klasse, und eine willkürlich gewählte
+  // wäre schlechter als gar keine Abkürzung. Die sechs Chips stehen daneben.
+  const eigeneKlassen = new Set(
+    ((data as Vehicle[]) ?? [])
+      .map((f) => motorklasseFor(f))
+      .filter((k): k is Motorklasse => k !== null),
+  );
+  const meineKlasse = eigeneKlassen.size === 1 ? [...eigeneKlassen][0] : null;
+  if (!meineKlasse || meineKlasse === aktiv) return null;
+
+  return (
+    <Link href={klassenHref(meineKlasse)} scroll={false} className={chipClassName(false)}>
+      Meine Klasse
+    </Link>
+  );
+}
+
+// Die vier Volumenlisten. Der key an der Suspense-Grenze in der Seite sorgt
+// dafür, dass React den alten Teilbaum beim Klassenwechsel verwirft und das
+// Skelett zeigt, statt die alten Zahlen stehen zu lassen.
+async function Ranglisten({ klasse }: { klasse: Motorklasse | null }) {
+  const [{ meisteFahrten, meisteHoehenmeter, meisteKm, meisteStrecken }, user] =
+    await Promise.all([getGlobalLeaderboards(klasse), getCurrentUser()]);
+
+  const currentUserId = user?.id ?? null;
+  const klassenZusatz = klasse ? ` · ${motorklassendefinition(klasse).label}` : "";
+
+  return (
+    <div className="flex flex-col gap-8 sm:grid sm:grid-cols-2 sm:items-start sm:gap-6 xl:grid-cols-4">
+      <LeaderboardSection
+        title={`Meiste Fahrten${klassenZusatz}`}
+        entries={meisteFahrten}
+        unit="Fahrten"
+        currentUserId={currentUserId}
+      />
+      <LeaderboardSection
+        title={`Meiste Höhenmeter${klassenZusatz}`}
+        entries={meisteHoehenmeter}
+        unit="m"
+        format={(v) => Math.round(v).toLocaleString("de-CH")}
+        currentUserId={currentUserId}
+      />
+      <LeaderboardSection
+        title={`Meiste km gefahren${klassenZusatz}`}
+        entries={meisteKm}
+        unit="km"
+        format={(v) => v.toFixed(0)}
+        currentUserId={currentUserId}
+      />
+      <LeaderboardSection
+        title={`Entdecker${klassenZusatz}`}
+        entries={meisteStrecken}
+        unit="Strecken"
+        currentUserId={currentUserId}
+      />
+    </div>
+  );
+}
+
+// Die Streckenbestzeiten unten. Eigene Grenze, damit die Streckenliste den
+// oberen Teil der Seite nicht aufhält; sie hängt nicht an der Klasse.
+async function Streckenwahl() {
+  const routes = await listRouteChoices();
+  return <TrackLeaderboardChooser routes={routes} />;
+}
+
 export default async function LeaderboardsPage({
   searchParams,
 }: {
@@ -107,37 +203,11 @@ export default async function LeaderboardsPage({
 }) {
   // Strikte Allowlist wie am öffentlichen Endpunkt: ein unbekannter Wert
   // führt zur Gesamtwertung, nicht zu einer leeren Seite oder einem Fehler.
+  //
+  // Das ist das Einzige, worauf diese Funktion noch wartet. Alles Weitere
+  // holen die Bausteine oben hinter ihren eigenen Ladegrenzen.
   const { klasse: klasseRoh } = await searchParams;
   const klasse = istMotorklasse(klasseRoh) ? klasseRoh : null;
-
-  const user = await getCurrentUser();
-  const supabase = await createClient();
-
-  const [
-    { meisteFahrten, meisteHoehenmeter, meisteKm, meisteStrecken },
-    routes,
-    eigeneFahrzeuge,
-  ] = await Promise.all([
-    getGlobalLeaderboards(klasse),
-    listRouteChoices(),
-    user
-      ? supabase
-          .from("vehicles")
-          .select("*")
-          .eq("user_id", user.id)
-          .then((r) => (r.data as Vehicle[]) ?? [])
-      : Promise.resolve([] as Vehicle[]),
-  ]);
-  const currentUserId = user?.id ?? null;
-
-  // "Meine Klasse" nur, wenn sie eindeutig ist: Wer ein Auto UND ein Motorrad
-  // fährt, hat keine eine Klasse, und eine willkürlich gewählte wäre
-  // schlechter als gar keine Abkürzung. Die sechs Chips stehen daneben.
-  const eigeneKlassen = new Set(
-    eigeneFahrzeuge.map((f) => motorklasseFor(f)).filter((k): k is Motorklasse => k !== null),
-  );
-  const meineKlasse = eigeneKlassen.size === 1 ? [...eigeneKlassen][0] : null;
-  const klassenZusatz = klasse ? ` · ${motorklassendefinition(klasse).label}` : "";
 
   return (
     <div className="flex h-dvh flex-col">
@@ -147,73 +217,30 @@ export default async function LeaderboardsPage({
       <div className="flex-1 overflow-y-auto">
         <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-5 py-8 sm:px-6 sm:py-10 lg:max-w-5xl">
         <div className="flex flex-col gap-3">
-          <div>
-            <h1 className="text-display font-semibold">Bestenlisten</h1>
-            <p className="mt-1 text-sm text-muted">
-              Nach Distanz, Höhenmetern, Anzahl aufgezeichneter Fahrten und Anzahl
-              unterschiedlicher Strecken. Streckenbestzeiten unten zeigen nur Fahrten, die
-              freiwillig dafür geteilt wurden.
-            </p>
-          </div>
+          <h1 className="text-display font-semibold">Bestenlisten</h1>
           <MotorklassenChips
             klassen={ALLE_KLASSEN}
             aktiv={klasse}
             hrefs={KLASSEN_HREFS}
             label="Bestenlisten nach Motorklasse filtern"
             vorne={
-              meineKlasse && meineKlasse !== klasse ? (
-                <Link
-                  href={klassenHref(meineKlasse)}
-                  scroll={false}
-                  className={chipClassName(false)}
-                >
-                  Meine Klasse
-                </Link>
-              ) : null
+              <Suspense fallback={null}>
+                <MeineKlasseChip aktiv={klasse} />
+              </Suspense>
             }
           />
-          {klasse && (
-            <p className="text-sm text-muted">
-              Gewertet wird die Klasse, in der eine Fahrt gefahren wurde —{" "}
-              <span className="font-medium text-foreground">
-                {motorklassendefinition(klasse).label}
-              </span>{" "}
-              heisst {motorklassendefinition(klasse).regel}. Fahrten ohne Leistungsangabe am
-              Fahrzeug zählen weiterhin in der Gesamtwertung mit.
-            </p>
-          )}
         </div>
 
-        <div className="flex flex-col gap-8 sm:grid sm:grid-cols-2 sm:items-start sm:gap-6 xl:grid-cols-4">
-          <LeaderboardSection
-            title={`Meiste Fahrten${klassenZusatz}`}
-            entries={meisteFahrten}
-            unit="Fahrten"
-            currentUserId={currentUserId}
-          />
-          <LeaderboardSection
-            title={`Meiste Höhenmeter${klassenZusatz}`}
-            entries={meisteHoehenmeter}
-            unit="m"
-            format={(v) => Math.round(v).toLocaleString("de-CH")}
-            currentUserId={currentUserId}
-          />
-          <LeaderboardSection
-            title={`Meiste km gefahren${klassenZusatz}`}
-            entries={meisteKm}
-            unit="km"
-            format={(v) => v.toFixed(0)}
-            currentUserId={currentUserId}
-          />
-          <LeaderboardSection
-            title={`Entdecker${klassenZusatz}`}
-            entries={meisteStrecken}
-            unit="Strecken"
-            currentUserId={currentUserId}
-          />
-        </div>
+        {/* key: beim Klassenwechsel verwirft React den alten Teilbaum und
+            zeigt das Skelett, statt die Zahlen der vorigen Klasse stehen zu
+            lassen, bis die neuen da sind. */}
+        <Suspense key={klasse ?? "alle"} fallback={<LeaderboardListsSkeleton />}>
+          <Ranglisten klasse={klasse} />
+        </Suspense>
 
-        <TrackLeaderboardChooser routes={routes} />
+        <Suspense fallback={null}>
+          <Streckenwahl />
+        </Suspense>
         </main>
       </div>
       </PullToRefreshArea>
