@@ -6,6 +6,7 @@ import {
   Lock,
   LogOut,
   MapPin,
+  MessageSquare,
   Palette,
   Scale,
   Sparkles,
@@ -16,6 +17,7 @@ import { DEFAULT_PRIVACY_RADIUS_M } from "@/lib/track";
 import ThemeToggle from "@/components/ThemeToggle";
 import DeleteProposalButton from "@/components/DeleteProposalButton";
 import DeleteAccountSection from "@/components/DeleteAccountSection";
+import FeedbackDialog from "@/components/FeedbackDialog";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
 import { isModerator } from "@/lib/moderation";
@@ -293,6 +295,25 @@ export default async function EinstellungenPage() {
               </Card>
             </section>
           )}
+
+          {/* Vor "Rechtliches" und nach "Konto": eine Rückmeldung ist
+              weder eine Kontoeinstellung noch ein Rechtstext, gehört aber
+              in dieselbe Gegend wie die anderen Wege nach draussen. Bis
+              hierhin führte der einzige davon über die im Impressum
+              genannte Adresse — für jemanden, der gerade in der App auf
+              einen Fehler gestossen ist, kein auffindbarer Weg. */}
+          <section className="flex flex-col gap-3">
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold tracking-wide text-muted uppercase">
+              <MessageSquare className="h-4 w-4" aria-hidden="true" />
+              Feedback
+            </h2>
+            <Card className="flex flex-col gap-3 p-4">
+              <p className="text-sm text-muted">
+                Fehler gefunden, etwas vermisst oder eine Idee? Schreib uns direkt aus der App.
+              </p>
+              <FeedbackDialog />
+            </Card>
+          </section>
 
           <section className="flex flex-col gap-3">
             <h2 className="flex items-center gap-1.5 text-sm font-semibold tracking-wide text-muted uppercase">

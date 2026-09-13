@@ -42,17 +42,16 @@ const RouteMap = dynamic(() => import("@/components/RouteMap"), {
   loading: () => <Skeleton className="h-full w-full" />,
 });
 
-// Bottom-Sheet-Massse (Mobile). PEEK entspricht ungefähr der bisherigen
-// festen Kartenhöhe (h-64 = 256px) plus Platz für den Ziehgriff; EXPANDED_GAP
-// lässt oben immer einen Streifen Karte sichtbar, damit der Kontext (wo bin
-// ich?) beim voll aufgezogenen Sheet nicht verloren geht.
+// Bottom-Sheet-Masse (Mobile). PEEK entspricht ungefähr der bisherigen festen
+// Kartenhöhe (h-64 = 256px) plus Platz für den Ziehgriff. Aufgezogen deckt das
+// Sheet die Karte vollständig ab (siehe DragSheet.tsx) — der Kontext "wo bin
+// ich?" hängt dann an der Liste selbst, nicht mehr an einem Streifen Karte.
 const SHEET_PEEK_PX = 272;
 
 // Wie lange der Zufallsvorschlag (siehe unten) stehen bleibt. Die Kamerafahrt
 // dorthin dauert 800 ms, danach bleiben gut vier Sekunden zum Lesen und
 // Antippen — kurz genug, um die Karte nicht dauerhaft zu belegen.
 const ZUFALLSVORSCHLAG_MS = 5000;
-const SHEET_EXPANDED_GAP_PX = 96;
 
 export default function ExploreView({
   routes,
@@ -205,9 +204,14 @@ export default function ExploreView({
       {/* Der Vorschlag selbst — oben über der Karte, damit er weder das
           Sheet noch die Kopfleiste verdeckt. pointer-events-none auf dem
           Rahmen, damit die Karte darunter bedienbar bleibt; nur die Pille
-          selbst nimmt Klicks an. */}
+          selbst nimmt Klicks an.
+
+          z-10 statt z-20, seit das Sheet bis nach oben aufgezogen werden
+          kann: gleiche Ebene wie das Sheet, das im DOM danach kommt und die
+          Pille deshalb verdeckt, sobald es über sie hinauswächst. Mit z-20
+          klebte sie sonst mitten im aufgezogenen Inhalt. */}
       {zufallsstrecke && (
-        <div className="pointer-events-none absolute inset-x-0 top-4 z-20 flex justify-center px-5">
+        <div className="pointer-events-none absolute inset-x-0 top-4 z-10 flex justify-center px-5">
           <Link
             href={`/strecken/${zufallsstrecke.id}`}
             className="pointer-events-auto max-w-full truncate rounded-full border border-border bg-background/95 px-4 py-2 text-sm font-medium shadow-overlay backdrop-blur-xl transition-colors duration-fast hover:text-accent"
@@ -227,7 +231,6 @@ export default function ExploreView({
       <DragSheet
         containerRef={containerRef}
         peekPx={SHEET_PEEK_PX}
-        expandedGapPx={SHEET_EXPANDED_GAP_PX}
         handleLabels={{ expand: "Liste ausklappen", collapse: "Liste einklappen" }}
       >
         <ExploreSidebar
