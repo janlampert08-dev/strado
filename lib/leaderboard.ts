@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { MOTORKLASSEN } from "@/lib/motorklassen";
+import type { Motorklasse } from "@/types/database";
 
 export interface LeaderboardEntry {
   userId: string;
@@ -108,6 +110,10 @@ export interface RouteTimeEntry {
   name: string;
   avatarUrl: string | null;
   dauerSekunden: number;
+  // Die gewertete Motorklasse (0080). null für Fahrten, deren Fahrzeug keine
+  // Leistungsangabe trägt oder die vor der Einführung entstanden sind — die
+  // erscheinen weiterhin in "Alle", aber in keiner Klassenliste.
+  klasse: Motorklasse | null;
 }
 
 export interface RouteLeaderboardRow {
@@ -116,6 +122,7 @@ export interface RouteLeaderboardRow {
   display_name: string | null;
   avatar_url: string | null;
   dauer_sekunden: number;
+  motorklasse: Motorklasse | null;
 }
 
 const ROUTE_TOP_N = 10;
@@ -149,12 +156,30 @@ export function dedupeRouteLeaderboardRows(
 
 // Nur Fahrten mit aktivem Opt-in (route_leaderboard-View, siehe
 // 0014_route_leaderboard_optin.sql) — sortiert nach kürzester Zeit.
-export async function getRouteLeaderboard(routeId: string): Promise<RouteTimeEntry[]> {
+//
+// klasse filtert auf eine Motorklasse (0080). Die View führt dafür
+// motorklasse_gewertet, nicht die deklarierte Klasse: gewertet wird die
+// höhere aus Angabe und dem, was der Track belegt. Ohne klasse bleibt die
+// Liste wie bisher — "Alle" ist die Voreinstellung, niemand verliert eine
+// Rangliste, in der er gerade vorne steht.
+//
+// Die Deduplizierung auf die schnellste Fahrt pro Nutzer läuft NACH dem
+// Filter: wer seine Bestzeit im Porsche und eine langsamere auf dem Roller
+// gefahren ist, soll in der Rollerklasse mit der Rollerzeit erscheinen und
+// nicht gar nicht.
+export async function getRouteLeaderboard(
+  routeId: string,
+  klasse?: Motorklasse | null,
+): Promise<RouteTimeEntry[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("route_leaderboard")
-    .select("completion_id, user_id, display_name, avatar_url, dauer_sekunden")
-    .eq("route_id", routeId)
+    .select("completion_id, user_id, display_name, avatar_url, dauer_sekunden, motorklasse")
+    .eq("route_id", routeId);
+
+  if (klasse) query = query.eq("motorklasse", klasse);
+
+  const { data, error } = await query
     .order("dauer_sekunden", { ascending: true })
     .limit(ROUTE_FETCH_LIMIT);
 
@@ -169,5 +194,47 @@ export async function getRouteLeaderboard(routeId: string): Promise<RouteTimeEnt
     // Bereits serverseitig mit zeigt_avatar verrechnet (0028_leaderboard_avatar.sql).
     avatarUrl: r.avatar_url,
     dauerSekunden: r.dauer_sekunden,
+    klasse: r.motorklasse,
   }));
+}
+
+// Welche Motorklassen auf dieser Strecke überhaupt geteilte Zeiten haben —
+// für die Chip-Leiste. Global sind alle sechs Klassen sichtbar (ein leerer
+// Zustand lädt zum Mitmachen ein), pro Strecke wären fünf leere Chips nur
+// Rauschen.
+//
+// Je Katalogklasse eine Existenzabfrage mit limit(1), parallel — nicht ein
+// Ausschnitt über alle Zeiten der Strecke. Der naheliegende Weg (einmal
+// motorklasse über die ganze View holen und in JS zusammenfassen) braucht
+// ein limit, weil PostgREST kein DISTINCT kennt, und die View gibt keine
+// Reihenfolge vor: Bei einer Strecke mit mehr geteilten Zeiten als dem
+// Limit könnte eine belegte Klasse ausserhalb des Ausschnitts liegen. Ihr
+// Chip fehlte dann, und ihre Rangliste wäre über die Oberfläche gar nicht
+// mehr erreichbar — ein Fehler, der erst bei einer beliebten Strecke
+// auftritt und dort still bleibt.
+//
+// Sechs Abfragen klingen nach viel und sind es nicht: jede liest höchstens
+// eine Zeile über den Index aus 0080 (route_id, motorklasse_gewertet,
+// dauer_sekunden), und sie laufen gemeinsam. Die Zahl ist durch den Katalog
+// fest begrenzt, nicht durch die Datenmenge.
+//
+// Die Reihenfolge entspricht dem Katalog; MotorklassenChips sortiert
+// ohnehin danach.
+export async function getRouteLeaderboardKlassen(routeId: string): Promise<Motorklasse[]> {
+  const supabase = await createClient();
+
+  const treffer = await Promise.all(
+    MOTORKLASSEN.map(async (klasse) => {
+      const { data, error } = await supabase
+        .from("route_leaderboard")
+        .select("motorklasse")
+        .eq("route_id", routeId)
+        .eq("motorklasse", klasse.id)
+        .limit(1);
+
+      return !error && data && data.length > 0 ? klasse.id : null;
+    }),
+  );
+
+  return treffer.filter((klasse): klasse is Motorklasse => klasse !== null);
 }
