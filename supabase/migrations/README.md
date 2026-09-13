@@ -44,7 +44,94 @@ Warum die Reihenfolge hier ausdrücklich steht: Die Abschnitte unten sind
 nach Neuigkeit sortiert, also 0082 vor 0081 vor 0080 — die Lesereihenfolge
 ist nicht die Einspielreihenfolge.
 
-## Noch NICHT eingespielt: 0082_motorklasse_backfill_freie_fahrten (Stand 2026-09-11)
+## Eingespielt: 0080, 0081, 0082 und 0084 (2026-09-13, Produktion)
+
+Alle vier in einer Sitzung, in dieser Reihenfolge, **vor** dem Deploy des
+Codes, der sie braucht — der Motorklassen- und Creator-Code lag zu diesem
+Zeitpunkt auf `staging`, nicht auf `main`. Ledger-Einträge (`apply_migration`
+stempelt einen Zeitstempel als `version`, nicht die Dateinummer — eine Suche
+nach `0080` findet sie also nicht):
+
+| Datei | Ledger-`version` |
+| --- | --- |
+| `0080_motorklassen` | `20260913184239` |
+| `0081_freie_fahrt_motorklasse_belegt` | `20260913190118` |
+| `0082_motorklasse_backfill_freie_fahrten` | `20260913191520` |
+| `0084_creator_links` | `20260913191653` |
+
+**Mengengerüst vorab erhoben** (die Zahlen, die `0080` und `0082` im Kopf
+verlangen): `route_completions` 9 Zeilen, `vehicles` 6 Zeilen. Der
+Tabellen-Rewrite durch die `STORED`-Spalte betraf damit 9 Zeilen.
+
+### Gegenprobe, alles zurückgelesen statt angenommen
+
+| Prüfung | Ergebnis |
+| --- | --- |
+| `vehicles.hubraum_ccm` / `leistung_kw` | ✅ `integer` / `numeric` |
+| `route_completions.motorklasse_gewertet` | ✅ `is_generated = ALWAYS` |
+| Funktionen 0080 (5 Stück) | ✅ alle vorhanden |
+| Formel-Stichprobe | ✅ `motorrad 11kW/125→moto_a1`, `11kW/250→moto_a35`, `auto 111kW→auto_bis220`, ohne kW → `NULL` |
+| Trigger | ✅ `route_completions_motorklasse`, `vehicles_leistung_gesperrt` |
+| Indizes | ✅ beide partiellen Indizes |
+| `EXECUTE` auf `set_motorklasse()` | ✅ `anon` false, `authenticated` false |
+| Views tragen `motorklasse` **als letzte Spalte** | ✅ `leaderboard_completions`, `route_leaderboard` |
+| `save_free_ride_with_segments` | ✅ `SECURITY INVOKER`, `motorklasse_belegt` in **beiden** INSERTs, Grants aus 0050/0051 erhalten (`anon` false, `authenticated` true) |
+| `0082`-Wirkung | ✅ **0 Zeilen** — kein Fahrzeug trägt `leistung_kw`, der dokumentierte No-op-Fall |
+| `creator_links` RLS + Policy | ✅ `relrowsecurity = true`, 1 Policy, 4 CHECK-Constraints |
+| `creator_links` Grants | ✅ `anon` **keine**, `authenticated` `INSERT/SELECT/UPDATE/DELETE` |
+| `creator_link_aufloesen` | ✅ `SECURITY DEFINER`, `search_path=public, pg_temp`, `EXECUTE` von `PUBLIC` entzogen, an `anon` vergeben |
+| Nutzdaten unverändert | ✅ 9 Fahrten / 6 Fahrzeuge vor und nach |
+
+**Verhaltenstest als `anon`** (in einer Transaktion mit `rollback`, Testzeile
+danach nachweislich weg) — das ist die Zusage aus dem Creator-PR, hier gegen
+die echte Datenbank statt gegen ein Wegwerf-Postgres:
+
+| Fall | Ergebnis |
+| --- | --- |
+| Rückgabesignatur | `TABLE(code text, kanal text, kampagne text)` — `name` fehlt **strukturell** |
+| bekannter Code | `code / kanal / kampagne`, **kein `name`** |
+| unbekannter Code | keine Zeile |
+| `null` als Code | keine Zeile — kein Auflisten möglich |
+| direkter Tabellenzugriff als `anon` | verweigert, kein Grant |
+
+### Ohne Staging-Probe — und diesmal ist geklärt, warum
+
+`0083` musste diese Abweichung schon einmal benennen. Jetzt ist die offene
+Frage beantwortet: Das verknüpfte Supabase-Konto führt **genau ein Projekt**
+(`Strado`, `stecakpnuijbvjsniqto`). Ein eigenes Staging-Projekt existiert
+darunter nicht. Entweder liegt es unter einem fremden Konto oder es gibt es
+nicht mehr — so oder so ist `staging.strado.ch` aus diesem Konto heraus nicht
+getrennt probefahrbar. **Das gehört entschieden, bevor eine Migration kommt,
+die nicht rein additiv ist:** hier waren alle vier additiv (nur neue Objekte,
+keine bestehende Tabelle umgebaut, keine Zeile inhaltlich geändert), bei einer
+destruktiven Migration wäre das Fehlen der Generalprobe ein Stopp-Grund.
+
+Weg zurück, falls nötig: `0084` per `drop table public.creator_links cascade`
+plus `drop function public.creator_link_aufloesen(text)`; `0080` per Droppen
+der zwei Trigger, fünf Funktionen, zwei Indizes und fünf Spalten;
+`0081` durch Wiedereinspielen der Fassung aus `0050`. `0082` hat nichts
+geschrieben und braucht keinen Rückweg.
+
+### Nebenbefund, nicht durch diese Migrationen verursacht
+
+`leaderboard_klassen_totals` trägt für `anon` neben `SELECT` auch
+`INSERT/UPDATE/DELETE/TRUNCATE` — die Supabase-Default-Privilegien, die `0034`
+und `0084` mit „erst entziehen, dann gezielt geben“ umgehen; `0080` vergibt
+nur `SELECT`, ohne vorher zu entziehen. **Folgenlos:**
+`pg_relation_is_updatable` liefert für die View `0`, PostgreSQL weist jeden
+Schreibversuch also unabhängig vom Grant ab, und `INSTEAD OF`-Trigger gibt es
+keine. Bemerkenswert ist vor allem, dass **alle** bestehenden Views dasselbe
+Bild zeigen (`leaderboard_completions`, `leaderboard_user_totals`,
+`route_leaderboard`, `public_fahrten`) — der Grant-Zuschnitt ist also
+Hausstand, nicht Regression. Aufräumen wäre ein eigener Vorgang über alle
+Views hinweg, kein Anhängsel an diese Migration.
+
+## Eingespielt: 0082_motorklasse_backfill_freie_fahrten (2026-09-13)
+
+*Die Überschrift stand bis zum 2026-09-13 auf „Noch NICHT eingespielt“.
+Der Abschnitt darunter beschreibt weiterhin die Vorab-Überlegungen; das
+Ergebnis des Laufs steht oben unter „Eingespielt: 0080, 0081, 0082 und
+0084“.*
 
 Neu mit PR „Motorklassen: globale Ranglisten“. Traegt die Motorklasse fuer
 bestehende **freie** Fahrten nach, indem ein UPDATE den Trigger aus 0080
@@ -93,7 +180,9 @@ die Migration diese Fahrten als „gesetzt“ und meldete damit eine Wirkung, di
 es nicht gab. Wer die erste Zahl als Deploy-Protokoll liest, hätte sich auf
 eine falsche Zahl verlassen.
 
-## Noch NICHT eingespielt: 0081_freie_fahrt_motorklasse_belegt (Stand 2026-09-11)
+## Eingespielt: 0081_freie_fahrt_motorklasse_belegt (2026-09-13)
+
+*Überschrift am 2026-09-13 umgestellt, siehe oben.*
 
 Neu mit PR „Motorklassen: belegte Klasse aus dem Track“. Erweitert
 `save_free_ride_with_segments` (0050) um `motorklasse_belegt` in beiden
@@ -135,7 +224,9 @@ nicht, bricht der Cast mit einem Fehler ab statt leer zurückzukommen. Der Test
 ist textuell und hängt daran, wie 0081 die INSERTs schreibt — wer die
 Migration umformuliert, passt ihn mit an.
 
-## Noch NICHT eingespielt: 0080_motorklassen (Stand 2026-09-11)
+## Eingespielt: 0080_motorklassen (2026-09-13)
+
+*Überschrift am 2026-09-13 umgestellt, siehe oben.*
 
 Neu mit PR „Motorklassen: Datenmodell und Klassenformel“.
 
@@ -188,7 +279,9 @@ hängen nur an. Grants bleiben deshalb erhalten, und
 `leaderboard_user_totals` braucht keine Änderung.
 
 
-## Offen: 0084_creator_links (noch nicht eingespielt)
+## Eingespielt: 0084_creator_links (2026-09-13)
+
+*Überschrift am 2026-09-13 umgestellt, siehe oben.*
 
 `0080_creator_links.sql` legt die Tabelle der Creator-Einstiegscodes an
 (`/c/<code>`, verwaltet unter `/moderation/creator`) plus die
