@@ -15,9 +15,13 @@ import { BottomNavSkeleton, HeaderSkeleton } from "@/components/ui/PageSkeleton"
 
 export default function Loading() {
   return (
-    <div className="flex h-dvh flex-col">
+    // Dokument-Scroll wie in page.tsx (dort steht die Begründung): das
+    // Skelett muss dieselbe Scroll-Mechanik mitbringen, sonst wechselt die
+    // Seite in dem Moment den Scroll-Container, in dem der echte Inhalt
+    // einrückt.
+    <div className="flex min-h-dvh flex-col">
       <HeaderSkeleton />
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 overflow-y-auto px-5 py-8 sm:px-6">
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 px-5 py-8 sm:px-6">
         <div className="flex flex-col gap-3">
           <Skeleton className="h-6 w-28 rounded-full" />
           <Skeleton className="h-9 w-64 rounded-md" />
