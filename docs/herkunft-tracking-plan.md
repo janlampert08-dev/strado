@@ -27,20 +27,24 @@ weil sie die Begründungen tragen. Die Zuordnung der Schritte zu den Dateien:
 | 7 — Auswertung | `/creator` (eigene Zahlen) und `/moderation/creator` (alle), beide über `creator_kennzahlen()` / `creator_verlauf()` |
 | 8 — Datenschutz | `docs/rechtstexte/datenschutz.md` Ziff. 3.11 und die veröffentlichte Fassung in `janlampert08-dev/stradoinfo` |
 
-Die drei Migrationen sind **noch nicht eingespielt** — siehe
-`supabase/migrations/README.md`. Ein Zusatz, der beim Bauen dazukam und
-oben nicht stand: ein Creator-Code, über den Registrierungen gelaufen
-sind, lässt sich nicht mehr löschen (Fremdschlüssel), und
-`lib/actions/creatorLinks.ts` übersetzt diesen Fehler in einen Satz, der
-auf Deaktivieren verweist.
+**Die Migrationen `0088`–`0093` sind am 2026-09-14 in Produktion
+eingespielt** — mit Vorher-/Nachher-Prüfung, Funktionstests in
+zurückgerollten Transaktionen und einem Nachtrag (`0093`), der einen
+liegengebliebenen `anon`-Grant entzieht. Der Ablauf steht in
+`supabase/migrations/README.md`.
+
+Ein Zusatz, der beim Bauen dazukam und oben nicht stand: ein Creator-Code,
+über den Registrierungen gelaufen sind, lässt sich nicht mehr löschen
+(Fremdschlüssel), und `lib/actions/creatorLinks.ts` übersetzt diesen Fehler
+in einen Satz, der auf Deaktivieren verweist.
 
 **Kein Cookie-Banner.** Das war eine ausdrückliche Entscheidung: genannt
 wird das Cookie in der Datenschutzerklärung, abgefragt wird es nicht. Die
 Abwägung dazu steht in Schritt 8.
 
-**Creator-Konten sind dazugekommen** (`0091`/`0092`, ebenfalls noch nicht
-eingespielt) und beantworten die offenen Entscheidungen 5 und 6 weiter
-unten, deren Empfehlungen damit überholt sind:
+**Creator-Konten sind dazugekommen** (`0091`/`0092`) und beantworten die
+offenen Entscheidungen 5 und 6 weiter unten, deren Empfehlungen damit
+überholt sind:
 
 - Ein Creator **ist**, wem ein Code zugewiesen ist — es gibt keine Spalte
   `profiles.ist_creator`. Die Zuweisung ist die Rolle, vergeben unter
@@ -614,12 +618,12 @@ Diese ändern, was gebaut wird — sie gehören dir, nicht mir.
 
 Nach `AGENTS.md` → Release Flow: PR gegen `staging`, nicht gegen `main`.
 
-**Einen Probelauf für die Migrationen gibt es nicht.** Staging und
+**Einen Probelauf für die Migrationen gab es nicht.** Staging und
 Produktion sind dieselbe Datenbank — am 2026-09-14 bestätigt und so
-gewollt. Die Migrationen werden also einmal angewendet, von Hand, und
-diese eine Anwendung ist die produktive; geprüft wird an den Objekten, nicht
-am Ledger (`supabase/migrations/README.md` nennt die Abfragen). Alle drei
-sind additiv, der Weg zurück steht ebenfalls dort.
+gewollt. Die Migrationen wurden deshalb einmal angewendet, von Hand, und
+diese eine Anwendung war die produktive; geprüft wurde an den Objekten,
+nicht am Ledger. Ablauf, Prüfabfragen und der Rückweg stehen in
+`supabase/migrations/README.md`.
 
 Definition of Done wie im Repo üblich: `npm run test`, `npm run lint`,
 `npm run build` tatsächlich laufen lassen und die Ergebnisse in die

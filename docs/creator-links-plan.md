@@ -11,7 +11,7 @@ keine Telemetrie. Kein Sentry, kein PostHog, kein Plausible.
 `/moderation/creator` verwaltet und liegen in `public.creator_links`
 (Migration `0084`, eingespielt am 2026-09-13 — siehe `AGENTS.md`,
 „Migrations are applied by hand"). **Phase 2 ist seit 2026-09-14 gebaut**
-(Migrationen `0088`–`0090`, noch nicht eingespielt); Phase 3 ist eine
+(Migrationen `0088`–`0093`, seit 2026-09-14 in Produktion); Phase 3 ist eine
 Abfrage ohne Oberfläche.
 
 > **Phase 2 und 3 stehen in

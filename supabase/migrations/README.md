@@ -29,100 +29,104 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
-## Noch nicht eingespielt: 0091, 0092 (Creator-Konten)
+## Eingespielt: 0088–0093 (Creator-Herkunft und Creator-Konten, 2026-09-14, Produktion)
 
-Setzen `0088` voraus und werden danach angewendet:
+Sechs Migrationen, in dieser Reihenfolge angewendet:
 
-| Datei | Was sie anlegt |
-| --- | --- |
-| `0091_creator_konten` | `creator_links.creator_user_id` (die Creator-Rolle), Lese-Policy für den zugewiesenen Creator, Tabelle `creator_klicks`, die Funktionen `creator_klick_zaehlen()`, `creator_kennzahlen()`, `creator_verlauf()` |
-| `0092_anonymisierung_creator_zuweisung` | `anonymize_account()` gibt zugewiesene Codes bei der Kontolöschung wieder frei |
-
-Drei Dinge, die beim Prüfen zählen:
-
-```sql
--- Die neue Spalte und der Teilindex
-select column_name from information_schema.columns
-where table_name = 'creator_links' and column_name = 'creator_user_id';
-
--- creator_klicks: RLS an, und anon/authenticated haben KEIN Tabellenrecht
-select grantee, privilege_type from information_schema.role_table_grants
-where table_name = 'creator_klicks' and grantee in ('anon', 'authenticated');
-
--- Die Ausfuehrungsrechte der drei Funktionen: zaehlen darf jeder,
--- die Kennzahlen nur angemeldete Konten.
-select p.proname, array_agg(a.grantee)
-from information_schema.role_routine_grants a
-join pg_proc p on p.proname = a.routine_name
-where p.proname in ('creator_klick_zaehlen', 'creator_kennzahlen', 'creator_verlauf')
-group by p.proname;
-```
-
-`creator_klick_zaehlen()` ist bewusst an `anon` gegrantet — der Aufrufer ist
-ein Besucher ohne Konto. Die Folge steht im Kopf der Migration und gehört
-auch hierher: ein direkter RPC-Aufruf mit dem öffentlichen Schlüssel umgeht
-das IP-Limit des Route Handlers. Die Klickzahl ist damit eine Anzeige und
-taugt nicht als Vergütungsgrundlage.
-
-## Noch nicht eingespielt: 0088, 0089, 0090 (Creator-Herkunft)
+| Datei | Ledger-`version` | Was sie anlegt |
+| --- | --- | --- |
+| `0088_herkunft_und_konversionen` | `20260914220140` | `registrierung_herkunft`, `creator_konversionen`, `handle_new_user()` um die Herkunft erweitert |
+| `0089_creator_konversion_abo` | `20260914220301` | Trigger auf `subscriptions`, der den ersten zahlenden Zustand festhält |
+| `0090_anonymisierung_herkunft` | `20260914220354` | `anonymize_account()` räumt die Herkunft auf |
+| `0091_creator_konten` | `20260914220441` | `creator_links.creator_user_id`, Lese-Policy für Creator, `creator_klicks`, drei Funktionen |
+| `0092_anonymisierung_creator_zuweisung` | `20260914220506` | `anonymize_account()` gibt zugewiesene Codes frei |
+| `0093_creator_funktionen_anon_entziehen` | `20260914220654` | **Nachtrag, siehe unten** |
 
 **Warum nicht 0087:** diese Nummer gehört `0087_premium_abzeichen_spalte`
-aus PR #235, das am 2026-09-14 bereits in Produktion eingespielt wurde
-(Ledger `20260914200727`). Die drei Dateien hier trugen zunächst
-`0087`–`0089` und wurden vor dem Merge auf `0088`–`0090` gehoben. Genau
-dieser Fall ist der Grund, warum `.agents/database.md` verlangt, die
-höchste Nummer **auf `main` und in jedem offenen PR** zu prüfen: `main`
-allein sagte `0086`, und beide Branches hätten unabhängig voneinander
-`0087` gewählt. `supabase_migrations.schema_migrations.version` ist ein
-Primärschlüssel — eine der beiden hätte sich nie eingetragen.
+aus PR #235, am selben Tag eingespielt. Beide Branches hatten unabhängig
+voneinander `0087` gewählt, weil `main` bei `0086` endete.
+`schema_migrations.version` ist ein Primärschlüssel — eine der beiden hätte
+sich nie eingetragen. Genau dieser Fall ist der Grund, warum
+`.agents/database.md` verlangt, die höchste Nummer **auf `main` und in
+jedem offenen PR** zu prüfen; `scripts/check-migration-prefixes.mjs` kann
+das nicht, es sieht nur einen Branch.
 
-Die drei Dateien gehören zusammen und werden **in dieser Reihenfolge**
-angewendet:
+### Vorher geprüft
 
-| Datei | Was sie anlegt |
-| --- | --- |
-| `0088_herkunft_und_konversionen` | Tabellen `registrierung_herkunft` und `creator_konversionen`, `handle_new_user()` um die Herkunft erweitert |
-| `0089_creator_konversion_abo` | Trigger auf `subscriptions`, der den ersten zahlenden Zustand als Konversion festhält |
-| `0090_anonymisierung_herkunft` | `anonymize_account()` räumt die Herkunft bei der Kontolöschung auf |
+Zwei Migrationen schreiben bestehende Funktionen per `create or replace`
+neu. Vor dem Einspielen wurden deshalb die **live laufenden Rümpfe**
+ausgelesen und mit denen verglichen, auf denen die Migrationen aufbauen:
+`handle_new_user` trug exakt die Fassung aus `0001`, `anonymize_account`
+exakt die aus `0076`. `0087` hatte keine von beiden angefasst. Ohne diesen
+Abgleich hätte ein `create or replace` stillschweigend eine fremde Änderung
+zurückgedreht.
 
-`0089` setzt Tabellen aus `0088` voraus, `0090` ebenfalls — eine einzeln
-angewendete `0089` scheitert also, und das ist die gewünschte Richtung.
+Der Rückweg wurde **vor** dem ersten Schreibbefehl geschrieben, nicht
+danach — inklusive der beiden Originalrümpfe. Alle sechs sind additiv;
+zurück geht es über `drop` in umgekehrter Reihenfolge plus die zwei
+Funktionen auf `0001`/`0076`.
 
-**Die Richtung der Lücke ist hier die harmlose.** Der Code, der sie füttert,
-ist ohne sie wirkungslos statt kaputt: `app/c/[code]/route.ts` setzt ein
-Cookie, das niemand liest, und `signUp()` legt einen Metadaten-Schlüssel ab,
-nach dem der alte Trigger nicht sucht. Es geht nichts entzwei, solange die
-Lücke offen ist — es wird nur nichts aufgezeichnet. Umgekehrt gilt das
-nicht: eingespielte Migrationen ohne den Code sind ebenfalls folgenlos, weil
-ohne das Cookie kein `herkunft_code` in den Metadaten steht. Beide
-Reihenfolgen sind damit zulässig.
+### Nachher geprüft, an den Objekten
 
-Was beim Einspielen zu prüfen ist — die Objekte, nicht den Ledger:
+Drei neue Tabellen, alle mit RLS und **ohne** Tabellenrechte für
+`anon`/`authenticated`; die Spalte und der Teilindex auf `creator_links`;
+zwei Policies dort (die Moderations-Policy aus `0084` plus die neue
+Lese-Policy); der Trigger auf `subscriptions`; vier neue Funktionen; beide
+ersetzten Funktionen mit ihren neuen Anweisungen.
 
-```sql
--- Tabellen da, RLS an, keine Policy, keine Grants an anon/authenticated?
-select relname, relrowsecurity from pg_class
-where relname in ('registrierung_herkunft', 'creator_konversionen');
+Dazu drei **Funktionstests in zurückgerollten Transaktionen**, weil ein
+Schema-Check nicht zeigt, ob etwas läuft:
 
-select grantee, table_name, privilege_type from information_schema.role_table_grants
-where table_name in ('registrierung_herkunft', 'creator_konversionen')
-  and grantee in ('anon', 'authenticated');   -- muss leer sein
+- Der Schreibweg des Registrierungs-Triggers (beide Inserts in der Form,
+  die er verwendet) — funktioniert.
+- Der Abo-Trigger auf beiden Pfaden: ohne Herkunft schreibt er nichts und
+  wirft nicht; mit Herkunft genau eine `abo_start`-Zeile mit gesetztem
+  `registriert_am`. Ein **wiederholter** Schreibvorgang bleibt bei einer
+  Zeile — die Idempotenz gegen Stripes Mehrfachzustellung ist damit
+  gemessen, nicht angenommen. Das war der wichtigste Test: der Trigger
+  hängt an der Tabelle, in die der Stripe-Webhook schreibt.
+- `creator_klick_zaehlen()` als Rolle `anon`: zwei Aufrufe ergeben eine
+  Zeile mit `klicks = 2`, ein erfundener Code legt nichts an und wirft
+  nicht.
 
--- Trigger hängt?
-select tgname from pg_trigger where tgrelid = 'public.subscriptions'::regclass;
+Bestandsdaten danach unverändert: 16 Profile, 4 Abos, 1 Link, 6 Fahrzeuge,
+11 Fahrten. Die drei neuen Tabellen sind leer.
 
--- handle_new_user() und anonymize_account() tragen die neuen Zeilen?
-select prosrc like '%herkunft_code%' from pg_proc where proname = 'handle_new_user';
-select prosrc like '%registrierung_herkunft%' from pg_proc where proname = 'anonymize_account';
+**Nicht ausgeführt:** `anonymize_account()` selbst. Die Funktion löscht
+Fahrzeuge und nullt GPS-Tracks; sie an einem echten Konto zu erproben, auch
+in einer zurückgerollten Transaktion, wäre ein unnötiges Risiko an
+Produktionsdaten. Geprüft wurde stattdessen, dass ihr Rumpf die drei neuen
+Anweisungen trägt und der Rest wortgleich der aus `0076` ist.
+
+### Der Nachtrag 0093 — und die Falle, die zum dritten Mal zuschlug
+
+Die Prüfung der Ausführungsrechte **nach** dem Einspielen ergab:
+
+```
+creator_kennzahlen -> {anon, authenticated, postgres, service_role}
+creator_verlauf    -> {anon, authenticated, postgres, service_role}
 ```
 
-**Achtung, seit 2026-09-14 bestätigt:** `staging` und Produktion sind
-dieselbe Datenbank (siehe `AGENTS.md`, „Release Flow"). Es gibt für diese
-drei Migrationen keinen Probelauf — die einzige Anwendung ist die
-produktive. Alle drei sind additiv (neue Tabellen, `create or replace` auf
-zwei bestehende Funktionen), der Weg zurück ist entsprechend: Trigger
-löschen, Funktionen auf die Fassungen aus `0001`/`0076` zurücksetzen,
-Tabellen `drop`.
+`0091` entzieht beiden `from public` und gibt nur `authenticated` — der
+Kommentar daneben behauptet ausdrücklich, `anon` bekomme damit nichts. Das
+ist falsch: Supabase vergibt neuen Funktionen im Schema `public` einen
+**direkten** Grant an `anon`, und ein `revoke ... from public` fasst den
+nicht an. Dieselbe Falle wie in `0047` (PUBLIC) und `0048` (die direkten
+anon-Grants, die `0047` übrig liess) — hier zum dritten Mal.
+
+**Offengelegt hat es nichts.** Beide Funktionen filtern auf
+`auth.uid()`, das für `anon` NULL ist; als Rolle `anon` aufgerufen liefern
+sie **null Zeilen** (nachgemessen, nicht geschlossen). `0093` stellt
+lediglich die erklärte Absicht wieder her — bevor eine spätere Lockerung
+der Filterbedingung aus einem folgenlosen Recht ein folgenreiches macht.
+
+`creator_klick_zaehlen()` behält seinen anon-Grant: dort ist er gewollt,
+weil der Klickende meistens kein Konto hat.
+
+Die Lehre für die nächste Migration mit einer neuen Funktion: `revoke
+execute ... from public` genügt nie. Es braucht zusätzlich
+`from anon, authenticated` — so, wie es `0088` bei der Sequenz getan hat,
+die deshalb sauber ist.
 
 ## Eingespielt: 0086_strecken_anlegen_wieder_offen (2026-09-14, Produktion)
 

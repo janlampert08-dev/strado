@@ -170,21 +170,31 @@ is what should be corrected.
   un-applied (`0042`, `0058`) are superseded by `0076` and must **not** be
   applied — see `supabase/migrations/README.md`, which is the only place that
   distinction survives, plus `.agents/deployment.md`.
-  Five more are in the repo and **not applied yet**, in this order:
-  `0088_herkunft_und_konversionen`, `0089_creator_konversion_abo`,
-  `0090_anonymisierung_herkunft`, `0091_creator_konten`,
-  `0092_anonymisierung_creator_zuweisung`. They are the reverse of the usual
-  danger: the code that feeds them ships first and is inert without them —
-  a cookie nobody reads, a metadata key no trigger looks at, a `/creator`
-  page no account can reach because no assignment can exist. Nothing breaks
-  while the gap is open, and nothing is recorded either. They start at `0088` because
-  `0087_premium_abzeichen_spalte` (PR #235) took `0087` and was applied on
-  2026-09-14; both branches had picked `0087` independently off a `main`
-  that ended at `0086`. `scripts/check-migration-prefixes.mjs` cannot catch
-  that — it only sees one branch — so the check that matters is the one
-  `.agents/database.md` actually asks for: read the open PRs before
-  choosing a number. `0091`/`0092` continue the same run and depend on
-  `0088`, so the order is not optional.
+  `0088_herkunft_und_konversionen` through `0093_creator_funktionen_anon_entziehen`
+  went in on 2026-09-14, in that order, **ahead of the code that uses them**
+  (PR #236). They start at `0088` because `0087_premium_abzeichen_spalte`
+  (PR #235) took `0087` the same day; both branches had picked `0087`
+  independently off a `main` that ended at `0086`.
+  `scripts/check-migration-prefixes.mjs` cannot catch that — it only sees
+  one branch — so the check that matters is the one `.agents/database.md`
+  actually asks for: read the open PRs before choosing a number.
+  Two lessons from applying them are worth more than the list:
+  - **A `create or replace` on a live function needs the live body read
+    first.** `0088` and `0090`/`0092` rewrite `handle_new_user` and
+    `anonymize_account`. Both were read out of the database and compared
+    against the versions the migrations build on (`0001` and `0076`)
+    before anything was written; had `0087` touched either, the replace
+    would have silently reverted it.
+  - **`revoke execute ... from public` is never enough.** `0091` did only
+    that for `creator_kennzahlen()` / `creator_verlauf()` and asserted in a
+    comment that `anon` therefore had nothing. It had a **direct** grant —
+    Supabase's default privileges hand one to `anon` for every new function
+    in `public`, and a revoke from PUBLIC does not touch it. Same trap as
+    `0047` and `0048`, third time. It exposed nothing (both functions
+    filter on `auth.uid()`, which is NULL for `anon`; called as `anon` they
+    return zero rows — measured), and `0093` closed it. Write
+    `from anon, authenticated` explicitly, the way `0088` did for the
+    sequence.
   - **There is no separate staging database — confirmed, and staying that
     way.** The linked Supabase account holds exactly one project, and it is
     production; the owner confirmed on 2026-09-14 that `staging` points at
@@ -197,8 +207,8 @@ is what should be corrected.
     account and route created on `staging` **is** production data, and
     shows up in production counts. And a sandbox purchase on `staging`
     writes real rows into the production tables that hang off the payment
-    path — `creator_konversionen` (0088) is the newest of them; only the
-    Stripe side is genuinely separate.
+    path — `creator_konversionen` (0088, live since 2026-09-14) is the
+    newest of them; only the Stripe side is genuinely separate.
 - **Migration numbers are not unique.** `0034`, `0041`, `0053`, `0054`, `0059`
   and `0060` each exist twice — six pairs, not four. Reconciling a deploy by
   version number alone is ambiguous, so check the objects. In the `0059` and
