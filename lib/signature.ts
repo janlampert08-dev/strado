@@ -7,6 +7,7 @@
 // Farbe (Karte + Liste) — die Farbe transportiert also Bedeutung statt nur
 // Unterscheidbarkeit.
 import { averageTempolimit } from "@/lib/geo";
+import { mitAnzahl } from "@/lib/format";
 import type { ExploreRoute } from "@/types/database";
 
 export type SignatureKey = "kehren" | "steigung" | "hoehe" | "tempo" | "laenge";
@@ -68,7 +69,12 @@ export function withAlpha(hex: string, alpha: number): string {
 function formatSignature(key: SignatureKey, route: ExploreRoute): string {
   switch (key) {
     case "kehren":
-      return `${route.kehren} Kehren`;
+      // kehren ist hier nie null: computeSignatures wählt diesen Schlüssel nur,
+      // wenn die Kehrendichte berechenbar war, und das setzt kehren !== null
+      // voraus. Das ?? 0 bedient also nur den Typ. Vorher stand hier ein
+      // Template-String, der denselben Fall stillschweigend als "null Kehren"
+      // gerendert hätte — der Compiler hatte keinen Anlass zu widersprechen.
+      return mitAnzahl(route.kehren ?? 0, "Kehre", "Kehren");
     case "steigung":
       return `${route.max_steigung_prozent}% Steigung`;
     case "hoehe":

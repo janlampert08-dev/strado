@@ -49,3 +49,26 @@ export function todayInZurich(): string {
   const get = (type: string) => parts.find((p) => p.type === type)?.value;
   return `${get("year")}-${get("month")}-${get("day")}`;
 }
+
+// Einzahl/Mehrzahl. Klingt nach Kleinkram, stand aber live auf dem
+// Teilen-Bild: "1 Pässe befahren" — ausgerechnet auf dem Artefakt, das ein
+// Nicht-Nutzer als erstes von Strado sieht. Dieselbe Stelle traf die
+// Bestenliste ("1 Fahrten", "1 Strecken") und die Auszeichnungen.
+//
+// Der Fehler war eingebaut, kein Randfall: PASS_MILESTONES und
+// FAHRTEN_MILESTONES (lib/achievements.ts) beginnen beide bei 1, die erste
+// Auszeichnung überhaupt ist also die falsch beschriftete.
+//
+// Die Fallunterscheidung gab es im Code schon fünfmal — in Moderation,
+// Creator-Codes, ActivityHeatmap, Header (Kudos) und useRideRecorder —
+// jedes Mal anders geschrieben. Hier einmal, damit die sechste Stelle sie
+// nicht erneut erfindet und die siebte sie wieder vergisst.
+export function nomen(anzahl: number, eins: string, mehr: string): string {
+  return anzahl === 1 ? eins : mehr;
+}
+
+// "1 Fahrt" / "10 Fahrten" — Zahl und Nomen zusammen, in Schweizer
+// Schreibweise (1'380), passend zum Rest dieser Datei.
+export function mitAnzahl(anzahl: number, eins: string, mehr: string): string {
+  return `${anzahl.toLocaleString("de-CH")} ${nomen(anzahl, eins, mehr)}`;
+}
