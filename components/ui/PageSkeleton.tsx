@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Skeleton from "@/components/ui/Skeleton";
+import { Signet } from "@/components/Wortmarke";
 import { cn } from "@/lib/utils/cn";
 
 // Gemeinsames Grundgerüst für alle Segment-Skelette (app/**/loading.tsx).
@@ -19,11 +20,19 @@ import { cn } from "@/lib/utils/cn";
  * Wortmarke ist ein Block in ihrer tatsächlichen Grösse (h-[18px], Breite aus
  * WORTMARKE.seitenverhaeltnis ≈ 3.958 → 71px), damit nichts umbricht, sobald
  * die echte Kontur einrückt.
+ *
+ * Unter sm steht dort statt der Wortmarke das Signet (LogoLink.tsx), und
+ * zwar als echte Kontur statt als grauer Block: es ist die einzige Stelle im
+ * Skelett, an der die richtige Form nichts kostet — sie steckt schon im
+ * Bundle, ihre Grösse ist bekannt, und sie springt beim Einrücken der echten
+ * Kopfleiste nicht um. Gedämpft über text-foreground/10, also derselbe Ton,
+ * den Skeleton für seine Flächen benutzt, und mit demselben animate-pulse.
  */
 export function HeaderSkeleton() {
   return (
     <div className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border bg-background/85 px-4 py-3 backdrop-blur-xl sm:px-6 sm:py-4">
-      <Skeleton className="h-[18px] w-[71px] rounded-sm" />
+      <Signet className="h-[18px] w-auto animate-pulse text-foreground/10 sm:hidden" />
+      <Skeleton className="hidden h-[18px] w-[71px] rounded-sm sm:block" />
       <div className="flex shrink-0 items-center gap-3 sm:gap-4">
         {/* Das Flammen-Icon (Aktivität) rechts aussen — auf jeder
             Bildschirmgrösse sichtbar, anders als die Textnavigation. */}

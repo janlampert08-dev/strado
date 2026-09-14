@@ -327,6 +327,31 @@ main {
   animation: marke-anschlag 400ms var(--ease-standard);
 }
 
+/* Antippen des Signets (dieselbe Komponente, unter sm sichtbar): eine Runde
+   auf dem Kurs. Das Zeichen ist ein Rundkurs (lib/marke.ts), also ist die
+   naheliegende Quittung keine Neigung, sondern eine ganze Umdrehung — 500 ms,
+   die Dauer steht auch in LogoLink.tsx.
+
+   Ohne Farbwechsel, anders als bei der Wortmarke: die Drehung allein ist
+   deutlich genug, und ein Wisch in den Akzentton bei gleichzeitiger Drehung
+   wären zwei Quittungen für einen Antipp.
+
+   transform-origin bleibt auf dem Standard (50 % 50 %) — das ist die Mitte
+   des viewBox und damit die Mitte der Ellipse, das Zeichen dreht sich also
+   um seinen eigenen Mittelpunkt und wandert nicht. */
+@keyframes signet-runde {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.signet-runde {
+  animation: signet-runde 500ms var(--ease-standard);
+}
+
 /* Kudos geben (components/KudosButton.tsx): die Flamme ploppt einmal kurz
    auf. Dieselbe Begründung wie oben — die Bewegung quittiert genau eine
    Nutzeraktion und läuft danach nicht weiter. */
