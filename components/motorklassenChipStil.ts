@@ -10,13 +10,16 @@ import { cn } from "@/lib/utils/cn";
 // (MeineKlasseChip in app/leaderboards/page.tsx). Stünde sie in der
 // "use client"-Datei, ersetzte React sie dort durch einen Client-Verweis:
 // einen Stub, der beim Aufruf wirft mit "Attempted to call chipClassName()
-// from the server but chipClassName is on the client".
+// from the server but chipClassName is on the client". Genau das ist
+// passiert — unbemerkt, weil der Aufruf hinter einer Bedingung lag, die bis
+// dahin nie wahr wurde.
 //
 // Die Regel dahinter: Aus einer "use client"-Datei darf eine Server
 // Component nur KOMPONENTEN importieren. Jeder andere Export — eine
 // Konstante, eine reine Funktion — ist auf der Serverseite kein Wert mehr,
 // sondern ein Verweis. Solche geteilten Werte gehören deshalb in ein Modul
 // ohne "use client"; von dort dürfen beide Seiten importieren.
+// lib/reactGrenze.test.ts hält diese Regel fest.
 export function chipClassName(aktiv: boolean): string {
   return cn(
     // min-h-9 wie die kleinen Schaltflächen in components/ui/Button.tsx —
