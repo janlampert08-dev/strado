@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { ogMitBild } from "@/lib/openGraph";
 import Link from "next/link";
 import Header from "@/components/Header";
 import RouteDetailLayout from "@/components/RouteDetailLayout";
@@ -47,11 +48,29 @@ export async function generateMetadata({
   const route = await getRoute(id);
   if (!route) return { title: "Strecke – Strado" };
 
+  const beschreibung =
+    route.charakter_text ??
+    `${route.region}: ${route.start_ort} → ${route.ziel_ort}, ${route.laenge_km.toFixed(0)} km`;
+
   return {
     title: `${route.name} – Strado`,
-    description:
-      route.charakter_text ??
-      `${route.region}: ${route.start_ort} → ${route.ziel_ort}, ${route.laenge_km.toFixed(0)} km`,
+    description: beschreibung,
+    // Diese Seite hatte als einzige mit eigenem Freigabebild keinen eigenen
+    // openGraph-Block — die Vorschau eines geteilten Streckenlinks zeigte
+    // deshalb das richtige Bild unter dem generischen Layout-Titel
+    // ("Strado — Für alle, die den Umweg nehmen."). Der Ortsname ist laut
+    // AGENTS.md aber die Einheit, an der jemand seine Strasse wiedererkennt,
+    // und in einer Linkvorschau ist der Titel die Zeile, die das leisten muss.
+    //
+    // ogMitBild() setzt das segmenteigene Bild ausdrücklich mit: ein neuer
+    // openGraph-Block ersetzt den des Layouts vollständig und nähme sonst
+    // auch das Bild aus opengraph-image.tsx mit weg.
+    openGraph: {
+      ...ogMitBild(`/strecken/${id}/opengraph-image`, `${route.name} auf Strado`),
+      type: "article",
+      title: `${route.name} – Strado`,
+      description: beschreibung,
+    },
   };
 }
 
