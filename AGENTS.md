@@ -149,20 +149,23 @@ is what should be corrected.
   `'unsafe-eval'`; der Ersatz durch Nonces verlangt die CSP pro Anfrage in
   `proxy.ts` und macht jede Seite dynamisch — offen, bewusst.
 - **Migrations are applied by hand.** Green CI means nothing about the live
-  schema — nothing applies a migration for you. As of 2026-09-13 the repo and
+  schema — nothing applies a migration for you. As of 2026-09-14 the repo and
   the production database do match: `0083_feedback` went in on 2026-09-13, and
   `0080_motorklassen`, `0081_freie_fahrt_motorklasse_belegt`,
   `0082_motorklasse_backfill_freie_fahrten` and `0084_creator_links` followed
-  the same day, in that order and each verified against the objects rather
-  than against the ledger — `apply_migration` stamps a timestamp as `version`,
-  so a search for the file number finds nothing. The two files that remain
+  the same day, in that order; `0085_bestenlisten_nach_fahrzeugtyp` went in on
+  2026-09-14, **ahead of the code that reads it** — that code is still on a
+  branch, which is the intended order (schema first, code second). Each was
+  verified against the objects rather than against the ledger —
+  `apply_migration` stamps a timestamp as `version`, so a search for the file
+  number finds nothing. The two files that remain
   un-applied (`0042`, `0058`) are superseded by `0076` and must **not** be
   applied — see `supabase/migrations/README.md`, which is the only place that
   distinction survives, plus `.agents/deployment.md`.
   - **There is no separate staging database.** The linked Supabase account
     holds exactly one project, and it is production. The rehearsal that
     "Release Flow" below describes therefore did not happen for any of the
-    five migrations above; they were additive throughout, which is what made
+    six migrations above; they were additive throughout, which is what made
     that acceptable. A migration that drops, rewrites or backfills anything
     does not get the same pass — settle where staging's database lives
     before writing one.
