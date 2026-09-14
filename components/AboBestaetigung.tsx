@@ -12,6 +12,7 @@ import {
   meldeCheckoutProblem,
 } from "@/lib/actions/billing";
 import { fehlerMeldung } from "@/lib/checkoutFehler";
+import { EINZELVERSUCH, WARTEZEITEN_MS } from "@/lib/abobremse";
 
 // Die Bestätigung nach der Rückkehr von einer Weiterleitungs-Zahlung.
 //
@@ -34,20 +35,11 @@ import { fehlerMeldung } from "@/lib/checkoutFehler";
 // aus Supabase-, Stripe- und Datenbank-Aufrufen wartet, bevor überhaupt
 // etwas erscheint.
 
-// Wartezeiten zwischen den Versuchen. Bei TWINT und einigen Bankverfahren
-// steht die Session unmittelbar nach der Rückkehr noch nicht auf
-// complete/paid; das dauert Sekunden, nicht Minuten. Wachsende Abstände
-// statt eines engen Takts: jeder Versuch kostet einen Stripe-Aufruf, und
-// nach gut einer halben Minute ist ein weiterer Versuch keine Frage der
-// Geduld mehr, sondern eine Frage an den Webhook.
-const WARTEZEITEN_MS = [0, 1_500, 2_500, 4_000, 6_000, 8_000, 10_000] as const;
-
-// "Erneut prüfen" fragt genau einmal nach, statt die ganze Leiter noch
-// einmal zu durchlaufen. Sonst kostete jeder Tastendruck sieben weitere
-// Stripe-Aufrufe samt Schreibvorgang — auf einem Pfad, den jede angemeldete
-// Person beliebig oft auslösen kann. Wer nach der automatischen Runde noch
-// wartet, wartet auf den Webhook, nicht auf eine achte Nachfrage.
-const EINZELVERSUCH = [0] as const;
+// Der Wiederhol-Takt steht in lib/abobremse.ts, zusammen mit der Bremse in
+// lib/actions/billing.ts, gegen die er bemessen ist. Beides gehört
+// zusammen: wer hier enger taktet, verschiebt den schlimmsten ehrlichen Fall
+// nach oben — und dort schlägt dann der Test an, statt dass jemand nach
+// einer TWINT-Zahlung ohne Premium dasteht.
 
 function warte(ms: number): Promise<void> {
   return new Promise((fertig) => setTimeout(fertig, ms));

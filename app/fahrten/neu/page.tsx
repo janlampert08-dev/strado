@@ -1,11 +1,19 @@
+import type { Metadata } from "next";
 import FreeRideForm from "@/components/FreeRideForm";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getRoutes } from "@/lib/routes";
 import { getPremiumStatus, maxFotosProFahrt } from "@/lib/premium";
 import type { Vehicle } from "@/types/database";
+import { NICHT_INDEXIEREN } from "@/lib/seo";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Fahrt aufzeichnen – Strado",
+  // Diese Seite steht abgemeldeten Besuchern offen (Gastaufzeichnung, siehe
+  // unten) und ist deshalb anders als /profil oder /moderation wirklich
+  // abrufbar — und stand in keiner Disallow-Regel. Ein Aufzeichnungsschirm
+  // ist aber kein Suchergebnis: wer "Fahrt aufzeichnen" sucht, will nicht
+  // ein leeres Formular, sondern die App.
+  robots: NICHT_INDEXIEREN,
 };
 
 // Einstieg für eine freie Fahrt (ohne Strecke). Das Gegenstück zur

@@ -1,7 +1,18 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/supabase/server";
 import Header from "@/components/Header";
 import NeueStreckeForm from "@/components/NeueStreckeForm";
+import { NICHT_INDEXIEREN } from "@/lib/seo";
+
+// Bisher ohne Metadata: der Tab hiess "Strado" wie die Startseite. Der
+// noindex ist die Absicherung dahinter — abgemeldet leitet die Seite zwar
+// auf /anmelden um, ein Crawler sähe also ohnehin keinen Inhalt, aber das
+// hängt am Redirect und nicht an einer Aussage.
+export const metadata: Metadata = {
+  title: "Strecke vorschlagen – Strado",
+  robots: NICHT_INDEXIEREN,
+};
 
 export default async function NeueStreckePage() {
   const user = await getCurrentUser();

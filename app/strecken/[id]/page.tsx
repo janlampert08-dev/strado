@@ -52,6 +52,15 @@ export async function generateMetadata({
     description:
       route.charakter_text ??
       `${route.region}: ${route.start_ort} → ${route.ziel_ort}, ${route.laenge_km.toFixed(0)} km`,
+    // Kanonische Adresse, von Next gegen metadataBase aufgelöst
+    // (app/layout.tsx). Auf dieser Seite der wichtigste Ort dafür: sie ist
+    // der einzige öffentlich indexierbare Evergreen-Inhalt der Plattform
+    // (app/sitemap.ts listet sie mit priority 0.8), und sie nimmt zwei
+    // Query-Parameter entgegen — ?fortsetzen= aus dem Gast-Handoff und
+    // ?privat= aus proposeRoute. Beide gehören zu einem Vorgang, nicht zu
+    // einem Inhalt; ohne Canonical wäre jeder Marker-Wert eine eigene Seite
+    // mit demselben Text.
+    alternates: { canonical: `/strecken/${route.id}` },
   };
 }
 

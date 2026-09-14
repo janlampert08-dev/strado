@@ -1,4 +1,15 @@
+import type { Metadata } from "next";
 import Header from "@/components/Header";
+import { NICHT_INDEXIEREN } from "@/lib/seo";
+
+// Hatte bisher keine Metadata und erbte damit den Titel "Strado" aus dem
+// Layout — dieselbe Zeile wie die Startseite, für eine Zwischenseite, die
+// nur "schau in dein Postfach" sagt. Sie steht jedem offen (keine
+// Session-Prüfung) und war deshalb indexierbar.
+export const metadata: Metadata = {
+  title: "E-Mail bestätigen – Strado",
+  robots: NICHT_INDEXIEREN,
+};
 
 export default function BestaetigenPage() {
   return (

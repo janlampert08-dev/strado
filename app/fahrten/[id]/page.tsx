@@ -74,6 +74,11 @@ export async function generateMetadata({
         title: `${titel} – Fahrt von ${fahrer}`,
         description: beschreibung,
       },
+      // Kanonische Adresse. Eine Fahrt ist die am häufigsten geteilte
+      // Adresse der App (Teilen-Knopf, lib/shareImage.ts), landet also in
+      // Chats und Bios — oft mit angehängten Parametern. Der Inhalt bleibt
+      // derselbe.
+      alternates: { canonical: `/fahrten/${id}` },
     };
   }
 
@@ -92,6 +97,11 @@ export async function generateMetadata({
       title: `${route.name} – Fahrt von ${fahrer}`,
       description: beschreibung,
     },
+    // Kanonische Adresse. Eine Fahrt ist die am häufigsten geteilte
+    // Adresse der App (Teilen-Knopf, lib/shareImage.ts), landet also in
+    // Chats und Bios — oft mit angehängten Parametern. Der Inhalt bleibt
+    // derselbe.
+    alternates: { canonical: `/fahrten/${id}` },
   };
 }
 

@@ -1,9 +1,14 @@
+import type { Metadata } from "next";
 import OfflineRetryButton from "@/components/OfflineRetryButton";
 import OfflineRoutesList from "@/components/OfflineRoutesList";
 import StatusPage from "@/components/ui/StatusPage";
+import { NICHT_INDEXIEREN } from "@/lib/seo";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Offline – Strado",
+  // Der Service Worker liefert diese Seite aus, wenn das Netz fehlt. Als
+  // Suchergebnis wäre sie eine Fehlermeldung ohne Anlass.
+  robots: NICHT_INDEXIEREN,
 };
 
 // Statischer Fallback, den der Service Worker (public/sw.js) bei

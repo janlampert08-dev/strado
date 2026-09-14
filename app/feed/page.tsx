@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronRight, Rss } from "lucide-react";
 import Header from "@/components/Header";
@@ -14,8 +15,25 @@ import EmptyState from "@/components/ui/EmptyState";
 import { buttonVariants } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Feed – Strado",
+  description:
+    "Die zuletzt gefahrenen Strecken und Touren der Strado-Community rund um Zürich.",
+  // Kanonische Adresse. Die App wird unter mehr als einem Hostnamen
+  // ausgeliefert — app.strado.ch, die Vorschau-Adressen jedes Deployments,
+  // dazu Staging — und lieferte bis hierher auf keiner davon ein Canonical
+  // aus (im ausgelieferten HTML nachgesehen). Damit steht derselbe Inhalt
+  // mehrfach zur Auswahl, und welche Adresse eine Suchmaschine nimmt, ist
+  // ihre Entscheidung statt unsere.
+  //
+  // Der relative Pfad wird von Next gegen metadataBase aufgelöst
+  // (app/layout.tsx). Bewusst ohne Query: alternates.canonical gehört an die
+  // Adresse OHNE ?-Parameter, sonst zählt jeder Filter- und Marker-Wert als
+  // eigene Seite.
+  //
+  // ?scope=folge-ich ist der zweite Reiter derselben Seite und braucht
+  // deshalb keine eigene Adresse im Index.
+  alternates: { canonical: "/feed" },
 };
 
 // Öffentlich lesbar wie /strecken/[id] (public_fahrten ist an anon

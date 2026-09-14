@@ -1,8 +1,19 @@
+import type { Metadata } from "next";
 import Header from "@/components/Header";
 import RegistrierenForm from "@/components/RegistrierenForm";
 import { safeInternalPath } from "@/lib/utils/url";
+import { NICHT_INDEXIEREN } from "@/lib/seo";
 
-export const metadata = { title: "Registrieren – Strado" };
+export const metadata: Metadata = {
+  title: "Registrieren – Strado",
+  // Entfällt seit dieser Änderung aus der Disallow-Liste in app/robots.ts
+  // und wird stattdessen hier aus dem Index gehalten. Der Grund steht dort
+  // ausführlich: das Formular ist von jeder öffentlichen Streckenseite aus
+  // verlinkt (RatingSection.tsx), ein Disallow hätte die Adresse also
+  // weiterhin als inhaltslose URL im Index gelassen — je ?next=-Wert eine
+  // eigene.
+  robots: NICHT_INDEXIEREN,
+};
 
 // ?next wie auf /anmelden: wohin es nach der Registrierung weitergeht,
 // gesetzt z.B. vom Anmelde-Gate im Fazit einer Gastfahrt (FreeRideForm.tsx),
