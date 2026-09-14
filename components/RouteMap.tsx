@@ -285,7 +285,45 @@ function bewegungsdauer(ms: number): number {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : ms;
 }
 
-function fitToRoutes(map: mapboxgl.Map, routes: KartenStrecke[], animate: boolean) {
+// Randabstand beim Einpassen. FIT_PADDING_PX für die Streckenliste,
+// FIT_PADDING_EINZELN_PX für eine einzeln hervorgehobene Strecke, über der
+// zusätzlich eine Meldung steht (Zufallsvorschlag, siehe unten).
+const FIT_PADDING_PX = 48;
+const FIT_PADDING_EINZELN_PX = 64;
+
+// So viel Karte muss nach allen Abzügen mindestens übrig bleiben. Mapbox
+// rechnet mit einem Padding, das die Leinwand auffrisst, einen unbrauchbaren
+// (und je nach Version gar keinen) Ausschnitt aus — auf einem kurzen Gerät
+// mit aufgezogenem Sheet wäre genau das der Fall.
+const MIN_SICHTHOEHE_PX = 120;
+
+// Unterhalb dieser sichtbaren Resthöhe lohnt sich ein erneutes Einpassen
+// nicht mehr: das Sheet deckt die Karte dann praktisch ganz ab, und der
+// Ausschnitt, den man auf den verbleibenden Streifen rechnete, stünde beim
+// Zuklappen als absurde Zoomstufe da.
+const NEU_EINPASSEN_MIN_HOEHE_PX = 200;
+
+/**
+ * Der untere Teil der Karte liegt auf Mobile unter dem Bottom-Sheet (und der
+ * BottomNav darunter) — die Leinwand ist dort also grösser als das, was man
+ * sieht. Ohne diesen Abzug passt Mapbox die Strecke in die *ganze* Leinwand
+ * ein: die untere Hälfte verschwindet unter dem Sheet, und der sichtbare Rest
+ * wirkt wie ein herangezoomter Ausschnitt statt wie die ganze Strecke.
+ */
+function fitPadding(map: mapboxgl.Map, basis: number, bottomInsetPx: number) {
+  const hoehe = map.getContainer().clientHeight;
+  const platz = Math.max(0, hoehe - MIN_SICHTHOEHE_PX);
+  const oben = Math.min(basis, platz);
+  const unten = Math.min(basis + Math.max(0, bottomInsetPx), platz - oben);
+  return { top: oben, bottom: unten, left: basis, right: basis };
+}
+
+function fitToRoutes(
+  map: mapboxgl.Map,
+  routes: KartenStrecke[],
+  animate: boolean,
+  bottomInsetPx: number,
+) {
   if (routes.length === 0) return;
   const bounds = new mapboxgl.LngLatBounds();
   for (const route of routes) {
@@ -293,14 +331,25 @@ function fitToRoutes(map: mapboxgl.Map, routes: KartenStrecke[], animate: boolea
       bounds.extend(coord as [number, number]);
     }
   }
-  map.fitBounds(bounds, { padding: 48, duration: animate ? bewegungsdauer(500) : 0 });
+  map.fitBounds(bounds, {
+    padding: fitPadding(map, FIT_PADDING_PX, bottomInsetPx),
+    duration: animate ? bewegungsdauer(500) : 0,
+  });
 }
 
-function fitToTrail(map: mapboxgl.Map, trail: [number, number][], animate: boolean) {
+function fitToTrail(
+  map: mapboxgl.Map,
+  trail: [number, number][],
+  animate: boolean,
+  bottomInsetPx: number,
+) {
   if (trail.length < 2) return;
   const bounds = new mapboxgl.LngLatBounds();
   for (const coord of trail) bounds.extend(coord);
-  map.fitBounds(bounds, { padding: 48, duration: animate ? bewegungsdauer(500) : 0 });
+  map.fitBounds(bounds, {
+    padding: fitPadding(map, FIT_PADDING_PX, bottomInsetPx),
+    duration: animate ? bewegungsdauer(500) : 0,
+  });
 }
 
 export default function RouteMap({
@@ -315,6 +364,7 @@ export default function RouteMap({
   hoveredRouteId = null,
   primaryRouteId = null,
   flyToRouteId = null,
+  bottomInsetPx = 0,
   trafficSegments = KEINE_VERKEHRSSEGMENTE,
   trail = KEIN_TRACK,
   fitTrail = false,
@@ -417,6 +467,12 @@ export default function RouteMap({
   // positioniert hat, und pausiert, solange die Nutzerin die Karte selbst
   // verschiebt.
   followLocation?: boolean;
+  // Pixel am unteren Rand der Karte, die von etwas anderem verdeckt werden —
+  // auf Mobile das Bottom-Sheet plus die BottomNav darunter (gemeldet von
+  // DragSheet.tsx, siehe ExploreView/RouteDetailLayout). Die Leinwand füllt
+  // dort den ganzen Container; ohne diesen Wert passt sich ein Einpassen auf
+  // Fläche ein, die man gar nicht sieht — siehe fitPadding() oben.
+  bottomInsetPx?: number;
 }) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -446,6 +502,19 @@ export default function RouteMap({
   // GPS-Fix wieder unter dem Finger wegzuziehen. "dragstart" feuert nur bei
   // Nutzer-Gesten, nicht bei den programmatischen easeTo()-Aufrufen unten.
   const isDraggingRef = useRef(false);
+  const bottomInsetRef = useRef(bottomInsetPx);
+  useEffect(() => {
+    bottomInsetRef.current = bottomInsetPx;
+  }, [bottomInsetPx]);
+  // Hat die Nutzerin die Kamera selbst bewegt, bleibt ihr Ausschnitt stehen:
+  // ein Rastpunktwechsel des Sheets passt dann nicht mehr nach. Mapbox hängt
+  // an einer Nutzergeste ein originalEvent an, an den programmatischen
+  // Fahrten unten nicht — daran lassen sich die beiden auseinanderhalten.
+  const nutzerBewegteKameraRef = useRef(false);
+  // Mit welchem Abzug zuletzt eingepasst wurde. Ohne das schöbe der Effekt zu
+  // bottomInsetPx unten direkt nach dem Erstaufbau eine zweite, identische
+  // Kamerafahrt nach — er läuft mit, sobald stilGeneration steigt.
+  const eingepasstMitInsetRef = useRef<number | null>(null);
 
   useEffect(() => {
     routesRef.current = routes;
@@ -778,10 +847,16 @@ export default function RouteMap({
       // Kartenansicht der Nutzerin erhalten bleiben statt zurückzuspringen.
       if (!hasFitBounds) {
         if (routesRef.current.length > 0 && fitRoutesRef.current) {
-          fitToRoutes(map, fitTargets(routesRef.current, primaryRouteIdRef.current), false);
+          fitToRoutes(
+            map,
+            fitTargets(routesRef.current, primaryRouteIdRef.current),
+            false,
+            bottomInsetRef.current,
+          );
         } else {
-          fitToTrail(map, trailRef.current, false);
+          fitToTrail(map, trailRef.current, false, bottomInsetRef.current);
         }
+        eingepasstMitInsetRef.current = bottomInsetRef.current;
         hasFitBounds = true;
       }
 
@@ -806,6 +881,14 @@ export default function RouteMap({
       if (!routesClickableRef.current) return;
       const id = e.features?.[0]?.properties?.id;
       if (id) router.push(`/strecken/${id}`);
+    });
+
+    // Jede von Hand begonnene Kamerabewegung — Ziehen, Zoomen, Drehen —
+    // schaltet das automatische Nachpassen an den Sheet-Rastpunkt ab (siehe
+    // den Effekt zu bottomInsetPx unten). "movestart" deckt auch das Zoomen
+    // per Pinch und Doppeltipp ab, die kein "dragstart" auslösen.
+    map.on("movestart", (e) => {
+      if (e.originalEvent) nutzerBewegteKameraRef.current = true;
     });
 
     map.on("dragstart", () => {
@@ -870,8 +953,38 @@ export default function RouteMap({
     map.setPaintProperty(ENDPOINTS_LAYER, "circle-opacity", routeOpacity(primaryRouteId));
     map.setPaintProperty(ENDPOINTS_LAYER, "circle-stroke-opacity", routeOpacity(primaryRouteId));
 
-    if (fitRoutes) fitToRoutes(map, fitTargets(routes, primaryRouteId), true);
+    if (fitRoutes) {
+      // Eine neue Streckenauswahl ist ein neuer Ausschnitt — das überschreibt
+      // ein Hineinzoomen von Hand, und die Sperre dafür fällt damit auch.
+      nutzerBewegteKameraRef.current = false;
+      fitToRoutes(map, fitTargets(routes, primaryRouteId), true, bottomInsetRef.current);
+      eingepasstMitInsetRef.current = bottomInsetRef.current;
+    }
   }, [routes, colors, fitRoutes, primaryRouteId]);
+
+  // Ändert sich die vom Sheet verdeckte Fläche (auf-, zu- oder ganz
+  // weggezogen, Drehung des Geräts), passt sich der Ausschnitt an die neue
+  // *sichtbare* Kartenfläche an — genau das, was beim Öffnen einer Strecke
+  // vorher fehlte: die Strecke wurde in die volle Leinwand eingepasst und
+  // stand dann zur Hälfte unter dem Sheet.
+  //
+  // Zwei Bremsen: hat die Nutzerin die Kamera selbst bewegt, bleibt ihr
+  // Ausschnitt stehen; und deckt das Sheet die Karte fast ganz ab, wird nicht
+  // auf den letzten Streifen gerechnet (siehe NEU_EINPASSEN_MIN_HOEHE_PX).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !styleLoadedRef.current) return;
+    if (!fitRoutes || nutzerBewegteKameraRef.current) return;
+    if (eingepasstMitInsetRef.current === bottomInsetPx) return;
+    if (map.getContainer().clientHeight - bottomInsetPx < NEU_EINPASSEN_MIN_HOEHE_PX) return;
+    fitToRoutes(
+      map,
+      fitTargets(routesRef.current, primaryRouteIdRef.current),
+      true,
+      bottomInsetPx,
+    );
+    eingepasstMitInsetRef.current = bottomInsetPx;
+  }, [bottomInsetPx, fitRoutes, stilGeneration]);
 
   // Markiert die per Sidebar-Hover (oder Tastaturfokus) ausgewählte bzw. die
   // primäre Strecke auf der Karte — eigener Source/Layer statt feature-state,
@@ -918,7 +1031,10 @@ export default function RouteMap({
     for (const coord of route.geometry_geojson.coordinates) {
       bounds.extend(coord as [number, number]);
     }
-    map.fitBounds(bounds, { padding: 64, duration: bewegungsdauer(800) });
+    map.fitBounds(bounds, {
+      padding: fitPadding(map, FIT_PADDING_EINZELN_PX, bottomInsetRef.current),
+      duration: bewegungsdauer(800),
+    });
     // stilGeneration in den Abhängigkeiten, damit ein Klick, der vor dem
     // style.load eintrifft, nicht verpufft: der Effekt bricht dann oben ab
     // und läuft nach, sobald der Stil steht. Ohne das erschiene der
@@ -933,7 +1049,7 @@ export default function RouteMap({
     const source = map.getSource(TRACK_SOURCE) as mapboxgl.GeoJSONSource | undefined;
     if (!source) return;
     source.setData(toTrackFeatureCollection(trail));
-    if (fitTrail) fitToTrail(map, trail, true);
+    if (fitTrail) fitToTrail(map, trail, true, bottomInsetRef.current);
   }, [trail, fitTrail]);
 
   // Aktualisiert die eingefärbten Stau-Abschnitte, sobald RouteDetailMap eine

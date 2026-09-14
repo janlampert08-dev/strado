@@ -19,14 +19,92 @@ export const DRAG_DECISION_THRESHOLD_PX = 4;
 /** "sheet" = die Geste zieht das Sheet, "scroll" = der Browser scrollt den Inhalt. */
 export type SheetGesture = "sheet" | "scroll";
 
-/** Hält eine Ziehhöhe zwischen Peek- und Vollhöhe (Vollhöhe nie unter Peek). */
-export function clampSheetHeight(height: number, peekPx: number, maxHeight: number): number {
-  return Math.min(Math.max(height, peekPx), Math.max(peekPx, maxHeight));
+/**
+ * Die Rastpunkte des Sheets, von unten nach oben. "versteckt" ist seit
+ * 2026-09-14 dabei: vorher kannte das Sheet nur Peek und Voll, die Karte war
+ * auf dem Handy also nie ganz zu sehen — auf der Streckendetailseite standen
+ * dauerhaft 320px Info über der Karte, und wer die Kurve am unteren Bildrand
+ * sehen wollte, konnte das Sheet nur aufziehen, nicht wegschieben. Ganz
+ * verschwinden darf es trotzdem nicht: der Ziehgriff bleibt stehen, sonst
+ * gäbe es keinen Weg zurück.
+ */
+export type SheetSnap = "versteckt" | "peek" | "voll";
+
+/** Rastpunkte von unten nach oben — die Reihenfolge trägt Logik, siehe unten. */
+export const SHEET_SNAPS: readonly SheetSnap[] = ["versteckt", "peek", "voll"];
+
+/**
+ * Die drei Höhen in Pixeln. `minPx` ist die Höhe des Ziehgriffs (das, was im
+ * Zustand "versteckt" stehen bleibt), `maxPx` die Inhaltshöhe des Containers.
+ */
+export type SheetHeights = { minPx: number; peekPx: number; maxPx: number };
+
+/**
+ * Bringt die drei Höhen in eine widerspruchsfreie Ordnung
+ * (versteckt <= peek <= voll). Nötig, weil `peekPx` eine feste Zahl der
+ * aufrufenden Seite ist und `maxPx` die gemessene Containerhöhe: auf einem
+ * kurzen Gerät im Querformat kann der Container kleiner sein als der
+ * Peek-Wert, und ohne diese Normalisierung führte das zu einem Rastpunkt
+ * über der Vollhöhe.
+ */
+export function sheetSnapHeights({ minPx, peekPx, maxPx }: SheetHeights): Record<SheetSnap, number> {
+  const versteckt = Math.max(0, minPx);
+  const peek = Math.max(versteckt, peekPx);
+  return { versteckt, peek, voll: Math.max(peek, maxPx) };
 }
 
-/** Nach dem Loslassen rastet das Sheet zur näheren der beiden Höhen ein. */
-export function isExpandedAfterDrag(height: number, peekPx: number, maxHeight: number): boolean {
-  return height > (peekPx + Math.max(peekPx, maxHeight)) / 2;
+/** Höhe eines Rastpunkts in Pixeln. */
+export function sheetHeightFor(snap: SheetSnap, heights: SheetHeights): number {
+  return sheetSnapHeights(heights)[snap];
+}
+
+/** Hält eine Ziehhöhe zwischen Griff- und Vollhöhe. */
+export function clampSheetHeight(height: number, heights: SheetHeights): number {
+  const h = sheetSnapHeights(heights);
+  return Math.min(Math.max(height, h.versteckt), h.voll);
+}
+
+/**
+ * Nach dem Loslassen rastet das Sheet zum nächstgelegenen Rastpunkt ein. Bei
+ * exaktem Gleichstand gewinnt der tiefere — dieselbe Regel wie in der
+ * Zwei-Zustands-Fassung davor, und die konservativere: auf halbem Weg bleibt
+ * mehr Karte sichtbar.
+ */
+export function snapAfterDrag(height: number, heights: SheetHeights): SheetSnap {
+  const h = sheetSnapHeights(heights);
+  let best: SheetSnap = "versteckt";
+  let bestDistance = Infinity;
+  for (const snap of SHEET_SNAPS) {
+    const distance = Math.abs(height - h[snap]);
+    // Striktes < bei einer von unten nach oben durchlaufenen Liste: der
+    // tiefere Rastpunkt bleibt bei Gleichstand stehen.
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = snap;
+    }
+  }
+  return best;
+}
+
+/**
+ * Ein Tap auf den Ziehgriff schaltet zwischen Peek und Voll um; aus dem
+ * versteckten Zustand holt er das Sheet auf Peek zurück. Weggeschoben wird
+ * ausschliesslich per Wisch — ein Tap, der die Info wegnimmt, wäre der
+ * teuerste Fehlgriff der drei.
+ */
+export function nextSnapOnTap(snap: SheetSnap): SheetSnap {
+  return snap === "voll" ? "peek" : snap === "peek" ? "voll" : "peek";
+}
+
+/**
+ * Einen Rastpunkt nach oben (`1`) oder unten (`-1`) — für die Pfeiltasten auf
+ * dem Ziehgriff, die als einziger Weg den versteckten Zustand auch ohne
+ * Wischgeste erreichbar machen. An den Enden bleibt es stehen, statt
+ * umzuspringen.
+ */
+export function snapStep(snap: SheetSnap, direction: 1 | -1): SheetSnap {
+  const index = SHEET_SNAPS.indexOf(snap);
+  return SHEET_SNAPS[Math.min(SHEET_SNAPS.length - 1, Math.max(0, index + direction))];
 }
 
 /**
@@ -36,28 +114,31 @@ export function isExpandedAfterDrag(height: number, peekPx: number, maxHeight: n
  * Betrag. `scrollTop` ist die Position des gescrollten Elements unter dem
  * Finger.
  *
- * Die Regel ist die gewohnte Bottom-Sheet-Mechanik: eingeklappt zieht ein
- * Wisch nach oben das Sheet auf, statt die paar sichtbaren Zeilen zu scrollen;
- * aufgeklappt scrollt derselbe Wisch den Inhalt. Nach unten gilt es
- * umgekehrt — erst zurück an den Anfang des Inhalts, und erst dort klappt das
- * Sheet wieder ein.
+ * Die Regel ist die gewohnte Bottom-Sheet-Mechanik: solange das Sheet nicht
+ * ganz oben steht, zieht ein Wisch nach oben es weiter auf, statt die paar
+ * sichtbaren Zeilen zu scrollen; oben angekommen scrollt derselbe Wisch den
+ * Inhalt. Nach unten gilt es umgekehrt — erst zurück an den Anfang des
+ * Inhalts, und erst dort geht es einen Rastpunkt tiefer.
  */
 export function decideSheetGesture({
   deltaY,
   deltaX,
-  expanded,
+  snap,
   scrollTop,
 }: {
   deltaY: number;
   deltaX: number;
-  expanded: boolean;
+  snap: SheetSnap;
   scrollTop: number;
 }): SheetGesture {
   // Waagrechte Absicht (Karussell, Textauswahl) fasst das Sheet nicht an.
   if (Math.abs(deltaX) > Math.abs(deltaY)) return "scroll";
 
-  if (deltaY > 0) return expanded ? "scroll" : "sheet";
+  if (deltaY > 0) return snap === "voll" ? "scroll" : "sheet";
 
+  // Nach unten: ein noch nicht an den Anfang zurückgescrollter Inhalt behält
+  // die Geste — sonst schöbe ein Zurückscrollen in der Peek-Höhe das Sheet
+  // weg, statt die Liste an ihren Anfang zu bringen.
   if (scrollTop > 0) return "scroll";
-  return expanded ? "sheet" : "scroll";
+  return "sheet";
 }
