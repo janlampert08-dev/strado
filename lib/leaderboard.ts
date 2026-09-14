@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { MOTORKLASSEN } from "@/lib/motorklassen";
+import { MOTORKLASSEN, istFahrzeugTyp, klassenFuerFilter } from "@/lib/motorklassen";
+import type { Klassenfilter } from "@/lib/motorklassen";
 import type { Motorklasse } from "@/types/database";
 
 export interface LeaderboardEntry {
@@ -52,22 +53,30 @@ export function toEntry(row: LeaderboardUserTotalsRow, value: number): Leaderboa
 // die Datenbank selbst (order/limit), statt die komplette Tabelle zu laden
 // und in JS zu sortieren.
 //
-// Ohne Klasse kommt die Gesamtwertung aus leaderboard_user_totals (eine
-// Zeile pro Nutzer), mit Klasse aus leaderboard_klassen_totals (eine Zeile
-// pro Nutzer UND Klasse, 0080). Zwei Views statt einer, weil jemand mit
-// Auto und Motorrad sonst in der Gesamtwertung doppelt erschiene und "Alle"
-// keine Gesamtsumme mehr wäre.
+// Drei Views für die drei Stufen der Auswahl, nicht eine mit Filter:
+//
+//   ohne Filter    leaderboard_user_totals   — eine Zeile pro Nutzer (0054)
+//   Fahrzeugtyp    leaderboard_typ_totals    — pro Nutzer UND Typ   (0085)
+//   Motorklasse    leaderboard_klassen_totals— pro Nutzer UND Klasse (0080)
+//
+// Der Grund ist immer derselbe: Wer zwei Fahrzeuge derselben Ebene fährt,
+// erschiene in einer gröberen View doppelt, und die Summe wäre keine Summe
+// mehr. Deshalb aggregiert jede Ebene selbst, statt die feinste Ebene
+// nachträglich zusammenzuzählen — was ausserdem order/limit aus der
+// Datenbank herausnähme und uns zwänge, alle Zeilen zu laden.
 async function topByMetric(
   supabase: SupabaseClient,
   metric: "fahrten_count" | "hoehenmeter" | "km" | "strecken_count",
-  klasse?: Motorklasse | null,
+  filter?: Klassenfilter | null,
 ): Promise<LeaderboardEntry[]> {
   const spalten =
     "user_id, display_name, avatar_url, fahrten_count, hoehenmeter, km, strecken_count";
 
-  const query = klasse
-    ? supabase.from("leaderboard_klassen_totals").select(spalten).eq("motorklasse", klasse)
-    : supabase.from("leaderboard_user_totals").select(spalten);
+  const query = !filter
+    ? supabase.from("leaderboard_user_totals").select(spalten)
+    : istFahrzeugTyp(filter)
+      ? supabase.from("leaderboard_typ_totals").select(spalten).eq("fahrzeug_typ", filter)
+      : supabase.from("leaderboard_klassen_totals").select(spalten).eq("motorklasse", filter);
 
   const { data, error } = await query
     .order(metric, { ascending: false, nullsFirst: false })
@@ -87,10 +96,14 @@ async function topByMetric(
 // leaderboard_completions liefert kein Datum; ein Rolling-Window wäre eine
 // eigene View-Änderung und ist nicht Teil dieser Phase.
 //
-// Mit einer Motorklasse (0080) zählen nur Fahrten dieser Klasse; ohne bleibt
-// es die Gesamtwertung über alles, also genau die Liste von vor der
-// Einführung der Klassen. "Alle" ist damit die Voreinstellung, und niemand
-// verliert eine Rangliste, in der er gerade vorne steht.
+// Mit einem Filter (0080/0085) zählen nur Fahrten dieses Fahrzeugtyps bzw.
+// dieser Motorklasse; ohne bleibt es die Gesamtwertung über alles, also
+// genau die Liste von vor der Einführung der Klassen. "Alle" ist damit die
+// Voreinstellung, und niemand verliert eine Rangliste, in der er gerade
+// vorne steht.
+//
+// "Alle" ist dabei mehr als Autos plus Motorräder: Fahrten ohne Fahrzeug
+// oder ohne Leistungsangabe tragen keine Klasse und erscheinen nur dort.
 //
 // Seit 0056_freie_fahrten_in_bestenlisten.sql zählen auch freie Fahrten
 // (art = 'frei') in fahrten_count/hoehenmeter/km mit — vorher (0044) waren
@@ -98,7 +111,7 @@ async function topByMetric(
 // unverändert streckenbasiert: count(distinct route_id) in
 // leaderboard_user_totals ignoriert NULL-route_id (freie Fahrten) von
 // selbst, ohne eigenen Filter.
-export async function getGlobalLeaderboards(klasse?: Motorklasse | null): Promise<{
+export async function getGlobalLeaderboards(filter?: Klassenfilter | null): Promise<{
   meisteFahrten: LeaderboardEntry[];
   meisteHoehenmeter: LeaderboardEntry[];
   meisteKm: LeaderboardEntry[];
@@ -109,10 +122,10 @@ export async function getGlobalLeaderboards(klasse?: Motorklasse | null): Promis
   // Vier unabhängige, jeweils auf TOP_N Zeilen begrenzte Abfragen statt
   // einer einzigen "alles laden"-Abfrage — parallel gestartet.
   const [meisteFahrten, meisteHoehenmeter, meisteKm, meisteStrecken] = await Promise.all([
-    topByMetric(supabase, "fahrten_count", klasse),
-    topByMetric(supabase, "hoehenmeter", klasse),
-    topByMetric(supabase, "km", klasse),
-    topByMetric(supabase, "strecken_count", klasse),
+    topByMetric(supabase, "fahrten_count", filter),
+    topByMetric(supabase, "hoehenmeter", filter),
+    topByMetric(supabase, "km", filter),
+    topByMetric(supabase, "strecken_count", filter),
   ]);
 
   return { meisteFahrten, meisteHoehenmeter, meisteKm, meisteStrecken };
@@ -171,11 +184,15 @@ export function dedupeRouteLeaderboardRows(
 // Nur Fahrten mit aktivem Opt-in (route_leaderboard-View, siehe
 // 0014_route_leaderboard_optin.sql) — sortiert nach kürzester Zeit.
 //
-// klasse filtert auf eine Motorklasse (0080). Die View führt dafür
-// motorklasse_gewertet, nicht die deklarierte Klasse: gewertet wird die
-// höhere aus Angabe und dem, was der Track belegt. Ohne klasse bleibt die
-// Liste wie bisher — "Alle" ist die Voreinstellung, niemand verliert eine
-// Rangliste, in der er gerade vorne steht.
+// filter grenzt auf einen Fahrzeugtyp oder eine einzelne Motorklasse ein.
+// Die View führt dafür motorklasse_gewertet, nicht die deklarierte Klasse:
+// gewertet wird die höhere aus Angabe und dem, was der Track belegt. Ohne
+// filter bleibt die Liste wie bisher — "Alle" ist die Voreinstellung,
+// niemand verliert eine Rangliste, in der er gerade vorne steht.
+//
+// Die Typstufe wird hier zu einem IN über die drei Klassen des Typs und
+// braucht deshalb keine eigene View: Diese Liste ist eine Fahrtenliste, kein
+// Aggregat pro Nutzer — es gibt nichts, was doppelt gezählt werden könnte.
 //
 // Die Deduplizierung auf die schnellste Fahrt pro Nutzer läuft NACH dem
 // Filter: wer seine Bestzeit im Porsche und eine langsamere auf dem Roller
@@ -183,7 +200,7 @@ export function dedupeRouteLeaderboardRows(
 // nicht gar nicht.
 export async function getRouteLeaderboard(
   routeId: string,
-  klasse?: Motorklasse | null,
+  filter?: Klassenfilter | null,
 ): Promise<RouteTimeEntry[]> {
   const supabase = await createClient();
   let query = supabase
@@ -191,7 +208,7 @@ export async function getRouteLeaderboard(
     .select("completion_id, user_id, display_name, avatar_url, dauer_sekunden, motorklasse")
     .eq("route_id", routeId);
 
-  if (klasse) query = query.eq("motorklasse", klasse);
+  if (filter) query = query.in("motorklasse", klassenFuerFilter(filter));
 
   const { data, error } = await query
     .order("dauer_sekunden", { ascending: true })

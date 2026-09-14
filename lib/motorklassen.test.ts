@@ -1,12 +1,21 @@
 import { describe, it, expect } from "vitest";
 import {
+  FAHRZEUGTYPEN,
   MOTORKLASSEN,
+  filterLabel,
+  filterTyp,
   hoehereKlasse,
+  istFahrzeugTyp,
+  istKlassenfilter,
   istMotorklasse,
+  klassenFuerFilter,
   klassenFuerTyp,
   kwInPs,
   motorklasseFor,
+  motorklassendefinition,
+  psInKw,
 } from "./motorklassen";
+import type { Klassenfilter } from "./motorklassen";
 import type { Motorklasse } from "@/types/database";
 
 // Die Grenzwerte stehen zweimal im Projekt: hier bzw. in lib/motorklassen.ts
@@ -109,5 +118,120 @@ describe("kwInPs", () => {
   it("rechnet die Bandgrenzen auf die angezeigten PS-Werte", () => {
     expect(kwInPs(110)).toBe(150);
     expect(kwInPs(220)).toBe(299);
+  });
+});
+
+// Autos werden in PS eingegeben, gespeichert wird kW. Diese Tabelle ist die
+// Absicherung dafür, dass die Beschriftung der Auto-Chips und das, was eine
+// PS-Eingabe tatsächlich auslöst, dasselbe sagen — die Chips nennen genau
+// diese Zahlen, und jemand tippt sie ab.
+describe("psInKw", () => {
+  it("führt die beworbene PS-Zahl auf die kW-Zahl des Fahrzeugausweises zurück", () => {
+    // "110 kW / 150 PS" auf dem Datenblatt: 110 kW sind 149.6 PS, die 150
+    // ist bereits gerundet. Ohne Rundung ergäbe die Rückrechnung 110.33 kW
+    // und schöbe genau diesen Wagen über die 110-kW-Grenze.
+    expect(psInKw(150)).toBe(110);
+    expect(psInKw(204)).toBe(150);
+    expect(psInKw(1)).toBe(1);
+  });
+
+  const bandgrenzen: [number, Motorklasse][] = [
+    [1, "auto_bis110"],
+    [150, "auto_bis110"],
+    [151, "auto_bis220"],
+    [299, "auto_bis220"],
+    [300, "auto_ueber220"],
+  ];
+
+  for (const [ps, erwartet] of bandgrenzen) {
+    it(`ordnet ${ps} PS in ${erwartet} ein`, () => {
+      expect(motorklasseFor({ typ: "auto", leistung_kw: psInKw(ps) })).toBe(erwartet);
+    });
+  }
+
+  it("beschriftet die Auto-Bänder mit genau diesen Grenzen", () => {
+    // Sonst steht auf einem Chip eine Zahl, die beim Eintippen woanders
+    // landet — bei einer kW-Eingabe eine Rundungsunschärfe, bei einer
+    // PS-Eingabe eine falsche Auskunft.
+    expect(motorklassendefinition("auto_bis110").label).toBe("bis 150 PS");
+    expect(motorklassendefinition("auto_bis220").label).toBe("151–299 PS");
+    expect(motorklassendefinition("auto_ueber220").label).toBe("ab 300 PS");
+  });
+
+  it("bleibt innerhalb der Schranke aus 0080, wenn die PS-Obergrenze erreicht ist", () => {
+    // lib/actions/vehicles.ts leitet MAX_LEISTUNG_PS aus MAX_LEISTUNG_KW ab;
+    // die Rückrechnung darf den CHECK (leistung_kw <= 2000) nicht verletzen.
+    expect(psInKw(kwInPs(2000))).toBeLessThanOrEqual(2000);
+  });
+});
+
+describe("Fahrzeugtypen und Klassenfilter", () => {
+  it("gibt jedem Fahrzeugtyp aus dem Klassenkatalog einen Eintrag", () => {
+    // Ohne das fehlte im Chip-Band eine ganze Welt, während ihre Klassen
+    // weiter in den Ranglisten stünden.
+    const typenImKatalog = new Set(MOTORKLASSEN.map((k) => k.typ));
+    expect(new Set(FAHRZEUGTYPEN.map((t) => t.id))).toEqual(typenImKatalog);
+  });
+
+  it("hält Fahrzeugtyp- und Klassenschlüssel überschneidungsfrei", () => {
+    // Beide Stufen teilen sich einen URL-Parameter (?klasse=). Ein
+    // gemeinsamer Schlüssel machte die Auswahl mehrdeutig.
+    const typen = FAHRZEUGTYPEN.map((t) => t.id as string);
+    const klassen = MOTORKLASSEN.map((k) => k.id as string);
+    expect(typen.filter((t) => klassen.includes(t))).toEqual([]);
+  });
+
+  it("erkennt nur Schlüssel aus beiden Katalogen", () => {
+    // Der Wächter für ?klasse= am öffentlichen Endpunkt, jetzt zweistufig.
+    expect(istKlassenfilter("auto")).toBe(true);
+    expect(istKlassenfilter("motorrad")).toBe(true);
+    expect(istKlassenfilter("auto_bis110")).toBe(true);
+    expect(istKlassenfilter("lastwagen")).toBe(false);
+    expect(istKlassenfilter("moto_a2")).toBe(false);
+    expect(istKlassenfilter("")).toBe(false);
+    expect(istKlassenfilter(null)).toBe(false);
+    expect(istKlassenfilter("'; drop table route_completions; --")).toBe(false);
+  });
+
+  it("trennt Fahrzeugtypen von Motorklassen", () => {
+    expect(istFahrzeugTyp("auto")).toBe(true);
+    expect(istFahrzeugTyp("auto_bis110")).toBe(false);
+    expect(istMotorklasse("auto")).toBe(false);
+  });
+
+  it("ordnet jeden Filter seinem Fahrzeugtyp zu", () => {
+    expect(filterTyp("auto")).toBe("auto");
+    expect(filterTyp("auto_ueber220")).toBe("auto");
+    expect(filterTyp("motorrad")).toBe("motorrad");
+    expect(filterTyp("moto_a1")).toBe("motorrad");
+  });
+
+  it("löst einen Filter in die Klassen auf, die er umfasst", () => {
+    // Die Übersetzung für route_leaderboard, das nur die Spalte motorklasse
+    // kennt: aus der Typstufe wird dort ein IN über drei Werte.
+    expect(klassenFuerFilter("auto")).toEqual([
+      "auto_bis110",
+      "auto_bis220",
+      "auto_ueber220",
+    ]);
+    expect(klassenFuerFilter("moto_a35")).toEqual(["moto_a35"]);
+
+    // Dieselben Klassen wie klassenFuerTyp — eine Abweichung hiesse, dass
+    // die Chip-Leiste und die Abfrage über verschiedene Mengen reden.
+    for (const typ of ["auto", "motorrad"] as const) {
+      expect(klassenFuerFilter(typ)).toEqual(klassenFuerTyp(typ).map((k) => k.id));
+    }
+  });
+
+  it("beschriftet jeden Filter", () => {
+    const filter: Klassenfilter[] = [
+      ...FAHRZEUGTYPEN.map((t) => t.id),
+      ...MOTORKLASSEN.map((k) => k.id),
+    ];
+    for (const f of filter) {
+      expect(filterLabel(f).length).toBeGreaterThan(0);
+    }
+    expect(filterLabel("auto")).toBe("Autos");
+    expect(filterLabel("moto_a1")).toBe("A1");
   });
 });

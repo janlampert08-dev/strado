@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { safeInternalPath } from "@/lib/utils/url";
 import { isRateLimited } from "@/lib/rateLimit";
+import { fahrzeugtypdefinition, kwInPs, psInKw } from "@/lib/motorklassen";
 import type { FahrzeugTyp, Getriebe, Vehicle } from "@/types/database";
 
 export interface VehicleFormState {
@@ -29,7 +30,54 @@ const MAX_BAUJAHR = 2100;
 // Motorklasse und die Fahrt zählt weiterhin nur in der Gesamtwertung.
 const MAX_HUBRAUM_CCM = 10000;
 const MAX_LEISTUNG_KW = 2000;
+// Dieselbe Obergrenze, nur in der Einheit, in der ein Auto eingegeben wird.
+// Abgeleitet statt abgetippt, damit die beiden Schranken nicht auseinander-
+// laufen: psInKw(MAX_LEISTUNG_PS) ergibt wieder genau MAX_LEISTUNG_KW und
+// verletzt den CHECK aus 0080 damit nicht.
+const MAX_LEISTUNG_PS = kwInPs(MAX_LEISTUNG_KW);
 const ADD_VEHICLE_COOLDOWN_MS = 2000;
+
+// Die Leistung kommt je nach Fahrzeugtyp in einer anderen Einheit herein:
+// beim Auto in PS, beim Motorrad in kW (Begründung in lib/motorklassen.ts,
+// Abschnitt EINHEITEN). Gespeichert wird in beiden Fällen kW, weil die
+// Klassenformel — hier wie in public.motorklasse() — ausschliesslich damit
+// rechnet.
+//
+// Welches Feld gelesen wird, entscheidet ausschliesslich der bereits
+// geprüfte Typ und nicht, welches Feld mitgeschickt wurde. Sonst könnte ein
+// Aufrufer, der beide Felder setzt, sich die Einheit aussuchen und aus
+// derselben "35" wahlweise 35 kW oder 26 kW machen — also die Motorklasse
+// wählen, statt sie sich zuordnen zu lassen.
+function leistungKwAusFormular(
+  formData: FormData,
+  typ: FahrzeugTyp,
+): { kw: number | null; error: string | null } {
+  const einheit = fahrzeugtypdefinition(typ).leistungseinheit;
+  // Komma als Dezimaltrennzeichen zulassen — auf einem Schweizer Handy ist
+  // das die naheliegende Eingabe, und Number("11,5") wäre NaN.
+  const roh = String(formData.get(einheit === "PS" ? "leistung_ps" : "leistung_kw") ?? "")
+    .trim()
+    .replace(",", ".");
+  // Die Angabe ist freiwillig: ohne sie hat das Fahrzeug keine Motorklasse
+  // und die Fahrt zählt weiterhin nur in der Gesamtwertung.
+  if (!roh) return { kw: null, error: null };
+
+  const wert = Number(roh);
+
+  if (einheit === "PS") {
+    // Untergrenze 1 PS statt "> 0": psInKw() rundet, und alles darunter
+    // ergäbe 0 kW und damit einen Wert, den der CHECK aus 0080 ablehnt.
+    if (!Number.isFinite(wert) || wert < 1 || wert > MAX_LEISTUNG_PS) {
+      return { kw: null, error: `Leistung muss zwischen 1 und ${MAX_LEISTUNG_PS} PS liegen.` };
+    }
+    return { kw: psInKw(wert), error: null };
+  }
+
+  if (!Number.isFinite(wert) || wert <= 0 || wert > MAX_LEISTUNG_KW) {
+    return { kw: null, error: `Leistung muss zwischen 1 und ${MAX_LEISTUNG_KW} kW liegen.` };
+  }
+  return { kw: wert, error: null };
+}
 
 async function insertVehicleFromFormData(formData: FormData): Promise<InsertVehicleResult> {
   const supabase = await createClient();
@@ -49,12 +97,6 @@ async function insertVehicleFromFormData(formData: FormData): Promise<InsertVehi
   const baujahr = baujahrRaw ? Number(baujahrRaw) : null;
   const hubraumRaw = String(formData.get("hubraum_ccm") ?? "").trim();
   const hubraumCcm = hubraumRaw ? Number(hubraumRaw) : null;
-  // Komma als Dezimaltrennzeichen zulassen — auf einem Schweizer Handy ist
-  // das die naheliegende Eingabe, und Number("11,5") wäre NaN.
-  const leistungRaw = String(formData.get("leistung_kw") ?? "")
-    .trim()
-    .replace(",", ".");
-  const leistungKw = leistungRaw ? Number(leistungRaw) : null;
 
   if (!marke || !modell) {
     return { error: "Marke und Modell sind erforderlich.", vehicle: null };
@@ -83,15 +125,12 @@ async function insertVehicleFromFormData(formData: FormData): Promise<InsertVehi
       vehicle: null,
     };
   }
-  if (
-    leistungKw !== null &&
-    (!Number.isFinite(leistungKw) || leistungKw <= 0 || leistungKw > MAX_LEISTUNG_KW)
-  ) {
-    return {
-      error: `Leistung muss zwischen 1 und ${MAX_LEISTUNG_KW} kW liegen.`,
-      vehicle: null,
-    };
-  }
+  // Erst nach der Typprüfung oben — die Einheit hängt am Typ.
+  const { kw: leistungKw, error: leistungError } = leistungKwAusFormular(
+    formData,
+    typ as FahrzeugTyp,
+  );
+  if (leistungError) return { error: leistungError, vehicle: null };
 
   if (
     await isRateLimited(supabase, "vehicles", "created_at", "user_id", user.id, ADD_VEHICLE_COOLDOWN_MS)

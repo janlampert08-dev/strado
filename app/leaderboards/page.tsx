@@ -9,13 +9,20 @@ import Avatar from "@/components/Avatar";
 import { getGlobalLeaderboards, type LeaderboardEntry } from "@/lib/leaderboard";
 import { listRouteChoices } from "@/lib/routes";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
-import MotorklassenChips, { CHIP_ALLE, chipClassName } from "@/components/MotorklassenChips";
+import MotorklassenChips from "@/components/MotorklassenChips";
+// chipClassName kommt bewusst NICHT aus MotorklassenChips: das ist eine
+// "use client"-Datei, und diese Seite ist eine Server Component. Ein
+// Nicht-Komponenten-Export von dort wäre hier kein Wert, sondern ein
+// Client-Verweis, der beim Aufruf wirft. Siehe motorklassenChipStil.ts.
+import { chipClassName } from "@/components/motorklassenChipStil";
 import {
+  FAHRZEUGTYPEN,
   MOTORKLASSEN,
-  istMotorklasse,
+  filterLabel,
+  istKlassenfilter,
   motorklasseFor,
-  motorklassendefinition,
 } from "@/lib/motorklassen";
+import type { Klassenfilter } from "@/lib/motorklassen";
 import type { Motorklasse, Vehicle } from "@/types/database";
 import { MEDAL_COLORS } from "@/lib/constants";
 import Card from "@/components/ui/Card";
@@ -88,19 +95,26 @@ function LeaderboardSection({
 // Klassenliste eine Einladung ("sei die erste"), keine Lücke.
 const ALLE_KLASSEN: Motorklasse[] = MOTORKLASSEN.map((k) => k.id);
 
-function klassenHref(klasse: Motorklasse | null): string {
-  return klasse ? `/leaderboards?klasse=${klasse}` : "/leaderboards";
+// Beide Stufen der Auswahl: die zwei Fahrzeugtypen und die sechs Klassen.
+const ALLE_FILTER: Klassenfilter[] = [...FAHRZEUGTYPEN.map((t) => t.id), ...ALLE_KLASSEN];
+
+function klassenHref(filter: Klassenfilter | null): string {
+  return filter ? `/leaderboards?klasse=${filter}` : "/leaderboards";
 }
 
 // Die Ziele aller Chips einmal vorberechnen. MotorklassenChips ist
 // "use client", diese Seite eine Server Component — eine Funktion darf diese
 // Grenze nicht überqueren, eine Zuordnung aus Zeichenketten schon. Die Form
 // der Adresse bleibt damit hier, wo auch die Gegenprüfung des Parameters
-// steht (istMotorklasse oben).
-const KLASSEN_HREFS: Record<string, string> = {
-  [CHIP_ALLE]: klassenHref(null),
-  ...Object.fromEntries(ALLE_KLASSEN.map((k) => [k, klassenHref(k)])),
-};
+// steht (istKlassenfilter unten).
+//
+// Die Schlüssel sind Fahrzeugtyp- und Klassen-IDs aus lib/motorklassen.ts —
+// einem Modul ohne "use client", die Werte sind hier also echte Strings.
+// "Alle" geht daneben als eigenes Feld an die Leiste und braucht gar keinen
+// Schlüssel.
+const KLASSEN_HREFS: Partial<Record<Klassenfilter, string>> = Object.fromEntries(
+  ALLE_FILTER.map((f) => [f, klassenHref(f)]),
+);
 
 
 // Ab hier drei Bausteine, die jeweils ihre eigenen Daten holen. Der Grund
@@ -122,7 +136,7 @@ const KLASSEN_HREFS: Record<string, string> = {
 
 // Der Abkürzungs-Chip ganz vorn. Eigene Grenze, weil er als Einziges die
 // Fahrzeuge des Nutzers braucht — ohne sie wartete die ganze Leiste darauf.
-async function MeineKlasseChip({ aktiv }: { aktiv: Motorklasse | null }) {
+async function MeineKlasseChip({ aktiv }: { aktiv: Klassenfilter | null }) {
   const user = await getCurrentUser();
   if (!user) return null;
 
@@ -150,12 +164,12 @@ async function MeineKlasseChip({ aktiv }: { aktiv: Motorklasse | null }) {
 // Die vier Volumenlisten. Der key an der Suspense-Grenze in der Seite sorgt
 // dafür, dass React den alten Teilbaum beim Klassenwechsel verwirft und das
 // Skelett zeigt, statt die alten Zahlen stehen zu lassen.
-async function Ranglisten({ klasse }: { klasse: Motorklasse | null }) {
+async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
   const [{ meisteFahrten, meisteHoehenmeter, meisteKm, meisteStrecken }, user] =
     await Promise.all([getGlobalLeaderboards(klasse), getCurrentUser()]);
 
   const currentUserId = user?.id ?? null;
-  const klassenZusatz = klasse ? ` · ${motorklassendefinition(klasse).label}` : "";
+  const klassenZusatz = klasse ? ` · ${filterLabel(klasse)}` : "";
 
   return (
     <div className="flex flex-col gap-8 sm:grid sm:grid-cols-2 sm:items-start sm:gap-6 xl:grid-cols-4">
@@ -207,7 +221,7 @@ export default async function LeaderboardsPage({
   // Das ist das Einzige, worauf diese Funktion noch wartet. Alles Weitere
   // holen die Bausteine oben hinter ihren eigenen Ladegrenzen.
   const { klasse: klasseRoh } = await searchParams;
-  const klasse = istMotorklasse(klasseRoh) ? klasseRoh : null;
+  const klasse = istKlassenfilter(klasseRoh) ? klasseRoh : null;
 
   return (
     <div className="flex h-dvh flex-col">
@@ -221,6 +235,7 @@ export default async function LeaderboardsPage({
           <MotorklassenChips
             klassen={ALLE_KLASSEN}
             aktiv={klasse}
+            hrefAlle={klassenHref(null)}
             hrefs={KLASSEN_HREFS}
             label="Bestenlisten nach Motorklasse filtern"
             vorne={

@@ -46,7 +46,23 @@ Getroffen, nicht mehr offen:
 Motorräder folgen den Führerausweiskategorien, weil jeder Fahrer sie
 auswendig kennt; für Autos gibt es keine vergleichbare gesetzliche
 Einteilung, deshalb kW-Bänder. Gespeichert wird durchgehend kW (so steht es
-im Fahrzeugausweis), angezeigt bei Autos PS.
+im Fahrzeugausweis).
+
+**Nachtrag 2026-09-14 — eingegeben wird beim Auto in PS.** Über die Leistung
+eines Autos spricht niemand in kW; beim Motorrad bleibt die Eingabe in kW,
+weil die Kategorien wörtlich „A 35 kW“ heissen und ein Fahrer nicht über
+eine Umrechnung raten soll, auf welcher Seite der Grenze er landet. Die
+Umrechnung macht `psInKw()` in `lib/motorklassen.ts`, und zwar auf **ganze
+kW gerundet**: „110 kW / 150 PS“ auf dem Datenblatt sind in Wahrheit
+149.6 PS, ohne Rundung ergäbe die Rückrechnung 110.33 kW und schöbe genau
+diesen Wagen ein Band zu hoch.
+
+Damit mussten die Auto-Beschriftungen exakt werden: Sie standen als
+„bis 150 PS / 150–300 PS / über 300 PS“ da und überlappten bei 150. Bei
+einer kW-Eingabe war das eine Rundungsunschärfe, bei einer PS-Eingabe ist es
+eine falsche Auskunft an genau den Zahlen, die auf den Chips stehen und
+deshalb abgetippt werden. Die **kW-Grenzen sind unverändert** (110/220) —
+geändert hat sich nur, wie sie beschriftet sind.
 
 | Schlüssel | Rang | Anzeige | Regel | Beispiele |
 | --- | --- | --- | --- | --- |
@@ -54,13 +70,30 @@ im Fahrzeugausweis), angezeigt bei Autos PS.
 | `moto_a35` | 2 | A 35 kW | ≤ 35 kW | Honda CB500F, KTM 390 Duke |
 | `moto_a` | 3 | A offen | > 35 kW | Ducati Panigale, BMW R 1250 GS |
 | `auto_bis110` | 1 | bis 150 PS | ≤ 110 kW | Golf 1.5 TSI, Dacia Duster |
-| `auto_bis220` | 2 | 150–300 PS | 110–220 kW | Golf GTI, Tesla Model 3 Long Range |
-| `auto_ueber220` | 3 | über 300 PS | > 220 kW | Porsche 911, Tesla Model 3 Performance |
+| `auto_bis220` | 2 | 151–299 PS | > 110 bis 220 kW | Golf GTI, Tesla Model 3 Long Range |
+| `auto_ueber220` | 3 | ab 300 PS | > 220 kW | Porsche 911, Tesla Model 3 Performance |
 | `null` | — | Ohne Klasse | keine Leistung hinterlegt | zählt in „Alle“, in keiner Klassenliste |
 
 Der Rang gilt nur **innerhalb** eines Fahrzeugtyps — ein Motorrad wird nie in
 eine Autoklasse hochgestuft und umgekehrt. Der Präfix im Schlüssel trägt
 diese Trennung.
+
+**Nachtrag 2026-09-14 — die Auswahl hat zwei Stufen.** Die sechs Klassen
+standen im UI als eine flache Reihe nebeneinander, also zwei Welten in einer
+Liste: Wer ein Auto fährt, las drei Chips, die ihn nie betreffen, und dass
+„A1“ ein Motorrad meint, wusste nur, wer die Kategorien kennt. Jetzt wählt
+die obere Chip-Zeile die Welt (Autos / Motorräder) und die untere das
+Leistungsband darin. Die obere Stufe ist dabei keine blosse Überschrift,
+sondern eine eigene Rangliste — „alle Autos“, unabhängig von der Leistung.
+Dafür aggregiert `public.leaderboard_typ_totals` (Migration `0085`) eine
+Ebene gröber als `leaderboard_klassen_totals`; wer zwei Autos verschiedener
+Bänder fährt, erschiene sonst doppelt. `Klassenfilter` in
+`lib/motorklassen.ts` ist der eine Wert, der beide Stufen trägt, und
+`istKlassenfilter()` die eine Allowlist für den geteilten URL-Parameter
+`?klasse=`.
+
+„Alle“ bleibt mehr als Autos plus Motorräder: Fahrten ohne Fahrzeug oder
+ohne Leistungsangabe tragen keine Klasse und zählen nur dort mit.
 
 Bewusst nicht enthalten: eine eigene Elektro-Klasse (kW misst bei einem
 E-Fahrzeug genau das Richtige) und eine Mofa-Klasse (nachrüstbar, sobald sie
@@ -160,7 +193,7 @@ Dass jemand schneller war, als seine Klasse hergibt, ist ein harter
 physikalischer Widerspruch. Dass jemand langsamer war, beweist nichts —
 Verkehr, Nässe, Vorsicht. Die Einseitigkeit ist deshalb die Bedingung dafür,
 dass diese Prüfung **keine ehrliche Fahrt bestrafen kann**: Der Porsche in A1
-wird nicht abgelehnt und nicht angezeigt, er landet in „über 300 PS“.
+wird nicht abgelehnt und nicht angezeigt, er landet in „ab 300 PS“.
 
 Dasselbe Muster gibt es im Repo bereits: `lib/bewegungsprofil.ts` beurteilt
 aus dem Track, ob eine Bewegung überhaupt von einem Strassenfahrzeug stammen
@@ -194,7 +227,7 @@ nächsten Abschnitt. Was dabei herauskommt:
 | Motorrad, 150 km/h flach | 17.8 kW | **A1 widerlegt** |
 | Auto, 120 km/h an 8 % | 41.6 kW | bis 150 PS |
 | Auto, zwölfmal 60→140 km/h | 111.3 kW | bis 150 PS (Abstand greift) |
-| Auto, zwanzigmal 50→160 km/h | 172.1 kW | **150–300 PS** |
+| Auto, zwanzigmal 50→160 km/h | 172.1 kW | **151–299 PS** |
 
 > **Korrektur gegenüber der ersten Fassung dieses Dokuments.** Dort stand,
 > 90 km/h an 8 % Steigung seien für ein A1-Fahrzeug unmöglich (≈ 11.7 kW).
