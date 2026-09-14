@@ -142,50 +142,93 @@ richtige Risikoverteilung für beide Seiten.
 
 ---
 
-## Die Zürich-Falle, und warum sie POV-Kanäle besonders trifft
+## Die Reichweite ist entschieden: Alpenpässe zählen mit
 
-`AGENTS.md` ist im Produktabschnitt unmissverständlich: „Proximity is worth
-more than reach." Es gibt **dreizehn** freigegebene Strecken, alle im Kanton
-Zürich.
+**Entscheidung des Inhabers, 2026-09-14: Die Alpenpass-Zielgruppe ist
+gültig.** Dieser Abschnitt hielt vorher das Gegenteil fest und führte es als
+offene Frage. Sie ist beantwortet, und die Listen unten sind danach sortiert.
 
-Die Recherche hat gezeigt, dass Schweizer POV-Content fast vollständig
-**Alpenpass-Content** ist. Die neuesten Videos der gefundenen Kanäle heissen
-„Sustenpass in 4K", „Klausen Pass Ascent from South", „SWISS ALPS. Sustenpass
-(RAW Onboard)", „Stelvio Pass on a Kawasaki ZX-10R". Genau davon sagt
-`instagram-kanaele-outreach.md` zu Recht: Wer von dort kommt und eine
-5,7-km-Runde in Dietlikon findet, kommt nicht wieder.
+Das ist eine Abweichung von `AGENTS.md`, Produktabschnitt — dort steht
+Zürich-first als „a growth decision, not a stage we are waiting to outgrow",
+samt der Warnung vor Strecken ausserhalb der Region. **Diese Stelle in
+`AGENTS.md` ist damit überholt und sollte nachgezogen werden**; sie wird
+sonst die nächste Arbeit wieder in die alte Richtung lenken, so wie es das
+Dokument bei Premium und bei den Domains schon zweimal selbst beschreibt.
+`AGENTS.md` ist Protected Area, deshalb steht die Änderung hier als Hinweis
+und nicht im Diff.
 
-**Das ist der zentrale Zielkonflikt dieses Vorhabens**, und er löst sich nicht
-durch die Beteiligung — Geld macht ein unpassendes Publikum nicht passend.
+### Die Technik ist längst bereit, und das war nicht zu erwarten
 
-Es gibt aber einen Ausweg, den es beim Gratis-Outreach nicht gab: **Ein
-Partner-Creator kuratiert Strecken.** Wenn ein Berner Motovlogger drei
-Strecken um Bern einreicht und seine Community dort fährt, entsteht Dichte in
-einer zweiten Region — nicht als Verdünnung, sondern als zweiter Kern.
+Der wichtigste Fund dieser Runde steht in `lib/elevation.ts`:
+`computeHoeheUndSteigung()` ist **gegen bekannte Passwerte kalibriert** —
+der Kommentar nennt Julier 12 %, Susten 9 %, Flüela 8 %, „alle innerhalb
+weniger Prozentpunkte getroffen" (Kalibrierung in
+`scripts/enrich-routes.mjs`). Die Steigungskennzahl einer Strecke ist ein
+90.-Perzentil über ein 150-m-Fenster, damit einzelne Tunnel- und
+Brückenstücke keine Ausreisser erzeugen.
 
-Das ist allerdings **genau die Ausweitung über Zürich hinaus, die `AGENTS.md`
-als Wachstumsentscheidung beschreibt und zu widerstehen empfiehlt**. Deshalb
-gehört sie entschieden, nicht nebenbei getan:
+Und der summierte Anstieg einer *Fahrt* skaliert mit der Länge:
+`stuetzpunkteFuer()` legt seit der Umstellung einen Stützpunkt alle 50 m
+statt fester 300 über die ganze Geometrie (`MIN_STUETZPUNKTE` 300,
+`MAX_STUETZPUNKTE` 3000). Der Kommentar dort beschreibt genau den Fehler,
+den das behebt: Bei fester Anzahl fiel der Anstieg langer Fahrten „um ein
+Vielfaches zu klein" aus.
 
-> **Offene Entscheidung:** Dürfen Partner-Creators Strecken ausserhalb des
-> Kantons Zürich einreichen? Wenn ja, ist das der bewusste Schritt zu einer
-> zweiten Region — und dann besser mit **einem** Creator in **einer** Region,
-> bis dort dieselbe Dichte steht wie in Zürich. Wenn nein, kommen nur Creator
-> mit Zürcher Publikum in Frage, und die Liste unten schrumpft auf Stufe 1
-> und 2.
+Anders gesagt: Eine Furka-Auffahrt bekommt korrekte Höhenmeter und eine
+plausible Steigungsangabe, ohne dass irgendetwas angefasst werden muss. Die
+App wurde für Bergstrassen gerechnet, bevor sie Bergstrecken hatte.
 
-Bis diese Frage entschieden ist, sind Kanäle mit **Ortsbezug zum Kanton
-Zürich** die einzigen, bei denen nichts schiefgehen kann.
+Die Aufteilung ist Absicht und in `AGENTS.md` korrekt beschrieben („Fixed
+for rides; route metrics stay at 300 points on purpose"): Bei Strecken bleibt
+es bei 300 Punkten, **weil** die Steigungskennzahl genau darauf kalibriert
+ist — ein dichteres Raster verschöbe das Perzentil und damit bereits
+veröffentlichte Werte. Wo der summierte Anstieg zählt, bei Fahrten, skaliert
+die Dichte. Für Alpenstrecken heisst das: beide Zahlen stimmen, jede aus
+ihrem eigenen Grund.
 
----
+### Was die Entscheidung dagegen wirklich kostet
+
+Nicht die Technik, sondern die **Reihenfolge**. Es gibt dreizehn
+freigegebene Strecken, alle im Kanton Zürich. Wer über einen
+Alpenpass-Kanal kommt, sucht Furka und findet Dietlikon — und kommt nicht
+wieder. Das ist kein Argument gegen die Entscheidung, sondern ihre
+Bedingung:
+
+> **Bevor der erste Alpen-Creator postet, müssen Alpenstrecken in der App
+> sein.** Nicht danach, nicht gleichzeitig.
+
+Das ist der Punkt, an dem das Partnermodell seinen eigenen Engpass löst:
+Diese Creator **fahren die Pässe ohnehin** und können die Strecken
+einreichen. Streckenanlegen ist seit `0086` für jedes angemeldete Konto
+offen, die Moderation bleibt davor. Daraus folgt der Zuschnitt der ersten
+Partnerschaft:
+
+1. Der Creator reicht drei bis fünf Pässe ein, die er selbst fährt.
+2. Die Moderation gibt sie frei.
+3. Erst dann der Post — auf eine Karte, die seine Strasse kennt.
+
+Schritt 1 ist zugleich der billigste Test, ob jemand wirklich mitmacht: Wer
+drei Strecken einreicht, ist dabei; wer es nicht tut, hätte den Link auch
+nicht gesetzt.
+
+Ein Zweitnutzen: Dieselbe Bedingung liefert die Antwort auf die Frage nach
+der **zweiten Region**. Ein Pass ist kein isolierter Punkt — Furka, Susten
+und Grimsel bilden zusammen ein Gebiet, in dem sich Fahrten häufen. Dichte
+entsteht damit auch ausserhalb Zürichs, ohne dass die Karte in zwanzig
+Kantone zerfasert.
 
 ## Stufe 1 — POV und Fahr-Content aus der Schweiz
 
 Der Kern der Anfrage. Alle Zahlen am 2026-09-14 geprüft.
 
+Diese Stufe überschneidet sich seit der Entscheidung mit Stufe 2, und das ist
+kein Fehler: Wer Schweizer POV filmt, filmt Pässe. Swiss Drive 4K hat
+„Sustenpass in 4K" im Feed, SwissThrottle die Staumauer von Emosson. Hier
+stehen sie nach **Format** (Kamera am Fahrzeug), dort nach **Gebiet**.
+
 | Kanal | Abos | Videos | Aufrufe | letztes Video | Warum |
 | --- | ---: | ---: | ---: | --- | --- |
-| [Swiss Drive 4K](https://www.youtube.com/@SwissDrive4K-ch) | **8'200** | 85 | 2,43 Mio. | 2026-09-12 | **Der reinste Treffer der Liste.** Ausschliesslich Fahrvideos „right from the driver's seat", ganze Schweiz, alle vier Jahreszeiten. Kanal existiert erst seit 09/2024 und hat 15 Videos in sieben Wochen — wachsend und hungrig. Keine Social-Links hinterlegt: Ansprache nur über YouTube |
+| [Swiss Drive 4K](https://www.youtube.com/@SwissDrive4K-ch) | **8'200** | 85 | 2,43 Mio. | 2026-09-12 | **Der reinste Treffer der Liste.** Ausschliesslich Fahrvideos „right from the driver's seat", ganze Schweiz, alle vier Jahreszeiten. Kanal existiert erst seit 09/2024 und hat 15 Videos in sieben Wochen — wachsend und hungrig. Neueste Titel: „Sustenpass in 4K", „Schweiz 4K Panoramafahrt" — durch die Entscheidung von heute **passend statt problematisch**. Keine Social-Links hinterlegt: Ansprache nur über YouTube |
 | [SatoPOV](https://www.youtube.com/@SatoPOV) | 273 | 90 | 137 Tsd. | 2026-09-03 | „Bikes • Cars • Travel • Trading", „Currently in Switzerland". Klein, aber **beide Fahrzeugarten** und echtes POV. Seit 07/2025 |
 | [Alpenglider / Swiss Moto Adventure](https://www.youtube.com/@Alpenglider) | 747 | 440 | 1,04 Mio. | 2026-09-12 | 440 Videos, seit 2006 dabei, aktiv. Ausdauer statt Reichweite |
 | [SwissThrottle](https://www.youtube.com/@SwissThrottle) | 17 | 22 | 16 Tsd. | 2026-09-14 | Zu klein für eine Beteiligung, aber seit 06/2026 und täglich aktiv. **Beobachten**, in drei Monaten nochmal ansehen |
@@ -198,7 +241,58 @@ gleiches Publikumsversprechen („nimm mich mit"), falsches Fahrzeug. Erwähnt,
 weil das Format beweist, dass Schweizer POV-Publikum existiert — nicht als
 Kandidat.
 
-## Stufe 2 — Motovlogger aus der Schweiz, aktiv
+## Stufe 2 — Alpenpass- und Tourenkanäle aus der Schweiz
+
+Erst durch die Entscheidung oben eine eigene Stufe. Diese Kanäle wurden in
+der ersten Runde nicht verfolgt; die Zahlen sind am 2026-09-14 geprüft.
+
+| Kanal | Abos | Videos | Aufrufe | letztes Video | Warum |
+| --- | ---: | ---: | ---: | --- | --- |
+| [SwissWayByFatih](https://www.youtube.com/@SwissWayByFatih) | 1'950 | 303 | 1,64 Mio. | **2026-09-14** | **Der Archetyp der Kategorie.** Neuestes Video: „Everyone Drives Past This Hidden Road at **Furka Pass**". Postet am Tag dieser Recherche, 15 Videos in zwei Wochen. Klein genug, dass eine Nachricht gelesen wird, und thematisch exakt auf der Entscheidung |
+| [SwissBikerOnboard](https://www.youtube.com/@SwissBikerOnboard) | 2'880 | **312** | 2,48 Mio. | 2026-06-29 | Der Name ist das Format: Onboard-Aufnahmen aus der Schweiz, seit 2009. Zuletzt zweieinhalb Monate still — vor der Anfrage nachsehen, ob die Saison ihn zurückbringt |
+| [Tesla Kägi](https://www.youtube.com/@TeslaKägi) | 3'110 | **1'040** | 1,40 Mio. | 2026-08-20 | „Pragelpass August 2026", „Klausenpass". **Pässe im Elektroauto** — deckt eine Leistungsklasse ab, die sonst in keinem Kanal dieser Liste vorkommt, und ein Publikum, das Reichweite plant und deshalb Strecken sucht |
+| [bikersound](https://www.youtube.com/@bikersound) | 1'950 | 177 | **2,63 Mio.** | 2026-09-11 | Motorradtouren, Schweiz, seit 2010. Die höchste Aufrufzahl pro Video in dieser Stufe |
+| [Discover Switzerland](https://www.youtube.com/@WernerStulz) | 2'000 | 419 | 1,93 Mio. | 2026-07-09 | Werner Stulz, „On top of **Klausenpass**". 419 Videos, ruhiger Takt |
+| [Die schönsten Motorrad Touren](https://www.youtube.com/@hape-kabiker4361) | 213 | **273** | 163 Tsd. | 2026-08-08 | Kleine Reichweite, aber der Kanalname ist das Produktversprechen der App. Tourenbeschreibungen sind sein einziger Inhalt |
+| [Alpenglider / Swiss Moto Adventure](https://www.youtube.com/@Alpenglider) | 747 | 440 | 1,04 Mio. | 2026-09-12 | Stand schon in Stufe 1; passt hier genauso |
+
+**Zurück im Rennen, aber still:**
+[Amazing Cars Switzerland](https://www.youtube.com/@AmazingCarsSwitzerland)
+(9'220, „SWISS MOUNTAIN PASS DRIVE BMW M440i 4K") und
+[IlCapoFLA](https://www.youtube.com/@IlCapoFLA) (2'140, „SWISS ALPS.
+Sustenpass (RAW Onboard)") waren in der ersten Fassung auch deshalb
+aussortiert, weil sie Alpen machen. Dieser Grund ist weg — der andere
+bleibt: Beide ruhen seit über einem Jahr. Wenn einer zurückkommt, gehört er
+nach oben.
+
+**Tot:** [Kurvenparadiese](https://www.youtube.com/@Kurvenparadiese) (1'830,
+letztes 2020), [RS_Rider](https://www.youtube.com/@RSRider) (2'390, 2021),
+[2 on Route](https://www.youtube.com/@2onRoute) (3'810, 2025-08),
+[Franzli Motorsport](https://www.youtube.com/@FranzliMotorsport) (94, 2023).
+
+### Die deutschen Alpenkanäle — eine Frage, die du beantworten solltest
+
+Du hast nach Partnern **aus der Schweiz** gefragt, und die Liste hält sich
+daran. Die Entscheidung von heute verschiebt aber die Logik: Wenn
+Alpenpässe zählen, dann zählt ein deutscher Kanal, dessen Publikum jeden
+Sommer über Susten und Grimsel fährt, **mehr** als ein Schweizer Kanal ohne
+Fahrinhalt. Das Publikum ist in der Schweiz, auch wenn der Kanal es nicht
+ist.
+
+Geprüft und aktiv, falls du das öffnen willst:
+[andremueller_moto](https://www.youtube.com/@andremueller_moto) (3'160,
+postet heute, „#stilfserjoch #stelviopass #alpenpass"),
+[Bennets Moto Tours](https://www.youtube.com/@BennetsMotoTours) (7'250,
+2026-09-11), [V-TWIN TOURS](https://www.youtube.com/@VTWINTOURS) (6'950,
+„ROUTE DES GRANDES ALPES"),
+[motourvibes](https://www.youtube.com/@motourvibes) (6'360),
+[Valle on Tour](https://www.youtube.com/@valleontour) (58'000 — die grösste
+Reichweite hier, derzeit aber auf Paris–Nordkap statt in den Alpen).
+
+Nicht anschreiben: [Slaty](https://www.youtube.com/@Slaty) (106'000) — das
+letzte Video heisst „Auf Wiedersehen!" und ist von 2024.
+
+## Stufe 3 — Motovlogger aus der Schweiz, aktiv
 
 | Kanal | Abos | Videos | Aufrufe | letztes Video | Anmerkung |
 | --- | ---: | ---: | ---: | --- | --- |
@@ -217,7 +311,7 @@ ihn will, geht dorthin, nicht über YouTube.
 und [ACE Crew](https://www.youtube.com/@CrazyShiat) (223, letztes 2022) sind
 still.
 
-## Stufe 3 — Zürcher Auto-Szene
+## Stufe 4 — Zürcher Auto-Szene
 
 Hier stimmt der Ortsbezug ohne Einschränkung.
 
@@ -230,14 +324,14 @@ Hier stimmt der Ortsbezug ohne Einschränkung.
 
 **Tot, trotz guter Zahlen:**
 [Amazing Cars Switzerland](https://www.youtube.com/@AmazingCarsSwitzerland)
-(9'220, letztes 2025-10-16 — und die Videos heissen „SWISS MOUNTAIN PASS
-DRIVE", also ohnehin Alpen),
+(9'220, letztes 2025-10-16 — siehe Stufe 2, der Inhalt passt jetzt, die
+Stille nicht),
 [theswisssupercars](https://www.youtube.com/@theswisssupercars) (5'520,
 letztes 2021-01-21),
 [Autowelt Schweiz](https://www.youtube.com/@autoweltschweiz) (3'920, letztes
 2023-05-13).
 
-## Stufe 4 — Fahrschulen: der unterschätzte Kanal
+## Stufe 5 — Fahrschulen: der unterschätzte Kanal
 
 `instagram-kanaele-outreach.md` nennt Fahrschulen „die am meisten
 unterschätzte Gruppe", weil dort die Klassen A1 und A 35 kW entstehen. Auf
@@ -255,7 +349,7 @@ wenn man Ortsbezug, Aktivität und Publikumspassung zusammen bewertet:
 ausnahmslos aus Leuten, die gerade fahren lernen und **noch keine einzige
 Strecke kennen**. Das ist die Zielgruppe der App in Reinform.
 
-## Stufe 5 — Medien mit Preisliste
+## Stufe 6 — Medien mit Preisliste
 
 Reichweite ja, aber es sind Unternehmen; eine Umsatzbeteiligung ersetzt dort
 keinen Werbeetat. Interessant eher als Berichterstattung über die App.
@@ -317,33 +411,57 @@ erste Fall, der eine Lösung verlangt.
 
 ## Reihenfolge
 
-**Vor der ersten Anfrage:** die vier Vertragspunkte oben entscheiden und die
-Zürich-Frage beantworten. Ohne das ist jedes Gespräch eine Zusage, die man
-nicht halten kann.
+**Vor der ersten Anfrage:** die vier Vertragspunkte oben entscheiden. Die
+Zürich-Frage ist beantwortet (Alpen zählen mit) — was offen bleibt, ist
+nicht *ob*, sondern *dass zuerst Strecken da sein müssen*.
+
+**Schritt 0, und er ist neu:** Drei bis fünf Alpenstrecken in die App
+bringen, bevor ein Alpen-Creator postet. Am besten durch den Creator selbst
+als erste Partnerleistung (siehe oben). Solange die Karte zwischen Furka und
+Klausen leer ist, verbrennt jeder Post aus Stufe 2 sein Publikum einmalig.
+
+Die Reihenfolge zerfällt damit in zwei Stränge, die parallel laufen können:
+
+**Strang A — Zürich, sofort möglich.** Hier stehen die Strecken schon.
 
 1. **Fahrschule schaltchnüppel** (Winterthur, 18'700). Ortsbezug, Aktivität
-   und Publikum passen gleichzeitig — bei keinem anderen ist das so.
-2. **Swiss Drive 4K** (8'200, reines POV). Der Kanal, den die Anfrage
-   eigentlich meint. Wachsend, keine Preisliste, nur über YouTube
-   erreichbar. Hier lohnt es, gleich mit einer konkreten Strecke zu kommen.
-3. **polloloco_cars** und **cscarphotography** — beide Zürich, beide täglich
+   und Publikum passen gleichzeitig — bei keinem anderen ist das so. Sein
+   Publikum lernt gerade fahren und kennt keine einzige Strecke.
+2. **polloloco_cars** und **cscarphotography** — beide Zürich, beide täglich
    aktiv, zusammen rund 36'000 Abonnenten auf YouTube plus TikTok.
    cscarphotography ist der reichweitenstärkste Kandidat mit echtem
    Ortsbezug; deshalb erst, wenn der Pitch bei einem Kleineren einmal
    funktioniert hat.
+3. **DoubleX / SwissBiker** — falls die Instagram-Anfrage aus dem anderen
+   Dokument schon lief, ist das **dieselbe Person**. Nicht zweimal
+   anschreiben.
+
+**Strang B — Alpen, nach Schritt 0.** Die Kanäle, die die Entscheidung von
+heute freigeschaltet hat.
+
+1. **SwissWayByFatih** (1'950, Furka-Video von heute). Der beste
+   Erstkontakt der ganzen Liste für Strang B: thematisch genau richtig,
+   täglich aktiv, klein genug für eine persönliche Nachricht — und damit
+   der günstigste Ort, um Schritt 0 als Partnerleistung zu erproben.
+2. **Swiss Drive 4K** (8'200, reines POV). Der Kanal, den die ursprüngliche
+   Anfrage meint, und durch die Entscheidung erst richtig passend: Sein
+   Inhalt *ist* Sustenpass in 4K. Wachsend, keine Preisliste, nur über
+   YouTube erreichbar.
+3. **Tesla Kägi** (3'110) und **bikersound** (1'950) — zwei Publika, die
+   sich nicht überschneiden: Pässe elektrisch und Pässe auf zwei Rädern.
 4. **KurvenradiusTV** (33'500). Grösste Schweizer Motorrad-Reichweite mit
    Fahrinhalt. Sein Publikum denkt über Fahrtechnik nach — die Bestenliste
    nach Klasse ist für ihn das interessantere Argument als die Karte.
+   Deshalb erst, wenn die Klassenwertung als Angebot steht.
 5. **Pascal Gisler** und **M!ngan** — beide klein, beide täglich aktiv, beide
    ausdrücklich „aus der Schweiz". M!ngan deckt als einziger vier Plattformen
    ab und ist damit der beste Test, auf welcher davon ein Link überhaupt
    konvertiert.
-6. **DoubleX / SwissBiker** — falls die Instagram-Anfrage aus dem anderen
-   Dokument schon lief, ist das **dieselbe Person**. Nicht zweimal
-   anschreiben.
 
 Pro Anfrage ein eigener `/c/<code>`, sonst ist die zweite Welle nicht von der
-ersten zu unterscheiden.
+ersten zu unterscheiden. Und für die beiden Stränge getrennte Codes, sonst
+lässt sich nicht ablesen, welches Publikum tatsächlich bleibt — das ist die
+eigentliche Frage hinter der heutigen Entscheidung.
 
 ---
 
