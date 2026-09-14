@@ -448,6 +448,18 @@ export interface CreatorLink extends CreatorLinkZiel {
 // (0089). Der Typ steht hier trotzdem, weil diese Datei das Schema
 // spiegelt und .agents/database.md verlangt, dass beide nicht
 // auseinanderlaufen.
+// Zeilenform von public.creator_klicks (0091) — ein Zähler je Code und
+// Tag, ohne IP, ohne Uhrzeit, ohne Kennung. Die App liest die Tabelle nie
+// direkt (RLS an, keine Grants); der Typ steht hier, weil diese Datei das
+// Schema spiegelt, auch für Tabellen, an die nur die Datenbank selbst
+// herankommt.
+export interface CreatorKlick {
+  code: string;
+  /** ISO-Datum (YYYY-MM-DD). */
+  tag: string;
+  klicks: number;
+}
+
 export interface RegistrierungHerkunft {
   user_id: string;
   code: string;

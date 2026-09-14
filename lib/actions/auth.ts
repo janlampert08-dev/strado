@@ -25,7 +25,8 @@ export interface AuthFormState {
 const MAX_EMAIL_LENGTH = 255;
 const MAX_PASSWORD_LENGTH = 200;
 
-const TOO_MANY_ATTEMPTS_ERROR = "Zu viele Versuche. Bitte warte ein paar Minuten und versuche es erneut.";
+const TOO_MANY_ATTEMPTS_ERROR =
+  "Zu viele Versuche. Bitte warte ein paar Minuten und versuche es erneut.";
 
 async function currentIp(): Promise<string> {
   return getClientIp(await headers());
@@ -36,7 +37,10 @@ export async function signIn(
   formData: FormData,
 ): Promise<AuthFormState> {
   const email = String(formData.get("email") ?? "").slice(0, MAX_EMAIL_LENGTH);
-  const password = String(formData.get("password") ?? "").slice(0, MAX_PASSWORD_LENGTH);
+  const password = String(formData.get("password") ?? "").slice(
+    0,
+    MAX_PASSWORD_LENGTH,
+  );
 
   if (!email || !password) {
     return { error: "E-Mail oder Passwort ist falsch." };
@@ -61,7 +65,8 @@ export async function signIn(
   if (error) {
     if (error.code === "email_not_confirmed") {
       return {
-        error: "Bitte bestätige zuerst deine E-Mail-Adresse (Link in der E-Mail).",
+        error:
+          "Bitte bestätige zuerst deine E-Mail-Adresse (Link in der E-Mail).",
       };
     }
     return { error: "E-Mail oder Passwort ist falsch." };
@@ -90,7 +95,10 @@ export async function signUp(
   formData: FormData,
 ): Promise<AuthFormState> {
   const email = String(formData.get("email") ?? "").slice(0, MAX_EMAIL_LENGTH);
-  const password = String(formData.get("password") ?? "").slice(0, MAX_PASSWORD_LENGTH);
+  const password = String(formData.get("password") ?? "").slice(
+    0,
+    MAX_PASSWORD_LENGTH,
+  );
   const displayName = String(formData.get("display_name") ?? "").trim();
 
   if (password.length < 8) {
@@ -187,7 +195,22 @@ export async function signUp(
   // beiden redirect()-Aufrufen, weil redirect() wirft und alles danach
   // nicht mehr läuft. Nicht auf dem Fehlerpfad darüber: wer beim zweiten
   // Versuch durchkommt, soll seine Herkunft behalten.
-  await verbraucheHerkunft();
+  //
+  // Aufräumen darf die Registrierung nicht kosten: das Konto existiert an
+  // dieser Stelle bereits. Würde das Löschen des Cookies werfen, sähe der
+  // Nutzer einen Fehler, wäre weder angemeldet noch weitergeleitet, und der
+  // zweite Versuch antwortete mit "Diese E-Mail-Adresse ist bereits
+  // registriert." Ein zurückgebliebenes Cookie ist dagegen folgenlos — es
+  // läuft ab, und ein zweites Konto legt dieselbe Person nicht an. Dieselbe
+  // Abwägung wie bei avatareEntfernen() in deleteAccount().
+  try {
+    await verbraucheHerkunft();
+  } catch (fehler) {
+    console.error(
+      "Herkunfts-Cookie konnte nach der Registrierung nicht gelöscht werden",
+      fehler,
+    );
+  }
 
   // Ist "Confirm email" im Supabase-Projekt deaktiviert, liefert signUp
   // bereits eine aktive Session — dann direkt einloggen statt auf eine
@@ -210,8 +233,11 @@ export async function requestPasswordReset(
   _prevState: RequestPasswordResetState,
   formData: FormData,
 ): Promise<RequestPasswordResetState> {
-  const email = String(formData.get("email") ?? "").trim().slice(0, MAX_EMAIL_LENGTH);
-  if (!email) return { error: "Bitte E-Mail-Adresse eingeben.", requested: false };
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .slice(0, MAX_EMAIL_LENGTH);
+  if (!email)
+    return { error: "Bitte E-Mail-Adresse eingeben.", requested: false };
 
   // Verhindert, dass eine einzelne Adresse mit E-Mails zugespamt wird
   // (jede Anfrage löst einen Versand aus) bzw. viele Adressen von derselben
@@ -271,7 +297,10 @@ export async function updatePassword(
   _prevState: UpdatePasswordState,
   formData: FormData,
 ): Promise<UpdatePasswordState> {
-  const password = String(formData.get("password") ?? "").slice(0, MAX_PASSWORD_LENGTH);
+  const password = String(formData.get("password") ?? "").slice(
+    0,
+    MAX_PASSWORD_LENGTH,
+  );
   if (password.length < 8) {
     return { error: "Passwort muss mindestens 8 Zeichen lang sein." };
   }
@@ -280,7 +309,8 @@ export async function updatePassword(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Der Link ist abgelaufen. Bitte fordere einen neuen an." };
+  if (!user)
+    return { error: "Der Link ist abgelaufen. Bitte fordere einen neuen an." };
 
   if (!(await istWiederherstellung(user.id))) {
     // Ohne E-Mail-Adresse liesse sich nicht gegenprüfen. Kommt bei einem
@@ -290,10 +320,9 @@ export async function updatePassword(
       return { error: "Passwort konnte nicht geändert werden." };
     }
 
-    const aktuellesPasswort = String(formData.get("aktuelles_passwort") ?? "").slice(
-      0,
-      MAX_PASSWORD_LENGTH,
-    );
+    const aktuellesPasswort = String(
+      formData.get("aktuelles_passwort") ?? "",
+    ).slice(0, MAX_PASSWORD_LENGTH);
     if (!aktuellesPasswort) {
       return { error: "Bitte gib dein aktuelles Passwort ein." };
     }
@@ -376,7 +405,11 @@ async function kuendigeStripeAbo(userId: string): Promise<boolean> {
       await getStripe().subscriptions.cancel(abo.id);
     }
   } catch (fehler) {
-    console.error("Stripe-Kündigung bei Kontolöschung fehlgeschlagen", { userId }, fehler);
+    console.error(
+      "Stripe-Kündigung bei Kontolöschung fehlgeschlagen",
+      { userId },
+      fehler,
+    );
     return false;
   }
 
@@ -390,7 +423,11 @@ async function kuendigeStripeAbo(userId: string): Promise<boolean> {
     .delete()
     .eq("user_id", userId);
   if (loeschFehler) {
-    console.error("Abo-Spiegelung bei Kontolöschung nicht gelöscht", { userId }, loeschFehler);
+    console.error(
+      "Abo-Spiegelung bei Kontolöschung nicht gelöscht",
+      { userId },
+      loeschFehler,
+    );
     return false;
   }
 
@@ -408,8 +445,12 @@ export async function deleteAccount(
 
   if (!user || !user.email) return { error: "Bitte melde dich zuerst an." };
 
-  const password = String(formData.get("password") ?? "").slice(0, MAX_PASSWORD_LENGTH);
-  if (!password) return { error: "Bitte gib dein Passwort zur Bestätigung ein." };
+  const password = String(formData.get("password") ?? "").slice(
+    0,
+    MAX_PASSWORD_LENGTH,
+  );
+  if (!password)
+    return { error: "Bitte gib dein Passwort zur Bestätigung ein." };
 
   const { error: reauthError } = await supabase.auth.signInWithPassword({
     email: user.email,
@@ -484,7 +525,11 @@ export async function deleteAccount(
     user.id,
   );
   if (avatarFehler) {
-    console.error("Avatar bei Kontolöschung nicht entfernt", { userId: user.id }, avatarFehler);
+    console.error(
+      "Avatar bei Kontolöschung nicht entfernt",
+      { userId: user.id },
+      avatarFehler,
+    );
   }
 
   // Zugangsdaten entwerten: nur über den Admin-Client möglich (Supabase Auth
@@ -507,17 +552,23 @@ export async function deleteAccount(
   // anonymize_account() räumt die Herkunft in public auf (0090) — ohne
   // diese Zeile bliebe sie als Kopie in auth.users stehen, wo keine
   // Migration sie je erwischt.
-  const { error: revokeError } = await admin.auth.admin.updateUserById(user.id, {
-    email: `geloescht-${user.id}@geloescht.cornice.invalid`,
-    password: crypto.randomUUID() + crypto.randomUUID(),
-    email_confirm: true,
-    user_metadata: { display_name: null, herkunft_code: null },
-  });
+  const { error: revokeError } = await admin.auth.admin.updateUserById(
+    user.id,
+    {
+      email: `geloescht-${user.id}@geloescht.cornice.invalid`,
+      password: crypto.randomUUID() + crypto.randomUUID(),
+      email_confirm: true,
+      user_metadata: { display_name: null, herkunft_code: null },
+    },
+  );
   if (revokeError) {
     // Profil ist bereits anonymisiert (oben) — dieser Schritt lässt sich
     // gefahrlos erneut versuchen (anonymize_own_account ist idempotent),
     // daher hier abbrechen statt mit ungültigen Zugangsdaten weiterzumachen.
-    return { error: "Konto konnte nicht vollständig gelöscht werden. Bitte versuche es erneut." };
+    return {
+      error:
+        "Konto konnte nicht vollständig gelöscht werden. Bitte versuche es erneut.",
+    };
   }
 
   await supabase.auth.signOut();

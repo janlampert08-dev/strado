@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { HERKUNFT_COOKIE, HERKUNFT_GUELTIG_SEKUNDEN, herkunftCookieWert } from "./herkunft";
+import {
+  HERKUNFT_COOKIE,
+  HERKUNFT_COOKIE_OPTIONEN,
+  HERKUNFT_GUELTIG_SEKUNDEN,
+  herkunftCookieWert,
+} from "./herkunft";
 
 // Getestet wird hier die Geschäftsregel, nicht der Cookie-Zugriff: die
 // Entscheidung "wird überschrieben oder nicht" ist das, woran eine falsche
@@ -28,7 +33,14 @@ describe("herkunftCookieWert", () => {
   // Besitzer des Browsers. Was dort steht, kann Unsinn sein — dann darf es
   // die Zuordnung nicht für 90 Tage blockieren.
   it("überschreibt einen unsinnigen vorhandenen Wert", () => {
-    for (const kaputt of ["max/admin", "../etc", "ma x", "m", "x".repeat(33), "MAX!"]) {
+    for (const kaputt of [
+      "max/admin",
+      "../etc",
+      "ma x",
+      "m",
+      "x".repeat(33),
+      "MAX!",
+    ]) {
       expect(herkunftCookieWert(kaputt, "lea-moto")).toBe("lea-moto");
     }
   });
@@ -53,5 +65,29 @@ describe("Cookie-Eckdaten", () => {
     // sich hier etwas, ist das eine Rechtstext-Änderung und kein Refactor.
     expect(HERKUNFT_COOKIE).toBe("strado_herkunft");
     expect(HERKUNFT_GUELTIG_SEKUNDEN).toBe(60 * 60 * 24 * 90);
+  });
+
+  // Die Datei begründet httpOnly über einen ganzen Absatz ("was der
+  // Browser-JS nicht sieht, kann ein XSS nicht auslesen") — ohne diesen
+  // Test ginge ein Refactor, der es fallen lässt, grün durch. sameSite
+  // und path stehen aus demselben Grund dabei: lax trägt den Klick aus
+  // dem TikTok-Browser, und ein weiterer path böte einer Nachbar-Origin
+  // eine zweite Stelle zum Schreiben.
+  it("bleibt bei den Cookie-Eigenschaften, die die Datei begründet", () => {
+    expect(HERKUNFT_COOKIE_OPTIONEN).toMatchObject({
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: HERKUNFT_GUELTIG_SEKUNDEN,
+    });
+  });
+
+  // secure ist umgebungsabhängig (http auf localhost), deshalb hier nur
+  // die Zusicherung, dass es überhaupt an der Umgebung hängt und nicht
+  // versehentlich hart auf false steht.
+  it("setzt secure aus der Umgebung", () => {
+    expect(HERKUNFT_COOKIE_OPTIONEN.secure).toBe(
+      process.env.NODE_ENV === "production",
+    );
   });
 });

@@ -24,7 +24,7 @@ function kennzahl(teil: Partial<CreatorKennzahl>): CreatorKennzahl {
 }
 
 function tag(code: string, datum: string, klicks: number): CreatorVerlaufTag {
-  return { code, tag: datum, klicks, registrierungen: 0, abos: 0 };
+  return { code, tag: datum, klicks };
 }
 
 describe("summiere", () => {
@@ -68,9 +68,13 @@ describe("balkenHoehe", () => {
   });
 
   // Ein einzelner Klick neben einem Ausreisser wäre sonst optisch dasselbe
-  // wie ein Tag ohne jeden Klick.
+  // wie ein Tag ohne jeden Klick. Die Untergrenze muss dafür über dem
+  // 2-px-Strich liegen, mit dem ein leerer Tag gezeichnet wird: auf der
+  // 48 px hohen Bahn sind 10 % = 4.8 px, die alten 4 % waren 1.92 px und
+  // damit niedriger als "gar nichts".
   it("hält einen Tag mit Bewegung sichtbar", () => {
-    expect(balkenHoehe(1, 500)).toBe(4);
+    expect(balkenHoehe(1, 500)).toBe(10);
+    expect(balkenHoehe(1, 500) * 0.48).toBeGreaterThan(2);
   });
 
   it("lässt einen leeren Tag leer", () => {

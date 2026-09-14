@@ -12,11 +12,12 @@ import { einstiegsUrl } from "@/lib/creatorLinks";
 import {
   creatorKennzahlen,
   creatorVerlauf,
-  istCreator,
+  eigeneCodes,
   summiere,
   verlaufNachCode,
 } from "@/lib/creatorKennzahlen";
 import { siteUrl } from "@/lib/siteUrl";
+import { mitAnzahl, nomen } from "@/lib/format";
 
 export const metadata = { title: "Deine Zahlen – Strado" };
 
@@ -29,18 +30,27 @@ const VERLAUF_TAGE = 30;
 // dort ausführlich begründet). Vergeben wird sie unter /moderation/creator.
 //
 // Ein Moderator ohne eigenen Code landet hier bewusst NICHT: er sieht
-// dieselben Zahlen für alle Codes in der Moderationsansicht. Deshalb prüft
-// die Seite istCreator() und nicht, ob Kennzahlen zurückkommen — die
-// Datenbankfunktion gibt einem Moderator jede Zeile zurück.
+// dieselben Zahlen für alle Codes in der Moderationsansicht.
+//
+// Und ein Moderator MIT eigenem Code sieht hier trotzdem nur seine eigenen:
+// creator_kennzahlen() und creator_verlauf() geben ihm jede Zeile zurück
+// (0091, für die Moderationsansicht so gewollt). Unter der Überschrift
+// "Deine Zahlen" wäre das schlicht gelogen — die Summen oben addierten
+// fremde Codes mit. Deshalb wird hier auf die eigenen Codes gefiltert,
+// dieselbe Menge, die auch über den Zugang entscheidet.
 export default async function CreatorPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/anmelden?next=/creator");
-  if (!(await istCreator(user.id))) redirect("/");
 
-  const [kennzahlen, verlauf] = await Promise.all([
+  const meineCodes = new Set(await eigeneCodes(user.id));
+  if (meineCodes.size === 0) redirect("/");
+
+  const [alleKennzahlen, allerVerlauf] = await Promise.all([
     creatorKennzahlen(),
     creatorVerlauf(VERLAUF_TAGE),
   ]);
+  const kennzahlen = alleKennzahlen.filter((k) => meineCodes.has(k.code));
+  const verlauf = allerVerlauf.filter((t) => meineCodes.has(t.code));
 
   const summe = summiere(kennzahlen);
   const reihen = verlaufNachCode(verlauf);
@@ -55,10 +65,8 @@ export default async function CreatorPage() {
           <div>
             <h1 className="text-display font-semibold">Deine Zahlen</h1>
             <p className="text-sm text-muted">
-              {kennzahlen.length === 1
-                ? "Ein Link"
-                : `${kennzahlen.length} Links`}{" "}
-              · Verlauf der letzten {VERLAUF_TAGE} Tage
+              {mitAnzahl(kennzahlen.length, "Link", "Links")} · Verlauf der
+              letzten {VERLAUF_TAGE} Tage
             </p>
           </div>
 
@@ -72,18 +80,18 @@ export default async function CreatorPage() {
               <div className="grid grid-cols-3 gap-3">
                 <KennzahlKachel
                   wert={summe.klicks}
-                  beschriftung="Klicks"
-                  hinweis="Aufrufe deiner Links"
+                  beschriftung={nomen(summe.klicks, "Aufruf", "Aufrufe")}
+                  hinweis="deiner Links"
                 />
                 <KennzahlKachel
                   wert={summe.registrierungen}
-                  beschriftung={summe.registrierungen === 1 ? "Konto" : "Konten"}
+                  beschriftung={nomen(summe.registrierungen, "Konto", "Konten")}
                   hinweis="danach angemeldet"
                   anteilVon={summe.klicks}
                 />
                 <KennzahlKachel
                   wert={summe.abos}
-                  beschriftung={summe.abos === 1 ? "Abo" : "Abos"}
+                  beschriftung={nomen(summe.abos, "Abo", "Abos")}
                   hinweis="Premium abgeschlossen"
                   anteilVon={summe.registrierungen}
                 />
@@ -91,14 +99,18 @@ export default async function CreatorPage() {
 
               <Card className="flex flex-col gap-2 p-4 text-sm text-muted">
                 <p>
-                  Ein Konto zählt, wenn es über deinen Link entstanden ist. Ein Abo zählt
-                  auch dann noch, wenn es <strong className="text-foreground">Monate
-                  später</strong> dazukommt — die Zuordnung bleibt am Konto hängen.
+                  Ein Konto zählt, wenn es über deinen Link entstanden ist. Ein
+                  Abo zählt auch dann noch, wenn es{" "}
+                  <strong className="text-foreground">Monate später</strong>{" "}
+                  dazukommt — die Zuordnung bleibt am Konto hängen.
                 </p>
                 <p>
-                  Die Klickzahl ist eine Anzeige, keine Messung: Codes stehen öffentlich,
-                  und ein Aufruf lässt sich wiederholen. Verlässlich sind die beiden
-                  rechten Zahlen.
+                  Die Aufrufzahl ist eine Anzeige, keine Messung: Codes stehen
+                  öffentlich, und ein Aufruf lässt sich wiederholen. Belastbar
+                  sind die Abos — sie entstehen über den Zahlungsanbieter. Auch
+                  die Konten sind nur so belastbar wie eine Anmeldung: wer einen
+                  Code kennt, kann sich darüber anmelden, ohne je auf den Link
+                  geklickt zu haben.
                 </p>
               </Card>
 
@@ -134,18 +146,22 @@ export default async function CreatorPage() {
 
                       <dl className="grid grid-cols-3 gap-3 text-sm">
                         <div>
-                          <dt className="text-muted">Klicks</dt>
-                          <dd className="text-lg font-semibold tabular-nums">{k.klicks}</dd>
+                          <dt className="text-muted">Aufrufe</dt>
+                          <dd className="text-lg font-semibold tabular-nums">
+                            {k.klicks.toLocaleString("de-CH")}
+                          </dd>
                         </div>
                         <div>
                           <dt className="text-muted">Konten</dt>
                           <dd className="text-lg font-semibold tabular-nums">
-                            {k.registrierungen}
+                            {k.registrierungen.toLocaleString("de-CH")}
                           </dd>
                         </div>
                         <div>
                           <dt className="text-muted">Abos</dt>
-                          <dd className="text-lg font-semibold tabular-nums">{k.abos}</dd>
+                          <dd className="text-lg font-semibold tabular-nums">
+                            {k.abos.toLocaleString("de-CH")}
+                          </dd>
                         </div>
                       </dl>
 

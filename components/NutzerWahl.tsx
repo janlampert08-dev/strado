@@ -1,11 +1,32 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 import Avatar from "@/components/Avatar";
 import { Input } from "@/components/ui/Input";
-import { searchProfiles, type ProfileSearchResult } from "@/lib/actions/profile";
+import {
+  searchProfiles,
+  type ProfileSearchResult,
+} from "@/lib/actions/profile";
 
 const DEBOUNCE_MS = 250;
+
+// Ein getippter, aber nicht ausgewählter Name ist kein "niemand".
+//
+// Das Feld schickt immer einen Wert mit, und leer heisst in der Server
+// Action ausdrücklich "Zuweisung entfernen". Wer einen Namen eintippt und
+// die Liste ignoriert, meint aber das Gegenteil. Dieser Platzhalter ist
+// absichtlich keine UUID: creatorUserIdAus() in lib/actions/creatorLinks.ts
+// stuft alles Nicht-Leere, das keine UUID ist, als kaputtes Formular ein und
+// antwortet mit einem Fehler, statt still zu entfernen. Der Hinweis unten im
+// Feld sagt dasselbe schon vorher.
+const AUSWAHL_OFFEN = "auswahl-offen";
 
 // Ein Konto auswählen und seine ID in einem versteckten Feld ablegen.
 //
@@ -31,14 +52,22 @@ export default function NutzerWahl({
   label?: ReactNode;
   hinweis?: string;
 }) {
-  const [gewaehlt, setGewaehlt] = useState<{ id: string; name: string | null } | null>(
-    gewaehltId ? { id: gewaehltId, name: gewaehltName } : null,
-  );
+  const [gewaehlt, setGewaehlt] = useState<{
+    id: string;
+    name: string | null;
+  } | null>(gewaehltId ? { id: gewaehltId, name: gewaehltName } : null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ProfileSearchResult[]>([]);
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const containerRef = useRef<HTMLDivElement>(null);
+  const sucheRef = useRef<HTMLInputElement>(null);
+  const aendernRef = useRef<HTMLButtonElement>(null);
+  // Nach einem Wechsel den Fokus dorthin setzen, wo weitergearbeitet wird —
+  // sonst fällt er beim Aus- und Einblenden der Zweige auf <body> zurück und
+  // die Tastaturbedienung fängt jedes Mal am Seitenanfang wieder an.
+  const fokusZiel = useRef<"suche" | "aendern" | null>(null);
+  const listenId = useId();
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -58,6 +87,12 @@ export default function NutzerWahl({
     return () => clearTimeout(timeout);
   }, [query]);
 
+  useEffect(() => {
+    if (fokusZiel.current === "suche") sucheRef.current?.focus();
+    else if (fokusZiel.current === "aendern") aendernRef.current?.focus();
+    fokusZiel.current = null;
+  }, [gewaehlt]);
+
   // Schliesst die Ergebnisliste bei Klick ausserhalb — dieselbe Interaktion
   // wie in ProfileSearch.tsx.
   useEffect(() => {
@@ -68,6 +103,12 @@ export default function NutzerWahl({
     document.addEventListener("pointerdown", handlePointerDown);
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [open]);
+
+  function waehle(profil: ProfileSearchResult) {
+    fokusZiel.current = "aendern";
+    setGewaehlt({ id: profil.id, name: profil.displayName });
+    setOpen(false);
+  }
 
   if (gewaehlt) {
     return (
@@ -80,8 +121,10 @@ export default function NutzerWahl({
             {gewaehlt.name ?? "Konto ohne Namen"}
           </span>
           <button
+            ref={aendernRef}
             type="button"
             onClick={() => {
+              fokusZiel.current = "suche";
               setGewaehlt(null);
               setQuery("");
             }}
@@ -91,46 +134,86 @@ export default function NutzerWahl({
           </button>
         </div>
         <input type="hidden" name={name} value={gewaehlt.id} />
-        {hinweis && <span className="text-xs font-normal text-muted">{hinweis}</span>}
+        {hinweis && (
+          <span className="text-xs font-normal text-muted">{hinweis}</span>
+        )}
       </div>
     );
   }
 
+  const getippt = query.trim().length > 0;
+
   return (
-    <div ref={containerRef} className="relative flex flex-col gap-1.5 text-sm font-medium">
+    <div
+      ref={containerRef}
+      className="relative flex flex-col gap-1.5 text-sm font-medium"
+    >
       <label className="flex flex-col gap-1.5">
         {label}
         <Input
+          ref={sucheRef}
           type="text"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              setOpen(false);
+              return;
+            }
+            if (event.key !== "Enter") return;
+            // Ohne das hier verschickt die Eingabetaste das ganze Formular:
+            // ein Textfeld plus Absenden-Knopf löst die implizite Absendung
+            // aus. Da das versteckte Feld dann leer mitginge, nähme ein
+            // beherzter Enter einem Creator still seine Zuweisung weg.
+            event.preventDefault();
+            if (open && results.length > 0) waehle(results[0]);
+          }}
           placeholder="Name eingeben…"
           autoComplete="off"
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={listenId}
+          aria-autocomplete="list"
         />
       </label>
       {/* Leer mitschicken heisst "keiner" — die Server Action unterscheidet
-          das ausdrücklich von einem kaputten Wert. */}
-      <input type="hidden" name={name} value="" />
-      {hinweis && <span className="text-xs font-normal text-muted">{hinweis}</span>}
+          das ausdrücklich von einem kaputten Wert. Ein getippter, aber nicht
+          gewählter Name ist kein "keiner", siehe AUSWAHL_OFFEN oben. */}
+      <input type="hidden" name={name} value={getippt ? AUSWAHL_OFFEN : ""} />
+      {getippt && (
+        <span className="text-xs font-normal text-warning">
+          Bitte ein Konto aus der Liste wählen — oder das Feld leeren, um die
+          Zuweisung zu entfernen.
+        </span>
+      )}
+      {hinweis && (
+        <span className="text-xs font-normal text-muted">{hinweis}</span>
+      )}
 
       {open && (
-        <ul className="absolute top-full right-0 left-0 z-20 mt-1 max-h-64 overflow-y-auto rounded-lg border border-border bg-background shadow-elevated">
+        <ul
+          id={listenId}
+          role="listbox"
+          aria-label="Gefundene Konten"
+          className="absolute top-full right-0 left-0 z-20 mt-1 max-h-64 overflow-y-auto rounded-lg border border-border bg-background shadow-elevated"
+        >
           {results.length === 0 ? (
             <li className="px-3 py-2 text-sm font-normal text-muted">
               {isPending ? "Wird gesucht…" : "Kein Konto gefunden."}
             </li>
           ) : (
             results.map((profil) => (
-              <li key={profil.id}>
+              <li key={profil.id} role="option" aria-selected={false}>
                 <button
                   type="button"
-                  onClick={() => {
-                    setGewaehlt({ id: profil.id, name: profil.displayName });
-                    setOpen(false);
-                  }}
+                  onClick={() => waehle(profil)}
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-normal hover:bg-surface"
                 >
-                  <Avatar url={profil.avatarUrl} name={profil.displayName} size={24} />
+                  <Avatar
+                    url={profil.avatarUrl}
+                    name={profil.displayName}
+                    size={24}
+                  />
                   <span className="min-w-0 truncate">{profil.displayName}</span>
                 </button>
               </li>
@@ -138,6 +221,15 @@ export default function NutzerWahl({
           )}
         </ul>
       )}
+      {/* Die Ergebniszahl ansagen: die Liste erscheint sonst lautlos, und wer
+          sie nicht sieht, erfährt nicht, dass es jetzt etwas zu tabben gibt. */}
+      <span aria-live="polite" className="sr-only">
+        {open
+          ? isPending
+            ? "Wird gesucht…"
+            : `${results.length} Konten gefunden.`
+          : ""}
+      </span>
     </div>
   );
 }
