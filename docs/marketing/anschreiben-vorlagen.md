@@ -1,8 +1,9 @@
-# Anschreiben — Vorlagen für die ersten fünf
+# Anschreiben — Vorlagen für die ersten zehn
 
-Gegenstücke zu `docs/marketing/instagram-kanaele-outreach.md`. Fünf Texte
+Gegenstücke zu `docs/marketing/instagram-kanaele-outreach.md`. Zehn Texte
 zum Kopieren, dazu die Regeln, aus denen sie gebaut sind — damit Nummer
-sechs bis zwanzig nicht wieder bei null anfangen.
+elf bis zwanzig nicht wieder bei null anfangen. Die Reihenfolge ist die
+aus der Kanalliste.
 
 ## Vor dem Abschicken
 
@@ -217,6 +218,221 @@ wiederkehrenden Slot füllen muss, liest „ich hätte einen Tipp" anders als
 „dürfte ich Sie um etwas bitten".
 
 ---
+
+---
+
+## 6 — @zueritipp · Direktnachricht
+
+> Guten Tag
+>
+> Sie bitten in Ihrer Bio um Tipps — hier einer, der nichts kostet und nicht
+> in der Stadt stattfindet.
+>
+> Ich habe Strado gebaut: eine App mit acht Fahrstrecken im Kanton Zürich.
+> Zürichberg, Greifensee, einmal um den See. Man fährt sie mit Auto oder
+> Töff, die App stoppt die Zeit und vergleicht mit anderen. Kein Ticket,
+> keine Reservation, kein Eintritt — die kürzeste Runde dauert eine
+> Viertelstunde.
+>
+> Karte, Höhenprofil und die Zahlen zu jeder Strecke liegen als fertiges
+> Bild bereit, im Hochformat. Sie können es unverändert verwenden.
+>
+> Soll ich Ihnen eine Auswahl schicken?
+>
+> Freundliche Grüsse, Jan
+
+**Warum so:** „Nicht in der Stadt" ist der Haken. Ein Veranstaltungsmagazin
+hat Restaurants, Konzerte und Ausstellungen im Überfluss und wenig, das man
+am Sonntagmorgen ohne Anmeldung machen kann. Und „die kürzeste Runde dauert
+eine Viertelstunde" nimmt die Sorge, es handle sich um einen Tagesausflug.
+
+Wenn ihr Feed duzt, das ganze auf Du umstellen — bei einem Magazinkanal ist
+Siezen die sichere Wahl, aber die falsche, wenn der Rest der Kommentarspalte
+duzt.
+
+---
+
+## 7 — @acecafeluzern · Direktnachricht
+
+> Hoi zäme
+>
+> Ein Teil eurer Sonntagsgäste kommt aus dem Raum Zürich — und fährt auf dem
+> Weg zu euch irgendeine Strecke, über die danach niemand spricht.
+>
+> Ich habe Strado gebaut: eine App mit acht Fahrstrecken im Kanton Zürich,
+> für Auto **und** Töff. Fahren, Zeit stoppen, vergleichen. Die Ranglisten
+> sind nach Fahrzeugklasse getrennt — A1, A 35 kW, A offen, und drei
+> Leistungsklassen fürs Auto.
+>
+> Was ich euch anbieten kann: fertige Bilder zu den Strecken, die auf dem
+> Weg zu euch liegen — als Inhalt für eure Kanäle, mit oder ohne Nennung der
+> App. Und einen eigenen Link, über den ich sehe, wie viele darüber
+> reinschauen, und euch die Zahl melde.
+>
+> Was ich **nicht** anbiete, damit es gleich klar ist: eine Strecke bis nach
+> Rothenburg lege ich nicht an. Die App ist bewusst auf den Kanton Zürich
+> begrenzt, und das bleibt vorerst so.
+>
+> Hätte das für euch einen Nutzen?
+>
+> Gruss, Jan
+
+**Warum so:** Der vorletzte Absatz ist der Grund, warum diese Vorlage
+existiert. Ace Cafe liegt in Rothenburg LU, also ausserhalb des Kantons. Es
+wäre leicht, eine Anfahrtsstrecke zu versprechen — und es widerspräche dem
+Produktentscheid in `AGENTS.md`, der ausdrücklich vor „while we're here"-
+Ergänzungen ausserhalb der Region warnt. Die Grenze offen zu nennen, kostet
+in diesem Gespräch nichts und erspart später eine Rücknahme. Ace Cafe ist
+ausserdem der einzige Kandidat, der Auto und Töff im selben Kanal bedient —
+deshalb stehen beide Klassenfamilien im Text.
+
+---
+
+## 8 — @igmotorradschweiz · E-Mail
+
+**Betreff:** Strecken-App aus Zürich — und die Frage, die Sie als Erstes stellen werden
+
+> Guten Tag
+>
+> Ich schreibe Ihnen als Einzelunternehmer aus Zürich, der eine App für
+> Fahrstrecken gebaut hat: acht Strecken im Kanton, man fährt sie, die App
+> zeichnet auf und führt eine Bestenliste. Getrennt nach
+> Führerausweiskategorie — A1, A 35 kW, A offen —, weil ein 125er sonst
+> gegen eine offene Maschine anträte.
+>
+> Die Frage, die ein Verband für Verkehrssicherheit als Erstes stellt, will
+> ich nicht abwarten: **Verleitet eine Bestenliste zum Rasen?**
+>
+> Wir haben das in den AGB nicht weggelassen, sondern hingeschrieben. Ziffer
+> 11.3: „Strado ist kein Wettbewerb um Geschwindigkeit. Fahrten, die unter
+> Missachtung von Verkehrsregeln zustande gekommen sind, dürfen nicht
+> veröffentlicht werden." Ziffer 11.4 untersagt ausdrücklich das Verabreden
+> von Rennen, das Fahren im Pulk und dichtes Auffahren zum Zweck einer
+> gemeinsamen Aufzeichnung — und endet mit dem Satz: „Wer zwischen einer
+> Aufzeichnung und der Sicherheit anderer entscheiden muss, bricht die
+> Aufzeichnung ab." Nachzulesen unter strado.ch/legal/agb.
+>
+> Ob das genügt, entscheiden nicht wir. Deshalb die eigentliche Bitte: Wenn
+> Sie eine Formulierung für zu schwach halten oder eine Funktion für falsch
+> gebaut, sagen Sie es mir. Ich ändere lieber jetzt etwas, als es später zu
+> verteidigen.
+>
+> Und falls Sie es für Ihre Mitglieder brauchbar finden: Karten und
+> Höhenprofile der acht Strecken stelle ich Ihnen kostenlos zur Verfügung,
+> mit oder ohne Nennung der App.
+>
+> Freundliche Grüsse
+> Jan Lampert
+> contact@strado.ch
+
+**Warum so:** Die einzige Vorlage, die mit dem Einwand statt mit dem Angebot
+öffnet. Ein Verband, der gegen die Diskriminierung von Zweiradfahrern
+kämpft, hat ein Interesse daran, dass Motorradfahren **nicht** mit Rasen
+gleichgesetzt wird — eine Timing-App ist für ihn zuerst ein Risiko. Wer das
+ausspricht und die eigenen AGB dagegenhält, wird als Gegenüber behandelt und
+nicht als Bittsteller.
+
+Die Zitate sind wörtlich aus `docs/rechtstexte/agb.md` Ziff. 11.3 und 11.4.
+**Vor dem Abschicken gegenlesen** — wenn die AGB sich ändern, ändert sich
+dieser Brief mit.
+
+Die Bitte um Kritik ist keine Floskel. Wer sie stellt, muss eine Antwort
+auch lesen und beantworten wollen.
+
+---
+
+## 9 — Töffclubs · E-Mail, für mehrere Empfänger anpassbar
+
+Verwendbar für TKT Töffklub (Region Zürich/Aargau), TWN-Club Zürich, MC
+Linth, MC Skorpion, MC Sportriders, MC Kobra (Raum Winterthur), TCS
+Motorradgruppe Aargau. **Die eckigen Klammern sind Pflichtfelder — eine
+unausgefüllte davon macht den Brief zum Serienbrief**, und genau das ist die
+Fassung, die niemand beantwortet.
+
+**Betreff:** Eine Strecke für Ihre nächste Ausfahrt — kostenlos
+
+> Guten Tag
+>
+> Ihr Club fährt [was sie tatsächlich tun — geführte Touren, Ausfahrten in
+> kleinen Gruppen, mehrtägige Touren; steht auf ihrer Website]. Genau dafür
+> hätte ich etwas, das Sie nichts kostet.
+>
+> Ich habe Strado gebaut: eine App mit acht Fahrstrecken im Kanton Zürich.
+> Zu jeder gibt es Karte, Höhenprofil, Länge, Steigung und die Zahl der
+> Kehren — als fertiges Bild, das Sie für Ihre Ausfahrts-Ankündigung
+> verwenden können, ob Strado darauf erwähnt wird oder nicht.
+>
+> [Ein Satz mit Ortsbezug — etwa: „Die Greifensee Schleife startet in
+> Fällanden, das liegt bei Ihnen praktisch um die Ecke." Wenn kein solcher
+> Satz möglich ist, gehört der Club nicht auf die Liste.]
+>
+> Wenn Sie mögen, richte ich für Ihren Club zusätzlich eine eigene Wertung
+> auf einer Strecke ein, zeitlich begrenzt. Die Ranglisten sind nach
+> Führerausweiskategorie getrennt — A1, A 35 kW, A offen —, ein 125er tritt
+> also nicht gegen eine offene Maschine an.
+>
+> Hätten Sie Interesse an den Bildern?
+>
+> Freundliche Grüsse
+> Jan Lampert
+> contact@strado.ch
+
+**Warum so:** Vereine haben keinen Marketingetat und keine Marketingabsicht
+— das Angebot muss deshalb dem Vereinszweck dienen (der nächsten Ausfahrt)
+und nicht der Reichweite. Der Klammersatz mit dem Ortsbezug ist die
+Qualitätskontrolle: Wer ihn nicht füllen kann, hat keinen Grund zu
+schreiben.
+
+---
+
+## 10 — @cars_in_zurich · Direktnachricht
+
+> Hoi
+>
+> Dir schicke ich kein Bild — du machst bessere.
+>
+> Ich habe Strado gebaut: eine App mit acht Fahrstrecken im Kanton Zürich.
+> Zürichberg, Nordwestschleife, einmal um den See. Fahren, Zeit stoppen,
+> vergleichen. Der Grund, warum ich dir schreibe: Das sind acht Strassen,
+> die du wahrscheinlich alle kennst, samt Karte und Höhenprofil — als
+> Motivliste ist das vielleicht brauchbarer als ein fertiger Post.
+>
+> Wenn du eine davon fährst und dabei fotografierst, gehört das Bild
+> selbstverständlich dir. Ich verlinke dich gern, wenn du magst, und lasse
+> es, wenn nicht.
+>
+> Was mich ehrlich interessieren würde: Welche Strasse im Kanton sieht am
+> besten aus und fehlt in der App? Die baue ich als nächste.
+>
+> Gruss, Jan
+
+**Warum so:** Die grösste Reichweite auf der Liste und die einzige Anfrage,
+die man nur einmal stellt — deshalb erst, wenn der Pitch anderswo
+funktioniert hat. Ein Fotograf braucht keine fertigen Grafiken; das offen zu
+sagen, ist der ganze erste Satz. Angeboten wird, was er brauchen könnte
+(Motive) und was ihn nichts kostet (die Wahl, ob verlinkt wird). Die
+Schlussfrage behandelt ihn als jemanden, der die Strassen besser kennt als
+ich — was zutrifft.
+
+**Nicht schreiben:** eine Bitte um Bilder für die Streckenseiten gegen
+„Credit und Verlinkung". Das ist die Anfrage, die Fotografen tausendmal
+bekommen, und sie ist der Grund, warum die meisten solche Nachrichten nicht
+mehr lesen.
+
+---
+
+## Danach
+
+Zwei Kandidaten aus der Liste haben bewusst keine Vorlage bekommen, weil
+sie keine sein wollen:
+
+- **@motolifestyle.ch** publiziert selbst Motorradtouren. Das ist kein
+  Pitch-Fall, sondern ein Gespräch: entweder der natürlichste Partner oder
+  der einzige echte Konkurrent auf dieser Seite. Eine Vorlage würde die
+  Frage vorwegnehmen, die man dort stellen sollte.
+- **@autozuerich_official** ist terminabhängig. Die Messe läuft vom 5. bis
+  8. November 2026; anfragen sollte man Anfang Oktober, nicht jetzt. Der
+  Text hängt daran, was sie bis dahin ankündigen.
 
 ## Nachfassen — einmal, nach zehn Tagen
 
