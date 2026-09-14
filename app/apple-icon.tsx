@@ -1,8 +1,13 @@
 import { ImageResponse } from "next/og";
-import { signetDataUri } from "@/lib/marke";
+import { SIGNET, signetDataUri } from "@/lib/marke";
 
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
+
+// Gleicher Anteil der Kante wie in app/icon.tsx, damit beide Icons dasselbe
+// Zeichen in derselben Grösse zeigen.
+const MARKE_BREITE = Math.round(size.width * 0.7);
+const MARKE_HOEHE = Math.round(MARKE_BREITE / SIGNET.seitenverhaeltnis);
 
 /**
  * Das Touch-Icon für iOS.
@@ -24,7 +29,7 @@ export default function AppleIcon() {
           background: "#3d5afe",
         }}
       >
-        <img src={signetDataUri("#fafafa")} width={106} height={106} alt="Strado" />
+        <img src={signetDataUri("#fafafa")} width={MARKE_BREITE} height={MARKE_HOEHE} alt="Strado" />
       </div>
     ),
     { ...size },

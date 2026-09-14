@@ -224,13 +224,30 @@ is what should be corrected.
   confined to `components/` or `app/` has no automated coverage — say so
   rather than implying the suite covered it.
 - **The brand is one outline, not a font.** `lib/marke.ts` holds the "strado"
-  wordmark and the "s" signet as SVG path data (Familjen Grotesk Bold, SIL
-  OFL, converted to outlines). `components/Wortmarke.tsx`, `app/icon.tsx`,
+  wordmark as SVG path data (Familjen Grotesk Bold, SIL OFL, converted to
+  outlines). `components/Wortmarke.tsx`, `app/icon.tsx`,
   `app/apple-icon.tsx`, both `opengraph-image.tsx` files and the canvas in
   `lib/shareImage.ts` all draw from it, so the mark survives Satori and
   Canvas, which cannot use a CSS webfont. The app still loads only Inter and
   IBM Plex Mono — do not add a third font to render the logo. Note the
   wordmark is set lowercase while running copy says "Strado".
+  - **The signet is no longer the "s".** As of 2026-09-14 it is the "o",
+    flattened into a closed circuit — and drawn geometry (two ellipses),
+    not the glyph scaled: squashing a typeface thins its horizontals while
+    the verticals stay heavy, and the bold "o"'s counter seals shut at icon
+    size. Three consequences. It is **wider than tall** (ratio ≈ 1.7,
+    `viewBox` `0 0 92 54`, so `SIGNET.breite`/`hoehe`/`seitenverhaeltnis`
+    replace the old square `kante`/`einzug`): size it by height and let the
+    width follow — a square class squashes it, and a Satori `<img>` needs
+    both dimensions in that ratio. It is the first mark with a **hole**, and
+    the counter is wound against the outer contour on purpose, because
+    Satori and Canvas both fill nonzero, under which a same-wound counter
+    is area rather than a hole. And it now appears **in the markup**, not
+    just on icons: `components/LogoLink.tsx` shows the signet below `sm`
+    and the wordmark from `sm` up, with `HeaderSkeleton` mirroring that
+    split. Motion: the wordmark keeps `marke-anschlag` (tilt plus colour
+    wash), the signet turns one lap on tap (`signet-runde`); both live in
+    `app/globals.css`.
 - `types/database.ts` exports `Database = any`; the row types next to it are
   hand-maintained and cover only some tables.
 
