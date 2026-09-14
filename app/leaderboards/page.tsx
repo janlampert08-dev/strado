@@ -8,6 +8,7 @@ import TrackLeaderboardChooser from "@/components/TrackLeaderboardChooser";
 import Avatar from "@/components/Avatar";
 import { getGlobalLeaderboards, type LeaderboardEntry } from "@/lib/leaderboard";
 import { listRouteChoices } from "@/lib/routes";
+import { nomen } from "@/lib/format";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import MotorklassenChips from "@/components/MotorklassenChips";
 // chipClassName kommt bewusst NICHT aus MotorklassenChips: das ist eine
@@ -39,7 +40,11 @@ function LeaderboardSection({
 }: {
   title: string;
   entries: LeaderboardEntry[];
-  unit: string;
+  // Entweder eine feste Einheit ("km", "m") oder eine, die sich nach dem Wert
+  // richtet — "1 Fahrt" statt "1 Fahrten". Die Einheit hängt hier am
+  // einzelnen Eintrag, nicht an der Liste: Platz 1 kann 8 Fahrten haben und
+  // Platz 2 genau eine.
+  unit: string | ((wert: number) => string);
   format?: (value: number) => string;
   currentUserId: string | null;
 }) {
@@ -79,7 +84,7 @@ function LeaderboardSection({
                 <span
                   className={`shrink-0 font-mono tabular-nums ${isOwn ? "text-accent" : "text-muted"}`}
                 >
-                  {format(entry.value)} {unit}
+                  {format(entry.value)} {typeof unit === "function" ? unit(entry.value) : unit}
                 </span>
               </li>
             );
@@ -176,7 +181,7 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
       <LeaderboardSection
         title={`Meiste Fahrten${klassenZusatz}`}
         entries={meisteFahrten}
-        unit="Fahrten"
+        unit={(n) => nomen(n, "Fahrt", "Fahrten")}
         currentUserId={currentUserId}
       />
       <LeaderboardSection
@@ -196,7 +201,7 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
       <LeaderboardSection
         title={`Entdecker${klassenZusatz}`}
         entries={meisteStrecken}
-        unit="Strecken"
+        unit={(n) => nomen(n, "Strecke", "Strecken")}
         currentUserId={currentUserId}
       />
     </div>

@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import { Compass, Mountain, TrendingUp } from "lucide-react";
 import Card from "@/components/ui/Card";
+import { mitAnzahl } from "@/lib/format";
 import {
   FAHRTEN_MILESTONES,
   HOEHENMETER_MILESTONES,
@@ -30,7 +31,7 @@ export default function AchievementBadges({
 
   const passMilestone = highestMilestone(passCount, PASS_MILESTONES);
   if (passMilestone !== null) {
-    badges.push({ icon: Mountain, label: `${passMilestone} Pässe` });
+    badges.push({ icon: Mountain, label: mitAnzahl(passMilestone, "Pass", "Pässe") });
   }
 
   const hoehenmeterMilestone = highestMilestone(hoehenmeter, HOEHENMETER_MILESTONES);
@@ -40,7 +41,7 @@ export default function AchievementBadges({
 
   const fahrtenMilestone = highestMilestone(fahrtenCount, FAHRTEN_MILESTONES);
   if (fahrtenMilestone !== null) {
-    badges.push({ icon: Compass, label: `${fahrtenMilestone} Fahrten` });
+    badges.push({ icon: Compass, label: mitAnzahl(fahrtenMilestone, "Fahrt", "Fahrten") });
   }
 
   if (badges.length === 0) {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { datumCH, formatDuration, todayInZurich } from "@/lib/format";
+import { datumCH, formatDuration, mitAnzahl, nomen, todayInZurich } from "@/lib/format";
 
 describe("formatDuration", () => {
   it("formats sub-hour durations as mm:ss", () => {
@@ -55,5 +55,28 @@ describe("datumCH", () => {
     // Client könnten sich unterscheiden, was React als Hydrationsfehler
     // meldet.
     expect(datumCH(new Date("2026-01-02T12:00:00Z"))).toBe("02.01.2026");
+  });
+});
+
+describe("nomen", () => {
+  it("wählt die Einzahl bei genau eins", () => {
+    expect(nomen(1, "Fahrt", "Fahrten")).toBe("Fahrt");
+  });
+
+  it("wählt die Mehrzahl bei null und ab zwei", () => {
+    expect(nomen(0, "Fahrt", "Fahrten")).toBe("Fahrten");
+    expect(nomen(2, "Fahrt", "Fahrten")).toBe("Fahrten");
+  });
+});
+
+describe("mitAnzahl", () => {
+  it("setzt Zahl und Nomen zusammen", () => {
+    expect(mitAnzahl(1, "Strecke", "Strecken")).toBe("1 Strecke");
+    expect(mitAnzahl(3, "Strecke", "Strecken")).toBe("3 Strecken");
+    expect(mitAnzahl(0, "Kehre", "Kehren")).toBe("0 Kehren");
+  });
+
+  it("schreibt grosse Zahlen in Schweizer Schreibweise", () => {
+    expect(mitAnzahl(1380, "Fahrt", "Fahrten")).toBe("1'380 Fahrten");
   });
 });
