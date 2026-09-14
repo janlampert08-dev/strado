@@ -186,11 +186,38 @@ is what should be corrected.
   and fails on a *new* collision; the six existing pairs are listed there as
   legacy.
 - **Open audit findings are tracked in
-  `docs/audit/README.md#remediation-status`**, not in GitHub issues. Of A1's
-  three legs, two are closed and only `dauer_sekunden` remains — the A1 table
-  further down that file spells out which, and it is the authority, not this
-  line. Read that table before concluding you have found something new; this
-  summary has been wrong about A1 before.
+  `docs/audit/README.md#remediation-status`**, not in GitHub issues. Read
+  that table before concluding you have found something new — most of the
+  original findings are closed. A2, A3, A4, A5 and A6 are marked **Fixed**
+  there, each naming the code that closed it, and so is all but a handful of
+  §B. What remains open is narrower than the headline suggests:
+  - **A1, leg 2 — the ride clock.** Two of A1's three legs are closed. The
+    A1 table further down `docs/audit/README.md` spells out which, and it is
+    the authority — not this line, which has been wrong about A1 before.
+    `dauer_sekunden` itself *is* derived server-side — `logTrackedCompletion`
+    recomputes it with `computeTrailStats()` and deliberately ignores whatever
+    number the client posted. What it cannot check is the **timestamps in the
+    trail it derives from**: a genuine trail replayed with compressed times
+    yields a shorter duration that still passes the `0059` speed band. Closing
+    it needs a ride start the server recorded itself, and the recorder is open
+    to signed-out visitors, so any fix changes the guest flow. A product
+    decision, not a migration.
+  - **§B — React 19 clears uncontrolled fields on a failed submit.** Fixed for
+    the photo input only (`MultiPhotoInput`). `AnmeldenForm`,
+    `RegistrierenForm`, `PasswortVergessenForm`, `PasswortAendernForm` and
+    `RatingSection` still lose typed text when a submit fails.
+  - **§B — ascent sampling.** Fixed for rides; route metrics stay at 300
+    points on purpose.
+
+  Until 2026-09-14 this entry said the opposite — "A1 is partially fixed; A4,
+  A5, A6 and everything in §B are open". That was this file quoting the
+  table's catch-all row while dropping its qualifier: the row reads "Open
+  **except the rows above and below**", and the rows immediately above it are
+  A4, A5 and A6, each marked Fixed. A conditional became a flat claim, and the
+  claim then sent work at findings that had already been closed. Same
+  mechanism as the Premium entry further up, and the same lesson: this file is
+  the only one loaded automatically, so a stale summary here outranks the
+  correct detail everywhere else.
 - **There are no component or E2E tests.** Vitest runs with
   `environment: "node"` (no jsdom installed, so a component test cannot be
   written without adding that first) and every test file lives in `lib/`. A change
@@ -385,10 +412,31 @@ slash form has to rename the integration branch first (`develop`, say), and
 that means moving the Vercel domain binding and the Stripe sandbox webhook
 with it.
 
-**The staging environment.** `staging` deploys to `staging.strado.ch`. It has
-its own Supabase project and talks to the Stripe **sandbox**, so a test
-purchase there touches no production data and no real money. Three things
-follow:
+**The staging environment.** `staging` deploys to `staging.strado.ch` and
+talks to the Stripe **sandbox**, so a test purchase there costs no real money.
+
+> **The database half of that sentence is in doubt — settle it before
+> trusting it.** This paragraph used to continue "It has its own Supabase
+> project … so a test purchase there touches no production data". That
+> contradicts Current State above, which says the linked Supabase account
+> holds exactly one project and it is production, and on 2026-09-14
+> `list_projects` agreed with Current State: exactly one project came back,
+> `stecakpnuijbvjsniqto` ("Strado", eu-central-1). The Stripe half is
+> unaffected — the sandbox is genuinely separate.
+>
+> What that does **not** prove is where `staging` actually points: it could
+> still use a project under a Supabase account this tooling cannot see. Only
+> one check settles it — read `NEXT_PUBLIC_SUPABASE_URL` for the `staging`
+> environment in Vercel and compare its project ref against
+> `stecakpnuijbvjsniqto`. That is a URL, not a secret.
+>
+> If they match, two things below are false rather than merely stale: the
+> rehearsal step ("a migration is applied to the staging database **before**
+> production") never happened, because both are the same database, and every
+> test ride, account and route created on staging is production data. Until
+> someone looks, treat staging as production for anything that writes.
+
+Three things follow:
 
 - It is **locked to logged-in moderators** (`proxy.ts`, `lib/staging.ts`).
   Vercel's Deployment Protection has to stay off so Stripe can deliver its
@@ -404,7 +452,9 @@ follow:
 
 A migration is applied to the staging database **before** it is applied to
 production — that rehearsal is the main reason the environment exists, given
-that migrations are applied by hand (see below).
+that migrations are applied by hand (see below). **This step is only real if
+the two databases are actually two**; see the caveat above, and Current State,
+which records that the rehearsal did not in fact happen for `0080`–`0084`.
 
 ## Core Rules
 
