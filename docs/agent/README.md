@@ -121,3 +121,46 @@ Routines are listed and deleted with the Routine tools (`list_triggers`,
 `delete_trigger`), or from the owner's Routines list. Disabling
 Morgenbericht alone makes the whole system silent but still working —
 disable *it* last, not first.
+
+## The Routines as actually created
+
+Created 2026-09-14. Cron is evaluated in **UTC**; the local column assumes
+CEST (UTC+2). When Switzerland returns to CET on 2026-10-25 every local time
+below shifts one hour earlier — fix the cron then, or accept the drift.
+
+| Routine | Trigger ID | Cron (UTC) | Local | Enabled |
+| --- | --- | --- | --- | --- |
+| Wächter | `trig_01MFmwC1TVd7YmBaXfRastd2` | `41 */3 * * *` | every 3 h | yes |
+| Nachtschicht | `trig_01SbsHJKQ8BCzJXp1YhwHcrs` | `23 0 * * *` | 02:23 | **no — see below** |
+| Recherche | `trig_016L1skSpvaKgoTRf7gKjQgz` | `17 7 * * 1` | Mon 09:17 | yes |
+| Morgenbericht | `trig_01WPfZ79CNFhEbyev3B5rF9F` | `12 5 * * *` | 07:12 | yes |
+
+Each Routine's prompt lives in the Routine itself, not here — one copy, so
+the two cannot drift apart.
+
+**Nachtschicht starts disabled on purpose.** The owner's rule is that *he*
+approves what gets built; the four `ready` items in `backlog.md` were seeded
+by an agent, so nothing has been approved yet. Enabling it is the owner's
+act, and it is the moment this setup starts writing code on its own.
+
+### Known gap: the fired sessions may have no connectors
+
+The Routines were created through the Routine tool, which **cannot attach MCP
+connectors** in this organization — the call is rejected outright. Every
+creation returned: *"this trigger stores no MCP connectors, so the sessions it
+fires will run without connector (`mcp__<server>__*`) tools."*
+
+If that warning is literally true, a fired session has no GitHub, Vercel or
+Supabase tools, and there is no `gh` CLI in this environment. Wächter could
+then not read CI or Vercel errors, and Nachtschicht could not open a PR —
+which would make most of this inert. It is **not yet known** whether it is
+true, because the GitHub server here is provided by the harness rather than
+by a user connector, and may well survive.
+
+The Wächter prompt therefore begins with a tool self-check and writes the
+result into its first journal entry. That answers the question empirically
+instead of by assumption. **Read that entry before trusting any of this.**
+
+If the tools are indeed missing, the fix is to delete these four and
+re-create them from the Routines UI on claude.ai, which attaches the owner's
+own connectors. The prompts can be copied out of the existing Routines first.
