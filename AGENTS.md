@@ -242,12 +242,17 @@ is what should be corrected.
     both dimensions in that ratio. It is the first mark with a **hole**, and
     the counter is wound against the outer contour on purpose, because
     Satori and Canvas both fill nonzero, under which a same-wound counter
-    is area rather than a hole. And it now appears **in the markup**, not
-    just on icons: `components/LogoLink.tsx` shows the signet below `sm`
-    and the wordmark from `sm` up, with `HeaderSkeleton` mirroring that
-    split. Motion: the wordmark keeps `marke-anschlag` (tilt plus colour
-    wash), the signet turns one lap on tap (`signet-runde`); both live in
-    `app/globals.css`.
+    is area rather than a hole. Where it appears is **icons only**: the
+    header carries the wordmark at every width, and `components/Wortmarke.tsx`
+    still exports `Signet` for inline use, but nothing calls it today. It did
+    briefly — on 2026-09-14 the header showed the signet below `sm`, with a
+    lap-rotation on tap (`signet-runde`) and `HeaderSkeleton` mirroring the
+    split. All three were taken back out on 2026-09-15: the name is what
+    makes an app known, and the header is the one surface where every user
+    reads it on every page view. Don't reintroduce a mark-only header
+    without settling that trade first. The wordmark's own `marke-anschlag`
+    (tilt plus colour wash, `app/globals.css`) was never part of that and
+    still runs.
   - **One mark does not redraw itself: `app/favicon.ico`.** Every other
     surface draws from `lib/marke.ts` at request time; the `.ico` is a
     finished image in the repo, and the page head serves it *alongside*
