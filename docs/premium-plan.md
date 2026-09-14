@@ -180,6 +180,24 @@ Premium hebt Obergrenzen an und legt Neues obendrauf. Das ist keine Feinheit:
 Kernregel 16 der Verfassung verbietet stilles Ändern von Geschäftsregeln, und
 ein Entzug bestehender Funktionen kostet mehr Vertrauen, als das Abo einbringt.
 
+> **Nachtrag 2026-09-14 — die Ausnahme aus `0077` ist zurückgenommen.**
+> Am 2026-09-07 ging die Regel über das hinaus, was dieser Abschnitt
+> vorschlug: Migration `0077` machte nicht die *Menge* privater Strecken,
+> sondern das *Anlegen überhaupt* zur Premium-Leistung, und nannte sich im
+> eigenen Kopf einen „bewussten Bruch mit dem additiven Gating". Migration
+> `0086_strecken_anlegen_wieder_offen.sql` stellt den unten beschriebenen
+> Zustand wieder her: Anlegen frei, eine private Strecke ohne Abo,
+> unbegrenzt mit Abo, Bestandsschutz unverändert.
+>
+> Grund: Ein öffentlicher Streckenvorschlag ist kein Kostenfaktor, sondern
+> der Inhalt, von dem die Plattform lebt — bei acht freigegebenen Strecken
+> ist sein Zufluss die knappste Ressource. Ihn zu verkaufen heisst, für
+> eine Zulieferung Geld zu verlangen. Die private Strecke nützt dagegen nur
+> dem einen Konto; dort gehört das Kontingent hin, und dort stand es die
+> ganze Zeit (`0064`) — nur unerreichbar hinter `0077`.
+>
+> AGB Ziff. 3.1 und 3.2 sind im selben PR nachgezogen, in beiden Repos.
+
 **Eine begründete Ausnahme:** private Strecken sind heute ungetestet offen
 (`lib/actions/routes.ts:219`). Sie sind das einzige Feature mit echtem
 Premium-Charakter. Vorschlag: kostenlos **eine** private Strecke (damit die
@@ -191,6 +209,7 @@ veröffentlichen (Bestandsschutz, nur das Neuanlegen ist begrenzt).
 
 | Funktion | Kostenlos | Premium | Aufwand | Zusätzliche Fremdkosten |
 | --- | --- | --- | --- | --- |
+| Strecken anlegen (öffentlicher Vorschlag) | ja, unbegrenzt | ja | — | keine |
 | Private Strecken | 1 | unbegrenzt | klein (Zähler + Gate) | keine |
 | Gold-Abzeichen (Opt-in) | – | ja | klein (Reaktivierung) | keine |
 | Offline-Strecken (`lib/offlineRoutes.ts`) | 3 | unbegrenzt | klein | keine (IndexedDB, rein lokal) |

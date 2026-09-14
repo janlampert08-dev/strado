@@ -30,10 +30,12 @@
 // hebt Obergrenzen an, es nimmt keine weg. Deshalb stehen die
 // Gratis-Obergrenzen hier auf genau den Werten, die vorher galten.
 //
-// Eine Ausnahme ist seit 2026-09-07 ausgesprochen: eigene Strecken anlegen
-// ist Premium (INSERT-Policy auf routes, Migration 0077). Das ist kein
-// Grenzwert, sondern ein Ja/Nein, und steht deshalb nicht hier — aber wer
-// diese Datei liest, um die Regel zu verstehen, soll die Ausnahme kennen.
+// Zwischen 2026-09-07 und 0086 galt eine ausgesprochene Ausnahme: eigene
+// Strecken anlegen war Premium (INSERT-Policy auf routes, Migration 0077).
+// Sie ist zurückgenommen — das Anlegen ist wieder für jedes angemeldete
+// Konto offen, und die Leitregel gilt damit wieder ohne Ausnahme. Wer die
+// Begründung sucht, findet sie im Kopf von
+// 0086_strecken_anlegen_wieder_offen.sql.
 //
 // Jeder dieser Werte steht so in den veröffentlichten AGB (Ziff. 3.2). Ihn
 // zu ändern heisst, eine zugesagte Vertragsleistung zu ändern — Kernregel 16
@@ -53,9 +55,10 @@ export const MAX_FOTOS_PREMIUM = 12;
 export const MAX_OFFLINE_STRECKEN_GRATIS = 3;
 
 /**
- * Private Strecken ohne Abo. Seit eigene Strecken selbst Premium sind
- * (0077), erreicht diese Grenze ohne Abo praktisch nur noch die Moderation;
- * sie bleibt, weil der Bestandsschutz an ihr hängt:
+ * Private Strecken ohne Abo. Zwischen 0077 und 0086 war diese Grenze ohne
+ * Abo unerreichbar — das Anlegen selbst war gesperrt, sie lief also nur noch
+ * für die Moderation. Seit 0086 ist sie wieder das, wofür sie gedacht war:
+ * der einzige Ort, an dem ein Abo bei Strecken etwas ändert.
  *
  * - Eine statt null, damit die Funktion ohne Abo erlebbar bleibt und nicht
  *   bloss als gesperrtes Symbol erscheint.

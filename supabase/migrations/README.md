@@ -29,6 +29,60 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Ausstehend: 0086_strecken_anlegen_wieder_offen
+
+**Noch nicht eingespielt.** Geschrieben am 2026-09-14, nimmt die
+Premium-/Moderationspflicht aus `0077` auf der INSERT-Policy von
+`public.routes` zurück. Die Policy trägt danach wieder das Prädikat aus
+`0027`: eigene Zeile, `status_ok = false`.
+
+**Reihenfolge: beide Richtungen sind ungefährlich, Code zuerst ist die
+stillere.**
+
+| Reihenfolge | Folge |
+| --- | --- |
+| Deploy zuerst, Migration danach | Formular offen, Speichern scheitert an der alten Policy mit „Strecke konnte nicht gespeichert werden". Kurz und folgenlos. |
+| Migration zuerst, Deploy danach | Policy erlaubt das Anlegen, der alte Code zeigt weiterhin `PremiumGate`. Es passiert nur nichts. |
+
+Anders als bei `0077` verschärft hier nichts — die Policy wird weiter, nicht
+enger. Ein Zeitfenster, in dem jemand etwas nicht mehr darf, gibt es also
+nicht.
+
+**Vor dem Einspielen zählen** (Mengengerüst wurde nicht erhoben, diese
+Migration entstand ohne Datenbankzugriff):
+
+```sql
+-- Wie viele Konten haetten ohne Abo Strecken anlegen wollen? Nicht messbar.
+-- Messbar ist der Bestand, auf den die Policy wirkt:
+select count(*) from public.routes;
+select count(*) from public.routes where ist_privat;
+-- Und wer heute Bestandsschutz traegt (0064) — von 0086 unberuehrt:
+select count(*) from public.private_strecken_bestandsschutz;
+```
+
+**Nach dem Einspielen gegenlesen**, nicht annehmen:
+
+```sql
+-- with_check traegt das INSERT-Praedikat; qual ist bei einer reinen
+-- INSERT-Policy null.
+select policyname, cmd, roles::text, with_check
+from pg_policies
+where schemaname = 'public' and tablename = 'routes'
+  and policyname = 'Angemeldete Nutzer können Strecken vorschlagen';
+-- Erwartet: with_check enthaelt erstellt_von = auth.uid() und
+-- status_ok = false — und KEINEN Verweis mehr auf ist_premium
+-- oder is_moderator.
+```
+
+**Rückweg:** das Prädikat aus `0077` per neuer Migration wieder setzen. Die
+Policy wird nur umgeschrieben, es entstehen und verschwinden keine Objekte —
+ein Rückweg kostet also nichts ausser einer weiteren Datei.
+
+**Gehört dazu, ist aber kein SQL:** AGB Ziff. 3.1 und 3.2 sind im selben PR
+geändert, in `docs/rechtstexte/agb.md` und in der veröffentlichten Fassung im
+Repo `stradoinfo`. Die Migration allein würde eine Leistung freigeben, die
+der Rechtstext weiterhin als Abo-Bestandteil ausweist.
+
 ## Eingespielt: 0085_bestenlisten_nach_fahrzeugtyp (2026-09-14, Produktion)
 
 Eingespielt **vor** dem Deploy des Codes, der sie liest — der liegt zu diesem

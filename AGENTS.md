@@ -158,7 +158,10 @@ is what should be corrected.
   branch, which is the intended order (schema first, code second). Each was
   verified against the objects rather than against the ledger —
   `apply_migration` stamps a timestamp as `version`, so a search for the file
-  number finds nothing. The two files that remain
+  number finds nothing. `0086_strecken_anlegen_wieder_offen` is written but
+  **not yet applied**; unlike the others it may go either before or after its
+  code, because it widens a policy rather than narrowing one. The two files
+  that remain
   un-applied (`0042`, `0058`) are superseded by `0076` and must **not** be
   applied — see `supabase/migrations/README.md`, which is the only place that
   distinction survives, plus `.agents/deployment.md`.
