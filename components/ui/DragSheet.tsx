@@ -66,9 +66,15 @@ export default function DragSheet({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [dragHeight, setDragHeight] = useState<number | null>(null);
-  const dragRef = useRef<{ startY: number; startHeight: number; height: number; moved: boolean } | null>(
-    null,
-  );
+  // maxHeight wird beim Gestenbeginn EINMAL gemessen und dann mitgeführt —
+  // siehe messeVollhoehe() unten, warum nicht bei jeder Bewegung neu.
+  const dragRef = useRef<{
+    startY: number;
+    startHeight: number;
+    height: number;
+    moved: boolean;
+    maxHeight: number;
+  } | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<HTMLDivElement>(null);
   // Ein Wisch, der auf einem Link oder Button beginnt und das Sheet zieht,
@@ -86,11 +92,21 @@ export default function DragSheet({
   // Polsterbox: Prozenthöhen beziehen sich auf letztere, das Sheet wäre also
   // um die abgezogene BottomNav-Höhe zu hoch und schöbe seinen Kopf unter die
   // Kopfleiste (unten steht es mit bottom: var(--bottom-nav-h) auf der
-  // Inhaltskante auf). Derselbe Wert, den maxHeightPx() unten für die
+  // Inhaltskante auf). Derselbe Wert, den messeVollhoehe() unten für die
   // Ziehmathematik rechnet — sonst driften CSS und Geste auseinander.
   const sheetHeight = expanded ? "calc(100% - var(--bottom-nav-h))" : `${peekPx}px`;
 
-  const maxHeightPx = useCallback(() => {
+  // MISST, und das kostet: getComputedStyle und clientHeight erzwingen beide
+  // ein sofortiges Neuberechnen von Stil und Layout. Beim Ziehen setzt jede
+  // Bewegung eine neue Höhe, macht das Layout also gerade schmutzig — hier
+  // dann zu messen ist genau das Muster, das eine Geste ruckeln lässt
+  // (Layout-Thrashing: schreiben, lesen, schreiben, lesen).
+  //
+  // Deshalb: einmal beim Gestenbeginn aufrufen, den Wert in der Geste
+  // mitführen. Der Container ist das <main> und behält seine Höhe für die
+  // Dauer eines Fingerzugs; nur eine Drehung des Geräts mitten in der Geste
+  // änderte sie, und die bricht den Zeiger ohnehin ab.
+  const messeVollhoehe = useCallback(() => {
     const el = containerRef.current;
     if (!el) return window.innerHeight;
     // Das Sheet endet am unteren Rand der *Inhaltsbox* des Containers, nicht
@@ -107,16 +123,18 @@ export default function DragSheet({
 
   const onPointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
-      const currentHeight = expanded ? maxHeightPx() : peekPx;
+      const maxHeight = messeVollhoehe();
+      const currentHeight = expanded ? maxHeight : peekPx;
       dragRef.current = {
         startY: e.clientY,
         startHeight: currentHeight,
         height: currentHeight,
         moved: false,
+        maxHeight,
       };
       e.currentTarget.setPointerCapture(e.pointerId);
     },
-    [expanded, maxHeightPx, peekPx],
+    [expanded, messeVollhoehe, peekPx],
   );
 
   const onPointerMove = useCallback(
@@ -126,11 +144,11 @@ export default function DragSheet({
       const deltaY = drag.startY - e.clientY;
       if (Math.abs(deltaY) > DRAG_TAP_THRESHOLD_PX) drag.moved = true;
 
-      const next = clampSheetHeight(drag.startHeight + deltaY, peekPx, maxHeightPx());
+      const next = clampSheetHeight(drag.startHeight + deltaY, peekPx, drag.maxHeight);
       drag.height = next;
       setDragHeight(next);
     },
-    [maxHeightPx, peekPx],
+    [peekPx],
   );
 
   const onPointerUp = useCallback(
@@ -149,10 +167,10 @@ export default function DragSheet({
         return;
       }
 
-      setExpanded(isExpandedAfterDrag(drag.height, peekPx, maxHeightPx()));
+      setExpanded(isExpandedAfterDrag(drag.height, peekPx, drag.maxHeight));
       setDragHeight(null);
     },
-    [maxHeightPx, peekPx],
+    [peekPx],
   );
 
   // Die Wischgeste im Inhalt hängt an nativen touch-Listenern statt an den
@@ -173,6 +191,7 @@ export default function DragSheet({
       height: number;
       scroller: HTMLElement | null;
       mode: SheetGesture | null;
+      maxHeight: number;
     } | null = null;
 
     // Das gescrollte Element unter dem Finger — dessen scrollTop entscheidet,
@@ -202,7 +221,7 @@ export default function DragSheet({
       const current = gesture;
       gesture = null;
       if (!current || current.mode !== "sheet") return;
-      setExpanded(isExpandedAfterDrag(current.height, peekPx, maxHeightPx()));
+      setExpanded(isExpandedAfterDrag(current.height, peekPx, current.maxHeight));
       setDragHeight(null);
     }
 
@@ -220,12 +239,14 @@ export default function DragSheet({
       if (handleRef.current?.contains(e.target as Node)) return;
 
       const touch = e.touches[0];
-      const startHeight = expanded ? maxHeightPx() : peekPx;
+      const maxHeight = messeVollhoehe();
+      const startHeight = expanded ? maxHeight : peekPx;
       gesture = {
         startX: touch.clientX,
         startY: touch.clientY,
         startHeight,
         height: startHeight,
+        maxHeight,
         scroller: findScroller(sheet, e.target),
         mode: null,
       };
@@ -271,7 +292,7 @@ export default function DragSheet({
       // ein paar Pixeln Wackeln soll das Sheet nicht sichtbar zucken lassen.
       if (Math.abs(deltaY) <= DRAG_TAP_THRESHOLD_PX) return;
       suppressClickUntilRef.current = Date.now() + CLICK_SUPPRESSION_MS;
-      const next = clampSheetHeight(gesture.startHeight + deltaY, peekPx, maxHeightPx());
+      const next = clampSheetHeight(gesture.startHeight + deltaY, peekPx, gesture.maxHeight);
       gesture.height = next;
       setDragHeight(next);
     }
@@ -290,7 +311,7 @@ export default function DragSheet({
       sheet.removeEventListener("touchend", onTouchEnd);
       sheet.removeEventListener("touchcancel", onTouchEnd);
     };
-  }, [expanded, maxHeightPx, peekPx]);
+  }, [expanded, messeVollhoehe, peekPx]);
 
   return (
     <div
