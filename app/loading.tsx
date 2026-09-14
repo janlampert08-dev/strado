@@ -24,7 +24,7 @@ export default function Loading() {
         {/* Bottom-Sheet in Peek-Höhe; ab md löst sich der Wrapper auf
             (md:contents), und die Liste wird zur linken Spalte. */}
         <div
-          className="absolute inset-x-0 bottom-0 z-10 flex flex-col overflow-hidden rounded-t-lg border-t border-border bg-background shadow-overlay md:contents"
+          className="absolute inset-x-0 bottom-[var(--bottom-nav-h)] z-10 flex flex-col overflow-hidden rounded-t-lg border-t border-border bg-background shadow-overlay md:contents"
           style={{ height: `${SHEET_PEEK_PX}px` }}
         >
           {/* Ziehgriff (nur unter md, wie in DragSheet.tsx) */}
@@ -32,7 +32,7 @@ export default function Loading() {
             <Skeleton className="h-5 w-5 rounded-sm" />
           </div>
 
-          <div className="flex w-full flex-col gap-5 overflow-hidden border-border px-5 pt-5 pb-[calc(5.5rem+var(--safe-bottom))] sm:px-6 sm:pt-6 sm:pb-[calc(5.75rem+var(--safe-bottom))] md:max-w-sm md:border-r md:pb-6 lg:max-w-md xl:max-w-lg">
+          <div className="flex w-full flex-col gap-5 overflow-hidden border-border px-5 pt-5 pb-6 sm:px-6 sm:pt-6 md:max-w-sm md:border-r lg:max-w-md xl:max-w-lg">
             {/* Kein Block für die Einleitung. Sie steht seit dem Umbau der
                 Startseite nur noch für abgemeldete Besucher
                 (ExploreSidebar.tsx); angemeldet bleibt an ihrer Stelle eine

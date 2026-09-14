@@ -32,7 +32,16 @@ const CLICK_SUPPRESSION_MS = 400;
 // Handvoll Zeilen beschnitt, ohne dass der Streifen für die Orientierung
 // gereicht hätte. Der Weg zurück zur Karte ist derselbe wie vorher (Griff oder
 // Wisch nach unten), und die Kopfleiste bleibt sichtbar: das Sheet füllt nur
-// den Container unter ihr. Zwei Wege führen hinauf — der Ziehgriff (ziehen
+// den Container unter ihr.
+//
+// Nach unten endet das Sheet über der fixierten BottomNav
+// (bottom: var(--bottom-nav-h), s. globals.css) statt am Bildschirmrand.
+// Vorher lief es bis ganz nach unten und damit unter die Leiste: die ist
+// zwar halbtransparent, liegt aber auf z-40 und fing jeden Tipp ab. Auf der
+// Startseite landete der Knopf „Strecken in meiner Nähe" in Peek-Höhe genau
+// in diesem Streifen — ein Tipp darauf öffnete einen Navigationspunkt statt
+// die Standortsuche. Das betraf jeden Inhalt in den untersten ~64px des
+// Sheets, nicht nur diesen Knopf. Zwei Wege führen hinauf — der Ziehgriff (ziehen
 // oder tippen) und die Wischgeste im Inhalt selbst: eingeklappt zieht ein
 // Wisch nach oben das Sheet auf, aufgeklappt scrollt derselbe Wisch den
 // Inhalt, und ein Wisch nach unten am Anfang des Inhalts klappt wieder ein. Vorher liess sich das Sheet nur über den Griff
@@ -73,10 +82,27 @@ export default function DragSheet({
   // Aktivierung per Tastatur, die ohne pointerdown daherkommt.
   const suppressClickUntilRef = useRef(0);
 
-  const sheetHeight = expanded ? "100%" : `${peekPx}px`;
+  // Aufgezogen die Höhe der *Inhaltsbox* des Containers, nicht 100% seiner
+  // Polsterbox: Prozenthöhen beziehen sich auf letztere, das Sheet wäre also
+  // um die abgezogene BottomNav-Höhe zu hoch und schöbe seinen Kopf unter die
+  // Kopfleiste (unten steht es mit bottom: var(--bottom-nav-h) auf der
+  // Inhaltskante auf). Derselbe Wert, den maxHeightPx() unten für die
+  // Ziehmathematik rechnet — sonst driften CSS und Geste auseinander.
+  const sheetHeight = expanded ? "calc(100% - var(--bottom-nav-h))" : `${peekPx}px`;
 
   const maxHeightPx = useCallback(() => {
-    return containerRef.current?.clientHeight ?? window.innerHeight;
+    const el = containerRef.current;
+    if (!el) return window.innerHeight;
+    // Das Sheet endet am unteren Rand der *Inhaltsbox* des Containers, nicht
+    // an dessen Polsterkante (bottom: var(--bottom-nav-h) unten) — die
+    // Vollhöhe ist deshalb die Inhaltshöhe. Mit clientHeight (Inhalt plus
+    // Polsterung) wüchse das aufgezogene Sheet um genau die Höhe der
+    // BottomNav über den Container hinaus und schöbe seinen Kopf unter die
+    // Kopfleiste.
+    const stil = getComputedStyle(el);
+    const polsterung =
+      (parseFloat(stil.paddingTop) || 0) + (parseFloat(stil.paddingBottom) || 0);
+    return el.clientHeight - polsterung;
   }, [containerRef]);
 
   const onPointerDown = useCallback(
@@ -275,7 +301,7 @@ export default function DragSheet({
         e.preventDefault();
         e.stopPropagation();
       }}
-      className={`absolute inset-x-0 bottom-0 z-10 flex h-[var(--sheet-h)] flex-col overflow-hidden rounded-t-lg border-t border-border bg-background shadow-overlay md:contents ${
+      className={`absolute inset-x-0 bottom-[var(--bottom-nav-h)] z-10 flex h-[var(--sheet-h)] flex-col overflow-hidden rounded-t-lg border-t border-border bg-background shadow-overlay md:contents ${
         dragHeight === null ? "transition-[height] duration-base ease-standard" : ""
       } ${className}`}
       style={{ "--sheet-h": dragHeight !== null ? `${dragHeight}px` : sheetHeight } as CSSProperties}
