@@ -20,10 +20,10 @@ weil sie die Begründungen tragen. Die Zuordnung der Schritte zu den Dateien:
 | --- | --- |
 | 1 — Cookie | `lib/herkunft.ts`, gesetzt in `app/c/[code]/route.ts`, getestet in `lib/herkunft.test.ts` |
 | 2 — Durchreichen | `signUp()` in `lib/actions/auth.ts` (plus `herkunft_code: null` beim Löschen) |
-| 3 — Migration A | `0087_herkunft_und_konversionen.sql` |
-| 4 — Migration B | `0088_creator_konversion_abo.sql` |
+| 3 — Migration A | `0088_herkunft_und_konversionen.sql` |
+| 4 — Migration B | `0089_creator_konversion_abo.sql` |
 | 5 — Klicks zählen | **nicht gebaut** (bewusst, siehe dort) |
-| 6 — Löschung | `0089_anonymisierung_herkunft.sql` |
+| 6 — Löschung | `0090_anonymisierung_herkunft.sql` |
 | 7 — Auswertung | die Abfrage unten, ohne Oberfläche |
 | 8 — Datenschutz | `docs/rechtstexte/datenschutz.md` Ziff. 3.11 und die veröffentlichte Fassung in `janlampert08-dev/stradoinfo` |
 
@@ -253,7 +253,7 @@ Zwei Dinge, die dabei leicht untergehen:
 
 ### Schritt 3 — Migration A: Herkunft bei der Registrierung
 
-Neue Migration, Arbeitsname `0087_registrierung_herkunft.sql`
+Neue Migration, Arbeitsname `0088_registrierung_herkunft.sql`
 (Nummer beim Anlegen gegen den dann aktuellen Stand prüfen — die Nummern
 sind im Repo **nicht** eindeutig, sechs Präfixe existieren doppelt, und
 `scripts/check-migration-prefixes.mjs` macht CI bei einer neuen Kollision

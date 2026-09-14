@@ -29,19 +29,29 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
-## Noch nicht eingespielt: 0087, 0088, 0089 (Creator-Herkunft)
+## Noch nicht eingespielt: 0088, 0089, 0090 (Creator-Herkunft)
+
+**Warum nicht 0087:** diese Nummer gehört `0087_premium_abzeichen_spalte`
+aus PR #235, das am 2026-09-14 bereits in Produktion eingespielt wurde
+(Ledger `20260914200727`). Die drei Dateien hier trugen zunächst
+`0087`–`0089` und wurden vor dem Merge auf `0088`–`0090` gehoben. Genau
+dieser Fall ist der Grund, warum `.agents/database.md` verlangt, die
+höchste Nummer **auf `main` und in jedem offenen PR** zu prüfen: `main`
+allein sagte `0086`, und beide Branches hätten unabhängig voneinander
+`0087` gewählt. `supabase_migrations.schema_migrations.version` ist ein
+Primärschlüssel — eine der beiden hätte sich nie eingetragen.
 
 Die drei Dateien gehören zusammen und werden **in dieser Reihenfolge**
 angewendet:
 
 | Datei | Was sie anlegt |
 | --- | --- |
-| `0087_herkunft_und_konversionen` | Tabellen `registrierung_herkunft` und `creator_konversionen`, `handle_new_user()` um die Herkunft erweitert |
-| `0088_creator_konversion_abo` | Trigger auf `subscriptions`, der den ersten zahlenden Zustand als Konversion festhält |
-| `0089_anonymisierung_herkunft` | `anonymize_account()` räumt die Herkunft bei der Kontolöschung auf |
+| `0088_herkunft_und_konversionen` | Tabellen `registrierung_herkunft` und `creator_konversionen`, `handle_new_user()` um die Herkunft erweitert |
+| `0089_creator_konversion_abo` | Trigger auf `subscriptions`, der den ersten zahlenden Zustand als Konversion festhält |
+| `0090_anonymisierung_herkunft` | `anonymize_account()` räumt die Herkunft bei der Kontolöschung auf |
 
-`0088` setzt Tabellen aus `0087` voraus, `0089` ebenfalls — eine einzeln
-angewendete `0088` scheitert also, und das ist die gewünschte Richtung.
+`0089` setzt Tabellen aus `0088` voraus, `0090` ebenfalls — eine einzeln
+angewendete `0089` scheitert also, und das ist die gewünschte Richtung.
 
 **Die Richtung der Lücke ist hier die harmlose.** Der Code, der sie füttert,
 ist ohne sie wirkungslos statt kaputt: `app/c/[code]/route.ts` setzt ein

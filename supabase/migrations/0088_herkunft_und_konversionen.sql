@@ -20,7 +20,7 @@
 --     lesbar" mit using (true). Jede neue Spalte dort wäre für anon über
 --     PostgREST abrufbar — "wer hat wen geworben" wäre öffentlich.
 --   * registrierung_herkunft beantwortet "wer kam über wen" und wird bei
---     der Kontolöschung entfernt (0089).
+--     der Kontolöschung entfernt (0090).
 --   * creator_konversionen beantwortet "was ist daraus geworden" und
 --     überlebt die Kontolöschung, weil dort nur der Personenbezug
 --     genullt wird. Ohne diese Trennung verlöre ein Creator mit jedem
@@ -41,7 +41,7 @@ create table public.registrierung_herkunft (
 );
 
 comment on table public.registrierung_herkunft is
-  'Ueber welchen Creator-Link ein Konto entstanden ist. Geschrieben ausschliesslich von handle_new_user() nach Pruefung gegen creator_links; bei der Kontoloeschung entfernt (0089). Keine Policy und keine Grants: erreichbar nur ueber SECURITY DEFINER-Funktionen und den Service-Role-Client (0087).';
+  'Ueber welchen Creator-Link ein Konto entstanden ist. Geschrieben ausschliesslich von handle_new_user() nach Pruefung gegen creator_links; bei der Kontoloeschung entfernt (0090). Keine Policy und keine Grants: erreichbar nur ueber SECURITY DEFINER-Funktionen und den Service-Role-Client (0088).';
 
 alter table public.registrierung_herkunft enable row level security;
 
@@ -79,7 +79,7 @@ revoke all on public.registrierung_herkunft from anon, authenticated;
 --
 -- Deshalb: erfasst wird das Ereignis, abgeleitet wird die Regel. Diese
 -- Tabelle ist im Betrieb append-only — geschrieben wird nur per INSERT,
--- ein UPDATE trifft ausschliesslich user_id (Anonymisierung, 0089).
+-- ein UPDATE trifft ausschliesslich user_id (Anonymisierung, 0090).
 -- ---------------------------------------------------------------------
 create table public.creator_konversionen (
   id bigint generated always as identity primary key,
@@ -93,7 +93,7 @@ create table public.creator_konversionen (
   -- NICHT — es ruft anonymize_account() und entwertet anschliessend die
   -- Zugangsdaten über updateUserById. Wer sich auf on delete verlässt,
   -- baut eine Löschung, die nie stattfindet. Das Nullen steht deshalb
-  -- ausgeschrieben in 0089.
+  -- ausgeschrieben in 0090.
   user_id uuid references auth.users (id) on delete set null,
   -- Nur bei art in ('abo_start', 'abo_ende'). Keine Personendaten, aber
   -- der Schlüssel, über den sich ein Ende dem Anfang zuordnen lässt.
@@ -119,7 +119,7 @@ create table public.creator_konversionen (
 );
 
 comment on table public.creator_konversionen is
-  'Append-only Ereignisprotokoll der Creator-Zuordnung: Registrierung, erster zahlender Zustand eines Abos, erstes Ende davon. Ueberlebt die Kontoloeschung (dort wird nur user_id genullt, 0089), damit die Zaehlung eines Creators bestehen bleibt. Kennt bewusst KEIN Attributionsfenster — das ist Sache der Auswertung (0087).';
+  'Append-only Ereignisprotokoll der Creator-Zuordnung: Registrierung, erster zahlender Zustand eines Abos, erstes Ende davon. Ueberlebt die Kontoloeschung (dort wird nur user_id genullt, 0090), damit die Zaehlung eines Creators bestehen bleibt. Kennt bewusst KEIN Attributionsfenster — das ist Sache der Auswertung (0088).';
 
 comment on column public.creator_konversionen.art is
   'registrierung | abo_start | abo_ende. abo_ende ist das ERSTE Ende dieses Abos, nicht der aktuelle Stand — den haelt public.subscriptions.';
@@ -209,7 +209,7 @@ end;
 $$;
 
 comment on function public.handle_new_user() is
-  'Legt bei jeder Neuregistrierung das Profil an und haelt seit 0087 zusaetzlich die Creator-Herkunft fest, sofern raw_user_meta_data.herkunft_code einen aktiven Code aus creator_links nennt. Der Code wird hier geprueft, weil die Metadaten client-setzbar sind.';
+  'Legt bei jeder Neuregistrierung das Profil an und haelt seit 0088 zusaetzlich die Creator-Herkunft fest, sofern raw_user_meta_data.herkunft_code einen aktiven Code aus creator_links nennt. Der Code wird hier geprueft, weil die Metadaten client-setzbar sind.';
 
 revoke execute on function public.handle_new_user() from public;
 revoke execute on function public.handle_new_user() from anon, authenticated;

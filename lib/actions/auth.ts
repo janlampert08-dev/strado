@@ -152,7 +152,7 @@ export async function signUp(
   // landet damit in raw_user_meta_data, wo der Trigger ihn findet.
   //
   // Dass raw_user_meta_data client-setzbar ist, ist bekannt und hier
-  // folgenlos: 0087 prüft den Code gegen creator_links, bevor er irgendwo
+  // folgenlos: 0088 prüft den Code gegen creator_links, bevor er irgendwo
   // gezählt wird. Was hier mitfährt, ist ein Vorschlag, keine Tatsache.
   const herkunft = await leseHerkunft();
 
@@ -504,7 +504,7 @@ export async function deleteAccount(
   // Wert null ist), statt ihn nur zu überschreiben.
   //
   // herkunft_code aus demselben Grund: signUp() legt ihn genauso dort ab.
-  // anonymize_account() räumt die Herkunft in public auf (0089) — ohne
+  // anonymize_account() räumt die Herkunft in public auf (0090) — ohne
   // diese Zeile bliebe sie als Kopie in auth.users stehen, wo keine
   // Migration sie je erwischt.
   const { error: revokeError } = await admin.auth.admin.updateUserById(user.id, {

@@ -2,7 +2,7 @@
 -- Der Kauf, Monate später: ein Abo dem Creator zuschreiben, über dessen
 -- Link das Konto entstanden ist.
 --
--- Das ist der Punkt der ganzen Übung. 0087 hält fest, WER über wen kam;
+-- Das ist der Punkt der ganzen Übung. 0088 hält fest, WER über wen kam;
 -- hier wird festgehalten, dass daraus ein zahlender Nutzer geworden ist —
 -- auch wenn zwischen Registrierung und Kauf zwei Monate liegen.
 --
@@ -73,7 +73,7 @@ begin
     values
       (v_code, 'abo_start', new.user_id, new.stripe_subscription_id,
        now(), v_registriert)
-    -- Der Unique-Index aus 0087 macht die Wiederholung zum No-op: Stripe
+    -- Der Unique-Index aus 0088 macht die Wiederholung zum No-op: Stripe
     -- liefert denselben Zustand mehrfach, und jede bezahlte Folgerechnung
     -- schreibt die Zeile erneut. Erfasst wird der erste Moment, in dem
     -- dieses Abo zahlend war.
@@ -101,7 +101,7 @@ end;
 $$;
 
 comment on function public.creator_konversion_abo() is
-  'Traegt in creator_konversionen ein, wenn ein ueber einen Creator-Link geworbenes Konto zahlend wird (abo_start) bzw. es zum ersten Mal nicht mehr ist (abo_ende). Kennt kein Attributionsfenster — das ist Sache der Auswertung (0088).';
+  'Traegt in creator_konversionen ein, wenn ein ueber einen Creator-Link geworbenes Konto zahlend wird (abo_start) bzw. es zum ersten Mal nicht mehr ist (abo_ende). Kennt kein Attributionsfenster — das ist Sache der Auswertung (0089).';
 
 -- SECURITY DEFINER, und AGENTS.md verlangt dafür eine Begründung:
 --
@@ -109,7 +109,7 @@ comment on function public.creator_konversion_abo() is
 -- immer service_role, der creator_konversionen ohnehin erreicht. Nötig
 -- wäre definer dafür also nicht. Er ist es trotzdem, damit die Tabelle
 -- creator_konversionen KEINEN Grant an irgendeine andere Rolle braucht:
--- sie bleibt für anon und authenticated vollständig unerreichbar (0087),
+-- sie bleibt für anon und authenticated vollständig unerreichbar (0088),
 -- und der einzige Schreibweg hinein ist dieser Trigger.
 --
 -- Was ihn ungefährlich macht: er trifft keine Berechtigungsentscheidung,

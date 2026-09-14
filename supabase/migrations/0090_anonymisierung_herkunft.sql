@@ -1,7 +1,7 @@
 -- =====================================================================
 -- Kontolöschung: die Herkunft geht, die Zählung bleibt.
 --
--- 0087 hat zwei Tabellen angelegt, die beide auf ein Konto zeigen. Beim
+-- 0088 hat zwei Tabellen angelegt, die beide auf ein Konto zeigen. Beim
 -- Löschen dieses Kontos müssen sie unterschiedlich behandelt werden, und
 -- genau darin liegt der Grund, warum es zwei sind:
 --
@@ -88,7 +88,7 @@ end;
 $$;
 
 comment on function public.anonymize_account(uuid) is
-  'Anonymisiert ein Konto anhand der uebergebenen ID. Nur fuer service_role — der Aufrufer muss die Identitaet bereits festgestellt haben (deleteAccount() in lib/actions/auth.ts: Passwort-Neueingabe, dann Stripe-Kuendigung, dann diese Funktion mit der getUser()-ID). Loescht seit 0076 die subscriptions-Zeile (sonst stellt premium_abgleich() ist_premium nachts wieder her) und seit 0089 die Creator-Herkunft; in creator_konversionen wird nur der Personenbezug genullt, damit die Zaehlung des Creators bestehen bleibt.';
+  'Anonymisiert ein Konto anhand der uebergebenen ID. Nur fuer service_role — der Aufrufer muss die Identitaet bereits festgestellt haben (deleteAccount() in lib/actions/auth.ts: Passwort-Neueingabe, dann Stripe-Kuendigung, dann diese Funktion mit der getUser()-ID). Loescht seit 0076 die subscriptions-Zeile (sonst stellt premium_abgleich() ist_premium nachts wieder her) und seit 0090 die Creator-Herkunft; in creator_konversionen wird nur der Personenbezug genullt, damit die Zaehlung des Creators bestehen bleibt.';
 
 -- Zusicherung, keine Reparatur: create or replace laesst die
 -- Ausfuehrungsrechte unveraendert, die 0076 gesetzt hat. Noch einmal

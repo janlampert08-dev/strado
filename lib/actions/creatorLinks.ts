@@ -120,7 +120,7 @@ export async function creatorLinkAktivSetzen(
 // Endgültig entfernen. Sinnvoll nur für einen Code, der nie verteilt wurde —
 // für alles andere ist Deaktivieren das richtige Mittel.
 //
-// Seit 0087 hängt an einem Code die Herkunft vergebener Registrierungen und
+// Seit 0088 hängt an einem Code die Herkunft vergebener Registrierungen und
 // jede daraus entstandene Konversion. Die Entscheidung darüber ist
 // gefallen, und zwar in der Datenbank: beide Tabellen verweisen per
 // Fremdschlüssel auf creator_links, das Löschen scheitert also, sobald
@@ -142,7 +142,7 @@ export async function creatorLinkLoeschen(rohCode: string): Promise<CreatorLinkR
 
   if (error) {
     // 23503 ist die Fremdschlüsselverletzung: an diesem Code hängen
-    // Registrierungen oder Konversionen (0087). Kein Fehler, den die
+    // Registrierungen oder Konversionen (0088). Kein Fehler, den die
     // Moderation beheben soll — sondern einer, der sagt, dass hier
     // Deaktivieren das richtige Mittel ist.
     if (error.code === "23503") {

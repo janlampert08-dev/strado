@@ -80,7 +80,7 @@ export function herkunftCookieWert(
 // nicht signiert, und wer seinen eigenen Browser bearbeitet, kann
 // hineinschreiben, was er will. Was hier herauskommt, hat damit die Form
 // eines Codes — ob es ein vergebener, aktiver Code IST, entscheidet erst
-// der Trigger in der Datenbank (Migration 0087).
+// der Trigger in der Datenbank (Migration 0088).
 export async function leseHerkunft(): Promise<string | null> {
   const store = await cookies();
   return normalisiereCode(store.get(HERKUNFT_COOKIE)?.value);

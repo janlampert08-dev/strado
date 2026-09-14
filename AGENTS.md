@@ -170,12 +170,18 @@ is what should be corrected.
   un-applied (`0042`, `0058`) are superseded by `0076` and must **not** be
   applied — see `supabase/migrations/README.md`, which is the only place that
   distinction survives, plus `.agents/deployment.md`.
-  `0087_herkunft_und_konversionen`, `0088_creator_konversion_abo` and
-  `0089_anonymisierung_herkunft` are in the repo and **not applied yet** —
+  `0088_herkunft_und_konversionen`, `0089_creator_konversion_abo` and
+  `0090_anonymisierung_herkunft` are in the repo and **not applied yet** —
   they are the reverse of the usual danger: the code that feeds them ships
   first and is inert without them (an unread cookie, a metadata key no
   trigger looks at), so nothing breaks while the gap is open, and nothing
-  is recorded either. Apply them in order.
+  is recorded either. Apply them in order. They start at `0088` because
+  `0087_premium_abzeichen_spalte` (PR #235) took `0087` and was applied on
+  2026-09-14; both branches had picked `0087` independently off a `main`
+  that ended at `0086`. `scripts/check-migration-prefixes.mjs` cannot catch
+  that — it only sees one branch — so the check that matters is the one
+  `.agents/database.md` actually asks for: read the open PRs before
+  choosing a number.
   - **There is no separate staging database — confirmed, and staying that
     way.** The linked Supabase account holds exactly one project, and it is
     production; the owner confirmed on 2026-09-14 that `staging` points at
@@ -188,7 +194,7 @@ is what should be corrected.
     account and route created on `staging` **is** production data, and
     shows up in production counts. And a sandbox purchase on `staging`
     writes real rows into the production tables that hang off the payment
-    path — `creator_konversionen` (0087) is the newest of them; only the
+    path — `creator_konversionen` (0088) is the newest of them; only the
     Stripe side is genuinely separate.
 - **Migration numbers are not unique.** `0034`, `0041`, `0053`, `0054`, `0059`
   and `0060` each exist twice — six pairs, not four. Reconciling a deploy by
@@ -202,8 +208,8 @@ is what should be corrected.
   `app.strado.ch/c/<code>` leaves a first-party cookie carrying only the
   creator's code (`lib/herkunft.ts`, 90 days, First Touch wins); `signUp()`
   passes it through `raw_user_meta_data`, and `handle_new_user` validates it
-  against `creator_links` before writing `registrierung_herkunft` (`0087`).
-  A trigger on `subscriptions` (`0088`) then records in
+  against `creator_links` before writing `registrierung_herkunft` (`0088`).
+  A trigger on `subscriptions` (`0089`) then records in
   `creator_konversionen` when such an account first becomes paying — which
   is the whole point: a purchase two months after the sign-up is still
   attributable. Three things to know before touching it. The conversion log
@@ -211,7 +217,7 @@ is what should be corrected.
   days later still counts is decided in the evaluating query, never in the
   trigger, because an unrecorded event is gone while a misapplied rule can
   be reapplied. It **survives account deletion**: `anonymize_account`
-  (`0089`) drops the origin row but only nulls `user_id` on the log, so the
+  (`0090`) drops the origin row but only nulls `user_id` on the log, so the
   creator keeps the count and the person keeps their deletion. And a
   creator code that has produced registrations **can no longer be deleted**
   (foreign key); deactivating is the intended move, and
