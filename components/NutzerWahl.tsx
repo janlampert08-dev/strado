@@ -57,7 +57,14 @@ export default function NutzerWahl({
     name: string | null;
   } | null>(gewaehltId ? { id: gewaehltId, name: gewaehltName } : null);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<ProfileSearchResult[]>([]);
+  // Die Ergebnisse tragen die Anfrage, zu der sie gehören. Ohne das kann eine
+  // langsamere frühere Suche eine schnellere spätere überschreiben — und seit
+  // die Eingabetaste den ersten Treffer auswählt, wäre das nicht mehr bloss
+  // eine veraltete Liste, sondern die stille Zuweisung des falschen Kontos.
+  const [treffer, setTreffer] = useState<{
+    fuer: string;
+    liste: ProfileSearchResult[];
+  }>({ fuer: "", liste: [] });
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -73,13 +80,13 @@ export default function NutzerWahl({
     const trimmed = query.trim();
     const timeout = setTimeout(() => {
       if (trimmed.length < 2) {
-        setResults([]);
+        setTreffer({ fuer: "", liste: [] });
         setOpen(false);
         return;
       }
       startTransition(async () => {
         const found = await searchProfiles(trimmed);
-        setResults(found);
+        setTreffer({ fuer: trimmed, liste: found });
         setOpen(true);
       });
     }, DEBOUNCE_MS);
@@ -142,6 +149,11 @@ export default function NutzerWahl({
   }
 
   const getippt = query.trim().length > 0;
+  // Erst wenn die Antwort zur aktuellen Eingabe gehört, darf sie ausgewählt
+  // werden — während des Tippens steht sonst noch die Liste der vorigen
+  // Anfrage da.
+  const aktuell = treffer.fuer === query.trim() && treffer.fuer.length > 0;
+  const results = aktuell ? treffer.liste : [];
 
   return (
     <div
@@ -166,7 +178,7 @@ export default function NutzerWahl({
             // aus. Da das versteckte Feld dann leer mitginge, nähme ein
             // beherzter Enter einem Creator still seine Zuweisung weg.
             event.preventDefault();
-            if (open && results.length > 0) waehle(results[0]);
+            if (open && aktuell && results.length > 0) waehle(results[0]);
           }}
           placeholder="Name eingeben…"
           autoComplete="off"
@@ -199,7 +211,7 @@ export default function NutzerWahl({
         >
           {results.length === 0 ? (
             <li className="px-3 py-2 text-sm font-normal text-muted">
-              {isPending ? "Wird gesucht…" : "Kein Konto gefunden."}
+              {isPending || !aktuell ? "Wird gesucht…" : "Kein Konto gefunden."}
             </li>
           ) : (
             results.map((profil) => (

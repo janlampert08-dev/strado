@@ -6,7 +6,7 @@
 --
 -- 1. creator_verlauf() gibt nur noch Aufrufe zurück.
 -- 2. handle_new_user() kann an der Herkunftsmessung nicht mehr scheitern.
--- 3. Ein Index für die Tagesabfrage, die es ohne ihn quadratisch macht.
+-- 3. Ein Index als Vorsorge für die erste zeitfilternde Auswertung.
 --
 -- 0088-0093 sind am 2026-09-14 in Produktion eingespielt. Regel 9: dort
 -- wird nichts geändert, das hier ist die neue Datei.
@@ -181,13 +181,19 @@ revoke execute on function public.handle_new_user() from anon, authenticated;
 -- 3. Index für die Tagesabfrage
 --
 -- creator_kennzahlen() zählt je Code und Art; dafür reicht der Index aus
--- 0088. Sobald aber über ereignis_am::date gefiltert wird — in jeder
--- Auswertung, die einen Verlauf oder ein Attributionsfenster rechnet —
--- ist das Datum ein Ausdruck auf einer nicht indizierten Spalte, und
--- jede Teilabfrage liest den ganzen (code, art)-Eimer.
+-- 0088. Heute filtert nichts mehr über die Zeit — der Tagesverlauf oben
+-- liest nur noch creator_klicks —, der Index ist also reine Vorsorge für
+-- die erste Auswertung, die ein Attributionsfenster rechnet.
 --
--- Heute ist die Tabelle klein und das egal. Der Index kostet fast
--- nichts und macht es später nicht zum Problem.
+-- Damit er dann auch greift, muss diese Auswertung einen halboffenen
+-- Bereich auf ereignis_am schreiben:
+--
+--   where ereignis_am >= :von and ereignis_am < :bis
+--
+-- und NICHT `ereignis_am::date = :tag`. Der Cast macht aus der Spalte
+-- einen Ausdruck, und ein B-Tree auf der Spalte kann dafür nicht benutzt
+-- werden; es bräuchte einen Ausdrucksindex, der genau denselben Cast
+-- trägt. Steht hier, weil die Abfrage später jemand anders schreibt.
 -- ---------------------------------------------------------------------
 create index if not exists creator_konversionen_code_art_zeit
   on public.creator_konversionen (code, art, ereignis_am);

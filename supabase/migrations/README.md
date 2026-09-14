@@ -64,8 +64,10 @@ Prüfabfragen nach dem Einspielen:
 
 ```sql
 -- Nur noch drei Spalten?
-select column_name from information_schema.columns
-where table_name = 'creator_verlauf' order by ordinal_position;
+-- creator_verlauf ist eine Funktion, keine Relation — in
+-- information_schema.columns steht dafür nichts, die Abfrage käme leer
+-- zurück und würde Leere als Bestätigung lesen.
+select pg_get_function_result('public.creator_verlauf(integer)'::regprocedure);
 
 -- anon hat nichts?
 select has_function_privilege('anon', 'public.creator_verlauf(integer)', 'execute');
