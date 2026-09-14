@@ -29,6 +29,74 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Eingespielt: 0085_bestenlisten_nach_fahrzeugtyp (2026-09-14, Produktion)
+
+Eingespielt **vor** dem Deploy des Codes, der sie liest — der liegt zu diesem
+Zeitpunkt auf dem Branch der PR #217 und ist weder auf `staging` noch auf
+`main`. Damit ist die Reihenfolge aus `.agents/deployment.md` eingehalten
+(Schema zuerst, Code danach), und die Migration ist rückwärtskompatibel zum
+laufenden Code: Der kennt die neue View schlicht nicht.
+
+| Datei | Ledger-`version` |
+| --- | --- |
+| `0085_bestenlisten_nach_fahrzeugtyp` | `20260914121835` |
+
+Inhalt: neue immutable Funktion `public.motorklasse_typ(text)`, neue View
+`public.leaderboard_typ_totals`, `grant select` an `anon` und
+`authenticated`. **Rein additiv** — keine bestehende Relation, Policy oder
+Spalte angefasst, nichts zurückgeschrieben, kein Tabellen-Rewrite. Ein
+Mengengerüst war deshalb nicht nötig: eine View speichert nichts.
+
+**Vorabprüfung** (der Punkt, an dem `create or replace` gefährlich wäre):
+Beide Namen existierten vorher **nicht** — die Anweisungen haben also
+angelegt und nicht still eine fremde Definition überschrieben. Die drei
+Abhängigkeiten (`leaderboard_completions` samt Spalte `motorklasse`,
+`leaderboard_klassen_totals`) waren vorhanden.
+
+### Gegenprobe, alles zurückgelesen statt angenommen
+
+| Prüfung | Ergebnis |
+| --- | --- |
+| `motorklasse_typ('moto_a1')` / `('moto_a')` | ✅ `motorrad` |
+| `motorklasse_typ('auto_bis110')` / `('auto_ueber220')` | ✅ `auto` |
+| `motorklasse_typ('quatsch')` / `(null)` | ✅ `null` — kein Rückfall auf einen Typ |
+| Funktion `immutable` | ✅ `provolatile = 'i'` (Voraussetzung fürs `GROUP BY`) |
+| `search_path` gepinnt | ✅ `search_path=""` wie seit 0073 |
+| `select` für `anon` / `authenticated` | ✅ beide `true` |
+| Summe `fahrten_count` typ vs. klassen | ✅ **0 = 0** — die Invariante, beide filtern `motorklasse is not null` |
+| Summe `fahrten_count` in `leaderboard_user_totals` | ✅ **8**, liegt erwartungsgemäss darüber |
+
+**Die neue View ist leer, und das liegt nicht an ihr.** Erhoben statt
+vermutet: 6 Fahrzeuge, davon **0 mit `leistung_kw`**; 9 Fahrten, davon **0
+mit `motorklasse_gewertet`**; 8 Fahrten in `leaderboard_completions`. Also
+trägt bislang überhaupt keine Fahrt eine Klasse — derselbe Befund, mit dem
+`0082` seinerzeit auf 0 Zeilen lief. `leaderboard_klassen_totals` ist
+deshalb genauso leer. Die Klassen- und Typlisten füllen sich, sobald jemand
+eine Leistung einträgt und danach fährt.
+
+### Advisors nach dem Einspielen
+
+Gegen die Baseline verglichen. **Ein** neuer Befund, und der war erwartet:
+`security_definer_view` für `leaderboard_typ_totals` — identisch zu
+`leaderboard_completions`, `leaderboard_klassen_totals`,
+`leaderboard_user_totals`, `route_leaderboard` und den übrigen sechs. Das
+ist das bewusste Muster aus `0013_leaderboard_view.sql` (die View rechnet
+mit den Rechten ihres Owners, weil sie die Sichtbarkeitsregeln selbst
+kodiert), keine Regression. Alles Übrige unverändert: `spatial_ref_sys`
+(dokumentierter Dauerbefund), `postgis` im `public`-Schema,
+`rls_enabled_no_policy` auf `gruender_plaetze` und
+`stripe_webhook_events`, die `SECURITY DEFINER`-Funktionslisten,
+`auth_leaked_password_protection`.
+
+### Rückweg, falls er gebraucht wird
+
+Sauberer Inverser, es gibt keine Daten wiederherzustellen:
+
+```sql
+drop view if exists public.leaderboard_typ_totals;
+drop function if exists public.motorklasse_typ(text);
+```
+
 ## Reihenfolge der Motorklassen-Migrationen
 
 Alle drei gehören **vor** den Deploy des Codes, der sie braucht, und in

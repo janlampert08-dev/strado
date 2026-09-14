@@ -5,7 +5,7 @@ import { addVehicle, type VehicleFormState } from "@/lib/actions/vehicles";
 import { Input, fieldClassName } from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import MotorklasseBadge from "@/components/MotorklasseBadge";
-import { motorklasseFor } from "@/lib/motorklassen";
+import { fahrzeugtypdefinition, motorklasseFor, psInKw } from "@/lib/motorklassen";
 import type { FahrzeugTyp } from "@/types/database";
 
 const initialState: VehicleFormState = { error: null };
@@ -27,12 +27,25 @@ export default function NeuesFahrzeugForm({ nextHref }: { nextHref?: string } = 
   const [hubraum, setHubraum] = useState("");
   const [leistung, setLeistung] = useState("");
 
+  // Beim Auto wird in PS eingegeben, beim Motorrad in kW — Begründung in
+  // lib/motorklassen.ts, Abschnitt EINHEITEN. Gespeichert wird beides als
+  // kW, die Umrechnung macht serverseitig lib/actions/vehicles.ts noch
+  // einmal; hier dient sie nur der Klassenvorschau.
+  const einheit = fahrzeugtypdefinition(typ).leistungseinheit;
+  const eingegebeneLeistung = zahl(leistung);
+  const leistungKw =
+    eingegebeneLeistung === null
+      ? null
+      : einheit === "PS"
+        ? psInKw(eingegebeneLeistung)
+        : eingegebeneLeistung;
+
   // Die Klasse schon beim Tippen zeigen: sie ist der einzige Zweck der zwei
   // Felder, und ohne Rückmeldung bliebe unklar, wofür man sie ausfüllt.
   const klasse = motorklasseFor({
     typ,
     hubraum_ccm: zahl(hubraum),
-    leistung_kw: zahl(leistung),
+    leistung_kw: leistungKw,
   });
 
   return (
@@ -46,7 +59,14 @@ export default function NeuesFahrzeugForm({ nextHref }: { nextHref?: string } = 
             name="typ"
             required
             value={typ}
-            onChange={(e) => setTyp(e.target.value as FahrzeugTyp)}
+            onChange={(e) => {
+              setTyp(e.target.value as FahrzeugTyp);
+              // Die Zahl im Leistungsfeld bedeutet je nach Typ etwas
+              // anderes. Sie stehen zu lassen hiesse, aus 150 PS
+              // stillschweigend 150 kW zu machen — und damit aus einem
+              // Mittelklassewagen ein Fahrzeug der obersten Klasse.
+              setLeistung("");
+            }}
             className={fieldClassName()}
           >
             <option value="auto">Auto</option>
@@ -92,15 +112,23 @@ export default function NeuesFahrzeugForm({ nextHref }: { nextHref?: string } = 
         )}
 
         <label className="flex flex-col gap-1.5 text-sm font-medium">
-          Leistung in kW (optional)
+          Leistung in {einheit} (optional)
           <Input
             type="text"
-            name="leistung_kw"
+            // Der Feldname trägt die Einheit: die Server Action liest das
+            // Feld, das zum Typ gehört, und kann die Einheit deshalb nicht
+            // verwechseln.
+            name={einheit === "PS" ? "leistung_ps" : "leistung_kw"}
             inputMode="decimal"
             value={leistung}
             onChange={(e) => setLeistung(e.target.value)}
             className="font-mono"
           />
+          <span className="text-xs font-normal text-muted">
+            {einheit === "PS"
+              ? "Die Zahl, mit der das Auto beworben wird — im Fahrzeugausweis steht sie als kW daneben."
+              : "Wie im Fahrzeugausweis. Die Kategorien A1 und A 35 kW sind in kW festgelegt."}
+          </span>
         </label>
 
         <div className="flex flex-col gap-1.5">

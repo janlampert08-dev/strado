@@ -9,7 +9,8 @@ import { MEDAL_COLORS } from "@/lib/constants";
 import Avatar from "@/components/Avatar";
 import Card from "@/components/ui/Card";
 import MotorklassenChips from "@/components/MotorklassenChips";
-import { motorklassendefinition } from "@/lib/motorklassen";
+import { filterLabel, istFahrzeugTyp, motorklassendefinition } from "@/lib/motorklassen";
+import type { Klassenfilter } from "@/lib/motorklassen";
 import type { Motorklasse } from "@/types/database";
 import { cn } from "@/lib/utils/cn";
 
@@ -37,12 +38,14 @@ export default function RouteLeaderboardPreview({
   entries: RouteTimeEntry[];
   klassen: Motorklasse[];
 }) {
-  const [klasse, setKlasse] = useState<Motorklasse | null>(null);
+  // Klassenfilter statt Motorklasse: die Auswahl kann ein ganzer
+  // Fahrzeugtyp sein ("Autos") oder ein Leistungsband darin.
+  const [klasse, setKlasse] = useState<Klassenfilter | null>(null);
   const [gefiltert, setGefiltert] = useState<RouteTimeEntry[]>([]);
   // Wird nur im Fetch-Callback gesetzt, nie synchron im Effekt-Rumpf —
   // "laedt" ergibt sich daraus als abgeleiteter Wert. Gleiches Muster wie in
   // TrackLeaderboardChooser.
-  const [geholteKlasse, setGeholteKlasse] = useState<Motorklasse | null>(null);
+  const [geholteKlasse, setGeholteKlasse] = useState<Klassenfilter | null>(null);
   const laedt = klasse !== null && geholteKlasse !== klasse;
 
   useEffect(() => {
@@ -76,14 +79,14 @@ export default function RouteLeaderboardPreview({
         klassen={klassen}
         aktiv={klasse}
         onChange={setKlasse}
-        label="Bestzeiten nach Motorklasse filtern"
+        label="Bestzeiten nach Fahrzeugtyp filtern"
       />
 
       {sichtbar.length === 0 ? (
         <p className={cn("text-sm text-muted transition-opacity", laedt && "opacity-40")}>
           {klasse === null
             ? "Noch keine geteilten Bestzeiten für diese Strecke."
-            : `Noch keine Zeit in ${motorklassendefinition(klasse).label} auf dieser Strecke — du kannst die erste sein.`}
+            : `Noch keine Zeit in ${filterLabel(klasse)} auf dieser Strecke — du kannst die erste sein.`}
         </p>
       ) : (
         <Card
@@ -107,9 +110,12 @@ export default function RouteLeaderboardPreview({
               >
                 {entry.name}
               </Link>
-              {/* Die Klasse nur in der Gesamtliste: in einer Klassenliste
-                  trüge sie an jeder Zeile denselben Wert. */}
-              {klasse === null && entry.klasse && (
+              {/* Die Klasse überall ausser in einer Klassenliste: dort
+                  trüge sie an jeder Zeile denselben Wert. In der Typliste
+                  ("Autos") stehen dagegen drei Bänder nebeneinander, und
+                  welches eine Zeit gefahren hat, ist dort die Auskunft, auf
+                  die es ankommt. */}
+              {(klasse === null || istFahrzeugTyp(klasse)) && entry.klasse && (
                 <span className="shrink-0 font-mono text-xs text-muted">
                   {motorklassendefinition(entry.klasse).label}
                 </span>

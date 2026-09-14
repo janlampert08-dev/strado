@@ -2,24 +2,44 @@
 
 import Link from "next/link";
 import { useLinkStatus } from "next/link";
-import { MOTORKLASSEN } from "@/lib/motorklassen";
+import {
+  FAHRZEUGTYPEN,
+  MOTORKLASSEN,
+  fahrzeugtypdefinition,
+  filterTyp,
+  motorklassendefinition,
+} from "@/lib/motorklassen";
+import type { Klassenfilter } from "@/lib/motorklassen";
 import type { Motorklasse } from "@/types/database";
+import { chipClassName, unterChipClassName } from "@/components/motorklassenChipStil";
 import { cn } from "@/lib/utils/cn";
 
-// Die Klassenauswahl als waagrecht scrollende Chip-Leiste.
+// Die Klassenauswahl als zwei waagrecht scrollende Chip-Zeilen.
 //
-// "Alle" steht immer vorn und ist die Voreinstellung: Ohne Auswahl sieht
-// eine Liste aus wie vor der Einführung der Klassen, und niemand verliert
-// eine Rangliste, in der er gerade vorne steht.
+// ZWEI ZEILEN, NICHT EINE
+//
+// Bis dahin standen alle sechs Klassen nebeneinander: "A1", "A 35 kW",
+// "A offen", "bis 150 PS", "151–299 PS", "ab 300 PS". Das ist eine Liste aus
+// zwei Welten, die nichts miteinander zu tun haben — ein Motorrad wird nie
+// in eine Autoklasse hochgestuft und umgekehrt (siehe motorklasse_hoehere()
+// in 0080). Wer ein Auto fährt, las drei Chips, die ihn nie betreffen, und
+// die Beschriftungen mussten das allein tragen: dass "A1" ein Motorrad
+// meint, weiss nur, wer die Kategorien kennt.
+//
+// Jetzt wählt die obere Zeile die Welt (Autos oder Motorräder) und die
+// untere das Leistungsband darin. Die obere Zeile ist zugleich eine eigene
+// Rangliste: "Autos" heisst alle Autos, unabhängig von der Leistung.
+//
+// "Alle" steht weiterhin ganz vorn und ist die Voreinstellung: Ohne Auswahl
+// sieht eine Liste aus wie vor der Einführung der Klassen, und niemand
+// verliert eine Rangliste, in der er gerade vorne steht. "Alle" ist dabei
+// mehr als die Summe der beiden Typen — Fahrten ohne Fahrzeug oder ohne
+// Leistungsangabe tragen gar keine Klasse und erscheinen nur dort.
 //
 // `klassen` schränkt auf die Klassen ein, in denen es überhaupt etwas zu
-// sehen gibt. Pro Strecke sind das oft ein oder zwei — fünf leere Chips
-// wären dort nur Rauschen. Die Reihenfolge kommt aus dem Katalog, nicht aus
-// den Daten, damit sie sich beim Streckenwechsel nicht umsortiert.
-//
-// Bewusst kein <select>: Die Auswahl hat höchstens sieben Einträge, und ein
-// Chip zeigt im Gegensatz zu einem zugeklappten Auswahlfeld sofort, dass es
-// hier überhaupt etwas zu wählen gibt.
+// sehen gibt. Pro Strecke sind das oft ein oder zwei — leere Chips wären
+// dort nur Rauschen. Die Reihenfolge kommt aus dem Katalog, nicht aus den
+// Daten, damit sie sich beim Streckenwechsel nicht umsortiert.
 //
 // Zwei Betriebsarten, weil die beiden Oberflächen unterschiedlich teuer sind:
 //
@@ -38,23 +58,34 @@ import { cn } from "@/lib/utils/cn";
 // beim Rendern, also erst bei einer echten Anfrage. Weder `next build`
 // noch die Testsuite sehen das. Eine Zuordnung aus Zeichenketten ist
 // serialisierbar, und der Typ schliesst den Rückfall aus.
+//
+// "Alle" hat aus demselben Grund ein EIGENES Feld und steht nicht in der
+// Zuordnung: Dort bräuchte es einen Schlüssel, den beide Seiten kennen, und
+// eine aus dieser "use client"-Datei exportierte Konstante ist auf der
+// Serverseite kein String, sondern ein Client-Verweis. Die Schlüssel der
+// Zuordnung stammen deshalb ausnahmslos aus lib/motorklassen.ts — einem
+// Modul ohne "use client".
 export default function MotorklassenChips({
   klassen,
   aktiv,
   onChange,
+  hrefAlle,
   hrefs,
   label,
   vorne,
 }: {
+  /** Die Motorklassen, in denen es hier überhaupt Einträge gibt. */
   klassen: Motorklasse[];
-  aktiv: Motorklasse | null;
-  onChange?: (klasse: Motorklasse | null) => void;
+  aktiv: Klassenfilter | null;
+  onChange?: (filter: Klassenfilter | null) => void;
+  /** Ziel des "Alle"-Chips. Eigenes Feld, siehe oben. */
+  hrefAlle?: string;
   /**
-   * Ziel je Chip, vorberechnet von der Seite. Schlüssel ist die Klassen-ID,
-   * für "Alle" die Konstante {@link CHIP_ALLE}. Bewusst keine Funktion —
-   * siehe oben.
+   * Ziel je Chip, vorberechnet von der Seite. Schlüssel ist die
+   * Fahrzeugtyp- oder Klassen-ID — Werte aus lib/motorklassen.ts, also aus
+   * einem Modul ohne "use client". Bewusst keine Funktion, siehe oben.
    */
-  hrefs?: Record<string, string>;
+  hrefs?: Partial<Record<Klassenfilter, string>>;
   /** Für Screenreader: worauf sich die Auswahl bezieht. */
   label: string;
   /** Zusätzlicher Chip ganz vorn, z.B. "Meine Klasse". */
@@ -64,50 +95,82 @@ export default function MotorklassenChips({
   // Klasse wären "Alle" und diese eine Klasse dieselbe Liste.
   if (klassen.length < 2) return null;
 
-  const sichtbar = MOTORKLASSEN.filter((k) => klassen.includes(k.id));
+  // Ein Fahrzeugtyp erscheint, sobald eine seiner Klassen belegt ist.
+  const typen = FAHRZEUGTYPEN.filter((t) =>
+    klassen.some((k) => motorklassendefinition(k).typ === t.id),
+  );
+
+  // Die obere Zeile zeigt den gewählten Typ auch dann als aktiv, wenn
+  // darunter schon ein Band gewählt ist: sie sagt, in welcher Welt man sich
+  // befindet. Ein erneuter Tipp darauf führt zurück zur ganzen Welt.
+  const aktiverTyp = aktiv === null ? null : filterTyp(aktiv);
+
+  const unterklassen =
+    aktiverTyp === null
+      ? []
+      : MOTORKLASSEN.filter((k) => k.typ === aktiverTyp && klassen.includes(k.id));
+
+  // Dieselbe Überlegung wie oben, eine Ebene tiefer: bei nur einem belegten
+  // Band wären "Alle Autos" und dieses Band dieselbe Liste.
+  const zeigtUnterzeile = aktiverTyp !== null && unterklassen.length >= 2;
 
   return (
-    <div
-      role="group"
-      aria-label={label}
-      // -mx/px: die Leiste darf am Rand durchscrollen, ohne dass die Chips
-      // am Container abgeschnitten wirken.
-      className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1"
-    >
-      {vorne}
-      <Chip aktiv={aktiv === null} onChange={onChange} href={hrefs?.[CHIP_ALLE]} wert={null}>
-        Alle
-      </Chip>
-      {sichtbar.map((k) => (
-        <Chip
-          key={k.id}
-          aktiv={aktiv === k.id}
-          onChange={onChange}
-          href={hrefs?.[k.id]}
-          wert={k.id}
-          title={k.regel}
-        >
-          {k.label}
+    <div className="flex flex-col gap-1.5">
+      <div
+        role="group"
+        aria-label={label}
+        // -mx/px: die Leiste darf am Rand durchscrollen, ohne dass die Chips
+        // am Container abgeschnitten wirken.
+        className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1"
+      >
+        {vorne}
+        <Chip aktiv={aktiv === null} onChange={onChange} href={hrefAlle} wert={null}>
+          Alle
         </Chip>
-      ))}
+        {typen.map((t) => (
+          <Chip
+            key={t.id}
+            aktiv={aktiverTyp === t.id}
+            onChange={onChange}
+            href={hrefs?.[t.id]}
+            wert={t.id}
+          >
+            {t.label}
+          </Chip>
+        ))}
+      </div>
+
+      {zeigtUnterzeile && aktiverTyp !== null && (
+        <div
+          role="group"
+          aria-label={`Leistungsklasse (${fahrzeugtypdefinition(aktiverTyp).label})`}
+          className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1"
+        >
+          <Chip
+            aktiv={aktiv === aktiverTyp}
+            onChange={onChange}
+            href={hrefs?.[aktiverTyp]}
+            wert={aktiverTyp}
+            unter
+          >
+            Alle {fahrzeugtypdefinition(aktiverTyp).label}
+          </Chip>
+          {unterklassen.map((k) => (
+            <Chip
+              key={k.id}
+              aktiv={aktiv === k.id}
+              onChange={onChange}
+              href={hrefs?.[k.id]}
+              wert={k.id}
+              title={k.regel}
+              unter
+            >
+              {k.label}
+            </Chip>
+          ))}
+        </div>
+      )}
     </div>
-  );
-}
-
-// Schlüssel des "Alle"-Eintrags in `hrefs`. Als Konstante, damit Seite und
-// Leiste sich nicht über eine abgetippte Zeichenkette verständigen müssen.
-export const CHIP_ALLE = "alle";
-
-// Die Chip-Optik an einer Stelle, damit die beiden Betriebsarten und der
-// "Meine Klasse"-Chip nicht auseinanderlaufen.
-export function chipClassName(aktiv: boolean): string {
-  return cn(
-    // min-h-9 wie die kleinen Schaltflächen in components/ui/Button.tsx —
-    // diese Leiste wird im Zweifel im Fahrzeug bedient.
-    "inline-flex min-h-9 shrink-0 items-center rounded-full border px-3 text-sm font-medium whitespace-nowrap transition-colors duration-fast",
-    aktiv
-      ? "border-accent bg-accent text-background"
-      : "border-border text-muted hover:border-border-strong hover:text-foreground",
   );
 }
 
@@ -117,15 +180,20 @@ function Chip({
   onChange,
   href,
   title,
+  unter = false,
   children,
 }: {
   aktiv: boolean;
-  wert: Motorklasse | null;
-  onChange?: (klasse: Motorklasse | null) => void;
+  wert: Klassenfilter | null;
+  onChange?: (filter: Klassenfilter | null) => void;
   href?: string;
   title?: string;
+  /** Chip der zweiten Zeile — kleiner, siehe motorklassenChipStil.ts. */
+  unter?: boolean;
   children: React.ReactNode;
 }) {
+  const className = unter ? unterChipClassName(aktiv) : chipClassName(aktiv);
+
   if (href) {
     return (
       <Link
@@ -137,7 +205,7 @@ function Chip({
         // Der Sprung nach oben wäre hier falsch — die Leiste steht mitten
         // auf der Seite, und ihr Ergebnis steht direkt darunter.
         scroll={false}
-        className={chipClassName(aktiv)}
+        className={className}
       >
         <ChipInhalt>{children}</ChipInhalt>
       </Link>
@@ -150,7 +218,7 @@ function Chip({
       onClick={() => onChange?.(wert)}
       title={title}
       aria-pressed={aktiv}
-      className={chipClassName(aktiv)}
+      className={className}
     >
       {children}
     </button>
