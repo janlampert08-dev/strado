@@ -276,7 +276,7 @@ export async function proposeRoute(
   redirect(`/strecken/${data}`);
 }
 
-// Nimmt eine private Strecke aus dem Premium-Feature "eigene Strecken" in die
+// Nimmt eine private Strecke in die
 // normale Moderationswarteschlange auf (ist_privat=false, status_ok bleibt
 // false) — ab dann läuft sie wie jeder andere Vorschlag über approveRoute/
 // rejectRoute. Verlässt sich auf die RLS-Policy "Nutzer können eigene
