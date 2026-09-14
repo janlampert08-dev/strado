@@ -1,4 +1,5 @@
 import Card from "@/components/ui/Card";
+import { mitAnzahl } from "@/lib/format";
 import {
   fahrtenProFahrzeug,
   fahrtenProJahr,
@@ -19,7 +20,27 @@ import {
 // dauer_sekunden, und AGB Ziff. 11.3 sagt, Strado sei kein Wettbewerb um
 // Geschwindigkeit.
 
+// Sichtbar bleibt der Anfangsbuchstabe: zwölf Balken nebeneinander lassen
+// auf einem schmalen Telefon keine drei Buchstaben zu. Für sich genommen ist
+// er aber mehrdeutig — drei J, zwei M, zwei A —, und das lässt sich nur aus
+// der Position im Jahr auflösen, die eine Vorlesehilfe nicht sieht. Deshalb
+// steht daneben die ausgeschriebene Liste, die in den zugänglichen Namen
+// jedes Balkens geht.
 const MONATSKUERZEL = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+const MONATE_LANG = [
+  "Januar",
+  "Februar",
+  "März",
+  "April",
+  "Mai",
+  "Juni",
+  "Juli",
+  "August",
+  "September",
+  "Oktober",
+  "November",
+  "Dezember",
+];
 
 interface FahrzeugName {
   id: string;
@@ -116,7 +137,12 @@ export default function FahrtStatistik({
                 <li
                   key={MONATSKUERZEL[index] + index}
                   className="flex flex-1 flex-col items-center gap-1"
-                  aria-label={`${anzahl} Fahrten`}
+                  // aria-label auf dem <li> ERSETZT dessen Inhalt, es
+                  // ergänzt ihn nicht: der Monatsbuchstabe im <span> darunter
+                  // erreicht eine Vorlesehilfe also gar nicht. Ohne den Monat
+                  // im Label selbst blieben zwölf Mal nur "N Fahrten" übrig,
+                  // in einer Reihenfolge, die man raten müsste.
+                  aria-label={`${MONATE_LANG[index]}: ${mitAnzahl(anzahl, "Fahrt", "Fahrten")}`}
                 >
                   <div
                     className={anzahl > 0 ? "w-full rounded-sm bg-accent" : "w-full rounded-sm bg-border"}
