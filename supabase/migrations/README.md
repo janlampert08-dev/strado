@@ -29,6 +29,56 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Noch nicht eingespielt: 0087, 0088, 0089 (Creator-Herkunft)
+
+Die drei Dateien gehören zusammen und werden **in dieser Reihenfolge**
+angewendet:
+
+| Datei | Was sie anlegt |
+| --- | --- |
+| `0087_herkunft_und_konversionen` | Tabellen `registrierung_herkunft` und `creator_konversionen`, `handle_new_user()` um die Herkunft erweitert |
+| `0088_creator_konversion_abo` | Trigger auf `subscriptions`, der den ersten zahlenden Zustand als Konversion festhält |
+| `0089_anonymisierung_herkunft` | `anonymize_account()` räumt die Herkunft bei der Kontolöschung auf |
+
+`0088` setzt Tabellen aus `0087` voraus, `0089` ebenfalls — eine einzeln
+angewendete `0088` scheitert also, und das ist die gewünschte Richtung.
+
+**Die Richtung der Lücke ist hier die harmlose.** Der Code, der sie füttert,
+ist ohne sie wirkungslos statt kaputt: `app/c/[code]/route.ts` setzt ein
+Cookie, das niemand liest, und `signUp()` legt einen Metadaten-Schlüssel ab,
+nach dem der alte Trigger nicht sucht. Es geht nichts entzwei, solange die
+Lücke offen ist — es wird nur nichts aufgezeichnet. Umgekehrt gilt das
+nicht: eingespielte Migrationen ohne den Code sind ebenfalls folgenlos, weil
+ohne das Cookie kein `herkunft_code` in den Metadaten steht. Beide
+Reihenfolgen sind damit zulässig.
+
+Was beim Einspielen zu prüfen ist — die Objekte, nicht den Ledger:
+
+```sql
+-- Tabellen da, RLS an, keine Policy, keine Grants an anon/authenticated?
+select relname, relrowsecurity from pg_class
+where relname in ('registrierung_herkunft', 'creator_konversionen');
+
+select grantee, table_name, privilege_type from information_schema.role_table_grants
+where table_name in ('registrierung_herkunft', 'creator_konversionen')
+  and grantee in ('anon', 'authenticated');   -- muss leer sein
+
+-- Trigger hängt?
+select tgname from pg_trigger where tgrelid = 'public.subscriptions'::regclass;
+
+-- handle_new_user() und anonymize_account() tragen die neuen Zeilen?
+select prosrc like '%herkunft_code%' from pg_proc where proname = 'handle_new_user';
+select prosrc like '%registrierung_herkunft%' from pg_proc where proname = 'anonymize_account';
+```
+
+**Achtung, seit 2026-09-14 bestätigt:** `staging` und Produktion sind
+dieselbe Datenbank (siehe `AGENTS.md`, „Release Flow"). Es gibt für diese
+drei Migrationen keinen Probelauf — die einzige Anwendung ist die
+produktive. Alle drei sind additiv (neue Tabellen, `create or replace` auf
+zwei bestehende Funktionen), der Weg zurück ist entsprechend: Trigger
+löschen, Funktionen auf die Fassungen aus `0001`/`0076` zurücksetzen,
+Tabellen `drop`.
+
 ## Eingespielt: 0086_strecken_anlegen_wieder_offen (2026-09-14, Produktion)
 
 Nimmt die Premium-/Moderationspflicht aus `0077` auf der INSERT-Policy von

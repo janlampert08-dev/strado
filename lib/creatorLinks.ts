@@ -16,9 +16,11 @@ import type { CreatorLink, CreatorLinkZiel } from "@/types/database";
 //
 // Ausgewertet wird in Vercel Web Analytics — der einzigen Telemetrie der App
 // (siehe <Analytics /> in app/layout.tsx) — durch Gruppieren nach
-// utm_content. Das misst **Aufrufe, keine Registrierungen**: der Schritt
-// dorthin ist Phase 2 und braucht Cookie, Trigger und eine Änderung der
-// Datenschutzerklärung.
+// utm_content. Das misst **Aufrufe, keine Registrierungen**. Der Schritt
+// dorthin steht in lib/herkunft.ts und den Migrationen 0087–0089: ein
+// Cookie überbrückt die Tage zwischen Klick und Registrierung, ein Trigger
+// hält fest, wer über wen kam, ein zweiter, wann daraus ein zahlender
+// Nutzer wurde.
 //
 // Die Codes standen zunächst in einer Konstanten hier. Seit sie über
 // /moderation/creator verwaltet werden, stehen sie in public.creator_links

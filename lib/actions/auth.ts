@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getOrigin, safeInternalPath } from "@/lib/utils/url";
 import { getClientIp, isRateLimitedByKey } from "@/lib/rateLimit";
+import { leseHerkunft, verbraucheHerkunft } from "@/lib/herkunft";
 import { getStripe } from "@/lib/stripe";
 import { AVATAR_BUCKET, avatareEntfernen } from "@/lib/avatarSpeicher";
 import {
@@ -140,11 +141,28 @@ export async function signUp(
     ? `${origin}/auth/callback?next=${encodeURIComponent(next)}`
     : `${origin}/auth/callback`;
 
+  // Über welchen Creator-Link dieses Konto entsteht (lib/herkunft.ts, gesetzt
+  // in app/c/[code]/route.ts). Kann Tage alt sein — genau dafür ist es da.
+  //
+  // Der Umweg über options.data ist nicht Bequemlichkeit, sondern notwendig:
+  // Bei aktivierter E-Mail-Bestätigung gibt signUp() keine Session zurück.
+  // Das Profil entsteht erst durch den Trigger handle_new_user auf
+  // auth.users (0001), es gibt in diesem Moment also keinen eingeloggten
+  // Nutzer, in dessen Namen sich eine Zeile schreiben liesse. Der Wert
+  // landet damit in raw_user_meta_data, wo der Trigger ihn findet.
+  //
+  // Dass raw_user_meta_data client-setzbar ist, ist bekannt und hier
+  // folgenlos: 0087 prüft den Code gegen creator_links, bevor er irgendwo
+  // gezählt wird. Was hier mitfährt, ist ein Vorschlag, keine Tatsache.
+  const herkunft = await leseHerkunft();
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: { display_name: displayName },
+      data: herkunft
+        ? { display_name: displayName, herkunft_code: herkunft }
+        : { display_name: displayName },
       emailRedirectTo,
     },
   });
@@ -163,6 +181,13 @@ export async function signUp(
   if (data.user?.identities?.length === 0) {
     return { error: "Diese E-Mail-Adresse ist bereits registriert." };
   }
+
+  // Ab hier ist das Konto angelegt und die Herkunft steht (oder steht
+  // nicht) in der Datenbank — das Cookie hat seinen Zweck erfüllt. Vor den
+  // beiden redirect()-Aufrufen, weil redirect() wirft und alles danach
+  // nicht mehr läuft. Nicht auf dem Fehlerpfad darüber: wer beim zweiten
+  // Versuch durchkommt, soll seine Herkunft behalten.
+  await verbraucheHerkunft();
 
   // Ist "Confirm email" im Supabase-Projekt deaktiviert, liefert signUp
   // bereits eine aktive Session — dann direkt einloggen statt auf eine
@@ -477,11 +502,16 @@ export async function deleteAccount(
   // also als Kopie in auth.users. Ein null-Wert entfernt den Schlüssel aus
   // den Metadaten (GoTrue löscht bei einem Merge genau die Schlüssel, deren
   // Wert null ist), statt ihn nur zu überschreiben.
+  //
+  // herkunft_code aus demselben Grund: signUp() legt ihn genauso dort ab.
+  // anonymize_account() räumt die Herkunft in public auf (0089) — ohne
+  // diese Zeile bliebe sie als Kopie in auth.users stehen, wo keine
+  // Migration sie je erwischt.
   const { error: revokeError } = await admin.auth.admin.updateUserById(user.id, {
     email: `geloescht-${user.id}@geloescht.cornice.invalid`,
     password: crypto.randomUUID() + crypto.randomUUID(),
     email_confirm: true,
-    user_metadata: { display_name: null },
+    user_metadata: { display_name: null, herkunft_code: null },
   });
   if (revokeError) {
     // Profil ist bereits anonymisiert (oben) — dieser Schritt lässt sich

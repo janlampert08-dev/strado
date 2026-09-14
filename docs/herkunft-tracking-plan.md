@@ -12,8 +12,31 @@ bis zum Kauf durchgereicht wird. Der alte Plan bleibt gültig, wo er nicht
 widersprochen wird — die zwei Stellen, an denen dieses Dokument ihn
 korrigiert, sind unten ausdrücklich markiert.
 
-**Stand:** Nichts davon ist gebaut. Phase 0 und 1 sind es; Migration `0084`
-(`creator_links`) ist seit 2026-09-13 eingespielt.
+**Stand: umgesetzt am 2026-09-14.** Was unten als Plan formuliert ist, steht
+inzwischen im Code — die Beschreibungen sind absichtlich stehen geblieben,
+weil sie die Begründungen tragen. Die Zuordnung der Schritte zu den Dateien:
+
+| Schritt | Umgesetzt in |
+| --- | --- |
+| 1 — Cookie | `lib/herkunft.ts`, gesetzt in `app/c/[code]/route.ts`, getestet in `lib/herkunft.test.ts` |
+| 2 — Durchreichen | `signUp()` in `lib/actions/auth.ts` (plus `herkunft_code: null` beim Löschen) |
+| 3 — Migration A | `0087_herkunft_und_konversionen.sql` |
+| 4 — Migration B | `0088_creator_konversion_abo.sql` |
+| 5 — Klicks zählen | **nicht gebaut** (bewusst, siehe dort) |
+| 6 — Löschung | `0089_anonymisierung_herkunft.sql` |
+| 7 — Auswertung | die Abfrage unten, ohne Oberfläche |
+| 8 — Datenschutz | `docs/rechtstexte/datenschutz.md` Ziff. 3.11 und die veröffentlichte Fassung in `janlampert08-dev/stradoinfo` |
+
+Die drei Migrationen sind **noch nicht eingespielt** — siehe
+`supabase/migrations/README.md`. Ein Zusatz, der beim Bauen dazukam und
+oben nicht stand: ein Creator-Code, über den Registrierungen gelaufen
+sind, lässt sich nicht mehr löschen (Fremdschlüssel), und
+`lib/actions/creatorLinks.ts` übersetzt diesen Fehler in einen Satz, der
+auf Deaktivieren verweist.
+
+**Kein Cookie-Banner.** Das war eine ausdrückliche Entscheidung: genannt
+wird das Cookie in der Datenschutzerklärung, abgefragt wird es nicht. Die
+Abwägung dazu steht in Schritt 8.
 
 ---
 
@@ -518,7 +541,7 @@ Kauf über einen Creator-Link live sein.
 | `0059` ist Protected Area | `apply_subscription_state` umschreiben heisst Kulanz-/Lock-Logik anfassen | Trigger auf der Tabelle statt Änderung der Funktion |
 | Migrationen werden **von Hand** eingespielt | Grünes CI sagt nichts über das Schema | Erst Staging, dann Produktion, Objekte prüfen (`supabase/migrations/README.md`) |
 | Migrationsnummern sind nicht eindeutig | Sechs Präfixe existieren doppelt | Nummer beim Anlegen prüfen; CI ist rot bei neuer Kollision |
-| **Staging teilt womöglich die Produktionsdatenbank** | Ein Test-Kauf in der Stripe-Sandbox schriebe eine echte Konversionszeile | Vor Schritt 4 klären (AGENTS.md, „Release Flow"); bis dahin nur mit klar erkennbaren Test-Codes arbeiten |
+| **Staging benutzt die Produktionsdatenbank** (bestätigt 2026-09-14) | Ein Test-Kauf in der Stripe-Sandbox schreibt eine echte Konversionszeile | Bekannt und so gewollt. Auf Staging mit klar erkennbaren Test-Codes arbeiten und sie hinterher aus der Auswertung nehmen — löschen geht nicht, der Fremdschlüssel hält sie |
 | 308-Redirect wird dauerhaft gecacht | Der Handler liefe beim zweiten Klick nicht, kein Cookie | 307 + `Cache-Control: no-store` — steht schon so drin |
 | In-App-Browser („In Safari öffnen") | Der Wechsel verliert das Cookie | Nicht lösbar, nur einzupreisen: die Zuordnung ist eine Untergrenze |
 | Bestandsnutzer klicken den Link | Kein neues Konto, also keine Zuordnung | Bewusst so: gemessen wird Werbung, nicht Reaktivierung — oder Entscheidung 4 |
@@ -559,13 +582,14 @@ Diese ändern, was gebaut wird — sie gehören dir, nicht mir.
 
 ## 8. Umsetzung
 
-Nach `AGENTS.md` → Release Flow: Branch mit `staging-`-Präfix, PR gegen
-`staging`, nicht gegen `main`. Die Migrationen werden **zuerst** auf der
-Staging-Datenbank eingespielt, dann auf Produktion, von Hand, mit
-Objektprüfung — sofern die offene Frage aus „Release Flow" (ob Staging
-überhaupt eine eigene Datenbank hat) bis dahin geklärt ist. Sie ist es
-heute nicht, und für Schritt 4 ist sie keine Formalie: ein Test-Kauf in der
-Sandbox würde sonst eine Konversion in der Produktionstabelle erzeugen.
+Nach `AGENTS.md` → Release Flow: PR gegen `staging`, nicht gegen `main`.
+
+**Einen Probelauf für die Migrationen gibt es nicht.** Staging und
+Produktion sind dieselbe Datenbank — am 2026-09-14 bestätigt und so
+gewollt. Die Migrationen werden also einmal angewendet, von Hand, und
+diese eine Anwendung ist die produktive; geprüft wird an den Objekten, nicht
+am Ledger (`supabase/migrations/README.md` nennt die Abfragen). Alle drei
+sind additiv, der Weg zurück steht ebenfalls dort.
 
 Definition of Done wie im Repo üblich: `npm run test`, `npm run lint`,
 `npm run build` tatsächlich laufen lassen und die Ergebnisse in die

@@ -170,13 +170,26 @@ is what should be corrected.
   un-applied (`0042`, `0058`) are superseded by `0076` and must **not** be
   applied — see `supabase/migrations/README.md`, which is the only place that
   distinction survives, plus `.agents/deployment.md`.
-  - **There is no separate staging database.** The linked Supabase account
-    holds exactly one project, and it is production. The rehearsal that
-    "Release Flow" below describes therefore did not happen for any of the
-    six migrations above; they were additive throughout, which is what made
-    that acceptable. A migration that drops, rewrites or backfills anything
-    does not get the same pass — settle where staging's database lives
-    before writing one.
+  `0087_herkunft_und_konversionen`, `0088_creator_konversion_abo` and
+  `0089_anonymisierung_herkunft` are in the repo and **not applied yet** —
+  they are the reverse of the usual danger: the code that feeds them ships
+  first and is inert without them (an unread cookie, a metadata key no
+  trigger looks at), so nothing breaks while the gap is open, and nothing
+  is recorded either. Apply them in order.
+  - **There is no separate staging database — confirmed, and staying that
+    way.** The linked Supabase account holds exactly one project, and it is
+    production; the owner confirmed on 2026-09-14 that `staging` points at
+    it and that this is deliberate, not an oversight to be fixed. The
+    rehearsal that "Release Flow" below describes therefore cannot happen
+    at all: a migration is applied once, and that once is production.
+    Three things follow for every piece of work from here on. A migration
+    that drops, rewrites or backfills is a production operation with no dry
+    run — plan the way back before applying it, not after. Every test ride,
+    account and route created on `staging` **is** production data, and
+    shows up in production counts. And a sandbox purchase on `staging`
+    writes real rows into the production tables that hang off the payment
+    path — `creator_konversionen` (0087) is the newest of them; only the
+    Stripe side is genuinely separate.
 - **Migration numbers are not unique.** `0034`, `0041`, `0053`, `0054`, `0059`
   and `0060` each exist twice — six pairs, not four. Reconciling a deploy by
   version number alone is ambiguous, so check the objects. In the `0059` and
@@ -185,6 +198,29 @@ is what should be corrected.
   prefixes now has both halves live. `scripts/check-migration-prefixes.mjs` runs in CI
   and fails on a *new* collision; the six existing pairs are listed there as
   legacy.
+- **Where a user came from is recorded from 2026-09-14 on.** A click on
+  `app.strado.ch/c/<code>` leaves a first-party cookie carrying only the
+  creator's code (`lib/herkunft.ts`, 90 days, First Touch wins); `signUp()`
+  passes it through `raw_user_meta_data`, and `handle_new_user` validates it
+  against `creator_links` before writing `registrierung_herkunft` (`0087`).
+  A trigger on `subscriptions` (`0088`) then records in
+  `creator_konversionen` when such an account first becomes paying — which
+  is the whole point: a purchase two months after the sign-up is still
+  attributable. Three things to know before touching it. The conversion log
+  is **append-only and deliberately window-free** — whether a purchase 200
+  days later still counts is decided in the evaluating query, never in the
+  trigger, because an unrecorded event is gone while a misapplied rule can
+  be reapplied. It **survives account deletion**: `anonymize_account`
+  (`0089`) drops the origin row but only nulls `user_id` on the log, so the
+  creator keeps the count and the person keeps their deletion. And a
+  creator code that has produced registrations **can no longer be deleted**
+  (foreign key); deactivating is the intended move, and
+  `lib/actions/creatorLinks.ts` translates the constraint into that
+  sentence. The cookie is named in the privacy policy — both in
+  `docs/rechtstexte/datenschutz.md` (Ziff. 3.11) and in the published HTML
+  in `janlampert08-dev/stradoinfo` — with no consent banner: that was a
+  deliberate decision, so a change to the cookie's name, lifetime or
+  contents is a legal-text change in two repositories.
 - **Open audit findings are tracked in
   `docs/audit/README.md#remediation-status`**, not in GitHub issues. Read
   that table before concluding you have found something new — most of the
@@ -469,26 +505,20 @@ with it.
 **The staging environment.** `staging` deploys to `staging.strado.ch` and
 talks to the Stripe **sandbox**, so a test purchase there costs no real money.
 
-> **The database half of that sentence is in doubt — settle it before
-> trusting it.** This paragraph used to continue "It has its own Supabase
-> project … so a test purchase there touches no production data". That
-> contradicts Current State above, which says the linked Supabase account
-> holds exactly one project and it is production, and on 2026-09-14
-> `list_projects` agreed with Current State: exactly one project came back,
-> `stecakpnuijbvjsniqto` ("Strado", eu-central-1). The Stripe half is
-> unaffected — the sandbox is genuinely separate.
+> **The database half of that sentence is settled, and the answer is no.**
+> This paragraph used to continue "It has its own Supabase project … so a
+> test purchase there touches no production data". That was wrong. The
+> owner confirmed on 2026-09-14 that `staging` talks to the **production**
+> database — the single project `stecakpnuijbvjsniqto` ("Strado",
+> eu-central-1) — and that it stays that way. The Stripe half is unaffected:
+> the sandbox is genuinely separate, so a test purchase still costs no real
+> money.
 >
-> What that does **not** prove is where `staging` actually points: it could
-> still use a project under a Supabase account this tooling cannot see. Only
-> one check settles it — read `NEXT_PUBLIC_SUPABASE_URL` for the `staging`
-> environment in Vercel and compare its project ref against
-> `stecakpnuijbvjsniqto`. That is a URL, not a secret.
->
-> If they match, two things below are false rather than merely stale: the
-> rehearsal step ("a migration is applied to the staging database **before**
-> production") never happened, because both are the same database, and every
-> test ride, account and route created on staging is production data. Until
-> someone looks, treat staging as production for anything that writes.
+> **Treat `staging` as production for anything that writes.** A test
+> account, a test ride, a sandbox purchase — all of it lands in the same
+> tables real users are in. That is a known, accepted trade, not a bug to
+> report; what it forbids is the assumption that staging is a safe place to
+> try a destructive statement.
 
 Three things follow:
 
@@ -504,11 +534,13 @@ Three things follow:
   arrives server-to-server with no session, and the `/api/strecken/**`
   endpoints are unauthenticated by design.
 
-A migration is applied to the staging database **before** it is applied to
-production — that rehearsal is the main reason the environment exists, given
-that migrations are applied by hand (see below). **This step is only real if
-the two databases are actually two**; see the caveat above, and Current State,
-which records that the rehearsal did not in fact happen for `0080`–`0084`.
+**There is no migration rehearsal.** This section used to promise one — "a
+migration is applied to the staging database before it is applied to
+production" — and that promise is void: there is one database (see the box
+above). A migration is applied exactly once, and that application is the
+production application. What `staging` still buys is a rehearsal of the
+**code** against the real schema, which is worth having; what it does not
+buy is a second chance at a statement that writes.
 
 ## Core Rules
 

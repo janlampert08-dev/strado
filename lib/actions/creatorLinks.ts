@@ -120,10 +120,14 @@ export async function creatorLinkAktivSetzen(
 // Endgültig entfernen. Sinnvoll nur für einen Code, der nie verteilt wurde —
 // für alles andere ist Deaktivieren das richtige Mittel.
 //
-// Sobald Phase 2 aus docs/creator-links-plan.md existiert, hängt an einem
-// Code die Herkunft vergebener Registrierungen. Dann braucht diese Aktion
-// eine Entscheidung darüber, was mit diesen Zeilen passiert; heute gibt es
-// sie noch nicht.
+// Seit 0087 hängt an einem Code die Herkunft vergebener Registrierungen und
+// jede daraus entstandene Konversion. Die Entscheidung darüber ist
+// gefallen, und zwar in der Datenbank: beide Tabellen verweisen per
+// Fremdschlüssel auf creator_links, das Löschen scheitert also, sobald
+// etwas daran hängt. Das ist die richtige Richtung — ein Code, dem
+// Registrierungen zugeordnet sind, darf nicht verschwinden, sonst stünde
+// in der Auswertung eine Zahl ohne Namen. Unten wird der Fehler nur in
+// etwas Lesbares übersetzt.
 export async function creatorLinkLoeschen(rohCode: string): Promise<CreatorLinkResult> {
   const kontext = await alsModerator();
   if ("error" in kontext) return kontext;
@@ -137,6 +141,15 @@ export async function creatorLinkLoeschen(rohCode: string): Promise<CreatorLinkR
     .eq("code", code);
 
   if (error) {
+    // 23503 ist die Fremdschlüsselverletzung: an diesem Code hängen
+    // Registrierungen oder Konversionen (0087). Kein Fehler, den die
+    // Moderation beheben soll — sondern einer, der sagt, dass hier
+    // Deaktivieren das richtige Mittel ist.
+    if (error.code === "23503") {
+      return {
+        error: `Über den Code „${code}" sind schon Registrierungen gelaufen. Er lässt sich nicht mehr löschen — deaktiviere ihn stattdessen.`,
+      };
+    }
     console.error("Creator-Link löschen fehlgeschlagen", { code }, error);
     return { error: "Das Löschen hat nicht geklappt. Bitte versuche es noch einmal." };
   }

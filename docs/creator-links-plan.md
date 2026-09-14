@@ -10,9 +10,11 @@ keine Telemetrie. Kein Sentry, kein PostHog, kein Plausible.
 **Stand:** Phase 0 und Phase 1 sind umgesetzt. Die Codes werden unter
 `/moderation/creator` verwaltet und liegen in `public.creator_links`
 (Migration `0084`, eingespielt am 2026-09-13 — siehe `AGENTS.md`,
-„Migrations are applied by hand"). Phase 2 und 3 sind weiterhin Plan.
+„Migrations are applied by hand"). **Phase 2 ist seit 2026-09-14 gebaut**
+(Migrationen `0087`–`0089`, noch nicht eingespielt); Phase 3 ist eine
+Abfrage ohne Oberfläche.
 
-> **Phase 2 und 3 sind inzwischen ausgearbeitet:
+> **Phase 2 und 3 stehen in
 > `docs/herkunft-tracking-plan.md`.** Dort steht die vollständige Kette bis
 > zum Kauf — insbesondere, wie ein Premium-Abo, das Monate nach der
 > Registrierung abgeschlossen wird, dem Creator noch zugeordnet werden
@@ -226,9 +228,12 @@ Zuordnung in der App statt auf einer Fehlerseite.
 Keine Änderung an `proxy.ts` nötig — der Matcher deckt `/c/...` bereits ab,
 und `updateSession()` stört nicht.
 
-Kein Rate Limit auf dem Handler, anders als bei `/api/strecken/**`: er liest
-keine Datenbank, schreibt nichts und ruft nichts Fremdes auf. Sobald Phase 2
-dort ein Cookie setzt, ist diese Begründung hinfällig.
+Der Absatz hier sagte einmal, ein Rate Limit sei auf diesem Handler nicht
+nötig, weil er nichts liest und nichts schreibt. Das gilt nicht mehr: seit
+`0084` löst er pro Aufruf eine Datenbankfunktion auf, und seit Phase 2 setzt
+er ein Cookie. Das Limit steht deshalb im Handler
+(`creator:einstieg:<ip>`, 60/min) — ohne 429, weil dahinter ein Mensch im
+Browser steht: der landet in der App, nur ohne Zuordnung.
 
 ### Die Link-Form
 
