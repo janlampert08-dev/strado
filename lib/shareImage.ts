@@ -297,18 +297,26 @@ export async function renderShareImage(data: ShareRideData): Promise<Blob> {
   ctx.fillStyle = BORDER;
   ctx.fillRect(PAD, HEIGHT - 168, WIDTH - PAD * 2, 1);
 
-  const SIGNET_HOEHE = 30;
+  // Das Signet ist seit September 2026 der Rundkurs und damit deutlich
+  // breiter als hoch: die Höhe ist gesetzt, die Breite folgt über das
+  // Seitenverhältnis, und der Abstand zur Adresse rechnet mit dieser Breite
+  // statt mit einer festen Zahl. 24 statt der früheren 30 Einheiten Höhe,
+  // damit das flache Zeichen neben der Adresse nicht mehr Fläche belegt als
+  // das quadratische "s" davor.
+  const SIGNET_HOEHE = 24;
+  const SIGNET_BREITE = SIGNET_HOEHE * SIGNET.seitenverhaeltnis;
   ctx.save();
   ctx.translate(PAD, FOOTER_BASELINE - SIGNET_HOEHE);
-  ctx.scale(SIGNET_HOEHE / SIGNET.kante, SIGNET_HOEHE / SIGNET.kante);
-  ctx.translate(SIGNET.einzug, 0);
+  ctx.scale(SIGNET_HOEHE / SIGNET.hoehe, SIGNET_HOEHE / SIGNET.hoehe);
   ctx.fillStyle = ACCENT;
+  // Die Aussparung des Rundkurses läuft gegen die Aussenkontur, deshalb
+  // bleibt sie unter der Standardregel "nonzero" ein Loch — siehe SIGNET.
   ctx.fill(new Path2D(SIGNET.pfad));
   ctx.restore();
 
   ctx.fillStyle = INK;
   ctx.font = `500 28px ${sans}`;
-  ctx.fillText("app.strado.ch", PAD + 44, FOOTER_BASELINE);
+  ctx.fillText("app.strado.ch", PAD + SIGNET_BREITE + 14, FOOTER_BASELINE);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(
