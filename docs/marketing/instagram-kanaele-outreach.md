@@ -9,9 +9,13 @@ plausibler ist als eine Rechnung.
 **1. Nähe schlägt Reichweite.** `AGENTS.md`, Produktabschnitt: „Proximity is
 worth more than reach." Die Frage ist nicht, wie gross ein Kanal ist, sondern
 welcher Anteil seines Publikums in Fahrdistanz zu einer Strecke wohnt, die es
-in der App **schon gibt**. Was es gibt, steht in
-`docs/marketing/instagram/daten.mjs`: acht freigegebene Strecken, alle Kanton
-Zürich, die längste 65,7 km, die höchste erreicht 783 m.
+in der App **schon gibt**. Was es gibt, wurde in der Produktion gezählt:
+**dreizehn** öffentlich sichtbare Strecken, alle Kanton Zürich
+(Stand 2026-09-14). Die Momentaufnahme in
+`docs/marketing/instagram/daten.mjs` kennt davon acht — sie ist vom
+2026-09-07 und hat, wie ihr eigener Kopf sagt, keine Verbindung zur
+Datenbank. Von diesen acht stammen die fertigen Grafiken; die längste
+dort ist 65,7 km lang, die höchste erreicht 783 m.
 
 Daraus folgt eine Absage, die man sich sonst teuer erkauft: **Alpenpass- und
 Grand-Tour-Accounts sind kein Ziel.** Deren Publikum will Furka, Susten,
@@ -148,8 +152,8 @@ ansprechbar sind.
 
 ## Stufe E — Regionalmedien und Tourismus
 
-Nicht auto-affin, dafür **wohnortgenau**. Für eine App, deren acht Strecken
-alle im selben Kanton liegen, ist das der bessere Tausch als schweizweite
+Nicht auto-affin, dafür **wohnortgenau**. Für eine App, deren Strecken alle
+im selben Kanton liegen, ist das der bessere Tausch als schweizweite
 Reichweite.
 
 | Kanal | Was es ist | Reichweite* |

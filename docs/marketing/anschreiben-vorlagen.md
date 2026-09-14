@@ -20,6 +20,12 @@ aus der Kanalliste.
 4. **Das Bild bereitlegen.** `docs/marketing/instagram/out/`. Wer „ich
    schick dir ein Bild" schreibt und dann drei Tage braucht, hat den Faden
    verloren.
+5. **Prüfen, ob es das Bild überhaupt gibt.** Die gerenderten Grafiken
+   decken **acht** Strecken ab, die App hat **dreizehn** — `daten.mjs` ist
+   eine Momentaufnahme vom 2026-09-07 ohne Datenbankverbindung. Wer eine
+   Strecke anbietet, die dort fehlt, muss sie zuerst in `daten.mjs`
+   ergänzen und `node docs/marketing/instagram/render.mjs` laufen lassen.
+   Ein zugesagtes Bild, das es nicht gibt, ist teurer als kein Angebot.
 
 ## Was man versprechen darf
 
@@ -68,7 +74,7 @@ fünfzehn. Ein Link, nicht drei.
 > Hoi zäme
 >
 > Ich habe Strado gebaut: eine App für Fahrstrecken im Kanton Zürich —
-> fahren, Zeit stoppen, mit anderen vergleichen. Acht Strecken sind drin,
+> fahren, Zeit stoppen, mit anderen vergleichen. Dreizehn Strecken sind drin,
 > alle zwischen Stadt, Greifensee und See.
 >
 > Was ich euch anbieten kann, ohne dass es euch etwas kostet: Ich lege eine
@@ -101,7 +107,7 @@ nicht gelesen — und genau das sieht man einer Anfrage an.
 > gegen andere Vespas.
 >
 > Strado ist eine App für Fahrstrecken im Kanton Zürich — fahren, Zeit
-> stoppen, vergleichen. Acht Strecken, alle in Reichweite einer
+> stoppen, vergleichen. Dreizehn Strecken, alle in Reichweite einer
 > Sonntagsausfahrt.
 >
 > Kostenloses Angebot: eine A1-Wertung auf einer Strecke eurer Wahl, zeitlich
@@ -129,7 +135,7 @@ gemeint oder nachträglich behauptet ist.
 > Name]
 >
 > Ich habe Strado gebaut, eine App für Fahrstrecken im Kanton Zürich:
-> fahren, Zeit stoppen, mit anderen vergleichen. Acht Strecken sind
+> fahren, Zeit stoppen, mit anderen vergleichen. Dreizehn Strecken sind
 > freigegeben — eine davon, die **Greifensee Schleife**, startet und endet
 > in Fällanden. Praktisch vor Ihrer Tür.
 >
@@ -228,7 +234,7 @@ wiederkehrenden Slot füllen muss, liest „ich hätte einen Tipp" anders als
 > Sie bitten in Ihrer Bio um Tipps — hier einer, der nichts kostet und nicht
 > in der Stadt stattfindet.
 >
-> Ich habe Strado gebaut: eine App mit acht Fahrstrecken im Kanton Zürich.
+> Ich habe Strado gebaut: eine App mit dreizehn Fahrstrecken im Kanton Zürich.
 > Zürichberg, Greifensee, einmal um den See. Man fährt sie mit Auto oder
 > Töff, die App stoppt die Zeit und vergleicht mit anderen. Kein Ticket,
 > keine Reservation, kein Eintritt — die kürzeste Runde dauert eine
@@ -259,7 +265,7 @@ duzt.
 > Ein Teil eurer Sonntagsgäste kommt aus dem Raum Zürich — und fährt auf dem
 > Weg zu euch irgendeine Strecke, über die danach niemand spricht.
 >
-> Ich habe Strado gebaut: eine App mit acht Fahrstrecken im Kanton Zürich,
+> Ich habe Strado gebaut: eine App mit dreizehn Fahrstrecken im Kanton Zürich,
 > für Auto **und** Töff. Fahren, Zeit stoppen, vergleichen. Die Ranglisten
 > sind nach Fahrzeugklasse getrennt — A1, A 35 kW, A offen, und drei
 > Leistungsklassen fürs Auto.
@@ -295,7 +301,7 @@ deshalb stehen beide Klassenfamilien im Text.
 > Guten Tag
 >
 > Ich schreibe Ihnen als Einzelunternehmer aus Zürich, der eine App für
-> Fahrstrecken gebaut hat: acht Strecken im Kanton, man fährt sie, die App
+> Fahrstrecken gebaut hat: dreizehn Strecken im Kanton, man fährt sie, die App
 > zeichnet auf und führt eine Bestenliste. Getrennt nach
 > Führerausweiskategorie — A1, A 35 kW, A offen —, weil ein 125er sonst
 > gegen eine offene Maschine anträte.
@@ -318,8 +324,8 @@ deshalb stehen beide Klassenfamilien im Text.
 > verteidigen.
 >
 > Und falls Sie es für Ihre Mitglieder brauchbar finden: Karten und
-> Höhenprofile der acht Strecken stelle ich Ihnen kostenlos zur Verfügung,
-> mit oder ohne Nennung der App.
+> Höhenprofile der Strecken stelle ich Ihnen kostenlos zur Verfügung, mit
+> oder ohne Nennung der App.
 >
 > Freundliche Grüsse
 > Jan Lampert
@@ -357,7 +363,7 @@ Fassung, die niemand beantwortet.
 > kleinen Gruppen, mehrtägige Touren; steht auf ihrer Website]. Genau dafür
 > hätte ich etwas, das Sie nichts kostet.
 >
-> Ich habe Strado gebaut: eine App mit acht Fahrstrecken im Kanton Zürich.
+> Ich habe Strado gebaut: eine App mit dreizehn Fahrstrecken im Kanton Zürich.
 > Zu jeder gibt es Karte, Höhenprofil, Länge, Steigung und die Zahl der
 > Kehren — als fertiges Bild, das Sie für Ihre Ausfahrts-Ankündigung
 > verwenden können, ob Strado darauf erwähnt wird oder nicht.
@@ -391,9 +397,9 @@ schreiben.
 >
 > Dir schicke ich kein Bild — du machst bessere.
 >
-> Ich habe Strado gebaut: eine App mit acht Fahrstrecken im Kanton Zürich.
+> Ich habe Strado gebaut: eine App mit dreizehn Fahrstrecken im Kanton Zürich.
 > Zürichberg, Nordwestschleife, einmal um den See. Fahren, Zeit stoppen,
-> vergleichen. Der Grund, warum ich dir schreibe: Das sind acht Strassen,
+> vergleichen. Der Grund, warum ich dir schreibe: Das sind dreizehn Strassen,
 > die du wahrscheinlich alle kennst, samt Karte und Höhenprofil — als
 > Motivliste ist das vielleicht brauchbarer als ein fertiger Post.
 >
