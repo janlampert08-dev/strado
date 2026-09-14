@@ -390,10 +390,31 @@ slash form has to rename the integration branch first (`develop`, say), and
 that means moving the Vercel domain binding and the Stripe sandbox webhook
 with it.
 
-**The staging environment.** `staging` deploys to `staging.strado.ch`. It has
-its own Supabase project and talks to the Stripe **sandbox**, so a test
-purchase there touches no production data and no real money. Three things
-follow:
+**The staging environment.** `staging` deploys to `staging.strado.ch` and
+talks to the Stripe **sandbox**, so a test purchase there costs no real money.
+
+> **The database half of that sentence is in doubt — settle it before
+> trusting it.** This paragraph used to continue "It has its own Supabase
+> project … so a test purchase there touches no production data". That
+> contradicts Current State above, which says the linked Supabase account
+> holds exactly one project and it is production, and on 2026-09-14
+> `list_projects` agreed with Current State: exactly one project came back,
+> `stecakpnuijbvjsniqto` ("Strado", eu-central-1). The Stripe half is
+> unaffected — the sandbox is genuinely separate.
+>
+> What that does **not** prove is where `staging` actually points: it could
+> still use a project under a Supabase account this tooling cannot see. Only
+> one check settles it — read `NEXT_PUBLIC_SUPABASE_URL` for the `staging`
+> environment in Vercel and compare its project ref against
+> `stecakpnuijbvjsniqto`. That is a URL, not a secret.
+>
+> If they match, two things below are false rather than merely stale: the
+> rehearsal step ("a migration is applied to the staging database **before**
+> production") never happened, because both are the same database, and every
+> test ride, account and route created on staging is production data. Until
+> someone looks, treat staging as production for anything that writes.
+
+Three things follow:
 
 - It is **locked to logged-in moderators** (`proxy.ts`, `lib/staging.ts`).
   Vercel's Deployment Protection has to stay off so Stripe can deliver its
@@ -409,7 +430,9 @@ follow:
 
 A migration is applied to the staging database **before** it is applied to
 production — that rehearsal is the main reason the environment exists, given
-that migrations are applied by hand (see below).
+that migrations are applied by hand (see below). **This step is only real if
+the two databases are actually two**; see the caveat above, and Current State,
+which records that the rehearsal did not in fact happen for `0080`–`0084`.
 
 ## Core Rules
 
