@@ -24,9 +24,17 @@ import { join, dirname, resolve } from "node:path";
 //
 // GRENZEN, ehrlich benannt: Das ist eine Textprüfung, keine Typprüfung. Sie
 // versteht `export const`, `export function`, `export class` und
-// `export { … }`, erkennt Typ-Importe und lässt Default-Importe
-// (die Komponente selbst) zu. Wer einen Export dynamisch erzeugt oder um
-// zwei Ecken re-exportiert, läuft daran vorbei.
+// `export { … }` und erkennt Typ-Importe. Wer einen Export dynamisch
+// erzeugt oder um zwei Ecken re-exportiert, läuft daran vorbei.
+//
+// Der DEFAULT-Import bleibt bewusst ungeprüft: Genau dafür ist eine
+// "use client"-Datei da — eine Server Component darf die Komponente
+// importieren und rendern. Ein default exportierter Nicht-Komponenten-Wert
+// käme damit durch; ohne Typinformation lässt sich das eine nicht vom
+// anderen unterscheiden, und jeden Default-Import zu melden hiesse, jede
+// Client-Komponente im Projekt zu melden. Das ist der eine Fall, den diese
+// Prüfung nicht abdeckt, und er steht hier, damit niemand das Gegenteil
+// annimmt.
 
 const WURZEL = resolve(__dirname, "..");
 const ORDNER = ["app", "components", "lib", "types"];
@@ -118,6 +126,42 @@ describe("React-Server-Grenze", () => {
             );
           }
         }
+      }
+    }
+
+    expect(verstoesse).toEqual([]);
+  });
+
+  it("importiert aus keiner Server-Datei eine use-client-Datei als Namensraum", () => {
+    // `import * as Chips from "…"` bindet KEINE Namen einzeln und läuft
+    // deshalb an der Prüfung oben vorbei — über den Namensraum ist aber
+    // jeder Export erreichbar, `Chips.chipClassName(false)` eingeschlossen.
+    // Welche Eigenschaft am Ende gelesen wird, sieht ein Textscan nicht
+    // zuverlässig; deshalb ist hier die ganze Importform verboten statt
+    // einzelner Zugriffe. Aufgefallen ist die Lücke in der CodeRabbit-Review
+    // zu diesem PR, nachdem ich ausdrücklich nach übersehenen Formen gefragt
+    // hatte — die erste Fassung des Wächters war grün und trotzdem
+    // unvollständig.
+    const alle = ORDNER.flatMap((o) => dateien(join(WURZEL, o)));
+    const inhalte = new Map(alle.map((d) => [d, readFileSync(d, "utf8")]));
+
+    const verstoesse: string[] = [];
+
+    for (const [datei, inhalt] of inhalte) {
+      if (istClientDatei(inhalt)) continue;
+
+      for (const m of inhalt.matchAll(
+        /import\s+(?:[A-Za-z0-9_$]+\s*,\s*)?\*\s+as\s+([A-Za-z0-9_$]+)\s+from\s+["']([^"']+)["']/g,
+      )) {
+        const ziel = aufloesen(m[2], datei);
+        if (!ziel) continue;
+        const zielInhalt = inhalte.get(ziel);
+        if (!zielInhalt || !istClientDatei(zielInhalt)) continue;
+
+        verstoesse.push(
+          `${datei.slice(WURZEL.length + 1)} importiert ` +
+            `${ziel.slice(WURZEL.length + 1)} ("use client") als Namensraum "${m[1]}"`,
+        );
       }
     }
 
