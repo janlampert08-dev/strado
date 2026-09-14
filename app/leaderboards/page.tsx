@@ -9,7 +9,12 @@ import Avatar from "@/components/Avatar";
 import { getGlobalLeaderboards, type LeaderboardEntry } from "@/lib/leaderboard";
 import { listRouteChoices } from "@/lib/routes";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
-import MotorklassenChips, { CHIP_ALLE, chipClassName } from "@/components/MotorklassenChips";
+import MotorklassenChips from "@/components/MotorklassenChips";
+// chipClassName kommt bewusst NICHT aus MotorklassenChips: das ist eine
+// "use client"-Datei, und diese Seite ist eine Server Component. Ein
+// Nicht-Komponenten-Export von dort ist hier kein Wert, sondern ein
+// Client-Verweis, der beim Aufruf wirft. Siehe motorklassenChipStil.ts.
+import { chipClassName } from "@/components/motorklassenChipStil";
 import {
   MOTORKLASSEN,
   istMotorklasse,
@@ -97,10 +102,13 @@ function klassenHref(klasse: Motorklasse | null): string {
 // Grenze nicht überqueren, eine Zuordnung aus Zeichenketten schon. Die Form
 // der Adresse bleibt damit hier, wo auch die Gegenprüfung des Parameters
 // steht (istMotorklasse oben).
-const KLASSEN_HREFS: Record<string, string> = {
-  [CHIP_ALLE]: klassenHref(null),
-  ...Object.fromEntries(ALLE_KLASSEN.map((k) => [k, klassenHref(k)])),
-};
+//
+// Die Schlüssel sind die Klassen-IDs aus lib/motorklassen.ts — einem Modul
+// ohne "use client", die Werte sind hier also echte Strings. "Alle" geht
+// daneben als eigenes Feld an die Leiste und braucht gar keinen Schlüssel.
+const KLASSEN_HREFS: Partial<Record<Motorklasse, string>> = Object.fromEntries(
+  ALLE_KLASSEN.map((k) => [k, klassenHref(k)]),
+);
 
 
 // Ab hier drei Bausteine, die jeweils ihre eigenen Daten holen. Der Grund
@@ -221,6 +229,7 @@ export default async function LeaderboardsPage({
           <MotorklassenChips
             klassen={ALLE_KLASSEN}
             aktiv={klasse}
+            hrefAlle={klassenHref(null)}
             hrefs={KLASSEN_HREFS}
             label="Bestenlisten nach Motorklasse filtern"
             vorne={

@@ -5,6 +5,7 @@ import { useLinkStatus } from "next/link";
 import { MOTORKLASSEN } from "@/lib/motorklassen";
 import type { Motorklasse } from "@/types/database";
 import { cn } from "@/lib/utils/cn";
+import { chipClassName } from "@/components/motorklassenChipStil";
 
 // Die Klassenauswahl als waagrecht scrollende Chip-Leiste.
 //
@@ -38,10 +39,21 @@ import { cn } from "@/lib/utils/cn";
 // beim Rendern, also erst bei einer echten Anfrage. Weder `next build`
 // noch die Testsuite sehen das. Eine Zuordnung aus Zeichenketten ist
 // serialisierbar, und der Typ schliesst den Rückfall aus.
+//
+// Warum "Alle" ein EIGENES Feld hat und nicht in derselben Zuordnung steht:
+// Dort brauchte es einen Schlüssel, den beide Seiten kennen — und dieser
+// Schlüssel war eine Konstante aus dieser "use client"-Datei. Die Seite
+// importierte sie, bekam von React aber keinen String, sondern einen
+// Client-Verweis, und `{ [CHIP_ALLE]: ... }` machte daraus per String() den
+// Quelltext eines werfenden Stubs. Auf dem Client fand die Leiste den
+// Eintrag nicht mehr und stellte "Alle" als Knopf ohne Wirkung dar: ein
+// Chip, der aussieht wie ein Chip und nichts tut. Ein eigenes Feld braucht
+// gar keinen geteilten Schlüssel und kann deshalb nicht so brechen.
 export default function MotorklassenChips({
   klassen,
   aktiv,
   onChange,
+  hrefAlle,
   hrefs,
   label,
   vorne,
@@ -49,12 +61,14 @@ export default function MotorklassenChips({
   klassen: Motorklasse[];
   aktiv: Motorklasse | null;
   onChange?: (klasse: Motorklasse | null) => void;
+  /** Ziel des "Alle"-Chips. Eigenes Feld, siehe oben. */
+  hrefAlle?: string;
   /**
-   * Ziel je Chip, vorberechnet von der Seite. Schlüssel ist die Klassen-ID,
-   * für "Alle" die Konstante {@link CHIP_ALLE}. Bewusst keine Funktion —
-   * siehe oben.
+   * Ziel je Klassen-Chip, vorberechnet von der Seite. Schlüssel ist die
+   * Klassen-ID — ein Wert aus lib/motorklassen.ts, also aus einem Modul
+   * ohne "use client". Bewusst keine Funktion, siehe oben.
    */
-  hrefs?: Record<string, string>;
+  hrefs?: Partial<Record<Motorklasse, string>>;
   /** Für Screenreader: worauf sich die Auswahl bezieht. */
   label: string;
   /** Zusätzlicher Chip ganz vorn, z.B. "Meine Klasse". */
@@ -75,7 +89,7 @@ export default function MotorklassenChips({
       className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1"
     >
       {vorne}
-      <Chip aktiv={aktiv === null} onChange={onChange} href={hrefs?.[CHIP_ALLE]} wert={null}>
+      <Chip aktiv={aktiv === null} onChange={onChange} href={hrefAlle} wert={null}>
         Alle
       </Chip>
       {sichtbar.map((k) => (
@@ -91,23 +105,6 @@ export default function MotorklassenChips({
         </Chip>
       ))}
     </div>
-  );
-}
-
-// Schlüssel des "Alle"-Eintrags in `hrefs`. Als Konstante, damit Seite und
-// Leiste sich nicht über eine abgetippte Zeichenkette verständigen müssen.
-export const CHIP_ALLE = "alle";
-
-// Die Chip-Optik an einer Stelle, damit die beiden Betriebsarten und der
-// "Meine Klasse"-Chip nicht auseinanderlaufen.
-export function chipClassName(aktiv: boolean): string {
-  return cn(
-    // min-h-9 wie die kleinen Schaltflächen in components/ui/Button.tsx —
-    // diese Leiste wird im Zweifel im Fahrzeug bedient.
-    "inline-flex min-h-9 shrink-0 items-center rounded-full border px-3 text-sm font-medium whitespace-nowrap transition-colors duration-fast",
-    aktiv
-      ? "border-accent bg-accent text-background"
-      : "border-border text-muted hover:border-border-strong hover:text-foreground",
   );
 }
 
