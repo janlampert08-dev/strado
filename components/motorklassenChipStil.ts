@@ -30,3 +30,15 @@ export function chipClassName(aktiv: boolean): string {
       : "border-border text-muted hover:border-border-strong hover:text-foreground",
   );
 }
+
+// Die zweite Zeile — die Leistungsbänder innerhalb des gewählten
+// Fahrzeugtyps. Kleiner und ohne Vollfläche, damit auf einen Blick erkennbar
+// bleibt, welche Zeile die Auswahl anführt und welche sie verfeinert.
+export function unterChipClassName(aktiv: boolean): string {
+  return cn(
+    "inline-flex min-h-8 shrink-0 items-center rounded-full border px-2.5 text-xs font-medium whitespace-nowrap transition-colors duration-fast",
+    aktiv
+      ? "border-accent bg-accent-subtle text-accent"
+      : "border-border text-muted hover:border-border-strong hover:text-foreground",
+  );
+}

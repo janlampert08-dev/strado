@@ -7,7 +7,8 @@ import type { RouteTimeEntry } from "@/lib/leaderboard";
 import { fieldClassName } from "@/components/ui/Input";
 import Card from "@/components/ui/Card";
 import MotorklassenChips from "@/components/MotorklassenChips";
-import { motorklassendefinition } from "@/lib/motorklassen";
+import { filterLabel } from "@/lib/motorklassen";
+import type { Klassenfilter } from "@/lib/motorklassen";
 import type { Motorklasse } from "@/types/database";
 import { cn } from "@/lib/utils/cn";
 
@@ -20,7 +21,9 @@ export default function TrackLeaderboardChooser({
   routes: { id: string; name: string }[];
 }) {
   const [routeId, setRouteId] = useState(routes[0]?.id ?? "");
-  const [klasse, setKlasse] = useState<Motorklasse | null>(null);
+  // Klassenfilter statt Motorklasse: die Auswahl kann ein ganzer
+  // Fahrzeugtyp sein ("Autos") oder ein Leistungsband darin.
+  const [klasse, setKlasse] = useState<Klassenfilter | null>(null);
   const [entries, setEntries] = useState<RouteTimeEntry[]>([]);
   // Die auf dieser Strecke belegten Klassen kommen aus derselben Antwort und
   // sind vom Filter unabhängig — sonst bliebe nach der ersten Auswahl nur
@@ -94,7 +97,7 @@ export default function TrackLeaderboardChooser({
           setKlasse(naechste);
           setExpanded(false);
         }}
-        label="Streckenbestzeiten nach Motorklasse filtern"
+        label="Streckenbestzeiten nach Fahrzeugtyp filtern"
       />
 
       {routes.length === 0 ? (
@@ -103,7 +106,7 @@ export default function TrackLeaderboardChooser({
         <p className={`text-sm text-muted transition-opacity ${loading ? "opacity-40" : ""}`}>
           {klasse === null
             ? "Noch keine geteilten Zeiten für diese Strecke."
-            : `Noch keine Zeit in ${motorklassendefinition(klasse).label} auf dieser Strecke — du kannst die erste sein.`}
+            : `Noch keine Zeit in ${filterLabel(klasse)} auf dieser Strecke — du kannst die erste sein.`}
         </p>
       ) : (
         <>
