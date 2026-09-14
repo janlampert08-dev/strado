@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Signet } from "@/components/Wortmarke";
 import { buttonVariants, type ButtonVariant } from "./Button";
 import { cn } from "@/lib/utils/cn";
 
@@ -12,6 +13,17 @@ type StatusPageAction =
   | (BaseAction & { onClick: () => void; href?: never });
 
 interface StatusPageProps {
+  /**
+   * Zeigt das Signet über der Überschrift.
+   *
+   * Gedacht für die drei Seiten, auf denen die App gerade nichts anderes
+   * von sich zeigt: offline, nicht gefunden, Fehler. Aus dem
+   * Home-Bildschirm gestartet fehlt dort auch die Browser-Chrome, und ohne
+   * ein Zeichen sieht der Moment aus wie eine Fehlerseite des Browsers und
+   * nicht wie unsere. Bewusst ein Schalter und kein freies Icon-Prop: es
+   * ist immer dieselbe Marke.
+   */
+  marke?: boolean;
   eyebrow?: string;
   title: string;
   description?: string;
@@ -23,6 +35,7 @@ interface StatusPageProps {
 // Gemeinsames Layout für error.tsx / not-found.tsx / offline/page.tsx —
 // bisher drei fast identische, unabhängig gepflegte Centered-Column-Layouts.
 export default function StatusPage({
+  marke = false,
   eyebrow,
   title,
   description,
@@ -37,6 +50,9 @@ export default function StatusPage({
         className,
       )}
     >
+      {/* Über allem, auch über dem eyebrow: erst das Zeichen, dann der Name,
+          dann die Nachricht. */}
+      {marke && <Signet className="h-8 w-auto text-accent" />}
       {eyebrow && (
         <p className="text-sm font-semibold tracking-wide text-muted uppercase">{eyebrow}</p>
       )}

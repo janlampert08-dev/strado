@@ -5,6 +5,7 @@ import PullToRefreshArea from "@/components/PullToRefreshArea";
 import Avatar from "@/components/Avatar";
 import KudosButton from "@/components/KudosButton";
 import ProfileSearch from "@/components/ProfileSearch";
+import { Signet } from "@/components/Wortmarke";
 import { getFeed, type FeedScope } from "@/lib/feed";
 import { freieFahrtTitel } from "@/lib/completions";
 import { getCurrentUser } from "@/lib/supabase/server";
@@ -76,7 +77,12 @@ export default async function FeedPage({
 
         {feed.length === 0 ? (
           <EmptyState
-            icon={Rss}
+            // Der globale Feed ist die eine Stelle, an der "leer" nicht
+            // heisst, dass dem Nutzer etwas fehlt, sondern dass Strado selbst
+            // noch nichts hat — dort steht die Marke. Beim Folgen-Feed fehlen
+            // dagegen die Fahrten bestimmter Leute, und das sagt das
+            // Feed-Icon besser als das Logo.
+            icon={scope === "following" ? Rss : Signet}
             title={
               scope === "following"
                 ? "Von den Fahrern, denen du folgst, kam noch nichts."

@@ -2,6 +2,8 @@
 
 import { useRef, useState, useTransition, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { Signet } from "@/components/Wortmarke";
+import { cn } from "@/lib/utils/cn";
 
 // Ab hier löst das Loslassen ein Neuladen aus. 72 px ist weit genug, um nicht
 // bei jedem versehentlichen Überziehen am Listenanfang auszulösen, und nah
@@ -13,13 +15,8 @@ const MAX_PX = 96;
 // Der Indikator folgt dem Finger nur halb: die Bewegung fühlt sich dadurch
 // an, als arbeite man gegen einen Widerstand, statt den Inhalt wegzuschieben.
 const DAEMPFUNG = 0.5;
-// Höhe, in der die fertig gezeichnete Linie während des Neuladens steht.
+// Höhe, in der das Zeichen während des Neuladens stehen bleibt und dreht.
 const LADE_HOEHE_PX = 28;
-
-// pathLength normalisiert die Pfadlänge auf 100 — so lässt sich der
-// Fortschritt als Prozentwert setzen, ohne den Pfad im Browser ausmessen zu
-// müssen (getTotalLength() wäre ein Layout-Zugriff pro Bewegungsereignis).
-const PFAD_LAENGE = 100;
 
 function bevorzugtReduzierteBewegung() {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -30,8 +27,12 @@ function bevorzugtReduzierteBewegung() {
  *
  * Umschliesst den vorhandenen Scroll-Container einer Seite (das
  * `flex-1 overflow-y-auto`-div) und zeichnet über dessen Inhalt einen
- * Indikator, sobald am oberen Ende weitergezogen wird: eine stilisierte
- * Streckenlinie, die sich proportional zur Zugstrecke selbst zeichnet.
+ * Indikator, sobald am oberen Ende weitergezogen wird: das Signet
+ * (lib/marke.ts, ein Rundkurs), das proportional zur Zugstrecke eine Runde
+ * dreht und beim Neuladen weiterdreht. Vorher stand hier eine eigens
+ * gezeichnete Streckenlinie mit progressivem strokeDashoffset — dieselbe
+ * Idee, aber an der Marke vorbei: ein zweites Zeichen, das niemand sonst
+ * kennt.
  *
  * Bewusst nur touch: mit Maus oder Trackpad gibt es diese Geste nicht, und
  * ein Zeigergerät würde beim Markieren von Text sonst versehentlich ziehen.
@@ -132,18 +133,27 @@ export default function PullToRefreshArea({ children }: { children: ReactNode })
         }`}
         style={{ height: `${hoehe}px` }}
       >
-        <svg viewBox="0 0 64 20" className="h-5 w-16 text-accent" aria-hidden="true">
-          <path
-            d="M2 16 C 12 16, 13 5, 23 5 S 39 15, 45 10 S 58 3, 62 5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            pathLength={PFAD_LAENGE}
-            strokeDasharray={PFAD_LAENGE}
-            strokeDashoffset={PFAD_LAENGE * (1 - fortschritt)}
-          />
-        </svg>
+        {/* Die Drehung hängt am Zug: bei erreichter Schwelle ist genau eine
+            Runde voll, das Loslassen quittiert also eine gefahrene Runde.
+            Der Transform steht inline, weil er stufenlos dem Finger folgt —
+            eine CSS-Klasse könnte das nicht. Während des Neuladens übernimmt
+            animate-spin; der prefers-reduced-motion-Block in globals.css
+            friert das ein, und beim Ziehen steht fortschritt dann ohnehin
+            auf 1 (statisch), womit die Drehung eine volle Umdrehung und
+            damit unsichtbar ist. */}
+        <span
+          className={cn("flex", laedt && "animate-spin")}
+          style={
+            laedt
+              ? undefined
+              : {
+                  transform: `rotate(${fortschritt * 360}deg)`,
+                  opacity: 0.35 + 0.65 * fortschritt,
+                }
+          }
+        >
+          <Signet className="h-5 w-auto text-accent" />
+        </span>
         <span className="sr-only">{laedt ? "Wird aktualisiert…" : ""}</span>
       </div>
       {children}

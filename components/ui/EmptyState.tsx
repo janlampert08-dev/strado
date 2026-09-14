@@ -11,7 +11,11 @@ export default function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border px-6 py-8 text-center">
-      <Icon className="h-7 w-7 text-muted" aria-hidden="true" />
+      {/* w-auto statt w-7: die Lucide-Icons sind quadratisch, für sie ändert
+          das nichts. Es lässt aber ein nicht quadratisches Zeichen durch,
+          ohne es zu stauchen — das Signet (lib/marke.ts) ist rund 1.7-mal so
+          breit wie hoch, und mit w-7 wäre es ein gequetschter Ring. */}
+      <Icon className="h-7 w-auto text-muted" aria-hidden="true" />
       <p className="text-sm text-muted">{title}</p>
       {action}
     </div>

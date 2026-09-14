@@ -242,17 +242,36 @@ is what should be corrected.
     both dimensions in that ratio. It is the first mark with a **hole**, and
     the counter is wound against the outer contour on purpose, because
     Satori and Canvas both fill nonzero, under which a same-wound counter
-    is area rather than a hole. Where it appears is **icons only**: the
-    header carries the wordmark at every width, and `components/Wortmarke.tsx`
-    still exports `Signet` for inline use, but nothing calls it today. It did
-    briefly — on 2026-09-14 the header showed the signet below `sm`, with a
-    lap-rotation on tap (`signet-runde`) and `HeaderSkeleton` mirroring the
-    split. All three were taken back out on 2026-09-15: the name is what
-    makes an app known, and the header is the one surface where every user
-    reads it on every page view. Don't reintroduce a mark-only header
-    without settling that trade first. The wordmark's own `marke-anschlag`
-    (tilt plus colour wash, `app/globals.css`) was never part of that and
-    still runs.
+    is area rather than a hole. Where it appears, besides the icon routes:
+    the pull-to-refresh indicator (`components/PullToRefreshArea.tsx` — it
+    turns one lap as you pull, `animate-spin` while reloading, and it
+    replaced a separately drawn road that answered to nothing), the three
+    status pages via `StatusPage`'s `marke` prop (offline, not-found,
+    error), the **global** feed's empty state only
+    (`app/feed/page.tsx` — the following-feed keeps its feed icon, because
+    there the missing thing is people, not Strado), and the badge in
+    `components/PremiumWillkommen.tsx`. `EmptyState` sizes its icon
+    `h-7 w-auto` for exactly this reason — `w-7` would squash a non-square
+    mark. Everywhere else the wordmark stays: **the header above all**. On
+    2026-09-14 the header showed the signet below `sm`, with a lap-rotation
+    on tap (`signet-runde`) and `HeaderSkeleton` mirroring the split; all
+    three were taken back out on 2026-09-15, because the name is what makes
+    an app known and the header is the one surface where every user reads it
+    on every page view. Don't reintroduce a mark-only header without
+    settling that trade first. The wordmark's own `marke-anschlag` (tilt
+    plus colour wash, `app/globals.css`) was never part of that and still
+    runs.
+  - **The PWA metadata carries two more renders of it.**
+    `app/icon-maskable/route.tsx` is the Android `purpose: "maskable"`
+    icon — without it Android shrinks the plain icon into a circle on white,
+    which the flat ring survives far worse than the old "s" did; the mark
+    sits at 46 % of the edge so the crop never reaches it.
+    `app/startbild/route.tsx` draws the iOS launch image, sized from the
+    query string, which is why it validates against the table in
+    `lib/startbilder.ts` (tested) rather than trusting the URL: iOS only
+    accepts a launch image whose media query matches the device exactly, so
+    that table is ten iPhone sizes, and every `<link>` it produces rides in
+    the head of every page.
   - **One mark does not redraw itself: `app/favicon.ico`.** Every other
     surface draws from `lib/marke.ts` at request time; the `.ico` is a
     finished image in the repo, and the page head serves it *alongside*
