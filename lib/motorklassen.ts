@@ -9,11 +9,24 @@ import type { FahrzeugTyp, Motorklasse } from "@/types/database";
 // Die Grenzwerte stehen deshalb an beiden Stellen ausgeschrieben statt
 // abgeleitet, und motorklassen.test.ts prüft genau sie.
 //
-// Warum Führerausweiskategorien für Motorräder und kW-Bänder für Autos:
-// A1/A-35-kW/A kennt jeder Fahrer auswendig, für Autos gibt es keine
-// vergleichbare gesetzliche Einteilung. Gespeichert wird durchgehend kW
-// (so steht es im Fahrzeugausweis), angezeigt wird bei Autos PS, weil in
-// Gesprächen niemand in kW rechnet.
+// Warum Führerausweiskategorien für Motorräder und Leistungsbänder für
+// Autos: A1/A-35-kW/A kennt jeder Fahrer auswendig, für Autos gibt es keine
+// vergleichbare gesetzliche Einteilung.
+//
+// EINHEITEN — die eine Stelle, an der man sie nachliest:
+//
+//   gespeichert  immer kW (vehicles.leistung_kw, so steht es im
+//                Fahrzeugausweis). Die Bandgrenzen rechnen ausschliesslich
+//                damit, und public.motorklasse() in der Datenbank ebenso.
+//   eingegeben   beim AUTO in PS, beim MOTORRAD in kW. Über die Leistung
+//                eines Autos spricht in der Schweiz niemand in kW; die
+//                Motorradklassen heissen dagegen wörtlich "A 35 kW", und
+//                ein Fahrer, der 35 kW im Ausweis stehen hat, soll nicht
+//                über eine Umrechnung raten müssen, auf welcher Seite der
+//                Grenze er landet. psInKw() macht die Umrechnung, sie
+//                passiert einmal beim Anlegen des Fahrzeugs.
+//   angezeigt    beim Auto PS (label), beim Motorrad die Ausweiskategorie.
+//                Die kW-Regel steht bei beiden daneben (regel).
 
 export interface Motorklassendefinition {
   id: Motorklasse;
@@ -33,9 +46,18 @@ export const MOTORKLASSEN: readonly Motorklassendefinition[] = [
   { id: "moto_a1", typ: "motorrad", label: "A1", regel: "bis 125 cm³ · bis 11 kW", rang: 1 },
   { id: "moto_a35", typ: "motorrad", label: "A 35 kW", regel: "bis 35 kW", rang: 2 },
   { id: "moto_a", typ: "motorrad", label: "A offen", regel: "über 35 kW", rang: 3 },
+  // Die PS-Bänder sind die exakte Übersetzung der kW-Grenzen unter der
+  // Eingaberundung von psInKw(), nicht eine gerundete Näherung davon: 150 PS
+  // ergeben 110 kW und damit noch das erste Band, 151 PS ergeben 111 kW und
+  // damit das zweite; 299 PS ergeben 220 kW, 300 PS ergeben 221 kW.
+  //
+  // Vorher stand hier "bis 150 PS" / "150–300 PS" / "über 300 PS" — bei
+  // einer kW-Eingabe eine harmlose Rundungsunschärfe, bei einer PS-Eingabe
+  // eine falsche Auskunft an genau den zwei Werten, die jemand eintippt,
+  // weil sie auf dem Chip stehen.
   { id: "auto_bis110", typ: "auto", label: "bis 150 PS", regel: "bis 110 kW", rang: 1 },
-  { id: "auto_bis220", typ: "auto", label: "150–300 PS", regel: "110 bis 220 kW", rang: 2 },
-  { id: "auto_ueber220", typ: "auto", label: "über 300 PS", regel: "über 220 kW", rang: 3 },
+  { id: "auto_bis220", typ: "auto", label: "151–299 PS", regel: "über 110 bis 220 kW", rang: 2 },
+  { id: "auto_ueber220", typ: "auto", label: "ab 300 PS", regel: "über 220 kW", rang: 3 },
 ] as const;
 
 const NACH_ID = new Map<string, Motorklassendefinition>(MOTORKLASSEN.map((k) => [k.id, k]));
@@ -118,10 +140,103 @@ export function hoehereKlasse(
   return defB.rang > defA.rang ? b : a;
 }
 
-// 1 kW = 1.35962 PS (metrische Pferdestärke). Nur für die Anzeige — die
-// Bänder selbst rechnen durchgehend in kW.
+// 1 kW = 1.35962 PS (metrische Pferdestärke).
 const PS_PRO_KW = 1.35962;
 
 export function kwInPs(kw: number): number {
   return Math.round(kw * PS_PRO_KW);
+}
+
+/**
+ * PS-Eingabe in den gespeicherten kW-Wert, auf ganze kW gerundet.
+ *
+ * Die Rundung ist der Punkt, nicht ein Nebeneffekt: Ein Hersteller, der
+ * "110 kW / 150 PS" schreibt, meint 110 kW und 149.6 PS — die 150 ist schon
+ * gerundet. Ohne Rundung ergäbe die Rückrechnung 110.33 kW und schöbe genau
+ * diesen Wagen über die 110-kW-Grenze in das nächste Band. Mit Rundung
+ * kommt aus der aufgerundeten PS-Zahl wieder die kW-Zahl des Fahrzeug-
+ * ausweises heraus.
+ *
+ * Autos tragen im Ausweis ohnehin ganze kW; für Motorräder, wo auch halbe
+ * Werte vorkommen, wird gar nicht umgerechnet (dort wird kW eingegeben).
+ */
+export function psInKw(ps: number): number {
+  return Math.round(ps / PS_PRO_KW);
+}
+
+export interface Fahrzeugtypdefinition {
+  id: FahrzeugTyp;
+  /** Mehrzahl, für Chips und Ranglisten-Überschriften: "Autos". */
+  label: string;
+  /** In welcher Einheit die Leistung dieses Typs eingegeben wird. */
+  leistungseinheit: "PS" | "kW";
+}
+
+// Die Fahrzeugtypen als Katalog — dieselbe Rolle wie MOTORKLASSEN eine
+// Ebene tiefer. Die Werte stammen aus dem CHECK auf vehicles.typ (0001).
+//
+// Die Reihenfolge ist die Anzeigereihenfolge der oberen Chip-Zeile.
+export const FAHRZEUGTYPEN: readonly Fahrzeugtypdefinition[] = [
+  { id: "auto", label: "Autos", leistungseinheit: "PS" },
+  { id: "motorrad", label: "Motorräder", leistungseinheit: "kW" },
+] as const;
+
+const TYP_NACH_ID = new Map<string, Fahrzeugtypdefinition>(
+  FAHRZEUGTYPEN.map((t) => [t.id, t]),
+);
+
+export function istFahrzeugTyp(wert: unknown): wert is FahrzeugTyp {
+  return typeof wert === "string" && TYP_NACH_ID.has(wert);
+}
+
+export function fahrzeugtypdefinition(typ: FahrzeugTyp): Fahrzeugtypdefinition {
+  return TYP_NACH_ID.get(typ) as Fahrzeugtypdefinition;
+}
+
+/**
+ * Die zwei Stufen der Bestenlisten-Auswahl in einem Wert: entweder ein
+ * ganzer Fahrzeugtyp ("alle Autos") oder eine einzelne Motorklasse
+ * ("bis 150 PS").
+ *
+ * Bewusst EIN Wert und nicht zwei Parameter (typ + klasse): Die Auswahl ist
+ * immer genau eines von beidem, und ein Paar liesse den widersprüchlichen
+ * Zustand "typ=motorrad, klasse=auto_bis110" überhaupt erst zu — in einem
+ * URL-Parameter, den jeder frei setzen kann, wäre das ein Zustand, den
+ * jede Abfrage wieder abfangen müsste. Deshalb teilen sich beide Stufen
+ * einen Parameter (?klasse=), und istKlassenfilter() ist die eine
+ * Allowlist für ihn.
+ *
+ * Die Schlüssel können sich nicht überschneiden: Fahrzeugtypen heissen
+ * "auto"/"motorrad", Motorklassen tragen alle einen Unterstrich.
+ */
+export type Klassenfilter = FahrzeugTyp | Motorklasse;
+
+export function istKlassenfilter(wert: unknown): wert is Klassenfilter {
+  return istFahrzeugTyp(wert) || istMotorklasse(wert);
+}
+
+/** Zu welchem Fahrzeugtyp ein Filter gehört — die obere Stufe der Auswahl. */
+export function filterTyp(filter: Klassenfilter): FahrzeugTyp {
+  return istFahrzeugTyp(filter) ? filter : motorklassendefinition(filter).typ;
+}
+
+/** Beschriftung eines Filters, z.B. "Autos" oder "bis 150 PS". */
+export function filterLabel(filter: Klassenfilter): string {
+  return istFahrzeugTyp(filter)
+    ? fahrzeugtypdefinition(filter).label
+    : motorklasseLabel(filter);
+}
+
+/**
+ * Die Motorklassen, die ein Filter umfasst: bei einem Fahrzeugtyp dessen
+ * drei Klassen, bei einer Klasse genau sie selbst.
+ *
+ * Das ist die Übersetzung für Abfragen, die nur die Spalte motorklasse
+ * kennen (route_leaderboard) — die Typstufe wird dort zu einem IN über
+ * drei Werte statt zu einem eigenen Filter.
+ */
+export function klassenFuerFilter(filter: Klassenfilter): Motorklasse[] {
+  return istFahrzeugTyp(filter)
+    ? klassenFuerTyp(filter).map((k) => k.id)
+    : [filter];
 }

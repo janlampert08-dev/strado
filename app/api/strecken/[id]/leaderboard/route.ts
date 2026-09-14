@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getRouteLeaderboard, getRouteLeaderboardKlassen } from "@/lib/leaderboard";
 import { getClientIp, isRateLimitedByKey } from "@/lib/rateLimit";
 import { isValidUuid } from "@/lib/validation";
-import { istMotorklasse } from "@/lib/motorklassen";
+import { istKlassenfilter } from "@/lib/motorklassen";
 
 // Liefert die (freiwillig geteilten) Bestzeiten einer Strecke — genutzt vom
 // Strecken-Chooser auf /leaderboards und von der Bestzeiten-Karte auf der
@@ -23,20 +23,25 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ entries: [], klassen: [] });
   }
 
-  // Strikte Allowlist gegen den Klassenkatalog, kein Durchreichen in die
-  // Abfrage: istMotorklasse() kennt genau die sechs Schlüssel aus
-  // lib/motorklassen.ts (und aus public.motorklasse(), 0080), alles andere
-  // fällt raus. Ein unbekannter Wert wird wie eine unbekannte Strecken-ID
-  // oben behandelt — leere Antwort statt Fehler, damit ein Scan hier nichts
-  // über den Bestand erfährt.
+  // Strikte Allowlist gegen den Katalog, kein Durchreichen in die Abfrage:
+  // istKlassenfilter() kennt genau die zwei Fahrzeugtypen und die sechs
+  // Klassenschlüssel aus lib/motorklassen.ts (und aus public.motorklasse(),
+  // 0080), alles andere fällt raus. Ein unbekannter Wert wird wie eine
+  // unbekannte Strecken-ID oben behandelt — leere Antwort statt Fehler,
+  // damit ein Scan hier nichts über den Bestand erfährt.
+  //
+  // Beide Stufen der Auswahl teilen sich denselben Parameter, weil sie sich
+  // gegenseitig ausschliessen: ein Paar aus ?typ= und ?klasse= liesse den
+  // widersprüchlichen Zustand "typ=motorrad&klasse=auto_bis110" überhaupt
+  // erst entstehen. Siehe Klassenfilter in lib/motorklassen.ts.
   const roh = new URL(request.url).searchParams.get("klasse");
-  if (roh !== null && !istMotorklasse(roh)) {
+  if (roh !== null && !istKlassenfilter(roh)) {
     return NextResponse.json({ entries: [], klassen: [] });
   }
-  const klasse = roh === null ? null : roh;
+  const filter = roh === null ? null : roh;
 
   const [entries, klassen] = await Promise.all([
-    getRouteLeaderboard(id, klasse),
+    getRouteLeaderboard(id, filter),
     getRouteLeaderboardKlassen(id),
   ]);
 

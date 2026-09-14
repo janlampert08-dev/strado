@@ -29,6 +29,50 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Noch nicht eingespielt: 0085_bestenlisten_nach_fahrzeugtyp
+
+Stand 2026-09-14 die einzige Datei im Repo, die noch nicht in der
+Produktionsdatenbank ist (0042 und 0058 zählen nicht — die sind Altlast und
+dürfen **nicht** angewendet werden, siehe unten).
+
+**Gehört eingespielt, bevor der Code deployt wird, der sie liest**
+(`lib/leaderboard.ts` → `topByMetric`). Wird sie vergessen, fällt das nicht
+rot auf: PostgREST antwortet auf die unbekannte Relation mit einem Fehler,
+`topByMetric` macht daraus `[]`, und die Seite zeigt unter „Autos" und
+„Motorräder" „Noch keine Einträge" — während „Alle" und die sechs
+Klassenlisten normal füllen. Genau die Sorte stille Abweichung, vor der der
+Abschnitt ganz oben warnt.
+
+Inhalt: eine neue immutable Funktion `public.motorklasse_typ(text)` und eine
+neue View `public.leaderboard_typ_totals` (plus `grant select` an `anon`,
+`authenticated`). **Rein additiv** — keine bestehende Relation, Policy oder
+Spalte wird angefasst, es wird nichts zurückgeschrieben und kein
+Tabellen-Rewrite ausgelöst. Damit ist sie ohne Probe auf einer
+Stagingdatenbank vertretbar (es gibt keine, siehe AGENTS.md); sie kann
+nichts verlieren. Ein Mengengerüst braucht sie nicht: eine View speichert
+nichts.
+
+Gegenprobe nach dem Einspielen — an den Objekten, nicht am Ledger:
+
+```sql
+-- Die Formel, beide Richtungen und der Fehlfall.
+select public.motorklasse_typ('moto_a1'),      -- motorrad
+       public.motorklasse_typ('auto_ueber220'),-- auto
+       public.motorklasse_typ('quatsch');      -- null
+
+-- View da und lesbar für beide Rollen?
+select has_table_privilege('anon', 'public.leaderboard_typ_totals', 'select'),
+       has_table_privilege('authenticated', 'public.leaderboard_typ_totals', 'select');
+
+-- Die Summe über die Typen muss der Summe über die Klassen entsprechen —
+-- beide Views filtern auf motorklasse is not null, nur unterschiedlich grob.
+-- "Alle" (leaderboard_user_totals) liegt darüber, weil Fahrten ohne Klasse
+-- nur dort mitzählen.
+select (select coalesce(sum(fahrten_count), 0) from public.leaderboard_typ_totals)
+     = (select coalesce(sum(fahrten_count), 0) from public.leaderboard_klassen_totals)
+       as summen_gleich;
+```
+
 ## Reihenfolge der Motorklassen-Migrationen
 
 Alle drei gehören **vor** den Deploy des Codes, der sie braucht, und in
