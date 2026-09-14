@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { summiereHoehenmeter } from "@/lib/hoehenmeter";
+import { mitAnzahl } from "@/lib/format";
 
 export const PASS_MILESTONES = [1, 5, 10, 25, 50, 100];
 export const HOEHENMETER_MILESTONES = [1000, 5000, 10000, 25000, 50000];
@@ -59,13 +60,13 @@ export async function getUserAchievementStats(userId: string): Promise<Achieveme
 // Vorher/Nachher-Erkennung einzelner Fahrten.
 export function featuredMilestone(stats: AchievementStats): string | null {
   const pass = highestMilestone(stats.passCount, PASS_MILESTONES);
-  if (pass !== null) return `${pass} Pässe befahren`;
+  if (pass !== null) return `${mitAnzahl(pass, "Pass", "Pässe")} befahren`;
 
   const hoehenmeter = highestMilestone(stats.hoehenmeter, HOEHENMETER_MILESTONES);
   if (hoehenmeter !== null) return `${hoehenmeter.toLocaleString("de-CH")} Höhenmeter`;
 
   const fahrten = highestMilestone(stats.fahrtenCount, FAHRTEN_MILESTONES);
-  if (fahrten !== null) return `${fahrten} Fahrten`;
+  if (fahrten !== null) return mitAnzahl(fahrten, "Fahrt", "Fahrten");
 
   return null;
 }
