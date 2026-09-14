@@ -22,6 +22,8 @@ import ActivityHeatmap from "@/components/ActivityHeatmap";
 import CountUp from "@/components/CountUp";
 import FollowCounts from "@/components/FollowCounts";
 import PremiumCard from "@/components/PremiumCard";
+import FahrtStatistik from "@/components/FahrtStatistik";
+import { ChartIcon } from "@/components/NavIcons";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
 import { getUnseenKudosCount } from "@/lib/kudos";
@@ -128,7 +130,7 @@ export default async function ProfilPage() {
     supabase
       .from("route_completions")
       .select(
-        "id, art, route_id, datum, dauer_sekunden, distanz_km, ist_oeffentlich, abdeckung_prozent, notiz, titel, start_ort, bewegte_zeit_sekunden, hoehenmeter_aufstieg, routes(name)",
+        "id, art, route_id, fahrzeug_id, datum, dauer_sekunden, distanz_km, ist_oeffentlich, abdeckung_prozent, notiz, titel, start_ort, bewegte_zeit_sekunden, hoehenmeter_aufstieg, routes(name)",
       )
       .eq("user_id", user.id)
       .not("dauer_sekunden", "is", null)
@@ -142,6 +144,10 @@ export default async function ProfilPage() {
           id: string;
           art: FahrtArt;
           route_id: string | null;
+          // Nur für die Premium-Auswertung (FahrtStatistik) — eine Spalte
+          // mehr in einer Abfrage, die ohnehin läuft, statt einer zweiten
+          // Runde zur Datenbank.
+          fahrzeug_id: string | null;
           datum: string;
           dauer_sekunden: number;
           distanz_km: number;
@@ -304,6 +310,37 @@ export default async function ProfilPage() {
                 <ActivityHeatmap dates={(trackedRides ?? []).map((r) => r.datum)} />
               </div>
             </details>
+
+            {/* Premium-Auswertung. Steht INNERHALB derselben Gruppen-Card wie
+                die vier Kacheln, weil es inhaltlich dieselbe Frage ist
+                ("meine Zahlen") — nur eine Ebene tiefer aufgelöst.
+
+                Additiv: Ohne Abo bleibt oben alles, wie es war. Wer kein Abo
+                hat, sieht hier nichts statt eines gesperrten Symbols — ein
+                Schloss an einer Stelle, an der vorher nichts war, liest sich
+                als Wegnahme, und genau das soll additives Gating vermeiden
+                (docs/premium-plan.md, Abschnitt 4). Die Kaufseite wirbt
+                ohnehin damit; sie ist der Ort dafür. */}
+            {premiumStatus.aktiv && (
+              <details open className="group p-4">
+                <SectionSummary icon={ChartIcon} label="Auswertung" />
+                <div className="mt-4">
+                  <FahrtStatistik
+                    fahrten={(trackedRides ?? []).map((r) => ({
+                      datum: r.datum,
+                      distanz_km: r.distanz_km,
+                      hoehenmeter_aufstieg: r.hoehenmeter_aufstieg,
+                      fahrzeug_id: r.fahrzeug_id,
+                    }))}
+                    fahrzeuge={(vehicles ?? []).map((v) => ({
+                      id: v.id,
+                      marke: v.marke,
+                      modell: v.modell,
+                    }))}
+                  />
+                </div>
+              </details>
+            )}
           </Card>
         </section>
 

@@ -40,3 +40,48 @@ export function buildHeatmapDays(
     return { dateKey, count: countByDate.get(dateKey) ?? 0 };
   });
 }
+
+export interface HeatmapMonthLabel {
+  label: string; // "Mär"
+  weekIndex: number; // Spalte im Gitter, 0-basiert
+}
+
+// Kurze Monatsnamen fix statt über toLocaleDateString: der Graph wird auf dem
+// Server gerendert, und dessen ICU-Daten sind nicht garantiert dieselben wie
+// im Browser — ein hartkodiertes Array hält die Beschriftung deterministisch.
+const MONATE_KURZ = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+
+export const WOCHENTAGE_KURZ = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+
+// Beschriftet die Spalte, in der ein neuer Monat beginnt. Gemessen wird am
+// Montag der Woche, also an derselben Zelle, an der die Spalte optisch
+// anfängt. Die erste Spalte bekommt nur dann ein Label, wenn sie tatsächlich
+// am Monatsanfang steht — sonst stünde dort ein Monatsname über einer Spalte,
+// die grösstenteils zum Vormonat gehört.
+export function buildHeatmapMonthLabels(
+  days: HeatmapDay[],
+  { minWeekGap = 3 }: { minWeekGap?: number } = {},
+): HeatmapMonthLabel[] {
+  const weeks = Math.floor(days.length / DAYS_PER_WEEK);
+  const labels: HeatmapMonthLabel[] = [];
+  let vorherigerMonat = -1;
+
+  for (let weekIndex = 0; weekIndex < weeks; weekIndex++) {
+    const montag = days[weekIndex * DAYS_PER_WEEK];
+    const monat = Number(montag.dateKey.slice(5, 7)) - 1;
+    const tagImMonat = Number(montag.dateKey.slice(8, 10));
+    const monatsWechsel = weekIndex === 0 ? tagImMonat <= DAYS_PER_WEEK : monat !== vorherigerMonat;
+    vorherigerMonat = monat;
+
+    if (!monatsWechsel) continue;
+    // Zu dicht am Vorgänger würde sich der Text überlappen, zu dicht am
+    // rechten Rand über das Gitter hinauslaufen.
+    const letztes = labels[labels.length - 1];
+    if (letztes && weekIndex - letztes.weekIndex < minWeekGap) continue;
+    if (weeks - weekIndex < 2) continue;
+
+    labels.push({ label: MONATE_KURZ[monat], weekIndex });
+  }
+
+  return labels;
+}

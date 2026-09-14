@@ -1,0 +1,99 @@
+-- =====================================================================
+-- Eigene Strecken anlegen ist wieder für jedes angemeldete Konto offen.
+--
+-- Nimmt die Verschärfung aus 0077 zurück. Die INSERT-Policy auf
+-- public.routes trägt wieder genau das Prädikat, das 0027 gesetzt hatte:
+-- nur die eigene Zeile, nur mit status_ok = false. Die zusätzliche
+-- Bedingung "ist_premium oder is_moderator" entfällt.
+--
+-- 0077 wird dabei NICHT bearbeitet (Kernregel 9) — die Migrationshistorie
+-- ist ein append-only Protokoll, und dass die Regel einmal galt, soll
+-- lesbar bleiben.
+--
+-- ---------------------------------------------------------------------
+-- Warum zurück
+-- ---------------------------------------------------------------------
+-- 0077 nennt sich im eigenen Kopf einen "bewussten Bruch mit dem
+-- additiven Gating". Die Leitregel aus docs/premium-plan.md Abschnitt 4
+-- lautet: Premium hebt Obergrenzen an und nimmt nichts weg, was ein
+-- kostenloses Konto vorher konnte. Diese Migration stellt sie wieder her.
+--
+-- Der sachliche Grund ist der Streckenbestand. Ein öffentlicher
+-- Streckenvorschlag kostet den Betrieb nichts — er ist der Inhalt, von
+-- dem die Plattform lebt, und mit acht freigegebenen Strecken ist sein
+-- Zufluss die knappste Ressource überhaupt. Ihn hinter das Abo zu
+-- stellen heisst, für eine Zulieferung Geld zu verlangen. Die private
+-- Strecke ist der umgekehrte Fall: sie nützt nur dem einen Konto, und
+-- genau dort darf ein Kontingent stehen.
+--
+-- ---------------------------------------------------------------------
+-- Was damit NICHT zurückkommt: unbegrenzte private Strecken
+-- ---------------------------------------------------------------------
+-- Das Freikontingent aus 0064 war nie abgeschaltet, nur unerreichbar —
+-- darf_private_strecke_anlegen() lief hinter 0077 weiter und wurde ohne
+-- Abo praktisch nur noch von der Moderation erreicht. Ab dieser
+-- Migration greift es wieder für jeden:
+--
+--   * ohne Abo:         EINE private Strecke
+--   * mit Abo:          unbegrenzt
+--   * Bestandsschutz:   unbegrenzt, dauerhaft (0064, Stichtagsmarkierung)
+--
+-- Öffentliche Vorschläge sind davon unberührt und weiterhin unbegrenzt —
+-- sie durchlaufen die Moderation, bevor sie jemand sieht.
+--
+-- Diese Migration fasst das Kontingent nicht an. Sie entfernt nur die
+-- Schranke davor.
+--
+-- ---------------------------------------------------------------------
+-- Missbrauch bleibt begrenzt
+-- ---------------------------------------------------------------------
+-- Die Premium-Pflicht war keine Missbrauchsbremse, und ihr Wegfall
+-- öffnet keine. Was bremst, bleibt unverändert:
+--
+--   * der race-freie Cooldown-Trigger aus 0041 (cooldown_active),
+--   * die Moderationswarteschlange — status_ok = false ist Teil des
+--     Policy-Prädikats, ein Vorschlag ist also per Konstruktion
+--     unveröffentlicht,
+--   * das Kontingent aus 0064 für private Strecken.
+--
+-- ---------------------------------------------------------------------
+-- Geschäftsregel und Rechtstext
+-- ---------------------------------------------------------------------
+-- Kernregel 16 verlangt, dass eine Änderung an einer Geschäftsregel
+-- ausgesprochen wird. Hier steht sie: Das Anlegen eigener Strecken ist
+-- ab dieser Migration keine Premium-Leistung mehr. Premium behält
+-- "unbegrenzt private Strecken" (gegenüber einer ohne Abo), zwölf statt
+-- sechs Fotos pro Fahrt, unbegrenzt offline gespeicherte Strecken und
+-- den GPX-Export kuratierter Strecken.
+--
+-- Niemand verliert dadurch eine Leistung: die Gratis-Stufe wächst,
+-- Premium schrumpft nicht. AGB Ziff. 3.1 und 3.2 werden im selben PR
+-- nachgezogen, in docs/rechtstexte/agb.md wie in der veröffentlichten
+-- Fassung unter strado.ch/legal/agb.
+--
+-- ---------------------------------------------------------------------
+-- Reihenfolge beim Einspielen: CODE ZUERST, DANN DIESE MIGRATION
+-- ---------------------------------------------------------------------
+-- 0077 hatte die umgekehrte Gefahr und dieselbe Regel. Hier gilt:
+--
+--   * Deploy zuerst, Migration danach  -> das Formular ist offen, das
+--     Speichern scheitert an der alten Policy mit "Strecke konnte nicht
+--     gespeichert werden". Unschön, aber folgenlos und kurz.
+--   * Migration zuerst, Deploy danach  -> die Policy erlaubt das Anlegen,
+--     der alte Code zeigt kostenlosen Konten aber weiterhin PremiumGate.
+--     Niemand kommt zu Schaden, es passiert nur nichts.
+--
+-- Beide Wege sind ungefährlich; der zweite ist der stillere. Empfohlen
+-- bleibt trotzdem Code zuerst oder zusammen, damit der freigeschaltete
+-- Zustand nicht länger als nötig unsichtbar ist. Siehe
+-- supabase/migrations/README.md.
+-- =====================================================================
+
+alter policy "Angemeldete Nutzer können Strecken vorschlagen" on public.routes
+  with check (
+    (erstellt_von = (select auth.uid()))
+    and (status_ok = false)
+  );
+
+comment on policy "Angemeldete Nutzer können Strecken vorschlagen" on public.routes is
+  'Jedes angemeldete Konto darf Strecken vorschlagen: nur die eigene Zeile, nur mit status_ok = false. Die Premium-/Moderationspflicht aus 0077 ist mit 0086 zurückgenommen — additives Gating wiederhergestellt (docs/premium-plan.md Abschnitt 4). Begrenzt bleiben private Strecken (Kontingent aus 0064) und die Anlegerate (Cooldown-Trigger aus 0041).';

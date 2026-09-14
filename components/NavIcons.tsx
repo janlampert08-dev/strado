@@ -18,3 +18,9 @@ export { Link2 as LinkIcon } from "lucide-react";
 // Ebenso: der Leerzustand des Feedback-Abschnitts unter /moderation und,
 // daneben im Kopf derselben Seite, der Link ins Postfach.
 export { MessageSquare as FeedbackIcon, Mail as MailIcon } from "lucide-react";
+
+// Und ebenso: die Premium-Auswertung im Statistik-Block der Profilseite
+// (components/FahrtStatistik.tsx). Die Profilseite importiert ihre übrigen
+// Icons historisch direkt aus lucide-react; für neuen Code verlangt
+// AGENTS.md diesen Wrapper, deshalb steht dieses eine hier und nicht dort.
+export { BarChart3 as ChartIcon } from "lucide-react";

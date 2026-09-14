@@ -67,8 +67,14 @@ export default function PremiumCard({ status }: { status: PremiumStatus }) {
         </>
       ) : (
         <>
+          {/* Die Kurzform von PREMIUM_VORTEILE (lib/premiumVorteile.ts) — und
+              die dritte Stelle, an der die Vorteile stehen, obwohl der Kopf
+              dort von "eine Liste, zwei Seiten" ausgeht. Genau diese dritte
+              Kopie ist mit 0086 verrutscht: sie warb weiter mit "Eigene
+              Strecken erstellen", während das Erstellen längst wieder
+              kostenlos war. Wer die Liste ändert, ändert diese Zeile mit. */}
           <p className="text-sm text-muted">
-            Eigene Strecken erstellen, 12 Fotos pro Fahrt, Offline ohne Limit, GPX-Export.
+            Unbegrenzt private Strecken, 12 Fotos pro Fahrt, Offline ohne Limit, GPX-Export.
           </p>
           <Link
             href="/profil/premium"

@@ -207,17 +207,35 @@ textarea {
 :root {
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Höhe der fixierten BottomNav (BottomNav.tsx) inklusive sicherem
+     Bereich — die eine Quelle dafür, wie viel Platz unten belegt ist.
+
+     Vorher raten das drei Stellen unabhängig voneinander: das
+     main-padding hier mit 4.25rem, der Sticky-Absendeknopf in
+     NeueStreckeForm.tsx mit 3.75rem, und DragSheet.tsx gar nicht. Im
+     Browser gemessen sind es 4rem (py-2.5 + Icon + Label + Rahmen), also
+     lagen beide Zahlen daneben — einmal zu viel, einmal zu wenig.
+     Wer die Leiste umbaut, ändert diesen Wert und sonst nichts.
+
+     Ab md ist die Leiste ausgeblendet (md:hidden), der Wert also 0 —
+     das ersetzt die Media Query, die vorher um das main-padding stand,
+     und macht ihn auch für jede andere Nutzung automatisch richtig. */
+  --bottom-nav-h: calc(4rem + var(--safe-bottom));
+}
+
+@media (min-width: 768px) {
+  :root {
+    --bottom-nav-h: 0px;
+  }
 }
 
 /* Reserviert unten Platz für die fixierte BottomNav (Header.tsx), damit sie
    nirgends den letzten sichtbaren Inhalt eines scrollbaren <main> verdeckt —
    zentral hier statt in jeder Seite einzeln, da <main> überall als
-   Scroll-Container verwendet wird. Nur < md, da BottomNav ab dort
-   (md:hidden) gar nicht mehr angezeigt wird. */
-@media (max-width: 767px) {
-  main {
-    padding-bottom: calc(4.25rem + var(--safe-bottom));
-  }
+   Scroll-Container verwendet wird. */
+main {
+  padding-bottom: var(--bottom-nav-h);
 }
 
 /* Mapbox-Attribution (RouteMap.tsx, RoutePicker.tsx) — zurückgenommen, aber

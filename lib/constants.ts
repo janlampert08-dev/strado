@@ -1,8 +1,18 @@
 /** Der Claim, wie er überall in der App steht — eine Quelle, kein Wildwuchs. */
 export const SLOGAN = "Für alle, die den Umweg nehmen.";
-/** Kurzbeschreibung für Metadaten und Manifest — knapp, mit den Suchbegriffen. */
+/**
+ * Kurzbeschreibung für Metadaten und Manifest — knapp, mit den Suchbegriffen.
+ *
+ * "rund um Zürich" statt "in der Schweiz", aus demselben Grund wie der Titel
+ * in app/page.tsx: der Bestand ist Zürich-first (AGENTS.md), und dieser Satz
+ * steht als description direkt unter jenem Titel. Ein Titel, der Zürich
+ * verspricht, und eine Beschreibung, die die Schweiz verspricht, sind
+ * dasselbe Suchergebnis mit zwei Aussagen — und die Beschreibung ist die
+ * Hälfte, die im Google-Snippet und in jeder Link-Vorschau ausgeschrieben
+ * wird.
+ */
 export const BESCHREIBUNG =
-  "Handverlesene Kurven-, Pass- und Aussichtsstrecken in der Schweiz, gestartet in Zürich. Fahrten per GPS aufzeichnen, vergleichen, teilen.";
+  "Handverlesene Kurven-, Pass- und Aussichtsstrecken rund um Zürich. Fahrten per GPS aufzeichnen, vergleichen, teilen.";
 
 // Geografischer Standard-Mittelpunkt: Zürich HB.
 export const ZURICH_CENTER: [number, number] = [8.5417, 47.3769];

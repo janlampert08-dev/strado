@@ -29,6 +29,94 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Eingespielt: 0086_strecken_anlegen_wieder_offen (2026-09-14, Produktion)
+
+Nimmt die Premium-/Moderationspflicht aus `0077` auf der INSERT-Policy von
+`public.routes` zurück. **Eingespielt bevor der Code deployt war** — das ist
+hier die harmlose Richtung: die Policy wird weiter, nicht enger. Bis der
+Code aus PR #220 ausgeliefert ist, blockiert die Server Action kostenlose
+Konten weiterhin mit einer lesbaren Meldung; es passiert schlicht nichts.
+Anders als bei `0077` gibt es kein Zeitfenster, in dem jemand etwas nicht
+mehr darf.
+
+Vorher gezählt (die Migration entstand ohne Datenbankzugriff, das
+Mengengerüst wurde hier nachgeholt):
+
+```
+routen_gesamt            14
+oeffentlich_sichtbar     13   (status_ok, nicht privat)
+routen_privat             1
+in_moderation             1
+bestandsschutz_konten     0   (0064 — niemand ist davon betroffen)
+premium_konten            5
+```
+
+**Korrektur an der Begründung im Migrationskopf:** dort steht „mit acht
+freigegebenen Strecken". Tatsächlich sind es **dreizehn**. Die Acht stammt
+aus `docs/marketing/instagram/daten.mjs`, einer Momentaufnahme vom
+2026-09-07, die im eigenen Kopf warnt, dass sie keine Verbindung zur
+Datenbank hat. Die Datei `0086_…sql` bleibt unverändert — Kernregel 9
+verbietet, eine eingespielte Migration anzufassen, auch wenn nur ein
+Kommentar danebenliegt. Die Zahl steht hier richtig, und das Argument trägt
+bei dreizehn genauso: der Zufluss an Strecken ist die knappste Ressource.
+
+Zustand vorher, zurückgelesen:
+
+```
+with_check = ((erstellt_von = (SELECT auth.uid())) AND (status_ok = false)
+              AND (EXISTS (SELECT 1 FROM profiles p
+                           WHERE p.id = (SELECT auth.uid())
+                             AND (p.ist_premium OR p.is_moderator))))
+```
+
+Nachher gegengelesen, nicht angenommen:
+
+```sql
+select policyname, cmd, roles::text, with_check,
+       with_check like '%ist_premium%'  as enthaelt_noch_premium,
+       with_check like '%is_moderator%' as enthaelt_noch_moderator
+from pg_policies
+where schemaname = 'public' and tablename = 'routes'
+  and policyname = 'Angemeldete Nutzer können Strecken vorschlagen';
+```
+
+Ergebnis:
+
+```
+with_check = ((erstellt_von = (SELECT auth.uid())) AND (status_ok = false))
+enthaelt_noch_premium    false
+enthaelt_noch_moderator  false
+roles                    {authenticated}
+```
+
+Das ist exakt das Prädikat aus `0027`.
+
+Nachbarn geprüft — alle sieben Policies auf `routes` stehen unverändert
+(SELECT ×2, INSERT ×1, UPDATE ×2, DELETE ×2), und beide beteiligten
+Funktionen sind weiterhin **SECURITY INVOKER**:
+
+```sql
+select p.proname, p.prosecdef as security_definer
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname in ('darf_private_strecke_anlegen','propose_route_full');
+-- beide: security_definer = false
+```
+
+Das ist der Punkt, auf den es sicherheitsseitig ankommt: weil
+`propose_route_full` unter RLS läuft, gilt diese Policy auch für einen
+direkten `POST /rest/v1/rpc/propose_route_full` und nicht nur für die
+Server Action.
+
+**Rückweg,** falls er gebraucht wird: das `0077`-Prädikat per neuer
+Migration wieder setzen. Es entstehen und verschwinden keine Objekte, ein
+Rückweg kostet nichts ausser einer weiteren Datei.
+
+**Gehört dazu, ist aber kein SQL:** AGB Ziff. 3.1 und 3.2 (PR #220 hier,
+`stradoinfo#14` für die veröffentlichte Fassung). Solange die
+AGB-Änderung nicht ausgeliefert ist, weist der Rechtstext eine Leistung
+als Abo-Bestandteil aus, die die Datenbank bereits freigegeben hat.
+
 ## Eingespielt: 0085_bestenlisten_nach_fahrzeugtyp (2026-09-14, Produktion)
 
 Eingespielt **vor** dem Deploy des Codes, der sie liest — der liegt zu diesem

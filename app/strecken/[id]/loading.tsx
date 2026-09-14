@@ -16,14 +16,14 @@ export default function Loading() {
         <Skeleton className="absolute inset-0 md:static md:order-2 md:h-auto md:flex-1" />
 
         <div
-          className="absolute inset-x-0 bottom-0 z-10 flex flex-col overflow-hidden rounded-t-lg border-t border-border bg-background shadow-overlay md:contents"
+          className="absolute inset-x-0 bottom-[var(--bottom-nav-h)] z-10 flex flex-col overflow-hidden rounded-t-lg border-t border-border bg-background shadow-overlay md:contents"
           style={{ height: `${SHEET_PEEK_PX}px` }}
         >
           <div className="flex shrink-0 items-center justify-center py-2 md:hidden">
             <Skeleton className="h-5 w-5 rounded-sm" />
           </div>
 
-          <div className="flex w-full flex-col gap-5 overflow-hidden border-border px-5 pt-6 pb-[calc(5.75rem+var(--safe-bottom))] sm:px-6 sm:pt-8 sm:pb-[calc(6.25rem+var(--safe-bottom))] md:max-w-md md:border-r md:pb-8 lg:max-w-lg xl:max-w-xl">
+          <div className="flex w-full flex-col gap-5 overflow-hidden border-border px-5 pt-6 pb-8 sm:px-6 sm:pt-8 md:max-w-md md:border-r lg:max-w-lg xl:max-w-xl">
             {/* Region, Streckenname, Start → Ziel */}
             <div className="flex flex-col gap-1">
               <Skeleton className="h-4 w-28 rounded-sm" />

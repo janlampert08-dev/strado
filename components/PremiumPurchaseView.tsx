@@ -66,15 +66,21 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-3">
         <PremiumBadge />
-        {/* Die Überschrift sagt weiterhin "unterstützen", der Text darunter
-            sagt "schaltet frei" — beides stimmt, und nur beides zusammen ist
-            ehrlich: seit eigene Strecken Premium sind (0077), gibt es eine
-            Bezahlschranke, und die soll hier nicht als reine Spende
-            verkleidet sein. Die Kernschleife bleibt trotzdem kostenlos. */}
+        {/* "Unterstützen" war bis 0086 die halbe Wahrheit: eigene Strecken
+            lagen hinter dem Abo (0077), es gab also eine echte
+            Bezahlschranke, und der Text darunter musste sie benennen, damit
+            die Seite nicht als reine Spende auftrat.
+
+            Seit 0086 ist das Erstellen wieder kostenlos, und damit stimmt
+            "unterstützen" eher als zuvor: Premium sperrt nichts mehr, es
+            hebt Grenzen an. Der Satz darunter zählt deshalb auf, was gratis
+            bleibt — einschliesslich des Erstellens —, und nennt Premium,
+            was es ist. Wer hier mehr verspricht, als PREMIUM_VORTEILE
+            hergibt, verspricht eine Vertragsleistung (AGB Ziff. 3.2). */}
         <h1 className="text-display font-semibold">Strado unterstützen</h1>
         <p className="text-sm text-muted">
-          Entdecken, Aufzeichnen, Bestenlisten und Feed bleiben gratis. Premium schaltet eigene
-          Strecken frei — und ist die Art, wie Strado sich trägt.
+          Entdecken, Aufzeichnen, Strecken erstellen, Bestenlisten und Feed bleiben gratis.
+          Premium hebt die Grenzen an — und ist die Art, wie Strado sich trägt.
         </p>
       </div>
 
