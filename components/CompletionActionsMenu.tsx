@@ -46,6 +46,7 @@ export default function CompletionActionsMenu({
   const [deleting, startDelete] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const ausloeserRef = useRef<HTMLButtonElement>(null);
 
   const belowThreshold =
     coveragePercent !== null && coveragePercent < COVERAGE_THRESHOLD_PERCENT;
@@ -60,8 +61,27 @@ export default function CompletionActionsMenu({
         setOpen(false);
       }
     }
+    // Escape schliesst mit. Bisher ging das Menü nur per Klick daneben wieder
+    // zu — auf der Tastatur gab es also keinen Weg heraus, und für alle
+    // anderen blieb es offen stehen und fing Klicks auf den darunter
+    // liegenden Knöpfen ab. Die Melde-Dialoge derselben Seiten sind native
+    // <dialog>-Elemente und schliessen mit Escape von sich aus; das Menü war
+    // die einzige Überlagerung der App, die es nicht tat.
+    //
+    // Der Fokus geht dabei auf den Auslöser zurück: lag er auf einem Eintrag,
+    // verschwindet dieser mit dem Menü aus dem Dokument, und ohne
+    // Rückgabe landete er beim <body> — die Tastaturposition wäre verloren.
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      ausloeserRef.current?.focus();
+    }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [open]);
 
   function handleToggleVisibility() {
@@ -99,6 +119,7 @@ export default function CompletionActionsMenu({
   return (
     <div ref={containerRef} className="relative shrink-0">
       <button
+        ref={ausloeserRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="Weitere Aktionen"
