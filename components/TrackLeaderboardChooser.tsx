@@ -6,6 +6,7 @@ import { formatDuration } from "@/lib/format";
 import type { RouteTimeEntry } from "@/lib/leaderboard";
 import { fieldClassName } from "@/components/ui/Input";
 import Card from "@/components/ui/Card";
+import PremiumSignet from "@/components/PremiumSignet";
 import MotorklassenChips from "@/components/MotorklassenChips";
 import { filterLabel } from "@/lib/motorklassen";
 import type { Klassenfilter } from "@/lib/motorklassen";
@@ -122,9 +123,10 @@ export default function TrackLeaderboardChooser({
                   <span className="mr-2 font-mono text-muted tabular-nums">{i + 1}.</span>
                   <Link
                     href={`/fahrer/${entry.userId}`}
-                    className="transition-colors duration-fast hover:text-accent"
+                    className="inline-flex items-baseline transition-colors duration-fast hover:text-accent"
                   >
                     {entry.name}
+                    <PremiumSignet zeigen={entry.zeigtPremiumAbzeichen} />
                   </Link>
                 </span>
                 <span className="font-mono tabular-nums text-accent">

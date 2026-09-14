@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { throwOnQueryError } from "@/lib/queryError";
+import { hatPremiumAbzeichen } from "@/lib/premiumAbzeichen";
 import { mitSigniertenFotoUrls } from "@/lib/storageUrls";
 import type {
   CompletionPhoto,
@@ -141,6 +142,10 @@ export interface CompletionDetail {
   vehicle: { typ: string; marke: string; modell: string } | null;
   displayName: string | null;
   avatarUrl: string | null;
+  /** Abzeichen hinter dem Namen der fahrenden Person (0087). Auf der
+   *  eigenen Fahrt immer false — dort steht "Deine Fahrt" statt eines
+   *  Namens, und ein Abzeichen ohne Namen hinge in der Luft. */
+  zeigtPremiumAbzeichen: boolean;
   // Ab 0036_completion_photos.sql: mehrere Fotos statt einem einzelnen
   // fotoUrl-Feld, in Anzeigereihenfolge (position).
   photos: CompletionPhotoItem[];
@@ -274,6 +279,11 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
       ownMotorklasseGewertet = own?.motorklasse_gewertet ?? null;
     }
 
+    // public_fahrten führt den Abo-Status bewusst nicht mit (Begründung im
+    // Kopf von lib/premiumAbzeichen.ts) — eine eigene, sehr kleine Abfrage
+    // auf genau ein Konto.
+    const zeigtAbzeichen = await hatPremiumAbzeichen(row.user_id);
+
     return {
       id: row.completion_id,
       art: row.art,
@@ -293,6 +303,7 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
         : null,
       displayName: row.display_name,
       avatarUrl: row.avatar_url,
+      zeigtPremiumAbzeichen: zeigtAbzeichen,
       // Signiert, weil der Bucket seit 0061 privat ist. Die View enthält nur
       // öffentliche Fahrten, die Berechtigung ist also bereits geklärt.
       photos: await signierteFotos(
@@ -403,6 +414,10 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
     vehicle: own.vehicles,
     displayName: profile?.display_name ?? null,
     avatarUrl: profile?.avatar_url ?? null,
+    // Dieser Zweig liefert ausschliesslich die eigene Fahrt; die Seite zeigt
+    // dort "Deine Fahrt". Kein Name, kein Abzeichen — und damit auch keine
+    // Abfrage dafür.
+    zeigtPremiumAbzeichen: false,
     // Eigene, ggf. private Fahrt: die Zeilen kommen unter RLS aus
     // completion_photos, gehören also dem Betrachter selbst.
     photos: await signierteFotos((photoRows as Pick<CompletionPhoto, "id" | "foto_url">[]) ?? []),

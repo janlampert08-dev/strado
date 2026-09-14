@@ -102,6 +102,13 @@ const ABSICHTLICH_ERHALTEN: Record<string, string> = {
   created_at: "reine Zeilen-Metadaten, not null",
   privatzone_radius_m: "not null; 0 hiesse 'Privatzone aus' und wäre das Gegenteil von neutral",
   kudos_gesehen_am: "not null, kein vom Nutzer eingegebener Wert",
+  // Generierte Spalte (0087): (ist_premium and zeigt_premium_badge). Sie
+  // lässt sich nicht zuweisen — und muss es nicht. anonymize_own_account()
+  // leert beide Quellspalten, die generierte folgt im selben UPDATE von
+  // selbst auf false. Wer diesen Eintrag entfernen will, muss zuerst prüfen,
+  // ob die Spalte noch generiert ist: eine gewöhnliche Spalte gehört hier
+  // nicht her.
+  zeigt_premium_abzeichen: "generiert aus ist_premium und zeigt_premium_badge, die beide geleert werden",
 };
 
 describe("anonymize_account (Kontolöschung)", () => {

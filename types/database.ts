@@ -297,10 +297,22 @@ export interface Profile {
   zeigt_hoehenmeter: boolean;
   zeigt_distanz: boolean;
   avatar_url: string | null;
-  // Siehe 0021_premium_und_private_strecken.sql. ist_premium ist vorerst
-  // manuell gesetzt (kein Zahlungsanbieter angebunden).
+  // Siehe 0021_premium_und_private_strecken.sql. ist_premium wird vom
+  // Stripe-Webhook bzw. dem nächtlichen Abgleich fortgeschrieben (0059)
+  // und kann zusätzlich von Hand gesetzt sein.
+  //
+  // Für die ANZEIGE des Abzeichens ist keine dieser beiden Spalten die
+  // richtige: dafür steht zeigt_premium_abzeichen weiter unten.
   ist_premium: boolean;
+  // Opt-in. Nur wirksam zusammen mit ist_premium — verknüpft wird in der
+  // Datenbank, nicht hier.
   zeigt_premium_badge: boolean;
+  // Generiert aus (ist_premium and zeigt_premium_badge), siehe
+  // 0087_premium_abzeichen_spalte.sql. Nicht beschreibbar; das Opt-in
+  // läuft über zeigt_premium_badge. Die einzige Spalte, die eine
+  // öffentliche Leseabfrage für das Abzeichen anfassen sollte — sie legt
+  // den rohen Abo-Status nicht offen.
+  zeigt_premium_abzeichen: boolean;
   // Radius der Privatzone in Metern (0 = aus), siehe
   // 0045_freie_fahrten_teilen.sql und cropTrackEnds in lib/track.ts.
   privatzone_radius_m: number;

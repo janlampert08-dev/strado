@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Flame } from "lucide-react";
 import Avatar from "@/components/Avatar";
+import PremiumSignet from "@/components/PremiumSignet";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import type { ReceivedKudos } from "@/lib/kudos";
@@ -41,7 +42,8 @@ export default function ActivityKudosList({
             className="min-w-0 flex-1 transition-colors duration-fast hover:text-accent"
           >
             <p className="truncate text-sm">
-              <span className="font-medium">{kudos.giverDisplayName ?? "Ein Fahrer"}</span>{" "}
+              <span className="font-medium">{kudos.giverDisplayName ?? "Ein Fahrer"}</span>
+              <PremiumSignet zeigen={kudos.giverZeigtPremiumAbzeichen} />{" "}
               hat deiner Fahrt Kudos gegeben
             </p>
             <p className="text-xs text-muted">

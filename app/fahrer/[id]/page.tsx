@@ -9,6 +9,7 @@ import FollowButton from "@/components/FollowButton";
 import FollowCounts from "@/components/FollowCounts";
 import FollowedBy from "@/components/FollowedBy";
 import VehicleGrid from "@/components/VehicleGrid";
+import PremiumSignet from "@/components/PremiumSignet";
 import { getPublicProfile } from "@/lib/profile";
 import { getKudosForCompletions } from "@/lib/kudos";
 import {
@@ -123,7 +124,10 @@ export default async function FahrerPage({
               size={64}
             />
             <div className="flex flex-col gap-1">
-              <h1 className="text-display font-semibold">{profile.displayName ?? "Fahrer"}</h1>
+              <h1 className="text-display font-semibold">
+                {profile.displayName ?? "Fahrer"}
+                <PremiumSignet zeigen={profile.zeigtPremiumAbzeichen} />
+              </h1>
               <FollowCounts
                 followersCount={followCounts.followers}
                 followingCount={followCounts.following}
