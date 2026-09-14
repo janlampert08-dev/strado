@@ -248,6 +248,19 @@ is what should be corrected.
     split. Motion: the wordmark keeps `marke-anschlag` (tilt plus colour
     wash), the signet turns one lap on tap (`signet-runde`); both live in
     `app/globals.css`.
+  - **One mark does not redraw itself: `app/favicon.ico`.** Every other
+    surface draws from `lib/marke.ts` at request time; the `.ico` is a
+    finished image in the repo, and the page head serves it *alongside*
+    `/icon` — the browser tab usually takes the `.ico`. So it went stale
+    the moment the signet changed, and favicon and app icon showed two
+    different marks for a day. Whoever edits `SIGNET.pfad` runs
+    `node scripts/generate-favicon.mjs` afterwards, which reads the path
+    back out of `lib/marke.ts` and rewrites all three frames (16/32/48).
+    The 16 px frame deliberately draws the mark larger than the others
+    (88 % of the edge against 80 %, and 70 % in the icon routes): at that
+    size the ring's counter closes at the icon routes' proportion. The
+    script leans on `sharp` from Next.js's own dependency tree rather than
+    declaring it — it runs by hand and says so loudly if that ever breaks.
 - `types/database.ts` exports `Database = any`; the row types next to it are
   hand-maintained and cover only some tables.
 
