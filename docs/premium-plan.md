@@ -190,8 +190,8 @@ ein Entzug bestehender Funktionen kostet mehr Vertrauen, als das Abo einbringt.
 > unbegrenzt mit Abo, Bestandsschutz unverändert.
 >
 > Grund: Ein öffentlicher Streckenvorschlag ist kein Kostenfaktor, sondern
-> der Inhalt, von dem die Plattform lebt — bei acht freigegebenen Strecken
-> ist sein Zufluss die knappste Ressource. Ihn zu verkaufen heisst, für
+> der Inhalt, von dem die Plattform lebt — bei dreizehn freigegebenen
+> Strecken (Stand 2026-09-14) ist sein Zufluss die knappste Ressource. Ihn zu verkaufen heisst, für
 > eine Zulieferung Geld zu verlangen. Die private Strecke nützt dagegen nur
 > dem einen Konto; dort gehört das Kontingent hin, und dort stand es die
 > ganze Zeit (`0064`) — nur unerreichbar hinter `0077`.

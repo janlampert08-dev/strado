@@ -108,8 +108,8 @@ Branding" wäre die Funktion, die man sich selbst wegverkauft.
 gerendert; der Plan führt es als Premium mit Aufwand „klein (nur einhängen)".
 
 **Aber noch nicht:** Der Kommentar in `components/ExploreView.tsx` sagt, es
-wartet, „bis der Bestand es wieder rechtfertigt". Bei acht freigegebenen
-Strecken filtert niemand — eine Filterleiste über einer Liste, die auf einen
+wartet, „bis der Bestand es wieder rechtfertigt". Bei dreizehn freigegebenen
+Strecken (Stand 2026-09-14, gezählt in der Produktion) filtert niemand — eine Filterleiste über einer Liste, die auf einen
 Bildschirm passt, ist ein leeres Versprechen. Dieses Feature wird gut, wenn
 der Bestand dreistellig ist, und das ist genau der Bestand, den `0086`
 freimachen soll.

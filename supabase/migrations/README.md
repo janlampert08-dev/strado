@@ -29,59 +29,93 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
-## Ausstehend: 0086_strecken_anlegen_wieder_offen
+## Eingespielt: 0086_strecken_anlegen_wieder_offen (2026-09-14, Produktion)
 
-**Noch nicht eingespielt.** Geschrieben am 2026-09-14, nimmt die
-Premium-/Moderationspflicht aus `0077` auf der INSERT-Policy von
-`public.routes` zurück. Die Policy trägt danach wieder das Prädikat aus
-`0027`: eigene Zeile, `status_ok = false`.
+Nimmt die Premium-/Moderationspflicht aus `0077` auf der INSERT-Policy von
+`public.routes` zurück. **Eingespielt bevor der Code deployt war** — das ist
+hier die harmlose Richtung: die Policy wird weiter, nicht enger. Bis der
+Code aus PR #220 ausgeliefert ist, blockiert die Server Action kostenlose
+Konten weiterhin mit einer lesbaren Meldung; es passiert schlicht nichts.
+Anders als bei `0077` gibt es kein Zeitfenster, in dem jemand etwas nicht
+mehr darf.
 
-**Reihenfolge: beide Richtungen sind ungefährlich, Code zuerst ist die
-stillere.**
+Vorher gezählt (die Migration entstand ohne Datenbankzugriff, das
+Mengengerüst wurde hier nachgeholt):
 
-| Reihenfolge | Folge |
-| --- | --- |
-| Deploy zuerst, Migration danach | Formular offen, Speichern scheitert an der alten Policy mit „Strecke konnte nicht gespeichert werden". Kurz und folgenlos. |
-| Migration zuerst, Deploy danach | Policy erlaubt das Anlegen, der alte Code zeigt weiterhin `PremiumGate`. Es passiert nur nichts. |
-
-Anders als bei `0077` verschärft hier nichts — die Policy wird weiter, nicht
-enger. Ein Zeitfenster, in dem jemand etwas nicht mehr darf, gibt es also
-nicht.
-
-**Vor dem Einspielen zählen** (Mengengerüst wurde nicht erhoben, diese
-Migration entstand ohne Datenbankzugriff):
-
-```sql
--- Wie viele Konten haetten ohne Abo Strecken anlegen wollen? Nicht messbar.
--- Messbar ist der Bestand, auf den die Policy wirkt:
-select count(*) from public.routes;
-select count(*) from public.routes where ist_privat;
--- Und wer heute Bestandsschutz traegt (0064) — von 0086 unberuehrt:
-select count(*) from public.private_strecken_bestandsschutz;
+```
+routen_gesamt            14
+oeffentlich_sichtbar     13   (status_ok, nicht privat)
+routen_privat             1
+in_moderation             1
+bestandsschutz_konten     0   (0064 — niemand ist davon betroffen)
+premium_konten            5
 ```
 
-**Nach dem Einspielen gegenlesen**, nicht annehmen:
+**Korrektur an der Begründung im Migrationskopf:** dort steht „mit acht
+freigegebenen Strecken". Tatsächlich sind es **dreizehn**. Die Acht stammt
+aus `docs/marketing/instagram/daten.mjs`, einer Momentaufnahme vom
+2026-09-07, die im eigenen Kopf warnt, dass sie keine Verbindung zur
+Datenbank hat. Die Datei `0086_…sql` bleibt unverändert — Kernregel 9
+verbietet, eine eingespielte Migration anzufassen, auch wenn nur ein
+Kommentar danebenliegt. Die Zahl steht hier richtig, und das Argument trägt
+bei dreizehn genauso: der Zufluss an Strecken ist die knappste Ressource.
+
+Zustand vorher, zurückgelesen:
+
+```
+with_check = ((erstellt_von = (SELECT auth.uid())) AND (status_ok = false)
+              AND (EXISTS (SELECT 1 FROM profiles p
+                           WHERE p.id = (SELECT auth.uid())
+                             AND (p.ist_premium OR p.is_moderator))))
+```
+
+Nachher gegengelesen, nicht angenommen:
 
 ```sql
--- with_check traegt das INSERT-Praedikat; qual ist bei einer reinen
--- INSERT-Policy null.
-select policyname, cmd, roles::text, with_check
+select policyname, cmd, roles::text, with_check,
+       with_check like '%ist_premium%'  as enthaelt_noch_premium,
+       with_check like '%is_moderator%' as enthaelt_noch_moderator
 from pg_policies
 where schemaname = 'public' and tablename = 'routes'
   and policyname = 'Angemeldete Nutzer können Strecken vorschlagen';
--- Erwartet: with_check enthaelt erstellt_von = auth.uid() und
--- status_ok = false — und KEINEN Verweis mehr auf ist_premium
--- oder is_moderator.
 ```
 
-**Rückweg:** das Prädikat aus `0077` per neuer Migration wieder setzen. Die
-Policy wird nur umgeschrieben, es entstehen und verschwinden keine Objekte —
-ein Rückweg kostet also nichts ausser einer weiteren Datei.
+Ergebnis:
 
-**Gehört dazu, ist aber kein SQL:** AGB Ziff. 3.1 und 3.2 sind im selben PR
-geändert, in `docs/rechtstexte/agb.md` und in der veröffentlichten Fassung im
-Repo `stradoinfo`. Die Migration allein würde eine Leistung freigeben, die
-der Rechtstext weiterhin als Abo-Bestandteil ausweist.
+```
+with_check = ((erstellt_von = (SELECT auth.uid())) AND (status_ok = false))
+enthaelt_noch_premium    false
+enthaelt_noch_moderator  false
+roles                    {authenticated}
+```
+
+Das ist exakt das Prädikat aus `0027`.
+
+Nachbarn geprüft — alle sieben Policies auf `routes` stehen unverändert
+(SELECT ×2, INSERT ×1, UPDATE ×2, DELETE ×2), und beide beteiligten
+Funktionen sind weiterhin **SECURITY INVOKER**:
+
+```sql
+select p.proname, p.prosecdef as security_definer
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname in ('darf_private_strecke_anlegen','propose_route_full');
+-- beide: security_definer = false
+```
+
+Das ist der Punkt, auf den es sicherheitsseitig ankommt: weil
+`propose_route_full` unter RLS läuft, gilt diese Policy auch für einen
+direkten `POST /rest/v1/rpc/propose_route_full` und nicht nur für die
+Server Action.
+
+**Rückweg,** falls er gebraucht wird: das `0077`-Prädikat per neuer
+Migration wieder setzen. Es entstehen und verschwinden keine Objekte, ein
+Rückweg kostet nichts ausser einer weiteren Datei.
+
+**Gehört dazu, ist aber kein SQL:** AGB Ziff. 3.1 und 3.2 (PR #220 hier,
+`stradoinfo#14` für die veröffentlichte Fassung). Solange die
+AGB-Änderung nicht ausgeliefert ist, weist der Rechtstext eine Leistung
+als Abo-Bestandteil aus, die die Datenbank bereits freigegeben hat.
 
 ## Eingespielt: 0085_bestenlisten_nach_fahrzeugtyp (2026-09-14, Produktion)
 

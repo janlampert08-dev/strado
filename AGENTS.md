@@ -158,9 +158,14 @@ is what should be corrected.
   branch, which is the intended order (schema first, code second). Each was
   verified against the objects rather than against the ledger —
   `apply_migration` stamps a timestamp as `version`, so a search for the file
-  number finds nothing. `0086_strecken_anlegen_wieder_offen` is written but
-  **not yet applied**; unlike the others it may go either before or after its
-  code, because it widens a policy rather than narrowing one. The two files
+  number finds nothing. `0086_strecken_anlegen_wieder_offen` went in on
+  2026-09-14, also **ahead of its code** — which is harmless here and not
+  merely tolerable: it widens a policy rather than narrowing one, so until
+  PR #220 ships the Server Action simply keeps refusing and nothing changes.
+  Its header comment says "acht freigegebene Strecken"; the live count is
+  **thirteen** — the eight comes from the frozen snapshot in
+  `docs/marketing/instagram/daten.mjs`, and the migration file stays as
+  written because Rule 9 forbids touching an applied one. The two files
   that remain
   un-applied (`0042`, `0058`) are superseded by `0076` and must **not** be
   applied — see `supabase/migrations/README.md`, which is the only place that
