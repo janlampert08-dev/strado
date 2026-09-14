@@ -17,11 +17,27 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     background_color: "#fafafa",
     theme_color: "#fafafa",
+    // Zwei Einträge, weil Android zwei verschiedene Dinge mit einem Icon
+    // macht. "any" wird gezeigt wie geliefert (Chrome-Reiter, Verknüpfung
+    // im Browser); "maskable" wird auf die Systemform beschnitten — Kreis,
+    // Squircle, Tropfen — und braucht dafür Luft am Rand.
+    //
+    // Ohne den maskable-Eintrag schrumpft Android das normale Icon in einen
+    // Kreis und legt Weiss darunter: die Kachel erscheint klein mit
+    // sichtbaren Ecken. Mit dem alten, fast quadratisch gefüllten "s" fiel
+    // das kaum auf; beim flachen Rundkurs blieb wenig übrig.
     icons: [
       {
         src: "/icon",
         sizes: "512x512",
         type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icon-maskable",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
       },
     ],
   };

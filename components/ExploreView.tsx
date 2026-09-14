@@ -108,6 +108,11 @@ export default function ExploreView({
   // Die eigentliche Drag-/Tap-Mechanik steckt in DragSheet.tsx, wiederverwendet
   // auf der Routendetailseite (app/strecken/[id]/page.tsx).
   const containerRef = useRef<HTMLElement>(null);
+  // Wie viel der Karte das Sheet gerade verdeckt (siehe DragSheet.tsx). Die
+  // Karte passt ihren Ausschnitt damit auf die sichtbare Fläche ein statt auf
+  // den ganzen Container — sonst läge die untere Hälfte der eingepassten
+  // Strecken unter dem Sheet.
+  const [verdecktUnten, setVerdecktUnten] = useState(0);
 
   function requestLocation() {
     if (!navigator.geolocation) {
@@ -198,6 +203,7 @@ export default function ExploreView({
           // dem Zeiger und ist damit die aktuellere Absicht.
           hoveredRouteId={hoveredRouteId ?? zufallsstrecke?.id ?? null}
           flyToRouteId={zufallsstrecke?.id ?? null}
+          bottomInsetPx={verdecktUnten}
         />
       </div>
 
@@ -232,6 +238,7 @@ export default function ExploreView({
         containerRef={containerRef}
         peekPx={SHEET_PEEK_PX}
         handleLabels={{ expand: "Liste ausklappen", collapse: "Liste einklappen" }}
+        onOccludedBottomChange={setVerdecktUnten}
       >
         <ExploreSidebar
           routes={visibleRoutes}

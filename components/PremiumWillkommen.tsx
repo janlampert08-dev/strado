@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Check, Sparkles } from "lucide-react";
 import Card from "@/components/ui/Card";
+import { Signet } from "@/components/Wortmarke";
 import { buttonVariants } from "@/components/ui/Button";
 import { datumCH } from "@/lib/format";
 import { planName } from "@/lib/premiumAngebot";
@@ -47,8 +48,14 @@ export default function PremiumWillkommen({
           aria-hidden="true"
           className="abschluss-ring absolute inset-0 rounded-full border-2 border-accent"
         />
+        {/* Im Abzeichen steht die Marke, nicht mehr ein Häkchen. Zwei Gründe:
+            der auslaufende Ring darüber und der Rundkurs sind dieselbe Form,
+            das Aufleuchten liest sich damit als Runde, die nach aussen geht —
+            und dass die Zahlung durch ist, sagen "Premium aktiv", die
+            Überschrift und die Liste darunter bereits dreimal. Das Häkchen
+            quittierte also etwas, was nirgends offen war. */}
         <span className="abschluss-abzeichen flex h-20 w-20 items-center justify-center rounded-full bg-accent text-background">
-          <Check className="h-10 w-10" strokeWidth={2.5} aria-hidden="true" />
+          <Signet className="h-7 w-auto" />
         </span>
       </div>
 

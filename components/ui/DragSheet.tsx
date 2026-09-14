@@ -16,8 +16,13 @@ import {
   DRAG_TAP_THRESHOLD_PX,
   clampSheetHeight,
   decideSheetGesture,
-  isExpandedAfterDrag,
+  nextSnapOnTap,
+  sheetHeightFor,
+  snapAfterDrag,
+  snapStep,
   type SheetGesture,
+  type SheetHeights,
+  type SheetSnap,
 } from "@/lib/dragSheet";
 
 // So lange nach der letzten Ziehbewegung gilt ein Klick als Nachwehe der
@@ -25,14 +30,28 @@ import {
 // touchend, eine echte Bedienung frühestens deutlich später.
 const CLICK_SUPPRESSION_MS = 400;
 
-// Gemeinsame Bottom-Sheet-Mechanik (Mobile): zwischen einer Peek- und der
-// vollen Höhe des Containers auf-/zuziehbar. Aufgezogen liegt das Sheet damit
-// vollständig über der Karte — bis diese Fassung blieb oben ein Streifen Karte
-// stehen (expandedGapPx, 96px), der den Inhalt auf kleinen Geräten um eine
-// Handvoll Zeilen beschnitt, ohne dass der Streifen für die Orientierung
-// gereicht hätte. Der Weg zurück zur Karte ist derselbe wie vorher (Griff oder
-// Wisch nach unten), und die Kopfleiste bleibt sichtbar: das Sheet füllt nur
-// den Container unter ihr.
+// Notnagel für die Griffhöhe, bis der ResizeObserver unten den echten Wert
+// gemessen hat (und dauerhaft ab md, wo der Griff ausgeblendet ist und
+// deshalb 0 misst). Entspricht py-2 + h-5 am Griff-Element.
+const HANDLE_FALLBACK_PX = 36;
+
+// Gemeinsame Bottom-Sheet-Mechanik (Mobile): zwischen drei Rastpunkten
+// auf-/zuziehbar — versteckt (nur der Ziehgriff steht über der Karte), Peek
+// und die volle Höhe des Containers. Aufgezogen liegt das Sheet damit
+// vollständig über der Karte — bis zu einer früheren Fassung blieb oben ein
+// Streifen Karte stehen (expandedGapPx, 96px), der den Inhalt auf kleinen
+// Geräten um eine Handvoll Zeilen beschnitt, ohne dass der Streifen für die
+// Orientierung gereicht hätte.
+//
+// Der dritte Rastpunkt ("versteckt") kam dazu, weil die Karte auf dem Handy
+// vorher nie ganz zu sehen war: das Sheet stand mindestens in Peek-Höhe im
+// Bild (auf der Streckendetailseite 320px), und wer die Strecke am unteren
+// Bildrand sehen wollte, konnte es nur aufziehen, nicht wegschieben. Ganz
+// verschwinden darf es nicht — der Ziehgriff bleibt stehen, sonst gäbe es
+// keinen Weg zurück. Im versteckten Zustand ist der Inhalt ausserdem `inert`:
+// er ist nur weggeschnitten (overflow-hidden), bliebe also sonst für Tastatur
+// und Screenreader erreichbar und würde beim Fokussieren im 36px-Fenster
+// herumscrollen.
 //
 // Nach unten endet das Sheet über der fixierten BottomNav
 // (bottom: var(--bottom-nav-h), s. globals.css) statt am Bildschirmrand.
@@ -42,9 +61,10 @@ const CLICK_SUPPRESSION_MS = 400;
 // in diesem Streifen — ein Tipp darauf öffnete einen Navigationspunkt statt
 // die Standortsuche. Das betraf jeden Inhalt in den untersten ~64px des
 // Sheets, nicht nur diesen Knopf. Zwei Wege führen hinauf — der Ziehgriff (ziehen
-// oder tippen) und die Wischgeste im Inhalt selbst: eingeklappt zieht ein
-// Wisch nach oben das Sheet auf, aufgeklappt scrollt derselbe Wisch den
-// Inhalt, und ein Wisch nach unten am Anfang des Inhalts klappt wieder ein. Vorher liess sich das Sheet nur über den Griff
+// oder tippen) und die Wischgeste im Inhalt selbst: unterhalb der Vollhöhe
+// zieht ein Wisch nach oben das Sheet weiter auf, aufgeklappt scrollt derselbe
+// Wisch den Inhalt, und ein Wisch nach unten am Anfang des Inhalts geht einen
+// Rastpunkt tiefer. Vorher liess sich das Sheet nur über den Griff
 // öffnen, was in der eingeklappten Ansicht wie eine tote Fläche wirkte.
 // Extrahiert aus ExploreView.tsx, damit dieselbe Geste konsistent auf
 // mehreren Seiten läuft (Explore-Liste, Routendetail) statt der Algorithmus
@@ -55,25 +75,43 @@ export default function DragSheet({
   containerRef,
   peekPx,
   handleLabels,
+  onOccludedBottomChange,
   className = "",
   children,
 }: {
   containerRef: RefObject<HTMLElement | null>;
   peekPx: number;
   handleLabels: { expand: string; collapse: string };
+  // Meldet, wie viele Pixel am unteren Rand des Containers das Sheet verdeckt
+  // (inklusive der BottomNav darunter) — ab md immer 0, da das Sheet dort
+  // keine eigene Box mehr hat. Die Karte darunter füllt den ganzen Container;
+  // ohne diesen Wert passt sie ihren Ausschnitt auf eine Fläche ein, von der
+  // ein gutes Stück unter dem Sheet liegt, und die Strecke steht dann halb
+  // verdeckt und zu nah im sichtbaren Rest (siehe RouteMap.tsx, bottomInsetPx).
+  //
+  // Muss über Renderzyklen stabil sein (eine State-Setter-Funktion etwa) —
+  // der Wert steht in den Abhängigkeiten des meldenden Effekts.
+  onOccludedBottomChange?: (px: number) => void;
   className?: string;
   children: ReactNode;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [snap, setSnap] = useState<SheetSnap>("peek");
   const [dragHeight, setDragHeight] = useState<number | null>(null);
-  // maxHeight wird beim Gestenbeginn EINMAL gemessen und dann mitgeführt —
-  // siehe messeVollhoehe() unten, warum nicht bei jeder Bewegung neu.
+  // Ob das Sheet überhaupt als Sheet läuft — ab md ist der Wrapper
+  // display:contents und der Inhalt ist die normale Seitenleiste.
+  const [istSheet, setIstSheet] = useState(true);
+  // Gemessen statt konstant: die Griffhöhe ist die Höhe des versteckten
+  // Sheets, und eine Zahl, die neben den Griff-Klassen zweitgeschrieben wird,
+  // driftet beim ersten Umbau des Griffs auseinander.
+  const [handleHeight, setHandleHeight] = useState(HANDLE_FALLBACK_PX);
+  // heights wird beim Gestenbeginn EINMAL gemessen und dann mitgeführt —
+  // siehe messeHoehen() unten, warum nicht bei jeder Bewegung neu.
   const dragRef = useRef<{
     startY: number;
     startHeight: number;
     height: number;
     moved: boolean;
-    maxHeight: number;
+    heights: SheetHeights;
   } | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<HTMLDivElement>(null);
@@ -92,9 +130,14 @@ export default function DragSheet({
   // Polsterbox: Prozenthöhen beziehen sich auf letztere, das Sheet wäre also
   // um die abgezogene BottomNav-Höhe zu hoch und schöbe seinen Kopf unter die
   // Kopfleiste (unten steht es mit bottom: var(--bottom-nav-h) auf der
-  // Inhaltskante auf). Derselbe Wert, den messeVollhoehe() unten für die
+  // Inhaltskante auf). Derselbe Wert, den messeHoehen() unten für die
   // Ziehmathematik rechnet — sonst driften CSS und Geste auseinander.
-  const sheetHeight = expanded ? "calc(100% - var(--bottom-nav-h))" : `${peekPx}px`;
+  const sheetHeight =
+    snap === "voll"
+      ? "calc(100% - var(--bottom-nav-h))"
+      : snap === "peek"
+        ? `${peekPx}px`
+        : `${handleHeight}px`;
 
   // MISST, und das kostet: getComputedStyle und clientHeight erzwingen beide
   // ein sofortiges Neuberechnen von Stil und Layout. Beim Ziehen setzt jede
@@ -106,9 +149,9 @@ export default function DragSheet({
   // mitführen. Der Container ist das <main> und behält seine Höhe für die
   // Dauer eines Fingerzugs; nur eine Drehung des Geräts mitten in der Geste
   // änderte sie, und die bricht den Zeiger ohnehin ab.
-  const messeVollhoehe = useCallback(() => {
+  const messeHoehen = useCallback((): SheetHeights => {
     const el = containerRef.current;
-    if (!el) return window.innerHeight;
+    if (!el) return { minPx: handleHeight, peekPx, maxPx: window.innerHeight };
     // Das Sheet endet am unteren Rand der *Inhaltsbox* des Containers, nicht
     // an dessen Polsterkante (bottom: var(--bottom-nav-h) unten) — die
     // Vollhöhe ist deshalb die Inhaltshöhe. Mit clientHeight (Inhalt plus
@@ -118,60 +161,93 @@ export default function DragSheet({
     const stil = getComputedStyle(el);
     const polsterung =
       (parseFloat(stil.paddingTop) || 0) + (parseFloat(stil.paddingBottom) || 0);
-    return el.clientHeight - polsterung;
-  }, [containerRef]);
+    return { minPx: handleHeight, peekPx, maxPx: el.clientHeight - polsterung };
+  }, [containerRef, handleHeight, peekPx]);
+
+  // Die echte Griffhöhe. Ab md ist der Griff md:hidden und misst 0 — dann
+  // bleibt der Notnagel stehen, damit die Geste nach einer Rückkehr unter md
+  // nicht mit einer Höhe von 0 rechnet.
+  useEffect(() => {
+    const handle = handleRef.current;
+    if (!handle) return;
+    const beobachter = new ResizeObserver(() => {
+      const hoehe = handle.offsetHeight;
+      if (hoehe > 0) setHandleHeight(hoehe);
+    });
+    beobachter.observe(handle);
+    return () => beobachter.disconnect();
+  }, []);
+
+  // Meldet die verdeckte Fläche an den Aufrufer (siehe Prop oben) und hält
+  // nebenbei fest, ob das Sheet überhaupt eines ist. Bewusst am Rastpunkt
+  // gerechnet statt am laufenden Element gemessen: während der
+  // Höhen-Transition stünde dort noch die alte Höhe, und während des Ziehens
+  // würde jede Bewegung die Karte neu einpassen.
+  useEffect(() => {
+    function melde() {
+      const el = containerRef.current;
+      const sheet = sheetRef.current;
+      if (!el || !sheet) return;
+      const alsSheet = getComputedStyle(sheet).display !== "contents";
+      setIstSheet(alsSheet);
+      if (!onOccludedBottomChange) return;
+      if (!alsSheet) {
+        onOccludedBottomChange(0);
+        return;
+      }
+      const polsterUnten = parseFloat(getComputedStyle(el).paddingBottom) || 0;
+      onOccludedBottomChange(sheetHeightFor(snap, messeHoehen()) + polsterUnten);
+    }
+    melde();
+    window.addEventListener("resize", melde);
+    return () => window.removeEventListener("resize", melde);
+  }, [containerRef, snap, messeHoehen, onOccludedBottomChange]);
 
   const onPointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
-      const maxHeight = messeVollhoehe();
-      const currentHeight = expanded ? maxHeight : peekPx;
+      const heights = messeHoehen();
+      const currentHeight = sheetHeightFor(snap, heights);
       dragRef.current = {
         startY: e.clientY,
         startHeight: currentHeight,
         height: currentHeight,
         moved: false,
-        maxHeight,
+        heights,
       };
       e.currentTarget.setPointerCapture(e.pointerId);
     },
-    [expanded, messeVollhoehe, peekPx],
+    [messeHoehen, snap],
   );
 
-  const onPointerMove = useCallback(
-    (e: ReactPointerEvent<HTMLDivElement>) => {
-      const drag = dragRef.current;
-      if (!drag) return;
-      const deltaY = drag.startY - e.clientY;
-      if (Math.abs(deltaY) > DRAG_TAP_THRESHOLD_PX) drag.moved = true;
+  const onPointerMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const deltaY = drag.startY - e.clientY;
+    if (Math.abs(deltaY) > DRAG_TAP_THRESHOLD_PX) drag.moved = true;
 
-      const next = clampSheetHeight(drag.startHeight + deltaY, peekPx, drag.maxHeight);
-      drag.height = next;
-      setDragHeight(next);
-    },
-    [peekPx],
-  );
+    const next = clampSheetHeight(drag.startHeight + deltaY, drag.heights);
+    drag.height = next;
+    setDragHeight(next);
+  }, []);
 
-  const onPointerUp = useCallback(
-    (e: ReactPointerEvent<HTMLDivElement>) => {
-      const drag = dragRef.current;
-      dragRef.current = null;
-      e.currentTarget.releasePointerCapture(e.pointerId);
+  const onPointerUp = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    dragRef.current = null;
+    e.currentTarget.releasePointerCapture(e.pointerId);
 
-      if (!drag) return;
+    if (!drag) return;
 
-      // Reiner Tap (kaum Bewegung) schaltet um, statt am aktuellen Zustand
-      // festzuhalten — sonst müsste man aus der Peek-Position immer ziehen.
-      if (!drag.moved) {
-        setExpanded((current) => !current);
-        setDragHeight(null);
-        return;
-      }
-
-      setExpanded(isExpandedAfterDrag(drag.height, peekPx, drag.maxHeight));
+    // Reiner Tap (kaum Bewegung) schaltet um, statt am aktuellen Zustand
+    // festzuhalten — sonst müsste man aus der Peek-Position immer ziehen.
+    if (!drag.moved) {
+      setSnap(nextSnapOnTap);
       setDragHeight(null);
-    },
-    [peekPx],
-  );
+      return;
+    }
+
+    setSnap(snapAfterDrag(drag.height, drag.heights));
+    setDragHeight(null);
+  }, []);
 
   // Die Wischgeste im Inhalt hängt an nativen touch-Listenern statt an den
   // React-Handlern: touchmove muss `passive: false` sein, damit
@@ -191,7 +267,7 @@ export default function DragSheet({
       height: number;
       scroller: HTMLElement | null;
       mode: SheetGesture | null;
-      maxHeight: number;
+      heights: SheetHeights;
     } | null = null;
 
     // Das gescrollte Element unter dem Finger — dessen scrollTop entscheidet,
@@ -221,7 +297,7 @@ export default function DragSheet({
       const current = gesture;
       gesture = null;
       if (!current || current.mode !== "sheet") return;
-      setExpanded(isExpandedAfterDrag(current.height, peekPx, current.maxHeight));
+      setSnap(snapAfterDrag(current.height, current.heights));
       setDragHeight(null);
     }
 
@@ -239,14 +315,14 @@ export default function DragSheet({
       if (handleRef.current?.contains(e.target as Node)) return;
 
       const touch = e.touches[0];
-      const maxHeight = messeVollhoehe();
-      const startHeight = expanded ? maxHeight : peekPx;
+      const heights = messeHoehen();
+      const startHeight = sheetHeightFor(snap, heights);
       gesture = {
         startX: touch.clientX,
         startY: touch.clientY,
         startHeight,
         height: startHeight,
-        maxHeight,
+        heights,
         scroller: findScroller(sheet, e.target),
         mode: null,
       };
@@ -276,7 +352,7 @@ export default function DragSheet({
         gesture.mode = decideSheetGesture({
           deltaY,
           deltaX,
-          expanded,
+          snap,
           scrollTop: gesture.scroller?.scrollTop ?? 0,
         });
         // Gehört die Geste dem Inhalt, hält sich das Sheet für den Rest
@@ -292,7 +368,7 @@ export default function DragSheet({
       // ein paar Pixeln Wackeln soll das Sheet nicht sichtbar zucken lassen.
       if (Math.abs(deltaY) <= DRAG_TAP_THRESHOLD_PX) return;
       suppressClickUntilRef.current = Date.now() + CLICK_SUPPRESSION_MS;
-      const next = clampSheetHeight(gesture.startHeight + deltaY, peekPx, gesture.maxHeight);
+      const next = clampSheetHeight(gesture.startHeight + deltaY, gesture.heights);
       gesture.height = next;
       setDragHeight(next);
     }
@@ -311,7 +387,12 @@ export default function DragSheet({
       sheet.removeEventListener("touchend", onTouchEnd);
       sheet.removeEventListener("touchcancel", onTouchEnd);
     };
-  }, [expanded, messeVollhoehe, peekPx]);
+  }, [snap, messeHoehen]);
+
+  // Der Griff beschreibt, was seine Aktivierung tut — und die führt nie nach
+  // unten aus dem Blickfeld (siehe nextSnapOnTap): aus "versteckt" und "peek"
+  // geht es hinauf, nur aus "voll" wieder zurück auf Peek.
+  const handleLabel = snap === "voll" ? handleLabels.collapse : handleLabels.expand;
 
   return (
     <div
@@ -335,16 +416,38 @@ export default function DragSheet({
         onPointerCancel={onPointerUp}
         role="button"
         tabIndex={0}
-        aria-label={expanded ? handleLabels.collapse : handleLabels.expand}
-        aria-expanded={expanded}
+        aria-label={handleLabel}
+        aria-expanded={snap === "voll"}
         onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") setExpanded((current) => !current);
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setSnap(nextSnapOnTap);
+            return;
+          }
+          // Die Pfeiltasten sind der einzige Weg, das Sheet ohne Wischgeste
+          // ganz aus dem Weg zu räumen — ein Tap holt es bewusst nur zurück.
+          if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setSnap((current) => snapStep(current, 1));
+            return;
+          }
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setSnap((current) => snapStep(current, -1));
+          }
         }}
         className="flex shrink-0 cursor-grab touch-none items-center justify-center rounded-t-lg py-2 active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-inset md:hidden"
       >
         <GripHorizontal className="h-5 w-5 text-muted" aria-hidden="true" />
       </div>
-      {children}
+      {/* display:contents, damit der Wrapper das Layout in keiner Breite
+          verändert — weder die Flex-Spalte des Sheets noch, ab md, das
+          Hochrutschen des Inhalts als direktes Flex-Kind von <main>. Er
+          existiert allein für `inert`: weggeschnittener Inhalt bliebe sonst
+          per Tab erreichbar. */}
+      <div className="contents" inert={istSheet && snap === "versteckt"}>
+        {children}
+      </div>
     </div>
   );
 }
