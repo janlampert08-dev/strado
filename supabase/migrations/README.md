@@ -29,6 +29,52 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## NOCH NICHT eingespielt: 0094_creator_verlauf_nur_aufrufe
+
+**Muss vor dem Merge von PR #236 angewendet werden.** Die Richtung ist hier
+die unangenehme: `0094` verengt etwas, das seit dem 2026-09-14 live ist.
+
+Drei Änderungen:
+
+| Was | Warum |
+| --- | --- |
+| `creator_verlauf()` gibt nur noch `klicks` zurück | `0091` gab zusätzlich `registrierungen` und `abos` **pro Tag** an jeden `authenticated` Creator. Gezeichnet hat die Oberfläche davon nie etwas. Bei kleinen Zahlen benennt ein Tagesbucket mit einer einzigen Registrierung den Tag, an dem ein Konto entstand — und `profiles.created_at` ist seit `0034` an `anon` gegrantet. Die veröffentlichte Datenschutzerklärung sagt wörtlich „weder Name noch Zeitpunkt". |
+| `handle_new_user()` fängt Fehler der Herkunftserfassung ab | `0088` sichert im Kommentar zu, eine Registrierung dürfe nie an der Messung scheitern. Ohne Handler tut sie das: der Trigger hängt an `auth.users`, und ein Fremdschlüsselfehler (Code wird zwischen `exists`-Test und `insert` gelöscht) bricht die Registrierung ab. `on conflict do nothing` deckt nur Unique-Verletzungen. |
+| Index `creator_konversionen_code_art_zeit` | Die Tagesabfrage filtert über `ereignis_am::date`, ein Ausdruck auf einer nicht indizierten Spalte. |
+
+`drop function` + `create` statt `create or replace`, weil sich der
+Rückgabetyp ändert — das kann `replace` nicht. Der `drop` nimmt die ACL mit,
+die Grants werden darunter neu gesetzt, inklusive des ausdrücklichen
+`revoke ... from anon` aus der Lehre von `0093`.
+
+Reihenfolge: **Schema zuerst.** Der Code aus PR #236 liest `creator_verlauf()`
+nur noch mit drei Spalten; kommt die Migration später, liefert die Funktion
+zwei Spalten zu viel, was PostgREST unbeanstandet durchreicht und die
+Anwendung ignoriert. Umgekehrt (Migration zuerst, Code später) ist es
+ebenfalls harmlos — die alte Zuordnung greift auf `registrierungen`/`abos`
+zu, die dann `undefined` sind und über `zahl()` zu `0` werden, und gezeichnet
+wurden sie ohnehin nie. Eine echte Lücke gibt es in keiner Richtung.
+
+Rückweg: `0091`s Fassung der Funktion wieder anlegen (Datei lesen, Grants
+mitnehmen), `handle_new_user` aus `0088` zurückschreiben, `drop index
+creator_konversionen_code_art_zeit`. Verlustfrei — es hängen keine Daten
+daran.
+
+Prüfabfragen nach dem Einspielen:
+
+```sql
+-- Nur noch drei Spalten?
+select column_name from information_schema.columns
+where table_name = 'creator_verlauf' order by ordinal_position;
+
+-- anon hat nichts?
+select has_function_privilege('anon', 'public.creator_verlauf(integer)', 'execute');
+
+-- Index da?
+select indexname from pg_indexes
+where tablename = 'creator_konversionen';
+```
+
 ## Eingespielt: 0088–0093 (Creator-Herkunft und Creator-Konten, 2026-09-14, Produktion)
 
 Sechs Migrationen, in dieser Reihenfolge angewendet:

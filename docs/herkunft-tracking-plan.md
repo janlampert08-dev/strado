@@ -230,7 +230,7 @@ Schreiblast trägt.
 ```ts
 antwort.cookies.set("strado_herkunft", link.code, {
   httpOnly: true,   // kein Client-Code braucht ihn — hält ihn aus XSS-Reichweite
-  secure: true,
+  secure: process.env.NODE_ENV === "production",  // auf localhost läuft http
   sameSite: "lax",  // der Klick ist eine Top-Level-Navigation aus dem
                     // TikTok-/Instagram-Browser; Lax sendet ihn mit
   maxAge: 60 * 60 * 24 * 90,   // siehe offene Entscheidung 1
@@ -241,8 +241,10 @@ antwort.cookies.set("strado_herkunft", link.code, {
 **First Touch gewinnt:** nur setzen, wenn noch keiner da ist — sonst kassiert
 der Creator, der zufällig zuletzt verlinkt hat, einen Besucher, den ein
 anderer vor drei Wochen geholt hat. Das ist eine Geschäftsregel und gehört
-als benannte, getestete Funktion nach `lib/creatorLinks.ts`
-(`herkunftCookieWert(vorhanden, neu)`), nicht als `if` in den Handler — im
+als benannte, getestete Funktion nach `lib/herkunft.ts`
+(`herkunftCookieWert(vorhanden, neu)`) — der Plan sagte hier zuerst
+`lib/creatorLinks.ts`, gebaut wurde die eigene Datei —, nicht als `if` in den
+Handler — im
 Handler wäre sie ungetestet, weil es im Projekt keine Component-/E2E-Tests
 gibt.
 
@@ -492,6 +494,9 @@ von „hat Max etwas gebracht, das länger als 30 Tage gehalten hat?".
 
 Eine Moderationsansicht unter `/moderation/creator` (die Seite existiert
 bereits) lohnt sich erst, wenn diese Zahlen wöchentlich gebraucht werden.
+**Nachtrag:** gebaut wurde sie mit Schritt 7 trotzdem — sie fiel als
+Nebenprodukt der Zuweisung an, die ohnehin dorthin gehört, und teilt sich mit
+`/creator` dieselben zwei Funktionen.
 Falls doch eine View: `security_invoker = true` setzen und den Zugriff über
 die Basistabellen regeln — die Befundtabelle in
 `docs/audit/README.md#remediation-status` enthält Findings zu genau diesem
@@ -572,7 +577,7 @@ Kauf über einen Creator-Link live sein.
 | Stripe liefert Webhooks mehrfach | Jede Zustellung schriebe eine Konversion | Unique-Index auf `(art, stripe_subscription_id)` |
 | `profiles` ist öffentlich lesbar (`using (true)`) | Jede Spalte dort wäre für `anon` abrufbar | Eigene Tabellen, RLS ohne Policy, keine Grants |
 | `0059` ist Protected Area | `apply_subscription_state` umschreiben heisst Kulanz-/Lock-Logik anfassen | Trigger auf der Tabelle statt Änderung der Funktion |
-| Migrationen werden **von Hand** eingespielt | Grünes CI sagt nichts über das Schema | Erst Staging, dann Produktion, Objekte prüfen (`supabase/migrations/README.md`) |
+| Migrationen werden **von Hand** eingespielt | Grünes CI sagt nichts über das Schema | Einspielen und **an den Objekten** prüfen (`supabase/migrations/README.md`). Einen Probelauf gibt es nicht: `staging` hängt an derselben Datenbank — siehe §8 und AGENTS.md |
 | Migrationsnummern sind nicht eindeutig | Sechs Präfixe existieren doppelt | Nummer beim Anlegen prüfen; CI ist rot bei neuer Kollision |
 | **Staging benutzt die Produktionsdatenbank** (bestätigt 2026-09-14) | Ein Test-Kauf in der Stripe-Sandbox schreibt eine echte Konversionszeile | Bekannt und so gewollt. Auf Staging mit klar erkennbaren Test-Codes arbeiten und sie hinterher aus der Auswertung nehmen — löschen geht nicht, der Fremdschlüssel hält sie |
 | 308-Redirect wird dauerhaft gecacht | Der Handler liefe beim zweiten Klick nicht, kein Cookie | 307 + `Cache-Control: no-store` — steht schon so drin |

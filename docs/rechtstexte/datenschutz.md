@@ -279,39 +279,51 @@ entstanden ist.
 den Code des Links** enthält (etwa `max`). Es enthält keine Kennung, keine
 Nummer und nichts, was auf eine bestimmte Person zeigt; die Codes selbst sind
 öffentlich und stehen in den Beiträgen der jeweiligen Person. Wird auf
-demselben Gerät später ein Konto angelegt, speichern wir den Code einmalig zum
-Konto und **löschen das Cookie**. Wird kein Konto angelegt, läuft es nach
-90 Tagen ab. Führen mehrere solcher Links zu einem Besuch, zählt der erste.
+demselben Gerät später ein Konto angelegt, speichern wir den Code einmalig beim
+Konto und **löschen das Cookie**. Wird kein Konto angelegt, läuft das Cookie
+nach 90 Tagen ab. Werden nacheinander mehrere solche Links aufgerufen, zählt
+der erste.
 
 **Aufrufe.** Zusätzlich zählen wir, wie oft ein solcher Link an einem Tag
 aufgerufen wurde — als blosse Zahl pro Code und Tag. Dabei werden **weder
 IP-Adresse noch Uhrzeit noch irgendeine Kennung** gespeichert; aus dieser
 Zahl lässt sich niemand herauslesen, und sie lässt sich keinem Besuch
-zuordnen.
+zuordnen. Unabhängig davon fallen beim Aufruf die üblichen
+Server-Protokolldaten an, die Ziff. 3.10 beschreibt.
 
 **Was daraus entsteht.** Zum Konto ist damit hinterlegt, über welchen Link es
 zustande kam. Wird später — auch Monate später — ein Premium-Abo
 abgeschlossen, halten wir zusätzlich fest, dass aus diesem Einstiegsweg ein
-Abo geworden ist. Ausgewertet wird das **nur zusammengefasst pro Link**
-("über diesen Link kamen zwölf Registrierungen, daraus zwei Abos").
+Abo geworden ist. In der Anwendung ausgewertet wird das **nur zusammengefasst
+pro Link** („über diesen Link kamen zwölf Registrierungen, daraus zwei Abos").
 
 **Wer diese Zahlen sieht.** Die Person, auf die ein Link läuft, kann die
 zusammengefassten Zahlen zu **ihrem eigenen** Link in ihrem Konto einsehen:
-Aufrufe, entstandene Konten, daraus entstandene Abos, dazu den Tagesverlauf
-der Aufrufe. Sie erfährt dabei **nicht, wer** sich registriert oder ein Abo
-abgeschlossen hat — weder Name noch Zeitpunkt noch sonst ein Merkmal eines
-einzelnen Kontos. Technisch ist das nicht bloss eine Frage der Darstellung:
-die Auswertung wird in der Datenbank zusammengefasst, einzelne Datensätze
-verlassen sie gar nicht.
+Aufrufe, entstandene Konten, daraus entstandene und wieder beendete Abos,
+dazu den Tagesverlauf **der Aufrufe**. Dieselben Zahlen sehen die Personen,
+die bei uns die Moderation übernehmen — dort für alle Links. Ein Name oder
+ein Merkmal eines einzelnen Kontos wird dabei **nicht** herausgegeben: die
+Auswertung wird in der Datenbank zusammengefasst, einzelne Datensätze
+verlassen sie nicht, und der Tagesverlauf zeigt ausschliesslich Aufrufe.
+Offen gesagt bleibt dabei eines: solange die Gesamtzahlen klein sind, lässt
+sich aus dem Anwachsen einer solchen Zahl grundsätzlich auf den ungefähren
+Zeitpunkt einer einzelnen Registrierung schliessen. Einen Namen oder ein
+sonstiges Merkmal gibt die Auswertung auch dann nicht her.
 
-**Keine Weitergabe.** Diese Angaben verbleiben bei uns. Es ist kein Dienst
-Dritter beteiligt, es findet keine websiteübergreifende Verfolgung statt, und
-es wird keine Werbung ausgespielt.
+**Keine Werbenetzwerke.** Diese Angaben werden nicht verkauft und nicht an
+Dritte zu deren eigenen Zwecken weitergegeben, es findet keine
+websiteübergreifende Verfolgung statt, und es wird keine Werbung ausgespielt.
+Der Aufruf eines Einstiegslinks trägt den Code allerdings als Parameter in
+der Adresse mit (`utm_content`); er erscheint damit auch in der
+Reichweitenmessung unseres Hosting-Anbieters, der dabei als Auftragsbearbeiter
+für uns tätig ist (Ziff. 7).
 
 **Löschung.** Bei der Kontolöschung wird die Zuordnung „dieses Konto kam über
-diesen Link" entfernt. Erhalten bleibt allein die Zählung selbst — „über
-diesen Link kam eine Registrierung, daraus wurde ein Abo" — ohne jeden Bezug
-zu einem Konto (Ziff. 9.4).
+diesen Link" entfernt. Erhalten bleibt die Zählung selbst — „über diesen Link
+kam eine Registrierung, daraus wurde ein Abo" — ohne Namen und ohne Verweis
+auf das gelöschte Konto. Festgehalten bleiben dabei der Zeitpunkt des
+Ereignisses und, bei einem Abo, die Abo-Kennung unseres Zahlungsdienstleisters
+(Ziff. 9.3 und 9.4).
 
 ## 4. Zu welchen Zwecken wir Daten bearbeiten
 
@@ -477,7 +489,7 @@ den Privatzonen-Radius anpassen (was bereits geteilte Fahrten neu zuschneidet).
 | IP-Adressen zur Missbrauchsabwehr | flüchtig im Arbeitsspeicher, wenige Minuten, keine Datenbankablage |
 | Konto-, Profil-, Fahrten- und Community-Daten | bis zur Löschung durch die Nutzenden bzw. bis zur Kontolöschung — **mit den Ausnahmen aus Ziff. 9.4**: veröffentlichte Streckenfahrten, Bewertungen, Kudos, Follows, Meldungen, Fotos zu erhalten bleibenden Fahrten und ein technischer Löschvermerk bleiben ohne Namensbezug bestehen |
 | Abo-Zustand (Abschnitt 3.9) | bis zum Ende des Abos; bei der Kontolöschung wird die Zeile entfernt |
-| Herkunft einer Registrierung (Abschnitt 3.11) | Cookie 90 Tage bzw. bis zur Registrierung; die Zuordnung zum Konto bis zur Kontolöschung; die zusammengefasste Zählung und die Aufrufzahl pro Tag bleiben ohne Kontobezug bestehen |
+| Herkunft einer Registrierung (Abschnitt 3.11) | Cookie 90 Tage bzw. bis zur Registrierung; die Zuordnung zum Konto bis zur Kontolöschung; die Zählung und die Aufrufzahl pro Tag bleiben ohne Namensbezug bestehen — bei der Zählung einschliesslich Ereigniszeitpunkt und, bei einem Abo, der Abo-Kennung des Zahlungsdienstleisters |
 | Rechnungs- und Zahlungsunterlagen | gesetzliche Aufbewahrungsfrist, in der Regel 10 Jahre (Art. 958f OR) — überwiegend bei Stripe |
 | Protokolldaten der Hosting-Anbieter | nach deren Aufbewahrungsfristen |
 
@@ -514,8 +526,9 @@ verlangt zur Sicherheit eine erneute Eingabe des Passworts. Sie ist
   Zeitpunkt der Löschung, damit ein geleertes Konto von einem neuen Konto
   unterscheidbar bleibt,
 - die **Zählung** eines Einstiegswegs (Ziff. 3.11) — „über diesen Link kam eine
-  Registrierung, daraus wurde ein Abo" —, ohne jeden Bezug zum gelöschten
-  Konto.
+  Registrierung, daraus wurde ein Abo" —, ohne Namen und ohne Verweis auf das
+  gelöschte Konto; festgehalten bleiben der Zeitpunkt des Ereignisses und, bei
+  einem Abo, die Abo-Kennung des Zahlungsdienstleisters.
 
 **9.5 Weitergehende Löschung.** Wer über diese Anonymisierung hinaus die
 vollständige Löschung einzelner Inhalte wünscht — namentlich von Fotos,

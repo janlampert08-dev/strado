@@ -195,6 +195,27 @@ is what should be corrected.
     return zero rows — measured), and `0093` closed it. Write
     `from anon, authenticated` explicitly, the way `0088` did for the
     sequence.
+  - **`0094_creator_verlauf_nur_aufrufe` is written but NOT yet applied.**
+    It is the review nacharbeit on the six above and has to go in before
+    PR #236 merges, because it narrows something that is already live.
+    `creator_verlauf()` returned `registrierungen` and `abos` per day to
+    any `authenticated` creator; nothing ever drew them, and at small
+    numbers a day-bucket holding a single registration names the day one
+    account was created — which `profiles.created_at`, world-readable
+    since `0034`, then turns into a person. That contradicts the published
+    privacy policy word for word, so the migration drops both columns
+    (drop + create, the return type changes). It also wraps the herkunft
+    block of `handle_new_user` in its own `exception` block — `0088`
+    promises in a comment that a registration can never fail on the
+    measurement, and without a handler a foreign-key error there aborts
+    the signup — and adds the index the per-day query wants.
+    **Still open after it, and a product decision rather than a
+    migration:** `creator_kennzahlen()` hands out live running totals, so
+    a creator who polls it can still correlate an increment against
+    `profiles.created_at`. Closing that means a k-threshold, coarser
+    buckets, or narrowing the `0034` grant — the last of which would also
+    close the standing finding named in `0087`'s own header. The privacy
+    text now says this plainly rather than promising more than it keeps.
   - **There is no separate staging database — confirmed, and staying that
     way.** The linked Supabase account holds exactly one project, and it is
     production; the owner confirmed on 2026-09-14 that `staging` points at
@@ -650,6 +671,23 @@ additional care and review before merging changes to them:
   guard. Every `?next=` in the app depends on it.
 - `/lib/actions/moderation.ts` — route approval/rejection (moderator-only
   mutations).
+- `/lib/actions/creatorLinks.ts` — moderator-only mutations on
+  `creator_links`, including the assignment that *is* the creator role
+  (`0091`): whoever is written there sees `/creator`. Same triple gate as
+  `moderation.ts` (RLS policy, `isModerator()`, page access), and the empty
+  field deliberately means "nobody" while a malformed one is an error — so
+  a tampered value cannot silently revoke a role.
+- `/app/c/` — the public entry-point handler. Fully unauthenticated, like
+  `/app/api/strecken/`: it resolves a code, sets the origin cookie and
+  counts a click in `after()`. Protected by IP rate limiting and
+  `normalisiereCode()` only, and it redirects on a user-supplied `?z=`,
+  which is why that value goes through `safeInternalPath()`.
+- `/lib/herkunft.ts` — the origin cookie. Its **name, lifetime and
+  contents are quoted verbatim** in the privacy policy, in this repo
+  (`docs/rechtstexte/datenschutz.md` Ziff. 3.11) and in the published HTML
+  in `janlampert08-dev/stradoinfo`. A change here is a legal-text change in
+  two repositories, not a refactor; `lib/herkunft.test.ts` pins the values
+  for that reason.
 - `/lib/moderation.ts` — moderator-check helper.
 - `/lib/actions/reports.ts` — the user-facing side of moderation; what it
   writes is what the moderation queue acts on.
