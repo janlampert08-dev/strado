@@ -9,8 +9,16 @@ keine Telemetrie. Kein Sentry, kein PostHog, kein Plausible.
 
 **Stand:** Phase 0 und Phase 1 sind umgesetzt. Die Codes werden unter
 `/moderation/creator` verwaltet und liegen in `public.creator_links`
-(Migration `0084` — **noch nicht eingespielt**, siehe
-`supabase/migrations/README.md`). Phase 2 und 3 sind weiterhin Plan.
+(Migration `0084`, eingespielt am 2026-09-13 — siehe `AGENTS.md`,
+„Migrations are applied by hand"). Phase 2 und 3 sind weiterhin Plan.
+
+> **Phase 2 und 3 sind inzwischen ausgearbeitet:
+> `docs/herkunft-tracking-plan.md`.** Dort steht die vollständige Kette bis
+> zum Kauf — insbesondere, wie ein Premium-Abo, das Monate nach der
+> Registrierung abgeschlossen wird, dem Creator noch zugeordnet werden
+> kann. Das Dokument korrigiert zwei Punkte der Abschnitte unten (das
+> vorgeschlagene Tagesaggregat und die Annahme, dass `on delete` bei einer
+> Kontolöschung feuert) und ist dort die massgebliche Fassung.
 
 ## Warum UTM allein nicht reicht
 
@@ -247,6 +255,9 @@ Ausnahmeliste dort ist bewusst kurz.
 
 Erst hier wird aus „Klicks" eine Antwort auf „hat es was gebracht".
 
+*Ausgearbeitet in `docs/herkunft-tracking-plan.md`, Schritte 1–3 und 6. Bei
+Abweichungen gilt das dortige Dokument.*
+
 ### a) Cookie im Route Handler
 
 ```ts
@@ -359,6 +370,9 @@ Endzustand nicht.
 ---
 
 ## Phase 3 — Auswertung
+
+*Ausgearbeitet in `docs/herkunft-tracking-plan.md`, Schritt 7 — dort mit
+Abo-Konversionen statt nur Registrierungen.*
 
 Erst einmal **ohne Code**: ein SQL-Schnipsel, das du im Supabase-SQL-Editor
 laufen lässt (und das in dieses Dokument gehört, sobald es steht). Der
