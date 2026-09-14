@@ -15,6 +15,14 @@ describes what was true at that commit and is left as written — an audit that
 edits its own findings once they are fixed stops being a record of what was
 found. What changed since is tracked here instead, and only here.
 
+The catch-all row below once read "A4, A5, A6 and everything in §B — Open
+except the rows above and below". It was reworded on 2026-09-14: A4, A5 and A6
+have had their own **Fixed** rows for some time, so naming them in a row about
+what is still open invited exactly one misreading, and `AGENTS.md` made it —
+it quoted the row's subject without its "except" clause and told every reader
+those three were open. A row whose meaning depends on its position in the
+table is a trap; this one now says what it means wherever it sits.
+
 | Finding | Status | Where |
 | --- | --- | --- |
 | A1 — forgeable ride statistics | **Two of three legs closed** — see the A1 table below | migrations `0052`, `0059`, `0074`, `0078` |
@@ -25,7 +33,7 @@ found. What changed since is tracked here instead, and only here.
 | A6 — `next build` fails without environment variables | **Fixed** | `lib/stripe.ts` exports `getStripe()` with a lazy singleton; verified by building with every Stripe variable unset |
 | §B — auth rate limiting fails open on a DB error | **Fixed** | `isRateLimited` reads the error and fails closed; `lib/rateLimit.test.ts` covers both error shapes |
 | §B — ascent under-reports long rides (`nb_points` hardcoded to 300) | **Fixed for rides** | `stuetzpunkteFuer()` couples sampling to length (one point per 50 m, 300–3000). Route metrics deliberately stay at 300: `computeHoeheUndSteigung` is calibrated against known pass gradients at that density |
-| A4, A5, A6 and everything in §B | Open except the rows above and below | — |
+| Any §B finding with no row of its own in this table | **Open** | — |
 | §B — dark mode never redefines `--color-danger/success/warning` | **Fixed** | `app/globals.css`: both dark blocks now set `#ef4444` / `#22c55e` / `#f59e0b` (5.23 / 8.63 / 9.16 on the background) |
 | §B — light `--color-muted` at 3.11:1 | **Fixed** | `app/globals.css`: `#666b74`, 5.13:1 on the background and 4.92:1 on `--color-surface` |
 | §B — `lib/actions/moderation.ts` returns `void` and never looks at an error | **Fixed** | every action returns `ModerationResult`; `ModerationActions` / `ReportedContentActions` render it. A DB error and a zero-row hit are reported separately — zero rows means either RLS denied it or the row is already gone, and "try again" is the wrong advice for the second |

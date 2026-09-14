@@ -175,9 +175,36 @@ is what should be corrected.
   and fails on a *new* collision; the six existing pairs are listed there as
   legacy.
 - **Open audit findings are tracked in
-  `docs/audit/README.md#remediation-status`**, not in GitHub issues. A1 is
-  partially fixed; A4, A5, A6 and everything in §B are open. Read that
-  table before concluding you have found something new.
+  `docs/audit/README.md#remediation-status`**, not in GitHub issues. Read
+  that table before concluding you have found something new — most of the
+  original findings are closed. A2, A3, A4, A5 and A6 are marked **Fixed**
+  there, each naming the code that closed it, and so is all but a handful of
+  §B. What remains open is narrower than the headline suggests:
+  - **A1, leg 2 — the ride clock.** Two of A1's three legs are closed.
+    `dauer_sekunden` itself *is* derived server-side — `logTrackedCompletion`
+    recomputes it with `computeTrailStats()` and deliberately ignores whatever
+    number the client posted. What it cannot check is the **timestamps in the
+    trail it derives from**: a genuine trail replayed with compressed times
+    yields a shorter duration that still passes the `0059` speed band. Closing
+    it needs a ride start the server recorded itself, and the recorder is open
+    to signed-out visitors, so any fix changes the guest flow. A product
+    decision, not a migration.
+  - **§B — React 19 clears uncontrolled fields on a failed submit.** Fixed for
+    the photo input only (`MultiPhotoInput`). `AnmeldenForm`,
+    `RegistrierenForm`, `PasswortVergessenForm`, `PasswortAendernForm` and
+    `RatingSection` still lose typed text when a submit fails.
+  - **§B — ascent sampling.** Fixed for rides; route metrics stay at 300
+    points on purpose.
+
+  Until 2026-09-14 this entry said the opposite — "A1 is partially fixed; A4,
+  A5, A6 and everything in §B are open". That was this file quoting the
+  table's catch-all row while dropping its qualifier: the row reads "Open
+  **except the rows above and below**", and the rows immediately above it are
+  A4, A5 and A6, each marked Fixed. A conditional became a flat claim, and the
+  claim then sent work at findings that had already been closed. Same
+  mechanism as the Premium entry further up, and the same lesson: this file is
+  the only one loaded automatically, so a stale summary here outranks the
+  correct detail everywhere else.
 - **There are no component or E2E tests.** Vitest runs with
   `environment: "node"` (no jsdom installed, so a component test cannot be
   written without adding that first) and every test file lives in `lib/`. A change
