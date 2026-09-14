@@ -179,3 +179,44 @@ Routines list on claude.ai. Disabling **Morgenbericht** alone makes the team
 silent but still working — disable it *last*, not first. Disabling
 **Gegenleser** stops all auto-merging immediately, which is the fastest way
 to put every change back in front of the owner without stopping the work.
+
+## The Routines as actually created
+
+Created 2026-09-14. Cron is evaluated in **UTC**; the local column assumes
+CEST (UTC+2). When Switzerland returns to CET on 2026-10-25 every local time
+shifts one hour earlier — fix the cron then, or accept the drift.
+
+The order is the pipeline: build → review and merge → QA → report.
+
+| Seat | Trigger ID | Cron (UTC) | Local | Enabled |
+| --- | --- | --- | --- | --- |
+| Nachtschicht | `trig_01SbsHJKQ8BCzJXp1YhwHcrs` | `23 0 * * *` | 02:23 | yes |
+| Gegenleser | `trig_01EeZk9yMt2kJzP1M1C94KoH` | `11 2 * * *` | 04:11 | yes |
+| Abnahme | `trig_01XbVbyNqLQFRnercdt8hTX1` | `47 3 * * *` | 05:47 | yes |
+| Morgenbericht | `trig_01WPfZ79CNFhEbyev3B5rF9F` | `12 5 * * *` | 07:12 | yes |
+| Wächter | `trig_01MFmwC1TVd7YmBaXfRastd2` | `41 */3 * * *` | every 3 h | yes |
+| Sicherheitsdienst | `trig_01Lxsfe4Xa6AEAnzKG9gWxfv` | `9 4 * * 3` | Wed 06:09 | yes |
+| Wachstum | `trig_018VzL8y6PDWim8o8Q8pnhNg` | `31 6 * * 4` | Thu 08:31 | yes |
+| Recherche | `trig_016L1skSpvaKgoTRf7gKjQgz` | `17 7 * * 1` | Mon 09:17 | yes |
+
+Each seat's prompt lives in its Routine, not here — one copy, so the two
+cannot drift apart.
+
+### Known gap: the fired sessions may have no connectors
+
+Every Routine was created through the Routine tool, which **cannot attach MCP
+connectors** in this organization — passing them is rejected outright. Each
+creation returned: *"this trigger stores no MCP connectors, so the sessions it
+fires will run without connector (`mcp__<server>__*`) tools."*
+
+If that is literally true, a fired session has no GitHub, Vercel or Supabase
+tools, and there is no `gh` CLI here. The Gegenleser could then not merge,
+the Nachtschicht could not open a PR, and most of this would be inert. It is
+**not yet known**, because the GitHub server in this environment comes from
+the harness rather than from a user connector and may well survive.
+
+The Wächter prompt therefore opens with a tool self-check and writes the
+answer into its first journal entry. **Read that entry before trusting any of
+this.** If the tools are missing, the fix is to re-create these eight from the
+Routines UI on claude.ai, where the owner's own connectors attach; the prompts
+can be copied out of the existing Routines first.
