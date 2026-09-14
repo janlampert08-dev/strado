@@ -3,6 +3,7 @@ import { IBM_Plex_Mono, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import { BESCHREIBUNG, SLOGAN } from "@/lib/constants";
+import { startbildEintraege } from "@/lib/startbilder";
 import "./globals.css";
 
 const inter = Inter({
@@ -57,6 +58,12 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "Strado",
+    // Ohne Startbild zeigt iOS zwischen Antippen des Home-Bildschirm-Icons
+    // und dem ersten Frame eine leere Fläche in background_color, also ein
+    // weisses Blatt. Die Liste kommt aus lib/startbilder.ts, weil Safari nur
+    // ein Bild nimmt, dessen Media-Abfrage exakt auf das Gerät passt — das
+    // ist eine Tabelle, kein Einzelwert, und sie hat dort einen Test.
+    startupImage: startbildEintraege(),
   },
 };
 
