@@ -282,7 +282,15 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
     // public_fahrten führt den Abo-Status bewusst nicht mit (Begründung im
     // Kopf von lib/premiumAbzeichen.ts) — eine eigene, sehr kleine Abfrage
     // auf genau ein Konto.
-    const zeigtAbzeichen = await hatPremiumAbzeichen(row.user_id);
+    //
+    // Nur für FREMDE Fahrten. Dieser Zweig liefert auch die eigene Fahrt,
+    // sobald sie öffentlich ist, und die Seite schreibt dort "Deine Fahrt"
+    // statt eines Namens — ein Abzeichen dahinter hinge in der Luft. Der
+    // private Zweig weiter unten setzt aus demselben Grund hart false; bis
+    // hierher galt die Regel aber nur dort, also genau im Zweig, den ausser
+    // dem Besitzer niemand sieht. Spart zusätzlich die Abfrage.
+    const zeigtAbzeichen =
+      viewerId === row.user_id ? false : await hatPremiumAbzeichen(row.user_id);
 
     return {
       id: row.completion_id,

@@ -123,9 +123,9 @@ export default function TrackLeaderboardChooser({
                   <span className="mr-2 font-mono text-muted tabular-nums">{i + 1}.</span>
                   <Link
                     href={`/fahrer/${entry.userId}`}
-                    className="inline-flex items-baseline transition-colors duration-fast hover:text-accent"
+                    className="inline-flex min-w-0 items-center align-bottom transition-colors duration-fast hover:text-accent"
                   >
-                    {entry.name}
+                    <span className="truncate">{entry.name}</span>
                     <PremiumSignet zeigen={entry.zeigtPremiumAbzeichen} />
                   </Link>
                 </span>

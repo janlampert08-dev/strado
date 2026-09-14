@@ -36,11 +36,20 @@ Spalte `(ist_premium and zeigt_premium_badge)` — und erteilt `select`
 darauf an `anon` und `authenticated`. Rein additiv: keine bestehende Zeile
 geändert, kein bestehender Grant angefasst, keine Policy berührt.
 
-**Eingespielt bevor der Code deployt war**, wie bei `0085` und `0086` — hier
-aber in der Richtung, die nicht harmlos wäre, wenn man sie umdrehte: Der
-Code aus PR #235 liest die Spalte, und ohne sie antworten Profil, Feed,
-Fahrt-Detail und Bestenlisten mit einem Spaltenfehler. Schema zuerst ist
-hier also Pflicht, nicht Stil.
+**Eingespielt bevor der Code deployt war**, wie bei `0085` und `0086`.
+
+Wer ohne die Spalte tatsächlich scheitert, ist enger als hier zuerst stand —
+die Behauptung „Profil, Feed, Fahrt-Detail und Bestenlisten" war falsch und
+ist am 2026-09-14 im Review nachgerechnet worden:
+
+| Pfad | ohne `0087` |
+| --- | --- |
+| `lib/profile.ts`, `app/profil/page.tsx` | **Spaltenfehler** — beide selektieren sie direkt aus `profiles` |
+| Feed, Fahrt-Detail | kein Fehler: `lib/premiumAbzeichen.ts` verwirft den Fehler und liefert eine leere Menge, die Seite rendert ohne Abzeichen |
+| Bestenlisten | kein Fehler: sie lesen `ist_premium` aus den Views und fassen die neue Spalte nie an |
+
+„Schema zuerst" bleibt damit richtig — aber wegen der Profilseiten, nicht
+wegen aller vier.
 
 Vorher an den Objekten geprüft (nicht am Ledger), Ergebnis:
 
@@ -62,6 +71,13 @@ eines davon hat das Abzeichen eingeschaltet).
 
 Rückweg, falls nötig: `alter table public.profiles drop column
 zeigt_premium_abzeichen;` — verlustfrei, die Spalte ist abgeleitet.
+
+**Für den Folge-PR, der `select (ist_premium)` entzieht:** `anon` hält seit
+`0034` auch `select` auf `zeigt_premium_badge`, und die beiden verbleibenden
+Spalten rekonstruieren den rohen Wert (`badge = true` bei
+`abzeichen = false` heisst: kein laufendes Abo). Es müssen also **beide**
+entzogen werden, sonst verschiebt sich das Leck nur. Heute ist das keine
+Ausweitung — `ist_premium` selbst ist ohnehin freigegeben.
 
 Ledger-Eintrag: `20260914200727` / `0087_premium_abzeichen_spalte`.
 
@@ -642,14 +658,26 @@ Zeile für Zeile:
 | — | `0076` löscht zusätzlich die `subscriptions`-Zeile, was `0058` nicht tut |
 
 **Keine der beiden Dateien darf noch eingespielt werden**, und das ist eine
-schärfere Aussage als „muss nicht". `0058` enthält ein
+schärfere Aussage als „muss nicht".
+
+Der Ablauf im Einzelnen, weil eine frühere Fassung dieses Absatzes ihn falsch
+beschrieb (Korrektur vom 2026-09-14): `0058` bricht schon **vor** dem
+gefährlichen Teil ab. Zeile 60 macht ein blankes
+`alter table public.profiles add column geloescht_am timestamptz;` — ohne
+`if not exists`, und die Spalte gibt es seit `0076` längst. Die Migration
+scheitert also an genau der Stelle, und in einer Transaktion angewendet wird
+gar nichts geschrieben.
+
+Das ist aber kein Grund zur Entwarnung, sondern nur der Grund, warum bisher
+nichts passiert ist. Entfernte jemand diese eine Zeile, um die Datei „wieder
+lauffähig" zu machen, käme der Rest zum Zug: ein
 `create or replace function public.anonymize_own_account()` mit dem alten,
-eigenständigen Rumpf. Ein Einspielen würde die dünne Hülle aus `0076`
-überschreiben, die Löschung damit auf den Stand vor `0076` zurückdrehen
-(stehenbleibende `subscriptions`-Zeile → `premium_abgleich()` setzt das
-gelöschte Konto nachts wieder auf Premium) und obendrein den Grant an
-`authenticated` neu erteilen, den `supabase/migrations/ausstehend/` gerade
-entziehen soll. Dieselbe Falle wie bei `0042`, nur eine Migration weiter.
+eigenständigen Rumpf. Das überschriebe die dünne Hülle aus `0076`, drehte die
+Löschung auf den Stand davor zurück (stehenbleibende `subscriptions`-Zeile →
+`premium_abgleich()` setzt das gelöschte Konto nachts wieder auf Premium) und
+erteilte obendrein den Grant an `authenticated` neu, den
+`supabase/migrations/ausstehend/` gerade entziehen soll. Dieselbe Falle wie
+bei `0042`, nur eine Migration weiter.
 
 Sie bleiben im Verzeichnis liegen, weil eine Migrationshistorie append-only
 ist (Kernregel 9) — aber als Historie, nicht als offener Posten.

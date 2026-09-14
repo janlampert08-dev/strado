@@ -230,9 +230,15 @@ export default async function ProfilPage() {
             </Link>
           </div>
           <div className="flex flex-col gap-1.5">
+            {/* inline-flex um Name UND Zeichen: ein blanker Block liesse
+                nach UAX#14 einen Umbruch davor zu, und hier hängt die Grösse
+                an --text-display — das Zeichen wäre 25-38 px breit und
+                stünde im Zweifel allein auf Zeile zwei. */}
             <h1 className="text-display font-semibold">
-              {profile?.display_name ?? user.email}
-              <PremiumSignet zeigen={profile?.zeigt_premium_abzeichen === true} />
+              <span className="inline-flex items-center">
+                {profile?.display_name ?? user.email}
+                <PremiumSignet zeigen={profile?.zeigt_premium_abzeichen === true} />
+              </span>
             </h1>
             <p className="text-sm text-muted">{user.email}</p>
             <FollowCounts

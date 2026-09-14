@@ -36,6 +36,17 @@ import { cn } from "@/lib/utils/cn";
  * Zeichen TRÄGT die Information. Sie darf nicht verlorengehen, also sitzt sie
  * auf dem umschliessenden <span> — das innere SVG bleibt unverändert
  * schmückend.
+ *
+ * Zwei Feinheiten, die beide daher kommen, dass das Zeichen an den meisten
+ * Stellen INNERHALB eines <a> sitzt und damit in den Linknamen einfliesst:
+ *
+ *   1. Kein title neben dem aria-label. Bei role="img" wird title zur
+ *      Beschreibung, und NVDA wie JAWS lesen dann beides — "Anna,
+ *      Premium-Unterstützer, Premium-Unterstützer, Link". Auf Touch erzeugt
+ *      title ohnehin kein Tooltip, es kostet also nichts.
+ *   2. Ein Substantiv, kein Satz. "Unterstützt Strado mit Premium" las sich
+ *      einkonkateniert als "Anna Unterstützt Strado mit Premium hat deiner
+ *      Fahrt Kudos gegeben".
  */
 export default function PremiumSignet({
   zeigen,
@@ -49,8 +60,7 @@ export default function PremiumSignet({
   return (
     <span
       role="img"
-      aria-label="Unterstützt Strado mit Premium"
-      title="Unterstützt Strado mit Premium"
+      aria-label="Premium-Unterstützer"
       className={cn("ml-1.5 inline-flex shrink-0 items-center text-accent", className)}
     >
       <Signet className="h-[max(8px,0.62em)] w-auto" />
