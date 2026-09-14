@@ -29,6 +29,42 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Eingespielt: 0087_premium_abzeichen_spalte (2026-09-14, Produktion)
+
+Legt `profiles.zeigt_premium_abzeichen` an — eine gespeicherte generierte
+Spalte `(ist_premium and zeigt_premium_badge)` — und erteilt `select`
+darauf an `anon` und `authenticated`. Rein additiv: keine bestehende Zeile
+geändert, kein bestehender Grant angefasst, keine Policy berührt.
+
+**Eingespielt bevor der Code deployt war**, wie bei `0085` und `0086` — hier
+aber in der Richtung, die nicht harmlos wäre, wenn man sie umdrehte: Der
+Code aus PR #235 liest die Spalte, und ohne sie antworten Profil, Feed,
+Fahrt-Detail und Bestenlisten mit einem Spaltenfehler. Schema zuerst ist
+hier also Pflicht, nicht Stil.
+
+Vorher an den Objekten geprüft (nicht am Ledger), Ergebnis:
+
+```
+profiles.zeigt_premium_abzeichen   fehlte          -> anzulegen
+profiles.ist_premium/-_badge       vorhanden       (0021)
+leaderboard_typ_totals             vorhanden       (0085)
+leaderboard_klassen_totals         vorhanden       (0080)
+feedback / creator_links           vorhanden       (0083 / 0084)
+routes-INSERT-Policy ohne Premium  vorhanden       (0086)
+Zeilen in profiles                 16
+```
+
+Nachher zurückgelesen: Spalte existiert, `is_generated = ALWAYS`, Ausdruck
+`(ist_premium AND zeigt_premium_badge)`, beide Grants gesetzt, 16 Zeilen
+unverändert, **genau eine** Zeile trägt `true` — deckungsgleich mit der
+Gegenprobe `ist_premium and zeigt_premium_badge` (5 Konten haben ein Abo,
+eines davon hat das Abzeichen eingeschaltet).
+
+Rückweg, falls nötig: `alter table public.profiles drop column
+zeigt_premium_abzeichen;` — verlustfrei, die Spalte ist abgeleitet.
+
+Ledger-Eintrag: `20260914200727` / `0087_premium_abzeichen_spalte`.
+
 ## Eingespielt: 0086_strecken_anlegen_wieder_offen (2026-09-14, Produktion)
 
 Nimmt die Premium-/Moderationspflicht aus `0077` auf der INSERT-Policy von
@@ -740,12 +776,23 @@ where n.nspname = 'public' and p.proname = 'DIE_FUNKTION';
 
 Beim Einspielen von 0059 wurde der Ledger erneut mit den Dateien im Repo
 verglichen. Drei Migrationen waren damals **nicht** eingespielt; eine davon
-ist seit 2026-09-07 nachgezogen:
+ist seit 2026-09-07 nachgezogen.
+
+> **Nachtrag 2026-09-14.** Die Begründungsspalte unten stand hier bis heute
+> falsch: sie sagte, `profiles.geloescht_am` existiere nicht und `0058`
+> scheitere deshalb. Beim Einspielen von `0087` wurde die Spalte in
+> `information_schema.columns` nachgesehen — sie **existiert**, angelegt von
+> `0076` per `add column if not exists`. Der Abschnitt „Neu bewertet" weiter
+> oben hatte das am 2026-09-08 bereits festgehalten; diese Tabelle ist ihm nur
+> nie gefolgt. Am Ergebnis ändert sich nichts, im Gegenteil — es wird
+> schärfer: Beide Dateien sind nicht bloss unnötig, sie dürfen nicht
+> eingespielt werden, weil `0058` die Hülle aus `0076` überschreiben und den
+> Grant an `authenticated` neu erteilen würde.
 
 | Datei | Zustand in der Datenbank |
 | --- | --- |
-| `0042_account_deletion.sql` | bewusst nicht eingespielt (siehe oben) — Folge: die Spalte `profiles.geloescht_am` existiert nicht |
-| `0058_kontoloeschung_werte_nullen.sql` | nicht eingespielt; setzt `geloescht_am` voraus und scheitert deshalb, solange 0042 fehlt |
+| `0042_account_deletion.sql` | bewusst nicht eingespielt, und **nie nachzuziehen** — siehe „Neu bewertet: 0042 und 0058 sind Altlast, nicht Rückstand" |
+| `0058_kontoloeschung_werte_nullen.sql` | nicht eingespielt, und **nie nachzuziehen** — ebenda |
 | `0054_sichtbarkeit_standardmaessig_aktiv.sql` | **eingespielt am 2026-09-07** — die sechs Sichtbarkeits-Schalter stehen in der Produktionsdatenbank bei neuen Konten auf `true` (Opt-out) |
 
 Zu 0054 ein Vorbehalt beim Nachprüfen: die Nummer ist doppelt vergeben
