@@ -170,13 +170,14 @@ is what should be corrected.
   un-applied (`0042`, `0058`) are superseded by `0076` and must **not** be
   applied — see `supabase/migrations/README.md`, which is the only place that
   distinction survives, plus `.agents/deployment.md`.
-  `0088_herkunft_und_konversionen`, `0089_creator_konversion_abo` and
-  `0090_anonymisierung_herkunft`, `0091_creator_konten` and
-  `0092_anonymisierung_creator_zuweisung` are in the repo and **not applied yet** —
-  they are the reverse of the usual danger: the code that feeds them ships
-  first and is inert without them (an unread cookie, a metadata key no
-  trigger looks at), so nothing breaks while the gap is open, and nothing
-  is recorded either. Apply them in order. They start at `0088` because
+  Five more are in the repo and **not applied yet**, in this order:
+  `0088_herkunft_und_konversionen`, `0089_creator_konversion_abo`,
+  `0090_anonymisierung_herkunft`, `0091_creator_konten`,
+  `0092_anonymisierung_creator_zuweisung`. They are the reverse of the usual
+  danger: the code that feeds them ships first and is inert without them —
+  a cookie nobody reads, a metadata key no trigger looks at, a `/creator`
+  page no account can reach because no assignment can exist. Nothing breaks
+  while the gap is open, and nothing is recorded either. They start at `0088` because
   `0087_premium_abzeichen_spalte` (PR #235) took `0087` and was applied on
   2026-09-14; both branches had picked `0087` independently off a `main`
   that ended at `0086`. `scripts/check-migration-prefixes.mjs` cannot catch
