@@ -186,9 +186,11 @@ is what should be corrected.
   and fails on a *new* collision; the six existing pairs are listed there as
   legacy.
 - **Open audit findings are tracked in
-  `docs/audit/README.md#remediation-status`**, not in GitHub issues. A1 is
-  partially fixed; A4, A5, A6 and everything in §B are open. Read that
-  table before concluding you have found something new.
+  `docs/audit/README.md#remediation-status`**, not in GitHub issues. Of A1's
+  three legs, two are closed and only `dauer_sekunden` remains — the A1 table
+  further down that file spells out which, and it is the authority, not this
+  line. Read that table before concluding you have found something new; this
+  summary has been wrong about A1 before.
 - **There are no component or E2E tests.** Vitest runs with
   `environment: "node"` (no jsdom installed, so a component test cannot be
   written without adding that first) and every test file lives in `lib/`. A change
@@ -236,13 +238,22 @@ handoff to the next isn't done.
    `lib/actions/completions.ts`, which derives the stats server-side rather
    than trusting client-sent numbers: `lib/routeCoverage.ts`,
    `lib/lapDetection.ts`, `lib/elevation.ts`.
-   **This derivation is not yet airtight** — see audit finding A1 in
-   `docs/audit/README.md#remediation-status`: `dauer_sekunden` is still a
-   client-supplied clock, coverage is direction-blind, and `INSERT` on
-   `route_completions` is still granted, so a direct PostgREST write
-   bypasses this action entirely. Migration `0059` bounds the values a
-   write may carry; it does not make them server-derived. Do not treat
-   these numbers as trusted when building on them (leaderboards especially).
+   **One leg of this is still open, and it is narrower than this section
+   used to claim** — see audit finding A1 in
+   `docs/audit/README.md#remediation-status`, whose own table is the
+   authority. Two of its three legs are closed: coverage became
+   direction-sensitive with `0078`, and the write-authorization leg is
+   closed as a forgery route by triggers (`0052` recomputes
+   `abdeckung_prozent` and can only narrow `ist_oeffentlich`, `0059`
+   cross-checks `distanz_km` against `st_length(track)`, `0074` bounds the
+   rest) — `INSERT` is still granted, but a direct PostgREST write no
+   longer picks its own coverage or visibility. What remains open is
+   **`dauer_sekunden` alone**: it *is* derived server-side from the trail,
+   but the trail's timestamps come from the client, and a genuine track
+   replayed with times compressed ×0.4 stays inside the 200 km/h band from
+   `0059`. So distance, ascent and coverage carry weight; duration and any
+   speed derived from it do not. `lib/fahrtstatistik.ts` is built on
+   exactly that split, and its header explains why.
 6. **Post the ride** — same `lib/actions/completions.ts` submission,
    `components/RideVisibilityToggle.tsx` for visibility, landing on
    `app/fahrten/[id]/page.tsx`.

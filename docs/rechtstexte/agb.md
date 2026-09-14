@@ -21,9 +21,10 @@
 >
 > Das **Premium-Abo** ist live und wird verkauft. Ziff. 3.2 beschreibt den
 > Funktionsumfang, wie er tatsächlich freigeschaltet ist
-> (`lib/premiumLimits.ts`, `lib/premiumVorteile.ts`): unbegrenzt private
-> Strecken, zwölf statt sechs Fotos pro Fahrt, unbegrenzt offline
-> gespeicherte Strecken, GPX-Export kuratierter Strecken. Das **Erstellen**
+> (`lib/premiumLimits.ts`, `lib/premiumVorteile.ts`): die Auswertung nach
+> Jahr und Fahrzeug, unbegrenzt private Strecken, zwölf statt sechs Fotos
+> pro Fahrt, unbegrenzt offline gespeicherte Strecken, GPX-Export
+> kuratierter Strecken. Das **Erstellen**
 > eigener Strecken war vom 2026-09-07 bis zur Migration
 > `0086_strecken_anlegen_wieder_offen.sql` Teil des Abos und ist seither
 > wieder kostenlos — Ziff. 3.1 und 3.2 sind damit mitgezogen. Der Gründerpreis wird seit demselben Datum nicht mehr angeboten;
@@ -110,6 +111,9 @@ eigene Nutzung begrenzt auf eine (Ziff. 3.2).
 Das kostenpflichtige Premium-Abo („Strado Premium") ergänzt die kostenlose
 Nutzung. Es umfasst:
 
+- eine Auswertung der eigenen Fahrten nach Jahr und nach Fahrzeug
+  (Anzahl, Kilometer, Höhenmeter; **keine** Zeiten und keine
+  Geschwindigkeiten, vgl. Ziff. 11.3),
 - unbegrenzt viele private Strecken — solche, die nur für die eigene Nutzung
   sichtbar sind (kostenlos: eine),
 - bis zu zwölf Fotos pro Fahrt (kostenlos: sechs),
