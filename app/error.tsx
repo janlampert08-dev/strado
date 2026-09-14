@@ -10,6 +10,7 @@ export default function GlobalError({
 }) {
   return (
     <StatusPage
+      marke
       title="Etwas ist schiefgelaufen."
       description="Die Daten konnten nicht geladen werden. Bitte versuche es erneut."
       actions={[

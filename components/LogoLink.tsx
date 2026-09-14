@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import Wortmarke, { Signet } from "@/components/Wortmarke";
+import Wortmarke from "@/components/Wortmarke";
 import { cn } from "@/lib/utils/cn";
 
 // Ereignis, mit dem das Logo auf der Startseite eine zufällige Strecke
@@ -13,13 +13,9 @@ import { cn } from "@/lib/utils/cn";
 // die keinen Provider aufspannen kann.
 export const ZUFALLSSTRECKE_EVENT = "strado:zufallsstrecke";
 
-// Müssen zu den Dauern der gleichnamigen @keyframes in globals.css passen —
-// länger wäre ein hängender Zustand, kürzer ein abgeschnittener. Sichtbar
-// ist immer nur eine der beiden Marken (Signet unter sm, Wortmarke ab sm),
-// abgeräumt werden beide Klassen gemeinsam, also nach der längeren Dauer.
+// Muss zur Dauer von @keyframes marke-anschlag in globals.css passen —
+// länger wäre ein hängender Zustand, kürzer ein abgeschnittener.
 const ANSCHLAG_MS = 400;
-const RUNDE_MS = 500;
-const BEWEGUNG_MS = Math.max(ANSCHLAG_MS, RUNDE_MS);
 
 function bevorzugtReduzierteBewegung() {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -58,39 +54,25 @@ export default function LogoLink() {
     if (bevorzugtReduzierteBewegung()) return;
     setAnschlag(true);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => setAnschlag(false), BEWEGUNG_MS);
+    timeoutRef.current = setTimeout(() => setAnschlag(false), ANSCHLAG_MS);
   }
 
   function vorschlagen() {
     window.dispatchEvent(new CustomEvent(ZUFALLSSTRECKE_EVENT));
   }
 
-  // Zwei Marken, eine davon sichtbar: unter sm nur das Signet (lib/marke.ts,
-  // der Rundkurs), ab sm der ganze Schriftzug. Bewusst über CSS statt über
-  // eine Breitenmessung in JavaScript — ein useEffect mit matchMedia
-  // zeichnete beim ersten Bild zwangsläufig die falsche Marke und tauschte
-  // sie danach sichtbar aus.
+  // Der ganze Schriftzug, auf jeder Bildschirmgrösse — auch auf dem
+  // schmalsten Telefon. Zwischen dem 14. und 15. September 2026 stand hier
+  // unter sm nur das Signet; das ist bewusst zurückgenommen worden. Der Name
+  // ist das, was eine App bekannt macht, und die Kopfleiste ist die einzige
+  // Fläche, auf der ihn jede Nutzerin bei jedem Seitenaufruf liest. Platz ist
+  // nicht das Problem: 71 px Marke, ein Zurück-Pfeil und das Flammen-Icon
+  // passen auch auf 320 px nebeneinander.
   //
-  // h-[18px] auf beiden: die Wortmarke entspricht damit der früheren
-  // Texthöhe, das Signet steht mit gleicher Höhe daneben und holt seine
-  // Breite über w-auto aus dem viewBox (es ist ≈ 1.7-mal so breit wie hoch,
-  // eine quadratische Klasse würde es stauchen). text-foreground fixiert die
-  // Farbe an der Leiste, damit keine Hover-Farbe durchschlägt.
-  //
-  // Antipp-Quittung je Marke: die Wortmarke neigt sich (marke-anschlag), das
-  // Signet dreht eine Runde (signet-runde). Beide Klassen hängen am selben
-  // Zustand — die unsichtbare Marke animiert dann mit, was nichts kostet und
-  // den Zustand einfach hält.
-  const marke = (
-    <>
-      <Signet
-        className={cn("h-[18px] w-auto sm:hidden", anschlag && "signet-runde")}
-      />
-      <Wortmarke
-        className={cn("hidden h-[18px] w-auto sm:block", anschlag && "marke-anschlag")}
-      />
-    </>
-  );
+  // Klassen wie gehabt: text-foreground (unten) fixiert die Farbe, damit die
+  // Marke keine Hover-Farbe der Leiste erbt, h-[18px] entspricht der früheren
+  // Texthöhe.
+  const marke = <Wortmarke className={cn("h-[18px] w-auto", anschlag && "marke-anschlag")} />;
   // cursor-pointer nur auf dem Button-Zweig: es ist dieselbe Marke wie auf
   // jeder anderen Seite, und dort ist sie ein Link. Ohne die Klasse bekäme
   // sie ausgerechnet auf der Startseite den Standard-Cursor eines Buttons

@@ -15,6 +15,7 @@ export const metadata = {
 export default function OfflinePage() {
   return (
     <StatusPage
+      marke
       eyebrow="Strado"
       title="Du bist offline"
       description="Diese Seite braucht eine Verbindung, die gerade nicht besteht. Läuft gerade eine Fahrt-Aufzeichnung, ist sie lokal gesichert und geht nicht verloren."
