@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Header from "@/components/Header";
 import RouteDetailLayout from "@/components/RouteDetailLayout";
-import RouteDetailMap from "@/components/RouteDetailMap";
 import FavoriteButton from "@/components/FavoriteButton";
 import RatingSection from "@/components/RatingSection";
 import GefahrenSection from "@/components/GefahrenSection";
@@ -165,7 +164,7 @@ export default async function StreckeDetailPage({
         }}
       />
       <Header back="/" />
-      <RouteDetailLayout map={<RouteDetailMap route={route} key={route.id} />}>
+      <RouteDetailLayout route={route}>
         <div>
           <p className="text-sm text-muted">
             {route.region}

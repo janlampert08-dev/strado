@@ -32,7 +32,16 @@ const MIN_SAMPLES = 6;
 const MAX_SAMPLES = 24;
 const SAMPLES_PER_KM = 1.2;
 
-export default function RouteDetailMap({ route }: { route: RouteGeoJSON }) {
+export default function RouteDetailMap({
+  route,
+  bottomInsetPx = 0,
+}: {
+  route: RouteGeoJSON;
+  // Von RouteDetailLayout gemeldet: wie viel der Karte das Detail-Sheet auf
+  // Mobile gerade verdeckt. Nur durchgereicht — gebraucht wird der Wert in
+  // RouteMap, wo der Kartenausschnitt berechnet wird.
+  bottomInsetPx?: number;
+}) {
   const [showSpeedLimits, setShowSpeedLimits] = useState(false);
   const [showTraffic, setShowTraffic] = useState(false);
   const [show3D, setShow3D] = useState(false);
@@ -99,6 +108,7 @@ export default function RouteDetailMap({ route }: { route: RouteGeoJSON }) {
           showTraffic={showTraffic}
           show3D={show3D}
           trafficSegments={trafficSegments}
+          bottomInsetPx={bottomInsetPx}
         />
       </div>
       <div className="absolute top-4 left-4 flex flex-col items-start gap-2">
