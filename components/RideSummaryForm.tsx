@@ -6,7 +6,12 @@ import { GlobeIcon, LockIcon } from "@/components/VisibilityIcons";
 import MultiPhotoInput from "@/components/MultiPhotoInput";
 import type { FahrzeugTyp, Vehicle } from "@/types/database";
 import MotorklasseBadge from "@/components/MotorklasseBadge";
-import { motorklasseFor, motorklasseLabel } from "@/lib/motorklassen";
+import {
+  fahrzeugtypdefinition,
+  motorklasseFor,
+  motorklasseLabel,
+  psInKw,
+} from "@/lib/motorklassen";
 import { fieldClassName } from "@/components/ui/Input";
 import { buttonVariants } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/Dialog";
@@ -81,6 +86,21 @@ export default function RideSummaryForm({
   const lastSubmitFormDataRef = useRef<FormData | null>(null);
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
 
+  // Die Leistung wird beim Auto in PS eingegeben, beim Motorrad in kW
+  // (Begründung in lib/motorklassen.ts, Abschnitt EINHEITEN). Gespeichert
+  // wird beides als kW; diese Umrechnung dient nur der Klassenvorschau
+  // darunter, die Server Action rechnet unabhängig davon noch einmal.
+  const neueFahrzeugEinheit = fahrzeugtypdefinition(newVehicleTyp).leistungseinheit;
+  const neueFahrzeugLeistungEingabe = newVehicleLeistung.trim()
+    ? Number(newVehicleLeistung.trim().replace(",", "."))
+    : null;
+  const neueFahrzeugLeistungKw =
+    neueFahrzeugLeistungEingabe === null || !Number.isFinite(neueFahrzeugLeistungEingabe)
+      ? null
+      : neueFahrzeugEinheit === "PS"
+        ? psInKw(neueFahrzeugLeistungEingabe)
+        : neueFahrzeugLeistungEingabe;
+
   // Fahrzeug-Liste lokal gehalten und ohne Navigation ergänzbar — ein
   // <a target="_blank"> zu /profil/fahrzeuge/neu verlässt sich darauf, dass
   // der Browser wirklich einen neuen Tab öffnet; tut er das nicht (z.B.
@@ -97,7 +117,13 @@ export default function RideSummaryForm({
     // Hubraum nur beim Motorrad: er trennt dort A1 von A 35 kW und geht bei
     // einem Auto in keine Klasse ein.
     formData.set("hubraum_ccm", newVehicleTyp === "motorrad" ? newVehicleHubraum : "");
-    formData.set("leistung_kw", newVehicleLeistung);
+    // Beim Auto in PS, beim Motorrad in kW — der Feldname trägt die Einheit,
+    // siehe lib/motorklassen.ts (Abschnitt EINHEITEN). Die Umrechnung auf
+    // den gespeicherten kW-Wert macht die Server Action.
+    formData.set(
+      neueFahrzeugEinheit === "PS" ? "leistung_ps" : "leistung_kw",
+      newVehicleLeistung,
+    );
 
     startAddVehicleTransition(async () => {
       const result = await addVehicleInline(formData);
@@ -152,9 +178,7 @@ export default function RideSummaryForm({
   const neueFahrzeugKlasse = motorklasseFor({
     typ: newVehicleTyp,
     hubraum_ccm: newVehicleHubraum.trim() ? Number(newVehicleHubraum) : null,
-    leistung_kw: newVehicleLeistung.trim()
-      ? Number(newVehicleLeistung.trim().replace(",", "."))
-      : null,
+    leistung_kw: neueFahrzeugLeistungKw,
   });
 
   return (
@@ -224,7 +248,13 @@ export default function RideSummaryForm({
             <div className="grid grid-cols-2 gap-2">
               <select
                 value={newVehicleTyp}
-                onChange={(e) => setNewVehicleTyp(e.target.value as FahrzeugTyp)}
+                onChange={(e) => {
+                  setNewVehicleTyp(e.target.value as FahrzeugTyp);
+                  // Die Zahl im Leistungsfeld bedeutet je nach Typ etwas
+                  // anderes — stehen zu lassen hiesse, aus 150 PS still
+                  // 150 kW zu machen.
+                  setNewVehicleLeistung("");
+                }}
                 className={fieldClassName()}
               >
                 <option value="auto">Auto</option>
@@ -276,7 +306,7 @@ export default function RideSummaryForm({
             )}
             <input
               type="text"
-              placeholder="Leistung in kW (optional)"
+              placeholder={`Leistung in ${neueFahrzeugEinheit} (optional)`}
               inputMode="decimal"
               value={newVehicleLeistung}
               onChange={(e) => setNewVehicleLeistung(e.target.value)}

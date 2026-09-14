@@ -17,14 +17,14 @@ export default function Loading() {
         <Skeleton className="absolute inset-0 md:static md:order-first md:h-auto md:flex-1" />
 
         <div
-          className="absolute inset-x-0 bottom-0 z-10 flex flex-col overflow-hidden rounded-t-lg border-t border-border bg-background shadow-overlay md:contents"
+          className="absolute inset-x-0 bottom-[var(--bottom-nav-h)] z-10 flex flex-col overflow-hidden rounded-t-lg border-t border-border bg-background shadow-overlay md:contents"
           style={{ height: `${SHEET_PEEK_PX}px` }}
         >
           <div className="flex shrink-0 items-center justify-center py-2 md:hidden">
             <Skeleton className="h-5 w-5 rounded-sm" />
           </div>
 
-          <div className="flex w-full flex-col gap-4 overflow-hidden border-border px-6 pt-8 pb-[calc(2rem+var(--safe-bottom))] md:max-w-sm md:border-r lg:max-w-md">
+          <div className="flex w-full flex-col gap-4 overflow-hidden border-border px-6 pt-8 pb-8 md:max-w-sm md:border-r lg:max-w-md">
             <Skeleton className="h-9 w-64 rounded-md" />
             <Skeleton className="h-4 w-full rounded-sm" />
             <Skeleton className="h-4 w-40 rounded-sm" />

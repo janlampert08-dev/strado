@@ -9,6 +9,7 @@ import type { RatingWithAuthor } from "@/lib/ratings";
 import { Textarea } from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import ReportDialog from "@/components/ReportDialog";
+import DeleteRatingButton from "@/components/DeleteRatingButton";
 
 const initialState: RatingFormState = { error: null };
 
@@ -61,7 +62,13 @@ export default function RatingSection({
 
       {canRate && (
         <form action={formAction} className="flex flex-col gap-2 border-b border-border pb-4">
+          {/* key erzwingt einen Remount, wenn sich der eigene Kommentar
+              serverseitig geändert hat. Das Feld ist unkontrolliert, ein
+              neuer defaultValue allein würde den bereits gerenderten Text
+              also nicht ersetzen — nach dem Löschen stünde der gelöschte
+              Kommentar weiter im Formular. */}
           <Textarea
+            key={ownRating?.kommentar ?? "leer"}
             name="kommentar"
             defaultValue={ownRating?.kommentar ?? ""}
             placeholder="Kommentar"
@@ -94,15 +101,19 @@ export default function RatingSection({
                 </Link>
                 {r.kommentar && <p className="mt-0.5 text-muted">{r.kommentar}</p>}
               </div>
-              {currentUserId && currentUserId !== r.user_id && (
-                <button
-                  type="button"
-                  onClick={() => setReportRatingId(r.id)}
-                  aria-label="Kommentar melden"
-                  className="shrink-0 text-muted transition-colors duration-fast hover:text-danger"
-                >
-                  <Flag className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
+              {currentUserId === r.user_id ? (
+                <DeleteRatingButton ratingId={r.id} />
+              ) : (
+                currentUserId && (
+                  <button
+                    type="button"
+                    onClick={() => setReportRatingId(r.id)}
+                    aria-label="Kommentar melden"
+                    className="shrink-0 text-muted transition-colors duration-fast hover:text-danger"
+                  >
+                    <Flag className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                )
               )}
             </li>
           ))}

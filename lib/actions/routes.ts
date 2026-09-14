@@ -12,7 +12,7 @@ import {
   fetchElevationProfile,
 } from "@/lib/elevation";
 import { deriveRouteLocations } from "@/lib/geocoding";
-import { istPremium, privateStreckenKontingent } from "@/lib/premium";
+import { privateStreckenKontingent } from "@/lib/premium";
 import type { GeoLineString, Kategorie, TempolimitSegment } from "@/types/database";
 
 export interface ProposeRouteState {
@@ -131,15 +131,17 @@ export async function proposeRoute(
 
   if (!user) return { error: "Bitte melde dich zuerst an." };
 
-  // Eigene Strecken sind Premium — oder Moderation, die den Bestand ohne
-  // Abo kuratiert. Produktentscheid 2026-09-07, bewusster Bruch mit dem
-  // additiven Gating aus docs/premium-plan.md Abschnitt 4. Die eigentliche
-  // Schranke ist die INSERT-Policy auf routes (0077); sie gilt auch für den
-  // Direktweg über PostgREST. Diese Prüfung hier liefert nur die lesbare
-  // Antwort, bevor Geocoding und Höhenprofil für nichts laufen.
-  const [premium, moderator] = await Promise.all([istPremium(), isModerator(user.id)]);
-  if (!premium && !moderator) return { error: "Eigene Strecken gehören zu Premium." };
-
+  // Hier stand bis 0086 eine Premium-/Moderationsprüfung: Strecken anlegen
+  // war seit 0077 zahlenden Konten vorbehalten. Die Regel ist zurückgenommen
+  // (additives Gating, docs/premium-plan.md Abschnitt 4) — jedes angemeldete
+  // Konto darf vorschlagen, die INSERT-Policy auf routes verlangt nichts
+  // weiter als die eigene Zeile und status_ok = false.
+  //
+  // Begrenzt bleibt zweierlei, und beides steht woanders: die Anlegerate
+  // (Cooldown gleich unten, race-frei nochmal im Trigger aus 0041) und die
+  // Zahl PRIVATER Strecken (Kontingent aus 0064, geprüft weiter unten nach
+  // dem Anlegen). Ein öffentlicher Vorschlag ist unbegrenzt und geht durch
+  // die Moderation.
   if (await isRateLimited(supabase, "routes", "created_at", "erstellt_von", user.id, PROPOSE_ROUTE_COOLDOWN_MS)) {
     return { error: "Bitte warte einen Moment, bevor du eine weitere Strecke erstellst." };
   }
@@ -227,9 +229,9 @@ export async function proposeRoute(
   }
 
   // Kontingent für private Strecken (AGB Ziff. 3.2): kostenlos eine, mit
-  // Premium unbegrenzt. Seit eigene Strecken selbst Premium sind (0077),
-  // kommt hier ohne Abo praktisch nur noch die Moderation vorbei — für sie
-  // gilt das Kontingent weiterhin, die Logik bleibt deshalb. Die
+  // Premium unbegrenzt. Seit 0086 ist das wieder der einzige Ort, an dem ein
+  // Abo für Strecken überhaupt etwas ändert — das Anlegen selbst ist frei,
+  // begrenzt ist nur, wie viele davon privat bleiben dürfen. Die
   // Entscheidung fällt in der Datenbank — darf_private_strecke_anlegen()
   // zählt und prüft in einem Aufruf, statt hier zu zählen und danach zu
   // schreiben.
@@ -274,7 +276,7 @@ export async function proposeRoute(
   redirect(`/strecken/${data}`);
 }
 
-// Nimmt eine private Strecke aus dem Premium-Feature "eigene Strecken" in die
+// Nimmt eine private Strecke in die
 // normale Moderationswarteschlange auf (ist_privat=false, status_ok bleibt
 // false) — ab dann läuft sie wie jeder andere Vorschlag über approveRoute/
 // rejectRoute. Verlässt sich auf die RLS-Policy "Nutzer können eigene

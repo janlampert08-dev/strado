@@ -61,12 +61,14 @@ export default function ExploreSidebar({
   );
 
   return (
-    // pb reserviert unter md zusätzlich Platz für die fixierte BottomNav +
-    // den sicheren Bereich (Home-Indicator) — die globale main{padding-bottom}-
-    // Regel (globals.css) greift hier nicht, weil dieses div (nicht <main>)
-    // der scrollende Container ist. Ab md verschwindet die BottomNav
-    // (md:hidden), daher md:pb-6 als Reset auf den ursprünglichen Wert.
-    <div className="flex w-full flex-col gap-5 overflow-y-auto overscroll-y-contain border-border px-5 pt-5 pb-[calc(5.5rem+var(--safe-bottom))] sm:px-6 sm:pt-6 sm:pb-[calc(5.75rem+var(--safe-bottom))] md:max-w-sm md:border-r md:pb-6 lg:max-w-md xl:max-w-lg">
+    // Kein Sonderpolster mehr für die BottomNav: das Sheet endet inzwischen
+    // über der Leiste (bottom: var(--bottom-nav-h), siehe DragSheet.tsx),
+    // statt darunter durchzulaufen. Das frühere pb schob den Inhalt zwar aus
+    // dem verdeckten Streifen heraus, sobald man bis ans Ende scrollte — in
+    // Peek-Höhe lagen die untersten Zeilen aber weiterhin unter der Leiste
+    // und waren dort nicht antippbar. pb-6 ist der Wert, der vorher ab md
+    // galt, wo es die Leiste nie gab.
+    <div className="flex w-full flex-col gap-5 overflow-y-auto overscroll-y-contain border-border px-5 pt-5 pb-6 sm:px-6 sm:pt-6 md:max-w-sm md:border-r lg:max-w-md xl:max-w-lg">
       {/* Die Startseite hatte weder <h1> noch einen erklärenden Satz: Ein
           Erstbesucher sah ein Suchfeld, einen Chip und eine Liste und
           erfuhr nirgends, was Strado ist oder dass er Fahrten aufzeichnen
@@ -83,11 +85,11 @@ export default function ExploreSidebar({
           für Screenreader und Suchmaschinen behält — nur der erklärende
           Absatz entfällt. */}
       {loggedIn ? (
-        <h1 className="sr-only">Die schönsten Strecken der Schweiz</h1>
+        <h1 className="sr-only">Die schönsten Strecken rund um Zürich</h1>
       ) : (
         <div className="flex flex-col gap-1">
           <h1 className="text-lg font-semibold tracking-tight">
-            Die schönsten Strecken der Schweiz
+            Die schönsten Strecken rund um Zürich
           </h1>
           <p className="text-sm text-muted">
             Kurven, Pässe, Aussicht — handverlesen. Aussuchen, losfahren, aufzeichnen. Ein Konto

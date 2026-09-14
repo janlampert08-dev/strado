@@ -169,7 +169,7 @@ export default function NeueStreckeForm() {
       >
         <form
           action={formAction}
-          className="flex w-full flex-1 flex-col gap-4 overflow-y-auto overscroll-y-contain border-border px-6 pt-8 pb-[calc(2rem+var(--safe-bottom))] md:max-w-sm md:border-r lg:max-w-md"
+          className="flex w-full flex-1 flex-col gap-4 overflow-y-auto overscroll-y-contain border-border px-6 pt-8 pb-8 md:max-w-sm md:border-r lg:max-w-md"
         >
           <div>
             <h1 className="text-display font-semibold">Strecke erstellen</h1>
@@ -380,14 +380,18 @@ export default function NeueStreckeForm() {
               {/* Sticky statt im normalen Fluss — bei ausgeklapptem Sheet
                   sonst je nach Bildschirmhöhe erst nach Scrollen erreichbar.
 
-                  Der bottom-Versatz ist die Höhe der BottomNav (3.75rem plus
-                  sicherer Bereich, siehe BottomNav.tsx): die Leiste ist
-                  fixiert und läge sonst über dem Absenden-Knopf. Ab md gibt
-                  es sie nicht (md:hidden), dort sitzt die Leiste wieder am
-                  unteren Rand und reserviert den sicheren Bereich selbst —
-                  sonst klebte der Knopf auf iPhones ohne Home-Taste direkt
+                  bottom-0 genügt inzwischen: das Sheet endet über der
+                  fixierten BottomNav (bottom: var(--bottom-nav-h), siehe
+                  DragSheet.tsx), der Knopf kann also nicht mehr unter ihr
+                  landen. Vorher stand hier ein eigener Versatz von 3.75rem
+                  als geschätzte Leistenhöhe — gemessen sind es 4rem, der
+                  Knopf klebte also um 4px zu tief. Genau solche
+                  Zweitschätzungen ersetzt der Token.
+
+                  Ab md reserviert die Leiste den sicheren Bereich selbst —
+                  sonst klebte der Knopf auf Geräten ohne Home-Taste direkt
                   auf der Geste-Leiste, siehe --safe-bottom in globals.css. */}
-              <div className="sticky bottom-[calc(3.75rem+var(--safe-bottom))] -mx-6 -mb-[calc(2rem+var(--safe-bottom))] mt-2 border-t border-border bg-background px-6 pt-4 pb-4 md:bottom-0 md:pb-[calc(1rem+var(--safe-bottom))]">
+              <div className="sticky bottom-0 -mx-6 -mb-8 mt-2 border-t border-border bg-background px-6 pt-4 pb-4 md:pb-[calc(1rem+var(--safe-bottom))]">
                 {state.error && (
                   <p role="alert" className="mb-3 text-sm text-danger">
                     {state.error}

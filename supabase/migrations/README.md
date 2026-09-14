@@ -29,6 +29,162 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Eingespielt: 0086_strecken_anlegen_wieder_offen (2026-09-14, Produktion)
+
+Nimmt die Premium-/Moderationspflicht aus `0077` auf der INSERT-Policy von
+`public.routes` zurück. **Eingespielt bevor der Code deployt war** — das ist
+hier die harmlose Richtung: die Policy wird weiter, nicht enger. Bis der
+Code aus PR #220 ausgeliefert ist, blockiert die Server Action kostenlose
+Konten weiterhin mit einer lesbaren Meldung; es passiert schlicht nichts.
+Anders als bei `0077` gibt es kein Zeitfenster, in dem jemand etwas nicht
+mehr darf.
+
+Vorher gezählt (die Migration entstand ohne Datenbankzugriff, das
+Mengengerüst wurde hier nachgeholt):
+
+```
+routen_gesamt            14
+oeffentlich_sichtbar     13   (status_ok, nicht privat)
+routen_privat             1
+in_moderation             1
+bestandsschutz_konten     0   (0064 — niemand ist davon betroffen)
+premium_konten            5
+```
+
+**Korrektur an der Begründung im Migrationskopf:** dort steht „mit acht
+freigegebenen Strecken". Tatsächlich sind es **dreizehn**. Die Acht stammt
+aus `docs/marketing/instagram/daten.mjs`, einer Momentaufnahme vom
+2026-09-07, die im eigenen Kopf warnt, dass sie keine Verbindung zur
+Datenbank hat. Die Datei `0086_…sql` bleibt unverändert — Kernregel 9
+verbietet, eine eingespielte Migration anzufassen, auch wenn nur ein
+Kommentar danebenliegt. Die Zahl steht hier richtig, und das Argument trägt
+bei dreizehn genauso: der Zufluss an Strecken ist die knappste Ressource.
+
+Zustand vorher, zurückgelesen:
+
+```
+with_check = ((erstellt_von = (SELECT auth.uid())) AND (status_ok = false)
+              AND (EXISTS (SELECT 1 FROM profiles p
+                           WHERE p.id = (SELECT auth.uid())
+                             AND (p.ist_premium OR p.is_moderator))))
+```
+
+Nachher gegengelesen, nicht angenommen:
+
+```sql
+select policyname, cmd, roles::text, with_check,
+       with_check like '%ist_premium%'  as enthaelt_noch_premium,
+       with_check like '%is_moderator%' as enthaelt_noch_moderator
+from pg_policies
+where schemaname = 'public' and tablename = 'routes'
+  and policyname = 'Angemeldete Nutzer können Strecken vorschlagen';
+```
+
+Ergebnis:
+
+```
+with_check = ((erstellt_von = (SELECT auth.uid())) AND (status_ok = false))
+enthaelt_noch_premium    false
+enthaelt_noch_moderator  false
+roles                    {authenticated}
+```
+
+Das ist exakt das Prädikat aus `0027`.
+
+Nachbarn geprüft — alle sieben Policies auf `routes` stehen unverändert
+(SELECT ×2, INSERT ×1, UPDATE ×2, DELETE ×2), und beide beteiligten
+Funktionen sind weiterhin **SECURITY INVOKER**:
+
+```sql
+select p.proname, p.prosecdef as security_definer
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname in ('darf_private_strecke_anlegen','propose_route_full');
+-- beide: security_definer = false
+```
+
+Das ist der Punkt, auf den es sicherheitsseitig ankommt: weil
+`propose_route_full` unter RLS läuft, gilt diese Policy auch für einen
+direkten `POST /rest/v1/rpc/propose_route_full` und nicht nur für die
+Server Action.
+
+**Rückweg,** falls er gebraucht wird: das `0077`-Prädikat per neuer
+Migration wieder setzen. Es entstehen und verschwinden keine Objekte, ein
+Rückweg kostet nichts ausser einer weiteren Datei.
+
+**Gehört dazu, ist aber kein SQL:** AGB Ziff. 3.1 und 3.2 (PR #220 hier,
+`stradoinfo#14` für die veröffentlichte Fassung). Solange die
+AGB-Änderung nicht ausgeliefert ist, weist der Rechtstext eine Leistung
+als Abo-Bestandteil aus, die die Datenbank bereits freigegeben hat.
+
+## Eingespielt: 0085_bestenlisten_nach_fahrzeugtyp (2026-09-14, Produktion)
+
+Eingespielt **vor** dem Deploy des Codes, der sie liest — der liegt zu diesem
+Zeitpunkt auf dem Branch der PR #217 und ist weder auf `staging` noch auf
+`main`. Damit ist die Reihenfolge aus `.agents/deployment.md` eingehalten
+(Schema zuerst, Code danach), und die Migration ist rückwärtskompatibel zum
+laufenden Code: Der kennt die neue View schlicht nicht.
+
+| Datei | Ledger-`version` |
+| --- | --- |
+| `0085_bestenlisten_nach_fahrzeugtyp` | `20260914121835` |
+
+Inhalt: neue immutable Funktion `public.motorklasse_typ(text)`, neue View
+`public.leaderboard_typ_totals`, `grant select` an `anon` und
+`authenticated`. **Rein additiv** — keine bestehende Relation, Policy oder
+Spalte angefasst, nichts zurückgeschrieben, kein Tabellen-Rewrite. Ein
+Mengengerüst war deshalb nicht nötig: eine View speichert nichts.
+
+**Vorabprüfung** (der Punkt, an dem `create or replace` gefährlich wäre):
+Beide Namen existierten vorher **nicht** — die Anweisungen haben also
+angelegt und nicht still eine fremde Definition überschrieben. Die drei
+Abhängigkeiten (`leaderboard_completions` samt Spalte `motorklasse`,
+`leaderboard_klassen_totals`) waren vorhanden.
+
+### Gegenprobe, alles zurückgelesen statt angenommen
+
+| Prüfung | Ergebnis |
+| --- | --- |
+| `motorklasse_typ('moto_a1')` / `('moto_a')` | ✅ `motorrad` |
+| `motorklasse_typ('auto_bis110')` / `('auto_ueber220')` | ✅ `auto` |
+| `motorklasse_typ('quatsch')` / `(null)` | ✅ `null` — kein Rückfall auf einen Typ |
+| Funktion `immutable` | ✅ `provolatile = 'i'` (Voraussetzung fürs `GROUP BY`) |
+| `search_path` gepinnt | ✅ `search_path=""` wie seit 0073 |
+| `select` für `anon` / `authenticated` | ✅ beide `true` |
+| Summe `fahrten_count` typ vs. klassen | ✅ **0 = 0** — die Invariante, beide filtern `motorklasse is not null` |
+| Summe `fahrten_count` in `leaderboard_user_totals` | ✅ **8**, liegt erwartungsgemäss darüber |
+
+**Die neue View ist leer, und das liegt nicht an ihr.** Erhoben statt
+vermutet: 6 Fahrzeuge, davon **0 mit `leistung_kw`**; 9 Fahrten, davon **0
+mit `motorklasse_gewertet`**; 8 Fahrten in `leaderboard_completions`. Also
+trägt bislang überhaupt keine Fahrt eine Klasse — derselbe Befund, mit dem
+`0082` seinerzeit auf 0 Zeilen lief. `leaderboard_klassen_totals` ist
+deshalb genauso leer. Die Klassen- und Typlisten füllen sich, sobald jemand
+eine Leistung einträgt und danach fährt.
+
+### Advisors nach dem Einspielen
+
+Gegen die Baseline verglichen. **Ein** neuer Befund, und der war erwartet:
+`security_definer_view` für `leaderboard_typ_totals` — identisch zu
+`leaderboard_completions`, `leaderboard_klassen_totals`,
+`leaderboard_user_totals`, `route_leaderboard` und den übrigen sechs. Das
+ist das bewusste Muster aus `0013_leaderboard_view.sql` (die View rechnet
+mit den Rechten ihres Owners, weil sie die Sichtbarkeitsregeln selbst
+kodiert), keine Regression. Alles Übrige unverändert: `spatial_ref_sys`
+(dokumentierter Dauerbefund), `postgis` im `public`-Schema,
+`rls_enabled_no_policy` auf `gruender_plaetze` und
+`stripe_webhook_events`, die `SECURITY DEFINER`-Funktionslisten,
+`auth_leaked_password_protection`.
+
+### Rückweg, falls er gebraucht wird
+
+Sauberer Inverser, es gibt keine Daten wiederherzustellen:
+
+```sql
+drop view if exists public.leaderboard_typ_totals;
+drop function if exists public.motorklasse_typ(text);
+```
+
 ## Reihenfolge der Motorklassen-Migrationen
 
 Alle drei gehören **vor** den Deploy des Codes, der sie braucht, und in

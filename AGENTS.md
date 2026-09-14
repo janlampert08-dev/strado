@@ -149,20 +149,31 @@ is what should be corrected.
   `'unsafe-eval'`; der Ersatz durch Nonces verlangt die CSP pro Anfrage in
   `proxy.ts` und macht jede Seite dynamisch — offen, bewusst.
 - **Migrations are applied by hand.** Green CI means nothing about the live
-  schema — nothing applies a migration for you. As of 2026-09-13 the repo and
+  schema — nothing applies a migration for you. As of 2026-09-14 the repo and
   the production database do match: `0083_feedback` went in on 2026-09-13, and
   `0080_motorklassen`, `0081_freie_fahrt_motorklasse_belegt`,
   `0082_motorklasse_backfill_freie_fahrten` and `0084_creator_links` followed
-  the same day, in that order and each verified against the objects rather
-  than against the ledger — `apply_migration` stamps a timestamp as `version`,
-  so a search for the file number finds nothing. The two files that remain
+  the same day, in that order; `0085_bestenlisten_nach_fahrzeugtyp` went in on
+  2026-09-14, **ahead of the code that reads it** — that code is still on a
+  branch, which is the intended order (schema first, code second). Each was
+  verified against the objects rather than against the ledger —
+  `apply_migration` stamps a timestamp as `version`, so a search for the file
+  number finds nothing. `0086_strecken_anlegen_wieder_offen` went in on
+  2026-09-14, also **ahead of its code** — which is harmless here and not
+  merely tolerable: it widens a policy rather than narrowing one, so until
+  PR #220 ships the Server Action simply keeps refusing and nothing changes.
+  Its header comment says "acht freigegebene Strecken"; the live count is
+  **thirteen** — the eight comes from the frozen snapshot in
+  `docs/marketing/instagram/daten.mjs`, and the migration file stays as
+  written because Rule 9 forbids touching an applied one. The two files
+  that remain
   un-applied (`0042`, `0058`) are superseded by `0076` and must **not** be
   applied — see `supabase/migrations/README.md`, which is the only place that
   distinction survives, plus `.agents/deployment.md`.
   - **There is no separate staging database.** The linked Supabase account
     holds exactly one project, and it is production. The rehearsal that
     "Release Flow" below describes therefore did not happen for any of the
-    five migrations above; they were additive throughout, which is what made
+    six migrations above; they were additive throughout, which is what made
     that acceptable. A migration that drops, rewrites or backfills anything
     does not get the same pass — settle where staging's database lives
     before writing one.
@@ -180,7 +191,9 @@ is what should be corrected.
   original findings are closed. A2, A3, A4, A5 and A6 are marked **Fixed**
   there, each naming the code that closed it, and so is all but a handful of
   §B. What remains open is narrower than the headline suggests:
-  - **A1, leg 2 — the ride clock.** Two of A1's three legs are closed.
+  - **A1, leg 2 — the ride clock.** Two of A1's three legs are closed. The
+    A1 table further down `docs/audit/README.md` spells out which, and it is
+    the authority — not this line, which has been wrong about A1 before.
     `dauer_sekunden` itself *is* derived server-side — `logTrackedCompletion`
     recomputes it with `computeTrailStats()` and deliberately ignores whatever
     number the client posted. What it cannot check is the **timestamps in the
@@ -252,13 +265,22 @@ handoff to the next isn't done.
    `lib/actions/completions.ts`, which derives the stats server-side rather
    than trusting client-sent numbers: `lib/routeCoverage.ts`,
    `lib/lapDetection.ts`, `lib/elevation.ts`.
-   **This derivation is not yet airtight** — see audit finding A1 in
-   `docs/audit/README.md#remediation-status`: `dauer_sekunden` is still a
-   client-supplied clock, coverage is direction-blind, and `INSERT` on
-   `route_completions` is still granted, so a direct PostgREST write
-   bypasses this action entirely. Migration `0059` bounds the values a
-   write may carry; it does not make them server-derived. Do not treat
-   these numbers as trusted when building on them (leaderboards especially).
+   **One leg of this is still open, and it is narrower than this section
+   used to claim** — see audit finding A1 in
+   `docs/audit/README.md#remediation-status`, whose own table is the
+   authority. Two of its three legs are closed: coverage became
+   direction-sensitive with `0078`, and the write-authorization leg is
+   closed as a forgery route by triggers (`0052` recomputes
+   `abdeckung_prozent` and can only narrow `ist_oeffentlich`, `0059`
+   cross-checks `distanz_km` against `st_length(track)`, `0074` bounds the
+   rest) — `INSERT` is still granted, but a direct PostgREST write no
+   longer picks its own coverage or visibility. What remains open is
+   **`dauer_sekunden` alone**: it *is* derived server-side from the trail,
+   but the trail's timestamps come from the client, and a genuine track
+   replayed with times compressed ×0.4 stays inside the 200 km/h band from
+   `0059`. So distance, ascent and coverage carry weight; duration and any
+   speed derived from it do not. `lib/fahrtstatistik.ts` is built on
+   exactly that split, and its header explains why.
 6. **Post the ride** — same `lib/actions/completions.ts` submission,
    `components/RideVisibilityToggle.tsx` for visibility, landing on
    `app/fahrten/[id]/page.tsx`.

@@ -1,23 +1,24 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { getPremiumStatus } from "@/lib/premium";
-import { isModerator } from "@/lib/moderation";
 import Header from "@/components/Header";
 import NeueStreckeForm from "@/components/NeueStreckeForm";
-import PremiumGate from "@/components/PremiumGate";
 
 export default async function NeueStreckePage() {
   const user = await getCurrentUser();
 
   if (!user) redirect("/anmelden");
 
-  // Ohne Abo (und ohne Moderationsrolle) statt des Formulars die kleine
-  // Premium-Werbung. Das ist UX: die Schranke selbst liegt in der
-  // INSERT-Policy auf routes (0077) und in proposeRoute — ein Formular, das
-  // erst beim Speichern scheitert, wäre nur der unfreundlichere Weg zur
-  // selben Antwort. Beide Abfragen hängen nur an user, nicht voneinander.
-  const [status, moderator] = await Promise.all([getPremiumStatus(), isModerator(user.id)]);
-  if (!status.aktiv && !moderator) return <PremiumGate />;
+  // Bis 0086 stand hier eine Premium-Weiche: wer kein Abo hatte, sah statt
+  // des Formulars eine Werbekarte (components/PremiumGate.tsx, mit dieser
+  // Änderung entfernt). Das Anlegen ist wieder für jedes angemeldete Konto
+  // offen — additives Gating, siehe docs/premium-plan.md Abschnitt 4 und
+  // supabase/migrations/0086_strecken_anlegen_wieder_offen.sql.
+  //
+  // Ein Abo ändert für Strecken nur noch eines: wie viele davon PRIVAT sein
+  // dürfen (kostenlos eine, Premium unbegrenzt). Das wird nicht hier
+  // entschieden, sondern in proposeRoute nach dem Anlegen — dort liegen die
+  // Daten, und dort kann die Strecke bei erschöpftem Kontingent als
+  // öffentlicher Vorschlag weiterlaufen, statt verloren zu gehen.
 
   // Die Kopfleiste rendert die Seite selbst (wie jede andere Seite, siehe
   // app/strecken/[id]/page.tsx): der Zurück-Knopf gehört oben links hin und

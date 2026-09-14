@@ -61,3 +61,48 @@ export async function submitRating(
   revalidatePath(`/strecken/${routeId}`);
   return { error: null };
 }
+
+export interface DeleteRatingState {
+  error: string | null;
+}
+
+// Eigenen Kommentar löschen. Die RLS-Policy "Nutzer verwalten eigene
+// Bewertungen" (0001, präzisiert in 0027) deckt DELETE bereits ab; der
+// user_id-Filter hier ist die zweite Schranke (Defense-in-Depth, gleiches
+// Muster wie deleteVehicle in lib/actions/vehicles.ts).
+//
+// Der Vorab-Lookup hat zwei Aufgaben: Er liefert die route_id für
+// revalidatePath, und er trennt "gibt es nicht (mehr)" von "gehört dir
+// nicht". Nach dem DELETE wäre beides nicht mehr unterscheidbar — RLS
+// filtert die Zeile still heraus, Supabase meldet keinen Fehler, und ein
+// abgelehnter Löschversuch sähe aus wie ein erfolgreicher.
+export async function deleteRating(ratingId: string): Promise<DeleteRatingState> {
+  if (!isValidUuid(ratingId)) return { error: "Kommentar nicht gefunden." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Bitte melde dich zuerst an." };
+
+  const { data: vorhanden } = await supabase
+    .from("route_ratings")
+    .select("route_id")
+    .eq("id", ratingId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!vorhanden) return { error: "Kommentar nicht gefunden." };
+
+  const { error } = await supabase
+    .from("route_ratings")
+    .delete()
+    .eq("id", ratingId)
+    .eq("user_id", user.id);
+
+  if (error) return { error: "Kommentar konnte nicht gelöscht werden." };
+
+  revalidatePath(`/strecken/${vorhanden.route_id}`);
+  return { error: null };
+}
