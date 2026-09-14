@@ -22,9 +22,9 @@ weil sie die Begründungen tragen. Die Zuordnung der Schritte zu den Dateien:
 | 2 — Durchreichen | `signUp()` in `lib/actions/auth.ts` (plus `herkunft_code: null` beim Löschen) |
 | 3 — Migration A | `0088_herkunft_und_konversionen.sql` |
 | 4 — Migration B | `0089_creator_konversion_abo.sql` |
-| 5 — Klicks zählen | **nicht gebaut** (bewusst, siehe dort) |
-| 6 — Löschung | `0090_anonymisierung_herkunft.sql` |
-| 7 — Auswertung | die Abfrage unten, ohne Oberfläche |
+| 5 — Klicks zählen | `0091_creator_konten.sql` (`creator_klicks`), gezählt in `after()` im Route Handler |
+| 6 — Löschung | `0090_anonymisierung_herkunft.sql`, `0092_anonymisierung_creator_zuweisung.sql` |
+| 7 — Auswertung | `/creator` (eigene Zahlen) und `/moderation/creator` (alle), beide über `creator_kennzahlen()` / `creator_verlauf()` |
 | 8 — Datenschutz | `docs/rechtstexte/datenschutz.md` Ziff. 3.11 und die veröffentlichte Fassung in `janlampert08-dev/stradoinfo` |
 
 Die drei Migrationen sind **noch nicht eingespielt** — siehe
@@ -37,6 +37,27 @@ auf Deaktivieren verweist.
 **Kein Cookie-Banner.** Das war eine ausdrückliche Entscheidung: genannt
 wird das Cookie in der Datenschutzerklärung, abgefragt wird es nicht. Die
 Abwägung dazu steht in Schritt 8.
+
+**Creator-Konten sind dazugekommen** (`0091`/`0092`, ebenfalls noch nicht
+eingespielt) und beantworten die offenen Entscheidungen 5 und 6 weiter
+unten, deren Empfehlungen damit überholt sind:
+
+- Ein Creator **ist**, wem ein Code zugewiesen ist — es gibt keine Spalte
+  `profiles.ist_creator`. Die Zuweisung ist die Rolle, vergeben unter
+  `/moderation/creator` beim Anlegen oder danach.
+- Das zugewiesene Konto sieht unter `/creator` Klicks, entstandene Konten
+  und Abos je eigenem Code plus den Tagesverlauf der Klicks. Es sieht
+  **nie**, wer sich registriert hat: gelesen wird über
+  `creator_kennzahlen()` und `creator_verlauf()`, die in der Datenbank
+  zusammenfassen und nur Zahlen herausgeben. `creator_konversionen` trägt
+  `user_id` — jede zeilenweise Freigabe beantwortete die zweite Frage mit.
+- Klicks werden serverseitig gezählt (`creator_klicks`, eine Zahl pro Code
+  und Tag, ohne IP, Uhrzeit oder Kennung). Sie sind der Nenner des
+  Trichters und ausdrücklich **keine belastbare Messung**: Codes sind
+  öffentlich, und die zählende Funktion ist an `anon` gegrantet, weil der
+  Klickende meistens kein Konto hat. Ein direkter RPC-Aufruf umgeht damit
+  das IP-Limit des Route Handlers. Für eine Vergütung taugen nur
+  Registrierungen und Abos.
 
 ---
 
@@ -392,13 +413,21 @@ Vier Dinge, die an diesem Trigger wichtig sind:
   nicht aus. Solange nicht vergütet wird, ist das folgenlos; sobald
   vergütet wird, ist es die erste Lücke, die geschlossen gehört.
 
-### Schritt 5 — Klicks zählen (optional, Tabelle 3c)
+### Schritt 5 — Klicks zählen (gebaut, `0091`)
 
 `/c/<code>` zählt `creator_klicks` per `SECURITY DEFINER`-Funktion hoch
-(`insert ... on conflict (code, tag) do update set klicks = klicks + 1`).
-Kein Personenbezug, keine IP, kein Cookie-Lesen dafür. Kostet einen
-zusätzlichen Datenbank-Roundtrip pro Klick — vertretbar bei der erwarteten
-Grössenordnung, und das IP-Limit steht bereits davor.
+(`insert ... on conflict (code, tag) do update`). Kein Personenbezug, keine
+IP, kein Cookie-Lesen dafür.
+
+Der zusätzliche Roundtrip läuft in `after()` aus `next/server` und damit
+**nach** der Weiterleitung: hier steht ein Mensch, der auf einen Link in
+einer Caption getippt hat, und der soll nicht auf einen Zähler warten.
+Laut Next.js darf `after()` in einem Route Handler weiterhin `cookies()`
+lesen — genau das braucht `createClient()`.
+
+Die Grenze dieses Zählers steht oben und in der Migration: die Funktion ist
+an `anon` gegrantet, weil der Klickende meistens kein Konto hat, und ein
+direkter RPC-Aufruf umgeht damit das IP-Limit des Handlers.
 
 ### Schritt 6 — Löschung und Anonymisierung nachziehen
 
@@ -572,11 +601,12 @@ Diese ändern, was gebaut wird — sie gehören dir, nicht mir.
 4. **Zählt ein bereits registrierter Nutzer, der über einen Creator-Link
    zurückkommt?** Heute: nein. Anders wäre es ein eigenes Ereignis
    (`rueckkehr`) und eine eigene Definition.
-5. **Sehen Creator ihre eigenen Zahlen?** Eigene Oberfläche, eigene
-   Auth-Entscheidung, deutlich mehr Arbeit. Vorschlag: zunächst manuell
-   melden.
-6. **Klicks serverseitig zählen?** Ohne den Nenner ist die Conversion-Rate
-   nicht berechenbar; mit ihm schreibt der öffentliche Pfad bei jedem Klick.
+5. ~~**Sehen Creator ihre eigenen Zahlen?**~~ **Entschieden: ja** (`0091`).
+   `/creator` zeigt dem zugewiesenen Konto seine eigenen Zahlen, ohne je
+   preiszugeben, wer sich registriert hat.
+6. ~~**Klicks serverseitig zählen?**~~ **Entschieden: ja** (`0091`), als
+   Zahl pro Code und Tag ohne Personenbezug — mit der ausdrücklichen
+   Einschränkung, dass sie nicht fälschungssicher ist.
 
 ---
 

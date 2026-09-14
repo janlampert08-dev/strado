@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isModerator } from "@/lib/moderation";
 import { normalisiereCode, pruefeCreatorLinkEingabe } from "@/lib/creatorLinks";
+import { isValidUuid } from "@/lib/validation";
 
 // Verwaltung der Einstiegscodes unter /moderation/creator (Tabelle
 // creator_links, Migration 0084).
@@ -67,12 +68,24 @@ export async function creatorLinkAnlegen(
   });
   if (!geprueft.ok) return { error: geprueft.fehler };
 
+  // Optional: das Konto, dem der Code gehört. Leer heisst "niemandem" —
+  // ein Code darf ohne Creator-Konto laufen (Plakat, Newsletter, jemand
+  // ohne Konto). Der Wert kommt aus einem Auswahlfeld und ist damit
+  // client-kontrolliert; geprüft wird hier auf die Form und in der
+  // Datenbank auf die Existenz (Fremdschlüssel auf auth.users, 0091).
+  const zuweisung = creatorUserIdAus(formData.get("creator_user_id"));
+  if (zuweisung === UNGUELTIG) return { error: "Das gewählte Konto ist ungültig." };
+
   const { error } = await kontext.supabase.from("creator_links").insert({
     ...geprueft.wert,
+    creator_user_id: zuweisung,
     erstellt_von: kontext.userId,
   });
 
   if (error) {
+    if (error.code === "23503") {
+      return { error: "Das gewählte Konto gibt es nicht (mehr)." };
+    }
     // 23505 ist die Unique-Verletzung des Primärschlüssels. Der einzige
     // Fehler hier, den die Moderation selbst beheben kann — deshalb als
     // einziger benannt statt unter "hat nicht geklappt" zu verschwinden.
@@ -154,6 +167,63 @@ export async function creatorLinkLoeschen(rohCode: string): Promise<CreatorLinkR
     return { error: "Das Löschen hat nicht geklappt. Bitte versuche es noch einmal." };
   }
   if (count === 0) return nichtGetroffen("Das Löschen");
+
+  aktualisiere();
+  return OK;
+}
+
+// Ein leeres Feld heisst "keine Zuweisung" und ist gültig; alles, was kein
+// UUID ist, heisst "kaputtes Formular" und ist es nicht. Beides von null zu
+// unterscheiden verlangt einen dritten Wert — sonst würde eine manipulierte
+// Eingabe stillschweigend zu "niemandem" und die Zuweisung ginge verloren.
+const UNGUELTIG = Symbol("ungueltige-creator-zuweisung");
+
+function creatorUserIdAus(roh: FormDataEntryValue | null): string | null | typeof UNGUELTIG {
+  if (typeof roh !== "string") return null;
+  const wert = roh.trim();
+  if (!wert) return null;
+  return isValidUuid(wert) ? wert : UNGUELTIG;
+}
+
+// Einen Code einem Konto zuweisen oder die Zuweisung entfernen (leeres
+// Feld).
+//
+// Das ist die Vergabe der Creator-Rolle: es gibt keine Spalte
+// profiles.ist_creator — wer hier eingetragen wird, sieht /creator und
+// seine eigenen Zahlen (Migration 0091). Deshalb steht die Aktion neben den
+// anderen Moderationsaktionen und hinter derselben dreifachen Schranke.
+//
+// (State, FormData) wie creatorLinkAnlegen, weil das Formular
+// useActionState benutzt: dasselbe Auswahlfeld dient dem Zuweisen und dem
+// Entfernen — ein geleertes Feld ist die Rücknahme.
+export async function creatorLinkZuweisen(
+  _prevState: CreatorLinkResult,
+  formData: FormData,
+): Promise<CreatorLinkResult> {
+  const kontext = await alsModerator();
+  if ("error" in kontext) return kontext;
+
+  const code = normalisiereCode(String(formData.get("code") ?? ""));
+  if (!code) return { error: "Unbekannter Code." };
+
+  const zuweisung = creatorUserIdAus(formData.get("creator_user_id"));
+  if (zuweisung === UNGUELTIG) return { error: "Das gewählte Konto ist ungültig." };
+
+  const { error, count } = await kontext.supabase
+    .from("creator_links")
+    .update({ creator_user_id: zuweisung }, { count: "exact" })
+    .eq("code", code);
+
+  const was = zuweisung ? "Das Zuweisen" : "Das Entfernen der Zuweisung";
+  if (error) {
+    // 23503: der Fremdschlüssel auf auth.users greift — das Konto gibt es
+    // nicht. Kann im Normalbetrieb nur passieren, wenn es zwischen Auswahl
+    // und Absenden verschwunden ist.
+    if (error.code === "23503") return { error: "Das gewählte Konto gibt es nicht (mehr)." };
+    console.error("Creator-Zuweisung fehlgeschlagen", { code }, error);
+    return { error: `${was} hat nicht geklappt. Bitte versuche es noch einmal.` };
+  }
+  if (count === 0) return nichtGetroffen(was);
 
   aktualisiere();
   return OK;

@@ -153,11 +153,18 @@ export function pruefeCreatorLinkEingabe(roh: {
 // Die ganze Liste für die Moderationsansicht. Über den session-gebundenen
 // Client: RLS gibt nur Moderatoren eine Zeile (0084), die Seite prüft den
 // Status zusätzlich selbst (Defense-in-Depth wie in lib/actions/moderation.ts).
-export async function alleCreatorLinks(): Promise<CreatorLink[]> {
+export interface CreatorLinkMitKonto extends CreatorLink {
+  /** Anzeigename des zugewiesenen Kontos. null, wenn keines zugewiesen ist
+   *  — oder wenn das zugewiesene Konto gelöscht wurde und damit keinen
+   *  Namen mehr trägt (0058). */
+  kontoName: string | null;
+}
+
+export async function alleCreatorLinks(): Promise<CreatorLinkMitKonto[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("creator_links")
-    .select("code, name, kanal, kampagne, aktiv, erstellt_am")
+    .select("code, name, kanal, kampagne, aktiv, erstellt_am, creator_user_id")
     .order("erstellt_am", { ascending: false })
     .returns<CreatorLink[]>();
 
@@ -165,7 +172,27 @@ export async function alleCreatorLinks(): Promise<CreatorLink[]> {
     console.error("Creator-Links konnten nicht gelesen werden", error);
     return [];
   }
-  return data ?? [];
+
+  const links = data ?? [];
+  const kontoIds = [...new Set(links.map((l) => l.creator_user_id).filter((id) => id !== null))];
+
+  // Getrennte Folgeabfrage für die Anzeigenamen statt eines embedded
+  // Selects — dasselbe Muster wie in lib/moderation.ts, aus demselben
+  // Grund: nicht auf PostgREST-Relationship-Inferenz angewiesen sein,
+  // solange types/database.ts `Database = any` exportiert.
+  const nameVon = new Map<string, string | null>();
+  if (kontoIds.length > 0) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, display_name")
+      .in("id", kontoIds);
+    for (const p of profile ?? []) nameVon.set(p.id, p.display_name);
+  }
+
+  return links.map((l) => ({
+    ...l,
+    kontoName: l.creator_user_id ? (nameVon.get(l.creator_user_id) ?? null) : null,
+  }));
 }
 
 // Der öffentliche Weg: nur aktive Codes, nur die drei Felder, die die
@@ -193,4 +220,20 @@ export async function creatorLinkAufloesen(
   // `Database = any` exportiert und der Client die Form nicht kennt.
   const zeilen: CreatorLinkZiel[] = Array.isArray(data) ? data : [];
   return zeilen[0] ?? null;
+}
+
+// Einen Klick auf /c/<code> zählen (Migration 0091).
+//
+// Über die SECURITY DEFINER-Funktion und nicht über die Tabelle: der
+// Aufrufer ist je nach Besucher anon oder authenticated, und creator_klicks
+// ist beiden Rollen verschlossen. Die Funktion kann genau eines — den
+// Tageszähler eines aktiven, vergebenen Codes um eins erhöhen.
+//
+// Fehler werden geschluckt und nur protokolliert: Der Besucher ist zu
+// diesem Zeitpunkt längst weitergeleitet (der Aufruf läuft in after()), und
+// eine verlorene Zählung ist kein Grund, irgendetwas abzubrechen.
+export async function creatorKlickZaehlen(code: string): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("creator_klick_zaehlen", { p_code: code });
+  if (error) console.error("Creator-Klick konnte nicht gezählt werden", { code }, error);
 }

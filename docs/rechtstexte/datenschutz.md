@@ -283,12 +283,26 @@ demselben Gerät später ein Konto angelegt, speichern wir den Code einmalig zum
 Konto und **löschen das Cookie**. Wird kein Konto angelegt, läuft es nach
 90 Tagen ab. Führen mehrere solcher Links zu einem Besuch, zählt der erste.
 
+**Aufrufe.** Zusätzlich zählen wir, wie oft ein solcher Link an einem Tag
+aufgerufen wurde — als blosse Zahl pro Code und Tag. Dabei werden **weder
+IP-Adresse noch Uhrzeit noch irgendeine Kennung** gespeichert; aus dieser
+Zahl lässt sich niemand herauslesen, und sie lässt sich keinem Besuch
+zuordnen.
+
 **Was daraus entsteht.** Zum Konto ist damit hinterlegt, über welchen Link es
 zustande kam. Wird später — auch Monate später — ein Premium-Abo
 abgeschlossen, halten wir zusätzlich fest, dass aus diesem Einstiegsweg ein
 Abo geworden ist. Ausgewertet wird das **nur zusammengefasst pro Link**
-("über diesen Link kamen zwölf Registrierungen, daraus zwei Abos"). Wer hinter
-einem Konto steht, erfahren die betreffenden Personen nicht.
+("über diesen Link kamen zwölf Registrierungen, daraus zwei Abos").
+
+**Wer diese Zahlen sieht.** Die Person, auf die ein Link läuft, kann die
+zusammengefassten Zahlen zu **ihrem eigenen** Link in ihrem Konto einsehen:
+Aufrufe, entstandene Konten, daraus entstandene Abos, dazu den Tagesverlauf
+der Aufrufe. Sie erfährt dabei **nicht, wer** sich registriert oder ein Abo
+abgeschlossen hat — weder Name noch Zeitpunkt noch sonst ein Merkmal eines
+einzelnen Kontos. Technisch ist das nicht bloss eine Frage der Darstellung:
+die Auswertung wird in der Datenbank zusammengefasst, einzelne Datensätze
+verlassen sie gar nicht.
 
 **Keine Weitergabe.** Diese Angaben verbleiben bei uns. Es ist kein Dienst
 Dritter beteiligt, es findet keine websiteübergreifende Verfolgung statt, und
@@ -463,7 +477,7 @@ den Privatzonen-Radius anpassen (was bereits geteilte Fahrten neu zuschneidet).
 | IP-Adressen zur Missbrauchsabwehr | flüchtig im Arbeitsspeicher, wenige Minuten, keine Datenbankablage |
 | Konto-, Profil-, Fahrten- und Community-Daten | bis zur Löschung durch die Nutzenden bzw. bis zur Kontolöschung — **mit den Ausnahmen aus Ziff. 9.4**: veröffentlichte Streckenfahrten, Bewertungen, Kudos, Follows, Meldungen, Fotos zu erhalten bleibenden Fahrten und ein technischer Löschvermerk bleiben ohne Namensbezug bestehen |
 | Abo-Zustand (Abschnitt 3.9) | bis zum Ende des Abos; bei der Kontolöschung wird die Zeile entfernt |
-| Herkunft einer Registrierung (Abschnitt 3.11) | Cookie 90 Tage bzw. bis zur Registrierung; die Zuordnung zum Konto bis zur Kontolöschung; die zusammengefasste Zählung bleibt ohne Kontobezug bestehen |
+| Herkunft einer Registrierung (Abschnitt 3.11) | Cookie 90 Tage bzw. bis zur Registrierung; die Zuordnung zum Konto bis zur Kontolöschung; die zusammengefasste Zählung und die Aufrufzahl pro Tag bleiben ohne Kontobezug bestehen |
 | Rechnungs- und Zahlungsunterlagen | gesetzliche Aufbewahrungsfrist, in der Regel 10 Jahre (Art. 958f OR) — überwiegend bei Stripe |
 | Protokolldaten der Hosting-Anbieter | nach deren Aufbewahrungsfristen |
 

@@ -433,6 +433,10 @@ export interface CreatorLink extends CreatorLinkZiel {
   name: string;
   aktiv: boolean;
   erstellt_am: string;
+  /** Das Konto, dem der Code gehört (0091) — zugleich die Creator-Rolle:
+   *  wer hier steht, sieht /creator. null, solange keines zugewiesen ist
+   *  oder nachdem das zugewiesene gelöscht wurde (0092). */
+  creator_user_id: string | null;
 }
 
 // Zeilenform von public.registrierung_herkunft (0088): über welchen

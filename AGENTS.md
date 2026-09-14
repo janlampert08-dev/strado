@@ -171,7 +171,8 @@ is what should be corrected.
   applied — see `supabase/migrations/README.md`, which is the only place that
   distinction survives, plus `.agents/deployment.md`.
   `0088_herkunft_und_konversionen`, `0089_creator_konversion_abo` and
-  `0090_anonymisierung_herkunft` are in the repo and **not applied yet** —
+  `0090_anonymisierung_herkunft`, `0091_creator_konten` and
+  `0092_anonymisierung_creator_zuweisung` are in the repo and **not applied yet** —
   they are the reverse of the usual danger: the code that feeds them ships
   first and is inert without them (an unread cookie, a metadata key no
   trigger looks at), so nothing breaks while the gap is open, and nothing
@@ -181,7 +182,8 @@ is what should be corrected.
   that ended at `0086`. `scripts/check-migration-prefixes.mjs` cannot catch
   that — it only sees one branch — so the check that matters is the one
   `.agents/database.md` actually asks for: read the open PRs before
-  choosing a number.
+  choosing a number. `0091`/`0092` continue the same run and depend on
+  `0088`, so the order is not optional.
   - **There is no separate staging database — confirmed, and staying that
     way.** The linked Supabase account holds exactly one project, and it is
     production; the owner confirmed on 2026-09-14 that `staging` points at
@@ -227,6 +229,27 @@ is what should be corrected.
   in `janlampert08-dev/stradoinfo` — with no consent banner: that was a
   deliberate decision, so a change to the cookie's name, lifetime or
   contents is a legal-text change in two repositories.
+  - **Creators have accounts, and there is no `ist_creator` column.** A
+    creator *is* someone with a row in `creator_links` carrying their
+    `creator_user_id` (`0091`); the assignment is the role. That avoids a
+    second source of truth, and it keeps the fact off `profiles`, which is
+    world-readable since `0001`. Moderators assign it while creating a code
+    or afterwards, under `/moderation/creator`; the assigned account then
+    sees `/creator` with clicks, accounts and subscriptions for its own
+    codes. What it must never see is *who* — so the dashboard reads
+    `creator_kennzahlen()` / `creator_verlauf()`, `SECURITY DEFINER`
+    functions that aggregate inside the database and hand out numbers only.
+    Never open `creator_konversionen` row-wise to reach the same figures:
+    it carries `user_id`, and any row-level grant answers the second
+    question along with the first. The same two functions feed the
+    moderation view (a moderator gets every row) — one rule, one source.
+    Clicks are counted per code and day in `creator_klicks` with no IP, no
+    time and no identity, via `creator_klick_zaehlen()` called from
+    `after()` in the redirect handler. That counter is **indicative, not
+    payable**: codes are public and the RPC is reachable with the anon key,
+    so the handler's IP limit does not bind it. Registrations and
+    subscriptions are the trustworthy numbers — they go through `signUp()`
+    and Stripe.
 - **Open audit findings are tracked in
   `docs/audit/README.md#remediation-status`**, not in GitHub issues. Read
   that table before concluding you have found something new — most of the

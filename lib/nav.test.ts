@@ -87,4 +87,44 @@ describe("getNavItems", () => {
     expect(items).toHaveLength(6);
     expect(items[2].href).toBe("/fahrten/neu");
   });
+
+  // Creator-Konten (0091): wer einen Code zugewiesen bekommt, braucht den
+  // Weg zu seinen Zahlen — auf dem Telefon genauso wie am Schreibtisch,
+  // deshalb in beiden Surfaces.
+  it("hängt Creator nur für Creator an, in beiden Surfaces", () => {
+    for (const surface of ["header", "bottom"] as const) {
+      expect(
+        hrefs(getNavItems({ loggedIn: true, moderator: false, creator: true, surface })),
+      ).toContain("/creator");
+      expect(
+        hrefs(getNavItems({ loggedIn: true, moderator: false, creator: false, surface })),
+      ).not.toContain("/creator");
+    }
+  });
+
+  // Der Parameter ist optional, weil er für fast jedes Konto falsch ist —
+  // ein weggelassener darf keinen Eintrag erzeugen.
+  it("zeigt Creator nicht, wenn der Parameter fehlt", () => {
+    expect(hrefs(getNavItems({ loggedIn: true, moderator: true }))).not.toContain("/creator");
+  });
+
+  // Zahlen sieht nur, wer ein Konto hat — ohne Anmeldung gibt es keine
+  // Zuweisung, die der Eintrag meinen könnte.
+  it("zeigt Creator nie für Abgemeldete", () => {
+    for (const surface of ["header", "bottom"] as const) {
+      expect(
+        hrefs(getNavItems({ loggedIn: false, moderator: false, creator: true, surface })),
+      ).not.toContain("/creator");
+    }
+  });
+
+  // Moderation und Creator sind zwei verschiedene Dinge: ein Moderator sieht
+  // die Zahlen aller Codes in der Moderationsansicht, /creator gehört dem,
+  // auf den ein Code läuft.
+  it("hält Creator und Moderation auseinander", () => {
+    const items = hrefs(getNavItems({ loggedIn: true, moderator: true, creator: true }));
+    expect(items).toContain("/creator");
+    expect(items).toContain("/moderation");
+    expect(items.indexOf("/creator")).toBeLessThan(items.indexOf("/moderation"));
+  });
 });

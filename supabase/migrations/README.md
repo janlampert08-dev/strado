@@ -29,6 +29,41 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Noch nicht eingespielt: 0091, 0092 (Creator-Konten)
+
+Setzen `0088` voraus und werden danach angewendet:
+
+| Datei | Was sie anlegt |
+| --- | --- |
+| `0091_creator_konten` | `creator_links.creator_user_id` (die Creator-Rolle), Lese-Policy für den zugewiesenen Creator, Tabelle `creator_klicks`, die Funktionen `creator_klick_zaehlen()`, `creator_kennzahlen()`, `creator_verlauf()` |
+| `0092_anonymisierung_creator_zuweisung` | `anonymize_account()` gibt zugewiesene Codes bei der Kontolöschung wieder frei |
+
+Drei Dinge, die beim Prüfen zählen:
+
+```sql
+-- Die neue Spalte und der Teilindex
+select column_name from information_schema.columns
+where table_name = 'creator_links' and column_name = 'creator_user_id';
+
+-- creator_klicks: RLS an, und anon/authenticated haben KEIN Tabellenrecht
+select grantee, privilege_type from information_schema.role_table_grants
+where table_name = 'creator_klicks' and grantee in ('anon', 'authenticated');
+
+-- Die Ausfuehrungsrechte der drei Funktionen: zaehlen darf jeder,
+-- die Kennzahlen nur angemeldete Konten.
+select p.proname, array_agg(a.grantee)
+from information_schema.role_routine_grants a
+join pg_proc p on p.proname = a.routine_name
+where p.proname in ('creator_klick_zaehlen', 'creator_kennzahlen', 'creator_verlauf')
+group by p.proname;
+```
+
+`creator_klick_zaehlen()` ist bewusst an `anon` gegrantet — der Aufrufer ist
+ein Besucher ohne Konto. Die Folge steht im Kopf der Migration und gehört
+auch hierher: ein direkter RPC-Aufruf mit dem öffentlichen Schlüssel umgeht
+das IP-Limit des Route Handlers. Die Klickzahl ist damit eine Anzeige und
+taugt nicht als Vergütungsgrundlage.
+
 ## Noch nicht eingespielt: 0088, 0089, 0090 (Creator-Herkunft)
 
 **Warum nicht 0087:** diese Nummer gehört `0087_premium_abzeichen_spalte`

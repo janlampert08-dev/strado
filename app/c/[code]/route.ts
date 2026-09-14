@@ -1,5 +1,5 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { creatorLinkAufloesen, einstiegsPfad } from "@/lib/creatorLinks";
+import { after, NextResponse, type NextRequest } from "next/server";
+import { creatorKlickZaehlen, creatorLinkAufloesen, einstiegsPfad } from "@/lib/creatorLinks";
 import {
   HERKUNFT_COOKIE,
   HERKUNFT_COOKIE_OPTIONEN,
@@ -61,6 +61,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (link) {
     const wert = herkunftCookieWert(request.cookies.get(HERKUNFT_COOKIE)?.value, link.code);
     if (wert) antwort.cookies.set(HERKUNFT_COOKIE, wert, HERKUNFT_COOKIE_OPTIONEN);
+
+    // Den Klick zählen — der Nenner des Trichters, den /creator zeigt
+    // (Migration 0091).
+    //
+    // In after() und nicht davor: der Zähler ist ein Nebeneffekt, und hier
+    // steht ein Mensch im Browser, der auf einen Link in einer Caption
+    // getippt hat. Die Weiterleitung soll nicht auf einen
+    // Datenbank-Roundtrip warten, der für ihn nichts tut. after() läuft,
+    // nachdem die Antwort raus ist, und darf laut Next.js in einem Route
+    // Handler weiterhin cookies() lesen — was createClient() braucht.
+    after(() => creatorKlickZaehlen(link.code));
   }
 
   return antwort;
