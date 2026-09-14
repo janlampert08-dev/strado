@@ -81,6 +81,48 @@ deploy step for a human: read the dry-run list, then `--loeschen`.
 **Cost of waiting:** a deleted user's photo stays retrievable. This is the
 highest-value item in the file and the agent cannot do it.
 
+### P6 — a moderator UI for the agent team
+**Evidence:** owner request, 2026-09-14. The panel already has the exact
+pattern: `feedback` (migration `0083`) is a moderator-only table read by
+`getOpenFeedback()` in `lib/moderation.ts` and rendered as a `<section>` on
+`/moderation` with `FeedbackActions`. `/moderation/creator` is the precedent
+for a sub-page instead.
+**What it is for:** the display is the cheap half. The point is the **approve
+button** — promoting `proposed` → `ready` is currently a hand-edit of markdown
+in git, and it is the one action only the owner can take. Making it one click
+removes the only friction in the whole loop.
+**Why it needs a decision:** the Routines write their state to git, because git
+is the one thing a fired session certainly has. If approval writes to a
+Supabase table, the Nachtschicht must read that table — which needs Supabase
+access inside a fired session. That is the open connector question. Settle it
+first:
+- Routines have Supabase → one **additive** migration (`agent_backlog`,
+  `agent_journal`, moderator-only RLS), Routines read and write it directly.
+- They do not → the page reads GitHub at runtime and approval writes back via
+  the GitHub API, which means a new server-side token.
+**Constraint:** confirmed 2026-09-14 via `list_projects` — the account holds
+**one** project (`stecakpnuijbvjsniqto`, "Strado"), and it is production. Any
+migration here lands on production unrehearsed, so it must be purely additive,
+the same bar `0080`–`0084` cleared.
+**Note:** touches moderation, so it can never auto-merge — it waits for the
+owner's review whatever the Gegenleser says.
+
+### P7 — Release Flow claims a staging database that does not exist
+**Evidence:** `AGENTS.md` → Release Flow: "`staging` deploys to
+`staging.strado.ch`. It has its own Supabase project … so a test purchase
+there touches no production data." `mcp__Supabase__list_projects` on
+2026-09-14 returned **exactly one** project, `stecakpnuijbvjsniqto` ("Strado",
+eu-central-1, ACTIVE_HEALTHY) — matching Current State, which says the opposite
+of Release Flow.
+**Why it needs you:** either `staging.strado.ch` points at the **production**
+database, or at a project under an account this connector cannot see. Only the
+Vercel environment variables for the `staging` deployment settle it, and an
+agent should not go reading production secrets to find out. If it is the
+former, then every migration "rehearsed" on staging was applied to production,
+and staging test data is production data. That is a risk to know about, not a
+documentation nit.
+**Blocks:** all database work, P6 included. This supersedes the earlier P5.
+
 ### P2 — A1 leg 2: `dauer_sekunden` is still a client-supplied clock
 **Evidence:** `docs/audit/README.md` A1 table — "Open, and it needs a product
 decision, not a migration." A 10 km / 600 s trail replayed at ×0.4 passes the
@@ -103,7 +145,7 @@ the prefix "buys nothing and costs this freezing".
 **Why it needs you:** the repo and the Vercel dashboard have to change
 together. A PR alone breaks the deployment.
 
-### P5 — settle where the staging database lives
+### P5 — settle where the staging database lives (superseded by P7)
 **Evidence:** Release Flow says `staging` has its own Supabase project;
 Current State says the linked account holds exactly one project and it is
 production.
