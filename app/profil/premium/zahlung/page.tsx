@@ -73,9 +73,30 @@ export default async function PremiumZahlungPage({
       : gewaehlt.betragRappen;
 
   return (
-    <div className="flex h-dvh flex-col">
+    // Diese Seite scrollt als Dokument statt in einem eigenen
+    // Scroll-Container — anders als der Rest der App, wo aussen h-dvh steht
+    // und <main> die Scrollfläche ist. Der Grund ist das Payment Element:
+    // es rendert in einem fremden iframe, und eine Wischgeste, die auf einem
+    // iframe beginnt, reicht ihren Scroll in WebKit nicht an ein
+    // darüberliegendes overflow-Element weiter, sondern nur an den
+    // Dokument-Scroller. Solange bloss die zwei Zahlungsart-Reiter zu sehen
+    // sind, fällt das nicht auf; sobald eine Zahlungsart gewählt ist, füllt
+    // das iframe mit Kartennummer, Ablaufdatum und Prüfziffer den halben
+    // Bildschirm — und damit landete fast jeder Wisch auf einer Fläche, die
+    // die Seite nicht bewegte. Genau das war hier zu sehen.
+    //
+    // Der zweite Effekt desselben Wechsels: ein Dokument, das nie scrollt,
+    // lässt die Adresszeile in Safari auch nie einklappen. Das höchste
+    // Formular der App stand damit ausgerechnet auf der kleinsten Variante
+    // des Viewports.
+    //
+    // min-h-dvh statt h-dvh, damit die Spalte bei kurzem Inhalt weiterhin
+    // den Bildschirm füllt. Header (sticky) und BottomNav (fixed) stehen
+    // unverändert; den Platz unter der Leiste reserviert nach wie vor die
+    // globale main{padding-bottom}-Regel in globals.css.
+    <div className="flex min-h-dvh flex-col">
       <Header back="/profil/premium" />
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 overflow-y-auto px-5 py-8 sm:px-6">
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 px-5 py-8 sm:px-6">
         <div className="flex flex-col gap-3">
           <PremiumBadge />
           <h1 className="text-display font-semibold">Zahlung abschliessen</h1>
