@@ -80,13 +80,16 @@ export default function PremiumWillkommen({
         ))}
       </Card>
 
-      {/* Der erste Weg führt in die Funktion, für die die meisten bezahlt
-          haben — eigene Strecken sind seit Migration 0077 die eigentliche
-          Bezahlschranke. "Zum Profil" bleibt daneben stehen, weil dort das
-          Abo verwaltet und gekündigt wird. */}
+      {/* Der erste Weg führt in die Funktion, für die gerade bezahlt wurde.
+          Bis 0086 war das "eigene Strecken erstellen" — das ist seither
+          wieder kostenlos, und ein frisch zahlender Nutzer dorthin zu
+          schicken zeigte ihm etwas, das er auch ohne Abo gehabt hätte.
+          Geblieben ist der Teil, der tatsächlich am Abo hängt: eine PRIVATE
+          Strecke, ohne Abo auf eine begrenzt (0064). "Zum Profil" bleibt
+          daneben stehen, weil dort das Abo verwaltet und gekündigt wird. */}
       <div className="flex w-full flex-col gap-2">
         <Link href="/strecken/neu" className={buttonVariants({ className: "w-full" })}>
-          Eigene Strecke erstellen
+          Private Strecke erstellen
         </Link>
         <Link
           href="/profil"

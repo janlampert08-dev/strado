@@ -53,11 +53,13 @@ export function getNavItems({
     ];
   }
 
-  // Heisst "Erstellen", nicht mehr "Vorschlagen": seit eigene Strecken
-  // Premium sind, ist das Wort für das, was man dort tut — eine private
-  // Strecke entsteht ohne jede Prüfung, nur die öffentliche geht noch durch
-  // die Moderation. Der Bezeichner bleibt, damit die Tests und der Rest des
-  // Codes nicht mitwandern müssen.
+  // Heisst "Erstellen", nicht mehr "Vorschlagen", und bleibt dabei: eine
+  // private Strecke entsteht ohne jede Prüfung, nur die öffentliche geht
+  // durch die Moderation. Die Begründung stand bis 0086 auf dem Premium-Zwang
+  // — der ist zurückgenommen, das Wort passt trotzdem weiter, denn es
+  // beschreibt die Handlung und nicht, wer sie ausführen darf. Der
+  // Bezeichner bleibt, damit die Tests und der Rest des Codes nicht
+  // mitwandern müssen.
   const vorschlagen: NavItem = { href: "/strecken/neu", label: "Erstellen", icon: PlusIcon };
   const mittlereAktionen: NavItem[] =
     surface === "bottom" ? [fahrtStarten] : [fahrtStarten, vorschlagen];

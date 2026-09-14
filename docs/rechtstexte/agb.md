@@ -20,10 +20,14 @@
 > ### Hinweis zum Umsetzungsstand
 >
 > Das **Premium-Abo** ist live und wird verkauft. Ziff. 3.2 beschreibt den
-> Funktionsumfang, wie er am 2026-09-07 tatsächlich freigeschaltet ist
-> (`lib/premiumLimits.ts`): eigene Strecken, zwölf statt sechs Fotos pro
-> Fahrt, unbegrenzt offline gespeicherte Strecken, GPX-Export kuratierter
-> Strecken. Der Gründerpreis wird seit demselben Datum nicht mehr angeboten;
+> Funktionsumfang, wie er tatsächlich freigeschaltet ist
+> (`lib/premiumLimits.ts`, `lib/premiumVorteile.ts`): die Auswertung nach
+> Jahr und Fahrzeug, unbegrenzt private Strecken, zwölf statt sechs Fotos
+> pro Fahrt, unbegrenzt offline gespeicherte Strecken, GPX-Export
+> kuratierter Strecken. Das **Erstellen**
+> eigener Strecken war vom 2026-09-07 bis zur Migration
+> `0086_strecken_anlegen_wieder_offen.sql` Teil des Abos und ist seither
+> wieder kostenlos — Ziff. 3.1 und 3.2 sind damit mitgezogen. Der Gründerpreis wird seit demselben Datum nicht mehr angeboten;
 > Ziff. 4.3 regelt nur noch den Bestandsschutz der davor abgeschlossenen
 > Abos. Wird der Funktionsumfang geändert, ist Ziff. 3.2 zwingend mit
 > anzupassen — eine AGB, die nicht existierende Leistungen verspricht, ist
@@ -31,7 +35,7 @@
 
 ---
 
-**Stand: 7. September 2026**
+**Stand: 14. September 2026**
 
 ## 1. Geltungsbereich und Anbieterin
 
@@ -97,25 +101,35 @@ Umgehung von Nutzungsgrenzen, Sperren oder Cooldowns sind nicht gestattet.
 Ohne Abo stehen insbesondere zur Verfügung: das Entdecken und Durchsuchen der
 kuratierten Strecken, das Starten und Aufzeichnen von Fahrten (Streckenfahrten
 und freie Fahrten), das Speichern und optionale Veröffentlichen von Fahrten,
-Kudos, Bewertungen, Bestenlisten und der Community-Feed.
+Kudos, Bewertungen, Bestenlisten und der Community-Feed sowie das Erstellen
+eigener Strecken — als öffentlicher Vorschlag nach Prüfung durch die
+Moderation (Ziff. 10.5) in unbegrenzter Zahl, als private Strecke nur für die
+eigene Nutzung begrenzt auf eine (Ziff. 3.2).
 
 ### 3.2 Premium-Abo
 
 Das kostenpflichtige Premium-Abo („Strado Premium") ergänzt die kostenlose
 Nutzung. Es umfasst:
 
-- das Erstellen eigener Strecken — privat nur für die eigene Nutzung oder
-  öffentlich nach Prüfung durch die Moderation (Ziff. 10.5); dazu gehören
-  unbegrenzt viele private Strecken,
+- eine Auswertung der eigenen Fahrten nach Jahr und nach Fahrzeug
+  (Anzahl, Kilometer, Höhenmeter; **keine** Zeiten und keine
+  Geschwindigkeiten, vgl. Ziff. 11.3),
+- unbegrenzt viele private Strecken — solche, die nur für die eigene Nutzung
+  sichtbar sind (kostenlos: eine),
 - bis zu zwölf Fotos pro Fahrt (kostenlos: sechs),
 - unbegrenzt viele offline gespeicherte Strecken (kostenlos: drei),
 - GPX-Export auch für kuratierte Strecken (kostenlos: nur eigene Fahrten).
 
 **Kein Bestandteil des Abos** sind die Kernfunktionen aus Ziff. 3.1 — sie
-bleiben dauerhaft kostenlos. Wer vor der Einführung dieser Regelung ohne Abo
-bereits eine oder mehrere private Strecken angelegt hat (kostenlos war bisher
-eine private Strecke), behält diese vollständig und darf sie weiter bearbeiten
-und veröffentlichen; ein Abo setzt nur das Neuanlegen voraus (Bestandsschutz).
+bleiben dauerhaft kostenlos. Das gilt ausdrücklich auch für das **Erstellen
+eigener Strecken**: Es war zwischen dem 7. September 2026 und dem Inkrafttreten
+dieser Fassung dem Abo vorbehalten und ist seither wieder ohne Abo möglich. Ein
+Abo hebt allein die Zahl der privaten Strecken auf; öffentliche Vorschläge sind
+auch ohne Abo unbegrenzt.
+
+Wer ohne Abo bereits mehrere private Strecken angelegt hat, behält diese
+vollständig und darf sie weiter bearbeiten und veröffentlichen; begrenzt ist
+ausschliesslich das Neuanlegen (Bestandsschutz).
 
 ### 3.3 Weiterentwicklung und Änderungen des Funktionsumfangs
 
