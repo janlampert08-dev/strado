@@ -435,6 +435,43 @@ export interface CreatorLink extends CreatorLinkZiel {
   erstellt_am: string;
 }
 
+// Zeilenform von public.registrierung_herkunft (0087): über welchen
+// Creator-Link ein Konto entstanden ist.
+//
+// Die Anwendung liest diese Tabelle heute nicht — sie hat keine Policy und
+// keine Grants an anon/authenticated, geschrieben wird sie allein vom
+// Trigger handle_new_user, gelesen vom Trigger creator_konversion_abo
+// (0088). Der Typ steht hier trotzdem, weil diese Datei das Schema
+// spiegelt und .agents/database.md verlangt, dass beide nicht
+// auseinanderlaufen.
+export interface RegistrierungHerkunft {
+  user_id: string;
+  code: string;
+  erstellt_am: string;
+}
+
+export type CreatorKonversionArt = "registrierung" | "abo_start" | "abo_ende";
+
+// Zeilenform von public.creator_konversionen (0087) — das
+// Ereignisprotokoll, das einen Premium-Kauf noch Monate nach der
+// Registrierung dem Creator zuordnet.
+//
+// user_id ist nullable: bei der Kontolöschung wird der Personenbezug
+// genullt, die Zeile bleibt stehen (0089). stripe_subscription_id ist bei
+// art === "registrierung" null und sonst gesetzt — ein CHECK-Constraint
+// hält beides zusammen.
+export interface CreatorKonversion {
+  // bigint; PostgREST liefert ihn als JSON-Zahl.
+  id: number;
+  code: string;
+  art: CreatorKonversionArt;
+  user_id: string | null;
+  stripe_subscription_id: string | null;
+  ereignis_am: string;
+  erfasst_am: string;
+  registriert_am: string;
+}
+
 // Minimales Database-Interface für den generischen Supabase-Client-Typparameter.
 // Wird in Phase 2/3 durch generierte Typen ersetzt.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
