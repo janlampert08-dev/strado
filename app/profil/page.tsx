@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import Header from "@/components/Header";
 import PullToRefreshArea from "@/components/PullToRefreshArea";
-import MarkKudosSeen from "@/components/MarkKudosSeen";
+import MarkSeen from "@/components/MarkSeen";
 import VehicleGrid from "@/components/VehicleGrid";
 import AvatarUpload from "@/components/AvatarUpload";
 import RideVisibilityToggle from "@/components/RideVisibilityToggle";
@@ -28,6 +28,7 @@ import { ChartIcon } from "@/components/NavIcons";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
 import { getUnseenKudosCount } from "@/lib/kudos";
+import { markKudosSeen } from "@/lib/actions/kudos";
 import { getFollowCounts, getFollowerProfiles, getFollowingProfiles } from "@/lib/follows";
 import { formatDuration, formatKm } from "@/lib/format";
 import { freieFahrtTitel } from "@/lib/completions";
@@ -182,8 +183,11 @@ export default async function ProfilPage() {
     getFollowerProfiles(user.id),
     getFollowingProfiles(user.id),
     getPremiumStatus(),
-    // Entscheidet, ob MarkKudosSeen unten überhaupt etwas tut — derselbe
-    // Wert, den <Header /> für den Zähler liest (cache() in lib/kudos.ts).
+    // Entscheidet, ob MarkSeen unten überhaupt etwas tut. Bewusst die
+    // reine Kudos-Zahl und nicht die Gesamtzahl aus getUnseenActivityCount,
+    // die <Header /> zeigt: diese Seite zeigt nur die eigenen Fahrten und
+    // markiert deshalb auch nur die Kudos als gesehen (0097). Neue Follower
+    // bleiben ungesehen, bis sie auf /aktivitaet tatsächlich zu sehen waren.
     getUnseenKudosCount(),
   ]);
 
@@ -203,7 +207,7 @@ export default async function ProfilPage() {
 
   return (
     <div className="flex h-dvh flex-col">
-      <MarkKudosSeen hasUnseen={unseenKudos > 0} />
+      <MarkSeen hasUnseen={unseenKudos > 0} markSeen={markKudosSeen} />
       <Header />
       {/* Scroll-Container ist der volle Rest der Seitenbreite, nicht das
           zentrierte max-w-Element darin — sonst sitzt die native

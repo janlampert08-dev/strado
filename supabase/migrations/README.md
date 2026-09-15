@@ -29,6 +29,53 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Noch NICHT eingespielt: 0097_folge_benachrichtigungen
+
+Gehört zum Zweig `claude/follower-notifications-7gy701` (neue Follower
+erscheinen auf /aktivitaet). **Muss vor dem Deploy des Codes eingespielt
+werden**, nicht danach — die Reihenfolge ist hier nicht bloss die
+bevorzugte:
+
+| Ohne die Migration | Folge |
+| --- | --- |
+| `recent_follows_received()` fehlt | `/aktivitaet` wirft — `getRecentFollowersReceived` lässt einen Query-Fehler bewusst nicht als "keine Follower" durchgehen (`lib/queryError.ts`). Die Seite landet auf der Fehlerseite. |
+| `count_unseen_activity()` fehlt | Die Kopfleiste degradiert still auf 0 (`getUnseenActivityCount` schluckt den Fehler) — kein Abzeichen, aber auch kein Ausfall. |
+| `mark_activity_seen()` fehlt | Nichts wird als gesehen markiert; `MarkSeen` löst ohne `ok` keinen Refresh aus. |
+
+Die Nummer ist **0097**, obwohl `main` bei `0094` endet: `0095` liegt in PR
+#248 und `0096` in PR #249, beide offen. Genau der Fall, den
+`scripts/check-migration-prefixes.mjs` nicht sehen kann (es kennt nur den
+eigenen Zweig) — die offenen PRs zu lesen, ist der Check, der hier zählt.
+
+Rein additiv: eine Spalte (`profiles.follows_gesehen_am`, `not null default
+now()`, ohne Spalten-Grant) und drei neue Funktionen. Keine bestehende
+Funktion wird ersetzt, keine Policy verengt, kein Backfill. Der Rückweg ist
+entsprechend kurz — `drop function` für die drei, `drop column` für die
+eine —, und es gibt keinen Zustand, in dem ein halb angewendeter Stand Daten
+verlöre.
+
+Zwei Dinge, die beim Anwenden zu prüfen sind, beide aus den Lehren von
+`0047`/`0048`/`0091`:
+
+```sql
+-- 1. Kein direkter EXECUTE-Grant an anon (Supabase vergibt ihn per
+--    Default-Privileg an JEDE neue Funktion in public; ein revoke von
+--    PUBLIC entfernt ihn NICHT).
+select p.proname, r.rolname, has_function_privilege(r.rolname, p.oid, 'execute')
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+cross join (values ('anon'), ('authenticated')) as r(rolname)
+where n.nspname = 'public'
+  and p.proname in ('recent_follows_received', 'count_unseen_activity', 'mark_activity_seen');
+-- Erwartet: anon = false, authenticated = true, für alle drei.
+
+-- 2. Die Spalte trägt keinen Grant (sonst verriete sie, wann ein
+--    beliebiger Nutzer zuletzt seine Aktivität angesehen hat).
+select grantee, privilege_type from information_schema.column_privileges
+where table_name = 'profiles' and column_name = 'follows_gesehen_am';
+-- Erwartet: keine Zeile für anon/authenticated.
+```
+
 ## Eingespielt: 0094_creator_verlauf_nur_aufrufe (2026-09-15, Produktion)
 
 | Datei | Ledger-`version` | Was |

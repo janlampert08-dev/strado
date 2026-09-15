@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import Header from "@/components/Header";
 import PullToRefreshArea from "@/components/PullToRefreshArea";
-import MarkKudosSeen from "@/components/MarkKudosSeen";
-import ActivityKudosList from "@/components/ActivityKudosList";
-import { getRecentKudosReceived, getUnseenKudosCount } from "@/lib/kudos";
+import MarkSeen from "@/components/MarkSeen";
+import ActivityList from "@/components/ActivityList";
+import { getAktivitaet, getUnseenActivityCount } from "@/lib/aktivitaetsliste";
+import { markActivitySeen } from "@/lib/actions/aktivitaet";
 import { getCurrentUser } from "@/lib/supabase/server";
 
 export const metadata = {
@@ -13,53 +14,55 @@ export const metadata = {
 // Eigene Seite für "Community reagiert" im Kernloop (siehe AGENTS.md, "Core
 // User Loop", Schritt 7→8) statt nur eines Badges auf dem Profil-Tab — das
 // Flammen-Icon im Header verlinkt hierher (Header.tsx, auf jeder
-// Bildschirmgrösse sichtbar), analog zum bisherigen Ungelesen-Zähler
-// (lib/kudos.ts, getUnseenKudosCount). Nur der Besitzer selbst sieht seine
-// eigene Liste, siehe recent_kudos_received
-// (0057_kudos_aktivitaetsliste.sql) — ausschliesslich auf auth.uid()
-// beschränkt.
+// Bildschirmgrösse sichtbar), analog zum bisherigen Ungelesen-Zähler.
+//
+// Zwei Arten von Reaktion, eine Zeitachse: Kudos auf eigenen Fahrten
+// (recent_kudos_received, 0057) und neue Follower (recent_follows_received,
+// 0097). Beide Funktionen sind ausschliesslich auf auth.uid() beschränkt —
+// niemand kann die Aktivität eines fremden Kontos abfragen.
 export default async function AktivitaetPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/anmelden");
 
-  // getUnseenKudosCount zählt über alle Kudos, recent_kudos_received liefert
-  // nur die letzten 30 (0057). Beides wird gebraucht: die Liste zum Anzeigen,
-  // die Zahl als Schalter fürs Markieren — siehe unten. Beide Aufrufe sind
-  // per React cache() dedupliziert, der Header fragt dieselbe Zahl ohnehin.
-  const [kudosList, ungeleseneKudos] = await Promise.all([
-    getRecentKudosReceived(),
-    getUnseenKudosCount(),
-  ]);
+  // getUnseenActivityCount zählt über alle Kudos und Follower, die Listen
+  // liefern nur die letzten 30 (0057/0097). Beides wird gebraucht: die Liste
+  // zum Anzeigen, die Zahl als Schalter fürs Markieren — siehe unten. Beide
+  // Aufrufe sind per React cache() dedupliziert, der Header fragt dieselbe
+  // Zahl ohnehin.
+  const [eintraege, ungesehen] = await Promise.all([getAktivitaet(), getUnseenActivityCount()]);
 
   return (
     <div className="flex h-dvh flex-col">
       <Header back="/profil" />
-      {/* Markiert beim Laden alle aktuell ungelesenen Kudos als gesehen,
-          siehe MarkKudosSeen.tsx — dieselbe Komponente wie bisher auf
-          /profil, hier zusätzlich statt stattdessen. Das router.refresh()
-          darin würde die "neu"-Flags dieser Liste sofort auf false ziehen,
-          bevor der Nutzer sie gesehen hat — deshalb hält ActivityKudosList
-          einen eigenen Snapshot statt live aus den Props neu zu lesen.
-          Ohne ungelesene Kudos gibt es nichts zu markieren — dann bleibt
-          auch der Refresh aus.
+      {/* Markiert beim Laden alles aktuell Ungesehene als gesehen, siehe
+          MarkSeen.tsx — hier mit markActivitySeen, das BEIDE Zeitpunkte
+          setzt (0097). Auf /profil läuft dieselbe Komponente mit
+          markKudosSeen, weil dort nur die Kudos zu sehen sind.
+          Das router.refresh() darin würde die "neu"-Flags dieser Liste
+          sofort auf false ziehen, bevor der Nutzer sie gesehen hat —
+          deshalb hält ActivityList einen eigenen Snapshot statt live aus
+          den Props neu zu lesen. Ohne Ungesehenes gibt es nichts zu
+          markieren — dann bleibt auch der Refresh aus.
 
-          Der Schalter kommt aus getUnseenKudosCount und NICHT aus dieser
-          Liste: sie ist bei 30 Einträgen gekappt. Wer mehr Kudos bekommen
-          hat, dessen ältestes ungelesenes fiele aus dem Fenster, die Liste
-          meldete "nichts Neues", markiert würde nichts — und das Abzeichen
-          in der Kopfleiste, das über alle zählt, bliebe nach dem Besuch
-          dieser Seite stehen. */}
-      <MarkKudosSeen hasUnseen={ungeleseneKudos > 0} />
+          Der Schalter kommt aus getUnseenActivityCount und NICHT aus dieser
+          Liste: sie ist bei 30 Einträgen gekappt. Wer mehr Reaktionen
+          bekommen hat, dessen ältestes ungesehenes fiele aus dem Fenster,
+          die Liste meldete "nichts Neues", markiert würde nichts — und das
+          Abzeichen in der Kopfleiste, das über alle zählt, bliebe nach dem
+          Besuch dieser Seite stehen. */}
+      <MarkSeen hasUnseen={ungesehen > 0} markSeen={markActivitySeen} />
       {/* Ziehen zum Aktualisieren (nur Touch) — siehe PullToRefreshArea.tsx */}
       <PullToRefreshArea>
       <div className="flex-1 overflow-y-auto">
         <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-5 py-8 sm:px-6 sm:py-10">
           <div>
             <h1 className="text-display font-semibold">Aktivität</h1>
-            <p className="mt-1 text-sm text-muted">Kudos auf deine geteilten Fahrten.</p>
+            <p className="mt-1 text-sm text-muted">
+              Kudos auf deine geteilten Fahrten und neue Follower.
+            </p>
           </div>
 
-          <ActivityKudosList initialKudosList={kudosList} />
+          <ActivityList initialEintraege={eintraege} />
         </main>
       </div>
       </PullToRefreshArea>

@@ -24,3 +24,8 @@ export { MessageSquare as FeedbackIcon, Mail as MailIcon } from "lucide-react";
 // Icons historisch direkt aus lucide-react; für neuen Code verlangt
 // AGENTS.md diesen Wrapper, deshalb steht dieses eine hier und nicht dort.
 export { BarChart3 as ChartIcon } from "lucide-react";
+
+// Ebenfalls kein Nav-Icon: der Leerzustand der Aktivitätsliste
+// (components/ActivityList.tsx). Dasselbe Zeichen, das die Kopfleiste als
+// Einstieg in /aktivitaet zeigt.
+export { Flame as AktivitaetIcon } from "lucide-react";
