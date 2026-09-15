@@ -480,6 +480,42 @@ Vier Kanäle mit zusammen über 30'000 Abonnenten sind hier als **tot**
 aussortiert, obwohl sie in jeder Follower-Rangliste gut dastünden — allen
 voran Fahrschule Schweiz (11'400 Abonnenten, letztes Video 2021).
 
+### Warum hier keine Spalte „Anteil in Fahrdistanz" steht
+
+Ein Review zu diesem Dokument hat sie zu Recht verlangt: `AGENTS.md` sagt,
+die Frage an einen Kanal sei, welcher Anteil seines Publikums in Fahrdistanz
+zu einer bestehenden Strecke wohnt — nicht wie gross er ist. Genau diese Zahl
+fehlt in den Tabellen.
+
+Sie fehlt, weil sie sich **nicht erheben lässt**. Die Zuschauergeografie eines
+fremden Kanals ist nicht öffentlich; sie steht nur im YouTube Studio des
+Kanalinhabers. Jede Prozentangabe hier wäre erfunden, und eine erfundene Zahl
+in einer Spalte, die nach Messung aussieht, ist schlechter als keine Spalte —
+sie würde die Entscheidung tragen, die sie gerade nicht tragen kann.
+
+Was stattdessen dasteht, ist das **belegbare Ortssignal** pro Eintrag, und
+darauf ist die Sortierung gestützt, nicht auf die Abonnentenzahl:
+
+- ein Videotitel, der einen Ort nennt („Zurich's Supercar Madness", „Furka
+  Pass", „Pragelpass August 2026"),
+- eine Selbstauskunft im Kanaltext („carspotting **in Zurich**", „gefahren
+  wird hauptsächlich in **Winterthur** und Umgebung"),
+- Mundart in den Beiträgen (cscarphotography: „Abonnier und chum in Live
+  ine"),
+- das hinterlegte Land — das schwächste der vier Signale und nie allein
+  verwendet, weil es die Anmeldung ist und nicht das Publikum.
+
+Der Prüfstein ist Misha Charoudin: Schweizer, meldet die Niederlande,
+2,23 Mio. Abonnenten — und sein Publikum sitzt an der Nordschleife. Er steht
+deshalb unter „Nicht Schweiz", trotz der mit Abstand grössten Reichweite der
+ganzen Recherche. Genau dafür ist die Regel da.
+
+**Die Zahl gibt es trotzdem — nur erst später.** Sobald Phase 2 aus
+`docs/creator-links-plan.md` steht, misst der `/c/<code>`-Trichter pro Creator,
+wie viele seiner Klicks zu Konten und zu Fahrten werden. Das ist die echte
+Fassung dessen, was eine geschätzte Spalte nur behauptet hätte — und ein
+weiterer Grund, die erste Partnerschaft klein zu halten, bis sie misst.
+
 Was die Methode **nicht** kann, und wo man selbst nachsehen muss:
 
 - **TikTok drosselt.** Von acht abgefragten Profilen kamen zwei durch
@@ -495,6 +531,13 @@ Was die Methode **nicht** kann, und wo man selbst nachsehen muss:
 - **Abonnentenzahlen sind gerundet** (YouTube zeigt „33'500", nicht 33'512).
 - **Aufrufe sagen nichts über die letzten Monate.** Ein Kanal mit 7 Mio.
   Aufrufen kann sie 2019 gesammelt haben.
+- **Der RSS-Feed kann ausfallen.** Am 2026-09-15 antwortete
+  `youtube.com/feeds/videos.xml` aus der Recherche-Umgebung für **jeden**
+  Kanal mit HTTP 404, auch für bekannt aktive — die Datumsangaben in diesem
+  Dokument stammen vom 2026-09-14, als er noch antwortete. Das Skript meldet
+  diesen Fall seither ausdrücklich als `FEED HTTP 404`, damit ein fehlendes
+  Datum nicht als „Kanal ist still" gelesen wird. Genau diese Verwechslung
+  wäre der teuerste Fehler, den das Werkzeug machen könnte.
 
 Vor dem Abschicken jeder Anfrage gilt unverändert, was im anderen Dokument
 steht: Profil selbst öffnen, letzten Beitrag ansehen, Kommentare lesen

@@ -20,6 +20,30 @@
 # (Misha Charoudin ist Schweizer und meldet die Niederlande). Häufige Abrufe
 # hintereinander werden gedrosselt — dann kommen leere Felder zurück, nicht
 # falsche. Für TikTok und Instagram funktioniert der Weg nicht zuverlässig.
+#
+# ---------------------------------------------------------------------
+# Zwei Wege, und sie sind rechtlich nicht dasselbe
+# ---------------------------------------------------------------------
+# Der RSS-Teil (letztes Video, Titel) liest
+# youtube.com/feeds/videos.xml — eine veröffentlichte Schnittstelle, für
+# Feed-Leser gedacht. Unbedenklich.
+#
+# Der Zahlen-Teil (Abonnenten, Videos, Aufrufe, Land) liest dagegen
+# `ytInitialData` aus dem HTML der Kanalseite und schickt dafür einen
+# Browser-User-Agent mit. Das ist Scraping, und YouTubes
+# Nutzungsbedingungen untersagen das automatisierte Auslesen der Website
+# ausdrücklich — unabhängig davon, dass es technisch funktioniert.
+#
+# Das ist hier bewusst in Kauf genommen und kein Versehen: Das Skript läuft
+# von Hand, für eine Handvoll Kanäle, liest ausschliesslich öffentlich
+# sichtbare Angaben und meldet sich nirgends an. Wer es regelmässig oder
+# über viele Kanäle laufen lassen will, nimmt stattdessen die offizielle
+# YouTube Data API (`channels.list`, `part=statistics,snippet`) — die
+# braucht einen Schlüssel, ist dafür regelkonform und bricht nicht, sobald
+# YouTube sein HTML umbaut.
+#
+# Die Abonnentenzahl ist der einzige Grund für den HTML-Teil; der RSS-Teil
+# allein beantwortet die wichtigere Frage (lebt der Kanal noch?).
 # =====================================================================
 set -uo pipefail
 
@@ -45,19 +69,29 @@ pruefe() {
 
   # Letztes Video über den RSS-Feed. Der erste <published>-Eintrag gehört dem
   # Kanal selbst, erst der zweite dem neuesten Video — daher sed -n 2p.
-  local letztes="?" titel="?"
+  # Ein leeres Datum darf NIE wie "Kanal ist still" aussehen — das ist die
+  # eine Angabe, wegen der es dieses Skript gibt. Scheitert der Abruf, steht
+  # der HTTP-Status da, nicht ein Fragezeichen.
+  local letztes="kein Kanal-Id" titel=""
   cid=$(grep -o '"externalId":"UC[^"]*"' "$f" | head -1 | sed 's/.*:"//;s/"$//')
   if [ -n "$cid" ]; then
-    local r; r=$(mktemp)
-    curl -sS -L --max-time 30 -A "$UA" \
-      "https://www.youtube.com/feeds/videos.xml?channel_id=${cid}" -o "$r" 2>/dev/null
-    letztes=$(grep -o '<published>[^<]*' "$r" | sed -n '2p' | sed 's/<published>//' | cut -c1-10)
-    titel=$(grep -o '<media:title>[^<]*' "$r" | head -1 | sed 's/<media:title>//' | cut -c1-60)
+    local r code; r=$(mktemp)
+    code=$(curl -sS -L --max-time 30 -A "$UA" -w '%{http_code}' \
+      "https://www.youtube.com/feeds/videos.xml?channel_id=${cid}" -o "$r" 2>/dev/null)
+    if [ "$code" != "200" ]; then
+      letztes="FEED HTTP ${code:-?}"
+    else
+      # Das erste <published> gehört dem Kanal, erst das zweite dem
+      # neuesten Video.
+      letztes=$(grep -o '<published>[^<]*' "$r" | sed -n '2p' | sed 's/<published>//' | cut -c1-10)
+      titel=$(grep -o '<media:title>[^<]*' "$r" | head -1 | sed 's/<media:title>//' | cut -c1-60)
+      [ -z "$letztes" ] && letztes="Feed ohne Video"
+    fi
     rm -f "$r"
   fi
 
   printf '%s | %s | Abos: %s | Videos: %s | Aufrufe: %s | Land: %s | letztes Video: %s | "%s"\n' \
-    "$h" "${name:-?}" "${subs:-?}" "${vids:-?}" "${views:-?}" "${land:-?}" "${letztes:-?}" "${titel:-?}"
+    "$h" "${name:-?}" "${subs:-?}" "${vids:-?}" "${views:-?}" "${land:-?}" "${letztes:-?}" "${titel}"
   rm -f "$f"
 }
 
@@ -66,5 +100,8 @@ feld() { grep -o "\"$2\":\"[^\"]*\"" "$1" | head -1 | sed 's/.*:"//;s/"$//'; }
 if [ "$#" -gt 0 ]; then
   for h in "$@"; do pruefe "$h"; done
 else
-  while read -r h; do [ -n "$h" ] && pruefe "$h"; done
+  # "|| [ -n "$h" ]": read liefert am Dateiende ohne abschliessenden
+  # Zeilenumbruch einen Fehlerstatus, obwohl es die Zeile gelesen hat — ohne
+  # das fiele der letzte Kanal still weg.
+  while read -r h || [ -n "$h" ]; do [ -n "$h" ] && pruefe "$h"; done
 fi
