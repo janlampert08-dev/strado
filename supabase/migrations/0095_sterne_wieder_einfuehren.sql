@@ -83,8 +83,12 @@
 -- Transaktion wieder mit.
 --
 -- Bis das geschieht, fehlt nichts Wesentliches: ungeprüft bleiben nur
--- Altzeilen, und die kann lib/bewertungen.ts ohnehin ab — es filtert alles
--- heraus, was keine endliche Zahl ist, und lib/bewertungen.test.ts hält das
+-- Altzeilen, und die kann lib/bewertungen.ts ab — bewertungAusSternen()
+-- filtert auf die Spannweite 1–5 und nicht bloss auf "endliche Zahl".
+-- Dieser Satz stand hier zuerst in der schwächeren Form ("alles, was keine
+-- endliche Zahl ist"), und die stimmte nicht: 9999 ist endlich und wäre in
+-- den öffentlich angezeigten Schnitt eingegangen — an genau dem Schutz
+-- vorbei, den diese Migration aufbaut. lib/bewertungen.test.ts hält beides
 -- fest.
 
 alter table public.route_ratings

@@ -16,14 +16,29 @@ export async function getRatings(routeId: string): Promise<RatingWithAuthor[]> {
 
   if (!ratings || ratings.length === 0) return [];
 
-  const userIds = [...new Set(ratings.map((r) => r.user_id))];
+  // Zeilen ohne Sterne UND ohne Kommentar fliegen hier raus, an der Grenze,
+  // damit weder die Liste noch ihre Anzahl sie mitzählt.
+  //
+  // Über die App kann so eine Zeile nicht entstehen — submitRating verlangt
+  // mindestens eines von beidem. Über einen direkten PostgREST-Request schon:
+  // route_ratings trägt volle Grants, und die Policy "Nutzer verwalten eigene
+  // Bewertungen" prüft nur die user_id, nicht den Inhalt. Gerendert ergäbe
+  // das einen Namen mit nichts darunter.
+  //
+  // Sterne ODER Kommentar genügt weiter — beide Formen sind gewollt.
+  const gehaltvoll = ratings.filter(
+    (r: RouteRating) => r.sterne !== null || (r.kommentar ?? "").trim() !== "",
+  );
+  if (gehaltvoll.length === 0) return [];
+
+  const userIds = [...new Set(gehaltvoll.map((r) => r.user_id))];
   const { data: profiles } = await supabase
     .from("profiles")
     .select("id, display_name")
     .in("id", userIds);
 
   const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
-  return ratings.map((r) => {
+  return gehaltvoll.map((r) => {
     const profile = profileById.get(r.user_id);
     return {
       ...r,

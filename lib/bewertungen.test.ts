@@ -36,6 +36,32 @@ describe("bewertungAusSternen", () => {
   it("überspringt Werte, die keine Zahl sind", () => {
     expect(bewertungAusSternen([5, NaN, 3])).toEqual({ schnitt: 4, anzahl: 2 });
   });
+
+  // Der Fall, den die erste Fassung durchgelassen hat: 9999 ist eine
+  // vollkommen endliche Zahl. Der Constraint aus 0095 ist `not valid`, die
+  // Altzeilen sind also ungeprüft, und route_ratings ist über PostgREST
+  // direkt beschreibbar — ein solcher Wert wäre in den öffentlich
+  // angezeigten Schnitt, in aggregateRating und in die Explore-Liste
+  // eingegangen. Endlichkeit allein genügt hier nicht, die Spannweite
+  // entscheidet.
+  it("überspringt Werte ausserhalb der Skala", () => {
+    expect(bewertungAusSternen([5, 9999, 3])).toEqual({ schnitt: 4, anzahl: 2 });
+    expect(bewertungAusSternen([0, 5])).toEqual({ schnitt: 5, anzahl: 1 });
+    expect(bewertungAusSternen([-3, 4])).toEqual({ schnitt: 4, anzahl: 1 });
+  });
+
+  // Aussortiert, nicht gekappt: ein manipulierter Wert darf nicht als
+  // Bestnote durchgehen. Bliebe 9999 als 5 stehen, hätte das Schreiben des
+  // falschen Werts genau das erreicht, was es erreichen wollte.
+  it("kappt einen zu grossen Wert nicht auf 5, sondern wirft ihn weg", () => {
+    expect(bewertungAusSternen([9999])).toBeNull();
+    expect(bewertungAusSternen([1, 9999])).toEqual({ schnitt: 1, anzahl: 1 });
+  });
+
+  // Die Ränder gehören dazu — eine Skala von 1 bis 5 schliesst 1 und 5 ein.
+  it("behält die Randwerte 1 und 5", () => {
+    expect(bewertungAusSternen([1, 5])).toEqual({ schnitt: 3, anzahl: 2 });
+  });
 });
 
 describe("schnittText", () => {

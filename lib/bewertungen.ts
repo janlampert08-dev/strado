@@ -30,11 +30,30 @@ export interface Streckenbewertung {
  * Schnitt und Anzahl aus einer Liste von Sternwerten.
  *
  * Getrennt von der Abfrage, damit sie prüfbar ist (Vitest sieht nur lib/) —
- * und weil hier die eine Entscheidung fällt, die man falsch treffen kann:
- * `null` ist kein Wert, sondern die Abwesenheit eines Werts.
+ * und weil hier zwei Entscheidungen fallen, die man beide falsch treffen kann.
+ *
+ * ERSTENS: `null` ist kein Wert, sondern die Abwesenheit eines Werts. Seit
+ * 0025 kann eine Bewertung aus einem blossen Kommentar bestehen; solche
+ * Zeilen gehören weder in den Zähler noch in den Nenner.
+ *
+ * ZWEITENS: gefiltert wird auf die SPANNWEITE, nicht bloss darauf, dass es
+ * eine endliche Zahl ist. Eine frühere Fassung tat nur Letzteres, und die
+ * Lücke ist keine theoretische: der Constraint aus 0095 ist `not valid`, die
+ * Altzeilen sind also ungeprüft, und route_ratings ist über PostgREST direkt
+ * beschreibbar. `sterne = 9999` ist eine vollkommen endliche Zahl — sie wäre
+ * in den Schnitt eingegangen, in `aggregateRating` der Streckenseite und in
+ * die Explore-Liste. Genau der öffentlich sichtbare Schaden, gegen den der
+ * Constraint gedacht ist, nur an ihm vorbei.
+ *
+ * Aussortiert statt gekappt: was ausserhalb der Skala steht, ist keine
+ * Wertung, die man retten müsste, sondern eine, die nie hätte entstehen
+ * dürfen. Sie auf 5 zu kappen hiesse, einem manipulierten Wert die
+ * Bestnote zu geben.
  */
 export function bewertungAusSternen(sterne: readonly (number | null)[]): Streckenbewertung | null {
-  const werte = sterne.filter((s): s is number => typeof s === "number" && Number.isFinite(s));
+  const werte = sterne.filter(
+    (s): s is number => typeof s === "number" && Number.isFinite(s) && s >= 1 && s <= 5,
+  );
   if (werte.length === 0) return null;
 
   const summe = werte.reduce((a, b) => a + b, 0);
