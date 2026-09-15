@@ -335,6 +335,7 @@ export default function FreeRideForm({
               error={state.error}
               vehicles={vehicles}
               trailJson={recorder.trailJson}
+              ticketJson={recorder.ticketJson}
               visibility={{
                 publicDisabled: publicationBlocked !== null,
                 publicDisabledHint: publicationBlocked ?? undefined,

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isRateLimited } from "@/lib/rateLimit";
 import { computeRouteCoverage, COVERAGE_THRESHOLD_PERCENT } from "@/lib/routeCoverage";
 import { computeTrailStats, type TrailPoint } from "@/lib/geo";
+import { abdruckVon, leseTicket } from "@/lib/fahrtstart";
 import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
 import {
   MAX_JUMP_KM,
@@ -279,6 +280,44 @@ async function attachPhotos(
 // ohnehin nur den Zugriff auf eigene Einträge) — ob die Fahrt auf
 // Bestenlisten/öffentlichem Profil erscheint, entscheidet der Nutzer pro
 // Fahrt im Fazit-Screen (ist_oeffentlich, siehe 0017_pro_fahrt_sichtbarkeit.sql).
+
+// Löst das serverseitige Fahrtstart-Ticket ein (lib/fahrtstart.ts,
+// 0096_fahrtstart_serverseitig.sql) und gibt die dort gemessene Dauer zurück.
+//
+// Das ist der Kern von A1 Bein 2: computeTrailStats() rechnet die Dauer zwar
+// serverseitig, aber aus Zeitstempeln, die der Client geschrieben hat — ein
+// echter Track mit gestauchten Zeiten kommt durch. Die Differenz zweier
+// Serverzeiten kommt nicht durch: wer eine Zeit haben will, muss sie absitzen.
+//
+// null heisst "kein wertbarer Start": kein Ticket im Formular, ein kaputtes,
+// ein schon verbrauchtes oder eines, das älter als ein Tag ist. Die Fahrt wird
+// dann trotzdem gespeichert, aber mit dauer_quelle = "trail" — sie zählt für
+// die eigene Statistik und nicht für die Bestenliste. Die Alternative wäre,
+// die Fahrt abzulehnen, und eine echte Fahrt wegzuwerfen ist schlimmer als
+// eine, die nicht in der Rangliste steht.
+async function loeseFahrtstartEin(
+  formData: FormData,
+): Promise<{ sekunden: number; ticketId: string } | null> {
+  let roh: unknown;
+  try {
+    roh = JSON.parse(String(formData.get("fahrt_start") ?? "null"));
+  } catch {
+    return null;
+  }
+  const ticket = leseTicket(roh);
+  if (!ticket) return null;
+
+  const supabase = await createClient();
+  const abdruck = await abdruckVon(ticket.geheimnis);
+  const { data, error } = await supabase.rpc("fahrt_start_einloesen", {
+    p_id: ticket.id,
+    p_abdruck: abdruck,
+  });
+  if (error || typeof data !== "number" || data <= 0) return null;
+
+  return { sekunden: data, ticketId: ticket.id };
+}
+
 export async function logTrackedCompletion(
   routeId: string,
   _prevState: CompletionFormState,
@@ -326,7 +365,14 @@ export async function logTrackedCompletion(
   const route = await getRoute(routeId);
   if (!route) return { error: "Strecke nicht gefunden." };
 
-  const { distanceKm: distanzKm, durationSeconds: dauerSekunden } = computeTrailStats(trail);
+  const { distanceKm: distanzKm, durationSeconds: dauerTrailSekunden } =
+    computeTrailStats(trail);
+
+  // Die gewertete Dauer kommt, wenn irgend möglich, vom Server.
+  const fahrtstart = await loeseFahrtstartEin(formData);
+  const dauerSekunden = fahrtstart ? fahrtstart.sekunden : dauerTrailSekunden;
+  const dauerQuelle = fahrtstart ? "server" : "trail";
+
   const abdeckungProzent = computeRouteCoverage(
     route.geometry_geojson.coordinates as [number, number][],
     trail.map((p) => [p.lng, p.lat] as [number, number]),
@@ -365,6 +411,11 @@ export async function logTrackedCompletion(
       datum: todayInZurich(),
       distanz_km: distanzKm,
       dauer_sekunden: dauerSekunden,
+      dauer_quelle: dauerQuelle,
+      // Was die Uhr auf dem Schirm gezeigt hat. Bleibt erhalten, weil es für
+      // die eigene Auswertung das ehrlichere Mass ist — gewertet wird es nicht.
+      dauer_trail_sekunden: dauerTrailSekunden,
+      fahrt_start_id: fahrtstart?.ticketId ?? null,
       // Reine Bewegtzeit ohne Pausen — für eine Passfahrt am Stück fast
       // identisch mit dauer_sekunden, aber dieselbe Berechnung für beide
       // Fahrtarten (siehe 0044_freie_fahrten.sql).
@@ -636,7 +687,10 @@ export async function logFreeRide(
   if ("error" in parsedTrail) return { error: parsedTrail.error };
   const trail = parsedTrail.trail;
 
-  const { distanceKm: distanzKm, durationSeconds: dauerSekunden } = computeTrailStats(trail);
+  const { distanceKm: distanzKm, durationSeconds: dauerTrailSekunden } =
+    computeTrailStats(trail);
+  const fahrtstart = await loeseFahrtstartEin(formData);
+  const dauerSekunden = fahrtstart ? fahrtstart.sekunden : dauerTrailSekunden;
   const implausible = implausibilityReason(trail, distanzKm, dauerSekunden);
   if (implausible) return { error: implausible };
 
@@ -717,6 +771,9 @@ export async function logFreeRide(
     datum: todayInZurich(),
     distanz_km: distanzKm,
     dauer_sekunden: dauerSekunden,
+    dauer_quelle: fahrtstart ? "server" : "trail",
+    dauer_trail_sekunden: dauerTrailSekunden,
+    fahrt_start_id: fahrtstart?.ticketId ?? null,
     bewegte_zeit_sekunden: bewegteSekunden,
     ist_oeffentlich: istOeffentlich,
     titel,

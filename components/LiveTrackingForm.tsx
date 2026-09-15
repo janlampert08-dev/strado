@@ -488,6 +488,7 @@ export default function LiveTrackingForm({
             error={state.error}
             vehicles={vehicles}
             trailJson={recorder.trailJson}
+              ticketJson={recorder.ticketJson}
             isPublic={isPublic}
             onIsPublicChange={setIsPublic}
             onSubmit={() => setSubmitted(true)}
