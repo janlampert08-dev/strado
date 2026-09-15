@@ -37,6 +37,26 @@ describe("abdruckVon", () => {
     }
   });
 
+  it("ist Kleinbuchstaben-Hex — die Datenbank teilt danach auf", async () => {
+    // 0096 prüft ^[0-9a-f]{64}$ und wählt aus den ersten zwei Zeichen einen
+    // von 256 Mengenbremsen-Eimern. Grossbuchstaben würden dort abgewiesen,
+    // und eine andere Kodierung würde die Eimer ungleich füllen.
+    for (const wert of ["", "abc", erzeugeGeheimnis()]) {
+      expect(await abdruckVon(wert)).toMatch(/^[0-9a-f]{64}$/);
+    }
+  });
+
+  it("verteilt die ersten zwei Zeichen über die Eimer", async () => {
+    // Nicht die Gleichverteilung von SHA-256 nachweisen — nur, dass echte
+    // Gäste nicht alle im selben Eimer landen, was die Aufteilung aus 0096
+    // wirkungslos machen würde.
+    const eimer = new Set<string>();
+    for (let i = 0; i < 200; i++) {
+      eimer.add((await abdruckVon(erzeugeGeheimnis())).slice(0, 2));
+    }
+    expect(eimer.size).toBeGreaterThan(100);
+  });
+
   it("ist deterministisch und unterscheidet benachbarte Eingaben", async () => {
     const a = erzeugeGeheimnis();
     expect(await abdruckVon(a)).toBe(await abdruckVon(a));

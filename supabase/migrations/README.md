@@ -1275,8 +1275,11 @@ where schemaname = 'storage' and tablename = 'objects'
 
 ## 0096 — noch nicht angewendet (Stand 2026-09-15)
 
-`0096_fahrtstart_serverseitig.sql` schliesst Bein 2 des Audit-Befunds A1 (die
-fälschbare Fahrtdauer). Sie liegt auf einem Zweig und ist **nicht eingespielt**.
+`0096_fahrtstart_serverseitig.sql` **verengt** Bein 2 des Audit-Befunds A1 (die
+fälschbare Fahrtdauer) — sie schliesst es nicht: das Ticket bindet eine Person
+und eine Uhr, nicht den eingereichten Trail. Die A1-Tabelle in
+`docs/audit/README.md` sagt genau, was offen bleibt. Die Migration liegt auf
+einem Zweig und ist **nicht eingespielt**.
 
 Reihenfolge: **Schema zuerst, Code danach.** Der Code auf dem Zweig schreibt
 `dauer_quelle`, `dauer_trail_sekunden` und `fahrt_start_id` und ruft
@@ -1299,9 +1302,23 @@ genau, dass das unterblieb):
   `dauer_quelle = 'server'`? Danach ist jede bestehende Bestzeit aus der
   Liste verschwunden — das ist beabsichtigt und heute fast folgenlos, weil
   die Liste ohnehin leer ist.
-- Ein funktionaler Test, zurückgerollt: Ticket anlegen, einlösen, zweites
-  Einlösen muss NULL geben; eine Zeile mit fremdem `fahrt_start_id`
-  einfügen und prüfen, dass der Trigger sie auf `trail` herabstuft.
+- Steht der Ausdrucks-Index `fahrt_starts_gast_eimer_idx` auf
+  `(left(geheimnis_abdruck, 2), gestartet_am)`? Ohne ihn zählt die
+  Gast-Mengenbremse bei jedem Ticket über die ganze Tabelle. `\d+
+  fahrt_starts` zeigt es; `0094` hat genau diese Prüfung ausgelassen.
+- Ein funktionaler Test, zurückgerollt, in vier Teilen:
+  - Ticket anlegen und einlösen — das zweite Einlösen desselben Kontos muss
+    **dieselbe Zahl** zurückgeben, nicht NULL (idempotent, siehe den Kommentar
+    an `fahrt_start_einloesen`). NULL gibt es nur für ein fremdes Konto, einen
+    falschen Abdruck oder einen ersten Stempel nach 24 Stunden.
+  - Eine Zeile mit fremdem `fahrt_start_id` einfügen und prüfen, dass der
+    Trigger sie auf `trail` herabstuft.
+  - Sechs Gasttickets mit demselben Abdruck-Präfix in derselben Minute: das
+    sechste muss `Zu viele Fahrtstarts` werfen, ein gleichzeitiges mit einem
+    **anderen** Präfix aber durchkommen. Das ist der ganze Punkt der 256
+    Eimer — ein voller Eimer darf nicht alle Gäste aussperren.
+  - Ein Abdruck, der kein Kleinbuchstaben-Hex ist, muss `Ungueltiger Abdruck`
+    werfen; daran hängt die Gleichverteilung über die Eimer.
 
 Der Weg zurück ist einfach, weil die Migration nichts löscht: Trigger und
 Funktionen droppen, die View auf die Fassung aus `0080` zurücksetzen, die drei

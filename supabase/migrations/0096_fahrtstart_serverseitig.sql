@@ -65,9 +65,9 @@ revoke all on table public.fahrt_starts from anon, authenticated;
 -- ein Gast keine Sitzung hat, an der eine Policy ansetzen koennte. Die
 -- Funktion entscheidet nichts anhand unbeglaubigter Eingaben: sie schreibt,
 -- was ihr gegeben wird, und haengt auth.uid() an — bei einem Gast NULL.
--- Index fuer die Mengenbremse unten und fuer das Aufraeumen.
-create index if not exists fahrt_starts_gast_zeit_idx
-  on public.fahrt_starts (gestartet_am)
+-- Index fuer die Mengenbremse unten: sie zaehlt je Eimer und Minute.
+create index if not exists fahrt_starts_gast_eimer_idx
+  on public.fahrt_starts (left(geheimnis_abdruck, 2), gestartet_am)
   where user_id is null;
 
 create or replace function public.fahrt_start_anlegen(
@@ -83,7 +83,12 @@ declare
   v_id uuid;
   v_uid uuid := auth.uid();
 begin
-  if p_abdruck is null or length(p_abdruck) <> 64 then
+  -- Strenger als blosse Laenge, weil die Mengenbremse unten nach den ersten
+  -- zwei Zeichen aufteilt: abdruckVon() in lib/fahrtstart.ts liefert immer
+  -- Kleinbuchstaben-Hex, ein direkter PostgREST-Aufruf koennte alles schicken.
+  -- Ohne diese Pruefung waeren die Eimer beliebig waehlbar statt 256 gleich
+  -- grosse.
+  if p_abdruck is null or p_abdruck !~ '^[0-9a-f]{64}$' then
     raise exception 'Ungueltiger Abdruck';
   end if;
   if p_art not in ('strecke', 'frei') then
@@ -99,23 +104,48 @@ begin
   -- Zaehler hochlaeuft; hier entstuende bei jedem Aufruf eine Zeile.
   --
   -- Deshalb eine Grenze, die niemand faelschen kann, weil sie nicht an der
-  -- Identitaet des Aufrufers haengt: Gasttickets sind global auf 60 pro
-  -- Minute gedeckelt. Weit ueber allem, was echte Gaeste erzeugen, und
-  -- niedrig genug, dass die Tabelle nicht unbegrenzt waechst. Angemeldete
-  -- Konten sind zurechenbar und einzeln gedeckelt.
+  -- Identitaet des Aufrufers haengt. Angemeldete Konten sind zurechenbar und
+  -- einzeln gedeckelt; fuer Gaeste gibt es in der Datenbank kein Merkmal des
+  -- Aufrufers — PostgREST reicht keine IP an die Funktion durch.
+  --
+  -- Ein einziger globaler Gast-Zaehler waere deshalb zwar faelschungssicher,
+  -- aber erschoepfbar: wer ihn vollhaelt, sperrt jeden echten Gast aus. Genau
+  -- das war der erste Entwurf (60 pro Minute, global) — eine Anfrage pro
+  -- Sekunde genuegte, um allen abgemeldeten Fahrern die Zeitwertung zu
+  -- nehmen.
+  --
+  -- Stattdessen 256 Eimer, gewaehlt nach den ersten zwei Hex-Zeichen des
+  -- Abdrucks. Der Abdruck eines echten Gasts ist der SHA-256 eines
+  -- serverseitig erzeugten Zufallswerts, also gleichverteilt: ein echter Gast
+  -- landet in einem zufaelligen Eimer, den niemand vorhersagen oder gezielt
+  -- treffen kann. Wer einen Eimer vollhaelt, trifft damit 1/256 der Gaeste;
+  -- wer alle treffen will, braucht 256 mal so viel Verkehr (1280 Anfragen pro
+  -- Minute statt 60) — aus einem Rinnsal wird ein sichtbarer Angriff.
+  --
+  -- Was das nicht ist: eine Garantie. Ein ausdauernder Angreifer kann Gaeste
+  -- weiterhin auf dauer_quelle = 'trail' druecken. Die Fahrt geht dabei nicht
+  -- verloren, nur ihre Ranglistenwertung, und angemeldete Konten sind gar
+  -- nicht betroffen. Dicht waere erst ein Merkmal je Aufrufer — das hiesse,
+  -- Gasttickets ueber den Service-Role-Client zu holen (ein dritter Aufrufer
+  -- davon, den AGENTS.md als Protected-Area-Arbeit fuehrt) oder abgemeldeten
+  -- Besuchern die Zeitwertung ganz zu nehmen. Beides ist teurer als der
+  -- Schaden; siehe PR-Beschreibung.
+  --
   -- Zaehlen und Einfuegen serialisieren. Ohne die Sperre koennen gleichzeitige
   -- Aufrufe denselben count(*) sehen und alle durchkommen — die Grenze waere
   -- dann eine Empfehlung. Die Sperre gilt bis zum Ende der Transaktion, also
   -- ueber das insert hinweg, und faellt mit ihr weg.
   --
-  -- Zwei getrennte Schluesselraeume: ein Gast-Eimer fuer alle anonymen
-  -- Aufrufe, je ein eigener je angemeldetem Konto. Angemeldete blockieren
-  -- sich damit nicht gegenseitig.
+  -- Getrennte Schluesselraeume: je ein Eimer fuer anonyme Aufrufe, je ein
+  -- eigener je angemeldetem Konto. Weder Gaeste noch Angemeldete blockieren
+  -- sich dadurch gegenseitig ueber den ganzen Verkehr hinweg.
   if v_uid is null then
-    perform pg_advisory_xact_lock(hashtext('fahrt_start_anlegen'), 0);
+    perform pg_advisory_xact_lock(
+      hashtext('fahrt_start_anlegen:gast'), hashtext(substr(p_abdruck, 1, 2)));
     if (select count(*) from public.fahrt_starts
          where user_id is null
-           and gestartet_am > now() - interval '1 minute') >= 60 then
+           and left(geheimnis_abdruck, 2) = substr(p_abdruck, 1, 2)
+           and gestartet_am > now() - interval '1 minute') >= 5 then
       raise exception 'Zu viele Fahrtstarts';
     end if;
   else
@@ -128,7 +158,8 @@ begin
   end if;
 
   -- Beilaeufig aufraeumen statt per Cron: nach 24 Stunden ist ein nie
-  -- eingeloestes Ticket wertlos (fahrt_start_einloesen weist es ohnehin ab).
+  -- eingeloestes Ticket wertlos (fahrt_start_einloesen weist es ohnehin ab);
+  -- geloescht wird mit Sicherheitsabstand erst nach 48.
   -- Der Ausschnitt ist klein und laeuft nur gelegentlich mit.
   if random() < 0.02 then
     delete from public.fahrt_starts
