@@ -61,11 +61,26 @@
 -- kann, die niemand nachgesehen hat, ist genau das, was dieses Repo an dieser
 -- Stelle nicht will.
 --
--- `not valid` löst das vollständig, ohne etwas zu kosten: der Constraint gilt
--- ab sofort für jedes INSERT und jedes UPDATE — also für alles, wogegen er
--- schützen soll — und lässt allein die Altzeilen ungeprüft. Er kann damit
--- nicht scheitern und nimmt auch keinen Table-Scan, der Schreibzugriffe
--- blockiert.
+-- `not valid` löst das: der Constraint gilt ab sofort für jedes INSERT und
+-- jedes UPDATE — also für alles, wogegen er schützen soll — und lässt allein
+-- die Altzeilen ungeprüft. An bestehenden Zeilen kann er damit nicht
+-- scheitern, und er nimmt keinen Table-Scan.
+--
+-- Umsonst ist er deshalb nicht. Zweierlei bleibt; supabase/migrations/README.md
+-- führt beides aus:
+--
+--   1. DIE SPERRE. `add constraint` nimmt `access exclusive` auf die Tabelle,
+--      mit `not valid` genauso wie ohne — nur kurz, weil kein Scan darunter
+--      liegt. Gewährt werden muss sie trotzdem, und hinter einer wartenden
+--      Anforderung stauen sich Lesen und Schreiben. Deshalb steht im README
+--      ein `set lock_timeout` vor dieser Anweisung.
+--   2. DIE ALTZEILEN. Ungeprüft heisst nur: nicht beim Anlegen geprüft. Jedes
+--      spätere UPDATE prüft die ganze neue Zeilenversion, auch die Spalten,
+--      die es nicht anfasst — eine Zeile mit `sterne = 9999` liesse sich danach
+--      nicht einmal mehr am Kommentar ändern. Die Server Action stolpert nicht
+--      darüber (ihr upsert schreibt `sterne` immer mit und repariert die Zeile
+--      dabei), ein direkter PATCH auf nur eine Spalte schon — also genau der
+--      Weg, über den der Wert hätte entstehen können. DELETE bleibt ungeprüft.
 --
 -- Die Altzeilen nachzuziehen ist ein eigener, bewusster Schritt. Erst die
 -- Gegenprobe, und nur wenn sie null Zeilen liefert, die Bestätigung:
@@ -82,7 +97,7 @@
 -- sie in genau diesem Fall und risse den `not valid`-Teil in derselben
 -- Transaktion wieder mit.
 --
--- Bis das geschieht, fehlt nichts Wesentliches: ungeprüft bleiben nur
+-- Bis das geschieht, fehlt in der ANZEIGE nichts: ungeprüft bleiben nur
 -- Altzeilen, und die kann lib/bewertungen.ts ab — bewertungAusSternen()
 -- filtert auf die Spannweite 1–5 und nicht bloss auf "endliche Zahl".
 -- Dieser Satz stand hier zuerst in der schwächeren Form ("alles, was keine
@@ -90,6 +105,12 @@
 -- den öffentlich angezeigten Schnitt eingegangen — an genau dem Schutz
 -- vorbei, den diese Migration aufbaut. lib/bewertungen.test.ts hält beides
 -- fest.
+
+-- Transaktionslokal, und es gilt genau für die eine Anweisung darunter: wird
+-- die Tabellensperre nicht binnen fünf Sekunden frei, bricht die Migration ab,
+-- statt Lesen und Schreiben auf route_ratings hinter sich aufzustauen. Ein
+-- zweiter Versuch kostet nichts — es gibt nichts zurückzunehmen.
+set lock_timeout = '5s';
 
 alter table public.route_ratings
   add constraint route_ratings_sterne_check

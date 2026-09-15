@@ -272,8 +272,8 @@ is what should be corrected.
   first migration in a while that ships in the same PR as its code, and the
   usual order still holds: apply it before deploying. Unlike `0087` the code
   does not break without it — `route_ratings.sterne` exists and is nullable
-  since `0025`, so writing and reading stars works either way. What is
-  missing until it runs is the bound: the table carries full grants and its
+  since `0025`, so the app writes and reads stars the same with or without
+  the constraint. What is missing until it runs is the bound: the table carries full grants and its
   RLS policy lets an account write its own row, so a direct PostgREST
   request could put `sterne = 9999` into a rating. What that costs is
   **invalid stored data, not a shifted average** — `bewertungAusSternen()`
@@ -296,7 +296,15 @@ is what should be corrected.
   the legacy rows unchecked. Validating those is a separate, deliberate
   step: the preflight query and the `validate constraint` line sit in the
   migration's header as comments, not as statements, because if the
-  preflight returns rows the fix is a product decision.
+  preflight returns rows the fix is a product decision. `not valid` is
+  cheap, not free, and the two things it does **not** buy are what
+  `supabase/migrations/README.md` now spells out: `add constraint` still
+  takes `access exclusive` on the table (short without a scan, but it has
+  to be granted first, and reads and writes queue behind a waiting
+  request — hence the `set lock_timeout` in front of it), and an unchecked
+  legacy row is only unchecked *at creation time* — every later UPDATE
+  checks the whole new row version, so a row outside 1–5 cannot be edited
+  at all, not even in its comment, until someone repairs it.
 - **Stars per route are back, reversing `0025`.** `0025_ratings_ohne_sterne`
   removed the 1–5 rating ("Nutzer sollen nur noch kommentieren können") and
   deliberately left the column in place in case it returned. It returned on

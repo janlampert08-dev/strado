@@ -51,14 +51,36 @@ Probelauf ist eine Anweisung, die von ungesehenen Daten abhängt, die falsche
 Form.
 
 `not valid` bindet jedes INSERT und jedes UPDATE sofort — also alles, wogegen
-der Constraint schützen soll — und lässt allein die Altzeilen ungeprüft. Es
-kann nicht scheitern und nimmt keinen Table-Scan, der Schreibzugriffe
-blockiert.
+der Constraint schützen soll — und lässt allein die Altzeilen ungeprüft. **An
+bestehenden Zeilen** kann es damit nicht scheitern, und es nimmt keinen
+Table-Scan.
+
+Umsonst ist es deshalb nicht. Zweierlei nimmt `not valid` einem nicht ab:
+
+- **Die Sperre bleibt.** Jedes `alter table ... add constraint` nimmt
+  `access exclusive` auf die Tabelle, mit `not valid` genauso wie ohne — nur
+  eben kurz, weil kein Scan darunter liegt. Gewährt werden muss sie
+  trotzdem: hält eine laufende Transaktion `route_ratings`, wartet die
+  Anweisung, und hinter der wartenden Anforderung stauen sich Lesen **und**
+  Schreiben, weil PostgreSQL nachfolgende Anfragen in die Warteschlange
+  einreiht statt an ihr vorbei. Deshalb trägt die Migrationsdatei ein
+  `set lock_timeout = '5s'` vor der Anweisung: dann scheitert im
+  Konfliktfall die Migration und nicht die App, und ein zweiter Versuch
+  kostet nichts.
+- **Die Altzeilen bleiben ungeprüft, aber nicht folgenlos.** Was das später
+  kostet, steht unter "Was bleibt, nachdem sie eingespielt ist".
 
 ### Einspielen
 
 ```sql
--- 1. Die Migration selbst. Kann nicht scheitern.
+-- 1. Die Migration selbst, wörtlich so wie in der Datei — der lock_timeout
+--    steht dort mit drin, damit er auch dann gilt, wenn die Datei über
+--    `supabase db push` oder `apply_migration` läuft und niemand diesen
+--    Abschnitt gelesen hat. Scheitern kann sie nicht an bestehenden Zeilen,
+--    wohl aber daran, dass die Tabellensperre nicht frei wird; dann lieber
+--    abbrechen und gleich noch einmal, als die Tabelle stauen zu lassen.
+set lock_timeout = '5s';
+
 alter table public.route_ratings
   add constraint route_ratings_sterne_check
   check (sterne is null or sterne between 1 and 5)
@@ -86,8 +108,9 @@ verschoben, nicht vermieden.
 ### Was fehlt, solange sie nicht eingespielt ist
 
 Der Code bricht **nicht**: `route_ratings.sterne` existiert seit `0025` als
-nullable Spalte, Schreiben und Lesen funktioniert mit und ohne Constraint.
-Was fehlt, ist allein die Schranke gegen einen direkten PostgREST-Schreibzugriff.
+nullable Spalte, die App schreibt und liest sie ohne den Constraint genauso
+wie mit ihm. Was fehlt, ist allein die Schranke gegen einen direkten
+PostgREST-Schreibzugriff.
 
 Der Schaden daraus ist **ungültig gespeicherte Daten**, nicht ein
 verschobener Durchschnitt: `bewertungAusSternen()` in `lib/bewertungen.ts`
@@ -97,6 +120,32 @@ Zahl", ein `sterne = 9999` fällt in der Anzeige also heraus
 Beschreibung behauptete den verschobenen Durchschnitt — das stimmte, solange
 die App nur auf Endlichkeit filterte, und wurde mit demselben Commit falsch,
 der die Filterung verschärfte.
+
+### Was bleibt, nachdem sie eingespielt ist
+
+`not valid` heisst **nicht**, dass die Altzeilen dauerhaft unbehelligt
+bleiben. Es heisst nur: beim Anlegen des Constraints wurden sie nicht
+geprüft. Jedes spätere UPDATE prüft die ganze neue Zeilenversion — auch die
+Spalten, die es gar nicht anfasst. Eine Altzeile mit `sterne = 9999` lässt
+sich danach also nicht mehr ändern, auch dann nicht, wenn die Änderung bloss
+den Kommentar betrifft; PostgreSQL weist sie mit
+`route_ratings_sterne_check` ab.
+
+Wen das trifft, und wen nicht:
+
+- **Die Server Action nicht.** `submitRating()` in `lib/actions/ratings.ts`
+  schreibt beide Felder immer mit — sie repariert eine solche Zeile also
+  im Vorbeigehen, statt an ihr zu scheitern.
+- **Löschen nicht.** Ein Constraint prüft kein DELETE; `deleteRating()`
+  kommt an jede Zeile heran.
+- **Ein direkter PATCH auf nur eine Spalte schon** — also genau der
+  Zugriffsweg, über den der ungültige Wert überhaupt erst hätte entstehen
+  können.
+
+Die Reparatur ist dieselbe wie die Gegenprobe oben: Schritt 2 findet die
+betroffenen Zeilen, und die fachliche Entscheidung (auf null setzen, kappen,
+löschen) räumt sie weg. Danach geht Schritt 3 durch, und ab dann kann es
+solche Zeilen nicht mehr geben.
 
 ## Eingespielt: 0094_creator_verlauf_nur_aufrufe (2026-09-15, Produktion)
 
