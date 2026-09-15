@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { throwOnQueryError } from "@/lib/queryError";
+import { getPremiumAbzeichen } from "@/lib/premiumAbzeichen";
 
 export async function isFollowing(followerId: string, followedId: string): Promise<boolean> {
   const supabase = await createClient();
@@ -113,4 +115,51 @@ export async function getMutualFollowers(
     })),
     totalCount: rows[0]?.total_count ?? 0,
   };
+}
+
+export interface ReceivedFollower {
+  followerId: string;
+  followerDisplayName: string | null;
+  followerAvatarUrl: string | null;
+  /** Abzeichen hinter dem Namen der folgenden Person (0087). */
+  followerZeigtPremiumAbzeichen: boolean;
+  erstelltAm: string;
+  neu: boolean;
+}
+
+// Die letzten Personen, die dem eingeloggten Nutzer gefolgt sind — die
+// Follower-Hälfte von /aktivitaet (lib/aktivitaetsliste.ts). Läuft über die
+// SECURITY-DEFINER-Funktion recent_follows_received
+// (0097_folge_benachrichtigungen.sql), die wie ihre Kudos-Schwester
+// (recent_kudos_received, 0057) keine Parameter nimmt und ausschliesslich
+// auf auth.uid() arbeitet: es gibt bewusst keinen Weg, die neuen Follower
+// eines anderen Kontos abzufragen.
+//
+// Die Meldung verschwindet wieder, wenn der Follower entfolgt — sie wird
+// aus der follows-Zeile abgeleitet, nicht aus einem Ereignislog. Bewusst,
+// siehe Kopf der Migration.
+export async function getRecentFollowersReceived(): Promise<ReceivedFollower[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("recent_follows_received");
+  // Wie bei den Kudos: ein echter Query-Fehler darf nicht als "noch keine
+  // Follower" durchgehen, sonst sieht ein Ausfall aus wie ein leerer, aber
+  // funktionierender Zustand (lib/queryError.ts).
+  throwOnQueryError(error, "Follower-Aktivität");
+  if (!data) return [];
+
+  const zeilen = data as Array<Record<string, unknown>>;
+  // Zweite Abfrage statt einer Erweiterung von recent_follows_received, aus
+  // demselben Grund wie bei den Kudos (lib/kudos.ts): die Funktion ist
+  // SECURITY DEFINER und damit geschützter Bereich — sie für ein Abzeichen
+  // anzufassen wäre der teuerste Weg zum kleinsten Ziel.
+  const mitAbzeichen = await getPremiumAbzeichen(zeilen.map((r) => r.follower_id as string));
+
+  return zeilen.map((row) => ({
+    followerId: row.follower_id as string,
+    followerDisplayName: row.follower_display_name as string | null,
+    followerAvatarUrl: row.follower_avatar_url as string | null,
+    followerZeigtPremiumAbzeichen: mitAbzeichen.has(row.follower_id as string),
+    erstelltAm: row.erstellt_am as string,
+    neu: row.neu as boolean,
+  }));
 }

@@ -3,7 +3,7 @@ import { Flame } from "lucide-react";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { isModerator } from "@/lib/moderation";
 import { istCreator } from "@/lib/creatorKennzahlen";
-import { getUnseenKudosCount } from "@/lib/kudos";
+import { getUnseenActivityCount } from "@/lib/aktivitaetsliste";
 import { getNavItems } from "@/lib/nav";
 import BackButton from "@/components/BackButton";
 import LogoLink from "@/components/LogoLink";
@@ -13,9 +13,11 @@ import { buttonVariants } from "@/components/ui/Button";
 export default async function Header({ back }: { back?: string } = {}) {
   const user = await getCurrentUser();
 
-  // unseenKudosCount ist der Rückkanal für "Community reagiert" im Kernloop
-  // (siehe AGENTS.md, "Core User Loop") — ohne diesen Zähler erfährt der
-  // Fahrer sonst nie aktiv, dass eine geteilte Fahrt Kudos bekommen hat.
+  // ungeseheneAktivitaet ist der Rückkanal für "Community reagiert" im
+  // Kernloop (siehe AGENTS.md, "Core User Loop") — ohne diesen Zähler
+  // erfährt der Fahrer sonst nie aktiv, dass eine geteilte Fahrt Kudos
+  // bekommen hat oder ihm jemand neu folgt (0097: eine Zahl, ein RPC, weil
+  // dieser Kopf auf jeder Seite läuft).
   // Zeigt sich am Flammen-Icon unten, das auf jeder Bildschirmgrösse
   // sichtbar ist (anders als die reine Text-Nav, die auf Mobile hinter
   // BottomNav zurücktritt) — deshalb hier zentral berechnet statt separat
@@ -30,10 +32,10 @@ export default async function Header({ back }: { back?: string } = {}) {
   // ein Existenz-Check mit limit(1) auf einer Tabelle, die für die
   // allermeisten Konten keine einzige Zeile hat, und wie isModerator pro
   // Request memoisiert.
-  const [moderator, creator, unseenKudosCount] = await Promise.all([
+  const [moderator, creator, ungeseheneAktivitaet] = await Promise.all([
     user ? isModerator(user.id) : Promise.resolve(false),
     user ? istCreator(user.id) : Promise.resolve(false),
-    user ? getUnseenKudosCount() : Promise.resolve(0),
+    user ? getUnseenActivityCount() : Promise.resolve(0),
   ]);
   // "/" wird hier ausgelassen — das Logo verlinkt bereits dorthin, ein
   // zweiter Link wäre redundant. Einzige Quelle der Nav-Items: lib/nav.ts,
@@ -87,17 +89,22 @@ export default async function Header({ back }: { back?: string } = {}) {
               // aria-label ersetzt den Inhalt vollständig — mit dem festen Text
               // "Aktivität" war der Zähler für Screenreader nicht vorhanden.
               // Genau dieser Zähler ist Schritt 8 des Kernloops.
+              // Neutral formuliert, seit der Zähler zwei Arten von
+              // Reaktion zusammenfasst (Kudos und neue Follower, 0097):
+              // "3 neue Kudos" wäre schlicht falsch, sobald ein Follower
+              // mitzählt, und die Zahl nach Art aufzuschlüsseln hiesse zwei
+              // Zahlen zu laden, wo eine reicht.
               aria-label={
-                unseenKudosCount > 0
-                  ? `Aktivität, ${unseenKudosCount} ${unseenKudosCount === 1 ? "neues Kudo" : "neue Kudos"}`
+                ungeseheneAktivitaet > 0
+                  ? `Aktivität, ${ungeseheneAktivitaet} ${ungeseheneAktivitaet === 1 ? "neue Reaktion" : "neue Reaktionen"}`
                   : "Aktivität"
               }
               className="relative flex items-center justify-center rounded-full p-1.5 text-foreground transition-colors duration-fast hover:text-accent"
             >
               <Flame className="h-5 w-5" aria-hidden="true" />
-              {unseenKudosCount > 0 && (
+              {ungeseheneAktivitaet > 0 && (
                 <span aria-hidden="true" className="absolute top-0 right-0 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-1 text-[9px] font-semibold text-background">
-                  {unseenKudosCount > 9 ? "9+" : unseenKudosCount}
+                  {ungeseheneAktivitaet > 9 ? "9+" : ungeseheneAktivitaet}
                 </span>
               )}
             </Link>
