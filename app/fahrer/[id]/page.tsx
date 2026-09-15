@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { OG_GEERBT } from "@/lib/openGraph";
 import Link from "next/link";
 import { Car } from "lucide-react";
 import Header from "@/components/Header";
@@ -41,7 +42,7 @@ export async function generateMetadata({
     description: beschreibung,
     // description muss im openGraph-Block wiederholt werden — Next zieht
     // sie nicht automatisch nach, sobald der Block eigene Felder hat.
-    openGraph: { type: "profile", title: `${name} – Strado`, description: beschreibung },
+    openGraph: { ...OG_GEERBT, type: "profile", title: `${name} – Strado`, description: beschreibung },
     // noindex statt eines Disallow in robots.ts: app/sitemap.ts lässt
     // Fahrer-Profile aus Datenschutzgründen aus, aber /feed verlinkt jedes
     // von ihnen. Ein Disallow verbietet nur das ABRUFEN — die URL kann über
