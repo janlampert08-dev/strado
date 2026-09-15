@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { RouteRating } from "@/types/database";
-import { bewertungAusSternen, type Streckenbewertung } from "@/lib/bewertungen";
+import { bewertungAusSternen, sternInSkala, type Streckenbewertung } from "@/lib/bewertungen";
 
 export interface RatingWithAuthor extends RouteRating {
   display_name: string | null;
@@ -26,9 +26,19 @@ export async function getRatings(routeId: string): Promise<RatingWithAuthor[]> {
   // das einen Namen mit nichts darunter.
   //
   // Sterne ODER Kommentar genügt weiter — beide Formen sind gewollt.
-  const gehaltvoll = ratings.filter(
-    (r: RouteRating) => r.sterne !== null || (r.kommentar ?? "").trim() !== "",
-  );
+  //
+  // Vorher wird der Sternwert auf die Skala gebracht: derselbe direkte
+  // PostgREST-Request, der eine leere Zeile schreiben kann, kann auch
+  // `sterne = 9999` schreiben, und der Constraint aus 0095 ist `not valid` —
+  // Altzeilen sind also ungeprüft. sternInSkala() macht daraus null, und
+  // zwar VOR dem Filter: eine Zeile, die nur aus einem unmöglichen Wert
+  // bestand, hat danach nichts mehr zu zeigen und fällt hier mit heraus.
+  //
+  // Der Schnitt war gegen solche Werte schon gesichert; die Einzelzeile
+  // nicht. Begründung samt Anzeigeschaden im Kopf von sternInSkala().
+  const gehaltvoll = ratings
+    .map((r: RouteRating) => ({ ...r, sterne: sternInSkala(r.sterne) }))
+    .filter((r) => r.sterne !== null || (r.kommentar ?? "").trim() !== "");
   if (gehaltvoll.length === 0) return [];
 
   const userIds = [...new Set(gehaltvoll.map((r) => r.user_id))];
@@ -55,7 +65,12 @@ export async function getOwnRating(routeId: string, userId: string): Promise<Rou
     .eq("route_id", routeId)
     .eq("user_id", userId)
     .maybeSingle();
-  return data;
+
+  // Dieselbe Bereinigung wie in getRatings, aus demselben Grund: der Wert
+  // geht als `anfangswert` in components/SterneEingabe.tsx. Ein Wert
+  // ausserhalb der Skala wählte dort keinen der fünf Radios aus, zeichnete
+  // aber alle fünf gefüllt — eine Wertung, die sich nicht bedienen lässt.
+  return data ? { ...data, sterne: sternInSkala(data.sterne) } : null;
 }
 
 /**

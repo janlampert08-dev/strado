@@ -26,6 +26,41 @@ export interface Streckenbewertung {
   anzahl: number;
 }
 
+/** Die Skala. Beide Ränder gehören dazu. */
+const MIN_STERN = 1;
+const MAX_STERN = 5;
+
+/**
+ * Ein gespeicherter Sternwert, so wie er angezeigt werden darf — oder null.
+ *
+ * `null` heisst hier zweierlei, und das ist Absicht: "hat nicht gewertet"
+ * (der Normalfall seit 0025) und "hat etwas gewertet, das es auf dieser
+ * Skala nicht gibt". Beides ist keine Wertung, beides gehört weder in einen
+ * Schnitt noch in eine Vorlesezeile.
+ *
+ * Diese Funktion ist der EINE Ort, an dem "auf der Skala" definiert ist.
+ * Vorher stand die Prüfung nur im Schnitt (siehe unten) — und genau deshalb
+ * blieb die Einzelzeile ungeschützt: `components/RatingSection.tsx` gibt
+ * neben den Sternen ein `sr-only` mit „{sterne} von 5 Sternen" aus, und weil
+ * `components/Sterne.tsx` den FÜLLSTAND beschneidet, die Zahl aber nicht,
+ * sah man fünf volle Sterne, während vorgelesen wurde „9999 von 5 Sternen".
+ * Ein Wert, der sehend gekappt und hörend roh ausgegeben wird, ist schlimmer
+ * als beides einzeln.
+ *
+ * Nicht dieselbe Prüfung wie `sterneLesen()` in lib/actions/ratings.ts: die
+ * bewertet eine EINGABE, verlangt deshalb zusätzlich eine ganze Zahl und
+ * unterscheidet „nichts geschickt" von „Unsinn geschickt". Hier geht es um
+ * einen bereits gespeicherten Wert, und da gibt es nur brauchbar oder nicht.
+ */
+export function sternInSkala(sterne: number | null): number | null {
+  return typeof sterne === "number" &&
+    Number.isFinite(sterne) &&
+    sterne >= MIN_STERN &&
+    sterne <= MAX_STERN
+    ? sterne
+    : null;
+}
+
 /**
  * Schnitt und Anzahl aus einer Liste von Sternwerten.
  *
@@ -51,9 +86,7 @@ export interface Streckenbewertung {
  * Bestnote zu geben.
  */
 export function bewertungAusSternen(sterne: readonly (number | null)[]): Streckenbewertung | null {
-  const werte = sterne.filter(
-    (s): s is number => typeof s === "number" && Number.isFinite(s) && s >= 1 && s <= 5,
-  );
+  const werte = sterne.map(sternInSkala).filter((s): s is number => s !== null);
   if (werte.length === 0) return null;
 
   const summe = werte.reduce((a, b) => a + b, 0);

@@ -106,11 +106,25 @@
 -- vorbei, den diese Migration aufbaut. lib/bewertungen.test.ts hält beides
 -- fest.
 
--- Transaktionslokal, und es gilt genau für die eine Anweisung darunter: wird
--- die Tabellensperre nicht binnen fünf Sekunden frei, bricht die Migration ab,
--- statt Lesen und Schreiben auf route_ratings hinter sich aufzustauen. Ein
--- zweiter Versuch kostet nichts — es gibt nichts zurückzunehmen.
-set lock_timeout = '5s';
+-- Gilt genau für die eine Anweisung darunter: wird die Tabellensperre nicht
+-- binnen fünf Sekunden frei, bricht die Migration ab, statt Lesen und Schreiben
+-- auf route_ratings hinter sich aufzustauen. Ein zweiter Versuch kostet nichts —
+-- es gibt nichts zurückzunehmen.
+--
+-- `set LOCAL`, nicht `set`: ein blosses `set` gilt für die SITZUNG und
+-- überlebt das COMMIT. Eine Migrationsverbindung wird wiederverwendet — die
+-- fünf Sekunden hingen danach an allem, was auf derselben Verbindung noch
+-- folgt, und liessen eine spätere, völlig andere Anweisung an einer Sperre
+-- scheitern, die sie sich hätte leisten können. `set local` endet mit der
+-- Transaktion.
+--
+-- Bedingung dafür: es MUSS eine Transaktion geben. Ausserhalb eines
+-- Transaktionsblocks ist `set local` wirkungslos und warnt nur — dann stünde
+-- hier gar kein Timeout. Alle Wege, über die diese Datei läuft, öffnen einen:
+-- apply_migration, `supabase db push` und der SQL-Editor fahren die Datei je
+-- in einer Transaktion. Wer die Anweisung von Hand in psql absetzt, klammert
+-- sie in `begin; ... commit;`.
+set local lock_timeout = '5s';
 
 alter table public.route_ratings
   add constraint route_ratings_sterne_check

@@ -64,7 +64,7 @@ Umsonst ist es deshalb nicht. Zweierlei nimmt `not valid` einem nicht ab:
   Anweisung, und hinter der wartenden Anforderung stauen sich Lesen **und**
   Schreiben, weil PostgreSQL nachfolgende Anfragen in die Warteschlange
   einreiht statt an ihr vorbei. Deshalb trägt die Migrationsdatei ein
-  `set lock_timeout = '5s'` vor der Anweisung: dann scheitert im
+  `set local lock_timeout = '5s'` vor der Anweisung: dann scheitert im
   Konfliktfall die Migration und nicht die App, und ein zweiter Versuch
   kostet nichts.
 - **Die Altzeilen bleiben ungeprüft, aber nicht folgenlos.** Was das später
@@ -79,7 +79,11 @@ Umsonst ist es deshalb nicht. Zweierlei nimmt `not valid` einem nicht ab:
 --    Abschnitt gelesen hat. Scheitern kann sie nicht an bestehenden Zeilen,
 --    wohl aber daran, dass die Tabellensperre nicht frei wird; dann lieber
 --    abbrechen und gleich noch einmal, als die Tabelle stauen zu lassen.
-set lock_timeout = '5s';
+--    `set LOCAL` endet mit der Transaktion — ein blosses `set` gälte für die
+--    ganze Sitzung und hinge danach an allem, was auf derselben (wiederver-
+--    wendeten) Migrationsverbindung noch folgt. Von Hand in psql deshalb in
+--    `begin; ... commit;` klammern: ohne Transaktion ist `set local` wirkungslos.
+set local lock_timeout = '5s';
 
 alter table public.route_ratings
   add constraint route_ratings_sterne_check

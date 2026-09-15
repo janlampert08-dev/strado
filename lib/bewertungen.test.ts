@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { anzahlText, bewertungAusSternen, schnittText } from "@/lib/bewertungen";
+import { anzahlText, bewertungAusSternen, schnittText, sternInSkala } from "@/lib/bewertungen";
 
 describe("bewertungAusSternen", () => {
   it("mittelt die vergebenen Sterne", () => {
@@ -61,6 +61,35 @@ describe("bewertungAusSternen", () => {
   // Die Ränder gehören dazu — eine Skala von 1 bis 5 schliesst 1 und 5 ein.
   it("behält die Randwerte 1 und 5", () => {
     expect(bewertungAusSternen([1, 5])).toEqual({ schnitt: 3, anzahl: 2 });
+  });
+});
+
+// sternInSkala ist die gemeinsame Grenze: bewertungAusSternen() benutzt sie
+// für den Schnitt, lib/ratings.ts für jede EINZELNE Zeile. Das zweite fehlte
+// zuerst — die Folge stand im sr-only von RatingSection: fünf voll gezeichnete
+// Sterne (Sterne.tsx beschneidet die Füllung) und daneben vorgelesen
+// "9999 von 5 Sternen". Deshalb sind die Fälle hier festgehalten und nicht
+// bloss im Schnitt mitgeprüft.
+describe("sternInSkala", () => {
+  it("lässt Werte auf der Skala unverändert durch, Ränder eingeschlossen", () => {
+    expect(sternInSkala(1)).toBe(1);
+    expect(sternInSkala(3)).toBe(3);
+    expect(sternInSkala(5)).toBe(5);
+  });
+
+  it("macht aus allem ausserhalb der Skala null statt es zu kappen", () => {
+    expect(sternInSkala(9999)).toBeNull();
+    expect(sternInSkala(0)).toBeNull();
+    expect(sternInSkala(-3)).toBeNull();
+  });
+
+  it("reicht ein fehlendes Urteil unverändert als null durch", () => {
+    expect(sternInSkala(null)).toBeNull();
+  });
+
+  it("fängt Werte ab, die keine endliche Zahl sind", () => {
+    expect(sternInSkala(NaN)).toBeNull();
+    expect(sternInSkala(Infinity)).toBeNull();
   });
 });
 
