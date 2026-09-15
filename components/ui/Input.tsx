@@ -1,15 +1,33 @@
 "use client";
 
-import { useState, type InputHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import {
+  useState,
+  type InputHTMLAttributes,
+  type Ref,
+  type TextareaHTMLAttributes,
+} from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 // Gemeinsame Feld-Klassen — auch direkt verwendbar für native Elemente ohne
 // eigenen Wrapper (z. B. <select>), statt für jede Variante eine eigene
 // Komponente zu bauen.
+// text-base unter md, text-sm ab md: Safari auf iOS zoomt beim Fokussieren
+// automatisch in ein Eingabefeld hinein, sobald dessen Schrift kleiner als
+// 16px ist — und zoomt danach nicht von selbst wieder heraus. Die Nutzerin
+// bleibt also mit einer vergrösserten, seitlich verschobenen Seite zurück,
+// und zwar ab dem ersten Tippen in ein Feld. Das traf hier jedes Feld der
+// App: text-sm sind 14px, und diese eine Funktion kleidet zwölf Dateien ein.
+//
+// Getroffen hat es damit die Anmeldung, die Registrierung, das Zurücksetzen
+// des Passworts und die Streckensuche — also genau den Weg, den ein neuer
+// Besucher zuerst geht.
+//
+// Ab md bleibt es bei 14px: dort gibt es kein automatisches Zoomen, und das
+// Formular soll aussehen wie bisher.
 export function fieldClassName(className?: string, invalid?: boolean): string {
   return cn(
-    "w-full rounded-lg border bg-transparent px-3 py-2 text-sm outline-none transition-shadow duration-fast",
+    "w-full rounded-lg border bg-transparent px-3 py-2 text-base outline-none transition-shadow duration-fast md:text-sm",
     invalid
       ? "border-danger focus:border-danger focus:ring-2 focus:ring-danger/15"
       : "border-border focus:border-accent focus:ring-2 focus:ring-accent/15",
@@ -19,6 +37,11 @@ export function fieldClassName(className?: string, invalid?: boolean): string {
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   invalid?: boolean;
+  // Seit React 19 ist ref eine gewöhnliche Prop einer Funktionskomponente und
+  // reist mit dem Spread unten ans <input>. Deklariert, damit ein Aufrufer den
+  // Fokus setzen kann (NutzerWahl.tsx) — ohne forwardRef, das es dafür nicht
+  // mehr braucht.
+  ref?: Ref<HTMLInputElement>;
 }
 
 export function Input({ className, invalid, type, ...props }: InputProps) {
@@ -28,7 +51,13 @@ export function Input({ className, invalid, type, ...props }: InputProps) {
   const [visible, setVisible] = useState(false);
 
   if (type !== "password") {
-    return <input type={type} className={fieldClassName(className, invalid)} {...props} />;
+    return (
+      <input
+        type={type}
+        className={fieldClassName(className, invalid)}
+        {...props}
+      />
+    );
   }
 
   return (

@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { creatorLinkAnlegen, type CreatorLinkResult } from "@/lib/actions/creatorLinks";
+import NutzerWahl from "@/components/NutzerWahl";
 import { Input } from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -87,6 +88,21 @@ export default function CreatorLinkForm() {
               Wird zu utm_campaign. Mehrere Creator dürfen dieselbe tragen.
             </span>
           </label>
+
+          {/* Die Zuweisung IST die Creator-Rolle (Migration 0091): wer hier
+              steht, sieht seine Zahlen unter /creator. Optional, weil ein
+              Code auch ohne Konto laufen darf — Plakat, Newsletter, oder
+              jemand, der (noch) keines hat. Nachträglich zuweisen geht an
+              jedem Eintrag in der Liste darunter. */}
+          <NutzerWahl
+            name="creator_user_id"
+            label={
+              <>
+                Gehört zu <span className="font-normal text-muted">(optional)</span>
+              </>
+            }
+            hinweis="Dieses Konto sieht die Zahlen zu diesem Code unter /creator."
+          />
         </div>
 
         {state.error && (

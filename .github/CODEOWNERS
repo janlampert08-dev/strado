@@ -16,6 +16,9 @@
 /lib/actions/billing.ts      @janlampert08-dev
 /lib/actions/auth.ts         @janlampert08-dev
 /lib/actions/moderation.ts   @janlampert08-dev
+/lib/actions/creatorLinks.ts @janlampert08-dev
+/app/c/                      @janlampert08-dev
+/lib/herkunft.ts             @janlampert08-dev
 /lib/actions/reports.ts      @janlampert08-dev
 /lib/actions/completions.ts  @janlampert08-dev
 /lib/actions/profile.ts      @janlampert08-dev

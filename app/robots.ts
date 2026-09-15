@@ -42,11 +42,12 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
       //
       // Was stehen bleibt, bleibt aus je eigenem Grund:
       //
-      // - /profil, /aktivitaet, /moderation werden ausschliesslich aus
-      //   angemeldeten Oberflächen heraus verlinkt (Header, Premium- und
-      //   Moderationsseiten). Ein Crawler stösst nie auf den Link, und
-      //   abgemeldet leiten sie ohnehin auf /anmelden um — es gibt dort
-      //   nichts zu indexieren und nichts zu holen.
+      // - /profil, /aktivitaet, /moderation und /creator werden
+      //   ausschliesslich aus angemeldeten Oberflächen heraus verlinkt
+      //   (Header, Premium- und Moderationsseiten; /creator erscheint in
+      //   der Navigation nur bei zugewiesenem Code). Ein Crawler stösst nie
+      //   auf den Link, und abgemeldet leiten sie ohnehin auf /anmelden um —
+      //   es gibt dort nichts zu indexieren und nichts zu holen.
       // - /api liefert JSON. Dort geht es nicht um den Index, sondern um
       //   Last: die Strecken-Endpunkte sind unauthentifiziert und nur per
       //   IP gebremst (lib/rateLimit.ts).
@@ -55,7 +56,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
       // den Index — app/sitemap.ts lässt sie aus Datenschutzgründen aus —,
       // aber ein Disallow leistet das nicht, siehe oben. Durchgesetzt wird
       // es mit robots: { index: false } in app/fahrer/[id]/page.tsx.
-      disallow: ["/profil", "/moderation", "/api", "/aktivitaet"],
+      disallow: ["/profil", "/moderation", "/creator", "/api", "/aktivitaet"],
     },
     sitemap: `${origin}/sitemap.xml`,
   };
