@@ -9,8 +9,18 @@ keine Telemetrie. Kein Sentry, kein PostHog, kein Plausible.
 
 **Stand:** Phase 0 und Phase 1 sind umgesetzt. Die Codes werden unter
 `/moderation/creator` verwaltet und liegen in `public.creator_links`
-(Migration `0084` — **noch nicht eingespielt**, siehe
-`supabase/migrations/README.md`). Phase 2 und 3 sind weiterhin Plan.
+(Migration `0084`, eingespielt am 2026-09-13 — siehe `AGENTS.md`,
+„Migrations are applied by hand"). **Phase 2 ist seit 2026-09-14 gebaut**
+(Migrationen `0088`–`0093`, seit 2026-09-14 in Produktion); Phase 3 ist eine
+Abfrage ohne Oberfläche.
+
+> **Phase 2 und 3 stehen in
+> `docs/herkunft-tracking-plan.md`.** Dort steht die vollständige Kette bis
+> zum Kauf — insbesondere, wie ein Premium-Abo, das Monate nach der
+> Registrierung abgeschlossen wird, dem Creator noch zugeordnet werden
+> kann. Das Dokument korrigiert zwei Punkte der Abschnitte unten (das
+> vorgeschlagene Tagesaggregat und die Annahme, dass `on delete` bei einer
+> Kontolöschung feuert) und ist dort die massgebliche Fassung.
 
 ## Warum UTM allein nicht reicht
 
@@ -218,9 +228,12 @@ Zuordnung in der App statt auf einer Fehlerseite.
 Keine Änderung an `proxy.ts` nötig — der Matcher deckt `/c/...` bereits ab,
 und `updateSession()` stört nicht.
 
-Kein Rate Limit auf dem Handler, anders als bei `/api/strecken/**`: er liest
-keine Datenbank, schreibt nichts und ruft nichts Fremdes auf. Sobald Phase 2
-dort ein Cookie setzt, ist diese Begründung hinfällig.
+Der Absatz hier sagte einmal, ein Rate Limit sei auf diesem Handler nicht
+nötig, weil er nichts liest und nichts schreibt. Das gilt nicht mehr: seit
+`0084` löst er pro Aufruf eine Datenbankfunktion auf, und seit Phase 2 setzt
+er ein Cookie. Das Limit steht deshalb im Handler
+(`creator:einstieg:<ip>`, 60/min) — ohne 429, weil dahinter ein Mensch im
+Browser steht: der landet in der App, nur ohne Zuordnung.
 
 ### Die Link-Form
 
@@ -246,6 +259,9 @@ Ausnahmeliste dort ist bewusst kurz.
 ## Phase 2 — die Herkunft bis zur Registrierung durchreichen
 
 Erst hier wird aus „Klicks" eine Antwort auf „hat es was gebracht".
+
+*Ausgearbeitet in `docs/herkunft-tracking-plan.md`, Schritte 1–3 und 6. Bei
+Abweichungen gilt das dortige Dokument.*
 
 ### a) Cookie im Route Handler
 
@@ -359,6 +375,9 @@ Endzustand nicht.
 ---
 
 ## Phase 3 — Auswertung
+
+*Ausgearbeitet in `docs/herkunft-tracking-plan.md`, Schritt 7 — dort mit
+Abo-Konversionen statt nur Registrierungen.*
 
 Erst einmal **ohne Code**: ein SQL-Schnipsel, das du im Supabase-SQL-Editor
 laufen lässt (und das in dieses Dokument gehört, sobald es steht). Der

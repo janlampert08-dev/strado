@@ -170,13 +170,85 @@ is what should be corrected.
   un-applied (`0042`, `0058`) are superseded by `0076` and must **not** be
   applied — see `supabase/migrations/README.md`, which is the only place that
   distinction survives, plus `.agents/deployment.md`.
-  - **There is no separate staging database.** The linked Supabase account
-    holds exactly one project, and it is production. The rehearsal that
-    "Release Flow" below describes therefore did not happen for any of the
-    six migrations above; they were additive throughout, which is what made
-    that acceptable. A migration that drops, rewrites or backfills anything
-    does not get the same pass — settle where staging's database lives
-    before writing one.
+  `0088_herkunft_und_konversionen` through `0093_creator_funktionen_anon_entziehen`
+  went in on 2026-09-14, in that order, **ahead of the code that uses them**
+  (PR #236). They start at `0088` because `0087_premium_abzeichen_spalte`
+  (PR #235) took `0087` the same day; both branches had picked `0087`
+  independently off a `main` that ended at `0086`.
+  `scripts/check-migration-prefixes.mjs` cannot catch that — it only sees
+  one branch — so the check that matters is the one `.agents/database.md`
+  actually asks for: read the open PRs before choosing a number.
+  Two lessons from applying them are worth more than the list:
+  - **A `create or replace` on a live function needs the live body read
+    first.** `0088` and `0090`/`0092` rewrite `handle_new_user` and
+    `anonymize_account`. Both were read out of the database and compared
+    against the versions the migrations build on (`0001` and `0076`)
+    before anything was written; had `0087` touched either, the replace
+    would have silently reverted it.
+  - **`revoke execute ... from public` is never enough.** `0091` did only
+    that for `creator_kennzahlen()` / `creator_verlauf()` and asserted in a
+    comment that `anon` therefore had nothing. It had a **direct** grant —
+    Supabase's default privileges hand one to `anon` for every new function
+    in `public`, and a revoke from PUBLIC does not touch it. Same trap as
+    `0047` and `0048`, third time. It exposed nothing (both functions
+    filter on `auth.uid()`, which is NULL for `anon`; called as `anon` they
+    return zero rows — measured), and `0093` closed it. Write
+    `from anon, authenticated` explicitly, the way `0088` did for the
+    sequence.
+  - **`0094_creator_verlauf_nur_aufrufe` went in on 2026-09-15** (ledger
+    `20260915075341`), again **ahead of the code that uses it** — PR #236
+    and #243 are both still open. It is the review nacharbeit on the six
+    above, and the only one of the set that *narrows* something already
+    live, which is precisely why it went in early rather than late: until
+    the code deploys, nothing in production calls the function, so the two
+    columns are gone before anyone can fetch them.
+    `creator_verlauf()` returned `registrierungen` and `abos` per day to
+    any `authenticated` creator; nothing ever drew them, and at small
+    numbers a day-bucket holding a single registration names the day one
+    account was created — which `profiles.created_at`, world-readable
+    since `0034`, then turns into a person. That contradicts the published
+    privacy policy word for word, so the migration drops both columns
+    (drop + create, the return type changes). It also wraps the herkunft
+    block of `handle_new_user` in its own `exception` block — `0088`
+    promises in a comment that a registration can never fail on the
+    measurement, and without a handler a foreign-key error there aborts
+    the signup — and adds the index the per-day query wants. The live body
+    of `handle_new_user` was read out and compared against `0088` first,
+    as the first lesson above demands; it matched statement for statement.
+    **The check afterwards had a gap the earlier six did not have:**
+    `execute_sql` was blocked after the write, so it ran through
+    `generate_typescript_types`, `get_advisors` and `list_migrations` —
+    return type, grants and ledger were confirmed, but the index was not
+    seen individually and there were no rolled-back functional tests. A
+    later session closed the first half against the catalog: the index
+    stands as `(code, art, ereignis_am)`, `handle_new_user` carries both
+    the `exception` block and `pg_temp`, and `creator_verlauf` is granted
+    to `authenticated` but **not** to `anon` — the trap that caught `0047`,
+    `0048` and `0091`. What stays unmeasured is only the functional test:
+    the `exception` branch is read, not exercised.
+    `supabase/migrations/README.md` names exactly what that leaves
+    unmeasured, with the queries to close it.
+    **Still open after it, and a product decision rather than a
+    migration:** `creator_kennzahlen()` hands out live running totals, so
+    a creator who polls it can still correlate an increment against
+    `profiles.created_at`. Closing that means a k-threshold, coarser
+    buckets, or narrowing the `0034` grant — the last of which would also
+    close the standing finding named in `0087`'s own header. The privacy
+    text now says this plainly rather than promising more than it keeps.
+  - **There is no separate staging database — confirmed, and staying that
+    way.** The linked Supabase account holds exactly one project, and it is
+    production; the owner confirmed on 2026-09-14 that `staging` points at
+    it and that this is deliberate, not an oversight to be fixed. The
+    rehearsal that "Release Flow" below describes therefore cannot happen
+    at all: a migration is applied once, and that once is production.
+    Three things follow for every piece of work from here on. A migration
+    that drops, rewrites or backfills is a production operation with no dry
+    run — plan the way back before applying it, not after. Every test ride,
+    account and route created on `staging` **is** production data, and
+    shows up in production counts. And a sandbox purchase on `staging`
+    writes real rows into the production tables that hang off the payment
+    path — `creator_konversionen` (0088, live since 2026-09-14) is the
+    newest of them; only the Stripe side is genuinely separate.
 - **Migration numbers are not unique.** `0034`, `0041`, `0053`, `0054`, `0059`
   and `0060` each exist twice — six pairs, not four. Reconciling a deploy by
   version number alone is ambiguous, so check the objects. In the `0059` and
@@ -185,6 +257,50 @@ is what should be corrected.
   prefixes now has both halves live. `scripts/check-migration-prefixes.mjs` runs in CI
   and fails on a *new* collision; the six existing pairs are listed there as
   legacy.
+- **Where a user came from is recorded from 2026-09-14 on.** A click on
+  `app.strado.ch/c/<code>` leaves a first-party cookie carrying only the
+  creator's code (`lib/herkunft.ts`, 90 days, First Touch wins); `signUp()`
+  passes it through `raw_user_meta_data`, and `handle_new_user` validates it
+  against `creator_links` before writing `registrierung_herkunft` (`0088`).
+  A trigger on `subscriptions` (`0089`) then records in
+  `creator_konversionen` when such an account first becomes paying — which
+  is the whole point: a purchase two months after the sign-up is still
+  attributable. Three things to know before touching it. The conversion log
+  is **append-only and deliberately window-free** — whether a purchase 200
+  days later still counts is decided in the evaluating query, never in the
+  trigger, because an unrecorded event is gone while a misapplied rule can
+  be reapplied. It **survives account deletion**: `anonymize_account`
+  (`0090`) drops the origin row but only nulls `user_id` on the log, so the
+  creator keeps the count and the person keeps their deletion. And a
+  creator code that has produced registrations **can no longer be deleted**
+  (foreign key); deactivating is the intended move, and
+  `lib/actions/creatorLinks.ts` translates the constraint into that
+  sentence. The cookie is named in the privacy policy — both in
+  `docs/rechtstexte/datenschutz.md` (Ziff. 3.11) and in the published HTML
+  in `janlampert08-dev/stradoinfo` — with no consent banner: that was a
+  deliberate decision, so a change to the cookie's name, lifetime or
+  contents is a legal-text change in two repositories.
+  - **Creators have accounts, and there is no `ist_creator` column.** A
+    creator *is* someone with a row in `creator_links` carrying their
+    `creator_user_id` (`0091`); the assignment is the role. That avoids a
+    second source of truth, and it keeps the fact off `profiles`, which is
+    world-readable since `0001`. Moderators assign it while creating a code
+    or afterwards, under `/moderation/creator`; the assigned account then
+    sees `/creator` with clicks, accounts and subscriptions for its own
+    codes. What it must never see is *who* — so the dashboard reads
+    `creator_kennzahlen()` / `creator_verlauf()`, `SECURITY DEFINER`
+    functions that aggregate inside the database and hand out numbers only.
+    Never open `creator_konversionen` row-wise to reach the same figures:
+    it carries `user_id`, and any row-level grant answers the second
+    question along with the first. The same two functions feed the
+    moderation view (a moderator gets every row) — one rule, one source.
+    Clicks are counted per code and day in `creator_klicks` with no IP, no
+    time and no identity, via `creator_klick_zaehlen()` called from
+    `after()` in the redirect handler. That counter is **indicative, not
+    payable**: codes are public and the RPC is reachable with the anon key,
+    so the handler's IP limit does not bind it. Registrations and
+    subscriptions are the trustworthy numbers — they go through `signUp()`
+    and Stripe.
 - **Open audit findings are tracked in
   `docs/audit/README.md#remediation-status`**, not in GitHub issues. Read
   that table before concluding you have found something new — most of the
@@ -469,26 +585,20 @@ with it.
 **The staging environment.** `staging` deploys to `staging.strado.ch` and
 talks to the Stripe **sandbox**, so a test purchase there costs no real money.
 
-> **The database half of that sentence is in doubt — settle it before
-> trusting it.** This paragraph used to continue "It has its own Supabase
-> project … so a test purchase there touches no production data". That
-> contradicts Current State above, which says the linked Supabase account
-> holds exactly one project and it is production, and on 2026-09-14
-> `list_projects` agreed with Current State: exactly one project came back,
-> `stecakpnuijbvjsniqto` ("Strado", eu-central-1). The Stripe half is
-> unaffected — the sandbox is genuinely separate.
+> **The database half of that sentence is settled, and the answer is no.**
+> This paragraph used to continue "It has its own Supabase project … so a
+> test purchase there touches no production data". That was wrong. The
+> owner confirmed on 2026-09-14 that `staging` talks to the **production**
+> database — the single project `stecakpnuijbvjsniqto` ("Strado",
+> eu-central-1) — and that it stays that way. The Stripe half is unaffected:
+> the sandbox is genuinely separate, so a test purchase still costs no real
+> money.
 >
-> What that does **not** prove is where `staging` actually points: it could
-> still use a project under a Supabase account this tooling cannot see. Only
-> one check settles it — read `NEXT_PUBLIC_SUPABASE_URL` for the `staging`
-> environment in Vercel and compare its project ref against
-> `stecakpnuijbvjsniqto`. That is a URL, not a secret.
->
-> If they match, two things below are false rather than merely stale: the
-> rehearsal step ("a migration is applied to the staging database **before**
-> production") never happened, because both are the same database, and every
-> test ride, account and route created on staging is production data. Until
-> someone looks, treat staging as production for anything that writes.
+> **Treat `staging` as production for anything that writes.** A test
+> account, a test ride, a sandbox purchase — all of it lands in the same
+> tables real users are in. That is a known, accepted trade, not a bug to
+> report; what it forbids is the assumption that staging is a safe place to
+> try a destructive statement.
 
 Three things follow:
 
@@ -504,11 +614,13 @@ Three things follow:
   arrives server-to-server with no session, and the `/api/strecken/**`
   endpoints are unauthenticated by design.
 
-A migration is applied to the staging database **before** it is applied to
-production — that rehearsal is the main reason the environment exists, given
-that migrations are applied by hand (see below). **This step is only real if
-the two databases are actually two**; see the caveat above, and Current State,
-which records that the rehearsal did not in fact happen for `0080`–`0084`.
+**There is no migration rehearsal.** This section used to promise one — "a
+migration is applied to the staging database before it is applied to
+production" — and that promise is void: there is one database (see the box
+above). A migration is applied exactly once, and that application is the
+production application. What `staging` still buys is a rehearsal of the
+**code** against the real schema, which is worth having; what it does not
+buy is a second chance at a statement that writes.
 
 ## Core Rules
 
@@ -578,6 +690,23 @@ additional care and review before merging changes to them:
   guard. Every `?next=` in the app depends on it.
 - `/lib/actions/moderation.ts` — route approval/rejection (moderator-only
   mutations).
+- `/lib/actions/creatorLinks.ts` — moderator-only mutations on
+  `creator_links`, including the assignment that *is* the creator role
+  (`0091`): whoever is written there sees `/creator`. Same triple gate as
+  `moderation.ts` (RLS policy, `isModerator()`, page access), and the empty
+  field deliberately means "nobody" while a malformed one is an error — so
+  a tampered value cannot silently revoke a role.
+- `/app/c/` — the public entry-point handler. Fully unauthenticated, like
+  `/app/api/strecken/`: it resolves a code, sets the origin cookie and
+  counts a click in `after()`. Protected by IP rate limiting and
+  `normalisiereCode()` only, and it redirects on a user-supplied `?z=`,
+  which is why that value goes through `safeInternalPath()`.
+- `/lib/herkunft.ts` — the origin cookie. Its **name, lifetime and
+  contents are quoted verbatim** in the privacy policy, in this repo
+  (`docs/rechtstexte/datenschutz.md` Ziff. 3.11) and in the published HTML
+  in `janlampert08-dev/stradoinfo`. A change here is a legal-text change in
+  two repositories, not a refactor; `lib/herkunft.test.ts` pins the values
+  for that reason.
 - `/lib/moderation.ts` — moderator-check helper.
 - `/lib/actions/reports.ts` — the user-facing side of moderation; what it
   writes is what the moderation queue acts on.

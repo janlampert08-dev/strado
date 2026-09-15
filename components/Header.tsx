@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Flame } from "lucide-react";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { isModerator } from "@/lib/moderation";
+import { istCreator } from "@/lib/creatorKennzahlen";
 import { getUnseenKudosCount } from "@/lib/kudos";
 import { getNavItems } from "@/lib/nav";
 import BackButton from "@/components/BackButton";
@@ -24,14 +25,22 @@ export default async function Header({ back }: { back?: string } = {}) {
   // das zwei Roundtrips hintereinander, und zwar auf jeder Seite: <Header />
   // ist ein Kind der Seite, läuft also ohnehin erst nach deren eigenen
   // Abfragen.
-  const [moderator, unseenKudosCount] = await Promise.all([
+  // Drei Abfragen, die nur an user hängen und nicht aneinander — also
+  // nebenläufig. Die dritte kam mit den Creator-Konten dazu (0091): sie ist
+  // ein Existenz-Check mit limit(1) auf einer Tabelle, die für die
+  // allermeisten Konten keine einzige Zeile hat, und wie isModerator pro
+  // Request memoisiert.
+  const [moderator, creator, unseenKudosCount] = await Promise.all([
     user ? isModerator(user.id) : Promise.resolve(false),
+    user ? istCreator(user.id) : Promise.resolve(false),
     user ? getUnseenKudosCount() : Promise.resolve(0),
   ]);
   // "/" wird hier ausgelassen — das Logo verlinkt bereits dorthin, ein
   // zweiter Link wäre redundant. Einzige Quelle der Nav-Items: lib/nav.ts,
   // von BottomNav (Mobile) genauso genutzt.
-  const items = getNavItems({ loggedIn: !!user, moderator }).filter((item) => item.href !== "/");
+  const items = getNavItems({ loggedIn: !!user, moderator, creator }).filter(
+    (item) => item.href !== "/",
+  );
 
   return (
     <>
@@ -122,7 +131,7 @@ export default async function Header({ back }: { back?: string } = {}) {
           </nav>
         </div>
       </header>
-      <BottomNav loggedIn={!!user} moderator={moderator} />
+      <BottomNav loggedIn={!!user} moderator={moderator} creator={creator} />
     </>
   );
 }
