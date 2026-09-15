@@ -547,8 +547,12 @@ breaking changes from earlier versions (see the block at the top of this file).
   `components/VisibilityIcons.tsx`, don't import it directly in new code)
 - **@vercel/analytics** ^2.0.1 (`<Analytics />` in `app/layout.tsx`; the only
   telemetry in the app — there is no Sentry or other error reporting)
-- **Vitest** ^5.0.0 (unit tests, `environment: "node"` — there is no jsdom,
-  so component tests are not currently possible)
+- **Vitest** ^5.0.0 (unit tests, `environment: "node"` project-wide).
+  `jsdom` is a devDependency since 2026-09-15, but only so a single file can
+  opt in with a `// @vitest-environment jsdom` docblock —
+  `lib/eingabenBewahren.test.ts` is the only one. There is no Testing
+  Library, so component tests are still not possible; see Current State for
+  what that does and does not buy.
 - **ESLint** ^9 with `eslint-config-next`
 
 Node.js: Next.js 16 requires **Node >= 20.9**; this repo runs on **Node
