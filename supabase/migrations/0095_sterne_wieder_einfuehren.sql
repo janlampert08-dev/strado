@@ -38,15 +38,59 @@
 -- den 0025 fallen liess. Kein Namenskonflikt: er existiert seit 0025 nicht
 -- mehr.
 --
--- Bestand: alle Zeilen erfüllen die Bedingung bereits. Vor 0025 galt
--- `check (sterne between 1 and 5)`, danach hat die App die Spalte nicht mehr
--- geschrieben — es kann also nur 1–5 oder null geben. Deshalb ohne
--- `not valid`/`validate constraint`: es gibt nichts zu prüfen, was scheitern
--- könnte, und die Tabelle ist klein.
+-- ---------------------------------------------------------------------------
+-- Warum `not valid`
+-- ---------------------------------------------------------------------------
+-- Ein gewöhnliches `add constraint` prüft den Bestand mit und SCHEITERT, wenn
+-- eine einzige Zeile die Bedingung verletzt. Ein erster Entwurf dieser Datei
+-- hielt das für unmöglich und begründete es so: vor 0025 galt
+-- `check (sterne between 1 and 5)`, danach habe die App die Spalte nicht mehr
+-- geschrieben, es könne also nur 1–5 oder null geben.
+--
+-- Diese Begründung widerspricht dem Absatz direkt darüber. Dort steht, warum
+-- es den Constraint überhaupt braucht: route_ratings ist über PostgREST
+-- direkt beschreibbar, die Server Action ist umgehbar. "Die App hat nicht
+-- geschrieben" heisst also gerade nicht "niemand hat geschrieben" — und das
+-- Fenster dafür stand seit 0025 offen, also genau in dem Zeitraum, für den
+-- der Bestand behauptet wurde. Wer beides gleichzeitig annimmt, nimmt an, das
+-- Loch existiere und sei zugleich nie benutzt worden.
+--
+-- Das wiegt hier schwerer als anderswo: es gibt keine Staging-Datenbank
+-- (AGENTS.md → Release Flow). Die Migration wird genau einmal angewandt, und
+-- zwar gegen die Produktion. Eine Anweisung, die abhängig von Daten scheitern
+-- kann, die niemand nachgesehen hat, ist genau das, was dieses Repo an dieser
+-- Stelle nicht will.
+--
+-- `not valid` löst das vollständig, ohne etwas zu kosten: der Constraint gilt
+-- ab sofort für jedes INSERT und jedes UPDATE — also für alles, wogegen er
+-- schützen soll — und lässt allein die Altzeilen ungeprüft. Er kann damit
+-- nicht scheitern und nimmt auch keinen Table-Scan, der Schreibzugriffe
+-- blockiert.
+--
+-- Die Altzeilen nachzuziehen ist ein eigener, bewusster Schritt. Erst die
+-- Gegenprobe, und nur wenn sie null Zeilen liefert, die Bestätigung:
+--
+--   select id, sterne from public.route_ratings
+--   where sterne is not null and sterne not between 1 and 5;
+--
+--   alter table public.route_ratings validate constraint route_ratings_sterne_check;
+--
+-- Beides steht bewusst NICHT als Anweisung in dieser Datei. Liefert die
+-- Gegenprobe Zeilen, ist die Frage eine fachliche — löschen, kappen oder auf
+-- null setzen —, und die gehört einem Menschen, nicht einer Migration, die
+-- unbeaufsichtigt durchläuft. Stünde `validate constraint` hier, scheiterte
+-- sie in genau diesem Fall und risse den `not valid`-Teil in derselben
+-- Transaktion wieder mit.
+--
+-- Bis das geschieht, fehlt nichts Wesentliches: ungeprüft bleiben nur
+-- Altzeilen, und die kann lib/bewertungen.ts ohnehin ab — es filtert alles
+-- heraus, was keine endliche Zahl ist, und lib/bewertungen.test.ts hält das
+-- fest.
 
 alter table public.route_ratings
   add constraint route_ratings_sterne_check
-  check (sterne is null or sterne between 1 and 5);
+  check (sterne is null or sterne between 1 and 5)
+  not valid;
 
 comment on column public.route_ratings.sterne is
   '1-5 Sterne, optional. null heisst "nur kommentiert" — so entstanden alle Zeilen zwischen 0025 und 0095, in denen die App die Spalte nicht schrieb. Die Untergrenze "mindestens Sterne ODER Kommentar" setzt lib/actions/ratings.ts durch.';

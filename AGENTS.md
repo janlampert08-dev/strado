@@ -279,7 +279,17 @@ is what should be corrected.
   shown publicly on someone else's route. The migration adds back
   `check (sterne is null or sterne between 1 and 5)` — null-tolerant,
   because comment-only ratings are the normal case for every row created
-  between `0025` and now.
+  between `0025` and now, and **`not valid`**, which is the part worth
+  remembering. A plain `add constraint` scans the existing rows and fails on
+  the first violation; since the very hole it closes has been open since
+  `0025`, assuming no row uses it would be assuming the hole exists and was
+  never used. With one database and no rehearsal, a statement that can fail
+  on data nobody looked at is the wrong shape. `not valid` binds every
+  INSERT and UPDATE immediately — the whole security goal — and leaves only
+  the legacy rows unchecked. Validating those is a separate, deliberate
+  step: the preflight query and the `validate constraint` line sit in the
+  migration's header as comments, not as statements, because if the
+  preflight returns rows the fix is a product decision.
 - **Stars per route are back, reversing `0025`.** `0025_ratings_ohne_sterne`
   removed the 1–5 rating ("Nutzer sollen nur noch kommentieren können") and
   deliberately left the column in place in case it returned. It returned on
