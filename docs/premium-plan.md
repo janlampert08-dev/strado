@@ -657,9 +657,14 @@ beantworten gibt die Schranke genau dort auf, wo sie zählt.
   einer Policy auf die eigene Zeile kommt ohne beides aus.
   Wird das Kontingent beim Anlegen überschritten, geht die Strecke als
   normaler Vorschlag in die Moderation, statt verloren zu sein.
-- `lib/leaderboard.ts`: `isPremiumBadge` aus der View lesen statt `false`.
-- `lib/actions/profile.ts`: `zeigt_premium_badge` wieder aus dem Formular
-  übernehmen, serverseitig gegen `ist_premium` geprüft.
+- ~~`lib/leaderboard.ts`: `isPremiumBadge` aus der View lesen statt `false`.~~
+  ~~`lib/actions/profile.ts`: `zeigt_premium_badge` wieder aus dem Formular
+  übernehmen.~~ **Hinfällig.** Beides ist gebaut worden (0087, PR #235) und
+  am 2026-09-15 wieder entfernt: das Abzeichen hinter dem Namen gibt es
+  nicht mehr. Die Spalten bleiben im Schema (Kernregel 9), erreichen aber
+  keine Oberfläche. Wer es wieder aufnimmt, fängt bei der Frage an, wie es
+  aussehen soll — die letzte Fassung zeichnete das Signet aus `lib/marke.ts`
+  in `--color-accent` und sah neben einem Namen nicht gut aus.
 - Offline- und Fotogrenzen aus `lib/premiumLimits.ts`. Die **erweiterten
   Filter** sind nicht mitgenommen: `AdvancedFiltersPanel.tsx` ist heute
   nirgends eingebunden, ein Gate davor wäre ein Gate vor nichts. Sie gehören

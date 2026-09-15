@@ -4,7 +4,6 @@ import { ChevronRight, Rss } from "lucide-react";
 import Header from "@/components/Header";
 import PullToRefreshArea from "@/components/PullToRefreshArea";
 import Avatar from "@/components/Avatar";
-import PremiumAbzeichen from "@/components/PremiumAbzeichen";
 import KudosButton from "@/components/KudosButton";
 import ProfileSearch from "@/components/ProfileSearch";
 import { Signet } from "@/components/Wortmarke";
@@ -141,16 +140,11 @@ export default async function FeedPage({
                       <Avatar url={item.avatar_url} name={item.display_name} size={40} />
                     </Link>
                     <div className="min-w-0 flex-1">
-                      {/* flex statt "block truncate": das Abzeichen darf nicht
-                          mit abgeschnitten werden, wenn der Name zu lang ist.
-                          Gekürzt wird deshalb der Name allein, das Zeichen
-                          bleibt (PremiumAbzeichen trägt shrink-0). */}
                       <Link
                         href={`/fahrer/${item.user_id}`}
-                        className="relative z-10 flex min-w-0 items-center text-sm font-medium transition-colors duration-fast hover:text-accent"
+                        className="relative z-10 block truncate text-sm font-medium transition-colors duration-fast hover:text-accent"
                       >
-                        <span className="truncate">{item.display_name ?? "Fahrer"}</span>
-                        <PremiumAbzeichen zeigen={item.zeigtPremiumAbzeichen} />
+                        {item.display_name ?? "Fahrer"}
                       </Link>
                       <p className="text-xs text-muted">{new Date(item.datum).toLocaleDateString("de-CH")}</p>
                     </div>

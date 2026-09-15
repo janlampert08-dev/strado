@@ -75,18 +75,24 @@ schlicht ungetestet.
 
 ## 2. Feature 1 — Das Abzeichen
 
-> **Überholt ab 2026-09-15, was das Aussehen angeht.** Dieser Abschnitt
-> beschreibt das Abzeichen als das Signet aus `lib/marke.ts` in
-> `--color-accent`, gerendert von `components/PremiumSignet.tsx`. Gebaut und
-> ausgeliefert wurde es genau so — und genau so sah es nicht gut aus: das
-> Signet ist die Marke und trug damit auf derselben Seite zwei Bedeutungen,
-> es ist 1.7-mal breiter als hoch und liest sich in Textgrösse als liegendes
-> Oval, und Blau ist in dieser App die Farbe des Bedienbaren. Was heute
-> gilt, steht in `components/PremiumAbzeichen.tsx` (Funkeln statt Signet,
-> `--color-premium` statt `--color-accent`, kompakt in Listen und beschriftet
-> auf den Profilköpfen) und in `app/globals.css` (Farbe und Kontrastwerte).
-> Der Rest dieses Abschnitts — Migration `0087`, die generierte Spalte, die
-> Liste der Orte, an denen das Abzeichen erscheint — stimmt unverändert.
+> **Hinfällig ab 2026-09-15: das Abzeichen ist wieder weg.**
+> Dieser Abschnitt beschreibt ein Feature, das gebaut, ausgeliefert und
+> danach entfernt wurde. Es zeichnete das Signet aus `lib/marke.ts` in
+> `--color-accent` hinter den Anzeigenamen — und sah dort nicht gut aus:
+> das Signet ist die Marke und trug damit auf derselben Seite zwei
+> Bedeutungen, es ist 1.7-mal breiter als hoch und liest sich in
+> Textgrösse als liegendes Oval, und Blau ist in dieser App die Farbe des
+> Bedienbaren. Eine Neufassung in Gold wurde verworfen; entschieden wurde,
+> das Abzeichen ganz fallen zu lassen.
+>
+> Was davon bleibt: die Migration `0087` und die generierte Spalte
+> `profiles.zeigt_premium_abzeichen` sind angewandt und bleiben es
+> (Kernregel 9 — eine angewandte Migration wird nicht angefasst). Sie
+> erreichen nur keine Oberfläche mehr, genau wie nach der ersten Entfernung
+> am 2026-09-07. Der Rest dieses Abschnitts — die Begründung für die
+> generierte Spalte, der Befund zum rohen `ist_premium`-Grant aus `0034`,
+> die Liste der Orte — bleibt als Beschreibung dessen lesenswert, was
+> gebaut war.
 
 **Was:** Das Signet — das flachgedrückte „o" aus `lib/marke.ts` — erscheint
 klein hinter dem Anzeigenamen einer Person, die Premium hat und das Abzeichen

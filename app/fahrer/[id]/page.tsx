@@ -10,7 +10,6 @@ import FollowButton from "@/components/FollowButton";
 import FollowCounts from "@/components/FollowCounts";
 import FollowedBy from "@/components/FollowedBy";
 import VehicleGrid from "@/components/VehicleGrid";
-import PremiumAbzeichen from "@/components/PremiumAbzeichen";
 import { getPublicProfile } from "@/lib/profile";
 import { getKudosForCompletions } from "@/lib/kudos";
 import {
@@ -125,14 +124,7 @@ export default async function FahrerPage({
               size={64}
             />
             <div className="flex flex-col gap-1">
-              {/* Beschriftete Variante und flex-wrap, siehe
-                  app/profil/page.tsx — dort steht die Begründung. */}
-              <h1 className="text-display font-semibold">
-                <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
-                  {profile.displayName ?? "Fahrer"}
-                  <PremiumAbzeichen zeigen={profile.zeigtPremiumAbzeichen} variante="mitText" />
-                </span>
-              </h1>
+              <h1 className="text-display font-semibold">{profile.displayName ?? "Fahrer"}</h1>
               <FollowCounts
                 followersCount={followCounts.followers}
                 followingCount={followCounts.following}

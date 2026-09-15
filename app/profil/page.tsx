@@ -7,6 +7,7 @@ import {
   Car,
   CalendarDays,
   ChevronDown,
+  ChevronRight,
   Route as RouteIcon,
   Settings,
   Timer,
@@ -22,11 +23,13 @@ import ActivityHeatmap from "@/components/ActivityHeatmap";
 import CountUp from "@/components/CountUp";
 import FollowCounts from "@/components/FollowCounts";
 import PremiumCard from "@/components/PremiumCard";
-import PremiumAbzeichen from "@/components/PremiumAbzeichen";
 import FahrtStatistik from "@/components/FahrtStatistik";
 import { ChartIcon } from "@/components/NavIcons";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
+import { isModerator } from "@/lib/moderation";
+import { istCreator } from "@/lib/creatorKennzahlen";
+import { getRollenItems } from "@/lib/nav";
 import { getUnseenKudosCount } from "@/lib/kudos";
 import { getFollowCounts, getFollowerProfiles, getFollowingProfiles } from "@/lib/follows";
 import { formatDuration, formatKm } from "@/lib/format";
@@ -95,15 +98,12 @@ export default async function ProfilPage() {
     following,
     premiumStatus,
     unseenKudos,
+    istMod,
+    istCreatorKonto,
   ] = await Promise.all([
     supabase
       .from("profiles")
-      // zeigt_premium_abzeichen statt ist_premium: premiumStatus weiter
-      // unten weiss, ob ein Abo läuft, aber nicht, ob das Abzeichen
-      // eingeschaltet ist. Die generierte Spalte (0087) beantwortet beides
-      // in einem Wert — und zwar demselben, den andere Konten von dieser
-      // Person sehen. Das ist der Punkt: hier steht, was die anderen sehen.
-      .select("display_name, avatar_url, zeigt_fahrzeuge, zeigt_premium_abzeichen")
+      .select("display_name, avatar_url, zeigt_fahrzeuge")
       .eq("id", user.id)
       .single(),
     // Explizit auf den eigenen Nutzer filtern statt allein auf RLS zu
@@ -185,7 +185,18 @@ export default async function ProfilPage() {
     // Entscheidet, ob MarkKudosSeen unten überhaupt etwas tut — derselbe
     // Wert, den <Header /> für den Zähler liest (cache() in lib/kudos.ts).
     getUnseenKudosCount(),
+    // Für den Rollen-Abschnitt weiter unten. Kosten hier: keine. <Header />
+    // rendert auf derselben Anfrage und ruft beide ohnehin auf; sie sind
+    // per cache() request-weit memoisiert.
+    isModerator(user.id),
+    istCreator(user.id),
   ]);
+
+  // Die mobile Leiste (BottomNav) führt Creator und Moderation nicht mehr —
+  // sie ist auf fünf Einträge gedeckelt, siehe lib/nav.ts. Unter md ist das
+  // hier der Weg dorthin; ab md steht er wieder in der Textnavigation des
+  // Headers, deshalb md:hidden.
+  const rollen = getRollenItems({ moderator: istMod, creator: istCreatorKonto });
 
   // Pro Strecke nur einmal zählen (auch bei mehrfacher Befahrung) — wie im
   // öffentlichen Profil (lib/profile.ts).
@@ -230,25 +241,7 @@ export default async function ProfilPage() {
             </Link>
           </div>
           <div className="flex flex-col gap-1.5">
-            {/* Die beschriftete Variante, nicht das blosse Zeichen: hier ist
-                Platz, und hier steht der Name des Kontos, dem das Abzeichen
-                gehört — der eine Ort, an dem das Wort dazu gehört statt
-                bloss das Symbol.
-
-                flex-wrap statt einer starren Zeile: die Pille ist text-xs
-                und damit unabhängig von --text-display, ein langer Name
-                schiebt sie aber trotzdem irgendwann um. gap-x-3 statt des
-                ml-1 der kompakten Variante, weil daneben eine Überschrift in
-                bis zu 36 px steht. */}
-            <h1 className="text-display font-semibold">
-              <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
-                {profile?.display_name ?? user.email}
-                <PremiumAbzeichen
-                  zeigen={profile?.zeigt_premium_abzeichen === true}
-                  variante="mitText"
-                />
-              </span>
-            </h1>
+            <h1 className="text-display font-semibold">{profile?.display_name ?? user.email}</h1>
             <p className="text-sm text-muted">{user.email}</p>
             <FollowCounts
               followersCount={followCounts.followers}
@@ -539,6 +532,30 @@ export default async function ProfilPage() {
               Stellen — das Profil ist die öffentliche Selbstdarstellung,
               nicht der Ort für Abrechnung, und zwei Einstiege ins
               Stripe-Portal sind einer zu viel. */}
+          {rollen.length > 0 && (
+            <section className="flex flex-col gap-2 md:hidden">
+              <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">
+                Deine Bereiche
+              </h2>
+              <Card className="flex flex-col divide-y divide-border">
+                {rollen.map((rolle) => {
+                  const Icon = rolle.icon;
+                  return (
+                    <Link
+                      key={rolle.href}
+                      href={rolle.href}
+                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors duration-fast hover:text-accent"
+                    >
+                      <Icon className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
+                      {rolle.label}
+                      <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
+                    </Link>
+                  );
+                })}
+              </Card>
+            </section>
+          )}
+
           {!premiumStatus.aktiv && <PremiumCard status={premiumStatus} />}
         </div>
         </main>

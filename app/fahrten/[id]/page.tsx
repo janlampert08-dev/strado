@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import Header from "@/components/Header";
 import Avatar from "@/components/Avatar";
-import PremiumAbzeichen from "@/components/PremiumAbzeichen";
 import KudosButton from "@/components/KudosButton";
 import ShareRideButton from "@/components/ShareRideButton";
 import CompletionActionsMenu from "@/components/CompletionActionsMenu";
@@ -203,11 +202,8 @@ export default async function FahrtDetailPage({
             >
               <Avatar url={completion.avatarUrl} name={completion.displayName} size={44} />
               <div className="min-w-0 flex-1">
-                <p className="flex min-w-0 items-center text-sm font-medium transition-colors duration-fast group-hover:text-accent">
-                  <span className="truncate">
-                    {completion.isOwner ? "Deine Fahrt" : (completion.displayName ?? "Fahrer")}
-                  </span>
-                  <PremiumAbzeichen zeigen={completion.zeigtPremiumAbzeichen} />
+                <p className="truncate text-sm font-medium transition-colors duration-fast group-hover:text-accent">
+                  {completion.isOwner ? "Deine Fahrt" : (completion.displayName ?? "Fahrer")}
                 </p>
                 <p className="text-xs text-muted">
                   {new Date(completion.datum).toLocaleDateString("de-CH", {

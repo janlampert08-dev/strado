@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getNavItems } from "@/lib/nav";
+import { getNavItems, getRollenItems } from "@/lib/nav";
 
 function hrefs(items: { href: string }[]): string[] {
   return items.map((item) => item.href);
@@ -71,35 +71,46 @@ describe("getNavItems", () => {
     expect(items).toEqual(["/", "/feed", "/fahrten/neu", "/leaderboards", "/profil"]);
   });
 
-  it("hängt Moderation nur für Moderatoren an, in beiden Surfaces", () => {
-    for (const surface of ["header", "bottom"] as const) {
-      expect(hrefs(getNavItems({ loggedIn: true, moderator: true, surface }))).toContain(
-        "/moderation",
-      );
-      expect(hrefs(getNavItems({ loggedIn: true, moderator: false, surface }))).not.toContain(
-        "/moderation",
-      );
+  it("hängt Moderation im Header nur für Moderatoren an", () => {
+    expect(
+      hrefs(getNavItems({ loggedIn: true, moderator: true, surface: "header" })),
+    ).toContain("/moderation");
+    expect(
+      hrefs(getNavItems({ loggedIn: true, moderator: false, surface: "header" })),
+    ).not.toContain("/moderation");
+  });
+
+  // Der Kern der Deckelung: die mobile Leiste ist für JEDES Konto fünf
+  // Einträge breit — auch für eines, das Moderator UND Creator ist. Vorher
+  // waren das sieben Spalten auf 360 px.
+  it("bleibt in der mobilen Leiste bei fünf Einträgen, egal welche Rollen", () => {
+    for (const rollen of [
+      { moderator: false, creator: false },
+      { moderator: true, creator: false },
+      { moderator: false, creator: true },
+      { moderator: true, creator: true },
+    ]) {
+      const items = getNavItems({ loggedIn: true, ...rollen, surface: "bottom" });
+      expect(hrefs(items)).toEqual(["/", "/feed", "/fahrten/neu", "/leaderboards", "/profil"]);
     }
   });
 
   it("hält Fahrt starten in der mobilen Leiste an der mittleren Position", () => {
     const items = getNavItems({ loggedIn: true, moderator: true, surface: "bottom" });
-    expect(items).toHaveLength(6);
+    expect(items).toHaveLength(5);
     expect(items[2].href).toBe("/fahrten/neu");
   });
 
-  // Creator-Konten (0091): wer einen Code zugewiesen bekommt, braucht den
-  // Weg zu seinen Zahlen — auf dem Telefon genauso wie am Schreibtisch,
-  // deshalb in beiden Surfaces.
-  it("hängt Creator nur für Creator an, in beiden Surfaces", () => {
-    for (const surface of ["header", "bottom"] as const) {
-      expect(
-        hrefs(getNavItems({ loggedIn: true, moderator: false, creator: true, surface })),
-      ).toContain("/creator");
-      expect(
-        hrefs(getNavItems({ loggedIn: true, moderator: false, creator: false, surface })),
-      ).not.toContain("/creator");
-    }
+  // Creator-Konten (0091): der Eintrag steht im Header. Auf dem Telefon
+  // führt der Weg über /profil (siehe getRollenItems) — die Leiste dort
+  // bleibt bei fünf Einträgen.
+  it("hängt Creator im Header nur für Creator an", () => {
+    expect(
+      hrefs(getNavItems({ loggedIn: true, moderator: false, creator: true, surface: "header" })),
+    ).toContain("/creator");
+    expect(
+      hrefs(getNavItems({ loggedIn: true, moderator: false, creator: false, surface: "header" })),
+    ).not.toContain("/creator");
   });
 
   // Der Parameter ist optional, weil er für fast jedes Konto falsch ist —
@@ -116,6 +127,18 @@ describe("getNavItems", () => {
         hrefs(getNavItems({ loggedIn: false, moderator: false, creator: true, surface })),
       ).not.toContain("/creator");
     }
+  });
+
+  // Was die mobile Leiste nicht mehr trägt, muss auf /profil ankommen —
+  // sonst hätte ein Moderator auf dem Telefon gar keinen Weg mehr dorthin.
+  it("liefert genau die Rollen-Einträge, die der mobilen Leiste fehlen", () => {
+    expect(hrefs(getRollenItems({ moderator: false, creator: false }))).toEqual([]);
+    expect(hrefs(getRollenItems({ moderator: true, creator: false }))).toEqual(["/moderation"]);
+    expect(hrefs(getRollenItems({ moderator: false, creator: true }))).toEqual(["/creator"]);
+    expect(hrefs(getRollenItems({ moderator: true, creator: true }))).toEqual([
+      "/creator",
+      "/moderation",
+    ]);
   });
 
   // Moderation und Creator sind zwei verschiedene Dinge: ein Moderator sieht

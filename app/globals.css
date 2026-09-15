@@ -28,30 +28,6 @@
   --color-success: #1a7f37;
   --color-warning: #b45309;
 
-  /* Das Premium-Abzeichen (components/PremiumAbzeichen.tsx) und sonst
-     nichts. Ein eigener Ton, kein geliehener:
-
-     - Nicht --color-accent. Blau ist in dieser App die Farbe des
-       Bedienbaren — Links, Schaltflächen, Fokusringe, aktive Tabs. Ein
-       blaues Zeichen unmittelbar hinter einem Namen, der selbst ein Link
-       ist, sieht aus wie ein zweites Ziel und ist keines.
-     - Nicht --color-warning. Der Ton läge nah, die Bedeutung nicht: was
-       warnt, warnt überall gleich. Ein Abzeichen, das dieselbe Farbe trägt
-       wie ein Hinweis auf ein Problem, wird einmal falsch gelesen und
-       danach ignoriert.
-
-     Gold, weil es der Ton ist, den jeder als Unterstützer-Zeichen liest —
-     die Sache hiess in dieser App auch einmal "Gold-Abzeichen".
-
-     Kontrast gegen die drei Untergründe, auf denen es tatsächlich steht
-     (WCAG 2.1, sRGB-Leuchtdichte, color-mix in oklch nachgerechnet):
-     hell 5.68 auf --color-background, 5.29 auf --color-surface, 4.93 auf
-     der eigenen Pille; dunkel 11.78 / 10.83 / 9.37. Alle über 4.5:1 —
-     das Abzeichen steht neben Text der Grösse text-xs/text-sm und wird
-     deshalb wie Text gemessen, nicht wie eine Grafik (3:1). */
-  --color-premium: #8a5a00;
-  --color-premium-subtle: color-mix(in oklch, var(--color-premium) 10%, var(--color-background));
-
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
   --radius-lg: 1rem;
@@ -117,13 +93,6 @@
     --color-success: #22c55e;
     --color-warning: #f59e0b;
 
-    /* Wie die drei darüber: der helle Wert ist für einen hellen Grund
-       gewählt und fällt auf #0b0b0d auf 1.99:1. Der Anteil der Pille steigt
-       von 10 auf 16 %, weil eine Aufhellung auf dunklem Grund weniger
-       ausrichtet als eine Abdunklung auf hellem. */
-    --color-premium: #fbbf24;
-    --color-premium-subtle: color-mix(in oklch, var(--color-premium) 16%, var(--color-background));
-
     --shadow-sm: 0 1px 3px color-mix(in oklch, black 40%, transparent);
     --shadow-elevated: 0 2px 8px -2px color-mix(in oklch, black 50%, transparent),
       0 1px 2px color-mix(in oklch, black 30%, transparent);
@@ -172,13 +141,6 @@
   --color-success: #22c55e;
   --color-warning: #f59e0b;
 
-  /* Wie die drei darüber: der helle Wert ist für einen hellen Grund
-     gewählt und fällt auf #0b0b0d auf 1.99:1. Der Anteil der Pille steigt
-     von 10 auf 16 %, weil eine Aufhellung auf dunklem Grund weniger
-     ausrichtet als eine Abdunklung auf hellem. */
-  --color-premium: #fbbf24;
-  --color-premium-subtle: color-mix(in oklch, var(--color-premium) 16%, var(--color-background));
-
   --shadow-sm: 0 1px 3px color-mix(in oklch, black 40%, transparent);
   --shadow-elevated: 0 2px 8px -2px color-mix(in oklch, black 50%, transparent),
     0 1px 2px color-mix(in oklch, black 30%, transparent);
@@ -201,8 +163,6 @@
   --color-danger: var(--color-danger);
   --color-success: var(--color-success);
   --color-warning: var(--color-warning);
-  --color-premium: var(--color-premium);
-  --color-premium-subtle: var(--color-premium-subtle);
 
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);

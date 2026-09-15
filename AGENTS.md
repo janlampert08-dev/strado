@@ -57,16 +57,28 @@ is what should be corrected.
   Founder seats (Gründerpreis) were sold until 2026-09-07 and are no longer
   offered: the DB functions from `0065`–`0069` remain but are no longer
   called, and `STRIPE_PREMIUM_PRICE_ID_GRUENDER` only names existing
-  subscriptions. The "Gold-Abzeichen" opt-in was removed on 2026-09-07 — it
-  was never rendered by any component; the column
-  `profiles.zeigt_premium_badge` remains in the schema and the views, but no
-  longer reaches the app: `lib/leaderboard.ts` neither selects nor evaluates
-  it. This section previously said the opposite — that the Premium
+  subscriptions. This section previously said the opposite — that the Premium
   components were commented out and re-enabling them was the active workstream
   — which is why the paid path went unaudited until 2026-09-07: a security
   pass scoped from this file skipped it as not-yet-shipped. Treat everything
   under `app/profil/premium/`, `lib/actions/billing.ts`, `lib/stripe*` and the
   webhook as production code.
+  - **The badge behind the display name is gone again, as of 2026-09-15**,
+    and this is its second removal. It was taken out on 2026-09-07 (never
+    rendered), rebuilt on 2026-09-14 as `0087` plus PR #235, and removed for
+    good once it had shipped: it drew the signet from `lib/marke.ts` in
+    `--color-accent` — the brand mark carrying a second meaning, 1.7× wider
+    than tall so it reads as a lozenge at text size, and blue in an app
+    where blue means "you can tap this". Both columns
+    (`profiles.zeigt_premium_badge` from `0021`, the generated
+    `zeigt_premium_abzeichen` from `0087`) stay in the schema and in the
+    leaderboard views — an applied migration is not touched — but nothing in
+    `app/`, `components/` or `lib/` reads or writes them any more.
+    `lib/actions/profile.ts` deliberately leaves the opt-in column out of
+    its update, so a stored value survives rather than silently falling to
+    false; `lib/leaderboard.ts` no longer even selects `ist_premium` from
+    the views. Before rebuilding it a third time, settle what it should look
+    like — the mark is the part that failed twice, not the plumbing.
   - **The purchase runs on the Checkout Sessions API**
     (`ui_mode: "elements"`), not on Payment Intents: `createCheckoutSession()`
     creates the session, `components/PremiumCheckoutForm.tsx` drives it with
@@ -162,10 +174,9 @@ is what should be corrected.
   2026-09-14, likewise ahead of its code (PR #235) — and there the order is
   mandatory rather than merely intended: `lib/profile.ts` and
   `app/profil/page.tsx` select the new column straight from `profiles`, so
-  without the migration both profile pages answer with a column error. (Feed
-  and ride detail degrade quietly instead — `lib/premiumAbzeichen.ts` drops
-  the error and renders without a badge — and the leaderboards never touch
-  the column at all; an earlier version of this line claimed all four fail.)
+  without the migration both profile pages answer with a column error. (That was true while
+  the badge shipped; since its removal on 2026-09-15 no page selects either
+  column, so the migration no longer gates any code at all.)
   Purely additive (one generated column, one column grant). `0086_strecken_anlegen_wieder_offen` went in on
   2026-09-14, also **ahead of its code** — which is harmless here and not
   merely tolerable: it widens a policy rather than narrowing one, so until
@@ -257,6 +268,30 @@ is what should be corrected.
     writes real rows into the production tables that hang off the payment
     path — `creator_konversionen` (0088, live since 2026-09-14) is the
     newest of them; only the Stripe side is genuinely separate.
+- **`0095_sterne_wieder_einfuehren` is written but NOT applied.** It is the
+  first migration in a while that ships in the same PR as its code, and the
+  usual order still holds: apply it before deploying. Unlike `0087` the code
+  does not break without it — `route_ratings.sterne` exists and is nullable
+  since `0025`, so writing and reading stars works either way. What is
+  missing until it runs is the bound: the table carries full grants and its
+  RLS policy lets an account write its own row, so a direct PostgREST
+  request could put `sterne = 9999` into a rating and shift the average
+  shown publicly on someone else's route. The migration adds back
+  `check (sterne is null or sterne between 1 and 5)` — null-tolerant,
+  because comment-only ratings are the normal case for every row created
+  between `0025` and now.
+- **Stars per route are back, reversing `0025`.** `0025_ratings_ohne_sterne`
+  removed the 1–5 rating ("Nutzer sollen nur noch kommentieren können") and
+  deliberately left the column in place in case it returned. It returned on
+  2026-09-15. A rating row is now "stars, or a comment, or both" — never
+  neither, and that last rule lives in `lib/actions/ratings.ts`, not in the
+  schema, because the old rows would not satisfy it. The average is computed
+  in the app, not in a view: `lib/bewertungen.ts` holds the pure maths (and
+  must stay free of any `lib/supabase/**` import — it is imported by client
+  components, the `premiumLimits.ts` trap), `lib/ratings.ts` holds the
+  batched query for the explore list. `routes_geojson` was left alone on
+  purpose. Rows without stars are excluded from the average's denominator —
+  counting them would read every bare comment as a zero.
 - **Migration numbers are not unique.** `0034`, `0041`, `0053`, `0054`, `0059`
   and `0060` each exist twice — six pairs, not four. Reconciling a deploy by
   version number alone is ambiguous, so check the objects. In the `0059` and
@@ -326,10 +361,14 @@ is what should be corrected.
     it needs a ride start the server recorded itself, and the recorder is open
     to signed-out visitors, so any fix changes the guest flow. A product
     decision, not a migration.
-  - **§B — React 19 clears uncontrolled fields on a failed submit.** Fixed for
-    the photo input only (`MultiPhotoInput`). `AnmeldenForm`,
-    `RegistrierenForm`, `PasswortVergessenForm`, `PasswortAendernForm` and
-    `RatingSection` still lose typed text when a submit fails.
+  - **§B — React 19 clears uncontrolled fields on a failed submit.** Closed
+    on 2026-09-15. `components/useEingabenBewahren.ts` generalises the
+    `MultiPhotoInput` trick (snapshot on the form's `reset` event, write back
+    a microtask later) to text, checkboxes and selects, and all five forms
+    plus `VisibilitySettings` — which had the same defect and was not on the
+    list — now use it. Nothing round-trips through the RSC payload, which is
+    why this and not the `defaultValue`-from-action pattern: four of the five
+    carry a password field.
   - **§B — ascent sampling.** Fixed for rides; route metrics stay at 300
     points on purpose.
 
@@ -342,11 +381,16 @@ is what should be corrected.
   mechanism as the Premium entry further up, and the same lesson: this file is
   the only one loaded automatically, so a stale summary here outranks the
   correct detail everywhere else.
-- **There are no component or E2E tests.** Vitest runs with
-  `environment: "node"` (no jsdom installed, so a component test cannot be
-  written without adding that first) and every test file lives in `lib/`. A change
-  confined to `components/` or `app/` has no automated coverage — say so
-  rather than implying the suite covered it.
+- **There are still no component or E2E tests, but a DOM is now available
+  per file.** Vitest stays on `environment: "node"` project-wide; `jsdom` is
+  installed as a devDependency, and a single test file can switch with a
+  `// @vitest-environment jsdom` docblock. `lib/eingabenBewahren.test.ts` is
+  the first and so far only one, and it tests DOM *mechanics* (a real
+  `<form>`, a dispatched `reset`), not React components — there is no
+  Testing Library and nothing renders a component. Every test file still
+  lives in `lib/`. A change confined to `components/` or `app/` still has no
+  automated coverage unless its logic was lifted into something importable —
+  say so rather than implying the suite covered it.
 - **The brand is one outline, not a font.** `lib/marke.ts` holds the "strado"
   wordmark as SVG path data (Familjen Grotesk Bold, SIL OFL, converted to
   outlines). `components/Wortmarke.tsx`, `app/icon.tsx`,

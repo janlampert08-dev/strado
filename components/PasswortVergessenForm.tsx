@@ -1,15 +1,20 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef } from "react";
 import Link from "next/link";
 import { requestPasswordReset, type RequestPasswordResetState } from "@/lib/actions/auth";
 import { Input } from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
+import useEingabenBewahren from "@/components/useEingabenBewahren";
 
 const initialState: RequestPasswordResetState = { error: null, requested: false };
 
 export default function PasswortVergessenForm() {
   const [state, formAction, pending] = useActionState(requestPasswordReset, initialState);
+  // Siehe components/useEingabenBewahren.ts. Der Erfolgszweig unten hängt
+  // das Formular ohnehin ab, bewahrt wird also nur der Fehlerfall.
+  const formRef = useRef<HTMLFormElement>(null);
+  useEingabenBewahren(formRef);
 
   if (state.requested) {
     return (
@@ -34,7 +39,7 @@ export default function PasswortVergessenForm() {
       <p className="text-sm text-muted">
         Gib deine E-Mail-Adresse ein — wir schicken dir einen Link zum Zurücksetzen.
       </p>
-      <form action={formAction} className="flex flex-col gap-4">
+      <form ref={formRef} action={formAction} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           E-Mail
           <Input type="email" name="email" required autoComplete="email" />
