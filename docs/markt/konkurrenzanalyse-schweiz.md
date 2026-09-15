@@ -377,11 +377,19 @@ exponierter Ort:
 
 Kein direkter Rechtsverstoss, aber eine offene Flanke: Eine Schweizer App, die
 Zeiten auf öffentlichen Strassen rangiert, ist eine fertige Schlagzeile.
-Dass **kein einziger** der untersuchten Anbieter — auch nicht calimoto mit
-Investorenrücken, auch nicht Porsche — diese Funktion hat, während
-Kurvenfokus seine Score-Mechanik demonstrativ ohne Ranking, ohne Server und
-ohne Konto baut, ist keine Marktlücke aus Nachlässigkeit. Das ist eine
-Entscheidung, die alle anderen schon getroffen haben.
+
+> **Korrektur (Nachtrag 2026-09-15).** Dieser Absatz behauptete ursprünglich,
+> **kein einziger** Anbieter habe Zeitranglisten, und leitete daraus ab, alle
+> anderen hätten sich bewusst dagegen entschieden. Das galt für die
+> Motorrad-Seite, auf die diese Recherche zugeschnitten war — für die
+> Auto-Seite ist es **falsch**. Open Road, Road & Rally, Spottr, TripRank und
+> FastTrack Rides haben Ranglisten auf Zeit, Top-Speed oder Beschleunigung
+> (Abschnitt 9). Die Aussage ist damit schwächer, aber nicht hinfällig: Diese
+> Apps sind fast alle US-amerikanisch, 2025/26 erschienen und ranken meist
+> **Höchstgeschwindigkeit** statt Streckenzeit — was im Schweizer Recht eher
+> heikler ist als harmloser. Und im DACH-Motorradmarkt, wo die grossen
+> Nutzerbasen sind, hält die ursprüngliche Beobachtung: calimoto, Kurviger,
+> Riser und Porsche haben es nicht.
 
 **Verschärfend:** Audit-Befund A1 (Leg 2) ist offen — `dauer_sekunden` wird
 zwar serverseitig aus dem Track abgeleitet, aber die Zeitstempel im Track
@@ -542,3 +550,101 @@ Kennzahlen), play.google.com, apps.apple.com, appbrain.com — alle durch die
 Egress-Policy gesperrt. Download- und Bewertungszahlen aus den App-Stores
 konnten deshalb nicht direkt gelesen werden; wo sie hier stehen, stammen sie
 aus Sekundärquellen.
+
+---
+
+## 9. Nachtrag: die Auto-Seite (verifizierte Zweitrecherche)
+
+Eine parallele Analyse (ChatGPT, vom Auftraggeber eingebracht) hat sieben
+Wettbewerber genannt, die diese Recherche nicht erfasst hatte, weil sie
+motorradseitig angesetzt war. **Alle sieben existieren** — ich habe jeden
+einzeln gegen App-Store-Listing und Herstellerseite geprüft. Was in jener
+Analyse fehlte, waren Zahlen: sie enthält keine einzige Nutzerzahl, keinen
+Preis, kein Datum und keine Quelle. Die Zahlen unten sind nachgetragen.
+
+| Anbieter | Nutzer | Was es kann | Rangliste worüber |
+| --- | --- | --- | --- |
+| **The Drivers** (CH) | **13'000–20'000** | **250–400 kuratierte Routen** CH + Nachbarländer, **von der Community live getrackt**, Alpenpässe, Events/Meets, Gruppen mit Chat, Bilder/Videos, eigene Routen aufzeichnen | keine (Kultur/Lifestyle) |
+| **Open Road** | **50'000+** | Drive Tracker, Route-Replay, Top Speed, G-Force, Streaks, Live-Convoys mit Voice-Chat, Heatmaps, Wochenrückblick, **Speed Zones mit Zeitsegmenten**, **Elo-Rating** | Zeitsegmente, Top Speed, Elo |
+| **Road & Rally** | k. A. | **Hand-kuratierte Routen**, Filter nach Region/Distanz/Strassentyp, Live-Convoys mit Honk/SOS, Clubs mit eigenem Feed, Event-Hosting mit Ticketing/QR-Check-in | Meilen, Top Speed, G, **pro Route** |
+| **Spottr** | „Tausende" | Car Spotting, Garage (gratis 2 Autos), Routen, Drive-Tracking mit Wetter, Social Feed | **kuratierte Routen, live** |
+| **TripRank** | k. A. | Auto-Tracking, G-Force zweiachsig, Brems-/Kurvenereignisse mit Schwere, Drive Score, Smoothness Score, Speed-Heatmap, Schlagloch-Zähler | global: Top Speed, Distanz, Fahrten |
+| **PACE** | k. A. | Trips, Stats, Live-Position von Freunden, Social Feed, XP/Level, Badges, Wochen-Challenges, 0–60-Timer | global, Top Speed |
+| **FastTrack Rides** | k. A. | 0–60/0–100/¼/½ Meile mit ±0.02 s (GPS + Accelerometer), Garage, Feed, Gruppen, Marktplatz | Beschleunigung |
+
+### Drei Befunde aus dieser Gruppe
+
+**1. The Drivers ist der grösste Schweizer Wettbewerber, nicht The Tours.**
+Mit 13'000–20'000 Mitgliedern hat thedrivers.app rund das Zwanzig- bis
+Dreissigfache der Basis von The Tours — und hat Strados Kuratierungsthese
+bereits umgesetzt: mehrere hundert kuratierte Schweizer Routen, von der
+Community live getrackt, inklusive Alpenpässe. Die eingebrachte Analyse
+stufte The Drivers als „Lifestyle, nicht Performance" ein und empfahl, sie
+nicht zu kopieren. Das mag positionierungstechnisch stimmen, verdeckt aber
+die eigentliche Konsequenz: **Die Kuratierungs-Differenzierung gegenüber dem
+Schweizer Markt ist bereits vergeben.** Was Strado bleibt, ist der
+Wettbewerbs-Layer — nichts sonst.
+
+**2. Zeit- und Leistungsranglisten sind auf der Auto-Seite verbreitet.**
+Das korrigiert Abschnitt 6.2 (dort als Kasten vermerkt). Einordnung: Diese
+Apps sind fast alle US-amerikanisch und 2025/26 erschienen (App-Store-IDs im
+67xx-Bereich); sie ranken überwiegend **Höchstgeschwindigkeit und
+Beschleunigung**, nicht Streckenzeit. Für den Schweizer Kontext ist das eher
+schlimmer: Eine öffentliche Top-Speed-Rangliste ist unter Art. 90 SVG
+angreifbarer als eine Streckenzeit.
+
+**3. Wie man die Guardrail baut, zeigt FastTrack Rides.** Die App
+positioniert sich ausdrücklich für „track days and closed-course testing" und
+**erkennt Gefällefahrten und schliesst sie von den öffentlichen Ranglisten
+aus**. Die Absicherung ist dort Teil des Produktdesigns, nicht ein Anhang.
+Das ist das nachahmenswerte Muster.
+
+### Zur Rating-/Matchmaking-Empfehlung
+
+Der eingebrachte Vorschlag — Driver Rating, asynchrone Matches über
+gespeicherte Ghosts, Rivalries, Seasons, Road Mastery — ist konzeptionell
+stark und trifft eine echte Lücke: Open Road hat ein Elo als *Kennzahl*,
+niemand hat es als *Wettbewerbssystem*. Drei Einschränkungen, bevor daraus
+Arbeit wird:
+
+- **Strado hat kein Elo.** Ein `grep` über `*.ts`, `*.tsx`, `*.sql` und `*.md`
+  nach `elo`, `glicko`, `trueskill`, `matchmaking`, `rivalr` liefert null
+  Treffer. Die eingebrachte Analyse behandelt es als Ist-Zustand; es wäre ein
+  Neubau von Null, kein Ausbau.
+- **Die Reihenfolge ist umgekehrt.** Dort steht „Verified Run / Anti-Cheat"
+  als Punkt 7 von 15 und „Safety / Legal Guardrails" als Punkt 14. In der
+  Schweiz, und mit dem offenen Audit-Befund A1, sind beide **Punkt 1**: Ein
+  Rating, das Fahrer öffentlich einstuft, ist auf einer nachweislich
+  manipulierbaren Zahl nicht baubar. A1 zu schliessen ist Voraussetzung, nicht
+  Folgearbeit.
+- **Road Mastery ist der beste Einzelvorschlag daraus** — und deckt sich mit
+  Empfehlung (b) in Abschnitt 6.2. Konsistenz, Wiederholung, saubere Runs,
+  unterschiedliche Bedingungen sind zeitunabhängig, A1-immun und rechtlich
+  unbedenklich. Offen und ehrlich zu benennen: Ein Rating auf Sauberkeit ist
+  emotional schwächer als „schneller als Marco". Ob es trägt, ist unbewiesen.
+
+**Die Fahrzeugklassen-Idee dort ist bei Strado bereits gebaut** —
+`lib/motorklassen.ts`, Migrationen 0080/0085, mit `motorklasse_gewertet` (die
+höhere aus Angabe und dem, was der Track belegt). Das ist der Teil des
+Vorschlags, der nicht mehr entworfen werden muss.
+
+### Zusätzlich gefunden
+
+**alppass.ch** — Schweizer Passplaner mit Live-Status, Wetter, Routenbauer und
+Sicherheits-Guide. Werbefrei, trackerfrei, kostenlos, ohne Cookies. Kein
+Wettbewerber im engeren Sinn, aber ein weiterer Besetzer des Begriffs
+„Schweizer Fahrstrecke" — und ein möglicher Partner statt Gegner.
+
+### Die unbequemste Frage
+
+Es gibt jetzt zwei Schweizer Produkte mit Strados These: The Tours (~600
+Nutzer, Crowdfunding) und The Drivers (13'000–20'000). Eines hat es
+geschafft, eines nicht. Bevor ein Rating-System entworfen wird, sollte die
+Frage beantwortet sein, die darüber entscheidet, ob es jemanden erreicht:
+**Warum wechselt jemand von The Drivers zu Strado?** Feature-Antworten tragen
+hier nicht — The Drivers hat Routen, Events, Gruppen und Chat und eine
+fünfstellige Community. Die einzige ehrliche Antwort, die ich sehe, lautet:
+weil Strado etwas kann, das The Drivers nicht will — kompetitive Wertung. Das
+macht den Wettbewerbs-Layer nicht zu einer Option unter mehreren, sondern zur
+einzigen Existenzberechtigung. Und es macht seine rechtliche und technische
+Absicherung zur Überlebensfrage, nicht zur Randnotiz.
