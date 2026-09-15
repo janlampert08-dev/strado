@@ -24,3 +24,9 @@ export { MessageSquare as FeedbackIcon, Mail as MailIcon } from "lucide-react";
 // Icons historisch direkt aus lucide-react; für neuen Code verlangt
 // AGENTS.md diesen Wrapper, deshalb steht dieses eine hier und nicht dort.
 export { BarChart3 as ChartIcon } from "lucide-react";
+
+// Ebenfalls kein Nav-Icon: die Sterne-Bewertung einer Strecke
+// (components/Sterne.tsx, components/SterneEingabe.tsx). Steht aus demselben
+// Grund hier wie die übrigen — AGENTS.md nennt diese Datei als den Ort für
+// den Wrapper, und eine eigene Datei für ein Symbol wäre schlimmer.
+export { Star as SternIcon } from "lucide-react";
