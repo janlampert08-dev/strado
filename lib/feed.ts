@@ -1,12 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 import { getKudosForCompletions, type KudosInfo } from "@/lib/kudos";
 import { getFollowedUserIds } from "@/lib/follows";
+import { getPremiumAbzeichen } from "@/lib/premiumAbzeichen";
 import type { PublicFahrt } from "@/types/database";
 
 export type FeedScope = "global" | "following";
 
 export interface FeedItem extends PublicFahrt {
   kudos: KudosInfo;
+  /** Abzeichen hinter dem Namen der fahrenden Person (0087). */
+  zeigtPremiumAbzeichen: boolean;
 }
 
 // Ein voller Bildschirm auf Mobile/Desktop plus etwas Puffer — kein
@@ -50,10 +53,16 @@ export async function getFeed(scope: FeedScope, viewerId: string | null): Promis
   if (fahrten.length === 0) return [];
 
   const completionIds = fahrten.map((f) => f.completion_id);
-  const kudosByCompletion = await getKudosForCompletions(completionIds, viewerId);
+  // Beide Nachschläge parallel: sie hängen nur an der bereits geladenen
+  // Fahrtenliste, nicht aneinander.
+  const [kudosByCompletion, mitAbzeichen] = await Promise.all([
+    getKudosForCompletions(completionIds, viewerId),
+    getPremiumAbzeichen(fahrten.map((f) => f.user_id)),
+  ]);
 
   return fahrten.map((f) => ({
     ...f,
     kudos: kudosByCompletion.get(f.completion_id) ?? { count: 0, givenByMe: false },
+    zeigtPremiumAbzeichen: mitAbzeichen.has(f.user_id),
   }));
 }

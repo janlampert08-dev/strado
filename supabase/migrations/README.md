@@ -237,6 +237,60 @@ execute ... from public` genügt nie. Es braucht zusätzlich
 `from anon, authenticated` — so, wie es `0088` bei der Sequenz getan hat,
 die deshalb sauber ist.
 
+
+## Eingespielt: 0087_premium_abzeichen_spalte (2026-09-14, Produktion)
+
+Legt `profiles.zeigt_premium_abzeichen` an — eine gespeicherte generierte
+Spalte `(ist_premium and zeigt_premium_badge)` — und erteilt `select`
+darauf an `anon` und `authenticated`. Rein additiv: keine bestehende Zeile
+geändert, kein bestehender Grant angefasst, keine Policy berührt.
+
+**Eingespielt bevor der Code deployt war**, wie bei `0085` und `0086`.
+
+Wer ohne die Spalte tatsächlich scheitert, ist enger als hier zuerst stand —
+die Behauptung „Profil, Feed, Fahrt-Detail und Bestenlisten" war falsch und
+ist am 2026-09-14 im Review nachgerechnet worden:
+
+| Pfad | ohne `0087` |
+| --- | --- |
+| `lib/profile.ts`, `app/profil/page.tsx` | **Spaltenfehler** — beide selektieren sie direkt aus `profiles` |
+| Feed, Fahrt-Detail | kein Fehler: `lib/premiumAbzeichen.ts` verwirft den Fehler und liefert eine leere Menge, die Seite rendert ohne Abzeichen |
+| Bestenlisten | kein Fehler: sie lesen `ist_premium` aus den Views und fassen die neue Spalte nie an |
+
+„Schema zuerst" bleibt damit richtig — aber wegen der Profilseiten, nicht
+wegen aller vier.
+
+Vorher an den Objekten geprüft (nicht am Ledger), Ergebnis:
+
+```
+profiles.zeigt_premium_abzeichen   fehlte          -> anzulegen
+profiles.ist_premium/-_badge       vorhanden       (0021)
+leaderboard_typ_totals             vorhanden       (0085)
+leaderboard_klassen_totals         vorhanden       (0080)
+feedback / creator_links           vorhanden       (0083 / 0084)
+routes-INSERT-Policy ohne Premium  vorhanden       (0086)
+Zeilen in profiles                 16
+```
+
+Nachher zurückgelesen: Spalte existiert, `is_generated = ALWAYS`, Ausdruck
+`(ist_premium AND zeigt_premium_badge)`, beide Grants gesetzt, 16 Zeilen
+unverändert, **genau eine** Zeile trägt `true` — deckungsgleich mit der
+Gegenprobe `ist_premium and zeigt_premium_badge` (5 Konten haben ein Abo,
+eines davon hat das Abzeichen eingeschaltet).
+
+Rückweg, falls nötig: `alter table public.profiles drop column
+zeigt_premium_abzeichen;` — verlustfrei, die Spalte ist abgeleitet.
+
+**Für den Folge-PR, der `select (ist_premium)` entzieht:** `anon` hält seit
+`0034` auch `select` auf `zeigt_premium_badge`, und die beiden verbleibenden
+Spalten rekonstruieren den rohen Wert (`badge = true` bei
+`abzeichen = false` heisst: kein laufendes Abo). Es müssen also **beide**
+entzogen werden, sonst verschiebt sich das Leck nur. Heute ist das keine
+Ausweitung — `ist_premium` selbst ist ohnehin freigegeben.
+
+Ledger-Eintrag: `20260914200727` / `0087_premium_abzeichen_spalte`.
+
+
 ## Eingespielt: 0086_strecken_anlegen_wieder_offen (2026-09-14, Produktion)
 
 Nimmt die Premium-/Moderationspflicht aus `0077` auf der INSERT-Policy von
@@ -814,14 +868,26 @@ Zeile für Zeile:
 | — | `0076` löscht zusätzlich die `subscriptions`-Zeile, was `0058` nicht tut |
 
 **Keine der beiden Dateien darf noch eingespielt werden**, und das ist eine
-schärfere Aussage als „muss nicht". `0058` enthält ein
+schärfere Aussage als „muss nicht".
+
+Der Ablauf im Einzelnen, weil eine frühere Fassung dieses Absatzes ihn falsch
+beschrieb (Korrektur vom 2026-09-14): `0058` bricht schon **vor** dem
+gefährlichen Teil ab. Zeile 60 macht ein blankes
+`alter table public.profiles add column geloescht_am timestamptz;` — ohne
+`if not exists`, und die Spalte gibt es seit `0076` längst. Die Migration
+scheitert also an genau der Stelle, und in einer Transaktion angewendet wird
+gar nichts geschrieben.
+
+Das ist aber kein Grund zur Entwarnung, sondern nur der Grund, warum bisher
+nichts passiert ist. Entfernte jemand diese eine Zeile, um die Datei „wieder
+lauffähig" zu machen, käme der Rest zum Zug: ein
 `create or replace function public.anonymize_own_account()` mit dem alten,
-eigenständigen Rumpf. Ein Einspielen würde die dünne Hülle aus `0076`
-überschreiben, die Löschung damit auf den Stand vor `0076` zurückdrehen
-(stehenbleibende `subscriptions`-Zeile → `premium_abgleich()` setzt das
-gelöschte Konto nachts wieder auf Premium) und obendrein den Grant an
-`authenticated` neu erteilen, den `supabase/migrations/ausstehend/` gerade
-entziehen soll. Dieselbe Falle wie bei `0042`, nur eine Migration weiter.
+eigenständigen Rumpf. Das überschriebe die dünne Hülle aus `0076`, drehte die
+Löschung auf den Stand davor zurück (stehenbleibende `subscriptions`-Zeile →
+`premium_abgleich()` setzt das gelöschte Konto nachts wieder auf Premium) und
+erteilte obendrein den Grant an `authenticated` neu, den
+`supabase/migrations/ausstehend/` gerade entziehen soll. Dieselbe Falle wie
+bei `0042`, nur eine Migration weiter.
 
 Sie bleiben im Verzeichnis liegen, weil eine Migrationshistorie append-only
 ist (Kernregel 9) — aber als Historie, nicht als offener Posten.
@@ -948,12 +1014,23 @@ where n.nspname = 'public' and p.proname = 'DIE_FUNKTION';
 
 Beim Einspielen von 0059 wurde der Ledger erneut mit den Dateien im Repo
 verglichen. Drei Migrationen waren damals **nicht** eingespielt; eine davon
-ist seit 2026-09-07 nachgezogen:
+ist seit 2026-09-07 nachgezogen.
+
+> **Nachtrag 2026-09-14.** Die Begründungsspalte unten stand hier bis heute
+> falsch: sie sagte, `profiles.geloescht_am` existiere nicht und `0058`
+> scheitere deshalb. Beim Einspielen von `0087` wurde die Spalte in
+> `information_schema.columns` nachgesehen — sie **existiert**, angelegt von
+> `0076` per `add column if not exists`. Der Abschnitt „Neu bewertet" weiter
+> oben hatte das am 2026-09-08 bereits festgehalten; diese Tabelle ist ihm nur
+> nie gefolgt. Am Ergebnis ändert sich nichts, im Gegenteil — es wird
+> schärfer: Beide Dateien sind nicht bloss unnötig, sie dürfen nicht
+> eingespielt werden, weil `0058` die Hülle aus `0076` überschreiben und den
+> Grant an `authenticated` neu erteilen würde.
 
 | Datei | Zustand in der Datenbank |
 | --- | --- |
-| `0042_account_deletion.sql` | bewusst nicht eingespielt (siehe oben) — Folge: die Spalte `profiles.geloescht_am` existiert nicht |
-| `0058_kontoloeschung_werte_nullen.sql` | nicht eingespielt; setzt `geloescht_am` voraus und scheitert deshalb, solange 0042 fehlt |
+| `0042_account_deletion.sql` | bewusst nicht eingespielt, und **nie nachzuziehen** — siehe „Neu bewertet: 0042 und 0058 sind Altlast, nicht Rückstand" |
+| `0058_kontoloeschung_werte_nullen.sql` | nicht eingespielt, und **nie nachzuziehen** — ebenda |
 | `0054_sichtbarkeit_standardmaessig_aktiv.sql` | **eingespielt am 2026-09-07** — die sechs Sichtbarkeits-Schalter stehen in der Produktionsdatenbank bei neuen Konten auf `true` (Opt-out) |
 
 Zu 0054 ein Vorbehalt beim Nachprüfen: die Nummer ist doppelt vergeben

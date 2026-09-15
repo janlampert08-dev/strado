@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { throwOnQueryError } from "@/lib/queryError";
+import { getPremiumAbzeichen } from "@/lib/premiumAbzeichen";
 
 export interface KudosInfo {
   count: number;
@@ -66,6 +67,8 @@ export interface ReceivedKudos {
   giverId: string;
   giverDisplayName: string | null;
   giverAvatarUrl: string | null;
+  /** Abzeichen hinter dem Namen der gebenden Person (0087). */
+  giverZeigtPremiumAbzeichen: boolean;
   erstelltAm: string;
   neu: boolean;
 }
@@ -84,11 +87,18 @@ export async function getRecentKudosReceived(): Promise<ReceivedKudos[]> {
   throwOnQueryError(error, "Kudos-Aktivität");
   if (!data) return [];
 
-  return (data as Array<Record<string, unknown>>).map((row) => ({
+  const zeilen = data as Array<Record<string, unknown>>;
+  // Zweite Abfrage statt einer Erweiterung von recent_kudos_received: die
+  // Funktion ist SECURITY DEFINER (0057) und damit geschützter Bereich — sie
+  // für ein Abzeichen anzufassen wäre der teuerste Weg zum kleinsten Ziel.
+  const mitAbzeichen = await getPremiumAbzeichen(zeilen.map((r) => r.giver_id as string));
+
+  return zeilen.map((row) => ({
     completionId: row.completion_id as string,
     giverId: row.giver_id as string,
     giverDisplayName: row.giver_display_name as string | null,
     giverAvatarUrl: row.giver_avatar_url as string | null,
+    giverZeigtPremiumAbzeichen: mitAbzeichen.has(row.giver_id as string),
     erstelltAm: row.erstellt_am as string,
     neu: row.neu as boolean,
   }));
