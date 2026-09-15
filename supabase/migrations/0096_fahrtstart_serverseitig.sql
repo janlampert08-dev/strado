@@ -65,6 +65,11 @@ revoke all on table public.fahrt_starts from anon, authenticated;
 -- ein Gast keine Sitzung hat, an der eine Policy ansetzen koennte. Die
 -- Funktion entscheidet nichts anhand unbeglaubigter Eingaben: sie schreibt,
 -- was ihr gegeben wird, und haengt auth.uid() an — bei einem Gast NULL.
+-- Index fuer die Mengenbremse unten und fuer das Aufraeumen.
+create index if not exists fahrt_starts_gast_zeit_idx
+  on public.fahrt_starts (gestartet_am)
+  where user_id is null;
+
 create or replace function public.fahrt_start_anlegen(
   p_abdruck text,
   p_art text,
@@ -76,6 +81,7 @@ set search_path = public, pg_temp
 as $$
 declare
   v_id uuid;
+  v_uid uuid := auth.uid();
 begin
   if p_abdruck is null or length(p_abdruck) <> 64 then
     raise exception 'Ungueltiger Abdruck';
@@ -84,8 +90,44 @@ begin
     raise exception 'Ungueltige Art';
   end if;
 
+  -- Mengenbremse in der Datenbank, nicht nur im Server Action.
+  --
+  -- Der anon-Schluessel ist oeffentlich: diese Funktion ist per PostgREST
+  -- direkt aufrufbar, und dieser Weg geht an isRateLimitedByKey in
+  -- lib/actions/fahrtstart.ts vorbei. Dieselbe Eigenschaft, die AGENTS.md
+  -- fuer creator_klick_zaehlen() festhaelt — dort ohne Folgen, weil nur ein
+  -- Zaehler hochlaeuft; hier entstuende bei jedem Aufruf eine Zeile.
+  --
+  -- Deshalb eine Grenze, die niemand faelschen kann, weil sie nicht an der
+  -- Identitaet des Aufrufers haengt: Gasttickets sind global auf 60 pro
+  -- Minute gedeckelt. Weit ueber allem, was echte Gaeste erzeugen, und
+  -- niedrig genug, dass die Tabelle nicht unbegrenzt waechst. Angemeldete
+  -- Konten sind zurechenbar und einzeln gedeckelt.
+  if v_uid is null then
+    if (select count(*) from public.fahrt_starts
+         where user_id is null
+           and gestartet_am > now() - interval '1 minute') >= 60 then
+      raise exception 'Zu viele Fahrtstarts';
+    end if;
+  else
+    if (select count(*) from public.fahrt_starts
+         where user_id = v_uid
+           and gestartet_am > now() - interval '1 minute') >= 10 then
+      raise exception 'Zu viele Fahrtstarts';
+    end if;
+  end if;
+
+  -- Beilaeufig aufraeumen statt per Cron: nach 24 Stunden ist ein nie
+  -- eingeloestes Ticket wertlos (fahrt_start_einloesen weist es ohnehin ab).
+  -- Der Ausschnitt ist klein und laeuft nur gelegentlich mit.
+  if random() < 0.02 then
+    delete from public.fahrt_starts
+     where verbraucht_am is null
+       and gestartet_am < now() - interval '48 hours';
+  end if;
+
   insert into public.fahrt_starts (geheimnis_abdruck, user_id, strecke_id, art)
-  values (p_abdruck, auth.uid(), p_strecke_id, p_art)
+  values (p_abdruck, v_uid, p_strecke_id, p_art)
   returning id into v_id;
 
   return v_id;
@@ -96,9 +138,21 @@ $$;
 -- Einloesen
 -- --------------------------------------------------------------------------
 -- Gibt die verstrichenen Sekunden zurueck, oder NULL, wenn das Ticket nicht
--- passt, schon verbraucht oder aelter als ein Tag ist. NULL heisst fuer den
--- Aufrufer: keine serverseitige Zeit, also dauer_quelle = 'trail' und damit
--- keine Bestenliste (siehe route_leaderboard unten).
+-- passt oder aelter als ein Tag ist. NULL heisst fuer den Aufrufer: keine
+-- serverseitige Zeit, also dauer_quelle = 'trail' und damit keine Bestenliste.
+--
+-- **Idempotent, und das ist wesentlich.** Der erste Aufruf haelt die Dauer
+-- fest; jeder weitere gibt genau dieselbe Zahl zurueck, solange derselbe
+-- Nutzer fragt. Ohne das verliert eine Fahrt ihre Wertung, sobald das
+-- Speichern nach dem Einloesen noch scheitert — an der Bandpruefung aus 0059,
+-- an RLS, an einem Fotoupload —, denn beim zweiten Versuch waere das Ticket
+-- verbraucht und die Fahrt fiele auf 'trail' zurueck. Der Zeitpunkt bleibt
+-- trotzdem der des ersten Aufrufs, also das Ende der Fahrt: spaetere Versuche
+-- verlaengern die Zeit nicht.
+--
+-- Gegen Mehrfachnutzung schuetzt nicht diese Funktion, sondern der eindeutige
+-- Index route_completions_fahrt_start_idx: ein Ticket gehoert zu genau einer
+-- Fahrt.
 --
 -- Die 24 Stunden sind kein Sicherheitsband, sondern die Obergrenze aus 0059
 -- (dauer_sekunden <= 86400). Ein laenger offenes Ticket wuerde die Constraint
@@ -117,13 +171,17 @@ begin
   -- auth.uid() ist hier nie NULL: die Funktion ist nur an authenticated
   -- vergeben, und gespeichert wird eine Fahrt ohnehin erst mit Konto.
   update public.fahrt_starts
-     set verbraucht_am = now(),
-         dauer_sekunden = greatest(1, extract(epoch from (now() - gestartet_am))::integer),
-         eingeloest_von = auth.uid()
+     set verbraucht_am = coalesce(verbraucht_am, now()),
+         dauer_sekunden = coalesce(
+           dauer_sekunden,
+           greatest(1, extract(epoch from (now() - gestartet_am))::integer)
+         ),
+         eingeloest_von = coalesce(eingeloest_von, auth.uid())
    where id = p_id
      and geheimnis_abdruck = p_abdruck
-     and verbraucht_am is null
      and gestartet_am > now() - interval '24 hours'
+     -- Ein fremdes Konto darf ein bereits eingeloestes Ticket nicht lesen.
+     and (eingeloest_von is null or eingeloest_von = auth.uid())
   returning dauer_sekunden into v_sekunden;
 
   return v_sekunden;

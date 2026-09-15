@@ -315,20 +315,24 @@ is what should be corrected.
   original findings are closed. A2, A3, A4, A5 and A6 are marked **Fixed**
   there, each naming the code that closed it, and so is all but a handful of
   §B. What remains open is narrower than the headline suggests:
-  - **A1, leg 2 — the ride clock. Closed in code, NOT yet live.** The A1
-    table further down `docs/audit/README.md` is the authority — not this
-    line, which has been wrong about A1 before. The forgery was that
-    `dauer_sekunden`, though derived server-side, came from **client
-    timestamps**: a genuine trail replayed with compressed times passed the
-    `0059` speed band. `0096_fahrtstart_serverseitig.sql` closes it with a
-    ride start the server records itself (`fahrt_starts`, issued at
-    `beginActualTracking`, redeemed on save), and `route_leaderboard` now
-    shows only `dauer_quelle = 'server'`. **`0096` is on a branch and not
-    applied** — until it is, the old behaviour stands, and merging the code
-    first breaks every ride save with a column error. Schema first. Two
-    things stay open by choice: the server clock keeps running while the
-    screen sleeps, so a stop costs leaderboard time, and per-lap rows from
-    `lapDetection` remain trail-derived and out of the leaderboard.
+  - **A1, leg 2 — the ride clock. Narrowed by `0096`, not closed, and not
+    yet live.** The A1 table further down `docs/audit/README.md` is the
+    authority — not this line, which has been wrong about A1 before, and
+    was wrong again for one commit on 2026-09-15 when it said "closed".
+    `0096_fahrtstart_serverseitig.sql` records the ride start on the server
+    (`fahrt_starts`, issued at `beginActualTracking`, redeemed on save) and
+    filters `route_leaderboard` to `dauer_quelle = 'server'`, so a forger
+    can no longer name a duration — they must sit out every second they
+    claim. What remains: the ticket binds a person and a clock but **not
+    the submitted trail**, so a stored 10 km track posted after a
+    four-minute wait still passes `0059`'s 200 km/h band. Closing it needs
+    the server to *observe* the ride, not merely to stamp its start.
+    **`0096` is on a branch and not applied** — until it is, the old
+    behaviour stands, and merging the code first breaks every ride save
+    with a column error. Schema first. Two further limits are deliberate:
+    the server clock runs while the screen sleeps, so a stop costs
+    leaderboard time, and per-lap rows from `lapDetection` stay
+    trail-derived and out of the leaderboard.
   - **§B — React 19 clears uncontrolled fields on a failed submit.** Fixed for
     the photo input only (`MultiPhotoInput`). `AnmeldenForm`,
     `RegistrierenForm`, `PasswortVergessenForm`, `PasswortAendernForm` and
@@ -456,13 +460,13 @@ handoff to the next isn't done.
    cross-checks `distanz_km` against `st_length(track)`, `0074` bounds the
    rest) — `INSERT` is still granted, but a direct PostgREST write no
    longer picks its own coverage or visibility. The third leg —
-   **`dauer_sekunden`** — is closed in code but **not yet live**: `0096`
-   introduces a ride start the server records itself, so the ranked duration
-   is the difference of two server clocks instead of a sum of browser
-   timestamps. Until that migration is applied, duration and any speed
-   derived from it still carry no weight, which is what
-   `lib/fahrtstatistik.ts` is built on; its header explains why. After it, a
-   ride counts for the leaderboard only if it carries
+   **`dauer_sekunden`** — is **narrowed but not closed** by `0096`, which is
+   not yet applied: the server records the ride start, so a ranked duration
+   can no longer be invented, only sat out. It is still not bound to the
+   submitted trail, so duration and any speed derived from it remain weaker
+   evidence than distance, ascent and coverage — which is what
+   `lib/fahrtstatistik.ts` is built on; its header explains why. After the
+   migration, a ride counts for the leaderboard only if it carries
    `dauer_quelle = 'server'`.
 6. **Post the ride** — same `lib/actions/completions.ts` submission,
    `components/RideVisibilityToggle.tsx` for visibility, landing on

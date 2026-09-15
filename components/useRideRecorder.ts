@@ -654,6 +654,12 @@ export function useRideRecorder({
 
     const timeout = setTimeout(() => {
       if (snapshot?.phase === "finished") {
+        // Dieser Zweig geht an start() vorbei, das sonst das Ticket
+        // zurückholt. Ohne die zwei Zeilen verliert eine bereits beendete,
+        // nur noch nicht gespeicherte Fahrt beim Neuladen des Fazit-Schirms
+        // ihre Zeitwertung — und zwar lautlos.
+        ticketRef.current = snapshot.ticket ?? null;
+        setTicketJson(JSON.stringify(snapshot.ticket ?? null));
         trailRef.current = snapshot.trail;
         distanceKmRef.current = snapshot.distanceKm;
         startTimeRef.current = snapshot.startTimeMs;
