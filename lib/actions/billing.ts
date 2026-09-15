@@ -10,6 +10,13 @@ import { createClient } from "@/lib/supabase/server";
 import { siteUrl } from "@/lib/siteUrl";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe";
+import { isRateLimitedByKey } from "@/lib/rateLimit";
+import {
+  CHECKOUT_ANLEGEN_FENSTER_MS,
+  CHECKOUT_ANLEGEN_LIMIT,
+  CHECKOUT_BESTAETIGEN_FENSTER_MS,
+  CHECKOUT_BESTAETIGEN_LIMIT,
+} from "@/lib/abobremse";
 import { KULANZ_TAGE, leseAboZustand } from "@/lib/stripeWebhook";
 import {
   aktivesAboAusSession,
@@ -22,6 +29,37 @@ import {
 } from "@/lib/stripeCheckout";
 import type { AboPlan, PlanAngebot, PremiumAngebot, VergebenerPreis } from "@/lib/premiumLimits";
 import type Stripe from "stripe";
+
+// Bremsen für die Aufrufe, die von hier aus bei Stripe landen.
+//
+// Jede Aktion in dieser Datei prüft die Berechtigung sauber — createCheckout
+// gegen die eigene Session, confirmCheckoutSession zusätzlich gegen den
+// eigenen Customer (istEigeneBezahlteSession). Ungeprüft war bisher nur die
+// MENGE: ein angemeldetes Konto konnte diese Aktionen in einer Schleife
+// aufrufen, und jeder Durchlauf kostet ein bis drei Stripe-Anfragen. Stripes
+// Kontingent gilt fürs ganze Konto, nicht pro Nutzer — ein einzelnes Konto
+// hätte damit die Bezahlseite für alle anderen ausbremsen können.
+//
+// Die Zahlen sind bewusst ungleich, und zwar nach dem, was ein Fehlalarm
+// jeweils kostet:
+//
+//   Beim ANLEGEN (Checkout, Kundenportal) ist noch kein Geld geflossen. Wer
+//   hier gebremst wird, sieht eine Meldung und klickt gleich noch einmal —
+//   ärgerlich, mehr nicht.
+//
+//   Beim BESTÄTIGEN ist das Geld bereits abgebucht. Ein Fehlalarm hiesse:
+//   bezahlt, aber kein Premium — der teuerste Fehler, den diese Datei machen
+//   kann. Deshalb liegt das Limit dort um ein Vielfaches über dem
+//   schlimmsten ehrlichen Fall.
+//
+// Die Zahlen selbst stehen in lib/abobremse.ts, zusammen mit dem
+// Wiederhol-Takt, gegen den sie bemessen sind — eine "use server"-Datei darf
+// keine Konstanten exportieren, und ohne Export gäbe es keinen Test. Genau
+// den braucht die Abwägung oben: lib/abobremse.test.ts hält fest, dass der
+// Abstand zwischen Takt und Limit erhalten bleibt.
+//
+// Wie überall in lib/rateLimit.ts: der Zähler lebt pro Serverless-Instanz
+// und ist keine global konsistente Grenze, sondern die erste Hürde.
 
 // Ein Customer-Feld kann bei Stripe die ID oder das ausgeklappte Objekt
 // sein (auch ein gelöschter Customer). Nur die ID interessiert hier. Beide
@@ -314,6 +352,16 @@ export async function createCheckoutSession(
 
   if (!user) return { ok: false, error: "Bitte melde dich zuerst an." };
 
+  // Vor dem ersten Stripe-Aufruf: checkoutSessionMitCustomer() unten fragt
+  // drei Listen bei Stripe ab, bevor es überhaupt zu einer Entscheidung
+  // kommt. Nach der Anmeldeprüfung, damit ein abgemeldeter Aufruf keinen
+  // fremden Zähler füllt.
+  if (
+    isRateLimitedByKey(`checkout:anlegen:${user.id}`, CHECKOUT_ANLEGEN_LIMIT, CHECKOUT_ANLEGEN_FENSTER_MS)
+  ) {
+    return { ok: false, error: "Zu viele Versuche. Bitte warte einen Moment." };
+  }
+
   // Nur die beiden bekannten Werte. Kommt etwas anderes an, ist es keine
   // Auswahl aus der Oberfläche, sondern ein selbst gebauter Aufruf.
   if (plan !== "monat" && plan !== "jahr") {
@@ -470,6 +518,23 @@ export async function confirmCheckoutSession(sessionId: string): Promise<boolean
 
   if (!user) return false;
 
+  // sessionId kommt aus dem Browser, und stripe.checkout.sessions.retrieve()
+  // unten läuft, BEVOR istEigeneBezahlteSession() die Zugehörigkeit prüft —
+  // das muss so sein, denn ohne die abgerufene Session gibt es nichts zu
+  // prüfen. Ohne Bremse hiesse das: beliebig viele Stripe-Abrufe mit
+  // beliebigen IDs. Das Limit ist grosszügig bemessen, Begründung oben bei
+  // CHECKOUT_BESTAETIGEN_LIMIT.
+  if (
+    isRateLimitedByKey(
+      `checkout:bestaetigen:${user.id}`,
+      CHECKOUT_BESTAETIGEN_LIMIT,
+      CHECKOUT_BESTAETIGEN_FENSTER_MS,
+    )
+  ) {
+    console.warn("Abo-Bestätigung gebremst", { userId: user.id });
+    return false;
+  }
+
   // Wie oben: stripe_customer_id/ist_premium sind für anon/authenticated
   // weder lesbar noch beschreibbar (Migration 0027) — der Service-Role-Client
   // ist hier sicher, weil user.id aus der bereits verifizierten Session
@@ -526,6 +591,21 @@ export async function confirmSubscription(subscriptionId: string): Promise<boole
 
   if (!user) return false;
 
+  // Derselbe Zähler wie confirmCheckoutSession, nicht ein zweiter daneben:
+  // AboBestaetigung.tsx ruft je Durchlauf genau eine der beiden auf (Session
+  // ODER Abo-ID), und beide kosten denselben Stripe-Abruf. Zwei getrennte
+  // Zähler hiessen in der Summe das doppelte Kontingent für dieselbe Sache.
+  if (
+    isRateLimitedByKey(
+      `checkout:bestaetigen:${user.id}`,
+      CHECKOUT_BESTAETIGEN_LIMIT,
+      CHECKOUT_BESTAETIGEN_FENSTER_MS,
+    )
+  ) {
+    console.warn("Abo-Bestätigung gebremst", { userId: user.id });
+    return false;
+  }
+
   // Wie oben: stripe_customer_id/ist_premium sind für anon/authenticated
   // weder lesbar noch beschreibbar (Migration 0027) — der Service-Role-Client
   // ist hier sicher, weil user.id aus der bereits verifizierten Session
@@ -578,6 +658,16 @@ export async function createPortalSession() {
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/anmelden");
+
+  // Auch hier steht am Ende ein Stripe-Aufruf. Gebremst wird auf /profil
+  // zurückgeschickt statt mit einer Fehlerseite: die Funktion antwortet
+  // ausschliesslich mit redirect(), und auf /profil steht der Knopf, der
+  // hierher führt — der zweite Versuch ist also einen Klick entfernt.
+  if (
+    isRateLimitedByKey(`portal:${user.id}`, CHECKOUT_ANLEGEN_LIMIT, CHECKOUT_ANLEGEN_FENSTER_MS)
+  ) {
+    redirect("/profil");
+  }
 
   // Wie oben: stripe_customer_id ist für anon/authenticated nicht mehr lesbar
   // (Migration 0027).

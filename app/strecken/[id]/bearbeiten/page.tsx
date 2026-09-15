@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import Header from "@/components/Header";
 import EditRouteForm from "@/components/EditRouteForm";
@@ -5,6 +6,14 @@ import { getRoute } from "@/lib/routes";
 import { isModerator } from "@/lib/moderation";
 import { updateRoute, updateRouteAsModerator } from "@/lib/actions/routes";
 import { getCurrentUser } from "@/lib/supabase/server";
+import { NICHT_INDEXIEREN } from "@/lib/seo";
+
+// Wie /strecken/neu: bisher ohne eigenen Titel, und ein Bearbeitungsformular
+// gehört in kein Suchergebnis.
+export const metadata: Metadata = {
+  title: "Strecke bearbeiten – Strado",
+  robots: NICHT_INDEXIEREN,
+};
 
 export default async function EditRoutePage({
   params,

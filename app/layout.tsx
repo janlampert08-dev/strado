@@ -3,6 +3,7 @@ import { IBM_Plex_Mono, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import { BESCHREIBUNG, SLOGAN } from "@/lib/constants";
+import { siteUrl } from "@/lib/siteUrl";
 import { startbildEintraege } from "@/lib/startbilder";
 import "./globals.css";
 
@@ -19,14 +20,31 @@ const ibmPlexMono = IBM_Plex_Mono({
   weight: ["500", "600"],
 });
 
-// Für die Auflösung relativer URLs in opengraph-image/twitter-image nötig
-// (sonst Next-Build-Warnung, Fallback auf localhost). VERCEL_PROJECT_PRODUCTION_URL
-// ist die stabile Produktions-Domain, von Vercel automatisch gesetzt.
-const metadataBase = new URL(
-  process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : "http://localhost:3000",
-);
+// Basis für jede relative URL in den Metadaten: opengraph-image,
+// twitter-image und — seit dieser Änderung — alternates.canonical der
+// einzelnen Seiten.
+//
+// Kommt aus siteUrl() statt aus einer eigenen Auflösung. Hier stand vorher
+// dieselbe Logik ein zweites Mal, aber mit anderer Reihenfolge: sie las
+// VERCEL_PROJECT_PRODUCTION_URL und ignorierte NEXT_PUBLIC_SITE_URL.
+//
+// Solange beide dieselbe Domain nennen, fällt das nicht auf, und heute ist
+// das so: die ausgelieferten og:image-Tags auf app.strado.ch zeigen auf
+// app.strado.ch. Der Unterschied ist trotzdem keiner auf Vorrat. Laut
+// AGENTS.md ("Current State") IST NEXT_PUBLIC_SITE_URL in Vercel gesetzt —
+// zwei Auflösungen derselben Frage lesen also bereits heute zwei
+// verschiedene Variablen, und nur ihr zufällig gleicher Inhalt hält sie
+// zusammen. Ändert jemand die eine, zeigte der Stripe-Rücksprung auf die
+// eine Domain und jedes Vorschaubild und jedes Canonical auf die andere.
+//
+// (Das README des Info-Repos führt das Setzen dieser Variable noch als
+// offenen Punkt. AGENTS.md ist dort neuer und sagt das Gegenteil; für diese
+// Datei ist die Frage ohnehin erledigt, sobald nur noch eine Stelle
+// auflöst.)
+//
+// siteUrl() ist synchron, getestet (lib/siteUrl.test.ts) und fällt über
+// NEXT_PUBLIC_SITE_URL → VERCEL_PROJECT_PRODUCTION_URL → localhost zurück.
+const metadataBase = new URL(siteUrl());
 
 export const metadata: Metadata = {
   metadataBase,

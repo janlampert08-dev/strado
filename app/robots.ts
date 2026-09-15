@@ -19,29 +19,44 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
     rules: {
       userAgent: "*",
       allow: "/",
-      // Auth-/Einstellungs-/Moderationsbereiche sind nicht öffentlich
-      // teilbar und bringen für die Indexierung keinen Wert.
+      // Hier stehen nur noch Bereiche, die ein Crawler gar nicht erst
+      // abrufen soll. Das ist etwas anderes als "soll nicht im Index
+      // stehen", und die beiden Werkzeuge schliessen sich gegenseitig aus:
       //
-      // /anmelden und /registrieren sind Formulare ohne Inhalt; /aktivitaet
-      // ist der persönliche Rückkanal und ohnehin nur angemeldet sichtbar.
+      //   Disallow  verbietet das ABRUFEN. Eine verlinkte, aber gesperrte
+      //             Adresse landet trotzdem im Index — nur ohne Inhalt, als
+      //             nackte URL. Und der Crawler findet ein noindex auf ihr
+      //             nie, weil er sie nicht holen darf.
+      //   noindex   hält sie aus dem Index heraus, setzt aber voraus, dass
+      //             sie abgerufen werden darf.
+      //
+      // Genau das stand hier schon für /fahrer (siehe unten) — galt aber
+      // nicht für /anmelden und /registrieren, obwohl deren Lage dieselbe
+      // ist: components/RatingSection.tsx verlinkt
+      // /anmelden?next=/strecken/<id> von jeder öffentlichen Streckenseite
+      // aus, und die stehen in der Sitemap. Der Crawler fand die Adresse
+      // also, durfte sie nicht holen und konnte sie nur als inhaltslose URL
+      // führen — mit einer eigenen Variante je ?next=-Wert. Beide tragen
+      // jetzt robots: { index: false } auf der Seite selbst
+      // (lib/seo.ts, NICHT_INDEXIEREN) und sind hier entfallen.
+      //
+      // Was stehen bleibt, bleibt aus je eigenem Grund:
+      //
+      // - /profil, /aktivitaet, /moderation und /creator werden
+      //   ausschliesslich aus angemeldeten Oberflächen heraus verlinkt
+      //   (Header, Premium- und Moderationsseiten; /creator erscheint in
+      //   der Navigation nur bei zugewiesenem Code). Ein Crawler stösst nie
+      //   auf den Link, und abgemeldet leiten sie ohnehin auf /anmelden um —
+      //   es gibt dort nichts zu indexieren und nichts zu holen.
+      // - /api liefert JSON. Dort geht es nicht um den Index, sondern um
+      //   Last: die Strecken-Endpunkte sind unauthentifiziert und nur per
+      //   IP gebremst (lib/rateLimit.ts).
       //
       // /fahrer steht bewusst NICHT hier. Fahrer-Profile sollen nicht in
       // den Index — app/sitemap.ts lässt sie aus Datenschutzgründen aus —,
-      // aber ein Disallow leistet das nicht: es verbietet das Abrufen, nicht
-      // das Indexieren, und /feed verlinkt jedes dieser Profile. Die URL
-      // landete also weiterhin im Index, nur ohne Inhalt. Durchgesetzt wird
-      // es stattdessen mit robots: { index: false } in
-      // app/fahrer/[id]/page.tsx — was voraussetzt, dass der Crawler die
-      // Seite überhaupt holen darf.
-      disallow: [
-        "/profil",
-        "/moderation",
-        "/creator",
-        "/api",
-        "/aktivitaet",
-        "/anmelden",
-        "/registrieren",
-      ],
+      // aber ein Disallow leistet das nicht, siehe oben. Durchgesetzt wird
+      // es mit robots: { index: false } in app/fahrer/[id]/page.tsx.
+      disallow: ["/profil", "/moderation", "/creator", "/api", "/aktivitaet"],
     },
     sitemap: `${origin}/sitemap.xml`,
   };

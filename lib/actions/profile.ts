@@ -170,6 +170,25 @@ export async function uploadAvatar(
 
   if (!user) return { error: "Bitte melde dich zuerst an." };
 
+  // Mengenbremse. Die Prüfungen weiter unten stimmen alle — 4-MB-Grenze,
+  // MIME-Allowlist, EXIF-Entfernung —, aber sie gelten je Aufruf und keine
+  // von ihnen begrenzt, wie viele Aufrufe es sein dürfen. Jeder davon lädt
+  // bis zu 4 MB hoch, liest sie in den Speicher (arrayBuffer), schreibt sie
+  // durch metadatenEntfernen() und legt sie in Supabase Storage ab.
+  //
+  // Der Speicherplatz wächst dabei nicht unbegrenzt, denn der Schlüssel ist
+  // fest ({user_id}/avatar.{ext}, vier mögliche Endungen) und upsert
+  // überschreibt. Was unbegrenzt wächst, sind Bandbreite, Speicherbedarf und
+  // Storage-Schreibvorgänge.
+  //
+  // Zehn Wechsel in zehn Minuten sind weit jenseits dessen, was jemand beim
+  // Aussuchen eines Profilbilds braucht, und die Meldung sagt, was zu tun
+  // ist — anders als beim Abo weiter unten ist hier nichts verloren, wenn
+  // ein Versuch wartet.
+  if (isRateLimitedByKey(`avatar:${user.id}`, 10, 10 * 60_000)) {
+    return { error: "Zu viele Uploads. Bitte warte ein paar Minuten." };
+  }
+
   // instanceof statt eines Casts: formData.get() liefert bei einem
   // gleichnamigen Textfeld einen String, und der hat weder .size noch .type.
   // Der Cast hätte das durchgereicht, foto.type wäre undefined und

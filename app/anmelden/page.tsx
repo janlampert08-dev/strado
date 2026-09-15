@@ -1,9 +1,20 @@
+import type { Metadata } from "next";
 import Header from "@/components/Header";
 import AnmeldenForm from "@/components/AnmeldenForm";
 import { LEGAL_URLS } from "@/lib/constants";
 import { safeInternalPath } from "@/lib/utils/url";
+import { NICHT_INDEXIEREN } from "@/lib/seo";
 
-export const metadata = { title: "Anmelden – Strado" };
+export const metadata: Metadata = {
+  title: "Anmelden – Strado",
+  // Entfällt seit dieser Änderung aus der Disallow-Liste in app/robots.ts
+  // und wird stattdessen hier aus dem Index gehalten. Der Grund steht dort
+  // ausführlich: das Formular ist von jeder öffentlichen Streckenseite aus
+  // verlinkt (RatingSection.tsx), ein Disallow hätte die Adresse also
+  // weiterhin als inhaltslose URL im Index gelassen — je ?next=-Wert eine
+  // eigene.
+  robots: NICHT_INDEXIEREN,
+};
 
 // ?next steuert, wohin es nach erfolgreicher Anmeldung geht, statt immer fest
 // zu /profil — gesetzt z.B. vom Auth-Gate in app/fahrten/neu/page.tsx, damit

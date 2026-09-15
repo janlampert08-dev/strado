@@ -24,6 +24,7 @@
 /lib/actions/profile.ts      @janlampert08-dev
 /lib/moderation.ts           @janlampert08-dev
 /lib/rateLimit.ts            @janlampert08-dev
+/lib/abobremse.ts            @janlampert08-dev
 /lib/validation.ts           @janlampert08-dev
 /lib/staging.ts              @janlampert08-dev
 /lib/apiCors.ts              @janlampert08-dev

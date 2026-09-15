@@ -737,6 +737,14 @@ additional care and review before merging changes to them:
 - `/lib/apiCors.ts` — that header, in one place.
 - `/lib/rateLimit.ts` — abuse-prevention cooldown checks (per-user, DB
   backed) and the per-IP limiter the public API depends on.
+- `/lib/abobremse.ts` — the rate-limit budgets for the Stripe actions in
+  `lib/actions/billing.ts`, together with the retry schedule
+  (`components/AboBestaetigung.tsx`) they are measured against. The two
+  belong in one file because the budget is only safe relative to the
+  schedule: tightening the confirm limit, or widening the retry ladder,
+  can produce "paid, but no premium" — the most expensive failure the
+  billing path has. `lib/abobremse.test.ts` holds the gap open; a change
+  here that makes it fail is the warning, not the obstacle.
 - `/lib/validation.ts` — `isValidUuid`, the input guard on those endpoints.
 - `/lib/staging.ts` — decides whether a request is running against the
   staging deployment. `proxy.ts` locks staging to logged-in moderators on

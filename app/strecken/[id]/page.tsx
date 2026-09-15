@@ -53,6 +53,28 @@ export async function generateMetadata({
     `${route.region}: ${route.start_ort} → ${route.ziel_ort}, ${route.laenge_km.toFixed(0)} km`;
 
   return {
+    // Kanonische Adresse, von Next gegen metadataBase aufgelöst
+    // (app/layout.tsx). Auf dieser Seite der wichtigste Ort dafür: sie ist
+    // der einzige öffentlich indexierbare Evergreen-Inhalt der Plattform
+    // (app/sitemap.ts listet sie mit priority 0.8), und sie nimmt zwei
+    // Query-Parameter entgegen — ?fortsetzen= aus dem Gast-Handoff und
+    // ?privat= aus proposeRoute. Beide gehören zu einem Vorgang, nicht zu
+    // einem Inhalt; ohne Canonical wäre jeder Marker-Wert eine eigene Seite
+    // mit demselben Text.
+    //
+    // Steht bewusst VOR title und description, obwohl es inhaltlich hinten
+    // hingehörte: PR #237 ergänzt dasselbe Objekt unmittelbar nach
+    // description (openGraph, plus description als hochgezogene Konstante).
+    // Lag dieser Block ebenfalls dort, überlappten die beiden Hunks und git
+    // meldete einen Konflikt über den ganzen Rumpf des Return-Objekts — und
+    // wer den mit "ours"/"theirs" im Ganzen auflöst, verliert lautlos eine
+    // der beiden Seiten: entweder das Vorschaubild oder diese Adresse. Beide
+    // Fassungen bauen, testen und linten dabei sauber, der Verlust fiele also
+    // in keiner Prüfung auf. Zwei unveränderte Zeilen dazwischen genügen, damit
+    // git beides von selbst zusammenführt. Die Schlüsselreihenfolge eines
+    // Objektliterals ist für Next ohne Bedeutung — sie hier zu "sortieren"
+    // holt den Konflikt zurück.
+    alternates: { canonical: `/strecken/${route.id}` },
     title: `${route.name} – Strado`,
     description: beschreibung,
     // Diese Seite hatte als einzige mit eigenem Freigabebild keinen eigenen
