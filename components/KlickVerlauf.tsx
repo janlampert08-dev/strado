@@ -1,4 +1,5 @@
 import { balkenHoehe, type VerlaufReihe } from "@/lib/creatorKennzahlen";
+import { mitAnzahl } from "@/lib/format";
 
 // Tagesdatum für die Beschriftung. de-CH, weil die Oberfläche
 // deutschsprachig ist; die Zeitzone ist ausdrücklich UTC, weil
@@ -53,25 +54,33 @@ export default function KlickVerlauf({ reihe }: { reihe: VerlaufReihe }) {
           <li
             key={tag.tag}
             className="flex min-w-0 flex-1 items-end self-stretch"
-            aria-label={`${formatiere(tag.tag)}: ${tag.klicks} ${tag.klicks === 1 ? "Aufruf" : "Aufrufe"}`}
+            aria-label={`${formatiere(tag.tag)}: ${mitAnzahl(tag.klicks, "Aufruf", "Aufrufe")}`}
           >
             <div
               className={
-                tag.klicks > 0 ? "w-full rounded-sm bg-accent" : "w-full rounded-sm bg-border"
+                tag.klicks > 0
+                  ? "w-full rounded-sm bg-accent"
+                  : "w-full rounded-sm bg-border"
               }
               // Inline, weil der Wert je Tag anders ist: eine Tailwind-Klasse
               // pro möglicher Höhe gibt es nicht, und arbitrary values liest
               // Tailwind zur Bauzeit aus dem Quelltext, nicht zur Laufzeit.
               // Ein Tag ohne Aufruf bleibt als dünner Strich stehen, damit
               // die Lücke sichtbar ist statt unsichtbar.
-              style={{ height: tag.klicks > 0 ? `${balkenHoehe(tag.klicks, reihe.hoechstwert)}%` : "2px" }}
+              style={{
+                height:
+                  tag.klicks > 0
+                    ? `${balkenHoehe(tag.klicks, reihe.hoechstwert)}%`
+                    : "2px",
+              }}
             />
           </li>
         ))}
       </ol>
       <p className="text-xs text-muted">
-        {gesamt} {gesamt === 1 ? "Aufruf" : "Aufrufe"} seit {formatiere(reihe.tage[0].tag)}, Spitze{" "}
-        {reihe.hoechstwert} an einem Tag.
+        {mitAnzahl(gesamt, "Aufruf", "Aufrufe")} seit{" "}
+        {formatiere(reihe.tage[0].tag)}, Spitze{" "}
+        {reihe.hoechstwert.toLocaleString("de-CH")} an einem Tag.
       </p>
     </div>
   );

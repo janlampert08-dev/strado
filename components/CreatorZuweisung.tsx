@@ -1,7 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
-import { creatorLinkZuweisen, type CreatorLinkResult } from "@/lib/actions/creatorLinks";
+import { useActionState, useEffect, useRef, useState } from "react";
+import {
+  creatorLinkZuweisen,
+  type CreatorLinkResult,
+} from "@/lib/actions/creatorLinks";
 import NutzerWahl from "@/components/NutzerWahl";
 import Button from "@/components/ui/Button";
 
@@ -23,10 +26,31 @@ export default function CreatorZuweisung({
   kontoId: string | null;
   kontoName: string | null;
 }) {
-  const [state, formAction, pending] = useActionState(creatorLinkZuweisen, initialState);
+  const [state, formAction, pending] = useActionState(
+    creatorLinkZuweisen,
+    initialState,
+  );
+
+  // Ohne Rückmeldung ist "gespeichert" von "noch nicht abgeschickt" nicht zu
+  // unterscheiden: NutzerWahl zeigt das gewählte Konto schon vor dem
+  // Absenden, und der Knopf fällt danach in seine Ruhebeschriftung zurück.
+  // Anders als beim Aktivieren oder Löschen ändert sich hier sichtbar
+  // nichts, also wird es gesagt. Am Übergang pending true -> false erkannt,
+  // damit die Server Action (geschützter Bereich) unverändert bleibt.
+  const [gespeichert, setGespeichert] = useState(false);
+  const warPending = useRef(false);
+
+  useEffect(() => {
+    if (warPending.current && !pending) setGespeichert(!state.error);
+    warPending.current = pending;
+  }, [pending, state]);
 
   return (
-    <form action={formAction} className="flex flex-col gap-2">
+    <form
+      action={formAction}
+      onSubmit={() => setGespeichert(false)}
+      className="flex flex-col gap-2"
+    >
       <input type="hidden" name="code" value={code} />
       <NutzerWahl
         name="creator_user_id"
@@ -38,6 +62,11 @@ export default function CreatorZuweisung({
       {state.error && (
         <p role="alert" className="text-xs text-danger">
           {state.error}
+        </p>
+      )}
+      {gespeichert && !state.error && (
+        <p role="status" className="text-xs text-muted">
+          Zuweisung gespeichert.
         </p>
       )}
       <div>

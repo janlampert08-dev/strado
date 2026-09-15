@@ -28,13 +28,19 @@ export interface CreatorKennzahl {
   abosBeendet: number;
 }
 
+// Nur Aufrufe, mit Absicht: creator_verlauf() gab bis 0094 auch
+// Registrierungen und Abos pro Tag zurück. Gezeichnet hat die Oberfläche
+// davon nie etwas, und bei kleinen Zahlen verriet ein Tagesbucket mit einer
+// einzigen Registrierung darin den Tag eines einzelnen Kontos — gegen die
+// Zusicherung in der Datenschutzerklärung. Die Gesamtzahlen stehen in
+// creatorKennzahlen(); wer hier wieder eine Zeitachse je Konversion
+// braucht, löst zuerst die Frage, ab welcher Menge ein Bucket etwas
+// preisgibt.
 export interface CreatorVerlaufTag {
   code: string;
   /** ISO-Datum (YYYY-MM-DD), Tagesgrenzen in der Zeitzone der Datenbank. */
   tag: string;
   klicks: number;
-  registrierungen: number;
-  abos: number;
 }
 
 interface KennzahlZeile {
@@ -53,8 +59,6 @@ interface VerlaufZeile {
   code: string;
   tag: string;
   klicks: number | string;
-  registrierungen: number | string;
-  abos: number | string;
 }
 
 // count(*) und sum() liefern in Postgres bigint, und PostgREST reicht
@@ -67,34 +71,36 @@ function zahl(wert: number | string | null | undefined): number {
 
 // Pro Request memoisiert: die Moderationsseite braucht dieselben Zahlen wie
 // die Kopfzeile darüber, und /creator liest sie für Summen und Verlauf.
-export const creatorKennzahlen = cache(async function creatorKennzahlen(): Promise<
-  CreatorKennzahl[]
-> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("creator_kennzahlen");
+export const creatorKennzahlen = cache(
+  async function creatorKennzahlen(): Promise<CreatorKennzahl[]> {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("creator_kennzahlen");
 
-  if (error) {
-    console.error("Creator-Kennzahlen konnten nicht gelesen werden", error);
-    return [];
-  }
+    if (error) {
+      console.error("Creator-Kennzahlen konnten nicht gelesen werden", error);
+      return [];
+    }
 
-  const zeilen: KennzahlZeile[] = Array.isArray(data) ? data : [];
-  return zeilen.map((z) => ({
-    code: z.code,
-    name: z.name,
-    kanal: z.kanal,
-    kampagne: z.kampagne,
-    aktiv: z.aktiv,
-    klicks: zahl(z.klicks),
-    registrierungen: zahl(z.registrierungen),
-    abos: zahl(z.abos),
-    abosBeendet: zahl(z.abos_beendet),
-  }));
-});
+    const zeilen: KennzahlZeile[] = Array.isArray(data) ? data : [];
+    return zeilen.map((z) => ({
+      code: z.code,
+      name: z.name,
+      kanal: z.kanal,
+      kampagne: z.kampagne,
+      aktiv: z.aktiv,
+      klicks: zahl(z.klicks),
+      registrierungen: zahl(z.registrierungen),
+      abos: zahl(z.abos),
+      abosBeendet: zahl(z.abos_beendet),
+    }));
+  },
+);
 
 export async function creatorVerlauf(tage = 30): Promise<CreatorVerlaufTag[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("creator_verlauf", { p_tage: tage });
+  const { data, error } = await supabase.rpc("creator_verlauf", {
+    p_tage: tage,
+  });
 
   if (error) {
     console.error("Creator-Verlauf konnte nicht gelesen werden", error);
@@ -106,37 +112,45 @@ export async function creatorVerlauf(tage = 30): Promise<CreatorVerlaufTag[]> {
     code: z.code,
     tag: z.tag,
     klicks: zahl(z.klicks),
-    registrierungen: zahl(z.registrierungen),
-    abos: zahl(z.abos),
   }));
 }
 
-// Ob dem angemeldeten Konto mindestens ein Code gehört — die einzige
-// Definition der Creator-Rolle, die es gibt (siehe 0091: es gibt keine
-// Spalte profiles.ist_creator, und das ist Absicht).
+// Die Codes, die diesem Konto gehören.
 //
-// Bewusst nicht über creatorKennzahlen(): ein Moderator bekäme dort jeden
-// Code zurück und stünde damit als Creator in der Navigation, ohne einer zu
-// sein. Hier wird deshalb auf die Spalte gefiltert — die SELECT-Policy aus
-// 0091 gibt genau diese Zeile frei.
+// Bewusst nicht über creatorKennzahlen(): die Datenbankfunktion gibt einem
+// Moderator jede Zeile zurück (0091, dort begründet — die Moderationsansicht
+// lebt davon). Für "was ist meins" ist das die falsche Frage, und zwar in
+// beide Richtungen: ein Moderator stünde sonst als Creator in der Navigation,
+// ohne einer zu sein, und sähe unter /creator fremde Zahlen als seine
+// eigenen. Hier wird deshalb auf die Spalte gefiltert — die SELECT-Policy aus
+// 0091 gibt genau diese Zeilen frei.
 //
-// Memoisiert, weil <Header /> die Frage auf jeder Seite stellt.
-export const istCreator = cache(async function istCreator(userId: string): Promise<boolean> {
+// Memoisiert, weil <Header /> die Frage auf jeder Seite stellt und /creator
+// sie gleich noch einmal braucht.
+export const eigeneCodes = cache(async function eigeneCodes(
+  userId: string,
+): Promise<string[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("creator_links")
     .select("code")
-    .eq("creator_user_id", userId)
-    .limit(1);
+    .eq("creator_user_id", userId);
 
   if (error) {
     // Kein throw: ein Fehler hier darf höchstens den Navigationseintrag
     // kosten, nicht die Seite. /creator prüft ohnehin selbst.
-    console.error("Creator-Status konnte nicht gelesen werden", error);
-    return false;
+    console.error("Eigene Creator-Codes konnten nicht gelesen werden", error);
+    return [];
   }
-  return (data?.length ?? 0) > 0;
+  return (data ?? []).map((zeile) => zeile.code as string);
 });
+
+// Ob dem angemeldeten Konto mindestens ein Code gehört — die einzige
+// Definition der Creator-Rolle, die es gibt (siehe 0091: es gibt keine
+// Spalte profiles.ist_creator, und das ist Absicht).
+export async function istCreator(userId: string): Promise<boolean> {
+  return (await eigeneCodes(userId)).length > 0;
+}
 
 // ---------------------------------------------------------------------------
 // Reine Rechnung — hier, weil Vitest mit environment: "node" nur lib/ erreicht
@@ -165,17 +179,33 @@ export function summiere(kennzahlen: CreatorKennzahl[]): CreatorSumme {
 // Anteil in Prozent, auf eine Nachkommastelle. null statt 0, wenn der
 // Nenner fehlt: "0 %" bei null Klicks behauptet ein Ergebnis, wo es keine
 // Messung gibt.
+//
+// null auch, wenn der Zähler grösser ist als der Nenner. Das ist kein
+// Rechenfehler, sondern eine Eigenschaft der Daten: die Klickzahl ist
+// verlustbehaftet (das IP-Limit im Route Handler verwirft Zählungen, und ein
+// Besucher mit bestehendem Cookie klickt gar nicht erst neu), während die
+// Registrierung dahinter trotzdem ankommt. "200 %" wäre die Zahl, die ein
+// Creator am ehesten abfotografiert.
 export function anteil(zaehler: number, nenner: number): number | null {
-  if (!Number.isFinite(zaehler) || !Number.isFinite(nenner) || nenner <= 0) return null;
+  if (!Number.isFinite(zaehler) || !Number.isFinite(nenner) || nenner <= 0)
+    return null;
+  if (zaehler > nenner) return null;
   return Math.round((zaehler / nenner) * 1000) / 10;
 }
 
 // Balkenhöhe in Prozent für den Verlauf. Ein Tag mit Wert > 0 bekommt
-// mindestens 4 %, sonst wäre ein einzelner Klick neben einem Ausreisser
+// mindestens 10 %, sonst wäre ein einzelner Klick neben einem Ausreisser
 // optisch dasselbe wie gar nichts.
+//
+// Die 10 % sind an der Bahnhöhe gerechnet, nicht geschätzt: die Bahn ist
+// h-12 (48 px), ein leerer Tag steht als 2-px-Strich da. Bei den früheren
+// 4 % war ein Tag MIT Bewegung 1.92 px hoch — niedriger als der Strich, der
+// gar nichts bedeutet, womit die Untergrenze genau das verfehlte, wofür es
+// sie gibt. 10 % ergeben 4.8 px und damit denselben Abstand wie in
+// FahrtStatistik.tsx (8 px Minimum auf 80 px Bahn).
 export function balkenHoehe(wert: number, hoechstwert: number): number {
   if (wert <= 0 || hoechstwert <= 0) return 0;
-  return Math.max(4, Math.round((wert / hoechstwert) * 100));
+  return Math.max(10, Math.round((wert / hoechstwert) * 100));
 }
 
 export interface VerlaufReihe {

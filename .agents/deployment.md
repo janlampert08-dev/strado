@@ -256,10 +256,16 @@ Since 2026-09-08 a feature does not reach production on its own (see
 advances only via a batch promotion. That changes two things about this
 checklist:
 
-- **The rehearsal is real now.** `staging` has its own Supabase project, so
-  a migration gets applied there first, against the same code, before it
-  ever touches production. Given that migrations are applied by hand, this
-  is the closest thing to a dry run this project has — use it.
+- **There is no rehearsal.** This bullet used to say the opposite —
+  "`staging` has its own Supabase project, so a migration gets applied
+  there first". It does not. The owner confirmed on 2026-09-14 that
+  `staging` talks to the **production** database (the single project
+  `stecakpnuijbvjsniqto`) and that this stays that way; `AGENTS.md`
+  records the same under Current State and Release Flow. A migration is
+  therefore applied exactly once, and that once is production — plan the
+  way back before applying, not after. What `staging` still buys is a
+  rehearsal of the **code** against the real schema; what it does not buy
+  is a second chance at a statement that writes.
 - **A promotion PR is not a feature PR.** It carries several changes at
   once, so walk section 1 and 2 below for the union of what they touch, not
   for the last one merged. If one change in the batch is not ready, take it

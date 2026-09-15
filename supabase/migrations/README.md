@@ -29,6 +29,115 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Eingespielt: 0094_creator_verlauf_nur_aufrufe (2026-09-15, Produktion)
+
+| Datei | Ledger-`version` | Was |
+| --- | --- | --- |
+| `0094_creator_verlauf_nur_aufrufe` | `20260915075341` | `creator_verlauf()` gibt nur noch Aufrufe zurück; `handle_new_user()` bekommt den `exception`-Block; Index `creator_konversionen_code_art_zeit` |
+
+**Eingespielt, bevor der Code deployt ist** — PR #236 und #243 sind beide
+noch offen. Die Richtung ist hier die unangenehme: `0094` verengt etwas,
+das seit dem 2026-09-14 live ist. Genau deshalb ist es die richtige
+Reihenfolge — solange der Code nicht deployt ist, liest die Funktion in
+Produktion niemand, und die zwei Spalten sind weg, bevor sie jemand
+abrufen kann.
+
+Drei Änderungen:
+
+| Was | Warum |
+| --- | --- |
+| `creator_verlauf()` gibt nur noch `klicks` zurück | `0091` gab zusätzlich `registrierungen` und `abos` **pro Tag** an jeden `authenticated` Creator. Gezeichnet hat die Oberfläche davon nie etwas. Bei kleinen Zahlen benennt ein Tagesbucket mit einer einzigen Registrierung den Tag, an dem ein Konto entstand — und `profiles.created_at` ist seit `0034` an `anon` gegrantet. Die veröffentlichte Datenschutzerklärung sagt wörtlich „weder Name noch Zeitpunkt". |
+| `handle_new_user()` fängt Fehler der Herkunftserfassung ab | `0088` sichert im Kommentar zu, eine Registrierung dürfe nie an der Messung scheitern. Ohne Handler tut sie das: der Trigger hängt an `auth.users`, und ein Fremdschlüsselfehler (Code wird zwischen `exists`-Test und `insert` gelöscht) bricht die Registrierung ab. `on conflict do nothing` deckt nur Unique-Verletzungen. |
+| Index `creator_konversionen_code_art_zeit` | Vorsorge für die erste zeitfilternde Auswertung. Sie muss dafür einen halboffenen Bereich auf `ereignis_am` schreiben, nicht `ereignis_am::date = :tag` — die Begründung steht im Migrationskopf. |
+
+`drop function` + `create` statt `create or replace`, weil sich der
+Rückgabetyp ändert — das kann `replace` nicht. Der `drop` nimmt die ACL mit,
+die Grants werden darunter neu gesetzt, inklusive des ausdrücklichen
+`revoke ... from anon` aus der Lehre von `0093`.
+
+### Vorher geprüft
+
+Der `create or replace` auf `handle_new_user()` ist die Stelle, an der ein
+Einspielen still eine fremde Änderung zurückdrehen kann. Der live laufende
+Rumpf wurde deshalb ausgelesen und gegen die Fassung aus `0088` gestellt:
+in den **Anweisungen identisch**, Unterschiede nur in den Kommentaren — die
+am 2026-09-14 angewendete Fassung trug gekürzte, umlautfreie Kommentare.
+Seither hatte also niemand an der Funktion gearbeitet.
+
+Der Rückweg wurde vorher geschrieben, nicht erst im Ernstfall: die
+vollständige `0091`-Fassung von `creator_verlauf()` aus
+`pg_get_functiondef()` und der `0088`-Rumpf von `handle_new_user()` lagen
+beide vor dem ersten Schreibbefehl vor.
+
+Nebenbefund derselben Vorprüfung: Dieser Abschnitt führte bis hierher auch
+`0087_premium_abzeichen_spalte` als offen. Es war bereits am 2026-09-14 um
+20:07 eingespielt (Ledger `20260914200727`, Abschnitt dazu im Branch von
+PR #235). Massgeblich war wie immer das Objekt und nicht die Prosa: die
+Spalte existiert, ist `generated ... stored`, der Ausdruck lautet
+`(ist_premium AND zeigt_premium_badge)`, `select` liegt bei `anon` und
+`authenticated`.
+
+### Nachher geprüft
+
+| Prüfung | Ergebnis | Woher |
+| --- | --- | --- |
+| Rückgabe nur noch drei Spalten | `{ code, tag, klicks }` | `generate_typescript_types` |
+| `anon` darf `creator_verlauf` nicht | nicht in der anon-Liste (dort nur `creator_klick_zaehlen`, `creator_link_aufloesen` — beide gewollt) | `get_advisors` (security) |
+| `authenticated` darf | in der authenticated-Liste | `get_advisors` (security) |
+| `handle_new_user` für niemanden ausführbar | in keiner der beiden Listen | `get_advisors` (security) |
+| Index steht, mit der erwarteten Definition | `(code, art, ereignis_am)` | `execute_sql` (`pg_indexes`), spätere Sitzung |
+| `exception`-Block und `pg_temp` im Rumpf | beides vorhanden | `execute_sql` (`pg_get_functiondef`), spätere Sitzung |
+| `anon` steht **nicht** unter den Grants | `authenticated`, `postgres`, `service_role` | `execute_sql` (`role_routine_grants`), spätere Sitzung |
+| Ledger-Eintrag | `20260915075341` | `list_migrations` |
+
+**Der Index ist inzwischen einzeln gesehen.** Der Abschnitt führte ihn
+zunächst als offen, weil `execute_sql` nach dem Schreiben blockiert war.
+In einer späteren Sitzung ist die Abfrage unten gelaufen, und er steht mit
+genau der Definition aus dem Migrationskopf:
+
+    CREATE INDEX creator_konversionen_code_art_zeit
+      ON public.creator_konversionen USING btree (code, art, ereignis_am)
+
+Damit sind alle Objekte aus `0094` am Objekt geprüft und nicht nur aus der
+Unteilbarkeit des Skripts geschlossen.
+
+**Ebenfalls nicht ausgeführt: Funktionstests in zurückgerollten
+Transaktionen**, wie sie es für `0088`–`0093` gab. Der Zugriff auf
+`execute_sql` wurde nach dem Schreiben blockiert, die Gegenprobe lief
+deshalb über die drei Lesewerkzeuge oben. Der `exception`-Zweig von
+`handle_new_user()` ist damit gegengelesen, aber nicht gemessen — er lässt
+sich ohnehin nur messen, indem man den Wettlauf nachstellt (Code zwischen
+`exists`-Test und `insert` löschen), und das heisst, an einer lebenden
+Tabelle zu schrauben.
+
+Prüfabfragen für eine Sitzung mit SQL-Zugriff:
+
+```sql
+-- Nur noch drei Spalten?
+-- creator_verlauf ist eine Funktion, keine Relation — in
+-- information_schema.columns steht dafür nichts, die Abfrage käme leer
+-- zurück und würde Leere als Bestätigung lesen.
+select pg_get_function_result('public.creator_verlauf(integer)'::regprocedure);
+
+-- anon hat nichts?
+select has_function_privilege('anon', 'public.creator_verlauf(integer)', 'execute');
+
+-- Index da?
+select indexname from pg_indexes
+where tablename = 'creator_konversionen';
+
+-- Exception-Block drin, search_path mit pg_temp?
+select p.proconfig, position('exception' in p.prosrc) > 0
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public' and p.proname = 'handle_new_user';
+```
+
+Rückweg: `0091`s Fassung der Funktion wieder anlegen (Datei lesen, Grants
+mitnehmen), `handle_new_user` aus `0088` zurückschreiben, `drop index
+creator_konversionen_code_art_zeit`. Verlustfrei — es hängen keine Daten
+daran; `creator_konversionen` und `creator_klicks` waren beim Einspielen
+leer und sind es geblieben.
+
 ## Eingespielt: 0088–0093 (Creator-Herkunft und Creator-Konten, 2026-09-14, Produktion)
 
 Sechs Migrationen, in dieser Reihenfolge angewendet:

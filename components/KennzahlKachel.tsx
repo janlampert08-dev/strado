@@ -25,7 +25,9 @@ export default function KennzahlKachel({
     <Card surface className="flex flex-col gap-0.5 p-3 sm:p-4">
       {/* tabular-nums, damit drei Kacheln nebeneinander nicht bei jeder
           Zahl unterschiedlich breit wirken. */}
-      <p className="text-2xl font-semibold tabular-nums sm:text-3xl">{wert}</p>
+      <p className="text-2xl font-semibold tabular-nums sm:text-3xl">
+        {wert.toLocaleString("de-CH")}
+      </p>
       <p className="text-sm font-medium">{beschriftung}</p>
       <p className="text-xs text-muted">
         {hinweis}
@@ -33,7 +35,9 @@ export default function KennzahlKachel({
           <>
             {" · "}
             {/* Komma statt Punkt: die Oberfläche ist deutschsprachig. */}
-            <span className="tabular-nums">{String(quote).replace(".", ",")} %</span>
+            <span className="tabular-nums">
+              {String(quote).replace(".", ",")} %
+            </span>
           </>
         )}
       </p>

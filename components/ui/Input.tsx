@@ -1,6 +1,11 @@
 "use client";
 
-import { useState, type InputHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import {
+  useState,
+  type InputHTMLAttributes,
+  type Ref,
+  type TextareaHTMLAttributes,
+} from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -19,6 +24,11 @@ export function fieldClassName(className?: string, invalid?: boolean): string {
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   invalid?: boolean;
+  // Seit React 19 ist ref eine gewöhnliche Prop einer Funktionskomponente und
+  // reist mit dem Spread unten ans <input>. Deklariert, damit ein Aufrufer den
+  // Fokus setzen kann (NutzerWahl.tsx) — ohne forwardRef, das es dafür nicht
+  // mehr braucht.
+  ref?: Ref<HTMLInputElement>;
 }
 
 export function Input({ className, invalid, type, ...props }: InputProps) {
@@ -28,7 +38,13 @@ export function Input({ className, invalid, type, ...props }: InputProps) {
   const [visible, setVisible] = useState(false);
 
   if (type !== "password") {
-    return <input type={type} className={fieldClassName(className, invalid)} {...props} />;
+    return (
+      <input
+        type={type}
+        className={fieldClassName(className, invalid)}
+        {...props}
+      />
+    );
   }
 
   return (

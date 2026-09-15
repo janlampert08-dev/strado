@@ -36,6 +36,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
       disallow: [
         "/profil",
         "/moderation",
+        "/creator",
         "/api",
         "/aktivitaet",
         "/anmelden",
