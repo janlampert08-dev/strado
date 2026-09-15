@@ -73,8 +73,16 @@ export default function CompletionActionsMenu({
     // Rückgabe landete er beim <body> — die Tastaturposition wäre verloren.
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key !== "Escape") return;
+      // Schliessen darf global gelten — ein offen stehengebliebenes Menü soll
+      // zugehen, egal wo der Fokus gerade liegt. Den Fokus zurückholen darf
+      // es aber nur, wenn er auch hier drin liegt: Tab schliesst das Menü
+      // nicht, wer also daran vorbeitabbt und weiter unten in einem Textfeld
+      // Escape drückt (ein Autofill-Vorschlag ist der häufigste Anlass),
+      // bekäme den Fokus sonst an den Auslöser weiter oben gerissen.
+      const fokusIstDrin =
+        containerRef.current?.contains(document.activeElement) ?? false;
       setOpen(false);
-      ausloeserRef.current?.focus();
+      if (fokusIstDrin) ausloeserRef.current?.focus();
     }
     document.addEventListener("mousedown", handleClickOutside);
     document.addEventListener("keydown", handleKeyDown);
@@ -84,8 +92,19 @@ export default function CompletionActionsMenu({
     };
   }, [open]);
 
-  function handleToggleVisibility() {
+  // Nach dem Auslösen eines Eintrags den Fokus auf den Auslöser zurücksetzen.
+  // Der Eintrag selbst verschwindet mit dem Menü aus dem DOM; ohne Rückgabe
+  // fällt der Fokus auf <body>, und der nächste Tab fängt wieder am
+  // Seitenanfang an. Einträge, die danach einen Dialog öffnen, brauchen das
+  // nicht — components/ui/Dialog.tsx setzt den Fokus über showModal() ohnehin
+  // um, und eine zweite Zuweisung würde ihm dort nur zuvorkommen.
+  function schliessenUndFokusZurueck() {
     setOpen(false);
+    ausloeserRef.current?.focus();
+  }
+
+  function handleToggleVisibility() {
+    schliessenUndFokusZurueck();
     startToggle(async () => {
       const result = await toggleCompletionVisibility(completionId);
       setError(result.error);

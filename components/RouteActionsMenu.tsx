@@ -82,8 +82,16 @@ export default function RouteActionsMenu({
     // Rückgabe landete er beim <body> — die Tastaturposition wäre verloren.
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key !== "Escape") return;
+      // Schliessen darf global gelten — ein offen stehengebliebenes Menü soll
+      // zugehen, egal wo der Fokus gerade liegt. Den Fokus zurückholen darf
+      // es aber nur, wenn er auch hier drin liegt: Tab schliesst das Menü
+      // nicht, wer also daran vorbeitabbt und weiter unten in einem Textfeld
+      // Escape drückt (ein Autofill-Vorschlag ist der häufigste Anlass),
+      // bekäme den Fokus sonst an den Auslöser weiter oben gerissen.
+      const fokusIstDrin =
+        containerRef.current?.contains(document.activeElement) ?? false;
       setOpen(false);
-      ausloeserRef.current?.focus();
+      if (fokusIstDrin) ausloeserRef.current?.focus();
     }
     document.addEventListener("mousedown", handleClickOutside);
     document.addEventListener("keydown", handleKeyDown);
@@ -93,6 +101,17 @@ export default function RouteActionsMenu({
     };
   }, [open]);
 
+  // Nach dem Auslösen eines Eintrags den Fokus auf den Auslöser zurücksetzen.
+  // Der Eintrag selbst verschwindet mit dem Menü aus dem DOM; ohne Rückgabe
+  // fällt der Fokus auf <body>, und der nächste Tab fängt wieder am
+  // Seitenanfang an. Einträge, die danach einen Dialog öffnen, brauchen das
+  // nicht — components/ui/Dialog.tsx setzt den Fokus über showModal() ohnehin
+  // um, und eine zweite Zuweisung würde ihm dort nur zuvorkommen.
+  function schliessenUndFokusZurueck() {
+    setOpen(false);
+    ausloeserRef.current?.focus();
+  }
+
   async function handleShare() {
     const url = `${window.location.origin}/strecken/${route.id}`;
     if (typeof navigator.share === "function") {
@@ -101,7 +120,7 @@ export default function RouteActionsMenu({
       } catch {
         // Nutzer hat den Teilen-Dialog abgebrochen — kein Fehlerzustand nötig.
       }
-      setOpen(false);
+      schliessenUndFokusZurueck();
       return;
     }
     try {
@@ -109,10 +128,10 @@ export default function RouteActionsMenu({
       setCopied(true);
       setTimeout(() => {
         setCopied(false);
-        setOpen(false);
+        schliessenUndFokusZurueck();
       }, 1200);
     } catch {
-      setOpen(false);
+      schliessenUndFokusZurueck();
     }
   }
 
@@ -126,7 +145,7 @@ export default function RouteActionsMenu({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    setOpen(false);
+    schliessenUndFokusZurueck();
   }
 
   return (
