@@ -49,6 +49,10 @@ set -uo pipefail
 
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
 
+# Prüft einen Kanal und gibt genau eine Ergebniszeile aus.
+#   $1  Handle ohne "@" (SwissDrive4K-ch) oder vollständige Kanal-URL
+# Schreibt nach stdout, gibt keinen Fehlerstatus zurück: Ein Kanal, der nicht
+# abrufbar ist, soll die Liste nicht abbrechen, sondern als solcher dastehen.
 pruefe() {
   local h="$1" url f cid
   case "$h" in
@@ -95,6 +99,13 @@ pruefe() {
   rm -f "$f"
 }
 
+# Liest den ersten Treffer eines JSON-Felds aus einer Datei.
+#   $1  Datei mit dem Kanal-HTML
+#   $2  Feldname, z. B. subscriberCountText
+# Bewusst grep statt eines JSON-Parsers: Die Kanalseite ist kein JSON-Dokument,
+# sondern HTML mit eingebettetem ytInitialData — und die gesuchten Felder sind
+# flache Zeichenketten. Leer, wenn das Feld fehlt; nie ein falscher Wert.
+# (Steht nach pruefe(), wird aber erst beim Aufruf ganz unten gebraucht.)
 feld() { grep -o "\"$2\":\"[^\"]*\"" "$1" | head -1 | sed 's/.*:"//;s/"$//'; }
 
 if [ "$#" -gt 0 ]; then
