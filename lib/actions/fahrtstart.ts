@@ -3,7 +3,13 @@
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getClientIp, isRateLimitedByKey } from "@/lib/rateLimit";
-import { abdruckVon, erzeugeGeheimnis, type FahrtStartTicket } from "@/lib/fahrtstart";
+import {
+  abdruckVon,
+  erzeugeGeheimnis,
+  istGeheimnis,
+  istTicketId,
+  type FahrtStartTicket,
+} from "@/lib/fahrtstart";
 import { isValidUuid } from "@/lib/validation";
 
 // Meldet dem Server, dass eine Zeitmessung gerade begonnen hat, und gibt dem
@@ -22,7 +28,7 @@ import { isValidUuid } from "@/lib/validation";
 // an, was bei einem Gast NULL ist; eingelöst wird später gegen das
 // Geheimnis, nicht gegen die Sitzung.
 
-/** Ein Ticket pro IP und Minute reicht für jede echte Fahrt — mehr wäre ein Skript. */
+/** Zwanzig Tickets pro IP und Minute: genug für ein Mobilfunk-NAT, zu wenig für ein Skript. */
 const TICKETS_PRO_MINUTE = 20;
 const FENSTER_MS = 60_000;
 
@@ -62,4 +68,44 @@ export async function fahrtStartAnlegen(
   if (error || typeof data !== "string") return { ok: false };
 
   return { ok: true, ticket: { id: data, geheimnis } };
+}
+
+// Meldet dem Server eine Position während der laufenden Aufzeichnung
+// (0098_fahrtstart_puls.sql). Die gewertete Dauer ist danach die Spanne
+// zwischen Start und letztem Puls, nicht die zwischen Start und Einlösen —
+// deshalb bringt es nichts mehr, das Ticket mitten in der Fahrt einzulösen.
+//
+// Wie fahrtStartAnlegen bewusst ohne Anmeldepflicht: Gäste zeichnen auf, also
+// pulsen sie auch. Und wie dort ist ein Fehlschlag kein Abbruch — ein
+// verlorener Puls verkürzt nur das Fenster, in dem die Fahrt wertbar bleibt.
+//
+// Die Bremse hier ist grober als die in der Datenbank (dort: nichts unter
+// 5 Sekunden je Ticket) und fängt den Fall ab, dass viele Tickets von
+// derselben Stelle aus bepulst werden. Bei 20 Sekunden Intervall braucht eine
+// echte Fahrt drei Pulse pro Minute; 90 lassen also 30 gleichzeitige
+// Aufzeichnungen hinter einer gemeinsamen Adresse zu (Mobilfunk-NAT), bevor
+// etwas verloren geht.
+const PULSE_PRO_MINUTE = 90;
+
+export async function fahrtStartPuls(
+  ticket: FahrtStartTicket,
+  lat: number,
+  lng: number,
+): Promise<boolean> {
+  if (!istTicketId(ticket?.id) || !istGeheimnis(ticket?.geheimnis)) return false;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return false;
+
+  const ip = getClientIp(await headers());
+  if (isRateLimitedByKey(`fahrtpuls:${ip}`, PULSE_PRO_MINUTE, FENSTER_MS)) return false;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("fahrt_start_puls", {
+    p_id: ticket.id,
+    p_abdruck: await abdruckVon(ticket.geheimnis),
+    p_lat: lat,
+    p_lng: lng,
+  });
+
+  return !error && data === true;
 }

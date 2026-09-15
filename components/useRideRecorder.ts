@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { haversineKm, type TrailPoint } from "@/lib/geo";
 import { evaluateProximity } from "@/lib/tracking";
 import type { FahrtStartTicket } from "@/lib/fahrtstart";
-import { fahrtStartAnlegen } from "@/lib/actions/fahrtstart";
+import { fahrtStartAnlegen, fahrtStartPuls } from "@/lib/actions/fahrtstart";
+import { sollPulsen } from "@/lib/fahrtstart";
 import {
   saveTrackingSnapshot,
   loadTrackingSnapshot,
@@ -146,6 +147,10 @@ export function useRideRecorder({
   const [hasStarted, setHasStarted] = useState(false);
 
   const ticketRef = useRef<FahrtStartTicket | null>(null);
+  // Zeitpunkt des letzten abgesetzten Pulses (0098_fahrtstart_puls.sql).
+  // Ein Ref und kein State: die Zahl wird aus der watchPosition-Closure
+  // gelesen und geschrieben und darf kein Rendern ausloesen.
+  const letzterPulsAtRef = useRef<number | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const lastPointRef = useRef<[number, number] | null>(null);
   const lastPointTimeRef = useRef<number | null>(null);
@@ -219,6 +224,25 @@ export function useRideRecorder({
     saveTrackingSnapshot(userIdRef.current, storageKeyRef.current, {
       ...snapshot,
       ticket: ticketRef.current,
+    });
+  }, []);
+
+  // Meldet die aktuelle Position an den Server, höchstens alle
+  // PULS_INTERVALL_MS (siehe lib/fahrtstart.ts). Die gewertete Dauer ist
+  // danach die Spanne zwischen Start und letztem Puls — deshalb muss gepulst
+  // werden, solange die Aufzeichnung läuft, und ein letztes Mal beim Beenden.
+  //
+  // Absichtlich nicht abgewartet und ohne Fehlerbehandlung: ein verlorener
+  // Puls darf die Aufzeichnung nicht bremsen. Er kostet nur Genauigkeit am
+  // Ende, und dafür hat der Trigger seine 500-Meter-Toleranz.
+  const pulsen = useCallback((punkt: [number, number], erzwingen = false) => {
+    const ticket = ticketRef.current;
+    if (!ticket) return;
+    const jetzt = Date.now();
+    if (!erzwingen && !sollPulsen(letzterPulsAtRef.current, jetzt)) return;
+    letzterPulsAtRef.current = jetzt;
+    void fahrtStartPuls(ticket, punkt[1], punkt[0]).catch(() => {
+      // Ohne Netz kein Puls. Beim nächsten Fix wird es erneut versucht.
     });
   }, []);
 
@@ -362,6 +386,13 @@ export function useRideRecorder({
     // Aufzeichnung endet auch automatisch am Ziel, also ohne Tastendruck.
     navigator.vibrate?.(10);
 
+    // Schlusspuls, erzwungen: er setzt den Zeitpunkt, an dem die gewertete
+    // Uhr stehen bleibt, und seine Position muss zum Ende des eingereichten
+    // Tracks passen. Ohne ihn zählt der letzte reguläre Puls — bis zu einem
+    // Intervall älter, was die 500-Meter-Toleranz im Trigger auffängt.
+    const letzterPunkt = trailRef.current.at(-1);
+    if (letzterPunkt) pulsen([letzterPunkt.lng, letzterPunkt.lat], true);
+
     const finalDistanceKm = distanceKmRef.current;
     const finalSeconds = startTimeRef.current
       ? Math.round((Date.now() - startTimeRef.current) / 1000)
@@ -389,7 +420,7 @@ export function useRideRecorder({
       },
       true,
     );
-  }, [releaseTracking, writeSnapshot, publishLiveTrail]);
+  }, [releaseTracking, writeSnapshot, publishLiveTrail, pulsen]);
 
   // `resume` kommt aus dem Snapshot einer unterbrochenen Aufzeichnung —
   // statt bei Null neu zu starten, werden Trail/Distanz/Startzeit
@@ -512,6 +543,13 @@ export function useRideRecorder({
           // dort" zählt.
           trailRef.current.push({ lng: point[0], lat: point[1], t: now });
 
+          // Denselben Punkt an den Server melden (0098_fahrtstart_puls.sql).
+          // Bewusst genau hier: der Genauigkeitsfilter oben entscheidet damit
+          // auch über den Puls, und gemeldet wird nur, was auch im Trail
+          // landet. Der Trigger vergleicht den letzten Puls später mit dem
+          // Ende genau dieses Trails.
+          pulsen(point);
+
           if (lastPointRef.current) {
             const segment = haversineKm(lastPointRef.current, point);
             if (segment > MIN_SEGMENT_KM) {
@@ -582,7 +620,7 @@ export function useRideRecorder({
       requestWakeLock();
       setPhase("tracking");
     },
-    [beginActualTracking, requestWakeLock, stop, writeSnapshot, publishLiveTrail],
+    [beginActualTracking, requestWakeLock, stop, writeSnapshot, publishLiveTrail, pulsen],
   );
 
   const discard = useCallback(() => {

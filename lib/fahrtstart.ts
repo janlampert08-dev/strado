@@ -79,3 +79,41 @@ export function leseTicket(wert: unknown): FahrtStartTicket | null {
   if (!istTicketId(id) || !istGeheimnis(geheimnis)) return null;
   return { id, geheimnis };
 }
+
+// ---------------------------------------------------------------------------
+// Pulsschläge (0098_fahrtstart_puls.sql)
+// ---------------------------------------------------------------------------
+// Während der Aufzeichnung meldet der Client seine Position an den Server.
+// Die gewertete Dauer ist danach `letzter Puls − Start`, beides Serverzeiten,
+// und der Trigger verlangt, dass der letzte Puls am Ende des eingereichten
+// Tracks liegt. Damit bringt es nichts mehr, das Ticket mitten in der Fahrt
+// einzulösen: die Uhr hängt nicht am Einlösen, sondern am letzten Puls.
+
+/**
+ * Abstand zwischen zwei Pulsen.
+ *
+ * 20 Sekunden sind ein Kompromiss zwischen Datenverkehr und der Toleranz im
+ * Trigger: geht der Schlusspuls verloren, zählt der letzte davor, und der ist
+ * höchstens ein Intervall alt — bei 90 km/h also rund 500 m zurück, was genau
+ * der Toleranz dort entspricht. Ein längeres Intervall würde die Toleranz
+ * aufweichen müssen, ein kürzeres kostet Funk und Akku, ohne etwas zu gewinnen.
+ *
+ * Die Datenbank weist Pulse ab, die enger als 5 Sekunden aufeinander folgen —
+ * diese Zahl muss deutlich darunter bleiben.
+ */
+export const PULS_INTERVALL_MS = 20_000;
+
+/**
+ * Ist es Zeit für den nächsten Puls?
+ *
+ * `letzterPulsMs` ist null, solange keiner gesendet wurde — dann sofort.
+ * Bewusst eine reine Funktion statt eines `setInterval`: gepulst wird aus dem
+ * GPS-Handler heraus, also nur dann, wenn es auch eine Position zu melden
+ * gibt. Ein Timer würde weiterlaufen, während das Gerät gar keinen Fix hat,
+ * und den Server mit der zuletzt bekannten Position beliefern — die dann im
+ * Trigger als „passt zum Trackende" durchginge, obwohl niemand gefahren ist.
+ */
+export function sollPulsen(letzterPulsMs: number | null, jetztMs: number): boolean {
+  if (letzterPulsMs === null) return true;
+  return jetztMs - letzterPulsMs >= PULS_INTERVALL_MS;
+}

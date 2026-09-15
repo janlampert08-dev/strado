@@ -7,6 +7,8 @@ import {
   istGeheimnis,
   istTicketId,
   leseTicket,
+  sollPulsen,
+  PULS_INTERVALL_MS,
 } from "./fahrtstart";
 
 describe("erzeugeGeheimnis", () => {
@@ -125,5 +127,40 @@ describe("leseTicket", () => {
 
   it("ignoriert Zusatzfelder, statt daran zu scheitern", () => {
     expect(leseTicket({ ...gut, alt: "egal" })).toEqual(gut);
+  });
+});
+
+describe("sollPulsen", () => {
+  it("pulst sofort, solange noch kein Puls abgesetzt wurde", () => {
+    expect(sollPulsen(null, 0)).toBe(true);
+    expect(sollPulsen(null, 1_700_000_000_000)).toBe(true);
+  });
+
+  it("schweigt innerhalb des Intervalls", () => {
+    const t = 1_700_000_000_000;
+    expect(sollPulsen(t, t)).toBe(false);
+    expect(sollPulsen(t, t + PULS_INTERVALL_MS - 1)).toBe(false);
+  });
+
+  it("pulst, sobald das Intervall voll ist", () => {
+    const t = 1_700_000_000_000;
+    expect(sollPulsen(t, t + PULS_INTERVALL_MS)).toBe(true);
+    expect(sollPulsen(t, t + PULS_INTERVALL_MS * 3)).toBe(true);
+  });
+
+  // Die Datenbank weist Pulse ab, die enger als fünf Sekunden aufeinander
+  // folgen (0098_fahrtstart_puls.sql). Läge das Client-Intervall darunter,
+  // würde jeder zweite Puls still verworfen — und die Toleranz im Trigger
+  // wäre auf eine Taktung ausgelegt, die es gar nicht gibt.
+  it("bleibt deutlich über der Schreibbremse der Datenbank", () => {
+    expect(PULS_INTERVALL_MS).toBeGreaterThan(5_000);
+  });
+
+  // Eine Uhr, die rückwärts läuft (Zeitumstellung, NTP-Korrektur), darf nicht
+  // dazu führen, dass für Stunden gar nicht mehr gepulst wird.
+  it("pulst nicht, wenn die Uhr zurückspringt — aber sperrt auch nicht dauerhaft", () => {
+    const t = 1_700_000_000_000;
+    expect(sollPulsen(t, t - 60_000)).toBe(false);
+    expect(sollPulsen(t, t + PULS_INTERVALL_MS)).toBe(true);
   });
 });
