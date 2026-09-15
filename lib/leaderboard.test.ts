@@ -11,6 +11,7 @@ function totalsRow(overrides: Partial<LeaderboardUserTotalsRow>): LeaderboardUse
     user_id: "u1",
     display_name: "Alice",
     avatar_url: null,
+    ist_premium: false,
     fahrten_count: 3,
     hoehenmeter: 2000,
     km: 40,
@@ -25,6 +26,7 @@ function routeRow(overrides: Partial<RouteLeaderboardRow>): RouteLeaderboardRow 
     user_id: "u1",
     display_name: "Alice",
     avatar_url: null,
+    ist_premium: false,
     dauer_sekunden: 1000,
     motorklasse: null,
     ...overrides,
@@ -45,6 +47,7 @@ describe("toEntry", () => {
       name: "Alice",
       avatarUrl: null,
       value: 5,
+      zeigtPremiumAbzeichen: false,
     });
   });
 
@@ -57,6 +60,16 @@ describe("toEntry", () => {
       "https://example.com/a.jpg",
     );
     expect(toEntry(totalsRow({ avatar_url: null }), 1).avatarUrl).toBeNull();
+  });
+
+  // Dieselbe Regel wie beim Avatar, und sie ist der Grund, warum hier nichts
+  // gerechnet wird: leaderboard_user_totals gibt unter ist_premium bereits
+  // (ist_premium and zeigt_premium_badge) aus (0027/0028/0056). Wer hier eine
+  // zweite Bedingung einzöge, müsste dafür den rohen Abo-Status lesen — genau
+  // das, was die View vermeidet.
+  it("passes the already-gated premium flag through unchanged", () => {
+    expect(toEntry(totalsRow({ ist_premium: true }), 1).zeigtPremiumAbzeichen).toBe(true);
+    expect(toEntry(totalsRow({ ist_premium: false }), 1).zeigtPremiumAbzeichen).toBe(false);
   });
 
   it("uses the value passed in rather than re-reading a metric off the row", () => {

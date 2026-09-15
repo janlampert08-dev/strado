@@ -158,7 +158,15 @@ is what should be corrected.
   branch, which is the intended order (schema first, code second). Each was
   verified against the objects rather than against the ledger —
   `apply_migration` stamps a timestamp as `version`, so a search for the file
-  number finds nothing. `0086_strecken_anlegen_wieder_offen` went in on
+  number finds nothing. `0087_premium_abzeichen_spalte` went in on
+  2026-09-14, likewise ahead of its code (PR #235) — and there the order is
+  mandatory rather than merely intended: `lib/profile.ts` and
+  `app/profil/page.tsx` select the new column straight from `profiles`, so
+  without the migration both profile pages answer with a column error. (Feed
+  and ride detail degrade quietly instead — `lib/premiumAbzeichen.ts` drops
+  the error and renders without a badge — and the leaderboards never touch
+  the column at all; an earlier version of this line claimed all four fail.)
+  Purely additive (one generated column, one column grant). `0086_strecken_anlegen_wieder_offen` went in on
   2026-09-14, also **ahead of its code** — which is harmless here and not
   merely tolerable: it widens a policy rather than narrowing one, so until
   PR #220 ships the Server Action simply keeps refusing and nothing changes.

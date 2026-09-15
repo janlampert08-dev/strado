@@ -96,6 +96,28 @@ export async function updateVisibilitySettings(
   }
   const privatzoneRadiusM = radius;
 
+  // Das Premium-Abzeichen ist der einzige Schalter, den die Oberfläche nur
+  // manchmal zeigt (VisibilitySettings rendert ihn ausschliesslich mit
+  // laufendem Abo). Damit ist die übliche Auswertung "nicht mitgeschickt =
+  // false" hier FALSCH: sie träfe nicht nur den abgewählten Schalter,
+  // sondern auch den nie gerenderten. Ein Konto, dessen Abo endet, verlöre
+  // das Opt-in beim nächsten beliebigen Speichern still — und nach einem
+  // erneuten Abschluss stünde der Schalter auf "aus", ohne dass ihn jemand
+  // umgelegt hat.
+  //
+  // Deshalb entscheidet ein verstecktes Markierungsfeld, ob die Spalte
+  // überhaupt Teil des Updates wird. Fehlt es, bleibt der gespeicherte Wert
+  // unangetastet.
+  //
+  // Sicherheitlich unkritisch: Die Markierung ist kein Berechtigungsnachweis.
+  // Wer sie von Hand mitschickt, kann zeigt_premium_badge setzen — sichtbar
+  // wird das Abzeichen davon nicht, weil zeigt_premium_abzeichen (0087)
+  // generiert (ist_premium and zeigt_premium_badge) ist und ist_premium
+  // ausschliesslich aus dem Stripe-Pfad stammt. Die Spalte ist ein reines
+  // Anzeige-Opt-in und steht seit 0034 ohnehin im grant update für
+  // authenticated.
+  const abzeichenGesendet = formData.get("premium_abzeichen_vorhanden") === "1";
+
   const { error } = await supabase
     .from("profiles")
     .update({
@@ -106,8 +128,9 @@ export async function updateVisibilitySettings(
       zeigt_hoehenmeter: formData.get("zeigt_hoehenmeter") === "true",
       zeigt_distanz: formData.get("zeigt_distanz") === "true",
       zeigt_follower_liste: formData.get("zeigt_follower_liste") === "true",
-      // profiles.zeigt_premium_badge wird bewusst nicht mehr geschrieben: das
-      // Abzeichen war nie gerendert; die Spalte bleibt nur für die Views (0021/0027).
+      ...(abzeichenGesendet
+        ? { zeigt_premium_badge: formData.get("zeigt_premium_badge") === "true" }
+        : {}),
     })
     .eq("id", user.id);
 

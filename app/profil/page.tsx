@@ -22,6 +22,7 @@ import ActivityHeatmap from "@/components/ActivityHeatmap";
 import CountUp from "@/components/CountUp";
 import FollowCounts from "@/components/FollowCounts";
 import PremiumCard from "@/components/PremiumCard";
+import PremiumSignet from "@/components/PremiumSignet";
 import FahrtStatistik from "@/components/FahrtStatistik";
 import { ChartIcon } from "@/components/NavIcons";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
@@ -97,7 +98,12 @@ export default async function ProfilPage() {
   ] = await Promise.all([
     supabase
       .from("profiles")
-      .select("display_name, avatar_url, zeigt_fahrzeuge")
+      // zeigt_premium_abzeichen statt ist_premium: premiumStatus weiter
+      // unten weiss, ob ein Abo läuft, aber nicht, ob das Abzeichen
+      // eingeschaltet ist. Die generierte Spalte (0087) beantwortet beides
+      // in einem Wert — und zwar demselben, den andere Konten von dieser
+      // Person sehen. Das ist der Punkt: hier steht, was die anderen sehen.
+      .select("display_name, avatar_url, zeigt_fahrzeuge, zeigt_premium_abzeichen")
       .eq("id", user.id)
       .single(),
     // Explizit auf den eigenen Nutzer filtern statt allein auf RLS zu
@@ -224,8 +230,15 @@ export default async function ProfilPage() {
             </Link>
           </div>
           <div className="flex flex-col gap-1.5">
+            {/* inline-flex um Name UND Zeichen: ein blanker Block liesse
+                nach UAX#14 einen Umbruch davor zu, und hier hängt die Grösse
+                an --text-display — das Zeichen wäre 25-38 px breit und
+                stünde im Zweifel allein auf Zeile zwei. */}
             <h1 className="text-display font-semibold">
-              {profile?.display_name ?? user.email}
+              <span className="inline-flex items-center">
+                {profile?.display_name ?? user.email}
+                <PremiumSignet zeigen={profile?.zeigt_premium_abzeichen === true} />
+              </span>
             </h1>
             <p className="text-sm text-muted">{user.email}</p>
             <FollowCounts

@@ -6,6 +6,7 @@ import Header from "@/components/Header";
 import PullToRefreshArea from "@/components/PullToRefreshArea";
 import TrackLeaderboardChooser from "@/components/TrackLeaderboardChooser";
 import Avatar from "@/components/Avatar";
+import PremiumSignet from "@/components/PremiumSignet";
 import { getGlobalLeaderboards, type LeaderboardEntry } from "@/lib/leaderboard";
 import { listRouteChoices } from "@/lib/routes";
 import { nomen } from "@/lib/format";
@@ -75,11 +76,12 @@ function LeaderboardSection({
                 <Avatar url={entry.avatarUrl} name={entry.name} size={24} />
                 <Link
                   href={`/fahrer/${entry.userId}`}
-                  className={`min-w-0 flex-1 truncate transition-colors duration-fast hover:text-accent ${
+                  className={`flex min-w-0 flex-1 items-center transition-colors duration-fast hover:text-accent ${
                     isOwn ? "font-medium text-accent" : ""
                   }`}
                 >
-                  {entry.name}
+                  <span className="truncate">{entry.name}</span>
+                  <PremiumSignet zeigen={entry.zeigtPremiumAbzeichen} />
                 </Link>
                 <span
                   className={`shrink-0 font-mono tabular-nums ${isOwn ? "text-accent" : "text-muted"}`}

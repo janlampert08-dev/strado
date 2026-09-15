@@ -7,6 +7,7 @@ import { formatDuration } from "@/lib/format";
 import type { RouteTimeEntry } from "@/lib/leaderboard";
 import { MEDAL_COLORS } from "@/lib/constants";
 import Avatar from "@/components/Avatar";
+import PremiumSignet from "@/components/PremiumSignet";
 import Card from "@/components/ui/Card";
 import MotorklassenChips from "@/components/MotorklassenChips";
 import { filterLabel, istFahrzeugTyp, motorklassendefinition } from "@/lib/motorklassen";
@@ -106,9 +107,10 @@ export default function RouteLeaderboardPreview({
               <Avatar url={entry.avatarUrl} name={entry.name} size={24} />
               <Link
                 href={`/fahrer/${entry.userId}`}
-                className="min-w-0 flex-1 truncate transition-colors duration-fast hover:text-accent"
+                className="flex min-w-0 flex-1 items-center transition-colors duration-fast hover:text-accent"
               >
-                {entry.name}
+                <span className="truncate">{entry.name}</span>
+                <PremiumSignet zeigen={entry.zeigtPremiumAbzeichen} />
               </Link>
               {/* Die Klasse überall ausser in einer Klassenliste: dort
                   trüge sie an jeder Zeile denselben Wert. In der Typliste
