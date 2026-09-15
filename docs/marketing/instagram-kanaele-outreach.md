@@ -17,10 +17,20 @@ in der App **schon gibt**. Was es gibt, wurde in der Produktion gezählt:
 Datenbank. Von diesen acht stammen die fertigen Grafiken; die längste
 dort ist 65,7 km lang, die höchste erreicht 783 m.
 
-Daraus folgt eine Absage, die man sich sonst teuer erkauft: **Alpenpass- und
-Grand-Tour-Accounts sind kein Ziel.** Deren Publikum will Furka, Susten,
-Gotthard. Wer von dort kommt und eine 5,7-km-Runde in Dietlikon findet, kommt
-nicht wieder.
+~~Daraus folgt eine Absage, die man sich sonst teuer erkauft: **Alpenpass- und
+Grand-Tour-Accounts sind kein Ziel.**~~
+
+**Überholt am 2026-09-14 durch Entscheid des Inhabers: Die
+Alpenpass-Zielgruppe ist gültig.** Der Absatz stand hier so, und der Schluss
+war aus dem damaligen Streckenbestand richtig gezogen — er galt aber nur,
+solange Zürich-first nicht verhandelbar war. Das ist es nicht mehr; siehe
+`docs/marketing/partner-creators.md`, Abschnitt „Die Reichweite ist
+entschieden".
+
+Was von der Überlegung bleibt und weiterhin gilt: Wer von einem
+Alpenpass-Kanal kommt und eine 5,7-km-Runde in Dietlikon findet, kommt nicht
+wieder. Die Bedingung ist deshalb nicht *ob*, sondern *wann* — **erst
+Alpenstrecken in der App, dann der Post**, nicht umgekehrt.
 
 **2. Die App rangiert sechs Klassen, nicht eine.**
 `supabase/migrations/0080_motorklassen.sql` und `lib/motorklassen.ts`:
@@ -336,10 +346,12 @@ Enttäuschung.
   [SRF berichtete über das „Geschäft mit der Erniedrigung"](https://www.srf.ch/news/schweiz/szene-isch-zueri-so-funktioniert-das-geschaeft-mit-der-erniedrigung)
   hinter dem Netzwerk (dazu `szene_isch_aargau`, `swiss_reelz`, `army_szene`).
   Markenrisiko grösser als der Nutzen.
-- **Reise- und Alpenpass-Accounts allgemein** — Publikum sucht Furka, die App
-  hat Dietlikon. Interessant erst, wenn Strecken ausserhalb des Kantons
-  dazukommen — und das wäre genau die Ausweitung, die `AGENTS.md` vermeiden
-  will.
+- ~~**Reise- und Alpenpass-Accounts allgemein**~~ — **gestrichen am
+  2026-09-14.** Der Eintrag sagte, das sei erst interessant, wenn Strecken
+  ausserhalb des Kantons dazukommen. Genau das ist jetzt entschieden. Diese
+  Accounts gehören nicht mehr auf die Ausschlussliste; die geprüften
+  Kandidaten stehen in `docs/marketing/partner-creators.md`, Stufe 2. Die
+  Reihenfolge-Bedingung oben bleibt.
 
 ---
 

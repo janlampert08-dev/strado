@@ -6,6 +6,7 @@ import { formatDuration } from "@/lib/format";
 import type { RouteTimeEntry } from "@/lib/leaderboard";
 import { fieldClassName } from "@/components/ui/Input";
 import Card from "@/components/ui/Card";
+import PremiumSignet from "@/components/PremiumSignet";
 import MotorklassenChips from "@/components/MotorklassenChips";
 import { filterLabel } from "@/lib/motorklassen";
 import type { Klassenfilter } from "@/lib/motorklassen";
@@ -69,6 +70,11 @@ export default function TrackLeaderboardChooser({
         </h2>
         {routes.length > 0 && (
           <select
+            // Ohne Beschriftung meldet ein Screenreader hier nur "Auswahl" —
+            // die Überschrift daneben ist nicht mit dem Feld verknüpft. Die
+            // Chips darunter tragen ihre Beschriftung bereits (label-Prop),
+            // dieses Feld war das einzige ohne.
+            aria-label="Strecke für die Bestzeiten wählen"
             value={routeId}
             onChange={(e) => {
               setRouteId(e.target.value);
@@ -122,9 +128,10 @@ export default function TrackLeaderboardChooser({
                   <span className="mr-2 font-mono text-muted tabular-nums">{i + 1}.</span>
                   <Link
                     href={`/fahrer/${entry.userId}`}
-                    className="transition-colors duration-fast hover:text-accent"
+                    className="inline-flex min-w-0 items-center align-bottom transition-colors duration-fast hover:text-accent"
                   >
-                    {entry.name}
+                    <span className="truncate">{entry.name}</span>
+                    <PremiumSignet zeigen={entry.zeigtPremiumAbzeichen} />
                   </Link>
                 </span>
                 <span className="font-mono tabular-nums text-accent">

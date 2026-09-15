@@ -1,8 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronRight, Rss } from "lucide-react";
 import Header from "@/components/Header";
 import PullToRefreshArea from "@/components/PullToRefreshArea";
 import Avatar from "@/components/Avatar";
+import PremiumSignet from "@/components/PremiumSignet";
 import KudosButton from "@/components/KudosButton";
 import ProfileSearch from "@/components/ProfileSearch";
 import { Signet } from "@/components/Wortmarke";
@@ -14,8 +16,25 @@ import EmptyState from "@/components/ui/EmptyState";
 import { buttonVariants } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Feed – Strado",
+  description:
+    "Die zuletzt gefahrenen Strecken und Touren der Strado-Community rund um Zürich.",
+  // Kanonische Adresse. Die App wird unter mehr als einem Hostnamen
+  // ausgeliefert — app.strado.ch, die Vorschau-Adressen jedes Deployments,
+  // dazu Staging — und lieferte bis hierher auf keiner davon ein Canonical
+  // aus (im ausgelieferten HTML nachgesehen). Damit steht derselbe Inhalt
+  // mehrfach zur Auswahl, und welche Adresse eine Suchmaschine nimmt, ist
+  // ihre Entscheidung statt unsere.
+  //
+  // Der relative Pfad wird von Next gegen metadataBase aufgelöst
+  // (app/layout.tsx). Bewusst ohne Query: alternates.canonical gehört an die
+  // Adresse OHNE ?-Parameter, sonst zählt jeder Filter- und Marker-Wert als
+  // eigene Seite.
+  //
+  // ?scope=folge-ich ist der zweite Reiter derselben Seite und braucht
+  // deshalb keine eigene Adresse im Index.
+  alternates: { canonical: "/feed" },
 };
 
 // Öffentlich lesbar wie /strecken/[id] (public_fahrten ist an anon
@@ -122,11 +141,16 @@ export default async function FeedPage({
                       <Avatar url={item.avatar_url} name={item.display_name} size={40} />
                     </Link>
                     <div className="min-w-0 flex-1">
+                      {/* flex statt "block truncate": das Abzeichen darf nicht
+                          mit abgeschnitten werden, wenn der Name zu lang ist.
+                          Gekürzt wird deshalb der Name allein, das Zeichen
+                          bleibt (PremiumSignet trägt shrink-0). */}
                       <Link
                         href={`/fahrer/${item.user_id}`}
-                        className="relative z-10 block truncate text-sm font-medium transition-colors duration-fast hover:text-accent"
+                        className="relative z-10 flex min-w-0 items-center text-sm font-medium transition-colors duration-fast hover:text-accent"
                       >
-                        {item.display_name ?? "Fahrer"}
+                        <span className="truncate">{item.display_name ?? "Fahrer"}</span>
+                        <PremiumSignet zeigen={item.zeigtPremiumAbzeichen} />
                       </Link>
                       <p className="text-xs text-muted">{new Date(item.datum).toLocaleDateString("de-CH")}</p>
                     </div>

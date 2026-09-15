@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { OG_GEERBT } from "@/lib/openGraph";
 import Link from "next/link";
 import {
   Bike,
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 import Header from "@/components/Header";
 import Avatar from "@/components/Avatar";
+import PremiumSignet from "@/components/PremiumSignet";
 import KudosButton from "@/components/KudosButton";
 import ShareRideButton from "@/components/ShareRideButton";
 import CompletionActionsMenu from "@/components/CompletionActionsMenu";
@@ -70,10 +72,16 @@ export async function generateMetadata({
       title: `${titel} – Fahrt von ${fahrer} – Strado`,
       description: beschreibung,
       openGraph: {
+        ...OG_GEERBT,
         type: "article",
         title: `${titel} – Fahrt von ${fahrer}`,
         description: beschreibung,
       },
+      // Kanonische Adresse. Eine Fahrt ist die am häufigsten geteilte
+      // Adresse der App (Teilen-Knopf, lib/shareImage.ts), landet also in
+      // Chats und Bios — oft mit angehängten Parametern. Der Inhalt bleibt
+      // derselbe.
+      alternates: { canonical: `/fahrten/${id}` },
     };
   }
 
@@ -88,10 +96,16 @@ export async function generateMetadata({
     title: `${route.name} – Fahrt von ${fahrer} – Strado`,
     description: beschreibung,
     openGraph: {
+      ...OG_GEERBT,
       type: "article",
       title: `${route.name} – Fahrt von ${fahrer}`,
       description: beschreibung,
     },
+    // Kanonische Adresse. Eine Fahrt ist die am häufigsten geteilte
+    // Adresse der App (Teilen-Knopf, lib/shareImage.ts), landet also in
+    // Chats und Bios — oft mit angehängten Parametern. Der Inhalt bleibt
+    // derselbe.
+    alternates: { canonical: `/fahrten/${id}` },
   };
 }
 
@@ -189,8 +203,11 @@ export default async function FahrtDetailPage({
             >
               <Avatar url={completion.avatarUrl} name={completion.displayName} size={44} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium transition-colors duration-fast group-hover:text-accent">
-                  {completion.isOwner ? "Deine Fahrt" : (completion.displayName ?? "Fahrer")}
+                <p className="flex min-w-0 items-center text-sm font-medium transition-colors duration-fast group-hover:text-accent">
+                  <span className="truncate">
+                    {completion.isOwner ? "Deine Fahrt" : (completion.displayName ?? "Fahrer")}
+                  </span>
+                  <PremiumSignet zeigen={completion.zeigtPremiumAbzeichen} />
                 </p>
                 <p className="text-xs text-muted">
                   {new Date(completion.datum).toLocaleDateString("de-CH", {

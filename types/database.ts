@@ -297,10 +297,22 @@ export interface Profile {
   zeigt_hoehenmeter: boolean;
   zeigt_distanz: boolean;
   avatar_url: string | null;
-  // Siehe 0021_premium_und_private_strecken.sql. ist_premium ist vorerst
-  // manuell gesetzt (kein Zahlungsanbieter angebunden).
+  // Siehe 0021_premium_und_private_strecken.sql. ist_premium wird vom
+  // Stripe-Webhook bzw. dem nächtlichen Abgleich fortgeschrieben (0059)
+  // und kann zusätzlich von Hand gesetzt sein.
+  //
+  // Für die ANZEIGE des Abzeichens ist keine dieser beiden Spalten die
+  // richtige: dafür steht zeigt_premium_abzeichen weiter unten.
   ist_premium: boolean;
+  // Opt-in. Nur wirksam zusammen mit ist_premium — verknüpft wird in der
+  // Datenbank, nicht hier.
   zeigt_premium_badge: boolean;
+  // Generiert aus (ist_premium and zeigt_premium_badge), siehe
+  // 0087_premium_abzeichen_spalte.sql. Nicht beschreibbar; das Opt-in
+  // läuft über zeigt_premium_badge. Die einzige Spalte, die eine
+  // öffentliche Leseabfrage für das Abzeichen anfassen sollte — sie legt
+  // den rohen Abo-Status nicht offen.
+  zeigt_premium_abzeichen: boolean;
   // Radius der Privatzone in Metern (0 = aus), siehe
   // 0045_freie_fahrten_teilen.sql und cropTrackEnds in lib/track.ts.
   privatzone_radius_m: number;
@@ -433,6 +445,59 @@ export interface CreatorLink extends CreatorLinkZiel {
   name: string;
   aktiv: boolean;
   erstellt_am: string;
+  /** Das Konto, dem der Code gehört (0091) — zugleich die Creator-Rolle:
+   *  wer hier steht, sieht /creator. null, solange keines zugewiesen ist
+   *  oder nachdem das zugewiesene gelöscht wurde (0092). */
+  creator_user_id: string | null;
+}
+
+// Zeilenform von public.registrierung_herkunft (0088): über welchen
+// Creator-Link ein Konto entstanden ist.
+//
+// Die Anwendung liest diese Tabelle heute nicht — sie hat keine Policy und
+// keine Grants an anon/authenticated, geschrieben wird sie allein vom
+// Trigger handle_new_user, gelesen vom Trigger creator_konversion_abo
+// (0089). Der Typ steht hier trotzdem, weil diese Datei das Schema
+// spiegelt und .agents/database.md verlangt, dass beide nicht
+// auseinanderlaufen.
+// Zeilenform von public.creator_klicks (0091) — ein Zähler je Code und
+// Tag, ohne IP, ohne Uhrzeit, ohne Kennung. Die App liest die Tabelle nie
+// direkt (RLS an, keine Grants); der Typ steht hier, weil diese Datei das
+// Schema spiegelt, auch für Tabellen, an die nur die Datenbank selbst
+// herankommt.
+export interface CreatorKlick {
+  code: string;
+  /** ISO-Datum (YYYY-MM-DD). */
+  tag: string;
+  klicks: number;
+}
+
+export interface RegistrierungHerkunft {
+  user_id: string;
+  code: string;
+  erstellt_am: string;
+}
+
+export type CreatorKonversionArt = "registrierung" | "abo_start" | "abo_ende";
+
+// Zeilenform von public.creator_konversionen (0088) — das
+// Ereignisprotokoll, das einen Premium-Kauf noch Monate nach der
+// Registrierung dem Creator zuordnet.
+//
+// user_id ist nullable: bei der Kontolöschung wird der Personenbezug
+// genullt, die Zeile bleibt stehen (0090). stripe_subscription_id ist bei
+// art === "registrierung" null und sonst gesetzt — ein CHECK-Constraint
+// hält beides zusammen.
+export interface CreatorKonversion {
+  // bigint; PostgREST liefert ihn als JSON-Zahl.
+  id: number;
+  code: string;
+  art: CreatorKonversionArt;
+  user_id: string | null;
+  stripe_subscription_id: string | null;
+  ereignis_am: string;
+  erfasst_am: string;
+  registriert_am: string;
 }
 
 // Minimales Database-Interface für den generischen Supabase-Client-Typparameter.

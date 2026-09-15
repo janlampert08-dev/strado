@@ -16,11 +16,15 @@
 /lib/actions/billing.ts      @janlampert08-dev
 /lib/actions/auth.ts         @janlampert08-dev
 /lib/actions/moderation.ts   @janlampert08-dev
+/lib/actions/creatorLinks.ts @janlampert08-dev
+/app/c/                      @janlampert08-dev
+/lib/herkunft.ts             @janlampert08-dev
 /lib/actions/reports.ts      @janlampert08-dev
 /lib/actions/completions.ts  @janlampert08-dev
 /lib/actions/profile.ts      @janlampert08-dev
 /lib/moderation.ts           @janlampert08-dev
 /lib/rateLimit.ts            @janlampert08-dev
+/lib/abobremse.ts            @janlampert08-dev
 /lib/validation.ts           @janlampert08-dev
 /lib/staging.ts              @janlampert08-dev
 /lib/apiCors.ts              @janlampert08-dev

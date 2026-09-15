@@ -96,6 +96,28 @@ export async function updateVisibilitySettings(
   }
   const privatzoneRadiusM = radius;
 
+  // Das Premium-Abzeichen ist der einzige Schalter, den die Oberfläche nur
+  // manchmal zeigt (VisibilitySettings rendert ihn ausschliesslich mit
+  // laufendem Abo). Damit ist die übliche Auswertung "nicht mitgeschickt =
+  // false" hier FALSCH: sie träfe nicht nur den abgewählten Schalter,
+  // sondern auch den nie gerenderten. Ein Konto, dessen Abo endet, verlöre
+  // das Opt-in beim nächsten beliebigen Speichern still — und nach einem
+  // erneuten Abschluss stünde der Schalter auf "aus", ohne dass ihn jemand
+  // umgelegt hat.
+  //
+  // Deshalb entscheidet ein verstecktes Markierungsfeld, ob die Spalte
+  // überhaupt Teil des Updates wird. Fehlt es, bleibt der gespeicherte Wert
+  // unangetastet.
+  //
+  // Sicherheitlich unkritisch: Die Markierung ist kein Berechtigungsnachweis.
+  // Wer sie von Hand mitschickt, kann zeigt_premium_badge setzen — sichtbar
+  // wird das Abzeichen davon nicht, weil zeigt_premium_abzeichen (0087)
+  // generiert (ist_premium and zeigt_premium_badge) ist und ist_premium
+  // ausschliesslich aus dem Stripe-Pfad stammt. Die Spalte ist ein reines
+  // Anzeige-Opt-in und steht seit 0034 ohnehin im grant update für
+  // authenticated.
+  const abzeichenGesendet = formData.get("premium_abzeichen_vorhanden") === "1";
+
   const { error } = await supabase
     .from("profiles")
     .update({
@@ -106,8 +128,9 @@ export async function updateVisibilitySettings(
       zeigt_hoehenmeter: formData.get("zeigt_hoehenmeter") === "true",
       zeigt_distanz: formData.get("zeigt_distanz") === "true",
       zeigt_follower_liste: formData.get("zeigt_follower_liste") === "true",
-      // profiles.zeigt_premium_badge wird bewusst nicht mehr geschrieben: das
-      // Abzeichen war nie gerendert; die Spalte bleibt nur für die Views (0021/0027).
+      ...(abzeichenGesendet
+        ? { zeigt_premium_badge: formData.get("zeigt_premium_badge") === "true" }
+        : {}),
     })
     .eq("id", user.id);
 
@@ -146,6 +169,25 @@ export async function uploadAvatar(
   } = await supabase.auth.getUser();
 
   if (!user) return { error: "Bitte melde dich zuerst an." };
+
+  // Mengenbremse. Die Prüfungen weiter unten stimmen alle — 4-MB-Grenze,
+  // MIME-Allowlist, EXIF-Entfernung —, aber sie gelten je Aufruf und keine
+  // von ihnen begrenzt, wie viele Aufrufe es sein dürfen. Jeder davon lädt
+  // bis zu 4 MB hoch, liest sie in den Speicher (arrayBuffer), schreibt sie
+  // durch metadatenEntfernen() und legt sie in Supabase Storage ab.
+  //
+  // Der Speicherplatz wächst dabei nicht unbegrenzt, denn der Schlüssel ist
+  // fest ({user_id}/avatar.{ext}, vier mögliche Endungen) und upsert
+  // überschreibt. Was unbegrenzt wächst, sind Bandbreite, Speicherbedarf und
+  // Storage-Schreibvorgänge.
+  //
+  // Zehn Wechsel in zehn Minuten sind weit jenseits dessen, was jemand beim
+  // Aussuchen eines Profilbilds braucht, und die Meldung sagt, was zu tun
+  // ist — anders als beim Abo weiter unten ist hier nichts verloren, wenn
+  // ein Versuch wartet.
+  if (isRateLimitedByKey(`avatar:${user.id}`, 10, 10 * 60_000)) {
+    return { error: "Zu viele Uploads. Bitte warte ein paar Minuten." };
+  }
 
   // instanceof statt eines Casts: formData.get() liefert bei einem
   // gleichnamigen Textfeld einen String, und der hat weder .size noch .type.

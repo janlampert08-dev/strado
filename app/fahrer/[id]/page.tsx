@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { OG_GEERBT } from "@/lib/openGraph";
 import Link from "next/link";
 import { Car } from "lucide-react";
 import Header from "@/components/Header";
@@ -9,6 +10,7 @@ import FollowButton from "@/components/FollowButton";
 import FollowCounts from "@/components/FollowCounts";
 import FollowedBy from "@/components/FollowedBy";
 import VehicleGrid from "@/components/VehicleGrid";
+import PremiumSignet from "@/components/PremiumSignet";
 import { getPublicProfile } from "@/lib/profile";
 import { getKudosForCompletions } from "@/lib/kudos";
 import {
@@ -41,7 +43,7 @@ export async function generateMetadata({
     description: beschreibung,
     // description muss im openGraph-Block wiederholt werden — Next zieht
     // sie nicht automatisch nach, sobald der Block eigene Felder hat.
-    openGraph: { type: "profile", title: `${name} – Strado`, description: beschreibung },
+    openGraph: { ...OG_GEERBT, type: "profile", title: `${name} – Strado`, description: beschreibung },
     // noindex statt eines Disallow in robots.ts: app/sitemap.ts lässt
     // Fahrer-Profile aus Datenschutzgründen aus, aber /feed verlinkt jedes
     // von ihnen. Ein Disallow verbietet nur das ABRUFEN — die URL kann über
@@ -123,7 +125,16 @@ export default async function FahrerPage({
               size={64}
             />
             <div className="flex flex-col gap-1">
-              <h1 className="text-display font-semibold">{profile.displayName ?? "Fahrer"}</h1>
+              {/* inline-flex um beides, siehe app/profil/page.tsx: sonst
+                  darf die Zeile zwischen Name und Zeichen umbrechen, und in
+                  --text-display ist das Zeichen breit genug, dass man es
+                  sieht. */}
+              <h1 className="text-display font-semibold">
+                <span className="inline-flex items-center">
+                  {profile.displayName ?? "Fahrer"}
+                  <PremiumSignet zeigen={profile.zeigtPremiumAbzeichen} />
+                </span>
+              </h1>
               <FollowCounts
                 followersCount={followCounts.followers}
                 followingCount={followCounts.following}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Flame } from "lucide-react";
 import Avatar from "@/components/Avatar";
+import PremiumSignet from "@/components/PremiumSignet";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import type { ReceivedKudos } from "@/lib/kudos";
@@ -40,9 +41,18 @@ export default function ActivityKudosList({
             href={`/fahrten/${kudos.completionId}`}
             className="min-w-0 flex-1 transition-colors duration-fast hover:text-accent"
           >
-            <p className="truncate text-sm">
-              <span className="font-medium">{kudos.giverDisplayName ?? "Ein Fahrer"}</span>{" "}
-              hat deiner Fahrt Kudos gegeben
+            {/* Flex statt eines einzelnen truncate-<p>: in einem Block mit
+                truncate wirkt shrink-0 am Abzeichen nicht, weil es keinen
+                Flex-Container gibt — die Ellipse kann dann mitten im Satz
+                stehen und das Zeichen mitnehmen. Hier kürzen Name und
+                Nachsatz unabhängig, das Zeichen dazwischen bleibt. Gleiche
+                Lösung wie in der Feed-Karte (app/feed/page.tsx). */}
+            <p className="flex items-center text-sm">
+              <span className="truncate font-medium">
+                {kudos.giverDisplayName ?? "Ein Fahrer"}
+              </span>
+              <PremiumSignet zeigen={kudos.giverZeigtPremiumAbzeichen} />
+              <span className="ml-1 truncate">hat deiner Fahrt Kudos gegeben</span>
             </p>
             <p className="text-xs text-muted">
               {new Date(kudos.erstelltAm).toLocaleString("de-CH", {

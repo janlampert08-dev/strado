@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { MapPinIcon, PlusIcon, RankingIcon, PersonIcon, ShieldIcon, FeedIcon, RecordIcon } from "@/components/NavIcons";
+import { MapPinIcon, PlusIcon, RankingIcon, PersonIcon, ShieldIcon, FeedIcon, RecordIcon, ChartIcon } from "@/components/NavIcons";
 
 export interface NavItem {
   href: string;
@@ -20,10 +20,14 @@ export interface NavItem {
 export function getNavItems({
   loggedIn,
   moderator,
+  creator = false,
   surface = "header",
 }: {
   loggedIn: boolean;
   moderator: boolean;
+  /** Dem Konto ist mindestens ein Creator-Code zugewiesen (0091). Optional,
+   *  weil der Eintrag für die allermeisten Konten gar nicht existiert. */
+  creator?: boolean;
   surface?: "header" | "bottom";
 }): NavItem[] {
   // Heisst bewusst nach der Absicht ("ich fahre gleich los") statt nach der
@@ -70,6 +74,12 @@ export function getNavItems({
     ...mittlereAktionen,
     { href: "/leaderboards", label: "Bestenlisten", icon: RankingIcon },
     { href: "/profil", label: "Profil", icon: PersonIcon },
+    // Wie die Moderation ein Eintrag, den fast niemand sieht — und aus
+    // demselben Grund in beiden Surfaces: wer seine Zahlen ansehen will,
+    // tut das eher auf dem Telefon als am Schreibtisch. Für ein Konto ohne
+    // Code ändert sich nichts, für eines mit Code wird die Leiste so lang
+    // wie sie es für Moderatoren längst ist.
+    ...(creator ? [{ href: "/creator", label: "Creator", icon: ChartIcon }] : []),
     ...(moderator ? [{ href: "/moderation", label: "Moderation", icon: ShieldIcon }] : []),
   ];
 }

@@ -4,6 +4,13 @@ Begleitdokument zur Migration `0086_strecken_anlegen_wieder_offen.sql`. Dort
 fällt der bisher erste Vorteil („eigene Strecken erstellen") weg. Hier steht,
 was an seine Stelle treten kann — als Plan, nicht als Umsetzung.
 
+> **Vier dieser Vorschläge sind zur Umsetzung ausgewählt.** Wie sie gebaut
+> werden — Migrationen, Oberfläche, Reihenfolge, offene Entscheidungen —
+> steht in `docs/premium-ausbau-plan.md`. Dessen Abschnitt 0 korrigiert
+> ausserdem zwei Aussagen weiter unten in diesem Dokument, die nicht mehr
+> stimmen (der A1-Blocker vor der Auswertung und die Fremdkosten des
+> Wetterfensters).
+
 ## Was Premium nach `0086` noch ist
 
 | Funktion | Ohne Abo | Premium |
