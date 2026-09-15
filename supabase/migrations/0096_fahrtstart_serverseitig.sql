@@ -103,13 +103,23 @@ begin
   -- Minute gedeckelt. Weit ueber allem, was echte Gaeste erzeugen, und
   -- niedrig genug, dass die Tabelle nicht unbegrenzt waechst. Angemeldete
   -- Konten sind zurechenbar und einzeln gedeckelt.
+  -- Zaehlen und Einfuegen serialisieren. Ohne die Sperre koennen gleichzeitige
+  -- Aufrufe denselben count(*) sehen und alle durchkommen — die Grenze waere
+  -- dann eine Empfehlung. Die Sperre gilt bis zum Ende der Transaktion, also
+  -- ueber das insert hinweg, und faellt mit ihr weg.
+  --
+  -- Zwei getrennte Schluesselraeume: ein Gast-Eimer fuer alle anonymen
+  -- Aufrufe, je ein eigener je angemeldetem Konto. Angemeldete blockieren
+  -- sich damit nicht gegenseitig.
   if v_uid is null then
+    perform pg_advisory_xact_lock(hashtext('fahrt_start_anlegen'), 0);
     if (select count(*) from public.fahrt_starts
          where user_id is null
            and gestartet_am > now() - interval '1 minute') >= 60 then
       raise exception 'Zu viele Fahrtstarts';
     end if;
   else
+    perform pg_advisory_xact_lock(hashtext('fahrt_start_anlegen'), hashtext(v_uid::text));
     if (select count(*) from public.fahrt_starts
          where user_id = v_uid
            and gestartet_am > now() - interval '1 minute') >= 10 then
@@ -179,9 +189,16 @@ begin
          eingeloest_von = coalesce(eingeloest_von, auth.uid())
    where id = p_id
      and geheimnis_abdruck = p_abdruck
-     and gestartet_am > now() - interval '24 hours'
      -- Ein fremdes Konto darf ein bereits eingeloestes Ticket nicht lesen.
      and (eingeloest_von is null or eingeloest_von = auth.uid())
+     -- Die Altersgrenze gilt nur fuer den ERSTEN Stempel. Steht die Dauer
+     -- einmal fest, ist sie bereits <= 86400 und damit innerhalb der
+     -- Constraint aus 0059 — ein spaeterer Versuch desselben Kontos darf sie
+     -- also auch nach 24 Stunden noch abholen. Sonst verlaere eine Fahrt, die
+     -- beim Speichern gescheitert und erst am naechsten Tag erneut versucht
+     -- wird, ihre Wertung.
+     and (dauer_sekunden is not null
+          or gestartet_am > now() - interval '24 hours')
   returning dauer_sekunden into v_sekunden;
 
   return v_sekunden;
