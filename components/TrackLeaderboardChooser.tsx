@@ -6,7 +6,7 @@ import { formatDuration } from "@/lib/format";
 import type { RouteTimeEntry } from "@/lib/leaderboard";
 import { fieldClassName } from "@/components/ui/Input";
 import Card from "@/components/ui/Card";
-import PremiumSignet from "@/components/PremiumSignet";
+import PremiumAbzeichen from "@/components/PremiumAbzeichen";
 import MotorklassenChips from "@/components/MotorklassenChips";
 import { filterLabel } from "@/lib/motorklassen";
 import type { Klassenfilter } from "@/lib/motorklassen";
@@ -131,7 +131,7 @@ export default function TrackLeaderboardChooser({
                     className="inline-flex min-w-0 items-center align-bottom transition-colors duration-fast hover:text-accent"
                   >
                     <span className="truncate">{entry.name}</span>
-                    <PremiumSignet zeigen={entry.zeigtPremiumAbzeichen} />
+                    <PremiumAbzeichen zeigen={entry.zeigtPremiumAbzeichen} />
                   </Link>
                 </span>
                 <span className="font-mono tabular-nums text-accent">

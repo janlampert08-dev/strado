@@ -22,7 +22,7 @@ import ActivityHeatmap from "@/components/ActivityHeatmap";
 import CountUp from "@/components/CountUp";
 import FollowCounts from "@/components/FollowCounts";
 import PremiumCard from "@/components/PremiumCard";
-import PremiumSignet from "@/components/PremiumSignet";
+import PremiumAbzeichen from "@/components/PremiumAbzeichen";
 import FahrtStatistik from "@/components/FahrtStatistik";
 import { ChartIcon } from "@/components/NavIcons";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
@@ -230,14 +230,23 @@ export default async function ProfilPage() {
             </Link>
           </div>
           <div className="flex flex-col gap-1.5">
-            {/* inline-flex um Name UND Zeichen: ein blanker Block liesse
-                nach UAX#14 einen Umbruch davor zu, und hier hängt die Grösse
-                an --text-display — das Zeichen wäre 25-38 px breit und
-                stünde im Zweifel allein auf Zeile zwei. */}
+            {/* Die beschriftete Variante, nicht das blosse Zeichen: hier ist
+                Platz, und hier steht der Name des Kontos, dem das Abzeichen
+                gehört — der eine Ort, an dem das Wort dazu gehört statt
+                bloss das Symbol.
+
+                flex-wrap statt einer starren Zeile: die Pille ist text-xs
+                und damit unabhängig von --text-display, ein langer Name
+                schiebt sie aber trotzdem irgendwann um. gap-x-3 statt des
+                ml-1 der kompakten Variante, weil daneben eine Überschrift in
+                bis zu 36 px steht. */}
             <h1 className="text-display font-semibold">
-              <span className="inline-flex items-center">
+              <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
                 {profile?.display_name ?? user.email}
-                <PremiumSignet zeigen={profile?.zeigt_premium_abzeichen === true} />
+                <PremiumAbzeichen
+                  zeigen={profile?.zeigt_premium_abzeichen === true}
+                  variante="mitText"
+                />
               </span>
             </h1>
             <p className="text-sm text-muted">{user.email}</p>

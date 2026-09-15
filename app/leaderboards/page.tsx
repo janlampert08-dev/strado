@@ -6,7 +6,7 @@ import Header from "@/components/Header";
 import PullToRefreshArea from "@/components/PullToRefreshArea";
 import TrackLeaderboardChooser from "@/components/TrackLeaderboardChooser";
 import Avatar from "@/components/Avatar";
-import PremiumSignet from "@/components/PremiumSignet";
+import PremiumAbzeichen from "@/components/PremiumAbzeichen";
 import { getGlobalLeaderboards, type LeaderboardEntry } from "@/lib/leaderboard";
 import { listRouteChoices } from "@/lib/routes";
 import { nomen } from "@/lib/format";
@@ -101,7 +101,7 @@ function LeaderboardSection({
                   }`}
                 >
                   <span className="truncate">{entry.name}</span>
-                  <PremiumSignet zeigen={entry.zeigtPremiumAbzeichen} />
+                  <PremiumAbzeichen zeigen={entry.zeigtPremiumAbzeichen} />
                 </Link>
                 <span
                   className={`shrink-0 font-mono tabular-nums ${isOwn ? "text-accent" : "text-muted"}`}

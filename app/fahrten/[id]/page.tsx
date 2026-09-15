@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import Header from "@/components/Header";
 import Avatar from "@/components/Avatar";
-import PremiumSignet from "@/components/PremiumSignet";
+import PremiumAbzeichen from "@/components/PremiumAbzeichen";
 import KudosButton from "@/components/KudosButton";
 import ShareRideButton from "@/components/ShareRideButton";
 import CompletionActionsMenu from "@/components/CompletionActionsMenu";
@@ -207,7 +207,7 @@ export default async function FahrtDetailPage({
                   <span className="truncate">
                     {completion.isOwner ? "Deine Fahrt" : (completion.displayName ?? "Fahrer")}
                   </span>
-                  <PremiumSignet zeigen={completion.zeigtPremiumAbzeichen} />
+                  <PremiumAbzeichen zeigen={completion.zeigtPremiumAbzeichen} />
                 </p>
                 <p className="text-xs text-muted">
                   {new Date(completion.datum).toLocaleDateString("de-CH", {

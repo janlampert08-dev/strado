@@ -10,7 +10,7 @@ import FollowButton from "@/components/FollowButton";
 import FollowCounts from "@/components/FollowCounts";
 import FollowedBy from "@/components/FollowedBy";
 import VehicleGrid from "@/components/VehicleGrid";
-import PremiumSignet from "@/components/PremiumSignet";
+import PremiumAbzeichen from "@/components/PremiumAbzeichen";
 import { getPublicProfile } from "@/lib/profile";
 import { getKudosForCompletions } from "@/lib/kudos";
 import {
@@ -125,14 +125,12 @@ export default async function FahrerPage({
               size={64}
             />
             <div className="flex flex-col gap-1">
-              {/* inline-flex um beides, siehe app/profil/page.tsx: sonst
-                  darf die Zeile zwischen Name und Zeichen umbrechen, und in
-                  --text-display ist das Zeichen breit genug, dass man es
-                  sieht. */}
+              {/* Beschriftete Variante und flex-wrap, siehe
+                  app/profil/page.tsx — dort steht die Begründung. */}
               <h1 className="text-display font-semibold">
-                <span className="inline-flex items-center">
+                <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
                   {profile.displayName ?? "Fahrer"}
-                  <PremiumSignet zeigen={profile.zeigtPremiumAbzeichen} />
+                  <PremiumAbzeichen zeigen={profile.zeigtPremiumAbzeichen} variante="mitText" />
                 </span>
               </h1>
               <FollowCounts

@@ -66,7 +66,7 @@ const PREMIUM_ABZEICHEN_FELD: Field = {
   formKey: "zeigt_premium_badge",
   label: "Premium-Abzeichen hinter dem Namen zeigen",
   description:
-    "Standardmässig aus. Eingeschaltet sehen andere hinter deinem Namen ein kleines Strado-Zeichen — im Feed, auf deinem Profil und in den Bestenlisten — und wissen dadurch, dass du Strado unterstützt.",
+    "Standardmässig aus. Eingeschaltet sehen andere hinter deinem Namen ein kleines goldenes Funkeln — im Feed, auf deinem Profil und in den Bestenlisten — und wissen dadurch, dass du Strado unterstützt.",
 };
 
 // Kachel-Liste mit iOS-artigen Switches (components/ui/Switch.tsx) statt
