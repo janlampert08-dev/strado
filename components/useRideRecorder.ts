@@ -3,9 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { haversineKm, type TrailPoint } from "@/lib/geo";
 import { evaluateProximity } from "@/lib/tracking";
+import type { FahrtStartTicket } from "@/lib/fahrtstart";
+import { fahrtStartAnlegen } from "@/lib/actions/fahrtstart";
 import {
   saveTrackingSnapshot,
   loadTrackingSnapshot,
+  FREE_RIDE_STORAGE_KEY,
   clearTrackingSnapshot,
   purgeLegacyTrackingSnapshots,
   adoptGuestTrackingSnapshot,
@@ -84,6 +87,11 @@ export interface RideRecorder {
   // Deckungsgrad im Streckenmodus und für das versteckte Formularfeld.
   finishedTrail: TrailPoint[];
   trailJson: string;
+  // Das serverseitige Fahrtstart-Ticket als JSON für das versteckte
+  // Formularfeld ("null", solange keines vorliegt). Ohne Ticket wird die
+  // Fahrt mit dauer_quelle = "trail" gespeichert und zählt nicht für die
+  // Bestenliste — siehe lib/fahrtstart.ts.
+  ticketJson: string;
   // Manueller Start ("Bin schon am Start"), falls die GPS-Genauigkeit am
   // Startpunkt nicht für den automatischen Start reicht.
   beginNow: () => void;
@@ -134,8 +142,10 @@ export function useRideRecorder({
   const [liveTrail, setLiveTrail] = useState<[number, number][]>([]);
   const [liveTrailPoints, setLiveTrailPoints] = useState<TrailPoint[]>([]);
   const [trailJson, setTrailJson] = useState("[]");
+  const [ticketJson, setTicketJson] = useState("null");
   const [hasStarted, setHasStarted] = useState(false);
 
+  const ticketRef = useRef<FahrtStartTicket | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const lastPointRef = useRef<[number, number] | null>(null);
   const lastPointTimeRef = useRef<number | null>(null);
@@ -201,7 +211,15 @@ export function useRideRecorder({
   const writeSnapshot = useCallback((snapshot: TrackingSnapshot, force = false) => {
     if (!force && snapshot.savedAt - lastSnapshotAtRef.current < SNAPSHOT_INTERVAL_MS) return;
     lastSnapshotAtRef.current = snapshot.savedAt;
-    saveTrackingSnapshot(userIdRef.current, storageKeyRef.current, snapshot);
+    // Das Ticket hier zentral anhängen statt an jedem Aufrufer: es gibt ein
+    // gutes Dutzend writeSnapshot-Aufrufe, und einer, der es vergisst, würde
+    // beim Wiederaufnehmen eine wertbare Fahrt in eine unwertbare verwandeln
+    // — ein Fehler, der erst Wochen später in einer fehlenden Bestzeit
+    // auffiele.
+    saveTrackingSnapshot(userIdRef.current, storageKeyRef.current, {
+      ...snapshot,
+      ticket: ticketRef.current,
+    });
   }, []);
 
   // Verhindert, dass der Bildschirm während der Aufzeichnung automatisch
@@ -286,6 +304,37 @@ export function useRideRecorder({
     // Aufruf ein No-op.
     navigator.vibrate?.(10);
     startTimeRef.current = Date.now();
+
+    // Der serverseitig aufgezeichnete Start (lib/fahrtstart.ts). Bewusst
+    // hier und nicht beim Tippen auf "Strecke starten": im Streckenmodus
+    // liegen zwischen beidem die Minuten der Anfahrt zum Startpunkt, und
+    // gemessen werden soll, was die Anzeige auch misst.
+    //
+    // Absichtlich nicht abgewartet. Eine Aufzeichnung darf nicht auf eine
+    // Netzantwort warten — sie beginnt oft genau dort, wo der Empfang
+    // schlecht ist. Kommt das Ticket nicht, läuft die Fahrt normal weiter
+    // und wird später mit dauer_quelle = "trail" gespeichert: sie zählt
+    // dann nicht für die Bestenliste, geht aber auch nicht verloren.
+    if (!ticketRef.current) {
+      const istFreieFahrt = storageKey === FREE_RIDE_STORAGE_KEY;
+      void fahrtStartAnlegen(istFreieFahrt ? "frei" : "strecke", istFreieFahrt ? null : storageKey)
+        .then((ergebnis) => {
+          if (!ergebnis.ok || ticketRef.current) return;
+          ticketRef.current = ergebnis.ticket;
+          setTicketJson(JSON.stringify(ergebnis.ticket));
+          // In den Snapshot nachziehen: der wurde unten schon ohne Ticket
+          // geschrieben, und genau dieser Snapshot ist es, der einen
+          // abgestürzten Tab und den Weg über die Anmeldung überlebt.
+          const aktuell = loadTrackingSnapshot(userId, storageKey);
+          if (aktuell) {
+            saveTrackingSnapshot(userId, storageKey, { ...aktuell, ticket: ergebnis.ticket });
+          }
+        })
+        .catch(() => {
+          // Kein Netz, keine Zeitwertung — die Fahrt selbst ist davon nicht
+          // betroffen.
+        });
+    }
     intervalRef.current = setInterval(() => {
       setElapsedSeconds(Math.round((Date.now() - (startTimeRef.current ?? Date.now())) / 1000));
     }, 1000);
@@ -302,7 +351,7 @@ export function useRideRecorder({
       },
       true,
     );
-  }, [writeSnapshot]);
+  }, [writeSnapshot, storageKey, userId]);
 
   // Nutzt Refs statt der distanceKm/elapsedSeconds-States, damit ein Aufruf
   // aus der beim Start erzeugten watchPosition-Closure (automatischer Stopp
@@ -374,6 +423,8 @@ export function useRideRecorder({
         lastPointRef.current = lastPoint ? [lastPoint.lng, lastPoint.lat] : null;
         lastPointTimeRef.current = lastPoint ? lastPoint.t : null;
         trailRef.current = resume.trail;
+        ticketRef.current = resume.ticket ?? null;
+        setTicketJson(JSON.stringify(resume.ticket ?? null));
         startTimeRef.current = resume.startTimeMs;
         distanceKmRef.current = resume.distanceKm;
         hasLeftStartRef.current = resume.hasLeftStart;
@@ -641,6 +692,7 @@ export function useRideRecorder({
     result,
     finishedTrail,
     trailJson,
+    ticketJson,
     beginNow: beginActualTracking,
     stop,
     discard,

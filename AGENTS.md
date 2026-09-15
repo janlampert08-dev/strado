@@ -315,17 +315,20 @@ is what should be corrected.
   original findings are closed. A2, A3, A4, A5 and A6 are marked **Fixed**
   there, each naming the code that closed it, and so is all but a handful of
   §B. What remains open is narrower than the headline suggests:
-  - **A1, leg 2 — the ride clock.** Two of A1's three legs are closed. The
-    A1 table further down `docs/audit/README.md` spells out which, and it is
-    the authority — not this line, which has been wrong about A1 before.
-    `dauer_sekunden` itself *is* derived server-side — `logTrackedCompletion`
-    recomputes it with `computeTrailStats()` and deliberately ignores whatever
-    number the client posted. What it cannot check is the **timestamps in the
-    trail it derives from**: a genuine trail replayed with compressed times
-    yields a shorter duration that still passes the `0059` speed band. Closing
-    it needs a ride start the server recorded itself, and the recorder is open
-    to signed-out visitors, so any fix changes the guest flow. A product
-    decision, not a migration.
+  - **A1, leg 2 — the ride clock. Closed in code, NOT yet live.** The A1
+    table further down `docs/audit/README.md` is the authority — not this
+    line, which has been wrong about A1 before. The forgery was that
+    `dauer_sekunden`, though derived server-side, came from **client
+    timestamps**: a genuine trail replayed with compressed times passed the
+    `0059` speed band. `0096_fahrtstart_serverseitig.sql` closes it with a
+    ride start the server records itself (`fahrt_starts`, issued at
+    `beginActualTracking`, redeemed on save), and `route_leaderboard` now
+    shows only `dauer_quelle = 'server'`. **`0096` is on a branch and not
+    applied** — until it is, the old behaviour stands, and merging the code
+    first breaks every ride save with a column error. Schema first. Two
+    things stay open by choice: the server clock keeps running while the
+    screen sleeps, so a stop costs leaderboard time, and per-lap rows from
+    `lapDetection` remain trail-derived and out of the leaderboard.
   - **§B — React 19 clears uncontrolled fields on a failed submit.** Fixed for
     the photo input only (`MultiPhotoInput`). `AnmeldenForm`,
     `RegistrierenForm`, `PasswortVergessenForm`, `PasswortAendernForm` and
@@ -452,13 +455,15 @@ handoff to the next isn't done.
    `abdeckung_prozent` and can only narrow `ist_oeffentlich`, `0059`
    cross-checks `distanz_km` against `st_length(track)`, `0074` bounds the
    rest) — `INSERT` is still granted, but a direct PostgREST write no
-   longer picks its own coverage or visibility. What remains open is
-   **`dauer_sekunden` alone**: it *is* derived server-side from the trail,
-   but the trail's timestamps come from the client, and a genuine track
-   replayed with times compressed ×0.4 stays inside the 200 km/h band from
-   `0059`. So distance, ascent and coverage carry weight; duration and any
-   speed derived from it do not. `lib/fahrtstatistik.ts` is built on
-   exactly that split, and its header explains why.
+   longer picks its own coverage or visibility. The third leg —
+   **`dauer_sekunden`** — is closed in code but **not yet live**: `0096`
+   introduces a ride start the server records itself, so the ranked duration
+   is the difference of two server clocks instead of a sum of browser
+   timestamps. Until that migration is applied, duration and any speed
+   derived from it still carry no weight, which is what
+   `lib/fahrtstatistik.ts` is built on; its header explains why. After it, a
+   ride counts for the leaderboard only if it carries
+   `dauer_quelle = 'server'`.
 6. **Post the ride** — same `lib/actions/completions.ts` submission,
    `components/RideVisibilityToggle.tsx` for visibility, landing on
    `app/fahrten/[id]/page.tsx`.

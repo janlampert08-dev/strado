@@ -1,4 +1,5 @@
 import type { TrailPoint } from "@/lib/geo";
+import { leseTicket, type FahrtStartTicket } from "@/lib/fahrtstart";
 
 export interface TrackingSnapshot {
   phase: "tracking" | "finished";
@@ -13,6 +14,14 @@ export interface TrackingSnapshot {
   // "tracking" wird die verstrichene Zeit beim Wiederaufnehmen stattdessen
   // live aus startTimeMs neu berechnet.
   seconds: number | null;
+  // Das serverseitige Fahrtstart-Ticket (lib/fahrtstart.ts). Gehört in den
+  // Snapshot, weil es genau die Fälle überleben muss, für die es den Snapshot
+  // gibt: ein abgestürzter Tab, ein geschlossener Browser, die Anmeldung
+  // mitten in einer Gastfahrt. Ohne Ticket wird die Fahrt später mit
+  // dauer_quelle = "trail" gespeichert und zählt nicht für die Bestenliste.
+  // Optional, damit ein vor dieser Änderung geschriebener Snapshot weiter
+  // gelesen werden kann.
+  ticket?: FahrtStartTicket | null;
 }
 
 // Schlüssel je Aufzeichnung: bei einer Streckenfahrt die Strecken-ID, bei
@@ -79,7 +88,10 @@ export function loadTrackingSnapshot(
       localStorage.removeItem(key(userId, storageKey));
       return null;
     }
-    return snapshot;
+    // Das Ticket kommt aus dem localStorage und ist damit so vertrauenswürdig
+    // wie alles von dort: leseTicket() gibt null zurück, statt eine kaputte
+    // Form weiterzureichen. Der Rest der Fahrt bleibt in jedem Fall erhalten.
+    return { ...snapshot, ticket: leseTicket(snapshot.ticket) };
   } catch {
     return null;
   }

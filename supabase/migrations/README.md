@@ -1272,3 +1272,37 @@ where schemaname = 'storage' and tablename = 'objects'
 -- diese steht nur in with_check). Die bedingungslose Lesepolicy für
 -- {public} ist weg.
 ```
+
+## 0096 — noch nicht angewendet (Stand 2026-09-15)
+
+`0096_fahrtstart_serverseitig.sql` schliesst Bein 2 des Audit-Befunds A1 (die
+fälschbare Fahrtdauer). Sie liegt auf einem Zweig und ist **nicht eingespielt**.
+
+Reihenfolge: **Schema zuerst, Code danach.** Der Code auf dem Zweig schreibt
+`dauer_quelle`, `dauer_trail_sekunden` und `fahrt_start_id` und ruft
+`fahrt_start_anlegen`/`fahrt_start_einloesen`. Ohne die Migration schlägt
+jedes Speichern einer Fahrt mit einem Spaltenfehler fehl — anders als bei
+`0087`, wo nur zwei Seiten betroffen waren, träfe es hier Schritt 5 der
+Kernschleife. Also nicht mergen, bevor die Migration steht.
+
+Was nach dem Einspielen zu prüfen ist (die Lücke, die `0094` hatte, war
+genau, dass das unterblieb):
+
+- Liegt der Trigger `enforce_route_completion_dauer` **vor**
+  `enforce_route_completion_stats`? Gleichartige Trigger laufen alphabetisch;
+  `pg_trigger` nach `tgname` sortiert zeigt es.
+- Hat `fahrt_start_einloesen` einen Grant für `authenticated` und **keinen**
+  für `anon`? Dieselbe Falle wie `0047`, `0048` und `0091`.
+- Hat `fahrt_start_anlegen` Grants für **beide** Rollen? Ein Gast muss
+  aufzeichnen können.
+- Liefert `route_leaderboard` wirklich nur noch Zeilen mit
+  `dauer_quelle = 'server'`? Danach ist jede bestehende Bestzeit aus der
+  Liste verschwunden — das ist beabsichtigt und heute fast folgenlos, weil
+  die Liste ohnehin leer ist.
+- Ein funktionaler Test, zurückgerollt: Ticket anlegen, einlösen, zweites
+  Einlösen muss NULL geben; eine Zeile mit fremdem `fahrt_start_id`
+  einfügen und prüfen, dass der Trigger sie auf `trail` herabstuft.
+
+Der Weg zurück ist einfach, weil die Migration nichts löscht: Trigger und
+Funktionen droppen, die View auf die Fassung aus `0080` zurücksetzen, die drei
+Spalten stehen lassen. `fahrt_starts` kann liegen bleiben.
