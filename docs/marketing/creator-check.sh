@@ -85,8 +85,16 @@ pruefe() {
     if [ "$code" != "200" ]; then
       letztes="FEED HTTP ${code:-?}"
     else
-      # Das erste <published> gehört dem Kanal, erst das zweite dem
-      # neuesten Video.
+      # sed -n 2p, nicht 1p: Der Atom-Feed trägt ein <published> am
+      # <feed> selbst — das Erstellungsdatum des KANALS —, und erst danach
+      # eines je <entry>. Das erste zu nehmen meldete für jeden Kanal sein
+      # Gründungsjahr als "letztes Video".
+      #
+      # Belegt, nicht angenommen: Bei 16 geprüften Kanälen stimmte das
+      # erste <published> auf den Tag genau mit dem Beitrittsdatum der
+      # About-Seite überein (motoch 2019-02-01, KurvenradiusTV 2016-04-07,
+      # SwissDrive4K 2024-09-27, …). Ein automatischer Review hat hier 1p
+      # vorgeschlagen; das wäre ein Rückschritt.
       letztes=$(grep -o '<published>[^<]*' "$r" | sed -n '2p' | sed 's/<published>//' | cut -c1-10)
       titel=$(grep -o '<media:title>[^<]*' "$r" | head -1 | sed 's/<media:title>//' | cut -c1-60)
       [ -z "$letztes" ] && letztes="Feed ohne Video"

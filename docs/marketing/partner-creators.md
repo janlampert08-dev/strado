@@ -262,8 +262,13 @@ der ersten Runde nicht verfolgt; die Zahlen sind am 2026-09-14 geprüft.
 [IlCapoFLA](https://www.youtube.com/@IlCapoFLA) (2'140, „SWISS ALPS.
 Sustenpass (RAW Onboard)") waren in der ersten Fassung auch deshalb
 aussortiert, weil sie Alpen machen. Dieser Grund ist weg — der andere
-bleibt: Beide ruhen seit über einem Jahr. Wenn einer zurückkommt, gehört er
-nach oben.
+bleibt, aber unterschiedlich schwer: **IlCapoFLA ruht 14 Monate**
+(letztes Video 2025-07-18), **Amazing Cars Switzerland knapp 11**
+(2025-10-16), gemessen am Recherchetag 2026-09-14. Bei Amazing Cars stand
+hier zuerst „über ein Jahr" — falsch, und von CodeRabbit zu Recht
+beanstandet. Elf Monate sind für einen Kanal mit 9'220 Abonnenten nah
+genug an der Grenze, dass sich ein Blick vor der Anfrage lohnt statt einer
+Absage.
 
 **Tot:** [Kurvenparadiese](https://www.youtube.com/@Kurvenparadiese) (1'830,
 letztes 2020), [RS_Rider](https://www.youtube.com/@RSRider) (2'390, 2021),
