@@ -1309,8 +1309,10 @@ genau, dass das unterblieb):
 - Ein funktionaler Test, zurückgerollt, in vier Teilen:
   - Ticket anlegen und einlösen — das zweite Einlösen desselben Kontos muss
     **dieselbe Zahl** zurückgeben, nicht NULL (idempotent, siehe den Kommentar
-    an `fahrt_start_einloesen`). NULL gibt es nur für ein fremdes Konto, einen
-    falschen Abdruck oder einen ersten Stempel nach 24 Stunden.
+    an `fahrt_start_einloesen`). NULL bedeutet umgekehrt immer, dass das
+    `update` keine Zeile getroffen hat — weil die ID unbekannt ist, der
+    Abdruck nicht dazu passt, ein fremdes Konto fragt oder der **erste**
+    Stempel später als 24 Stunden nach dem Start käme.
   - Eine Zeile mit fremdem `fahrt_start_id` einfügen und prüfen, dass der
     Trigger sie auf `trail` herabstuft.
   - Sechs Gasttickets mit demselben Abdruck-Präfix in derselben Minute: das
