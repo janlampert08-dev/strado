@@ -218,8 +218,14 @@ is what should be corrected.
     **The check afterwards had a gap the earlier six did not have:**
     `execute_sql` was blocked after the write, so it ran through
     `generate_typescript_types`, `get_advisors` and `list_migrations` —
-    return type, grants and ledger are confirmed, the index was not seen
-    individually, and there were no rolled-back functional tests.
+    return type, grants and ledger were confirmed, but the index was not
+    seen individually and there were no rolled-back functional tests. A
+    later session closed the first half against the catalog: the index
+    stands as `(code, art, ereignis_am)`, `handle_new_user` carries both
+    the `exception` block and `pg_temp`, and `creator_verlauf` is granted
+    to `authenticated` but **not** to `anon` — the trap that caught `0047`,
+    `0048` and `0091`. What stays unmeasured is only the functional test:
+    the `exception` branch is read, not exercised.
     `supabase/migrations/README.md` names exactly what that leaves
     unmeasured, with the queries to close it.
     **Still open after it, and a product decision rather than a

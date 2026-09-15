@@ -85,12 +85,21 @@ Spalte existiert, ist `generated ... stored`, der Ausdruck lautet
 | `anon` darf `creator_verlauf` nicht | nicht in der anon-Liste (dort nur `creator_klick_zaehlen`, `creator_link_aufloesen` — beide gewollt) | `get_advisors` (security) |
 | `authenticated` darf | in der authenticated-Liste | `get_advisors` (security) |
 | `handle_new_user` für niemanden ausführbar | in keiner der beiden Listen | `get_advisors` (security) |
+| Index steht, mit der erwarteten Definition | `(code, art, ereignis_am)` | `execute_sql` (`pg_indexes`), spätere Sitzung |
+| `exception`-Block und `pg_temp` im Rumpf | beides vorhanden | `execute_sql` (`pg_get_functiondef`), spätere Sitzung |
+| `anon` steht **nicht** unter den Grants | `authenticated`, `postgres`, `service_role` | `execute_sql` (`role_routine_grants`), spätere Sitzung |
 | Ledger-Eintrag | `20260915075341` | `list_migrations` |
 
-**Nicht einzeln gesehen: der Index.** Er kam im selben Skript, das als
-Einheit angewendet wurde und dessen übrige Objekte nachweislich stehen —
-eine teilweise Anwendung gibt es nicht. Wer SQL-Zugriff hat, prüft ihn
-trotzdem lieber selbst; die Abfragen dafür stehen unten.
+**Der Index ist inzwischen einzeln gesehen.** Der Abschnitt führte ihn
+zunächst als offen, weil `execute_sql` nach dem Schreiben blockiert war.
+In einer späteren Sitzung ist die Abfrage unten gelaufen, und er steht mit
+genau der Definition aus dem Migrationskopf:
+
+    CREATE INDEX creator_konversionen_code_art_zeit
+      ON public.creator_konversionen USING btree (code, art, ereignis_am)
+
+Damit sind alle Objekte aus `0094` am Objekt geprüft und nicht nur aus der
+Unteilbarkeit des Skripts geschlossen.
 
 **Ebenfalls nicht ausgeführt: Funktionstests in zurückgerollten
 Transaktionen**, wie sie es für `0088`–`0093` gab. Der Zugriff auf
