@@ -86,7 +86,12 @@ export default function SterneEingabe({
               className={cn(
                 "h-6 w-6 rounded-sm transition-colors duration-fast",
                 "peer-focus-visible:ring-2 peer-focus-visible:ring-accent/40",
-                stufe <= gezeigt ? "fill-current text-accent" : "text-border-strong",
+                // Gedeckt statt Rahmen-Ton für die noch nicht gewählten
+                // Sterne — Begründung samt Kontrastwerten in
+                // components/Sterne.tsx. Hier wiegt sie schwerer als dort:
+                // das ist ein Bedienelement, seine Zustandsgrenze fällt
+                // unter WCAG 1.4.11.
+                stufe <= gezeigt ? "fill-current text-accent" : "text-muted",
               )}
             />
           </label>

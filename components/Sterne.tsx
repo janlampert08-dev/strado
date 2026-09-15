@@ -30,6 +30,21 @@ const SKALA = [0, 1, 2, 3, 4];
  * gelesen und danach ignoriert. Der Akzent ist in dieser App die eine Farbe
  * für "hier steht ein Wert"; dieselbe Wahl wie bei MotorklasseBadge.
  *
+ * Die LEEREN Sterne stehen in --color-muted, nicht in --color-border-strong.
+ * Der Rahmen-Ton war der erste Griff und der falsche: 30 % Deckung auf dem
+ * Hintergrund ergeben 1.96:1 (hell) und 2.64:1 (dunkel) — unter den 3:1, die
+ * WCAG 1.4.11 für die Umrisse eines Bedienelements verlangt, und im
+ * Sonnenlicht auf einem Telefon schlicht nicht da. Bei einer 1.0-Wertung
+ * verschwand damit die Skala: sichtbar blieb ein einzelner Stern, ohne dass
+ * erkennbar war, dass es fünf Plätze gibt. --color-muted bringt 5.13:1 und
+ * 6.55:1.
+ *
+ * Voll gegen leer sind es dann nur noch 1.04:1 — Akzent und Gedeckt haben
+ * fast dieselbe Helligkeit. Das ist Absicht: unterschieden werden die beiden
+ * nicht über die Farbe, sondern über die FÜLLUNG (massiv gegen hohl). Ein
+ * Unterschied, der nicht an der Farbe hängt, ist genau das, was WCAG 1.4.1
+ * verlangt — und er überlebt jede Farbenblindheit.
+ *
  * ---------------------------------------------------------------------------
  * Vorlesen
  * ---------------------------------------------------------------------------
@@ -55,7 +70,7 @@ export default function Sterne({
     <span className={cn("relative inline-flex shrink-0", className)} aria-hidden="true">
       <span className="flex">
         {SKALA.map((i) => (
-          <SternIcon key={i} className={cn("shrink-0 text-border-strong", sterneClassName)} />
+          <SternIcon key={i} className={cn("shrink-0 text-muted", sterneClassName)} />
         ))}
       </span>
       <span
