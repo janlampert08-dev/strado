@@ -195,9 +195,13 @@ is what should be corrected.
     return zero rows — measured), and `0093` closed it. Write
     `from anon, authenticated` explicitly, the way `0088` did for the
     sequence.
-  - **`0094_creator_verlauf_nur_aufrufe` is written but NOT yet applied.**
-    It is the review nacharbeit on the six above and has to go in before
-    PR #236 merges, because it narrows something that is already live.
+  - **`0094_creator_verlauf_nur_aufrufe` went in on 2026-09-15** (ledger
+    `20260915075341`), again **ahead of the code that uses it** — PR #236
+    and #243 are both still open. It is the review nacharbeit on the six
+    above, and the only one of the set that *narrows* something already
+    live, which is precisely why it went in early rather than late: until
+    the code deploys, nothing in production calls the function, so the two
+    columns are gone before anyone can fetch them.
     `creator_verlauf()` returned `registrierungen` and `abos` per day to
     any `authenticated` creator; nothing ever drew them, and at small
     numbers a day-bucket holding a single registration names the day one
@@ -208,7 +212,16 @@ is what should be corrected.
     block of `handle_new_user` in its own `exception` block — `0088`
     promises in a comment that a registration can never fail on the
     measurement, and without a handler a foreign-key error there aborts
-    the signup — and adds the index the per-day query wants.
+    the signup — and adds the index the per-day query wants. The live body
+    of `handle_new_user` was read out and compared against `0088` first,
+    as the first lesson above demands; it matched statement for statement.
+    **The check afterwards had a gap the earlier six did not have:**
+    `execute_sql` was blocked after the write, so it ran through
+    `generate_typescript_types`, `get_advisors` and `list_migrations` —
+    return type, grants and ledger are confirmed, the index was not seen
+    individually, and there were no rolled-back functional tests.
+    `supabase/migrations/README.md` names exactly what that leaves
+    unmeasured, with the queries to close it.
     **Still open after it, and a product decision rather than a
     migration:** `creator_kennzahlen()` hands out live running totals, so
     a creator who polls it can still correlate an increment against
