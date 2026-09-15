@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils/cn";
  */
 export function HeaderSkeleton() {
   return (
-    <div className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border bg-background/85 px-4 py-3 backdrop-blur-xl sm:px-6 sm:py-4">
+    <div className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border bg-background/85 px-4 pt-[calc(0.75rem+var(--safe-top))] pb-3 backdrop-blur-xl sm:px-6 sm:pt-[calc(1rem+var(--safe-top))] sm:pb-4">
       <Skeleton className="h-[18px] w-[71px] rounded-sm" />
       <div className="flex shrink-0 items-center gap-3 sm:gap-4">
         {/* Das Flammen-Icon (Aktivität) rechts aussen — auf jeder

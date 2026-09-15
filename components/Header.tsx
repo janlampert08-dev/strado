@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Flame } from "lucide-react";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { isModerator } from "@/lib/moderation";
+import { istCreator } from "@/lib/creatorKennzahlen";
 import { getUnseenKudosCount } from "@/lib/kudos";
 import { getNavItems } from "@/lib/nav";
 import BackButton from "@/components/BackButton";
@@ -24,21 +25,46 @@ export default async function Header({ back }: { back?: string } = {}) {
   // das zwei Roundtrips hintereinander, und zwar auf jeder Seite: <Header />
   // ist ein Kind der Seite, läuft also ohnehin erst nach deren eigenen
   // Abfragen.
-  const [moderator, unseenKudosCount] = await Promise.all([
+  // Drei Abfragen, die nur an user hängen und nicht aneinander — also
+  // nebenläufig. Die dritte kam mit den Creator-Konten dazu (0091): sie ist
+  // ein Existenz-Check mit limit(1) auf einer Tabelle, die für die
+  // allermeisten Konten keine einzige Zeile hat, und wie isModerator pro
+  // Request memoisiert.
+  const [moderator, creator, unseenKudosCount] = await Promise.all([
     user ? isModerator(user.id) : Promise.resolve(false),
+    user ? istCreator(user.id) : Promise.resolve(false),
     user ? getUnseenKudosCount() : Promise.resolve(0),
   ]);
   // "/" wird hier ausgelassen — das Logo verlinkt bereits dorthin, ein
   // zweiter Link wäre redundant. Einzige Quelle der Nav-Items: lib/nav.ts,
   // von BottomNav (Mobile) genauso genutzt.
-  const items = getNavItems({ loggedIn: !!user, moderator }).filter((item) => item.href !== "/");
+  const items = getNavItems({ loggedIn: !!user, moderator, creator }).filter(
+    (item) => item.href !== "/",
+  );
 
   return (
     <>
       {/* sticky + Transluzenz/Blur statt eines deckenden Balkens — das
           "durchscheinende", beim Scrollen fixierte Nav-Bar-Verhalten ist ein
           der auffälligsten iOS-Systemmuster (Safari, Mail, Einstellungen). */}
-      <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border bg-background/85 px-4 py-3 backdrop-blur-xl sm:px-6 sm:py-4">
+      {/* pt rechnet den oberen sicheren Bereich mit ein. Die App laeuft
+          installiert im Vollbild (manifest display: "standalone") mit
+          statusBarStyle "black-translucent" und viewport-fit=cover — die
+          Seite beginnt dort also bei y=0, unter Uhrzeit, Batterie und Notch.
+          Ohne diesen Zuschlag lag der Kopfinhalt darunter: die Wortmarke
+          begann 12px unter der Oberkante, der Notch reicht auf einem
+          iPhone 13 bis 47px.
+
+          Im Browser ist var(--safe-top) 0 — dort belegt Safaris eigene
+          Leiste den Streifen —, die Zeile aendert also nur den
+          installierten Fall. top-0 bleibt mit Absicht: unter einer
+          durchscheinenden Statusleiste soll der unscharfe Hintergrund des
+          Kopfes bis nach oben laufen, statt die scrollende Seite
+          durchscheinen zu lassen.
+
+          Die Bottom-Nav macht dasselbe seit jeher fuer --safe-bottom; nur
+          oben fehlte es. */}
+      <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border bg-background/85 px-4 pt-[calc(0.75rem+var(--safe-top))] pb-3 backdrop-blur-xl sm:px-6 sm:pt-[calc(1rem+var(--safe-top))] sm:pb-4">
         <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           {back && <BackButton fallbackHref={back} />}
           {/* Die Wortmarke ist eine Kontur (lib/marke.ts), kein gesetzter
@@ -105,7 +131,7 @@ export default async function Header({ back }: { back?: string } = {}) {
           </nav>
         </div>
       </header>
-      <BottomNav loggedIn={!!user} moderator={moderator} />
+      <BottomNav loggedIn={!!user} moderator={moderator} creator={creator} />
     </>
   );
 }

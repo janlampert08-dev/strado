@@ -11,12 +11,14 @@ import { getNavItems } from "@/lib/nav";
 export default function BottomNav({
   loggedIn,
   moderator,
+  creator = false,
 }: {
   loggedIn: boolean;
   moderator: boolean;
+  creator?: boolean;
 }) {
   const pathname = usePathname();
-  const tabs = getNavItems({ loggedIn, moderator, surface: "bottom" });
+  const tabs = getNavItems({ loggedIn, moderator, creator, surface: "bottom" });
 
   return (
     <nav

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { OG_GEERBT } from "@/lib/openGraph";
 import Link from "next/link";
 import {
   Bike,
@@ -71,6 +72,7 @@ export async function generateMetadata({
       title: `${titel} – Fahrt von ${fahrer} – Strado`,
       description: beschreibung,
       openGraph: {
+        ...OG_GEERBT,
         type: "article",
         title: `${titel} – Fahrt von ${fahrer}`,
         description: beschreibung,
@@ -89,6 +91,7 @@ export async function generateMetadata({
     title: `${route.name} – Fahrt von ${fahrer} – Strado`,
     description: beschreibung,
     openGraph: {
+      ...OG_GEERBT,
       type: "article",
       title: `${route.name} – Fahrt von ${fahrer}`,
       description: beschreibung,

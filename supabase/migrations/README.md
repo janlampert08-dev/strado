@@ -29,6 +29,215 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Eingespielt: 0094_creator_verlauf_nur_aufrufe (2026-09-15, Produktion)
+
+| Datei | Ledger-`version` | Was |
+| --- | --- | --- |
+| `0094_creator_verlauf_nur_aufrufe` | `20260915075341` | `creator_verlauf()` gibt nur noch Aufrufe zurück; `handle_new_user()` bekommt den `exception`-Block; Index `creator_konversionen_code_art_zeit` |
+
+**Eingespielt, bevor der Code deployt ist** — PR #236 und #243 sind beide
+noch offen. Die Richtung ist hier die unangenehme: `0094` verengt etwas,
+das seit dem 2026-09-14 live ist. Genau deshalb ist es die richtige
+Reihenfolge — solange der Code nicht deployt ist, liest die Funktion in
+Produktion niemand, und die zwei Spalten sind weg, bevor sie jemand
+abrufen kann.
+
+Drei Änderungen:
+
+| Was | Warum |
+| --- | --- |
+| `creator_verlauf()` gibt nur noch `klicks` zurück | `0091` gab zusätzlich `registrierungen` und `abos` **pro Tag** an jeden `authenticated` Creator. Gezeichnet hat die Oberfläche davon nie etwas. Bei kleinen Zahlen benennt ein Tagesbucket mit einer einzigen Registrierung den Tag, an dem ein Konto entstand — und `profiles.created_at` ist seit `0034` an `anon` gegrantet. Die veröffentlichte Datenschutzerklärung sagt wörtlich „weder Name noch Zeitpunkt". |
+| `handle_new_user()` fängt Fehler der Herkunftserfassung ab | `0088` sichert im Kommentar zu, eine Registrierung dürfe nie an der Messung scheitern. Ohne Handler tut sie das: der Trigger hängt an `auth.users`, und ein Fremdschlüsselfehler (Code wird zwischen `exists`-Test und `insert` gelöscht) bricht die Registrierung ab. `on conflict do nothing` deckt nur Unique-Verletzungen. |
+| Index `creator_konversionen_code_art_zeit` | Vorsorge für die erste zeitfilternde Auswertung. Sie muss dafür einen halboffenen Bereich auf `ereignis_am` schreiben, nicht `ereignis_am::date = :tag` — die Begründung steht im Migrationskopf. |
+
+`drop function` + `create` statt `create or replace`, weil sich der
+Rückgabetyp ändert — das kann `replace` nicht. Der `drop` nimmt die ACL mit,
+die Grants werden darunter neu gesetzt, inklusive des ausdrücklichen
+`revoke ... from anon` aus der Lehre von `0093`.
+
+### Vorher geprüft
+
+Der `create or replace` auf `handle_new_user()` ist die Stelle, an der ein
+Einspielen still eine fremde Änderung zurückdrehen kann. Der live laufende
+Rumpf wurde deshalb ausgelesen und gegen die Fassung aus `0088` gestellt:
+in den **Anweisungen identisch**, Unterschiede nur in den Kommentaren — die
+am 2026-09-14 angewendete Fassung trug gekürzte, umlautfreie Kommentare.
+Seither hatte also niemand an der Funktion gearbeitet.
+
+Der Rückweg wurde vorher geschrieben, nicht erst im Ernstfall: die
+vollständige `0091`-Fassung von `creator_verlauf()` aus
+`pg_get_functiondef()` und der `0088`-Rumpf von `handle_new_user()` lagen
+beide vor dem ersten Schreibbefehl vor.
+
+Nebenbefund derselben Vorprüfung: Dieser Abschnitt führte bis hierher auch
+`0087_premium_abzeichen_spalte` als offen. Es war bereits am 2026-09-14 um
+20:07 eingespielt (Ledger `20260914200727`, Abschnitt dazu im Branch von
+PR #235). Massgeblich war wie immer das Objekt und nicht die Prosa: die
+Spalte existiert, ist `generated ... stored`, der Ausdruck lautet
+`(ist_premium AND zeigt_premium_badge)`, `select` liegt bei `anon` und
+`authenticated`.
+
+### Nachher geprüft
+
+| Prüfung | Ergebnis | Woher |
+| --- | --- | --- |
+| Rückgabe nur noch drei Spalten | `{ code, tag, klicks }` | `generate_typescript_types` |
+| `anon` darf `creator_verlauf` nicht | nicht in der anon-Liste (dort nur `creator_klick_zaehlen`, `creator_link_aufloesen` — beide gewollt) | `get_advisors` (security) |
+| `authenticated` darf | in der authenticated-Liste | `get_advisors` (security) |
+| `handle_new_user` für niemanden ausführbar | in keiner der beiden Listen | `get_advisors` (security) |
+| Index steht, mit der erwarteten Definition | `(code, art, ereignis_am)` | `execute_sql` (`pg_indexes`), spätere Sitzung |
+| `exception`-Block und `pg_temp` im Rumpf | beides vorhanden | `execute_sql` (`pg_get_functiondef`), spätere Sitzung |
+| `anon` steht **nicht** unter den Grants | `authenticated`, `postgres`, `service_role` | `execute_sql` (`role_routine_grants`), spätere Sitzung |
+| Ledger-Eintrag | `20260915075341` | `list_migrations` |
+
+**Der Index ist inzwischen einzeln gesehen.** Der Abschnitt führte ihn
+zunächst als offen, weil `execute_sql` nach dem Schreiben blockiert war.
+In einer späteren Sitzung ist die Abfrage unten gelaufen, und er steht mit
+genau der Definition aus dem Migrationskopf:
+
+    CREATE INDEX creator_konversionen_code_art_zeit
+      ON public.creator_konversionen USING btree (code, art, ereignis_am)
+
+Damit sind alle Objekte aus `0094` am Objekt geprüft und nicht nur aus der
+Unteilbarkeit des Skripts geschlossen.
+
+**Ebenfalls nicht ausgeführt: Funktionstests in zurückgerollten
+Transaktionen**, wie sie es für `0088`–`0093` gab. Der Zugriff auf
+`execute_sql` wurde nach dem Schreiben blockiert, die Gegenprobe lief
+deshalb über die drei Lesewerkzeuge oben. Der `exception`-Zweig von
+`handle_new_user()` ist damit gegengelesen, aber nicht gemessen — er lässt
+sich ohnehin nur messen, indem man den Wettlauf nachstellt (Code zwischen
+`exists`-Test und `insert` löschen), und das heisst, an einer lebenden
+Tabelle zu schrauben.
+
+Prüfabfragen für eine Sitzung mit SQL-Zugriff:
+
+```sql
+-- Nur noch drei Spalten?
+-- creator_verlauf ist eine Funktion, keine Relation — in
+-- information_schema.columns steht dafür nichts, die Abfrage käme leer
+-- zurück und würde Leere als Bestätigung lesen.
+select pg_get_function_result('public.creator_verlauf(integer)'::regprocedure);
+
+-- anon hat nichts?
+select has_function_privilege('anon', 'public.creator_verlauf(integer)', 'execute');
+
+-- Index da?
+select indexname from pg_indexes
+where tablename = 'creator_konversionen';
+
+-- Exception-Block drin, search_path mit pg_temp?
+select p.proconfig, position('exception' in p.prosrc) > 0
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public' and p.proname = 'handle_new_user';
+```
+
+Rückweg: `0091`s Fassung der Funktion wieder anlegen (Datei lesen, Grants
+mitnehmen), `handle_new_user` aus `0088` zurückschreiben, `drop index
+creator_konversionen_code_art_zeit`. Verlustfrei — es hängen keine Daten
+daran; `creator_konversionen` und `creator_klicks` waren beim Einspielen
+leer und sind es geblieben.
+
+## Eingespielt: 0088–0093 (Creator-Herkunft und Creator-Konten, 2026-09-14, Produktion)
+
+Sechs Migrationen, in dieser Reihenfolge angewendet:
+
+| Datei | Ledger-`version` | Was sie anlegt |
+| --- | --- | --- |
+| `0088_herkunft_und_konversionen` | `20260914220140` | `registrierung_herkunft`, `creator_konversionen`, `handle_new_user()` um die Herkunft erweitert |
+| `0089_creator_konversion_abo` | `20260914220301` | Trigger auf `subscriptions`, der den ersten zahlenden Zustand festhält |
+| `0090_anonymisierung_herkunft` | `20260914220354` | `anonymize_account()` räumt die Herkunft auf |
+| `0091_creator_konten` | `20260914220441` | `creator_links.creator_user_id`, Lese-Policy für Creator, `creator_klicks`, drei Funktionen |
+| `0092_anonymisierung_creator_zuweisung` | `20260914220506` | `anonymize_account()` gibt zugewiesene Codes frei |
+| `0093_creator_funktionen_anon_entziehen` | `20260914220654` | **Nachtrag, siehe unten** |
+
+**Warum nicht 0087:** diese Nummer gehört `0087_premium_abzeichen_spalte`
+aus PR #235, am selben Tag eingespielt. Beide Branches hatten unabhängig
+voneinander `0087` gewählt, weil `main` bei `0086` endete.
+`schema_migrations.version` ist ein Primärschlüssel — eine der beiden hätte
+sich nie eingetragen. Genau dieser Fall ist der Grund, warum
+`.agents/database.md` verlangt, die höchste Nummer **auf `main` und in
+jedem offenen PR** zu prüfen; `scripts/check-migration-prefixes.mjs` kann
+das nicht, es sieht nur einen Branch.
+
+### Vorher geprüft
+
+Zwei Migrationen schreiben bestehende Funktionen per `create or replace`
+neu. Vor dem Einspielen wurden deshalb die **live laufenden Rümpfe**
+ausgelesen und mit denen verglichen, auf denen die Migrationen aufbauen:
+`handle_new_user` trug exakt die Fassung aus `0001`, `anonymize_account`
+exakt die aus `0076`. `0087` hatte keine von beiden angefasst. Ohne diesen
+Abgleich hätte ein `create or replace` stillschweigend eine fremde Änderung
+zurückgedreht.
+
+Der Rückweg wurde **vor** dem ersten Schreibbefehl geschrieben, nicht
+danach — inklusive der beiden Originalrümpfe. Alle sechs sind additiv;
+zurück geht es über `drop` in umgekehrter Reihenfolge plus die zwei
+Funktionen auf `0001`/`0076`.
+
+### Nachher geprüft, an den Objekten
+
+Drei neue Tabellen, alle mit RLS und **ohne** Tabellenrechte für
+`anon`/`authenticated`; die Spalte und der Teilindex auf `creator_links`;
+zwei Policies dort (die Moderations-Policy aus `0084` plus die neue
+Lese-Policy); der Trigger auf `subscriptions`; vier neue Funktionen; beide
+ersetzten Funktionen mit ihren neuen Anweisungen.
+
+Dazu drei **Funktionstests in zurückgerollten Transaktionen**, weil ein
+Schema-Check nicht zeigt, ob etwas läuft:
+
+- Der Schreibweg des Registrierungs-Triggers (beide Inserts in der Form,
+  die er verwendet) — funktioniert.
+- Der Abo-Trigger auf beiden Pfaden: ohne Herkunft schreibt er nichts und
+  wirft nicht; mit Herkunft genau eine `abo_start`-Zeile mit gesetztem
+  `registriert_am`. Ein **wiederholter** Schreibvorgang bleibt bei einer
+  Zeile — die Idempotenz gegen Stripes Mehrfachzustellung ist damit
+  gemessen, nicht angenommen. Das war der wichtigste Test: der Trigger
+  hängt an der Tabelle, in die der Stripe-Webhook schreibt.
+- `creator_klick_zaehlen()` als Rolle `anon`: zwei Aufrufe ergeben eine
+  Zeile mit `klicks = 2`, ein erfundener Code legt nichts an und wirft
+  nicht.
+
+Bestandsdaten danach unverändert: 16 Profile, 4 Abos, 1 Link, 6 Fahrzeuge,
+11 Fahrten. Die drei neuen Tabellen sind leer.
+
+**Nicht ausgeführt:** `anonymize_account()` selbst. Die Funktion löscht
+Fahrzeuge und nullt GPS-Tracks; sie an einem echten Konto zu erproben, auch
+in einer zurückgerollten Transaktion, wäre ein unnötiges Risiko an
+Produktionsdaten. Geprüft wurde stattdessen, dass ihr Rumpf die drei neuen
+Anweisungen trägt und der Rest wortgleich der aus `0076` ist.
+
+### Der Nachtrag 0093 — und die Falle, die zum dritten Mal zuschlug
+
+Die Prüfung der Ausführungsrechte **nach** dem Einspielen ergab:
+
+```
+creator_kennzahlen -> {anon, authenticated, postgres, service_role}
+creator_verlauf    -> {anon, authenticated, postgres, service_role}
+```
+
+`0091` entzieht beiden `from public` und gibt nur `authenticated` — der
+Kommentar daneben behauptet ausdrücklich, `anon` bekomme damit nichts. Das
+ist falsch: Supabase vergibt neuen Funktionen im Schema `public` einen
+**direkten** Grant an `anon`, und ein `revoke ... from public` fasst den
+nicht an. Dieselbe Falle wie in `0047` (PUBLIC) und `0048` (die direkten
+anon-Grants, die `0047` übrig liess) — hier zum dritten Mal.
+
+**Offengelegt hat es nichts.** Beide Funktionen filtern auf
+`auth.uid()`, das für `anon` NULL ist; als Rolle `anon` aufgerufen liefern
+sie **null Zeilen** (nachgemessen, nicht geschlossen). `0093` stellt
+lediglich die erklärte Absicht wieder her — bevor eine spätere Lockerung
+der Filterbedingung aus einem folgenlosen Recht ein folgenreiches macht.
+
+`creator_klick_zaehlen()` behält seinen anon-Grant: dort ist er gewollt,
+weil der Klickende meistens kein Konto hat.
+
+Die Lehre für die nächste Migration mit einer neuen Funktion: `revoke
+execute ... from public` genügt nie. Es braucht zusätzlich
+`from anon, authenticated` — so, wie es `0088` bei der Sequenz getan hat,
+die deshalb sauber ist.
+
+
 ## Eingespielt: 0087_premium_abzeichen_spalte (2026-09-14, Produktion)
 
 Legt `profiles.zeigt_premium_abzeichen` an — eine gespeicherte generierte
@@ -80,6 +289,7 @@ entzogen werden, sonst verschiebt sich das Leck nur. Heute ist das keine
 Ausweitung — `ist_premium` selbst ist ohnehin freigegeben.
 
 Ledger-Eintrag: `20260914200727` / `0087_premium_abzeichen_spalte`.
+
 
 ## Eingespielt: 0086_strecken_anlegen_wieder_offen (2026-09-14, Produktion)
 

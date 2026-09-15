@@ -70,6 +70,11 @@ export default function TrackLeaderboardChooser({
         </h2>
         {routes.length > 0 && (
           <select
+            // Ohne Beschriftung meldet ein Screenreader hier nur "Auswahl" —
+            // die Überschrift daneben ist nicht mit dem Feld verknüpft. Die
+            // Chips darunter tragen ihre Beschriftung bereits (label-Prop),
+            // dieses Feld war das einzige ohne.
+            aria-label="Strecke für die Bestzeiten wählen"
             value={routeId}
             onChange={(e) => {
               setRouteId(e.target.value);
