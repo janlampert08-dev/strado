@@ -29,6 +29,75 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## NOCH NICHT eingespielt: 0095_sterne_wieder_einfuehren
+
+Der erste Eintrag hier, der keine Einspielung beschreibt, sondern eine
+ausstehende. Er steht trotzdem oben, weil genau das die Frage ist, für die
+diese Datei gelesen wird.
+
+**Was sie tut.** Sie holt die Prüfung `sterne between 1 and 5` zurück, die
+`0025_ratings_ohne_sterne` fallen liess, als die Sterne-Wertung aus dem
+Produkt genommen wurde. NULL-tolerant, weil eine Bewertung seit `0025` aus
+einem blossen Kommentar bestehen darf und die Zeilen aus dieser Zeit
+`sterne is null` tragen.
+
+**Sie ist `not valid`.** Ein gewöhnliches `add constraint` prüft den Bestand
+mit und scheitert an der ersten verletzenden Zeile. Ob es eine gibt, weiss
+niemand: `route_ratings` trägt volle Tabellen-Grants, die Policy "Nutzer
+verwalten eigene Bewertungen" prüft nur die `user_id`, und seit `0025` band
+nichts mehr den Wert — ein direkter PostgREST-Request konnte in diesem
+ganzen Zeitraum schreiben, was er wollte. Mit einer Datenbank und ohne
+Probelauf ist eine Anweisung, die von ungesehenen Daten abhängt, die falsche
+Form.
+
+`not valid` bindet jedes INSERT und jedes UPDATE sofort — also alles, wogegen
+der Constraint schützen soll — und lässt allein die Altzeilen ungeprüft. Es
+kann nicht scheitern und nimmt keinen Table-Scan, der Schreibzugriffe
+blockiert.
+
+### Einspielen
+
+```sql
+-- 1. Die Migration selbst. Kann nicht scheitern.
+alter table public.route_ratings
+  add constraint route_ratings_sterne_check
+  check (sterne is null or sterne between 1 and 5)
+  not valid;
+```
+
+### Danach, als eigener Schritt
+
+```sql
+-- 2. Gegenprobe: gibt es Altzeilen ausserhalb der Skala?
+select id, route_id, sterne from public.route_ratings
+where sterne is not null and sterne not between 1 and 5;
+
+-- 3. NUR wenn Schritt 2 null Zeilen liefert:
+alter table public.route_ratings validate constraint route_ratings_sterne_check;
+```
+
+Schritt 2 und 3 stehen bewusst **nicht** in der Migrationsdatei. Liefert die
+Gegenprobe Zeilen, ist die Frage fachlich — löschen, kappen oder auf null
+setzen — und gehört einem Menschen. Stünde `validate constraint` in der
+Datei, scheiterte sie in genau diesem Fall und risse den `not valid`-Teil in
+derselben Transaktion mit zurück; das bedingte Scheitern wäre also nur
+verschoben, nicht vermieden.
+
+### Was fehlt, solange sie nicht eingespielt ist
+
+Der Code bricht **nicht**: `route_ratings.sterne` existiert seit `0025` als
+nullable Spalte, Schreiben und Lesen funktioniert mit und ohne Constraint.
+Was fehlt, ist allein die Schranke gegen einen direkten PostgREST-Schreibzugriff.
+
+Der Schaden daraus ist **ungültig gespeicherte Daten**, nicht ein
+verschobener Durchschnitt: `bewertungAusSternen()` in `lib/bewertungen.ts`
+filtert seit dem Review auf die Spannweite 1–5 und nicht bloss auf "endliche
+Zahl", ein `sterne = 9999` fällt in der Anzeige also heraus
+(`lib/bewertungen.test.ts` hält den Fall fest). Eine frühere Fassung dieser
+Beschreibung behauptete den verschobenen Durchschnitt — das stimmte, solange
+die App nur auf Endlichkeit filterte, und wurde mit demselben Commit falsch,
+der die Filterung verschärfte.
+
 ## Eingespielt: 0094_creator_verlauf_nur_aufrufe (2026-09-15, Produktion)
 
 | Datei | Ledger-`version` | Was |

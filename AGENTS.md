@@ -275,8 +275,15 @@ is what should be corrected.
   since `0025`, so writing and reading stars works either way. What is
   missing until it runs is the bound: the table carries full grants and its
   RLS policy lets an account write its own row, so a direct PostgREST
-  request could put `sterne = 9999` into a rating and shift the average
-  shown publicly on someone else's route. The migration adds back
+  request could put `sterne = 9999` into a rating. What that costs is
+  **invalid stored data, not a shifted average** — `bewertungAusSternen()`
+  filters to 1–5 rather than merely to "finite", so such a value never
+  reaches the displayed figure. (This line first claimed the average would
+  shift; that was true only while the app filtered on finiteness alone, and
+  the same commit that tightened the filter made it false.) The rollout —
+  apply, then the preflight query, then `validate constraint` as a separate
+  step — is written out in `supabase/migrations/README.md`, which is where
+  the applied/un-applied distinction lives. The migration adds back
   `check (sterne is null or sterne between 1 and 5)` — null-tolerant,
   because comment-only ratings are the normal case for every row created
   between `0025` and now, and **`not valid`**, which is the part worth
