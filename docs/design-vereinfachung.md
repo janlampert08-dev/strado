@@ -39,6 +39,15 @@ jeder Commit trägt seine Begründung im Text.
 | 3.9 Profil entschachteln | **umgesetzt** |
 | 3b Kauf-Fluss zusammenlegen | **offen — geschützter Bereich, eigener PR** |
 
+### Zum Wort „Entscheid."
+
+Die Abschnitte unten schreiben ihre Vorschläge unter der Überschrift
+**„Entscheid."**. Das liest sich als getroffen — und für das meiste stimmt
+das inzwischen auch, siehe Tabelle oben. Für die vier Punkte im nächsten
+Absatz stimmt es **nicht**: dort ist „Entscheid" die Empfehlung dieses
+Dokuments, nicht die Entscheidung des Produkts. Wo ein Abschnitt selbst eine
+Abnahme verlangt (§3b.4, §3.9, Anhang C5), geht diese Forderung dem Wort vor.
+
 ### Was bewusst offen ist
 
 - **Der Kauf-Fluss** (`/profil/premium` und `/zahlung` zusammenlegen) berührt
@@ -204,9 +213,10 @@ sieht eine Karte, ein Suchfeld und einen Standort-Knopf.
 - Standort-Chip in die Suchzeile (Icon-Schaltfläche rechts im oder neben dem
   Feld) statt als eigene Zeile mit Trennlinie darunter. → **−78 px**
 - `gap-5` → `gap-3` innerhalb des Sheets unterhalb von `md`. → **−24 px**
-- Zeilenhöhe `h-24` → `h-20`. Die Zeile trägt Name, eine Kennzahl und die
-  Streckenform; 80 px reichen dafür und liegen weiter deutlich über jeder
-  Antippgrenze. → **−16 px je Zeile**
+- Zeilenhöhe `h-24` → `h-20`. Die Zeile trägt Name, Länge, das
+  Signatur-Merkmal, den Sternenschnitt (seit PR #248) und die Streckenform;
+  80 px reichen dafür und liegen weiter deutlich über jeder Antippgrenze.
+  → **−16 px je Zeile**
 - Der Erklärabsatz für Abgemeldete zieht aus dem Sheet heraus — über die
   Karte, wo heute schon die Zufallsstrecken-Pille sitzt, oder in eine einmalig
   schliessbare Zeile. Die `<h1>` bleibt als `sr-only` im Sheet, damit Seite
@@ -333,6 +343,9 @@ mit `gap-3` nebeneinander. Keine hat Innenabstand:
 | `RideVisibilityToggle.tsx` | Sichtbarkeit umschalten | `h-4 w-4` → 16 px |
 | `RatingSection.tsx` | Kommentar melden | `h-3.5 w-3.5` → 14 px |
 
+Die ersten drei stehen nebeneinander in der Kopfzeile; die vierte sitzt auf
+der Streckenseite und steht hier, weil sie dasselbe Muster hat.
+
 WCAG 2.2 SC 2.5.8 verlangt 24 px, Apple und Android nennen 44 px bzw. 48 dp.
 Zwölf Pixel Abstand zwischen „teilen" und „melden" ist auf einem Daumen keine
 Trennung — und „melden" ist eine Moderationshandlung, die man nicht aus
@@ -439,10 +452,12 @@ längsten Beschriftung der App in `size="sm"`.
 
 ---
 
-### 3.6 [Mittel] Zwölf Seitenrahmen für 26 Seiten
+### 3.6 [Mittel] Zwölf Seitenrahmen für 27 Seiten
 
 Es gibt keinen Seitenrahmen als Komponente. Jede Seite schreibt ihr `<main>`
-selbst, und dabei sind zwölf verschiedene Fassungen entstanden:
+selbst, und dabei sind **vierzehn** verschiedene Fassungen entstanden —
+zwölf, wenn man die beiden mit zusätzlichem `flex-1`/`overflow-y-auto` zu
+ihren Geschwistern schlägt und nur Breite und Abstände zählt:
 
 ```
 5×  max-w-sm  flex-1 justify-center gap-6 px-6
@@ -508,8 +523,10 @@ export { MapPin as MapPinIcon, Trophy as RankingIcon, … } from "lucide-react";
 ```
 
 `AGENTS.md` (Stack) und `.agents/frontend.md` verlangen, Icons über diese
-Wrapper zu beziehen statt direkt. Tatsächlich importieren **39 Dateien 50
-verschiedene Icons direkt aus `lucide-react`**, die Wrapper decken 13 ab. Die
+Wrapper zu beziehen statt direkt. Tatsächlich importieren **37 Dateien 50
+verschiedene Icons direkt aus `lucide-react`**, die Wrapper decken 13 ab.
+(Einen direkten Import enthalten 39 Dateien — zwei davon *sind* die Wrapper
+und tun es zu Recht.) Die
 Regel ist also faktisch tot, und sie war auch nie viel wert: ein Re-Export
 ohne eigenen Vertrag benennt ein Icon um und normiert nichts — keine Grösse,
 keine Strichstärke.
@@ -522,7 +539,7 @@ Zwei ehrliche Optionen, und dieses Dokument empfiehlt die erste:
    `h-3.5 w-3.5` (14 px, kommt in der App vor) ist das ein schwerer, bei
    `h-6 w-6` ein dünner Strich. Eine gemeinsame Regel („unter 20 px: 1.75;
    darüber: 1.5") macht die Icon-Sprache über die App hinweg gleich schwer.
-   Nebenbei: 50 Icons für 26 Seiten sind zu viele — beim Umstellen lässt sich
+   Nebenbei: 50 Icons für 27 Seiten sind zu viele — beim Umstellen lässt sich
    der Satz zusammenstreichen (`Route` und `RouteIcon`, `Timer` und `Clock`,
    `Gauge` zweimal in unterschiedlicher Rolle).
 2. Die Regel aus `AGENTS.md` streichen und direkt importieren. Weniger
@@ -715,7 +732,7 @@ werden. Sie stehen hier, damit niemand sie ein zweites Mal prüfen muss.
 
 ### 4.1 Dokument-Scrolling statt App-Shell
 
-23 von 26 Seiten sind `flex h-dvh flex-col` mit einem inneren
+23 von 27 Seiten sind `flex h-dvh flex-col` mit einem inneren
 `flex-1 overflow-y-auto`. Folge im mobilen Browser: die Adressleiste klappt
 beim Scrollen nie ein, weil nicht das Dokument scrollt — je nach Browser
 bleiben 60–100 px dauerhaft belegt. Zurück auf Dokument-Scrolling wäre
@@ -942,13 +959,13 @@ Theme-Schalter und die Feed-Reiter.
 
 ### A6 — Zeichen sind keine Icons
 
-Drei Stellen zeichnen ihr Symbol als Textzeichen: `★`/`☆` in
-`FavoriteButton.tsx`, `⋮` in `RouteActionsMenu.tsx`. Was die
+Zwei Stellen zeichnen ihr Symbol als Textzeichen — drei Zeichen insgesamt:
+`★` und `☆` in `FavoriteButton.tsx`, `⋮` in `RouteActionsMenu.tsx`. Was die
 Plattformschrift daraus macht, ist auf jedem Gerät anders breit, hoch und
 schwer — dieselbe Schaltfläche sieht auf zwei Telefonen verschieden aus.
-Alle drei werden SVG aus dem Icon-Satz, in einem `IconButton`.
+Alle drei Zeichen werden SVG aus dem Icon-Satz, in einem `IconButton`.
 
-Dazu der Vertrag für die 50 Icons aus 39 Dateien (Abschnitt 3.8):
+Dazu der Vertrag für die 50 Icons aus 37 Dateien (Abschnitt 3.8):
 `ui/Icon.tsx` legt die Strichstärke fest — **unter 20 px: 1.75, darüber:
 1.5** — und streicht beim Umstellen die Doppelungen (`Route`/`RouteIcon`,
 `Timer`/`Clock`, `Gauge` in zwei Rollen).
@@ -1111,7 +1128,7 @@ keinen Funktionsumfang.
 | Ort | Wie | Urteil |
 | --- | --- | --- |
 | `RouteActionsMenu.tsx` | **deaktivierter** Menüeintrag „GPX exportieren (Premium)" | Ein Schloss als Dauerzustand — auf jeder Streckenseite, für jedes Gratis-Konto, immer |
-| `app/profil/page.tsx`, zuunterst | `PremiumCard`: Aufzählung plus gefüllter Knopf | Falscher Ort. Das Profil ist die Selbstdarstellung des Nutzers. Immerhin unten und ohne Unterbrechung |
+| `app/profil/page.tsx`, zuunterst | `PremiumCard`: Vorteilssatz plus **gefüllter** Knopf | Falscher Ort. Das Profil ist die Selbstdarstellung des Nutzers. Immerhin unten und ohne Unterbrechung. Es ist eine einzelne `<p>`, keine Liste — die echte Aufzählung steht in `PremiumPurchaseView` und `PremiumWillkommen` |
 | `OfflineRouteButton.tsx` | Beschriftung „(Premium)" **plus** Hinweis bei vollem Kontingent | Der Hinweis ist richtig. Die Dauerbeschriftung nicht |
 | `MultiPhotoInput.tsx` | 6 statt 12 Fotos | Vorbildlich — unsichtbar, bis es zählt |
 | `app/profil/premium/` | die Kaufseite | Der Ort dafür |
@@ -1149,7 +1166,7 @@ Mehr gibt es nicht.
 | 1 | Das Offline-Kontingent ist voll | Inline-Hinweis unter der Schaltfläche, mit der Zahl und einem Textlink. **Gibt es heute schon** |
 | 2 | Jemand tippt GPX-Export an | Der Eintrag ist aktiv; das Antippen zeigt den Hinweis samt Link |
 | 3 | Einstellungen | Eine Zeile unter Gleichen: „Premium — Offline ohne Limit, 12 Fotos, GPX" mit Chevron |
-| 4 | Profil, zuunterst | Eine Zeile plus Umriss-Schaltfläche statt Card mit Aufzählung |
+| 4 | Profil, zuunterst | Der Knopf wird ein Umriss statt einer Füllung, der Satz wird aus `premiumVorteile.ts` abgeleitet statt von Hand gepflegt |
 
 ### C4 — Was nie passiert
 

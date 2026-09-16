@@ -188,17 +188,28 @@ export default function ExploreSidebar({
                 onMouseLeave={() => onHoverRoute(null)}
                 onFocus={() => onHoverRoute(route.id)}
                 onBlur={() => onHoverRoute(null)}
-                // h-20 statt h-24: die Zeile trägt Name, eine Kennzahl und
-                // die Streckenform — 80 px reichen dafür und liegen weiter
-                // deutlich über jeder Antippgrenze. Zusammen mit der
-                // Suchzeile oben macht das im Peek-Fenster aus einer
-                // angeschnittenen Zeile zwei volle plus Anschnitt.
+                // h-20 statt h-24: die Zeile trägt Name, Länge, das
+                // Signatur-Merkmal, den Sternenschnitt und die Streckenform —
+                // 80 px reichen dafür und liegen weiter deutlich über jeder
+                // Antippgrenze. Zusammen mit der Suchzeile oben macht das im
+                // Peek-Fenster aus einer angeschnittenen Zeile zwei volle
+                // plus Anschnitt.
                 //
-                // Der linke Rand und der Hover-Grund nehmen den Akzent-Token
-                // statt einer der fünf Signaturfarben. Die Auswahl trägt
-                // damit nicht mehr die Farbe, sondern die Fläche — was auf
-                // einem Telefon im Sonnenlicht ohnehin das Robustere ist.
-                className="group flex h-20 items-center gap-3 border-b border-border border-l-[3px] border-l-accent/55 py-3 pr-2 pl-3 transition-colors duration-fast hover:bg-accent-subtle active:bg-accent-subtle"
+                // DER LINKE RAND IST BEWUSST NICHT AKZENTFARBEN. Er trug
+                // vorher eine der fünf Signaturfarben; naheliegend wäre
+                // gewesen, ihn einfach auf --color-accent zu setzen. Dagegen
+                // spricht components/Sterne.tsx: "Der Akzent ist in dieser
+                // App die eine Farbe für 'hier steht ein Wert'." In dieser
+                // Zeile steht ein Wert — der Sternenschnitt —, und stünden
+                // Rand und Streckenform ebenfalls im Akzent, trügen ihn drei
+                // Elemente, zwei davon rein dekorativ. Die Regel wäre dann
+                // keine mehr.
+                //
+                // Also: der Rand ist eine Strukturkante (--color-border-strong),
+                // die Form ist ein Vorschaubild (--color-muted), und der
+                // Akzent bleibt dem einen Wert. Der Hover-Grund darf ihn
+                // tragen — er ist ein Zustand, keine dauerhafte Markierung.
+                className="group flex h-20 items-center gap-3 border-b border-border border-l-[3px] border-l-border-strong py-3 pr-2 pl-3 transition-colors duration-fast hover:bg-accent-subtle active:bg-accent-subtle"
               >
                 <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5">
                   <span className="truncate text-base font-medium transition-colors duration-fast group-hover:text-accent">
@@ -263,7 +274,7 @@ export default function ExploreSidebar({
                     <svg
                       viewBox="0 0 64 48"
                       aria-hidden="true"
-                      className="absolute inset-0 h-full w-full text-accent opacity-80 transition-opacity duration-fast group-hover:opacity-100"
+                      className="absolute inset-0 h-full w-full text-muted opacity-80 transition-opacity duration-fast group-hover:text-accent group-hover:opacity-100"
                     >
                       <path
                         d={shape}
