@@ -3,20 +3,36 @@ export const SLOGAN = "Für alle, die den Umweg nehmen.";
 /**
  * Kurzbeschreibung für Metadaten und Manifest — knapp, mit den Suchbegriffen.
  *
- * "rund um Zürich" statt "in der Schweiz", aus demselben Grund wie der Titel
- * in app/page.tsx: der Bestand ist Zürich-first (AGENTS.md), und dieser Satz
- * steht als description direkt unter jenem Titel. Ein Titel, der Zürich
- * verspricht, und eine Beschreibung, die die Schweiz verspricht, sind
- * dasselbe Suchergebnis mit zwei Aussagen — und die Beschreibung ist die
- * Hälfte, die im Google-Snippet und in jeder Link-Vorschau ausgeschrieben
- * wird.
+ * "in der ganzen Schweiz" statt des früheren "rund um Zürich", aus demselben
+ * Grund wie der Titel in app/page.tsx: dieser Satz steht als description
+ * direkt unter jenem Titel. Ein Titel, der die Schweiz nennt, und eine
+ * Beschreibung, die eine einzelne Region nennt, sind dasselbe Suchergebnis
+ * mit zwei Aussagen — und die Beschreibung ist die Hälfte, die im
+ * Google-Snippet und in jeder Link-Vorschau ausgeschrieben wird.
+ *
+ * "Pass" bleibt vorne: es ist der Suchbegriff, mit dem in der Schweiz nach
+ * genau diesen Strassen gesucht wird, und zugleich der Beleg dafür, dass
+ * hier nicht eine internationale Datenbank mit Schweizer Filter steht.
  */
 export const BESCHREIBUNG =
-  "Handverlesene Kurven-, Pass- und Aussichtsstrecken rund um Zürich. Fahrten per GPS aufzeichnen, vergleichen, teilen.";
+  "Handverlesene Pass-, Kurven- und Aussichtsstrecken in der ganzen Schweiz. Fahrten per GPS aufzeichnen, vergleichen, teilen.";
 
-// Geografischer Standard-Mittelpunkt: Zürich HB.
-export const ZURICH_CENTER: [number, number] = [8.5417, 47.3769];
-export const DEFAULT_ZOOM = 10.5;
+// Geografischer Standard-Mittelpunkt, solange die Karte nichts Besseres
+// weiss: die Mitte des Landes (Älggialp OW, der geografische Mittelpunkt
+// der Schweiz) statt wie früher Zürich HB.
+//
+// Das ist in beiden Aufrufern nur der erste Frame: ExploreView/RouteMap
+// passt via fitBounds auf die tatsächlich geladenen Strecken ein, sobald sie
+// da sind, und RoutePicker zentriert auf den Standort der Nutzerin, sobald
+// die Ortung antwortet. Sichtbar bleibt er dort, wo weder das eine noch das
+// andere vorliegt — und dann soll das Land zu sehen sein, nicht ein Kanton.
+export const SCHWEIZ_ZENTRUM: [number, number] = [8.2306, 46.8014];
+
+// Zoomstufe, auf der die Schweiz als Ganzes ins Bild passt (vorher 10.5, der
+// Ausschnitt für den Raum Zürich). Die Ost-West-Ausdehnung des Landes von
+// rund 4.5 Längengraden ist der bindende Wert: bei Handybreite (~390 px)
+// zeigt Stufe 7 knapp 4.3°, Stufe 6.9 rund 4.6° — deshalb 6.9 und nicht 7.
+export const DEFAULT_ZOOM = 6.9;
 
 export const KATEGORIEN = [
   { value: "kurvig", label: "Kurvig" },

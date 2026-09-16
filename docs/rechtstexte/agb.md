@@ -15,7 +15,9 @@
 > Es gibt **keine Platzhalter** mehr in diesem Dokument (Stand 2026-09-07).
 >
 > Entwurfsdatum: 2026-09-07 · Stand der veröffentlichten Fassung:
-> 7. September 2026
+> **14. September 2026** (stand hier bis zum 2026-09-16 falsch auf dem
+> 7. September — der Rest einer früheren Fassung; massgeblich ist der Kasten
+> weiter unten und Ziff. 1 dieses Dokuments)
 
 > ### Hinweis zum Umsetzungsstand
 >
@@ -33,9 +35,90 @@
 > anzupassen — eine AGB, die nicht existierende Leistungen verspricht, ist
 > selbst ein Problem.
 
+> ### ⚠️ Diese Fassung ist NOCH NICHT in Kraft — Ziff. 14.1 beachten
+>
+> Die **veröffentlichte und geltende** Fassung hat den Stand
+> **14. September 2026**. Der Text unten enthält eine Änderung, die diesen
+> Stand noch nicht hat:
+>
+> **Was geändert wurde (Entwurf vom 15. September 2026):**
+> - **Ziff. 11.3** hält „kein Wettbewerb um Geschwindigkeit" als Grundsatz
+>   fest und trennt neu zwei Dinge, die vorher vermengt waren: die
+>   **plattformweiten** Bestenlisten beruhen ausschliesslich auf
+>   tempounabhängigen Grössen — und zwar genau auf den vier, die
+>   `lib/leaderboard.ts` tatsächlich führt (Anzahl Fahrten, Kilometer,
+>   Höhenmeter, Anzahl unterschiedlicher Strecken) —, während die
+>   **Bestzeitenliste je Strecke** als Nebenwertung benannt und eingegrenzt
+>   wird: nur selbst veröffentlichte Fahrten, nur verifizierte Zeiten, keine
+>   Auszeichnung, kein Vorteil.
+>
+>   **Korrektur nach Review (2026-09-16).** Ein erster Entwurf nannte hier
+>   „Streckenabdeckung, Wiederholungen und Regelmässigkeit" — drei Wertungen,
+>   die es nicht gibt — und liess die Bestzeitenliste weg, die es gibt. Er
+>   behauptete ausserdem, schnelleres Fahren erreiche „nichts, was nicht auch
+>   durch häufigeres … Fahren zu erreichen wäre". Das ist falsch:
+>   `lib/leaderboard.ts` sortiert die Streckenliste nach `dauer_sekunden`
+>   aufsteigend und behält je Konto nur die schnellste Fahrt — Platz 1 ist
+>   dort **allein** durch schnelleres Fahren erreichbar. Ausgerechnet dieser
+>   Satz sollte die Abgrenzung gegen Art. 90 SVG tragen. Die jetzige Fassung
+>   sagt stattdessen, was die Liste ist und was aus ihr **nicht** folgt.
+>   Ebenfalls berichtigt: Zeiten sind kein Opt-in — sie entstehen bei jeder
+>   Aufzeichnung. Opt-in ist die Veröffentlichung der Fahrt (einen
+>   zeitspezifischen Schalter gab es bis `0016`, seit `0017` heisst die
+>   Spalte `ist_oeffentlich`).
+> - **Ziff. 11.4** untersagte bisher „jedes Verhalten, das darauf zielt, eine
+>   … geführte Zeit zu unterbieten" — und damit auch das regelkonforme
+>   erneute Befahren einer Strecke, unter Androhung der Kontosperre nach
+>   Ziff. 11.7. Das Verbot ist jetzt auf das beschränkt, was es treffen
+>   sollte: das Unterbieten **unter Missachtung der Verkehrsregeln oder unter
+>   Gefährdung anderer**.
+> - **Ziff. 12.6** ist neu und definiert, was eine **verifizierte Fahrt** ist,
+>   was sie ausdrücklich **nicht** garantiert, und dass eine fehlende
+>   Verbindung die Fahrt nicht entwertet.
+> - Die Premium-Aufzählung in Ziff. 3.2 beschreibt das Fehlen von Zeiten jetzt
+>   als Funktionsumfang statt als Verbot. **Am Funktionsumfang selbst ändert
+>   sich nichts** — `lib/fahrtstatistik.ts` liefert weiterhin keine Zeiten.
+>
+> **Vor der Veröffentlichung zwingend (Ziff. 14.1):** Nutzende sind
+> mindestens **30 Tage** vor Inkrafttreten per E-Mail **und** in der App zu
+> informieren, mit ausdrücklichem Hinweis auf die Zustimmungsfiktion und das
+> Widerspruchsrecht. Frühestes Inkrafttreten bei einer Mitteilung am
+> 15. September 2026 ist damit der **16. Oktober 2026**. Bis dahin darf
+> `https://strado.ch/legal/agb` diese Fassung **nicht** ausliefern — die
+> veröffentlichte HTML-Fassung im Repo `janlampert08-dev/stradoinfo` bleibt
+> bis zum Inkrafttreten auf dem Stand vom 14. September 2026.
+>
+> **Blocker, der NICHT in diesem Dokument liegt: die Datenschutzerklärung.**
+> Ziff. 12.6 beschreibt Positionsmeldungen, die **während** der Fahrt an den
+> Server gehen. Die veröffentlichte Datenschutzerklärung
+> (`janlampert08-dev/stradoinfo`, `legal/datenschutz.html`) sagt heute das
+> Gegenteil: die Aufzeichnung liege „auf dem Gerät und wird nicht an uns
+> übermittelt, solange die Fahrt nicht gespeichert wird", und bei nicht
+> angemeldeten Besuchenden bleibe sie „ausschliesslich lokal". Da
+> `fahrt_start_puls` ausdrücklich auch an `anon` vergeben ist, trifft der
+> zweite Satz nicht mehr zu, sobald der Code aus PR #249 ausgeliefert ist.
+>
+> **Stand 2026-09-16: das ist eingetreten.** `60a4098` (Promotion
+> `staging` → `main`, PR #253) ist um 06:54 UTC gemergt und in Produktion.
+> Die ursprüngliche Fassung dieses Kastens schrieb „müssen geändert sein,
+> **bevor** #249 die Produktion erreicht" — diese Reihenfolge ist nicht mehr
+> einzuhalten, sondern nachzuholen. Die Datenschutzerklärung ist damit in
+> beiden Repositories **derzeit unzutreffend**, nicht bloss bald. Die
+> Nacharbeit läuft ausserhalb dieses PR (`strado`#255,
+> `stradoinfo`#19); dieser Kasten hält nur fest, dass sie zwingend ist und
+> warum. Zwei Repositories, dieselbe Logik wie beim Herkunfts-Cookie.
+>
+> **Nicht anwaltlich geprüft.** Ziff. 11.3/11.4 berühren die Abgrenzung zu
+> Art. 90 Abs. 3 und 4 SVG (Raserartikel). Die Änderung verengt ein zu weites
+> Verbot, sie erlaubt kein Rennen — aber ob die Formulierung trägt, gehört
+> auf die Prüfliste am Ende dieses Dokuments. Der anwaltlichen Durchsicht ist
+> der **korrigierte** Sachverhalt vorzulegen: es gibt eine Bestzeitenliste,
+> und auf ihr gewinnt, wer schneller fährt.
+
 ---
 
-**Stand: 14. September 2026**
+**Stand der geltenden Fassung: 14. September 2026**
+**Stand dieses Entwurfs: 15. September 2026 — in Kraft frühestens 16. Oktober 2026**
 
 ## 1. Geltungsbereich und Anbieterin
 
@@ -112,8 +195,9 @@ Das kostenpflichtige Premium-Abo („Strado Premium") ergänzt die kostenlose
 Nutzung. Es umfasst:
 
 - eine Auswertung der eigenen Fahrten nach Jahr und nach Fahrzeug
-  (Anzahl, Kilometer, Höhenmeter; **keine** Zeiten und keine
-  Geschwindigkeiten, vgl. Ziff. 11.3),
+  (Anzahl, Kilometer, Höhenmeter; derzeit **ohne** Zeiten und ohne
+  Geschwindigkeiten — das beschreibt den gelieferten Funktionsumfang, nicht
+  ein Verbot),
 - unbegrenzt viele private Strecken — solche, die nur für die eigene Nutzung
   sichtbar sind (kostenlos: eine),
 - bis zu zwölf Fotos pro Fahrt (kostenlos: sechs),
@@ -418,17 +502,40 @@ Strassenverkehrsgesetzgebung.**
 gesetzlich nicht erlaubt ist. Die Aufzeichnung einer Fahrt ist vor der Abfahrt
 zu starten und nach dem Anhalten zu beenden.
 
-**11.3** Strado ist **kein Wettbewerb um Geschwindigkeit**. Zeiten werden nur
-erfasst, wenn die Nutzenden dies selbst aktivieren. Fahrten, die unter
-Missachtung von Verkehrsregeln zustande gekommen sind, dürfen nicht
-veröffentlicht werden.
+**11.3 Kein Wettbewerb um Geschwindigkeit.** Strado ist **kein Wettbewerb um
+Geschwindigkeit**. Die **plattformweiten** Bestenlisten beruhen ausschliesslich
+auf Grössen, die nicht vom Tempo abhängen: Anzahl der Fahrten, gefahrene
+Kilometer, Höhenmeter und Anzahl unterschiedlicher Strecken. Tempo verbessert
+dort keine Platzierung.
+
+Daneben führt Strado je Strecke eine **Bestzeitenliste**. Sie ist eine
+Nebenwertung und kein Ziel der Plattform: Sie erfasst nur Fahrten, die die
+Nutzenden selbst öffentlich gestellt haben, sie führt nur verifizierte Zeiten
+(Ziff. 12.6), und sie fliesst in keine plattformweite Rangliste ein. Aus einer
+Platzierung folgt **kein Vorteil auf Strado** — keine Funktion, kein
+Premium-Bestandteil, keine Sichtbarkeit ausserhalb der betreffenden
+Streckenseite. Die ersten drei Plätze werden dort mit einem Pokalsymbol
+markiert; mehr als diese Markierung folgt aus ihnen nicht.
+
+Eine Zeit entsteht bei jeder aufgezeichneten Fahrt. Was die Nutzenden
+entscheiden, ist nicht die Messung, sondern die **Veröffentlichung**: Wer eine
+Fahrt privat lässt, erscheint in keiner Bestzeitenliste. Wer sie öffentlich
+stellt, **kann** dort erscheinen — vorausgesetzt, es handelt sich um die Fahrt
+einer freigegebenen, nicht privaten Strecke und die Zeit ist verifiziert
+(Ziff. 12.6). Eine freie Fahrt ohne Strecke und eine Fahrt ohne verifizierte
+Zeit erscheinen nie. Die Sichtbarkeit lässt sich jederzeit nachträglich
+ändern.
+
+Fahrten, die unter Missachtung von Verkehrsregeln zustande gekommen sind,
+dürfen nicht veröffentlicht werden.
 
 **11.4** **Strado darf nicht in einer Weise genutzt werden, die andere
 gefährdet.** Untersagt sind insbesondere das Verabreden oder Austragen von
 Rennen, das Fahren im Pulk oder dichtes Auffahren zum Zweck einer gemeinsamen
-Aufzeichnung sowie jedes Verhalten, das darauf zielt, eine angezeigte oder in
-einer Bestenliste geführte Zeit zu unterbieten. Wer zwischen einer Aufzeichnung
-und der Sicherheit anderer entscheiden muss, bricht die Aufzeichnung ab.
+Aufzeichnung sowie jedes Fahrverhalten, das darauf zielt, eine angezeigte oder
+in einer Bestenliste geführte Zeit **unter Missachtung der Verkehrsregeln oder
+unter Gefährdung anderer** zu unterbieten. Wer zwischen einer Aufzeichnung und
+der Sicherheit anderer entscheiden muss, bricht die Aufzeichnung ab.
 
 **11.5** Nutzende sind für die Verkehrstauglichkeit ihres Fahrzeugs, für
 gültige Fahrberechtigungen und für den Versicherungsschutz selbst
@@ -481,6 +588,24 @@ nicht von einer Fahrt mit einem Strassenfahrzeug stammen können — etwa bei
 unrealistischer Durchschnittsgeschwindigkeit, unrealistischer Dauer oder zu
 grossen Lücken zwischen zwei Messpunkten. Die Zurückweisung wird begründet
 angezeigt; ein Anspruch auf Speicherung besteht in diesen Fällen nicht.
+
+**12.6 Verifizierte Fahrten.** Eine Fahrt gilt als **verifiziert**, wenn ihre
+Dauer nicht aus den Zeitstempeln des Geräts stammt, sondern aus
+Positionsmeldungen, die während der Fahrt an den Server gesendet und dort mit
+der Serveruhr gestempelt wurden, und wenn die zuletzt gemeldete Position zum
+Ende der eingereichten Aufzeichnung passt. Nur verifizierte Fahrten werden mit
+einer Zeit in einer Streckenbestenliste geführt.
+
+**Verifiziert heisst nicht, dass die Anbieterin die Fahrt beobachtet oder
+bestätigt hat.** Die gemeldeten Positionen stammen wie jede andere
+GPS-Information vom Gerät der Nutzenden. Die Verifikation erschwert eine
+Fälschung erheblich, schliesst sie aber nicht aus; Ziff. 12.4 und Ziff. 10.4
+gelten unverändert.
+
+Besteht während der Fahrt keine Verbindung, bleibt die Fahrt vollständig
+erhalten — sie wird lediglich nicht verifiziert und erscheint dann ohne Zeit in
+der Streckenbestenliste. Distanz, Höhenmeter und Streckenabdeckung sind davon
+nicht betroffen. Ein Anspruch auf Verifikation besteht nicht.
 
 ## 13. Haftung
 
@@ -600,3 +725,22 @@ Dokument muss leer bleiben und ist Teil der Prüfung vor jeder weiteren
    2026-09-07: Das Erstellen eigener Strecken ist eine Premium-Funktion,
    Ziff. 3.2 und 9.1 sind entsprechend gefasst, der Bestandsschutz für davor
    ohne Abo angelegte Strecken steht in Ziff. 3.2.
+7. **Bestenlisten und Raserartikel** (Ziff. 11.3, 11.4, 12.6) — neu mit dem
+   Entwurf vom 2026-09-15. Ziff. 11.4 untersagte bisher *jedes* Verhalten,
+   das auf das Unterbieten einer geführten Zeit zielt, und stellte damit auch
+   das regelkonforme erneute Befahren einer Strecke unter die Kontosperre aus
+   Ziff. 11.7 — ein Verbot des eigenen Produkts. Der Entwurf beschränkt es
+   auf das Unterbieten unter Missachtung der Verkehrsregeln oder unter
+   Gefährdung anderer. Zu prüfen ist, ob diese Abgrenzung gegenüber
+   **Art. 90 Abs. 3 und 4 SVG** (Raserartikel) trägt, und ob die
+   Kombination aus tempounabhängigen Ranglisten (Ziff. 11.3) und einer
+   opt-in-Zeit je Fahrt die Plattform hinreichend vom Vorwurf distanziert,
+   zu einem Geschwindigkeitsvergleich auf öffentlichen Strassen anzuleiten
+   (vgl. Ziff. 10.4, letzter Halbsatz).
+8. **Verifizierte Fahrten als Aussage gegenüber Nutzenden** (Ziff. 12.6) —
+   ebenfalls neu. „Verifiziert" ist ein Vertrauensversprechen; Ziff. 12.6
+   grenzt es ausdrücklich ab (die Positionen stammen weiterhin vom Gerät der
+   Nutzenden, eine Fälschung wird erschwert, nicht ausgeschlossen). Zu
+   prüfen ist, ob diese Abgrenzung gegen den Vorwurf der irreführenden
+   Angabe nach **Art. 3 Abs. 1 lit. b UWG** ausreicht, wenn die Bezeichnung
+   in der Oberfläche prominent verwendet wird.

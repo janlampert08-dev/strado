@@ -3,6 +3,7 @@ import Header from "@/components/Header";
 import AnmeldenForm from "@/components/AnmeldenForm";
 import { LEGAL_URLS } from "@/lib/constants";
 import { safeInternalPath } from "@/lib/utils/url";
+import { authFehlerText } from "@/lib/authFehler";
 import { NICHT_INDEXIEREN } from "@/lib/seo";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
@@ -34,10 +35,17 @@ export const metadata: Metadata = {
 export default async function AnmeldenPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; fehler?: string | string[] }>;
 }) {
-  const { next } = await searchParams;
+  const { next, fehler } = await searchParams;
   const nextHref = safeInternalPath(next) ?? undefined;
+
+  // ?fehler= setzt app/auth/callback/route.ts, wenn sich ein Bestätigungs-
+  // oder Anmeldelink nicht einlösen liess. Der Parameter wurde seit jeher
+  // gesetzt und von niemandem gelesen — wer auf einem toten Link landete,
+  // sah genau dieses Formular ohne ein Wort dazu. Der Text kommt aus einer
+  // festen Zuordnung (lib/authFehler.ts), nie aus der Adresszeile.
+  const fehlerText = authFehlerText(fehler);
 
   return (
     <div className="flex h-dvh flex-col">
@@ -54,6 +62,11 @@ export default async function AnmeldenPage({
           darüber hinaus in den Scrollbereich statt zu beschneiden. */}
       <div className="flex-1 overflow-y-auto">
         <Seitenrahmen breite="schmal" className="min-h-full justify-center">
+          {fehlerText && (
+            <p className="rounded-lg border border-danger/40 px-4 py-3 text-sm text-danger">
+              {fehlerText}
+            </p>
+          )}
           <AnmeldenForm nextHref={nextHref} />
         </Seitenrahmen>
       </div>

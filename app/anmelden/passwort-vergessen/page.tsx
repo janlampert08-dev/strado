@@ -3,6 +3,7 @@ import Header from "@/components/Header";
 import PasswortVergessenForm from "@/components/PasswortVergessenForm";
 import { NICHT_INDEXIEREN } from "@/lib/seo";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
+import { authFehlerText } from "@/lib/authFehler";
 
 export const metadata: Metadata = {
   title: "Passwort vergessen – Strado",
@@ -12,7 +13,18 @@ export const metadata: Metadata = {
   robots: NICHT_INDEXIEREN,
 };
 
-export default function PasswortVergessenPage() {
+// ?fehler= setzt app/auth/callback/route.ts, wenn sich ein Zurücksetzen-Link
+// nicht einlösen liess. Vorher landete dieser Fall auf /anmelden — der einen
+// Seite, die nicht weiterhilft, wenn man sein Passwort gerade nicht kennt.
+// Jetzt kommt er hier heraus, direkt vor dem Formular für einen neuen Link,
+// und liest dazu, warum der alte nicht funktioniert hat.
+export default async function PasswortVergessenPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ fehler?: string | string[] }>;
+}) {
+  const { fehler } = await searchParams;
+
   return (
     <div className="flex h-dvh flex-col">
       <Header back="/anmelden" />
@@ -28,7 +40,7 @@ export default function PasswortVergessenPage() {
           darüber hinaus in den Scrollbereich statt zu beschneiden. */}
       <div className="flex-1 overflow-y-auto">
         <Seitenrahmen breite="schmal" className="min-h-full justify-center">
-          <PasswortVergessenForm />
+          <PasswortVergessenForm hinweis={authFehlerText(fehler)} />
         </Seitenrahmen>
       </div>
     </div>
