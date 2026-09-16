@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { liveTempoKmh } from "@/lib/livetempo";
 import { haversineKm, type TrailPoint } from "@/lib/geo";
 import { evaluateProximity } from "@/lib/tracking";
 import type { FahrtStartTicket } from "@/lib/fahrtstart";
@@ -154,6 +155,17 @@ export function useRideRecorder({
   const watchIdRef = useRef<number | null>(null);
   const lastPointRef = useRef<[number, number] | null>(null);
   const lastPointTimeRef = useRef<number | null>(null);
+  // MESSzeitpunkt des letzten Punktes (GeolocationPosition.timestamp), im
+  // Unterschied zu lastPointTimeRef, das seine ANKUNFT festhält.
+  //
+  // Die Trennung ist der Kern der Tempo-Korrektur und bewusst keine
+  // Vereinheitlichung: für das Tempo zwischen zwei Fixes zählt, wie weit
+  // ihre Messungen auseinanderliegen — dafür ist timestamp da. Für die
+  // Gesamtdauer der Fahrt und für den Trail bleibt die Ankunftszeit die
+  // robustere Wahl, weil sie monoton läuft; eine Geräteuhr, die sich
+  // mitten in der Fahrt per NTP korrigiert, würde dort sonst eine negative
+  // Dauer erzeugen. Siehe lib/livetempo.ts.
+  const lastPointMeasuredAtRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const trailRef = useRef<TrailPoint[]>([]);
@@ -453,6 +465,11 @@ export function useRideRecorder({
         hasStartedRef.current = resume.hasStarted;
         lastPointRef.current = lastPoint ? [lastPoint.lng, lastPoint.lat] : null;
         lastPointTimeRef.current = lastPoint ? lastPoint.t : null;
+        // Der Snapshot hält nur die Ankunftszeit fest. Nach einer
+        // Wiederaufnahme gibt es also noch keinen Messzeitpunkt zum
+        // Vergleichen — bis der erste neue Fix eintrifft, liefert die
+        // Ableitung nichts, und angezeigt wird, was das Gerät selbst misst.
+        lastPointMeasuredAtRef.current = null;
         trailRef.current = resume.trail;
         ticketRef.current = resume.ticket ?? null;
         setTicketJson(JSON.stringify(resume.ticket ?? null));
@@ -475,6 +492,7 @@ export function useRideRecorder({
         hasStartedRef.current = false;
         lastPointRef.current = null;
         lastPointTimeRef.current = null;
+        lastPointMeasuredAtRef.current = null;
         trailRef.current = [];
         startTimeRef.current = null;
         distanceKmRef.current = 0;
@@ -536,6 +554,16 @@ export function useRideRecorder({
             return;
           }
           const now = Date.now();
+          // Der Zeitpunkt, zu dem dieser Fix GEMESSEN wurde — nicht der, zu
+          // dem er hier ankommt. Beides kann weit auseinanderliegen: die
+          // Watch unten läuft mit maximumAge: 2000, der Browser darf also
+          // eine bis zu zwei Sekunden alte Position herausgeben. Nur für
+          // das Tempo zwischen zwei Fixes verwendet; Trail und Gesamtdauer
+          // bleiben bei `now` (Begründung bei lastPointMeasuredAtRef).
+          const gemessenAm =
+            Number.isFinite(browserPosition.timestamp) && browserPosition.timestamp > 0
+              ? browserPosition.timestamp
+              : now;
 
           // Rohdaten für die serverseitige Neuberechnung von Distanz/Dauer/
           // Deckungsgrad (siehe lib/actions/completions.ts) — nur ausreichend
@@ -553,20 +581,34 @@ export function useRideRecorder({
           if (lastPointRef.current) {
             const segment = haversineKm(lastPointRef.current, point);
             if (segment > MIN_SEGMENT_KM) {
-              const dtHours = (now - (lastPointTimeRef.current ?? now)) / 3_600_000;
               const gpsSpeedKmh =
                 browserPosition.coords.speed !== null && browserPosition.coords.speed !== undefined
                   ? browserPosition.coords.speed * 3.6
                   : null;
-              setSpeedKmh(gpsSpeedKmh ?? (dtHours > 0 ? segment / dtHours : null));
+              // Die Rechnung steht in lib/livetempo.ts, weil sie dort eine
+              // Testdatei haben kann — components/ ist projektweit
+              // ungetestet. Sie hat vorher 1392 km/h angezeigt; der Kopf
+              // dort rechnet vor, wie.
+              const tempo = liveTempoKmh({
+                gpsTempoKmh: gpsSpeedKmh,
+                segmentKm: segment,
+                dtMs: gemessenAm - (lastPointMeasuredAtRef.current ?? gemessenAm),
+              });
+              // null heisst "gerade keine belastbare Aussage" — dann bleibt
+              // der letzte gute Wert stehen, statt auf "—" zu springen und
+              // im nächsten Takt zurück. Bei 2 Hz Fix-Rate wäre das ein
+              // Flackern im Blickfeld während der Fahrt.
+              if (tempo !== null) setSpeedKmh(tempo);
               distanceKmRef.current += segment;
               setDistanceKm(distanceKmRef.current);
               lastPointRef.current = point;
               lastPointTimeRef.current = now;
+              lastPointMeasuredAtRef.current = gemessenAm;
             }
           } else {
             lastPointRef.current = point;
             lastPointTimeRef.current = now;
+            lastPointMeasuredAtRef.current = gemessenAm;
           }
 
           publishLiveTrail(now);
