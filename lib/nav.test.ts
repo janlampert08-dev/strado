@@ -7,56 +7,68 @@ function hrefs(items: { href: string }[]): string[] {
 
 describe("getNavItems", () => {
   // Alles, was ohne Konto benutzbar ist, steht auch für Abgemeldete in der
-  // Navigation: Strecken und Feed sind öffentlich lesbar, und aufzeichnen
-  // darf inzwischen jeder (das Konto verlangt erst das Speichern, siehe
-  // FreeRideForm.tsx).
+  // Navigation: Strecken, Feed und Ranglisten sind öffentlich lesbar, und
+  // aufzeichnen darf inzwischen jeder (das Konto verlangt erst das
+  // Speichern, siehe FreeRideForm.tsx).
   //
-  // Die Bestenlisten sind ebenso öffentlich, stehen aber nicht mehr hier:
-  // sie sind seit der Umstellung auf die Loop-Leiste der dritte Reiter neben
-  // dem Feed (components/FeedReiter.tsx) statt ein eigener Eintrag. Ein
-  // Eintrag weniger ist genau die Absicht — siehe den Kopf von lib/nav.ts.
+  // /aktivitaet steht nicht dabei und darf es nicht: ohne Konto gibt es
+  // weder eigene Fahrten noch Follower, die Seite leitet auf /anmelden um.
   it("zeigt abgemeldeten Besuchern alles ohne Konto Nutzbare", () => {
     for (const surface of ["header", "bottom"] as const) {
       expect(hrefs(getNavItems({ loggedIn: false, moderator: false, surface }))).toEqual([
         "/",
         "/feed",
         "/fahrten/neu",
+        "/leaderboards",
         "/anmelden",
       ]);
     }
   });
 
-  // Der Tausch, um den es in docs/design-vereinfachung.md Abschnitt 3b geht,
-  // festgehalten: die Leiste trägt NUR Schritte des Kernloops. "Aktivität"
-  // ist Schritt 8 und gehört hinein; "Bestenlisten" kommt in keinem der neun
-  // Schritte vor und gehört nicht hinein.
-  it("trägt Aktivität und nicht mehr die Bestenlisten", () => {
+  // Die Zuordnung, die der Kopf von lib/nav.ts begründet, festgehalten:
+  // die Ranglisten sind ein eigener Bereich und stehen in der Leiste, die
+  // Aktivität ist eine Ansicht auf dieselbe Frage wie der Feed und steht
+  // dort als Reiter (components/FeedReiter.tsx).
+  it("trägt die Ranglisten und nicht die Aktivität", () => {
     for (const surface of ["header", "bottom"] as const) {
       const items = hrefs(getNavItems({ loggedIn: true, moderator: false, surface }));
-      expect(items).toContain("/aktivitaet");
-      expect(items).not.toContain("/leaderboards");
+      expect(items).toContain("/leaderboards");
+      expect(items).not.toContain("/aktivitaet");
     }
   });
 
-  // Die Gegenrechnung zum Tausch, und der Grund, warum NavItem.aktivAuf
-  // existiert: BottomNav markiert einen Eintrag über
-  // pathname.startsWith(href). Nachdem /leaderboards die Leiste verlassen
-  // hatte, war es auch kein Präfix eines verbliebenen Eintrags mehr — wer
-  // auf dem Feed "Rangliste" tippte, stand auf einer Seite, auf der unten
-  // nichts hervorgehoben war. Auf dem Telefon ist die Leiste der einzige
-  // Orientierungsanker.
+  // Die Gegenrechnung, und der Grund, warum NavItem.aktivAuf existiert:
+  // BottomNav markiert einen Eintrag über pathname.startsWith(href).
+  // /aktivitaet hat keinen eigenen Eintrag mehr und ist auch kein Präfix
+  // eines verbliebenen — wer im Feed "Aktivität" tippt, stünde sonst auf
+  // einer Seite, auf der unten NICHTS hervorgehoben ist. Auf dem Telefon
+  // ist die Leiste der einzige Orientierungsanker.
   //
-  // Der Test prüft beides zusammen: dass genau ein Eintrag /leaderboards
-  // abdeckt, und dass es der Feed ist — die Seite, auf der die Rangliste
-  // jetzt als dritter Reiter sitzt.
-  it("markiert /leaderboards über den Feed-Eintrag", () => {
+  // Der Test prüft beides zusammen: dass genau ein Eintrag /aktivitaet
+  // abdeckt, und dass es der Feed ist — die Seite, auf der die Aktivität
+  // als Reiter sitzt.
+  it("markiert /aktivitaet über den Feed-Eintrag", () => {
+    const items = getNavItems({ loggedIn: true, moderator: false, surface: "bottom" });
+    const zustaendig = items.filter((i) =>
+      (i.aktivAuf ?? []).some((p) => "/aktivitaet".startsWith(p)),
+    );
+    expect(zustaendig.map((i) => i.href)).toEqual(["/feed"]);
+  });
+
+  // Die Ranglisten brauchen umgekehrt KEIN aktivAuf: sie sind wieder ein
+  // eigener Eintrag, also deckt sie ihr eigenes Präfix ab. Ein zusätzlicher
+  // Eintrag, der /leaderboards mitmarkiert, würde auf der Ranglisten-Seite
+  // zwei Tabs gleichzeitig hervorheben.
+  it("markiert /leaderboards über genau einen Eintrag", () => {
     for (const loggedIn of [false, true]) {
       for (const surface of ["header", "bottom"] as const) {
         const items = getNavItems({ loggedIn, moderator: false, surface });
-        const zustaendig = items.filter((i) =>
-          (i.aktivAuf ?? []).some((p) => "/leaderboards".startsWith(p)),
+        const zustaendig = items.filter(
+          (i) =>
+            (i.href !== "/" && "/leaderboards".startsWith(i.href)) ||
+            (i.aktivAuf ?? []).some((p) => "/leaderboards".startsWith(p)),
         );
-        expect(zustaendig.map((i) => i.href)).toEqual(["/feed"]);
+        expect(zustaendig.map((i) => i.href)).toEqual(["/leaderboards"]);
       }
     }
   });
@@ -105,7 +117,7 @@ describe("getNavItems", () => {
   // steht dort stattdessen prominent auf /profil.
   it("lässt in der mobilen Leiste Vorschlagen weg und zeigt nur Fahrt starten", () => {
     const items = hrefs(getNavItems({ loggedIn: true, moderator: false, surface: "bottom" }));
-    expect(items).toEqual(["/", "/feed", "/fahrten/neu", "/aktivitaet", "/profil"]);
+    expect(items).toEqual(["/", "/feed", "/fahrten/neu", "/leaderboards", "/profil"]);
   });
 
   it("hängt Moderation im Header nur für Moderatoren an", () => {
@@ -128,7 +140,7 @@ describe("getNavItems", () => {
       { moderator: true, creator: true },
     ]) {
       const items = getNavItems({ loggedIn: true, ...rollen, surface: "bottom" });
-      expect(hrefs(items)).toEqual(["/", "/feed", "/fahrten/neu", "/aktivitaet", "/profil"]);
+      expect(hrefs(items)).toEqual(["/", "/feed", "/fahrten/neu", "/leaderboards", "/profil"]);
     }
   });
 

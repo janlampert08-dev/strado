@@ -17,8 +17,8 @@ import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
 import { formatDuration } from "@/lib/format";
 import RideSummaryForm from "@/components/RideSummaryForm";
 import type { KartenStrecke, RouteGeoJSON, Vehicle } from "@/types/database";
-import { Smartphone } from "lucide-react";
-import { buttonVariants } from "@/components/ui/Button";
+import { Flag, Smartphone } from "lucide-react";
+import { buttonVariants, textAktionClassName } from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Skeleton from "@/components/ui/Skeleton";
 import FullscreenDialog from "@/components/ui/FullscreenDialog";
@@ -398,7 +398,7 @@ export default function LiveTrackingForm({
                 <button
                   type="button"
                   onClick={recorder.beginNow}
-                  className="text-sm font-medium text-accent hover:underline"
+                  className={textAktionClassName()}
                 >
                   Bin schon am Start
                 </button>
@@ -426,7 +426,7 @@ export default function LiveTrackingForm({
   return (
     <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)]">
       <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-5 py-8 sm:px-6 sm:py-10">
-        <SectionHeading>Fazit</SectionHeading>
+        <SectionHeading icon={Flag}>Fazit</SectionHeading>
 
         <dl className="grid grid-cols-2 gap-4 text-sm">
           <div>
@@ -487,7 +487,7 @@ export default function LiveTrackingForm({
             <p className="font-medium text-foreground">Strecke gefahren.</p>
             <p className="text-muted">
               Zum Speichern brauchst du ein Konto — damit zählt die Fahrt für deine Bestzeit auf
-              dieser Strecke, für die Bestenlisten und dein Profil. Die Aufzeichnung bleibt so
+              dieser Strecke, für die Ranglisten und dein Profil. Die Aufzeichnung bleibt so
               lange in diesem Browser (bis zu 24 Stunden) und wird nach der Anmeldung übernommen.
             </p>
             <div className="flex flex-wrap gap-2">
@@ -545,7 +545,7 @@ export default function LiveTrackingForm({
               // alles berührt und trotzdem nur die Hälfte gefahren sein.
               publicDisabledHint: `Diese Fahrt deckt nur ${coveragePercent}% der offiziellen Strecke ab — evtl. abgekürzt, am falschen Punkt gestartet/beendet, oder die Strecke führt zurück und du bist nur eine Richtung gefahren. Sie bleibt privat gespeichert, kann aber nicht öffentlich geteilt werden.`,
               publicHint:
-                "Öffentlich: erscheint auf Bestenlisten und deinem öffentlichen Profil. Später jederzeit umschaltbar.",
+                "Öffentlich: erscheint in den Ranglisten und auf deinem öffentlichen Profil. Später jederzeit umschaltbar.",
               privateHint:
                 "Privat: nur du siehst diese Fahrt in deinem Profil, für andere bleibt sie unsichtbar. Später jederzeit umschaltbar.",
             }}

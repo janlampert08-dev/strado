@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { MapPinIcon, PlusIcon, PersonIcon, ShieldIcon, FeedIcon, RecordIcon, ChartIcon, FlameIcon } from "@/components/NavIcons";
+import { MapPinIcon, PlusIcon, PersonIcon, ShieldIcon, FeedIcon, RecordIcon, ChartIcon, RankingIcon } from "@/components/NavIcons";
 
 export interface NavItem {
   href: string;
@@ -8,16 +8,18 @@ export interface NavItem {
   /**
    * Weitere Pfade, auf denen dieser Eintrag als aktiv gilt.
    *
-   * Nötig geworden durch den Tausch weiter unten: BottomNav markiert einen
-   * Eintrag über `pathname.startsWith(href)`, und seit /leaderboards kein
-   * eigener Eintrag mehr ist, ist es auch kein Präfix eines verbliebenen —
-   * wer auf dem Feed "Rangliste" tippt, stand danach auf einer Seite, auf
-   * der unten NICHTS hervorgehoben war. Auf dem Telefon ist die Leiste der
-   * einzige Orientierungsanker.
+   * BottomNav markiert einen Eintrag über `pathname.startsWith(href)`.
+   * Eine Seite, die als Reiter unter einem Eintrag hängt, aber eine eigene
+   * Adresse hat, ist kein Präfix davon — ohne diese Liste wäre unten dann
+   * NICHTS hervorgehoben, und auf dem Telefon ist die Leiste der einzige
+   * Orientierungsanker.
+   *
+   * Konkret betrifft das /aktivitaet: es ist der dritte Reiter des Feeds
+   * (components/FeedReiter.tsx), aber weiterhin eine eigene Seite.
    *
    * Die Kompensation steht bewusst hier und nicht als Sonderfall in
-   * BottomNav: sie gehört in dieselbe Datei wie der Tausch, der sie nötig
-   * macht — sonst driftet das eine vom anderen weg.
+   * BottomNav: sie gehört in dieselbe Datei wie die Zuordnung, die sie
+   * nötig macht — sonst driftet das eine vom anderen weg.
    */
   aktivAuf?: string[];
 }
@@ -25,23 +27,32 @@ export interface NavItem {
 // Einzige Quelle für die Top-Level-Navigation — Header (Desktop) und
 // BottomNav (Mobile) rendern beide dieselbe Liste.
 //
-// JEDER EINTRAG IST EIN SCHRITT DES KERNLOOPS (siehe AGENTS.md). Das war
-// nicht immer so, und der Tausch, der es hergestellt hat, ist der Kern von
-// docs/design-vereinfachung.md, Abschnitt 3b:
+// FÜNF PLÄTZE, UND WER SIE BEKOMMT
 //
-//   raus: "Bestenlisten". Der Eintrag kam in keinem der neun Schritte vor
-//         und hielt trotzdem einen der fünf Plätze. Die Rangliste je Strecke
-//         sitzt ohnehin auf der Streckenseite (RouteLeaderboardPreview), wo
-//         sie zu Schritt 1 gehört; die globale erreicht man jetzt als
-//         dritten Reiter neben dem Feed (components/FeedReiter.tsx) — dort,
-//         wo man sowieso schaut, was andere gefahren sind.
+// Die mobile Leiste ist auf fünf Einträge gedeckelt (Begründung weiter
+// unten bei den Rollen). Was also hineinkommt, verdrängt etwas.
 //
-//   rein: "Aktivität". Das IST Schritt 8, der die Schleife schliesst, und es
-//         war der einzige Loop-Schritt ohne Platz in der Leiste — erreichbar
-//         nur über ein 20-px-Flammensymbol oben rechts im Kopf. AGENTS.md
-//         schreibt zu diesem Schritt: "eine Reaktion, von der niemand
-//         erfährt, schliesst den Loop nicht." Die Navigation widersprach
-//         dem Satz.
+// "Ranglisten" steht darin, "Aktivität" nicht — und zwar in genau dieser
+// Zuordnung:
+//
+//   Ranglisten sind ein eigener Bereich. Sie haben eigene Daten (vier
+//   Volumenlisten plus die Streckenbestzeiten), einen eigenen Filter
+//   (Motorklasse) und einen eigenen Grund, sie zu öffnen: nachsehen, wo man
+//   steht. Das ist keine Ansicht auf den Feed, sondern eine Seite neben ihm,
+//   und als dritter Reiter einer anderen Seite war sie genau so auffindbar
+//   wie ein Eintrag in einem Menü, das man erst öffnen muss.
+//
+//   Aktivität steht unter dem Feed. Beide beantworten "was ist passiert,
+//   seit ich zuletzt geschaut habe" — der Feed für die anderen, die
+//   Aktivität für einen selbst. Sie teilen sich deshalb die Reiterleiste
+//   (components/FeedReiter.tsx), und der Zähler ungesehener Reaktionen
+//   sitzt am Feed-Eintrag, damit er auch dann sichtbar ist, wenn man gerade
+//   nicht auf der Aktivitätsseite steht.
+//
+// Der Loop-Schritt 8 aus AGENTS.md ("eine Reaktion, von der niemand
+// erfährt, schliesst den Loop nicht") bleibt damit vertreten: erreichbar in
+// einem Tipp auf die Leiste, mit der Zahl daneben. Was er nicht mehr
+// braucht, ist eine eigene Spalte — er ist eine Ansicht, kein Ort.
 //
 // Ein Unterschied bleibt seit dem Aufzeichnen freier Fahrten: die mobile
 // Leiste trägt an der mittleren, am leichtesten erreichbaren Position
@@ -77,16 +88,23 @@ export function getNavItems({
   // ist — er fehlte in dieser Liste nur, wodurch es für Abgemeldete keinen
   // Weg dorthin gab ausser über einen geteilten Link. Das ist genau der
   // Teil des Produkts, der jemanden ohne Konto überzeugen kann. Die
-  // Bestenlisten sind ebenso öffentlich und ebenso erreichbar — als Reiter
-  // neben dem Feed, statt als eigener Eintrag.
+  // Ranglisten sind ebenso öffentlich und stehen aus demselben Grund
+  // daneben — sie sind das zweite, was man ohne Konto ansehen kann, und
+  // "wer ist hier der Schnellste" ist eine Frage, die man auch ohne Konto
+  // hat.
   //
   // "Erstellen", "Profil" und "Aktivität" bleiben weg: alle drei sind ohne
-  // Konto nichts als eine Umleitung auf /anmelden.
+  // Konto nichts als eine Umleitung auf /anmelden. Bei "Aktivität" kommt
+  // hinzu, dass es ohne eigene Fahrten und Follower gar keinen Inhalt hätte.
+  //
+  // Fünf Einträge, wie für Angemeldete — die Deckelung ist die Breite der
+  // Leiste, nicht der Anmeldezustand.
   if (!loggedIn) {
     return [
       { href: "/", label: "Strecken", icon: MapPinIcon },
-      { href: "/feed", label: "Feed", icon: FeedIcon, aktivAuf: ["/leaderboards"] },
+      { href: "/feed", label: "Feed", icon: FeedIcon },
       fahrtStarten,
+      { href: "/leaderboards", label: "Ranglisten", icon: RankingIcon },
       { href: "/anmelden", label: "Anmelden", icon: PersonIcon },
     ];
   }
@@ -112,7 +130,7 @@ export function getNavItems({
   // eng" festhält und deshalb "Erstellen" aus der Leiste nimmt, liess hier
   // eine siebte Spalte zu: bei 360 px Breite sind das 51 px pro Eintrag,
   // schmaler als die 44 px Mindestgrösse einer Tippfläche plus Abstand, und
-  // die Beschriftungen ("Bestenlisten", "Moderation") brechen oder werden
+  // die Beschriftungen ("Ranglisten", "Moderation") brechen oder werden
   // abgeschnitten.
   //
   // Die Leiste ist damit für JEDES Konto fünf Einträge breit. Der mobile Weg
@@ -127,9 +145,12 @@ export function getNavItems({
 
   return [
     { href: "/", label: "Strecken", icon: MapPinIcon },
-    { href: "/feed", label: "Feed", icon: FeedIcon, aktivAuf: ["/leaderboards"] },
+    // aktivAuf: /aktivitaet ist der dritte Reiter dieses Eintrags, hat aber
+    // eine eigene Adresse — ohne die Angabe stünde man dort vor einer
+    // Leiste, in der nichts hervorgehoben ist.
+    { href: "/feed", label: "Feed", icon: FeedIcon, aktivAuf: ["/aktivitaet"] },
     ...mittlereAktionen,
-    { href: "/aktivitaet", label: "Aktivität", icon: FlameIcon },
+    { href: "/leaderboards", label: "Ranglisten", icon: RankingIcon },
     { href: "/profil", label: "Profil", icon: PersonIcon },
     ...(surface === "bottom" ? [] : rollen),
   ];

@@ -11,7 +11,7 @@ import { fetchDrivingRoute, type DirectionsResult } from "@/lib/mapboxDirections
 import { deriveRouteLocations } from "@/lib/geocoding";
 import { proposeRoute, type ProposeRouteState } from "@/lib/actions/routes";
 import { Input, Textarea } from "@/components/ui/Input";
-import Button from "@/components/ui/Button";
+import Button, { textAktionClassName } from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Skeleton from "@/components/ui/Skeleton";
 import SegmentedControl from "@/components/ui/SegmentedControl";
@@ -213,10 +213,19 @@ export default function NeueStreckeForm() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 text-xs text-muted">
+          {/* -my-2 hebt die 44 px der beiden Knöpfe wieder auf die Höhe
+              der Textzeile zurück: die Tippfläche bleibt gross, die Zeile
+              wächst nicht um 24 px. Diese Leiste sitzt über der Karte, auf
+              der gerade Wegpunkte gesetzt werden — jeder Pixel, den sie
+              nimmt, fehlt dort. */}
+          <div className="-my-2 flex items-center gap-3 text-xs text-muted">
             <span>{waypoints.length} Wegpunkt(e) gesetzt</span>
             {waypoints.length > 0 && (
-              <button type="button" onClick={undoLast} className="font-medium text-accent hover:underline">
+              <button
+                type="button"
+                onClick={undoLast}
+                className={textAktionClassName({ groesse: "xs" })}
+              >
                 Letzten entfernen
               </button>
             )}
@@ -224,7 +233,7 @@ export default function NeueStreckeForm() {
               <button
                 type="button"
                 onClick={() => setResetConfirmOpen(true)}
-                className="font-medium text-accent hover:underline"
+                className={textAktionClassName({ groesse: "xs" })}
               >
                 Zurücksetzen
               </button>

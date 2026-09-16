@@ -14,6 +14,7 @@ import {
   getOpenCompletionReports,
   getOpenFeedback,
 } from "@/lib/moderation";
+import type { ComponentType } from "react";
 import { formatKm, datumCH } from "@/lib/format";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
@@ -77,10 +78,18 @@ function Zitat({ label, children }: { label?: string; children: ReactNode }) {
 }
 
 /** Abschnittsmarke mit Anzahl — dieselbe Zählpille wie im Profil. */
-function AbschnittKopf({ title, count }: { title: string; count: number }) {
+function AbschnittKopf({
+  title,
+  count,
+  icon,
+}: {
+  title: string;
+  count: number;
+  icon: ComponentType<{ className?: string }>;
+}) {
   return (
     <div className="flex items-center gap-2">
-      <SectionHeading>{title}</SectionHeading>
+      <SectionHeading icon={icon}>{title}</SectionHeading>
       <span className="rounded-full border border-border px-1.5 py-0.5 font-mono text-xs tabular-nums text-muted">
         {count}
       </span>
@@ -246,7 +255,7 @@ export default async function ModerationPage() {
           </nav>
 
           <section id="vorschlaege" className="flex scroll-mt-4 flex-col gap-3">
-            <AbschnittKopf title="Streckenvorschläge" count={routes.length} />
+            <AbschnittKopf title="Streckenvorschläge" count={routes.length} icon={MapPinIcon} />
 
             {routes.length === 0 ? (
               <EmptyState icon={MapPinIcon} title="Kein Streckenvorschlag wartet auf Freigabe." />
@@ -256,7 +265,7 @@ export default async function ModerationPage() {
                   <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                     <Link
                       href={`/strecken/${route.id}`}
-                      className="font-medium transition-colors duration-fast hover:text-accent"
+                      className="-my-1.5 py-1.5 font-medium transition-colors duration-fast hover:text-accent"
                     >
                       {route.name}
                     </Link>
@@ -279,7 +288,7 @@ export default async function ModerationPage() {
           </section>
 
           <section id="meldungen" className="flex scroll-mt-4 flex-col gap-3">
-            <AbschnittKopf title="Gemeldete Inhalte" count={meldungen.length} />
+            <AbschnittKopf title="Gemeldete Inhalte" count={meldungen.length} icon={ShieldIcon} />
 
             {meldungen.length === 0 ? (
               <EmptyState icon={ShieldIcon} title="Keine offenen Meldungen." />
@@ -297,7 +306,7 @@ export default async function ModerationPage() {
                   </div>
                   <Link
                     href={meldung.href}
-                    className="font-medium transition-colors duration-fast hover:text-accent"
+                    className="-my-1.5 py-1.5 font-medium transition-colors duration-fast hover:text-accent"
                   >
                     {meldung.titel}
                   </Link>
@@ -317,7 +326,7 @@ export default async function ModerationPage() {
               Zählung oben soll nicht durch etwas steigen, das niemanden
               betrifft. */}
           <section id="feedback" className="flex scroll-mt-4 flex-col gap-3">
-            <AbschnittKopf title="Feedback" count={feedback.length} />
+            <AbschnittKopf title="Feedback" count={feedback.length} icon={FeedbackIcon} />
 
             {feedback.length === 0 ? (
               <EmptyState icon={FeedbackIcon} title="Keine offenen Rückmeldungen." />

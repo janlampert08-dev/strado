@@ -11,6 +11,7 @@ import { Signet } from "@/components/Wortmarke";
 import { getFeed, type FeedScope } from "@/lib/feed";
 import { freieFahrtTitel } from "@/lib/completions";
 import { getCurrentUser } from "@/lib/supabase/server";
+import { getUnseenActivityCount } from "@/lib/aktivitaetsliste";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import { buttonVariants } from "@/components/ui/Button";
@@ -51,7 +52,13 @@ export default async function FeedPage({
 
   const user = await getCurrentUser();
 
-  const feed = await getFeed(scope, user?.id ?? null);
+  // Für die Zahl am Reiter "Aktivität". Kostet keinen zusätzlichen
+  // Roundtrip: <Header /> fragt dieselbe Zahl auf jeder Seite ab, und
+  // getUnseenActivityCount ist per React cache() dedupliziert.
+  const [feed, ungeseheneAktivitaet] = await Promise.all([
+    getFeed(scope, user?.id ?? null),
+    user ? getUnseenActivityCount() : Promise.resolve(0),
+  ]);
 
   return (
     <div className="flex h-dvh flex-col">
@@ -67,16 +74,19 @@ export default async function FeedPage({
 
         <ProfileSearch />
 
-        {/* Die Reiter stehen jetzt in einer eigenen Komponente, weil sie
-            /leaderboards mitbenutzt: die Ranglisten sind seit der Umstellung
-            auf die Loop-Leiste der dritte Reiter neben dem Feed statt eines
-            eigenen Eintrags in der Navigation (siehe lib/nav.ts).
+        {/* Die Reiter stehen in einer eigenen Komponente, weil /aktivitaet
+            sie mitbenutzt: die eigene Aktivität ist der dritte Blick auf
+            dieselbe Frage und deshalb ein Reiter hier statt eines eigenen
+            Eintrags in der Navigation (siehe lib/nav.ts).
 
-            Anders als vorher werden sie auch Abgemeldeten gezeigt — "Alle"
-            und "Rangliste" sind beide ohne Konto lesbar, und ohne die Leiste
-            gäbe es für sie keinen sichtbaren Weg zu den Bestenlisten mehr.
-            Nur "Folge ich" bleibt angemeldeten Konten vorbehalten. */}
-        <FeedReiter aktiv={scope === "following" ? "following" : "global"} zeigtFolgeIch={!!user} />
+            Für Abgemeldete bleibt genau ein Reiter übrig ("Alle") — die
+            Leiste rendert dann eine einzelne Pille, was als Zustandsanzeige
+            immer noch stimmt und billiger ist als ein Sonderfall. */}
+        <FeedReiter
+          aktiv={scope === "following" ? "following" : "global"}
+          angemeldet={!!user}
+          ungeseheneAktivitaet={ungeseheneAktivitaet}
+        />
 
         {feed.length === 0 ? (
           <EmptyState

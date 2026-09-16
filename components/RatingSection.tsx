@@ -14,6 +14,7 @@ import SterneEingabe from "@/components/SterneEingabe";
 import ReportDialog from "@/components/ReportDialog";
 import DeleteRatingButton from "@/components/DeleteRatingButton";
 import useEingabenBewahren from "@/components/useEingabenBewahren";
+import { SternIcon } from "@/components/NavIcons";
 import SectionHeading from "@/components/ui/SectionHeading";
 import IconButton from "@/components/ui/IconButton";
 
@@ -48,7 +49,7 @@ export default function RatingSection({
   return (
     <section className="flex flex-col gap-4 border-t border-border pt-6">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <SectionHeading>Bewertungen</SectionHeading>
+        <SectionHeading icon={SternIcon}>Bewertungen</SectionHeading>
         {/* Der Schnitt steht in der Überschrift, nicht als eigener Kasten:
             er ist die Zusammenfassung dessen, was darunter steht, und eine
             Zahl, die sich in einer Zeile mit dem Titel lesen lässt, kostet
@@ -128,7 +129,15 @@ export default function RatingSection({
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                   <Link
                     href={`/fahrer/${r.user_id}`}
-                    className="font-medium transition-colors duration-fast hover:text-accent"
+                    // -my-1.5 py-1.5: der Name ist ein Byline-Link, kein
+                    // Knopf — textAktionClassName mit seinen 44 px wäre
+                    // hier falsch, es risse die Zeile auseinander, in der
+                    // Name und Sterne nebeneinander stehen. 20 px sind aber
+                    // auch als Byline zu wenig: WCAG 2.2 SC 2.5.8 verlangt
+                    // 24. Am Preview auf 390 px gemessen waren es 24 × 20.
+                    // Die 12 px Polsterung heben das auf 32 und das
+                    // negative Aussenmass nimmt sie optisch wieder weg.
+                    className="-my-1.5 py-1.5 font-medium transition-colors duration-fast hover:text-accent"
                   >
                     {r.display_name ?? "Anonym"}
                   </Link>

@@ -3,6 +3,7 @@ import OfflineRetryButton from "@/components/OfflineRetryButton";
 import OfflineRoutesList from "@/components/OfflineRoutesList";
 import StatusPage from "@/components/ui/StatusPage";
 import { NICHT_INDEXIEREN } from "@/lib/seo";
+import { MapPinIcon } from "@/components/NavIcons";
 import SectionHeading from "@/components/ui/SectionHeading";
 
 export const metadata: Metadata = {
@@ -28,9 +29,7 @@ export default function OfflinePage() {
     >
       <OfflineRetryButton />
       <div className="mt-6 flex w-full flex-col items-center gap-3">
-        <SectionHeading>
-          Offline verfügbare Strecken
-        </SectionHeading>
+        <SectionHeading icon={MapPinIcon}>Offline verfügbare Strecken</SectionHeading>
         <OfflineRoutesList />
       </div>
     </StatusPage>

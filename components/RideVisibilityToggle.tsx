@@ -36,7 +36,7 @@ export default function RideVisibilityToggle({
         aria-label={isPublic ? "Fahrt ist öffentlich — privat machen" : "Fahrt ist privat — öffentlich machen"}
         title={
           isPublic
-            ? "Öffentlich — auf Bestenlisten/Profil sichtbar. Klicken um privat zu machen."
+            ? "Öffentlich — in Ranglisten und Profil sichtbar. Klicken um privat zu machen."
             : blocked
               ? (blockedReason ??
                 `Kann nicht öffentlich gemacht werden — deckt nur ${Math.round(coveragePercent ?? 0)}% der Strecke ab.`)

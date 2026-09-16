@@ -21,22 +21,29 @@ geschlossen sind (etwa §5.1, die Grösse der Start-/Stopp-Schaltflächen — he
 Das Konzept ist zum grossen Teil gebaut. Diese Tabelle ist die Kurzfassung;
 jeder Commit trägt seine Begründung im Text.
 
+**Drei Punkte sind nach dem Merge von #254 auf `staging` wieder geändert
+worden**, auf Rückmeldung des Eigentümers hin (PR #261, derselbe Tag). Sie
+stehen in der Tabelle als *zurückgenommen* bzw. *geändert* und sind unten
+unter „Was nach #254 zurückgenommen wurde" ausgeschrieben. Der Abschnittstext weiter unten ist
+dabei **nicht** rückwirkend umgeschrieben — er hält fest, was damals
+entschieden wurde und warum; was heute gilt, steht hier und im Code.
+
 | Teil | Stand |
 | --- | --- |
 | A1 Schaltflächen, eine Silhouette | **umgesetzt** |
 | A2 `ui/Kennzahl`, höchstens vier Kacheln | **umgesetzt** — Strecken-, Fahrt- und Profilseite, `/creator` und `/moderation/creator` nachgezogen |
 | A3 `ui/IconButton`, 44 px | **umgesetzt** — acht Stellen, schliesst `uiux.md` §5.2 |
-| A4 Eine Farbquelle | **umgesetzt** — `SIGNATURE_COLORS`, `ROUTE_BLUE_PALETTE` und `TRACK_COLOR` sind weg |
-| A5 `ui/SegmentedControl` | **umgesetzt** — fünf Fassungen werden eine |
+| A4 Eine Farbquelle | **umgesetzt, aber die Farbe ist zurück** — die drei Konstanten bleiben weg; die fünf Signaturtöne stehen jetzt als Tokens in `app/globals.css` (s. u.) |
+| A5 `ui/SegmentedControl` | **umgesetzt** — fünf Fassungen werden eine; die Hülle scrollt seit #261 statt überzulaufen |
 | A6 Zeichen werden Icons | **umgesetzt** — `★ ☆ ⋮` |
 | A7 `ui/Seitenrahmen` | **umgesetzt** für 16 Seiten; drei Ausnahmen (s. u.) |
 | A8 Peek-Fenster | **umgesetzt** |
 | B2 Aufzeichnungsschirm | **umgesetzt**, bis auf die Rückfrage beim Beenden (s. u.) |
 | B3 Fazit | **umgesetzt**, bis auf zwei bewusste Abweichungen (s. u.) |
-| B4 Aktivität wird ein Tab | **umgesetzt** |
+| B4 Aktivität wird ein Tab | **zurückgenommen** — Aktivität ist Reiter des Feeds, die Ranglisten haben den Leistenplatz (s. u.) |
 | B5 Feed, zwei Zeilen je Karte | **umgesetzt** |
 | C2/C3 Premium-Platzierung | **umgesetzt** — Dauerschloss weg, Zeile statt Card, eine Liste |
-| 3.9 Profil entschachteln | **umgesetzt** |
+| 3.9 Profil entschachteln | **umgesetzt**, seit #261 auch für „Meine Fahrten" (die Gruppen-Card dort war übersehen worden) |
 | 3b Kauf-Fluss zusammenlegen | **offen — geschützter Bereich, eigener PR** |
 
 ### Zum Wort „Entscheid."
@@ -91,6 +98,72 @@ Abnahme verlangt (§3b.4, §3.9, Anhang C5), geht diese Forderung dem Wort vor.
   mehr, und fehlen Tempolimit und Wetter dazu, verschwindet die ganze Zeile
   wortlos. Das Gegenargument: eine Zeile aus drei Gedankenstrichen ist
   Platz, der nichts sagt. So gebaut, hier benannt statt still gelassen.
+
+### Was nach #254 zurückgenommen wurde
+
+PR #261, am selben Tag wie #254, auf Rückmeldung des Eigentümers. Drei
+Punkte, und keiner davon ist ein Fehler des Konzepts — zwei sind eine
+andere Abwägung, einer ist eine übersehene Stelle.
+
+1. **Die fünf Signaturfarben sind zurück (A4).** Anhang A4 nennt drei
+   Gründe für ihre Entfernung. Zwei davon galten nicht der Farbe, sondern
+   ihrem Aufbewahrungsort: sie standen als Hex-Konstanten in
+   `lib/signature.ts`, wussten nichts von `prefers-color-scheme`, und drei
+   von fünf fielen im hellen Theme unter die 4,5:1, die das Label in
+   `text-xs` verlangt. Beides ist behebbar, ohne die Farbe zu opfern — und
+   genau das ist geschehen: die Töne stehen als Design-Tokens in
+   `app/globals.css`, für beide Themes gesetzt und gegen alle drei
+   Untergründe gerechnet, auf denen sie vorkommen (Hintergrund, Fläche,
+   Hover-Grund; kleinster Wert 4,70:1).
+
+   Der dritte Grund bleibt gültig und bestimmt, WIE die Farbe eingesetzt
+   wird: fünf Farben mit nicht lernbarer Bedeutung sind kein
+   Ordnungssystem. Die Zeile trägt deshalb weiterhin Icon UND Wort; die
+   Farbe ist die dritte Kodierung derselben Aussage, nie die einzige.
+
+   Was NICHT zurückkommt: `ROUTE_BLUE_PALETTE` samt ID-Hash und
+   `TRACK_COLOR` als fester Hexwert. Der Befund von A4 — drei Farbsysteme,
+   von denen keines dem Thema folgte — bleibt behoben. Liste und Karte
+   holen denselben Ton aus demselben Token; eine Strecke ohne Signatur
+   bekommt den Akzent.
+
+2. **Aktivität und Ranglisten tauschen zurück (B4, 3b).** #254 hat nach
+   „steht dieser Eintrag im Kernloop" sortiert und die Bestenlisten
+   dafür zum dritten Feed-Reiter gemacht. Das Kriterium in #261 ist ein
+   anderes: ob ein Eintrag ein eigener **Bereich** ist oder eine
+   **Ansicht** auf einen bestehenden.
+
+   Die Ranglisten sind ein Bereich — eigene Daten (vier Volumenlisten plus
+   die Streckenbestzeiten), eigener Filter, eigener Anlass. Als Reiter
+   einer anderen Seite waren sie so auffindbar wie ein Menüeintrag, den man
+   erst aufklappt. Die Aktivität ist eine Ansicht: sie beantwortet dieselbe
+   Frage wie der Feed, nur aus der anderen Richtung.
+
+   Das Anliegen von B4 — „eine Reaktion, von der niemand erfährt,
+   schliesst den Loop nicht" — bleibt erfüllt: der Zähler ungesehener
+   Reaktionen sitzt jetzt am Feed-Eintrag der Leiste UND am Reiter selbst.
+   Er steht damit neben etwas, das man ohnehin öffnet.
+
+   Der Seitenname ist bei der Gelegenheit vereinheitlicht: die Seite heisst
+   überall **Ranglisten** — Nav-Eintrag, `h1`, Metadaten-Titel und die acht
+   Stellen im Fliesstext, die auf sie verweisen. Vorher hiess dieselbe
+   Seite je nach Stelle „Bestenlisten" oder „Rangliste".
+
+3. **3.9 war nicht fertig.** Die Gruppen-Card um „Meine Fahrten" auf dem
+   Profil ist stehen geblieben, während die um die Kennzahlen gefallen ist
+   — zwei benachbarte Abschnitte derselben Seite, unterschiedlich gerahmt.
+   Jetzt sind beide flach.
+
+Dazu zwei Regeln, die #254 nicht aufgestellt hat und die seither gelten:
+
+- **Eine Abschnittsmarke in `sm` trägt ein Icon, eine in `xs` keines.**
+  Ausgeschrieben in `components/ui/SectionHeading.tsx`. Vorher entschied
+  das jede Seite für sich: neun Abschnitte mit Icon in den Einstellungen,
+  vier ohne im Profil daneben.
+- **Eine eigenständige Text-Handlung ist eine Schaltfläche und misst
+  44 px.** `textAktionClassName()` in `components/ui/Button.tsx`. Ein Link
+  IM SATZ bleibt davon unberührt — ihn auf 44 px zu heben risse den Absatz
+  auseinander.
 
 ### Was die Code-Review an der Umsetzung gefunden hat
 

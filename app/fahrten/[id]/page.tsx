@@ -35,6 +35,7 @@ import Kennzahl, { Kennzahlen } from "@/components/ui/Kennzahl";
 import MotorklasseBadge from "@/components/MotorklasseBadge";
 import { motorklasseLabel } from "@/lib/motorklassen";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
+import { textAktionClassName } from "@/components/ui/Button";
 
 export async function generateMetadata({
   params,
@@ -312,7 +313,7 @@ export default async function FahrtDetailPage({
             {completion.isOwner && completion.parentCompletionId && (
               <Link
                 href={`/fahrten/${completion.parentCompletionId}`}
-                className="mt-1 inline-block text-sm text-accent hover:underline"
+                className={textAktionClassName()}
               >
                 Teil einer längeren Fahrt — ansehen →
               </Link>
