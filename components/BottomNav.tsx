@@ -12,10 +12,15 @@ export default function BottomNav({
   loggedIn,
   moderator,
   creator = false,
+  ungeseheneAktivitaet = 0,
 }: {
   loggedIn: boolean;
   moderator: boolean;
   creator?: boolean;
+  /** Ungesehene Kudos und neue Follower (0100). Der Zähler sass bis zur
+   *  Umstellung an einem eigenen Flammen-Symbol im Kopf; seit "Aktivität"
+   *  ein Tab ist, gehört er an diesen Tab. */
+  ungeseheneAktivitaet?: number;
 }) {
   const pathname = usePathname();
   const tabs = getNavItems({ loggedIn, moderator, creator, surface: "bottom" });
@@ -29,16 +34,32 @@ export default function BottomNav({
         {tabs.map((tab) => {
           const active = tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href);
           const Icon = tab.icon;
+          const zeigtZaehler = tab.href === "/aktivitaet" && ungeseheneAktivitaet > 0;
           return (
             <Link
               key={tab.href}
               href={tab.href}
               aria-current={active ? "page" : undefined}
+              aria-label={
+                zeigtZaehler
+                  ? `${tab.label}, ${ungeseheneAktivitaet} ${ungeseheneAktivitaet === 1 ? "neue Reaktion" : "neue Reaktionen"}`
+                  : undefined
+              }
               className="flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium"
             >
-              <Icon
-                className={`h-6 w-6 transition-colors duration-fast ${active ? "text-accent" : "text-muted"}`}
-              />
+              <span className="relative">
+                <Icon
+                  className={`h-6 w-6 transition-colors duration-fast ${active ? "text-accent" : "text-muted"}`}
+                />
+                {zeigtZaehler && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute -top-1 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-background"
+                  >
+                    {ungeseheneAktivitaet > 9 ? "9+" : ungeseheneAktivitaet}
+                  </span>
+                )}
+              </span>
               <span className={`transition-colors duration-fast ${active ? "text-accent" : "text-muted"}`}>
                 {tab.label}
               </span>

@@ -28,3 +28,29 @@ export const PREMIUM_VORTEILE = [
   "Unbegrenzt Strecken offline speichern",
   "GPX-Export kuratierter Strecken",
 ] as const;
+
+// Die Kurzform für Stellen, an denen kein Platz für fünf Zeilen ist: die
+// Zeile im Profil (components/PremiumCard.tsx) und die Zeile in den
+// Einstellungen.
+//
+// Sie leitet sich aus derselben Liste ab, statt daneben zu existieren — und
+// das ist der Punkt. Bis hierher stand im Profil eine dritte, von Hand
+// gepflegte Kopie ("Unbegrenzt private Strecken, 12 Fotos pro Fahrt, Offline
+// ohne Limit, GPX-Export"), obwohl der Kopf dieser Datei von "eine Liste,
+// zwei Seiten" ausgeht. Genau diese Kopie ist mit Migration 0086 verrutscht:
+// sie warb weiter mit "Eigene Strecken erstellen", während das Erstellen
+// längst wieder kostenlos war. Eine abgeleitete Zeile kann das nicht.
+//
+// Drei Punkte, nicht fünf: die Zeile soll überflogen werden, nicht gelesen.
+// Wer es genau wissen will, tippt und landet auf der Kaufseite, wo die volle
+// Liste steht.
+export function premiumKurzform(): string {
+  return PREMIUM_VORTEILE.slice(0, 3)
+    // Die Klammern der Langform ("(ohne Abo: eine)") sind für die
+    // Aufzählung gedacht, wo Platz für die Einschränkung ist. In einer
+    // Zeile aus drei Punkten stören sie den Lesefluss — und weglassen ist
+    // hier unbedenklich, weil die Kaufseite die vollständige Fassung zeigt,
+    // bevor irgendjemand etwas kauft.
+    .map((v) => v.replace(/\s*\([^)]*\)/g, ""))
+    .join(" · ");
+}

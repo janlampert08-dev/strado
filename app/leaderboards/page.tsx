@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Trophy } from "lucide-react";
 import Header from "@/components/Header";
+import FeedReiter from "@/components/FeedReiter";
 import PullToRefreshArea from "@/components/PullToRefreshArea";
 import TrackLeaderboardChooser from "@/components/TrackLeaderboardChooser";
 import Avatar from "@/components/Avatar";
@@ -256,6 +257,16 @@ export default async function LeaderboardsPage({
       <div className="flex-1 overflow-y-auto">
         <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-5 py-8 sm:px-6 sm:py-10 lg:max-w-5xl">
         <div className="flex flex-col gap-3">
+          {/* Dieselbe Reiterleiste wie auf /feed. Die Bestenlisten sind seit
+              der Umstellung auf die Loop-Leiste kein eigener Eintrag in der
+              Navigation mehr, sondern der dritte Reiter neben dem Feed —
+              siehe components/FeedReiter.tsx und lib/nav.ts. Die Seite
+              bleibt eine eigene Adresse mit eigenem Datenbedarf; nur der Weg
+              hierher hat sich geändert.
+
+              Die <h1> bleibt sichtbar: sie benennt, was die vier Listen
+              darunter sind, und der aktive Reiter allein trüge das nicht. */}
+          <FeedReiter aktiv="rangliste" zeigtFolgeIch={false} />
           <h1 className="text-display font-semibold">Bestenlisten</h1>
           <MotorklassenChips
             klassen={ALLE_KLASSEN}

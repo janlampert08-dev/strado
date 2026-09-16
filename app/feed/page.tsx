@@ -6,6 +6,7 @@ import PullToRefreshArea from "@/components/PullToRefreshArea";
 import Avatar from "@/components/Avatar";
 import KudosButton from "@/components/KudosButton";
 import ProfileSearch from "@/components/ProfileSearch";
+import FeedReiter from "@/components/FeedReiter";
 import { Signet } from "@/components/Wortmarke";
 import { getFeed, type FeedScope } from "@/lib/feed";
 import { freieFahrtTitel } from "@/lib/completions";
@@ -13,7 +14,6 @@ import { getCurrentUser } from "@/lib/supabase/server";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import { buttonVariants } from "@/components/ui/Button";
-import { cn } from "@/lib/utils/cn";
 
 export const metadata: Metadata = {
   title: "Feed – Strado",
@@ -66,32 +66,16 @@ export default async function FeedPage({
 
         <ProfileSearch />
 
-        {user && (
-          <div className="flex gap-2 border-b border-border pb-3">
-            <Link
-              href="/feed"
-              // Der aktive Filter war ausschliesslich an der Hintergrundfarbe
-              // erkennbar. BottomNav.tsx macht es im selben Repo richtig.
-              aria-current={scope === "global" ? "page" : undefined}
-              className={cn(
-                "rounded-full px-3 py-1.5 text-sm font-medium transition-colors duration-fast",
-                scope === "global" ? "bg-foreground text-background" : "text-muted hover:text-foreground",
-              )}
-            >
-              Alle
-            </Link>
-            <Link
-              href="/feed?scope=following"
-              aria-current={scope === "following" ? "page" : undefined}
-              className={cn(
-                "rounded-full px-3 py-1.5 text-sm font-medium transition-colors duration-fast",
-                scope === "following" ? "bg-foreground text-background" : "text-muted hover:text-foreground",
-              )}
-            >
-              Folge ich
-            </Link>
-          </div>
-        )}
+        {/* Die Reiter stehen jetzt in einer eigenen Komponente, weil sie
+            /leaderboards mitbenutzt: die Ranglisten sind seit der Umstellung
+            auf die Loop-Leiste der dritte Reiter neben dem Feed statt eines
+            eigenen Eintrags in der Navigation (siehe lib/nav.ts).
+
+            Anders als vorher werden sie auch Abgemeldeten gezeigt — "Alle"
+            und "Rangliste" sind beide ohne Konto lesbar, und ohne die Leiste
+            gäbe es für sie keinen sichtbaren Weg zu den Bestenlisten mehr.
+            Nur "Folge ich" bleibt angemeldeten Konten vorbehalten. */}
+        <FeedReiter aktiv={scope === "following" ? "following" : "global"} zeigtFolgeIch={!!user} />
 
         {feed.length === 0 ? (
           <EmptyState

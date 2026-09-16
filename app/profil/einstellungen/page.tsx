@@ -20,6 +20,7 @@ import DeleteAccountSection from "@/components/DeleteAccountSection";
 import FeedbackDialog from "@/components/FeedbackDialog";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
+import { premiumKurzform } from "@/lib/premiumVorteile";
 import { isModerator } from "@/lib/moderation";
 import { istStaging, STAGING_URL } from "@/lib/staging";
 import { getOrigin } from "@/lib/utils/url";
@@ -225,29 +226,35 @@ export default async function EinstellungenPage() {
               Zahlen dazu (Plan, Verlängerungsdatum, Kulanzfrist) stehen
               ausschliesslich in PremiumCard. Zwei Quellen fürs selbe Datum
               wären eine, die auseinanderlaufen kann. */}
-          {premiumStatus.aktiv && (
-            <section className="flex flex-col gap-3">
-              <h2 className="flex items-center gap-1.5 text-sm font-semibold tracking-wide text-muted uppercase">
-                <Sparkles className="h-4 w-4" aria-hidden="true" />
-                Premium
-              </h2>
-              <Card className="flex items-center justify-between gap-3 p-4">
-                <p className="text-sm text-muted">
-                  Abo-Status, Rechnungen, Kündigung.
-                </p>
-                <Link
-                  href="/profil/einstellungen/abo"
-                  className={buttonVariants({
-                    variant: "secondary",
-                    size: "sm",
-                    className: "shrink-0",
-                  })}
-                >
-                  Abo verwalten
-                </Link>
-              </Card>
-            </section>
-          )}
+          {/* Die Zeile steht jetzt für BEIDE Zustände da, nicht nur für
+              laufende Abos. Ohne Abo war Premium aus den Einstellungen
+              bisher gar nicht erreichbar — der einzige Weg führte über die
+              Card zuunterst auf der Profilseite. Eine Zeile unter Gleichen
+              ist der unaufdringlichste Ort, den es dafür gibt: kein Banner,
+              kein gefüllter Knopf, dieselbe Form wie "Darstellung" und
+              "Konto" daneben. Siehe docs/design-vereinfachung.md, Anhang C3,
+              Moment 3. */}
+          <section className="flex flex-col gap-3">
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold tracking-wide text-muted uppercase">
+              <Sparkles className="h-4 w-4" aria-hidden="true" />
+              Premium
+            </h2>
+            <Card className="flex items-center justify-between gap-3 p-4">
+              <p className="min-w-0 text-sm text-muted">
+                {premiumStatus.aktiv ? "Abo-Status, Rechnungen, Kündigung." : premiumKurzform()}
+              </p>
+              <Link
+                href={premiumStatus.aktiv ? "/profil/einstellungen/abo" : "/profil/premium"}
+                className={buttonVariants({
+                  variant: "secondary",
+                  size: "sm",
+                  className: "shrink-0",
+                })}
+              >
+                {premiumStatus.aktiv ? "Abo verwalten" : "Premium ansehen"}
+              </Link>
+            </Card>
+          </section>
 
           <section className="flex flex-col gap-3">
             <h2 className="flex items-center gap-1.5 text-sm font-semibold tracking-wide text-muted uppercase">
