@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { ZURICH_CENTER, DEFAULT_ZOOM } from "@/lib/constants";
+import { SCHWEIZ_ZENTRUM, DEFAULT_ZOOM } from "@/lib/constants";
 import { akzentFarbe, isDarkTheme, subscribeToThemeChange } from "@/lib/theme";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -48,7 +48,7 @@ export default function RoutePicker({
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: mapStyleForTheme(),
-      center: ZURICH_CENTER,
+      center: SCHWEIZ_ZENTRUM,
       zoom: DEFAULT_ZOOM,
       // Kompakte Attribution (ⓘ-Knopf) statt ausgeschriebener Zeile — siehe
       // RouteMap.tsx für die ausführliche Begründung.
@@ -124,7 +124,7 @@ export default function RoutePicker({
   }, []);
 
   // Zentriert die Karte einmalig auf den Standort der Nutzerin, sobald
-  // verfügbar (Fallback bleibt ZURICH_CENTER) — nur solange noch keine
+  // verfügbar (Fallback bleibt SCHWEIZ_ZENTRUM) — nur solange noch keine
   // Wegpunkte gesetzt sind, damit ein verspätet eintreffendes Ergebnis eine
   // bereits begonnene Route nicht verschiebt. Berechtigungsverweigerung/
   // Timeout wird bewusst still ignoriert, kein Fehlerdialog nötig.

@@ -10,17 +10,22 @@ import { BESCHREIBUNG, SLOGAN } from "@/lib/constants";
 // nur "Strado" aus dem Layout — für Suchmaschinen also einen Titel ohne
 // jede Aussage darüber, was hier zu finden ist.
 //
-// Der Titel behält die suchbaren Substantive (Strecken, Zürich); der
+// Der Titel behält die suchbaren Substantive (Strecken, Schweiz); der
 // informelle Claim steht in der Beschreibung und im OG-Tag (app/layout.tsx),
 // wo er gelesen wird, statt im Titel, wo er gesucht werden müsste.
 //
-// "Zürich" statt "Schweiz": der Bestand ist Zürich-first (AGENTS.md), und
-// jede der heute vorhandenen Strecken liegt im Kanton. Ein
-// Schweiz-Versprechen auf einer Zürcher Karte liest sich als halbleeres
-// Land statt als volle Region — und der Ortsname ist die Einheit, an der
-// jemand seine Strasse wiedererkennt.
+// "Schweiz" statt des früheren "rund um Zürich": Strado ist schweizweit
+// ausgerichtet, und das Land ist der Begriff, den jemand eingibt, der nach
+// Pässen und Kurvenstrassen sucht, ohne schon eine Region im Kopf zu haben.
+//
+// Die Wiedererkennung am einzelnen Ort — "das ist die Strasse über meinem
+// Dorf", der Grund, aus dem jemand eine Strecke weiterleitet — hängt damit
+// ganz am Streckennamen und an der Region auf der Karte, nicht mehr am
+// Seitentitel. Wer Strecken aufnimmt, trägt diese Last jetzt allein: eine
+// Strecke ohne erkennbaren Ortsnamen ist schweizweit unauffindbar, wo sie
+// auf einer Zürcher Karte noch durch die Nachbarschaft getragen wurde.
 export const metadata: Metadata = {
-  title: "Strado — Die schönsten Strecken rund um Zürich",
+  title: "Strado — Die schönsten Strecken der Schweiz",
   description: `${SLOGAN} ${BESCHREIBUNG}`,
   // Kanonische Adresse. Die App wird unter mehr als einem Hostnamen
   // ausgeliefert — app.strado.ch, die Vorschau-Adressen jedes Deployments,

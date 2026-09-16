@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -9,6 +10,7 @@ import { getClientIp, isRateLimitedByKey } from "@/lib/rateLimit";
 import { leseHerkunft, verbraucheHerkunft } from "@/lib/herkunft";
 import { getStripe } from "@/lib/stripe";
 import { AVATAR_BUCKET, avatareEntfernen } from "@/lib/avatarSpeicher";
+import { warteAufPruefwert } from "@/lib/pruefwertCookie";
 import {
   PASSWORT_AENDERN_PFAD,
   istWiederherstellung,
@@ -262,14 +264,76 @@ export async function requestPasswordReset(
   // Wiederherstellungs-Merkmal nur für exakt diesen Pfad. Liefen die beiden
   // auseinander, käme niemand mehr durch den Zurücksetzen-Fluss — er
   // landete auf der Seite, die ihn nach dem alten Passwort fragt.
-  await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(PASSWORT_AENDERN_PFAD)}`,
-  });
+  // NICHT abgewartet — das ist der Kern dieser Änderung.
+  //
+  // Gemessen am 2026-09-16 gegen die Produktion: /auth/v1/recover wird vom
+  // Supabase-Gateway nach 10 s abgebrochen und dreimal wiederholt, der
+  // Client bekommt nach rund 36 s einen 504; der Versand selbst läuft weiter
+  // und war nach 83 s erfolgreich. So lange stand "Wird gesendet…" im
+  // Formular — und ein Browser, der einen POST nicht beliebig lange offen
+  // hält (Mobilfunk, Tabwechsel), brach ihn ab: die Action warf, und
+  // app/error.tsx zeigte einen Fehlerschirm. Beide Symptome, ein Grund.
+  //
+  // Warten muss die Antwort nur auf eines: das PKCE-Prüfwert-Cookie, ohne
+  // das sich der Link aus der E-Mail später nicht einlösen liesse. Das legt
+  // auth-js ab, BEVOR es die Anfrage abschickt (gemessen: 7 ms gegen 1229 ms
+  // bis zur Antwort). Siehe lib/pruefwertCookie.ts.
+  const versand = supabase.auth
+    .resetPasswordForEmail(email, {
+      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(PASSWORT_AENDERN_PFAD)}`,
+    })
+    // Die Behandlung haengt hier und nicht erst im after()-Callback: sonst
+    // laege zwischen dem Start des Versands und dem Anhaengen des Handlers
+    // ein Fenster, in dem eine Rejection unbehandelt waere — und eine
+    // unbehandelte Rejection beendet den Node-Prozess.
+    //
+    // NUR INS SERVERLOG, NIE IN DIE ANTWORT.
+    //
+    // Bei einer unbekannten Adresse antwortet resetPasswordForEmail
+    // fehlerfrei (Supabase verhindert so selbst schon Konto-Enumeration) —
+    // es wird ja gar nichts verschickt. Daraus folgt die Umkehrung: ein
+    // Fehler entsteht hier ausschliesslich fuer eine Adresse, zu der ein
+    // Konto existiert. Eine daran haengende Meldung unterschiede die Antwort
+    // also nach Kontoexistenz und waere genau das Orakel, das die konstante
+    // Antwort verhindern soll. Die Eigenschaft steht namentlich in
+    // docs/audit/security.md unter "What is done well", ausdruecklich damit
+    // sie nicht versehentlich rueckgaengig gemacht wird. Seit der Versand
+    // nicht mehr abgewartet wird, ist sie ohnehin unvermeidbar: die Antwort
+    // steht, bevor das Ergebnis vorliegt.
+    .then(({ error }) => {
+      if (error) {
+        console.error("Passwort-Zuruecksetzen: Versand fehlgeschlagen", {
+          status: error.status,
+          code: error.code,
+          message: error.message,
+        });
+      }
+    })
+    .catch((fehler) => {
+      console.error("Passwort-Zuruecksetzen: Versand geworfen", fehler);
+    });
 
-  // resetPasswordForEmail liefert bei unbekannter Adresse ebenfalls keinen
-  // Fehler (Supabase verhindert damit selbst schon Konto-Enumeration) — die
-  // konstante Erfolgsmeldung hier ist daher die korrekte Antwort in beiden
-  // Fällen, kein Verstecken eines echten Fehlers.
+  // after() haelt die Funktion ueber die Antwort hinaus am Leben, damit der
+  // Versand zu Ende laeuft und sein Ergebnis im Log landet — dasselbe Muster
+  // wie der Klickzaehler in app/c/[code]/route.ts.
+  //
+  // Es laeuft laut node_modules/next/dist/docs/01-app/03-api-reference/
+  // 04-functions/after.md nur bis zur Max-Duration der Route. Reicht die
+  // nicht, geht die LOG-ZEILE verloren, nicht die E-Mail: sobald die Anfrage
+  // bei GoTrue liegt, verschickt der unabhaengig von uns weiter — gemessen
+  // am 2026-09-16, als unser Client nach 36 s aufgab und der Versand nach
+  // 83 s trotzdem mit Status 200 fertig wurde.
+  after(() => versand);
+
+  // Läuft die Wartezeit ab, wird trotzdem geantwortet: der Versand läuft
+  // weiter, und ein fehlender Prüfwert kostet einen zweiten Anlauf — ein
+  // hängender Request kostet die ganze Seite.
+  if (!(await warteAufPruefwert())) {
+    console.error(
+      "Passwort-Zuruecksetzen: PKCE-Pruefwert stand nicht rechtzeitig im Cookie-Speicher",
+    );
+  }
+
   return { error: null, requested: true };
 }
 
