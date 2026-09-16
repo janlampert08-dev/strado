@@ -145,16 +145,13 @@ export default function ExploreView({
   }
 
   // Über den gesamten (ungefilterten) Bestand berechnet, damit das
-  // Signatur-Merkmal und seine Farbe je Strecke stabil bleiben — eine
-  // Textsuche schränkt nur die sichtbare Auswahl ein, ohne die Perzentile
-  // (und damit Merkmale/Farben) der übrigen Strecken zu verschieben.
+  // Signatur-Merkmal je Strecke stabil bleibt — eine Textsuche schränkt nur
+  // die sichtbare Auswahl ein, ohne die Perzentile (und damit die Merkmale)
+  // der übrigen Strecken zu verschieben.
+  //
+  // Eine Farbe gehört nicht mehr dazu: die Signatur trägt Icon und Text, die
+  // Linie nimmt --color-accent (siehe lib/signature.ts).
   const signatures = useMemo(() => computeSignatures(routes), [routes]);
-  const colors = useMemo(() => {
-    const map = new Map<string, string>();
-    signatures.forEach((sig, id) => map.set(id, sig.color));
-    return map;
-  }, [signatures]);
-
   const visibleRoutes = useMemo(() => {
     // searchInput statt des (debounced) URL-Werts: die Liste soll bei jedem
     // Tastendruck sofort reagieren, nicht erst nach dem URL-Sync-Delay.
@@ -199,7 +196,6 @@ export default function ExploreView({
         <RouteMap
           routes={visibleRoutes}
           userLocation={userLocation}
-          colors={colors}
           // Hover und Zufallsvorschlag speisen denselben
           // Hervorhebungs-Layer, bleiben aber getrennte Zustände: der
           // Vorschlag darf einen laufenden Hover weder überschreiben noch

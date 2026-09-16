@@ -27,3 +27,30 @@ export function subscribeToThemeChange(callback: () => void): () => void {
     media.removeEventListener("change", callback);
   };
 }
+
+// Ein Design-Token als aufgelöster Farbwert, für Zeichenflächen, die keine
+// CSS-Variablen verstehen: Mapbox-Layer (components/RouteMap.tsx,
+// RoutePicker.tsx) nehmen nur fertige Farben entgegen, und ein
+// "var(--color-accent)" landet dort als ungültiger Wert.
+//
+// Warum das überhaupt nötig wurde: die Karte tauschte ihren Stil bei einem
+// Themenwechsel längst korrekt aus (mapStyleForTheme), aber die LINIEN
+// darauf standen als feste Hex-Werte im Code — TRACK_COLOR und der
+// Live-Positionspunkt beide auf "#3D5AFE", also dem Akzentwert des HELLEN
+// Themes. Im Dunkelmodus wurde die Karte dunkel und die aufgezeichnete
+// Spur blieb im Tagblau stehen, während --color-accent längst auf #6b83ff
+// gewechselt hatte. Genau der Fall, für den der Dunkelmodus da ist: die
+// Aufzeichnung bei Nacht.
+//
+// Serverseitig (kein document) und bei leerem Ergebnis greift der
+// Rückfallwert — sonst bekäme ein Layer einen leeren String.
+export function tokenFarbe(name: string, rueckfall: string): string {
+  if (typeof document === "undefined") return rueckfall;
+  const wert = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return wert === "" ? rueckfall : wert;
+}
+
+/** --color-accent, aufgelöst. Rückfallwert ist der helle Themenwert. */
+export function akzentFarbe(): string {
+  return tokenFarbe("--color-accent", "#3d5afe");
+}
