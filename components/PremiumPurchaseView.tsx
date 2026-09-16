@@ -79,7 +79,7 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
             hergibt, verspricht eine Vertragsleistung (AGB Ziff. 3.2). */}
         <h1 className="text-display font-semibold">Strado unterstützen</h1>
         <p className="text-sm text-muted">
-          Entdecken, Aufzeichnen, Strecken erstellen, Bestenlisten und Feed bleiben gratis.
+          Entdecken, Aufzeichnen, Strecken erstellen, Ranglisten und Feed bleiben gratis.
           Premium hebt die Grenzen an — und ist die Art, wie Strado sich trägt.
         </p>
       </div>

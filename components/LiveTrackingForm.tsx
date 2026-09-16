@@ -487,7 +487,7 @@ export default function LiveTrackingForm({
             <p className="font-medium text-foreground">Strecke gefahren.</p>
             <p className="text-muted">
               Zum Speichern brauchst du ein Konto — damit zählt die Fahrt für deine Bestzeit auf
-              dieser Strecke, für die Bestenlisten und dein Profil. Die Aufzeichnung bleibt so
+              dieser Strecke, für die Ranglisten und dein Profil. Die Aufzeichnung bleibt so
               lange in diesem Browser (bis zu 24 Stunden) und wird nach der Anmeldung übernommen.
             </p>
             <div className="flex flex-wrap gap-2">
@@ -545,7 +545,7 @@ export default function LiveTrackingForm({
               // alles berührt und trotzdem nur die Hälfte gefahren sein.
               publicDisabledHint: `Diese Fahrt deckt nur ${coveragePercent}% der offiziellen Strecke ab — evtl. abgekürzt, am falschen Punkt gestartet/beendet, oder die Strecke führt zurück und du bist nur eine Richtung gefahren. Sie bleibt privat gespeichert, kann aber nicht öffentlich geteilt werden.`,
               publicHint:
-                "Öffentlich: erscheint auf Bestenlisten und deinem öffentlichen Profil. Später jederzeit umschaltbar.",
+                "Öffentlich: erscheint in den Ranglisten und auf deinem öffentlichen Profil. Später jederzeit umschaltbar.",
               privateHint:
                 "Privat: nur du siehst diese Fahrt in deinem Profil, für andere bleibt sie unsichtbar. Später jederzeit umschaltbar.",
             }}

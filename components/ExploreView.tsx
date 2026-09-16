@@ -149,9 +149,20 @@ export default function ExploreView({
   // die sichtbare Auswahl ein, ohne die Perzentile (und damit die Merkmale)
   // der übrigen Strecken zu verschieben.
   //
-  // Eine Farbe gehört nicht mehr dazu: die Signatur trägt Icon und Text, die
-  // Linie nimmt --color-accent (siehe lib/signature.ts).
+  // Die Signatur trägt Icon, Text UND Farbe — Letzteres wieder, seit die
+  // fünf Töne als Design-Tokens in app/globals.css stehen statt als
+  // Hex-Konstanten (siehe lib/signature.ts). Dieselbe Map speist deshalb
+  // beides: die Seitenleiste und die Kartenlinien.
   const signatures = useMemo(() => computeSignatures(routes), [routes]);
+
+  // Nur der Schlüssel, ohne das Label — mehr braucht die Karte nicht, und
+  // ein eigener useMemo hält die RouteMap-Prop stabil, statt bei jedem
+  // Render eine neue Map zu übergeben (der setData-Effekt dort führt sie in
+  // seinen Abhängigkeiten).
+  const kartenSignaturen = useMemo(
+    () => new Map([...signatures].map(([id, sig]) => [id, sig.key])),
+    [signatures],
+  );
   const visibleRoutes = useMemo(() => {
     // searchInput statt des (debounced) URL-Werts: die Liste soll bei jedem
     // Tastendruck sofort reagieren, nicht erst nach dem URL-Sync-Delay.
@@ -195,6 +206,7 @@ export default function ExploreView({
       >
         <RouteMap
           routes={visibleRoutes}
+          signaturen={kartenSignaturen}
           userLocation={userLocation}
           // Hover und Zufallsvorschlag speisen denselben
           // Hervorhebungs-Layer, bleiben aber getrennte Zustände: der

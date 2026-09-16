@@ -275,7 +275,7 @@ export default function FreeRideForm({
               <p className="font-medium text-foreground">Fahrt aufgezeichnet.</p>
               <p className="text-muted">
                 Zum Speichern brauchst du ein Konto — damit landet die Fahrt in deinem Profil,
-                zählt für die Bestenlisten und kann im Feed geteilt werden. Die Aufzeichnung
+                zählt für die Ranglisten und kann im Feed geteilt werden. Die Aufzeichnung
                 bleibt so lange in diesem Browser (bis zu 24 Stunden) und wird nach der
                 Anmeldung übernommen.
               </p>

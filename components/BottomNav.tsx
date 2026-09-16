@@ -17,9 +17,10 @@ export default function BottomNav({
   loggedIn: boolean;
   moderator: boolean;
   creator?: boolean;
-  /** Ungesehene Kudos und neue Follower (0100). Der Zähler sass bis zur
-   *  Umstellung an einem eigenen Flammen-Symbol im Kopf; seit "Aktivität"
-   *  ein Tab ist, gehört er an diesen Tab. */
+  /** Ungesehene Kudos und neue Follower (0100). Sitzt am Feed-Eintrag:
+   *  die Aktivität ist ein Reiter des Feeds (components/FeedReiter.tsx)
+   *  und hat keinen eigenen Tab mehr, die Zahl gehört also an den Tab, der
+   *  dorthin führt. */
   ungeseheneAktivitaet?: number;
 }) {
   const pathname = usePathname();
@@ -34,15 +35,15 @@ export default function BottomNav({
         {tabs.map((tab) => {
           // "/" nur exakt — sonst wäre es auf jeder Seite aktiv. Alle
           // übrigen per Präfix, plus die Pfade aus aktivAuf (lib/nav.ts):
-          // /leaderboards hat seit dem Leisten-Tausch keinen eigenen
-          // Eintrag mehr und ist auch kein Präfix eines verbliebenen.
+          // /aktivitaet ist ein Reiter des Feeds und deshalb kein Präfix
+          // eines Eintrags.
           const active =
             tab.href === "/"
               ? pathname === "/"
               : pathname.startsWith(tab.href) ||
                 (tab.aktivAuf?.some((p) => pathname.startsWith(p)) ?? false);
           const Icon = tab.icon;
-          const zeigtZaehler = tab.href === "/aktivitaet" && ungeseheneAktivitaet > 0;
+          const zeigtZaehler = tab.href === "/feed" && ungeseheneAktivitaet > 0;
           return (
             <Link
               key={tab.href}
