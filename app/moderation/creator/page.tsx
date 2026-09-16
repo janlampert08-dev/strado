@@ -8,6 +8,7 @@ import CreatorZuweisung from "@/components/CreatorZuweisung";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import SectionHeading from "@/components/ui/SectionHeading";
+import { Kennzahlenzeile } from "@/components/ui/Kennzahl";
 import { LinkIcon, ShieldIcon } from "@/components/NavIcons";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { isModerator } from "@/lib/moderation";
@@ -132,31 +133,27 @@ export default async function CreatorLinksPage() {
                       )}
                     </p>
 
-                    <dl className="grid grid-cols-3 gap-3 text-sm">
-                      <div>
-                        <dt className="text-muted">Klicks</dt>
-                        <dd className="text-lg font-semibold tabular-nums">
-                          {zahlen?.klicks ?? 0}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-muted">Konten</dt>
-                        <dd className="text-lg font-semibold tabular-nums">
-                          {zahlen?.registrierungen ?? 0}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-muted">Abos</dt>
-                        <dd className="text-lg font-semibold tabular-nums">
-                          {zahlen?.abos ?? 0}
-                          {zahlen && zahlen.abosBeendet > 0 && (
-                            <span className="ml-1.5 text-xs font-normal text-muted">
-                              −{zahlen.abosBeendet} beendet
-                            </span>
-                          )}
-                        </dd>
-                      </div>
-                    </dl>
+                    {/* Eine Zeile statt dreier Kacheln: diese Seite listet
+                        JEDEN Code untereinander, drei Kästen je Karte wären
+                        also drei mal N. Als Zeile sind es rund 20 px statt
+                        rund 60, und die Codes bleiben scrollbar, statt dass
+                        die Zahlen die Liste auseinanderziehen.
+                        Siehe docs/design-vereinfachung.md, Anhang A2.
+
+                        "beendet" ist ein eigener Eintrag und keine Beifügung
+                        am Abo-Wert mehr: abos zählt begonnene Abos, beendet
+                        die abgelaufenen davon — zwei Zahlen, also zwei
+                        Paare. Bei 0 fällt der Eintrag weg, wie vorher. */}
+                    <Kennzahlenzeile
+                      eintraege={[
+                        { beschriftung: "Klicks", wert: String(zahlen?.klicks ?? 0) },
+                        { beschriftung: "Konten", wert: String(zahlen?.registrierungen ?? 0) },
+                        { beschriftung: "Abos", wert: String(zahlen?.abos ?? 0) },
+                        ...(zahlen && zahlen.abosBeendet > 0
+                          ? [{ beschriftung: "beendet", wert: String(zahlen.abosBeendet) }]
+                          : []),
+                      ]}
+                    />
 
                     <CreatorZuweisung
                       code={link.code}

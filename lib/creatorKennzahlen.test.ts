@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   anteil,
+  anteilText,
   balkenHoehe,
   summiere,
   verlaufNachCode,
@@ -58,6 +59,30 @@ describe("anteil", () => {
   it("verträgt kaputte Eingaben", () => {
     expect(anteil(Number.NaN, 10)).toBeNull();
     expect(anteil(1, Number.NaN)).toBeNull();
+  });
+});
+
+describe("anteilText", () => {
+  // Komma, nicht Punkt — die Oberflaeche ist deutschsprachig. Bis die
+  // Trichter-Kacheln auf ui/Kennzahl zurueckgefuehrt wurden, stand diese
+  // Ersetzung ungeprueft in der Komponente.
+  it("schreibt den Anteil mit Komma und Prozentzeichen", () => {
+    expect(anteilText(12, 160)).toBe("7,5 %");
+    expect(anteilText(1, 3)).toBe("33,3 %");
+  });
+
+  it("schreibt ganze Prozente ohne Nachkommastelle", () => {
+    expect(anteilText(1, 4)).toBe("25 %");
+    expect(anteilText(3, 3)).toBe("100 %");
+  });
+
+  // Dasselbe Null-Verhalten wie anteil(): ohne Nenner wird nichts gezeigt,
+  // statt "0 %" zu behaupten, wo gar nicht gemessen wurde.
+  it("gibt ohne Nenner null zurueck", () => {
+    expect(anteilText(0, 0)).toBeNull();
+    expect(anteilText(5, 0)).toBeNull();
+    expect(anteilText(5, -1)).toBeNull();
+    expect(anteilText(Number.NaN, 10)).toBeNull();
   });
 });
 
