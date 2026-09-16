@@ -1,3 +1,6 @@
+/** Woher die gewertete Dauer einer Fahrt stammt (0096/0098). */
+export type DauerQuelle = "trail" | "server";
+
 // Handgeschriebene Typen passend zum Schema in supabase/migrations/0001_init.sql.
 // Sobald ein Supabase-Projekt verknüpft ist, können diese durch
 // `npx supabase gen types typescript --linked` ersetzt/aktualisiert werden.
@@ -242,6 +245,17 @@ export interface RouteCompletion {
   // Beide optional und rein privat — nur gesetzt, wenn der Nutzer den Timer
   // beim Live-Tracking aktiv eingeschaltet hat. Kein Vergleich zwischen Nutzern.
   dauer_sekunden: number | null;
+  // Woher dauer_sekunden stammt (0096_fahrtstart_serverseitig.sql).
+  // "server": aus fahrt_starts, also die Differenz zweier Serverzeiten — nur
+  // solche Fahrten stehen in route_leaderboard. "trail": aus den
+  // Zeitstempeln des Client-Trails, für die eigene Statistik brauchbar und
+  // für einen Vergleich nicht. Gesetzt wird das ausschliesslich vom Trigger
+  // enforce_route_completion_dauer, nie vom Client.
+  dauer_quelle: DauerQuelle;
+  // Die aus dem Trail gerechnete Dauer, unabhängig von dauer_quelle — das,
+  // was die Uhr während der Fahrt gezeigt hat.
+  dauer_trail_sekunden: number | null;
+  fahrt_start_id: string | null;
   distanz_km: number | null;
   // Opt-in pro Fahrt (siehe 0017_pro_fahrt_sichtbarkeit.sql) — entscheidet im
   // Fazit-Screen bzw. nachträglich im Profil, ob diese Fahrt auf
@@ -375,6 +389,10 @@ export interface PublicFahrt {
   start_ort: string | null;
   bewegte_zeit_sekunden: number | null;
   hoehenmeter_aufstieg: number | null;
+  // Ab 0099 in der View. Optional getypt, weil die View bis zum Einspielen
+  // der Migration ohne die Spalte antwortet — dann ist der Wert undefined
+  // und lib/completions.ts faellt auf "trail" zurueck.
+  dauer_quelle?: DauerQuelle;
 }
 
 // Zeilenform von public.public_fahrt_tracks (0045) — der an den Enden

@@ -29,6 +29,107 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Eingespielt: 0096–0098 (Fahrtstart serverseitig, 2026-09-15, Produktion)
+
+| Datei | Was |
+| --- | --- |
+| `0096_fahrtstart_serverseitig` | `fahrt_starts`, `fahrt_start_anlegen()`, `fahrt_start_einloesen()`, Trigger `enforce_route_completion_dauer`, Spalten `dauer_quelle`/`dauer_trail_sekunden`/`fahrt_start_id`, `route_leaderboard` auf `dauer_quelle = 'server'` verengt |
+| `0097_fahrtstart_einloesen_nur_angemeldet` | **Nacharbeit:** `revoke execute … from anon`, `auth.uid()`-Pflicht, fremde angemeldete Tickets gesperrt |
+| `0098_fahrtstart_puls` | **Nacharbeit:** `fahrt_start_puls()`, Spalten `letzter_puls_am`/`letzter_puls_punkt`/`puls_anzahl`; gewertete Dauer = letzter Puls − Start; Trigger verlangt letzten Puls ≤ 500 m vom Trackende |
+
+Alle drei sind **vor** dem Merge dieses PRs eingespielt — die Reihenfolge, die
+der PR selbst verlangt ("Nicht mergen, bevor die Migration steht").
+
+**Sofortige Folge:** die drei Zeilen, die `route_leaderboard` vorher führte
+(auf einer Strecke), sind aus der Liste. Der PR-Text sagte, die Liste sei
+ohnehin leer — gezählt wurden vorher `3`. Die Fahrten selbst sind unberührt,
+sie tragen nur `dauer_quelle = 'trail'`.
+
+### Zwei Befunde nach dem Einspielen von 0096
+
+**Die Grant-Falle, zum vierten Mal.** `0096` warnt im eigenen Kommentar vor
+`0047`/`0048`/`0091` — Supabase vergibt jeder neuen Funktion in `public` eine
+**direkte** Ausführungsberechtigung an `anon`, die `revoke … from public` nicht
+anfasst — und tappt dann hinein. Am Katalog gemessen war
+`has_function_privilege('anon', 'fahrt_start_einloesen(uuid,text)', 'EXECUTE')`
+gleich `true`. Wirkung: `auth.uid()` ist für `anon` NULL, ein Aufruf hat ein
+frisches Ticket eingelöst (Rückgabe `12`) und `eingeloest_von` NULL gelassen —
+was der Trigger als fremdes Ticket behandelt. Wer ID und Geheimnis kennt,
+konnte eine fremde Fahrt um ihre Wertung bringen. `0097` schliesst das.
+
+**Die Uhr liess sich mitten in der Fahrt anhalten.** Schwerer als der Grant.
+`fahrt_start_einloesen` fror die Dauer beim **ersten** Aufruf ein, und nichts
+band diesen Aufruf ans Ende der Fahrt: gemessen trug ein zwölf Sekunden nach
+dem Anlegen eingelöstes Ticket `dauer_sekunden = 12`. Das Geheimnis liegt im
+Tracking-Snapshot des Browsers, die Funktion ist per PostgREST erreichbar —
+damit war die ×0.4-Fälschung aus A1 Bein 2 weiterhin möglich, ohne einen
+Zeitstempel anzufassen. `0098` nimmt die Dauer vom Einlöse-Zeitpunkt weg und
+hängt sie an den letzten Puls; der Trigger verlangt, dass dieser am Ende des
+eingereichten Tracks liegt.
+
+### Funktionstest 0098 (zurückgerollte Transaktion, Produktion)
+
+Zwei Fahrten in einem `DO`-Block angelegt, Ergebnis über `raise exception`
+ausgelesen — die Ausnahme rollt denselben Block zurück, es blieb nichts
+stehen (`fahrt_starts` danach 0 Zeilen, `route_completions` unverändert 13).
+
+```
+A  letzter Puls 20 m vom Trackende   -> dauer_quelle=server, dauer=300
+   (der Client hatte 999 behauptet; der Trigger hat sie überschrieben)
+B  letzter Puls 6 km vor dem Ende    -> dauer_quelle=trail, fahrt_start_id=NULL
+```
+
+Zwei Konten nötig, weil `enforce_completion_cooldown` zwei Fahrten desselben
+Kontos in Folge ablehnt. `art = 'frei'` verlangt `abdeckung_prozent = null`
+(Constraint `fahrt_art_konsistent`).
+
+### Nach der Einspielung geprüft
+
+```
+fahrt_start_anlegen            anon=true  authenticated=true
+fahrt_start_puls               anon=true  authenticated=true   (Gäste pulsen)
+fahrt_start_einloesen          anon=false authenticated=true
+enforce_route_completion_dauer anon=false authenticated=false
+Tabelle fahrt_starts: SELECT für anon und authenticated je false
+RLS an, 0 Policies (Absicht)
+Trigger-Reihenfolge auf route_completions (alphabetisch):
+  enforce_route_completion_dauer -> fahrt_notiz_nur_vom_besitzer_trg
+  -> route_completions_cooldown -> route_completions_enforce_stats
+  -> route_completions_motorklasse -> route_completions_recompute_coverage
+```
+
+`0096` begründet die Triggerreihenfolge damit, dass
+`enforce_route_completion_dauer` alphabetisch vor
+`enforce_route_completion_stats` komme. Der Statistik-Trigger heisst in der
+Datenbank `route_completions_enforce_stats`. Das Ergebnis stimmt (`e` < `r`),
+die Begründung nicht.
+
+### Was weiterhin offen ist
+
+Die Position **in** einem Puls kommt vom Client wie jeder GPS-Fix. Fälschen
+heisst ab hier: die Fahrt in Echtzeit simulieren, über die volle Dauer, gegen
+eine Serveruhr getaktet — statt eine Datei nachträglich zu stauchen. Eine
+höhere Hürde, kein Beweis. Die 500 m Toleranz sind der Preis für einen
+verlorenen Schlusspuls (ein Intervall bei 90 km/h) und zugleich das Stück,
+das ein Angreifer am Ende abschneiden kann.
+
+### Rückweg
+
+```sql
+drop trigger if exists enforce_route_completion_dauer on public.route_completions;
+drop function if exists public.enforce_route_completion_dauer();
+-- route_leaderboard zurück auf den Stand vor 0096: dieselbe Definition ohne
+--   and rc.dauer_quelle = 'server'
+drop function if exists public.fahrt_start_puls(uuid, text, double precision, double precision);
+drop function if exists public.fahrt_start_einloesen(uuid, text);
+drop function if exists public.fahrt_start_anlegen(text, text, uuid);
+alter table public.route_completions
+  drop column if exists fahrt_start_id,
+  drop column if exists dauer_trail_sekunden,
+  drop column if exists dauer_quelle;
+drop table if exists public.fahrt_starts;
+```
+
 ## NOCH NICHT eingespielt: 0095_sterne_wieder_einfuehren
 
 Der erste Eintrag hier, der keine Einspielung beschreibt, sondern eine
@@ -1394,3 +1495,56 @@ where schemaname = 'storage' and tablename = 'objects'
 -- diese steht nur in with_check). Die bedingungslose Lesepolicy für
 -- {public} ist weg.
 ```
+
+## 0096 — noch nicht angewendet (Stand 2026-09-15)
+
+`0096_fahrtstart_serverseitig.sql` **verengt** Bein 2 des Audit-Befunds A1 (die
+fälschbare Fahrtdauer) — sie schliesst es nicht: das Ticket bindet eine Person
+und eine Uhr, nicht den eingereichten Trail. Die A1-Tabelle in
+`docs/audit/README.md` sagt genau, was offen bleibt. Die Migration liegt auf
+einem Zweig und ist **nicht eingespielt**.
+
+Reihenfolge: **Schema zuerst, Code danach.** Der Code auf dem Zweig schreibt
+`dauer_quelle`, `dauer_trail_sekunden` und `fahrt_start_id` und ruft
+`fahrt_start_anlegen`/`fahrt_start_einloesen`. Ohne die Migration schlägt
+jedes Speichern einer Fahrt mit einem Spaltenfehler fehl — anders als bei
+`0087`, wo nur zwei Seiten betroffen waren, träfe es hier Schritt 5 der
+Kernschleife. Also nicht mergen, bevor die Migration steht.
+
+Was nach dem Einspielen zu prüfen ist (die Lücke, die `0094` hatte, war
+genau, dass das unterblieb):
+
+- Liegt der Trigger `enforce_route_completion_dauer` **vor**
+  `enforce_route_completion_stats`? Gleichartige Trigger laufen alphabetisch;
+  `pg_trigger` nach `tgname` sortiert zeigt es.
+- Hat `fahrt_start_einloesen` einen Grant für `authenticated` und **keinen**
+  für `anon`? Dieselbe Falle wie `0047`, `0048` und `0091`.
+- Hat `fahrt_start_anlegen` Grants für **beide** Rollen? Ein Gast muss
+  aufzeichnen können.
+- Liefert `route_leaderboard` wirklich nur noch Zeilen mit
+  `dauer_quelle = 'server'`? Danach ist jede bestehende Bestzeit aus der
+  Liste verschwunden — das ist beabsichtigt und heute fast folgenlos, weil
+  die Liste ohnehin leer ist.
+- Steht der Ausdrucks-Index `fahrt_starts_gast_eimer_idx` auf
+  `(left(geheimnis_abdruck, 2), gestartet_am)`? Ohne ihn zählt die
+  Gast-Mengenbremse bei jedem Ticket über die ganze Tabelle. `\d+
+  fahrt_starts` zeigt es; `0094` hat genau diese Prüfung ausgelassen.
+- Ein funktionaler Test, zurückgerollt, in vier Teilen:
+  - Ticket anlegen und einlösen — das zweite Einlösen desselben Kontos muss
+    **dieselbe Zahl** zurückgeben, nicht NULL (idempotent, siehe den Kommentar
+    an `fahrt_start_einloesen`). NULL bedeutet umgekehrt immer, dass das
+    `update` keine Zeile getroffen hat — weil die ID unbekannt ist, der
+    Abdruck nicht dazu passt, ein fremdes Konto fragt oder der **erste**
+    Stempel später als 24 Stunden nach dem Start käme.
+  - Eine Zeile mit fremdem `fahrt_start_id` einfügen und prüfen, dass der
+    Trigger sie auf `trail` herabstuft.
+  - Sechs Gasttickets mit demselben Abdruck-Präfix in derselben Minute: das
+    sechste muss `Zu viele Fahrtstarts` werfen, ein gleichzeitiges mit einem
+    **anderen** Präfix aber durchkommen. Das ist der ganze Punkt der 256
+    Eimer — ein voller Eimer darf nicht alle Gäste aussperren.
+  - Ein Abdruck, der kein Kleinbuchstaben-Hex ist, muss `Ungueltiger Abdruck`
+    werfen; daran hängt die Gleichverteilung über die Eimer.
+
+Der Weg zurück ist einfach, weil die Migration nichts löscht: Trigger und
+Funktionen droppen, die View auf die Fassung aus `0080` zurücksetzen, die drei
+Spalten stehen lassen. `fahrt_starts` kann liegen bleiben.

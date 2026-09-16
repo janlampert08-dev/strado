@@ -254,6 +254,30 @@ is what should be corrected.
     buckets, or narrowing the `0034` grant — the last of which would also
     close the standing finding named in `0087`'s own header. The privacy
     text now says this plainly rather than promising more than it keeps.
+  - **`0096`–`0099` went in on 2026-09-15, in that order, ahead of their
+    code** (PR #249 — still open when they were applied, which is the
+    intended order: schema first). `0095` is **taken, not free**: PR #248
+    ships `0095_sterne_wieder_einfuehren.sql` and merged into `staging` on
+    2026-09-16, so the number is used and the file is in the tree. Both
+    #249's description and an earlier version of this line said the
+    opposite — they were read off the PR body rather than off
+    `git ls-tree`, which is the check that would have settled it. `0095`
+    is written but **not applied**; see its own entry above for the
+    rollout. Two things this set is worth remembering for:
+    **the grant trap bit a fourth time** (`0097`, see the A1 entry above) —
+    `revoke ... from public` plus `grant ... to authenticated` still leaves
+    the direct `anon` grant standing, so name the roles explicitly the way
+    `0088` did; and **a rolled-back functional test is cheap and was worth
+    it** — `0098`'s trigger was exercised against production inside a `DO`
+    block whose result came back through `raise exception`, which rolls the
+    same block back (`fahrt_starts` 0 rows and `route_completions`
+    unchanged at 13 afterwards). It needed two accounts, because
+    `enforce_completion_cooldown` rejects two rides from one account in a
+    row, and `art = 'frei'` needs `abdeckung_prozent = null` for the
+    `fahrt_art_konsistent` constraint. Applying `0096` also emptied the
+    leaderboard of its **3 existing rows on 1 route** — #249's description
+    claimed the list was already empty; it was not. The rides themselves are
+    untouched and carry `dauer_quelle = 'trail'`.
   - **There is no separate staging database — confirmed, and staying that
     way.** The linked Supabase account holds exactly one project, and it is
     production; the owner confirmed on 2026-09-14 that `staging` points at
@@ -375,17 +399,59 @@ is what should be corrected.
   original findings are closed. A2, A3, A4, A5 and A6 are marked **Fixed**
   there, each naming the code that closed it, and so is all but a handful of
   §B. What remains open is narrower than the headline suggests:
-  - **A1, leg 2 — the ride clock.** Two of A1's three legs are closed. The
-    A1 table further down `docs/audit/README.md` spells out which, and it is
-    the authority — not this line, which has been wrong about A1 before.
-    `dauer_sekunden` itself *is* derived server-side — `logTrackedCompletion`
-    recomputes it with `computeTrailStats()` and deliberately ignores whatever
-    number the client posted. What it cannot check is the **timestamps in the
-    trail it derives from**: a genuine trail replayed with compressed times
-    yields a shorter duration that still passes the `0059` speed band. Closing
-    it needs a ride start the server recorded itself, and the recorder is open
-    to signed-out visitors, so any fix changes the guest flow. A product
-    decision, not a migration.
+  - **A1, leg 2 — the ride clock. Narrowed hard by `0096`–`0098`, still not
+    closed. All four migrations ARE applied.** The A1 table further down
+    `docs/audit/README.md` is the authority — not this line, which has been
+    wrong about A1 before, and was wrong again for one commit on 2026-09-15
+    when it said "closed". The shape, in order:
+    - `0096_fahrtstart_serverseitig` records the ride start on the server
+      (`fahrt_starts`, issued at `beginActualTracking`, redeemed on save)
+      and filters `route_leaderboard` to `dauer_quelle = 'server'`.
+    - `0097_fahrtstart_einloesen_nur_angemeldet` closes a grant hole in
+      `0096`: `fahrt_start_einloesen` was executable by `anon` — the
+      `0047`/`0048`/`0091` trap for the **fourth** time, inside the very
+      migration that documents it. Measured before the fix: an
+      unauthenticated call consumed a fresh ticket and left `eingeloest_von`
+      NULL, which the trigger reads as a foreign ticket, so anyone knowing
+      an id and secret could strip a stranger's ride of its rating.
+    - `0098_fahrtstart_puls` fixes the bigger one. `0096` froze the duration
+      on the **first** redemption and nothing bound that call to the end of
+      the ride — measured, a ticket redeemed twelve seconds after minting
+      carried `dauer_sekunden = 12`. Since the secret sits in the browser's
+      own tracking snapshot and the RPC is reachable over PostgREST, a rider
+      could stop the clock mid-ride and carry on, which reproduces the ×0.4
+      forgery without touching a timestamp. Now the client reports its
+      position every 20 s, the server stamps each report, the rated duration
+      is `letzter_puls_am − gestartet_am`, and the trigger requires the last
+      pulse within 500 m of `ST_EndPoint(track)`.
+    - `0099_public_fahrten_dauer_quelle` adds the column to `public_fahrten`
+      so the badge (`components/VerifiziertAbzeichen.tsx`, `/verifiziert`)
+      also renders on other people's rides.
+
+    **What is still open, and cannot be closed on a phone:** the position
+    inside a pulse is client-supplied like any GPS fix. Forgery is now a
+    real-time simulation paced against a server clock over the full
+    duration, not a file edited afterwards — a much higher bar, not a proof.
+    Do not let this line drift into "closed". Three limits are deliberate:
+    the 500 m tolerance is the price of a lost final pulse (one interval at
+    90 km/h) and is the most an attacker can shave off the end; the server
+    clock runs while the screen sleeps, so a stop costs leaderboard time;
+    and per-lap rows from `lapDetection` stay trail-derived and out of the
+    leaderboard. A ride with **no** pulse at all has no server duration and
+    falls back to `trail` — stricter than `0096`, which still emitted
+    `now() − gestartet_am` there, a number nobody observed.
+
+    **AGB Ziff. 11.4 was the blocker nobody costed.** It forbade "jedes
+    Verhalten, das darauf zielt, eine … geführte Zeit zu unterbieten" — the
+    product forbidding its own core loop, under the account suspension of
+    Ziff. 11.7. A draft on `claude/konkurrenzanalyse-schweiz-46t0ka` narrows
+    it to beating a time *in breach of traffic rules or by endangering
+    others*, restates 11.3 around tempo-independent rankings, and adds
+    Ziff. 12.6 defining a verified ride. It is **not in force**: Ziff. 14.1
+    demands 30 days' notice by e-mail and in-app, so the published HTML in
+    `janlampert08-dev/stradoinfo` deliberately stays on the 14 September
+    version. Anything that names a ride "verifiziert" in the UI is bound to
+    12.6's wording and must never claim "bestätigt", "geprüft" or "echt".
   - **§B — React 19 clears uncontrolled fields on a failed submit.** Closed
     on 2026-09-15. `components/useEingabenBewahren.ts` generalises the
     `MultiPhotoInput` trick (snapshot on the form's `reset` event, write back
@@ -521,13 +587,19 @@ handoff to the next isn't done.
    `abdeckung_prozent` and can only narrow `ist_oeffentlich`, `0059`
    cross-checks `distanz_km` against `st_length(track)`, `0074` bounds the
    rest) — `INSERT` is still granted, but a direct PostgREST write no
-   longer picks its own coverage or visibility. What remains open is
-   **`dauer_sekunden` alone**: it *is* derived server-side from the trail,
-   but the trail's timestamps come from the client, and a genuine track
-   replayed with times compressed ×0.4 stays inside the 200 km/h band from
-   `0059`. So distance, ascent and coverage carry weight; duration and any
-   speed derived from it do not. `lib/fahrtstatistik.ts` is built on
-   exactly that split, and its header explains why.
+   longer picks its own coverage or visibility. The third leg —
+   **`dauer_sekunden`** — is **narrowed hard but still not closed** by
+   `0096`–`0098`, all applied: the server stamps the ride start and then
+   observes the ride through position pulses, so the rated duration is the
+   span between two server clocks and the last pulse must land at the end of
+   the submitted track. A ride counts for the leaderboard only if it carries
+   `dauer_quelle = 'server'`. What the pulses cannot do is prove the ride
+   happened — their positions come from the device like any GPS fix — so
+   duration and any speed derived from it remain weaker evidence than
+   distance, ascent and coverage, which is what `lib/fahrtstatistik.ts` is
+   built on; its header explains why. A ride recorded without a connection
+   keeps everything except its leaderboard time, and says so in the UI
+   (`components/VerifiziertAbzeichen.tsx`).
 6. **Post the ride** — same `lib/actions/completions.ts` submission,
    `components/RideVisibilityToggle.tsx` for visibility, landing on
    `app/fahrten/[id]/page.tsx`.

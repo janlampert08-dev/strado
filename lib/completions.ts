@@ -1,4 +1,5 @@
 import { cache } from "react";
+import type { DauerQuelle } from "@/types/database";
 import { createClient } from "@/lib/supabase/server";
 import { throwOnQueryError } from "@/lib/queryError";
 import { mitSigniertenFotoUrls } from "@/lib/storageUrls";
@@ -130,6 +131,12 @@ export interface CompletionDetail {
   userId: string;
   datum: string;
   dauerSekunden: number | null;
+  // Woher dauerSekunden stammt (0096/0098). "server" heisst: aus
+  // Positionsmeldungen, die während der Fahrt an den Server gingen und dort
+  // gestempelt wurden — nur solche Zeiten führt route_leaderboard. "trail"
+  // heisst: aus den Zeitstempeln des Geräts. Kein Vorwurf, meist ein
+  // Funkloch; siehe components/VerifiziertAbzeichen.tsx und AGB Ziff. 12.6.
+  dauerQuelle: DauerQuelle;
   distanzKm: number | null;
   istOeffentlich: boolean;
   // Für private Fahrten nur gesetzt, wenn der Betrachter der Besitzer ist.
@@ -281,6 +288,10 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
       userId: row.user_id,
       datum: row.datum,
       dauerSekunden: row.dauer_sekunden,
+      // Ab 0099 in public_fahrten. Der Fallback greift nur, solange die
+      // Migration noch nicht eingespielt ist — dann fehlt das Feld und
+      // "trail" ist die sichere Annahme (kein falsches Verifiziert-Abzeichen).
+      dauerQuelle: row.dauer_quelle === "server" ? "server" : "trail",
       distanzKm: row.distanz_km,
       istOeffentlich: true,
       // Ab 0035_public_fahrten_notiz.sql: teilt sich die Sichtbarkeit der
@@ -328,7 +339,7 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
   const { data: own, error: eigeneFahrtError } = await supabase
     .from("route_completions")
     .select(
-      "id, art, route_id, user_id, datum, dauer_sekunden, distanz_km, ist_oeffentlich, abdeckung_prozent, notiz, titel, start_ort, region, bewegte_zeit_sekunden, hoehenmeter_aufstieg, hoehenprofil, parent_completion_id, motorklasse, motorklasse_gewertet, vehicles(typ, marke, modell)",
+      "id, art, route_id, user_id, datum, dauer_sekunden, dauer_quelle, distanz_km, ist_oeffentlich, abdeckung_prozent, notiz, titel, start_ort, region, bewegte_zeit_sekunden, hoehenmeter_aufstieg, hoehenprofil, parent_completion_id, motorklasse, motorklasse_gewertet, vehicles(typ, marke, modell)",
     )
     .eq("id", id)
     .eq("user_id", viewerId)
@@ -339,6 +350,7 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
       user_id: string;
       datum: string;
       dauer_sekunden: number | null;
+      dauer_quelle: DauerQuelle;
       distanz_km: number | null;
       ist_oeffentlich: boolean;
       abdeckung_prozent: number | null;
@@ -396,6 +408,7 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
     userId: own.user_id,
     datum: own.datum,
     dauerSekunden: own.dauer_sekunden,
+    dauerQuelle: own.dauer_quelle === "server" ? "server" : "trail",
     distanzKm: own.distanz_km,
     istOeffentlich: own.ist_oeffentlich,
     abdeckungProzent: own.abdeckung_prozent,

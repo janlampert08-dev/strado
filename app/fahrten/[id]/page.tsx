@@ -28,6 +28,7 @@ import { getKudosForCompletions } from "@/lib/kudos";
 import { featuredMilestone, getUserAchievementStats } from "@/lib/achievements";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { formatDuration } from "@/lib/format";
+import VerifiziertAbzeichen from "@/components/VerifiziertAbzeichen";
 import { publicationBlockReason } from "@/lib/track";
 import Card from "@/components/ui/Card";
 import MotorklasseBadge from "@/components/MotorklasseBadge";
@@ -416,6 +417,16 @@ export default async function FahrtDetailPage({
               {zeigtBewegtzeit && (
                 <dd className="font-mono text-xs tabular-nums text-muted">
                   {formatDuration(completion.bewegteZeitSekunden!)} in Bewegung
+                </dd>
+              )}
+              {/* Steht bewusst in der Zeit-Kachel und nicht im Seitenkopf: die
+                  Verifikation betrifft genau diese eine Zahl und keine andere.
+                  Distanz, Höhenmeter und Abdeckung sind serverseitig
+                  abgesichert (0052/0059/0074/0078) und brauchen kein
+                  Abzeichen. */}
+              {completion.dauerSekunden !== null && (
+                <dd className="pt-1">
+                  <VerifiziertAbzeichen quelle={completion.dauerQuelle} />
                 </dd>
               )}
             </Card>

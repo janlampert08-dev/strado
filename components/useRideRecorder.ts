@@ -3,9 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { haversineKm, type TrailPoint } from "@/lib/geo";
 import { evaluateProximity } from "@/lib/tracking";
+import type { FahrtStartTicket } from "@/lib/fahrtstart";
+import { fahrtStartAnlegen, fahrtStartPuls } from "@/lib/actions/fahrtstart";
+import { sollPulsen } from "@/lib/fahrtstart";
 import {
   saveTrackingSnapshot,
   loadTrackingSnapshot,
+  FREE_RIDE_STORAGE_KEY,
   clearTrackingSnapshot,
   purgeLegacyTrackingSnapshots,
   adoptGuestTrackingSnapshot,
@@ -84,6 +88,11 @@ export interface RideRecorder {
   // Deckungsgrad im Streckenmodus und für das versteckte Formularfeld.
   finishedTrail: TrailPoint[];
   trailJson: string;
+  // Das serverseitige Fahrtstart-Ticket als JSON für das versteckte
+  // Formularfeld ("null", solange keines vorliegt). Ohne Ticket wird die
+  // Fahrt mit dauer_quelle = "trail" gespeichert und zählt nicht für die
+  // Bestenliste — siehe lib/fahrtstart.ts.
+  ticketJson: string;
   // Manueller Start ("Bin schon am Start"), falls die GPS-Genauigkeit am
   // Startpunkt nicht für den automatischen Start reicht.
   beginNow: () => void;
@@ -134,8 +143,14 @@ export function useRideRecorder({
   const [liveTrail, setLiveTrail] = useState<[number, number][]>([]);
   const [liveTrailPoints, setLiveTrailPoints] = useState<TrailPoint[]>([]);
   const [trailJson, setTrailJson] = useState("[]");
+  const [ticketJson, setTicketJson] = useState("null");
   const [hasStarted, setHasStarted] = useState(false);
 
+  const ticketRef = useRef<FahrtStartTicket | null>(null);
+  // Zeitpunkt des letzten abgesetzten Pulses (0098_fahrtstart_puls.sql).
+  // Ein Ref und kein State: die Zahl wird aus der watchPosition-Closure
+  // gelesen und geschrieben und darf kein Rendern ausloesen.
+  const letzterPulsAtRef = useRef<number | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const lastPointRef = useRef<[number, number] | null>(null);
   const lastPointTimeRef = useRef<number | null>(null);
@@ -201,7 +216,34 @@ export function useRideRecorder({
   const writeSnapshot = useCallback((snapshot: TrackingSnapshot, force = false) => {
     if (!force && snapshot.savedAt - lastSnapshotAtRef.current < SNAPSHOT_INTERVAL_MS) return;
     lastSnapshotAtRef.current = snapshot.savedAt;
-    saveTrackingSnapshot(userIdRef.current, storageKeyRef.current, snapshot);
+    // Das Ticket hier zentral anhängen statt an jedem Aufrufer: es gibt ein
+    // gutes Dutzend writeSnapshot-Aufrufe, und einer, der es vergisst, würde
+    // beim Wiederaufnehmen eine wertbare Fahrt in eine unwertbare verwandeln
+    // — ein Fehler, der erst Wochen später in einer fehlenden Bestzeit
+    // auffiele.
+    saveTrackingSnapshot(userIdRef.current, storageKeyRef.current, {
+      ...snapshot,
+      ticket: ticketRef.current,
+    });
+  }, []);
+
+  // Meldet die aktuelle Position an den Server, höchstens alle
+  // PULS_INTERVALL_MS (siehe lib/fahrtstart.ts). Die gewertete Dauer ist
+  // danach die Spanne zwischen Start und letztem Puls — deshalb muss gepulst
+  // werden, solange die Aufzeichnung läuft, und ein letztes Mal beim Beenden.
+  //
+  // Absichtlich nicht abgewartet und ohne Fehlerbehandlung: ein verlorener
+  // Puls darf die Aufzeichnung nicht bremsen. Er kostet nur Genauigkeit am
+  // Ende, und dafür hat der Trigger seine 500-Meter-Toleranz.
+  const pulsen = useCallback((punkt: [number, number], erzwingen = false) => {
+    const ticket = ticketRef.current;
+    if (!ticket) return;
+    const jetzt = Date.now();
+    if (!erzwingen && !sollPulsen(letzterPulsAtRef.current, jetzt)) return;
+    letzterPulsAtRef.current = jetzt;
+    void fahrtStartPuls(ticket, punkt[1], punkt[0]).catch(() => {
+      // Ohne Netz kein Puls. Beim nächsten Fix wird es erneut versucht.
+    });
   }, []);
 
   // Verhindert, dass der Bildschirm während der Aufzeichnung automatisch
@@ -286,6 +328,37 @@ export function useRideRecorder({
     // Aufruf ein No-op.
     navigator.vibrate?.(10);
     startTimeRef.current = Date.now();
+
+    // Der serverseitig aufgezeichnete Start (lib/fahrtstart.ts). Bewusst
+    // hier und nicht beim Tippen auf "Strecke starten": im Streckenmodus
+    // liegen zwischen beidem die Minuten der Anfahrt zum Startpunkt, und
+    // gemessen werden soll, was die Anzeige auch misst.
+    //
+    // Absichtlich nicht abgewartet. Eine Aufzeichnung darf nicht auf eine
+    // Netzantwort warten — sie beginnt oft genau dort, wo der Empfang
+    // schlecht ist. Kommt das Ticket nicht, läuft die Fahrt normal weiter
+    // und wird später mit dauer_quelle = "trail" gespeichert: sie zählt
+    // dann nicht für die Bestenliste, geht aber auch nicht verloren.
+    if (!ticketRef.current) {
+      const istFreieFahrt = storageKey === FREE_RIDE_STORAGE_KEY;
+      void fahrtStartAnlegen(istFreieFahrt ? "frei" : "strecke", istFreieFahrt ? null : storageKey)
+        .then((ergebnis) => {
+          if (!ergebnis.ok || ticketRef.current) return;
+          ticketRef.current = ergebnis.ticket;
+          setTicketJson(JSON.stringify(ergebnis.ticket));
+          // In den Snapshot nachziehen: der wurde unten schon ohne Ticket
+          // geschrieben, und genau dieser Snapshot ist es, der einen
+          // abgestürzten Tab und den Weg über die Anmeldung überlebt.
+          const aktuell = loadTrackingSnapshot(userId, storageKey);
+          if (aktuell) {
+            saveTrackingSnapshot(userId, storageKey, { ...aktuell, ticket: ergebnis.ticket });
+          }
+        })
+        .catch(() => {
+          // Kein Netz, keine Zeitwertung — die Fahrt selbst ist davon nicht
+          // betroffen.
+        });
+    }
     intervalRef.current = setInterval(() => {
       setElapsedSeconds(Math.round((Date.now() - (startTimeRef.current ?? Date.now())) / 1000));
     }, 1000);
@@ -302,7 +375,7 @@ export function useRideRecorder({
       },
       true,
     );
-  }, [writeSnapshot]);
+  }, [writeSnapshot, storageKey, userId]);
 
   // Nutzt Refs statt der distanceKm/elapsedSeconds-States, damit ein Aufruf
   // aus der beim Start erzeugten watchPosition-Closure (automatischer Stopp
@@ -312,6 +385,13 @@ export function useRideRecorder({
     // Gegenstück zum Impuls beim Start (siehe beginActualTracking): die
     // Aufzeichnung endet auch automatisch am Ziel, also ohne Tastendruck.
     navigator.vibrate?.(10);
+
+    // Schlusspuls, erzwungen: er setzt den Zeitpunkt, an dem die gewertete
+    // Uhr stehen bleibt, und seine Position muss zum Ende des eingereichten
+    // Tracks passen. Ohne ihn zählt der letzte reguläre Puls — bis zu einem
+    // Intervall älter, was die 500-Meter-Toleranz im Trigger auffängt.
+    const letzterPunkt = trailRef.current.at(-1);
+    if (letzterPunkt) pulsen([letzterPunkt.lng, letzterPunkt.lat], true);
 
     const finalDistanceKm = distanceKmRef.current;
     const finalSeconds = startTimeRef.current
@@ -340,7 +420,7 @@ export function useRideRecorder({
       },
       true,
     );
-  }, [releaseTracking, writeSnapshot, publishLiveTrail]);
+  }, [releaseTracking, writeSnapshot, publishLiveTrail, pulsen]);
 
   // `resume` kommt aus dem Snapshot einer unterbrochenen Aufzeichnung —
   // statt bei Null neu zu starten, werden Trail/Distanz/Startzeit
@@ -374,6 +454,8 @@ export function useRideRecorder({
         lastPointRef.current = lastPoint ? [lastPoint.lng, lastPoint.lat] : null;
         lastPointTimeRef.current = lastPoint ? lastPoint.t : null;
         trailRef.current = resume.trail;
+        ticketRef.current = resume.ticket ?? null;
+        setTicketJson(JSON.stringify(resume.ticket ?? null));
         startTimeRef.current = resume.startTimeMs;
         distanceKmRef.current = resume.distanceKm;
         hasLeftStartRef.current = resume.hasLeftStart;
@@ -461,6 +543,13 @@ export function useRideRecorder({
           // dort" zählt.
           trailRef.current.push({ lng: point[0], lat: point[1], t: now });
 
+          // Denselben Punkt an den Server melden (0098_fahrtstart_puls.sql).
+          // Bewusst genau hier: der Genauigkeitsfilter oben entscheidet damit
+          // auch über den Puls, und gemeldet wird nur, was auch im Trail
+          // landet. Der Trigger vergleicht den letzten Puls später mit dem
+          // Ende genau dieses Trails.
+          pulsen(point);
+
           if (lastPointRef.current) {
             const segment = haversineKm(lastPointRef.current, point);
             if (segment > MIN_SEGMENT_KM) {
@@ -531,7 +620,7 @@ export function useRideRecorder({
       requestWakeLock();
       setPhase("tracking");
     },
-    [beginActualTracking, requestWakeLock, stop, writeSnapshot, publishLiveTrail],
+    [beginActualTracking, requestWakeLock, stop, writeSnapshot, publishLiveTrail, pulsen],
   );
 
   const discard = useCallback(() => {
@@ -603,6 +692,12 @@ export function useRideRecorder({
 
     const timeout = setTimeout(() => {
       if (snapshot?.phase === "finished") {
+        // Dieser Zweig geht an start() vorbei, das sonst das Ticket
+        // zurückholt. Ohne die zwei Zeilen verliert eine bereits beendete,
+        // nur noch nicht gespeicherte Fahrt beim Neuladen des Fazit-Schirms
+        // ihre Zeitwertung — und zwar lautlos.
+        ticketRef.current = snapshot.ticket ?? null;
+        setTicketJson(JSON.stringify(snapshot.ticket ?? null));
         trailRef.current = snapshot.trail;
         distanceKmRef.current = snapshot.distanceKm;
         startTimeRef.current = snapshot.startTimeMs;
@@ -641,6 +736,7 @@ export function useRideRecorder({
     result,
     finishedTrail,
     trailJson,
+    ticketJson,
     beginNow: beginActualTracking,
     stop,
     discard,
