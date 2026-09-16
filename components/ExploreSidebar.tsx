@@ -7,8 +7,8 @@ import { routeShapePath } from "@/lib/routeShape";
 import { formatKm } from "@/lib/format";
 import { withAlpha, type RouteSignature, type SignatureKey } from "@/lib/signature";
 import type { ExploreRoute } from "@/types/database";
-import { schnittText, type Streckenbewertung } from "@/lib/bewertungen";
-import Sterne from "@/components/Sterne";
+import { anzahlText, type Streckenbewertung } from "@/lib/bewertungen";
+import Sternschnitt from "@/components/Sternschnitt";
 import { fieldClassName } from "@/components/ui/Input";
 import EmptyState from "@/components/ui/EmptyState";
 
@@ -219,16 +219,13 @@ export default function ExploreSidebar({
                         Ohne eine einzige Wertung steht hier nichts statt
                         "0.0": siehe RatingSection, dieselbe Regel. */}
                     {bewertung && (
-                      <span className="flex shrink-0 items-center gap-1">
-                        <Sterne wert={bewertung.schnitt} sterneClassName="h-3 w-3" />
-                        <span className="font-mono text-xs tabular-nums text-muted">
-                          {schnittText(bewertung.schnitt)}
-                        </span>
-                        <span className="sr-only">
-                          von 5 Sternen, {bewertung.anzahl}{" "}
-                          {bewertung.anzahl === 1 ? "Bewertung" : "Bewertungen"}
-                        </span>
-                      </span>
+                      <Sternschnitt
+                        schnitt={bewertung.schnitt}
+                        zahlClassName="text-xs text-muted"
+                        sternClassName="h-3 w-3"
+                      >
+                        <span className="sr-only">{anzahlText(bewertung.anzahl)}</span>
+                      </Sternschnitt>
                     )}
                   </div>
                 </div>
