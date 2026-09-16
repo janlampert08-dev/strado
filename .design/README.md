@@ -5,15 +5,31 @@ Die Artboards, aus denen der Struktur-Canvas zum Konzept in
 veröffentlichter Canvas sonst nur als fertige Seite existiert und niemand
 mehr nachvollziehen kann, woher eine Zahl darin stammt.
 
-| Datei | Zeigt |
-| --- | --- |
-| `Main.dc.html` | Soll-Struktur — der ausgearbeitete Vorschlag |
-| `Ist.dc.html` | Ist-Struktur — die 27 Flächen, gruppiert |
-| `Kernloop.dc.html` | Die neun Schritte gegen die Flächen gelegt |
-| `RichtungA.dc.html` | Alternative A — Drei Ziele |
-| `RichtungB.dc.html` | Alternative B — Die Leiste ist der Loop |
-| `RichtungC.dc.html` | Alternative C — Die Karte ist die App |
-| `canvas.json` | Seiten, Anordnung, Notizen |
+Fünf Seiten, dreizehn Artboards:
+
+| Seite | Datei | Zeigt |
+| --- | --- | --- |
+| Bildschirme | `StartVorher` / `StartNachher` | Startseite, 390 × 844, mit den gerechneten Höhen |
+| | `StreckeVorher` / `StreckeNachher` | Streckenseite — 7 Kacheln gegen 4 plus Zeile |
+| | `ProfilVorher` / `ProfilNachher` | Profil — drei Rahmenebenen gegen eine |
+| Bausteine | `Bausteine.dc.html` | Die sieben Muster mit den exakten Werten (= Anhang A) |
+| Soll-Struktur | `Main.dc.html` | Der ausgearbeitete Vorschlag (Richtung B) |
+| Befund | `Ist.dc.html` | Die 27 Flächen, gruppiert |
+| | `Kernloop.dc.html` | Die neun Schritte gegen die Flächen gelegt |
+| Richtungen | `RichtungA/B/C.dc.html` | Die drei Alternativen mit ihrem Preis |
+| — | `canvas.json` | Seiten, Anordnung, Notizen |
+
+## Die „Vorher"-Bildschirme sind nachgebaut, nicht erfunden
+
+Jedes Element links stammt aus dem Quelltext: Zeilenhöhe `h-24`, Suchfeld
+`px-3 py-2 text-base`, `⋮` als Textzeichen, `rounded-lg` neben
+`rounded-full`, die Kachel-Betonung `text-title` gegen `text-lg`. Wer
+etwas daran anzweifelt, prüft es gegen die Komponente, nicht gegen das
+Bild.
+
+Die orangen und grünen Marken darin sind **gerechnete** Höhen — aus den
+Klassen addiert, nicht im Gerät gemessen. Sie taugen für die
+Entscheidung, nicht für die Abnahme.
 
 ## Stand der Zahlen
 

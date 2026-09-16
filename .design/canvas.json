@@ -1,42 +1,71 @@
 {
   "pages": [
-    { "id": "page-1", "name": "Soll" },
-    { "id": "page-2", "name": "Befund" },
-    { "id": "page-3", "name": "Richtungen" }
+    { "id": "bildschirme", "name": "Bildschirme" },
+    { "id": "bausteine", "name": "Bausteine" },
+    { "id": "soll", "name": "Soll-Struktur" },
+    { "id": "befund", "name": "Befund" },
+    { "id": "richtungen", "name": "Richtungen" }
   ],
   "artboards": [
-    { "file": "Main.dc.html", "page": "page-1", "x": 0, "y": 0, "w": 1280, "h": 1240, "title": "Soll-Struktur" },
-    { "file": "Ist.dc.html", "page": "page-2", "x": 0, "y": 0, "w": 1240, "h": 1240, "title": "Ist-Struktur" },
-    { "file": "Kernloop.dc.html", "page": "page-2", "x": 1360, "y": 0, "w": 660, "h": 1240, "title": "Kernloop heute" },
-    { "file": "RichtungA.dc.html", "page": "page-3", "x": 0, "y": 0, "w": 390, "h": 844, "title": "A — Drei Ziele" },
-    { "file": "RichtungB.dc.html", "page": "page-3", "x": 510, "y": 0, "w": 390, "h": 844, "title": "B — Die Leiste ist der Loop" },
-    { "file": "RichtungC.dc.html", "page": "page-3", "x": 1020, "y": 0, "w": 390, "h": 844, "title": "C — Die Karte ist die App" }
+    { "file": "StartVorher.dc.html",    "page": "bildschirme", "x": 0,    "y": 0, "w": 390, "h": 844, "title": "Start — heute" },
+    { "file": "StartNachher.dc.html",   "page": "bildschirme", "x": 510,  "y": 0, "w": 390, "h": 844, "title": "Start — Vorschlag" },
+    { "file": "StreckeVorher.dc.html",  "page": "bildschirme", "x": 1120, "y": 0, "w": 390, "h": 844, "title": "Strecke — heute" },
+    { "file": "StreckeNachher.dc.html", "page": "bildschirme", "x": 1630, "y": 0, "w": 390, "h": 844, "title": "Strecke — Vorschlag" },
+    { "file": "ProfilVorher.dc.html",   "page": "bildschirme", "x": 2240, "y": 0, "w": 390, "h": 844, "title": "Profil — heute" },
+    { "file": "ProfilNachher.dc.html",  "page": "bildschirme", "x": 2750, "y": 0, "w": 390, "h": 844, "title": "Profil — Vorschlag" },
+
+    { "file": "Bausteine.dc.html", "page": "bausteine", "x": 0, "y": 0, "w": 1280, "h": 1420, "title": "Sieben Muster, je eine Quelle" },
+
+    { "file": "Main.dc.html", "page": "soll", "x": 0, "y": 0, "w": 1280, "h": 1240, "title": "Soll-Struktur" },
+
+    { "file": "Ist.dc.html",      "page": "befund", "x": 0,    "y": 0, "w": 1240, "h": 1240, "title": "Ist-Struktur" },
+    { "file": "Kernloop.dc.html", "page": "befund", "x": 1360, "y": 0, "w": 660,  "h": 1240, "title": "Kernloop heute" },
+
+    { "file": "RichtungA.dc.html", "page": "richtungen", "x": 0,    "y": 0, "w": 390, "h": 844, "title": "A — Drei Ziele" },
+    { "file": "RichtungB.dc.html", "page": "richtungen", "x": 510,  "y": 0, "w": 390, "h": 844, "title": "B — Die Leiste ist der Loop" },
+    { "file": "RichtungC.dc.html", "page": "richtungen", "x": 1020, "y": 0, "w": 390, "h": 844, "title": "C — Die Karte ist die App" }
   ],
   "annotations": [
     {
-      "id": "soll-note",
-      "page": "page-1",
+      "id": "note-bildschirme",
+      "page": "bildschirme",
+      "x": 0,
+      "y": -170,
+      "w": 900,
+      "text": "Drei Paare, je 390 × 844 (iPhone 13). Links steht, was heute dasteht — nachgebaut aus dem Quelltext, nicht aus der Erinnerung. Rechts der Vorschlag.\n\nDie orangen und grünen Marken sind gerechnete Höhen, keine gemessenen. Abnahme ist ein Screenshot im Gerät."
+    },
+    {
+      "id": "note-bausteine",
+      "page": "bausteine",
+      "x": 0,
+      "y": -150,
+      "w": 760,
+      "text": "Die konkreten Werte, die in den Code gehen.\n\nKeine neue Farbe, kein neuer Radius, keine neue Schrift — alles stammt aus app/globals.css. Neu sind nur vier Primitiven und die Entscheidung, sie überall zu benutzen."
+    },
+    {
+      "id": "note-soll",
+      "page": "soll",
       "x": 0,
       "y": -150,
       "w": 620,
       "text": "Richtung B, ausgearbeitet.\n\nZwei Punkte brauchen eine Abnahme, bevor irgendetwas gebaut wird: dass die Bestenlisten ihren Platz in der Leiste verlieren, und dass der Kauf-Fluss zusammengelegt wird (geschützter Bereich, Stripe)."
     },
     {
-      "id": "befund-note",
-      "page": "page-2",
+      "id": "note-befund",
+      "page": "befund",
       "x": 0,
       "y": -150,
       "w": 620,
       "text": "Gezählt gegen staging 836ea96.\n\nDer Befund ist nicht, dass es 27 Flächen sind — für ein Produkt mit Konten, Zahlung und Moderation ist das normal. Der Befund ist, welche fünf davon einen Platz in der Leiste bekommen haben."
     },
     {
-      "id": "richtungen-note",
-      "page": "page-3",
+      "id": "note-richtungen",
+      "page": "richtungen",
       "x": 0,
       "y": -150,
       "w": 620,
       "text": "Drei Richtungen entlang verschiedener Achsen, nicht drei Abstufungen derselben.\n\nA reduziert die Zahl der Ziele, B richtet sie am Loop aus, C schafft sie ab. Jede mit ihrem echten Preis daneben."
     }
   ],
-  "launch": { "view": "canvas", "page": "page-1" }
+  "launch": { "view": "canvas", "page": "bildschirme" }
 }

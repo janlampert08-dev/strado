@@ -753,3 +753,165 @@ Was tatsächlich prüfbar ist:
 - **Die Tokens selbst.** `app/globals.css` ist der gute Teil dieser Codebasis.
   Dieses Konzept fügt dort nichts hinzu — es sorgt dafür, dass die App die
   Tokens benutzt, die schon da sind.
+
+---
+
+## Anhang A — Baustein-Spezifikation
+
+Die Abschnitte oben sagen, **was** falsch ist und **warum**. Dieser Anhang
+sagt, **welche Werte** an die Stelle treten — so weit ausgeschrieben, dass
+niemand beim Umsetzen mehr raten oder neu entscheiden muss.
+
+**Keine neue Farbe, kein neuer Radius, keine neue Schrift.** Alles darin
+steht bereits in `app/globals.css`. Neu sind vier Primitiven und die
+Entscheidung, sie überall zu benutzen. Der begleitende Canvas zeigt
+dieselben sieben Blöcke gezeichnet (Seite „Bausteine", Quellen unter
+`.design/Bausteine.dc.html`).
+
+### A1 — Schaltflächen: eine Silhouette
+
+`components/ui/Button.tsx` trägt fünf Varianten in zwei Silhouetten.
+`primary`/`accent`/`danger` sind `rounded-full`, `secondary`/`ghost` sind
+`rounded-lg`. Im `grid-cols-2` der Profilseite stehen beide in derselben
+Zeile, gleich breit und gleich hoch.
+
+**Alle fünf auf `rounded-full`.** Die Rangfolge trägt Fläche und Rahmen —
+gefüllt, Umriss, ohne Rahmen —, nicht die Silhouette. `Card`, Eingabefelder
+und Dialoge behalten `--radius-lg`; damit wird „rund = Handlung,
+weich-eckig = Fläche" zur Regel statt zum Zufall. Die Chips
+(`motorklassenChipStil.ts`, Standort, Feed-Reiter) sind ohnehin schon Pillen.
+
+| Grösse | Mindesthöhe | Wofür |
+| --- | --- | --- |
+| `sm` | 36 px | Nebensächliches ausserhalb des Fahrzeugs |
+| `md` | 44 px | Standard — die Daumengrenze |
+| `lg` | 52 px | Aufzeichnung, mit Handschuhen |
+
+Die Höhen bleiben, wie sie sind. Nachzumessen ist nur, ob „Öffentliches
+Profil ansehen" als Pille in `sm` noch in die halbe Zeile passt — es ist
+die längste Beschriftung der App in dieser Grösse.
+
+### A2 — `ui/Kennzahl.tsx` (neu)
+
+Ersetzt 15 handgeschriebene Kacheln auf drei Seiten und führt
+`KennzahlKachel.tsx` (heute nur auf `/creator`) darauf zurück.
+
+| Teil | Wert |
+| --- | --- |
+| Beschriftung | 14 px / 400 / `--color-muted` |
+| Wert | `--text-title` / 600 / mono / `tabular-nums` |
+| Fläche | `--color-surface`, `--radius-lg`, 16 px Innenabstand |
+| Raster | `grid-cols-2 sm:grid-cols-4`, `gap-3` |
+
+**Genau eine Betonungsstufe.** Die heutige Aufteilung — erste zwei Kacheln
+`text-title`/600, der Rest einmal `font-mono`, einmal `text-lg` — hat keinen
+Grund und ist an drei Stellen verschieden umgesetzt.
+
+**Höchstens vier Kacheln je Raster.** Was darüber hinausgeht, wird eine
+Zeile darunter in `text-sm text-muted`, mit `·` getrennt:
+
+```
+Max. Steigung 12 % · Ø 62 km/h · 8 °C leicht bewölkt
+```
+
+Auf der Streckenseite sind das **190 px statt 348** — die
+Bestenlisten-Vorschau rückt damit über die Falz. Bleiben als Kacheln:
+Länge, Höhe, Kehren, Fahrzeit.
+
+### A3 — `ui/IconButton.tsx` (neu)
+
+| Teil | Wert |
+| --- | --- |
+| Fläche | `min-h-11 min-w-11` (44 px), `rounded-full` |
+| Rahmen | `--color-border`, im Ruhezustand sichtbar |
+| Icon | 20 px, `--color-muted`, bei Hover `--color-foreground` |
+| Fokus | derselbe Ring wie `Button` |
+| Optional | `-m-2`, wo der optische Abstand erhalten bleiben muss |
+
+Ersetzt in einem Zug: Teilen, Melden, Sichtbarkeit umschalten, Kommentar
+melden, **beide** „Weitere Aktionen"-Auslöser und die Foto-Entfernen-Kreuze.
+Schliesst nebenbei `docs/audit/uiux.md` §5.2.
+
+### A4 — Farbe: drei Systeme werden eines
+
+`SIGNATURE_COLORS` (5 Werte) und `ROUTE_BLUE_PALETTE` (8 Werte) entfallen.
+`computeSignatures()` liefert weiter `key` und `label` — die Perzentil-Logik
+und ihre Tests bleiben unangetastet —, nur ohne `color`.
+
+| Element | Vorher | Nachher |
+| --- | --- | --- |
+| Signatur-Label und -Icon | einer von fünf Hex-Werten | `--color-muted` |
+| Linker Rand der Listenzeile | derselbe Hex, 55 % | `--color-accent` |
+| Getönter Kasten hinter der Form | derselbe Hex, 12 % | `--color-surface` |
+| Streckenform (SVG) | derselbe Hex | `--color-accent` |
+| Kartenlinien | 5 Signatur- + 8 Fallback-Farben | `--color-accent`, andere mit 35 % Deckkraft |
+| `TRACK_COLOR`, Live-Punkt | fest `#3D5AFE` | Akzent-Token, themenabhängig |
+
+Der letzte Punkt ist der, der heute einen echten Fehler produziert:
+`mapStyleForTheme()` tauscht den Mapbox-Stil bei Dunkelmodus und hört sogar
+auf spätere Wechsel — die Linien tauschen nicht mit, weil `#3D5AFE` der
+**helle** Akzentwert ist. Mapbox kann keine CSS-Variable auflösen; der Weg
+ist, den Wert einmal über
+`getComputedStyle(document.documentElement).getPropertyValue("--color-accent")`
+zu lesen und im selben Listener neu zu setzen.
+
+### A5 — `ui/SegmentedControl.tsx` (neu)
+
+Fünf Fassungen desselben Bedienelements heute: Privat/Öffentlich in
+`RideSummaryForm` und `NeueStreckeForm`, Ja/Nein für Rundfahrt, der
+Theme-Schalter und die Feed-Reiter.
+
+| Teil | Wert |
+| --- | --- |
+| Hülle | `rounded-full`, 1 px `--color-border`, 4 px Innenabstand |
+| Segment | 36 px hoch, `rounded-full`, 13 px / 500 |
+| Gewählt | `--color-foreground` gefüllt, Text `--color-background` |
+| Ungewählt | `--color-muted`, kein Rahmen |
+| Gesamthöhe | 44 px |
+
+### A6 — Zeichen sind keine Icons
+
+Drei Stellen zeichnen ihr Symbol als Textzeichen: `★`/`☆` in
+`FavoriteButton.tsx`, `⋮` in `RouteActionsMenu.tsx`. Was die
+Plattformschrift daraus macht, ist auf jedem Gerät anders breit, hoch und
+schwer — dieselbe Schaltfläche sieht auf zwei Telefonen verschieden aus.
+Alle drei werden SVG aus dem Icon-Satz, in einem `IconButton`.
+
+Dazu der Vertrag für die 50 Icons aus 39 Dateien (Abschnitt 3.8):
+`ui/Icon.tsx` legt die Strichstärke fest — **unter 20 px: 1.75, darüber:
+1.5** — und streicht beim Umstellen die Doppelungen (`Route`/`RouteIcon`,
+`Timer`/`Clock`, `Gauge` in zwei Rollen).
+
+### A7 — `ui/Seitenrahmen.tsx` (neu)
+
+| Breite | Wert | Wofür |
+| --- | --- | --- |
+| `schmal` | `max-w-md` | Formulare, Anmeldung |
+| `normal` | `max-w-2xl lg:max-w-3xl` | alles Übrige |
+| `weit` | `max-w-2xl lg:max-w-5xl` | Bestenlisten |
+
+Ein Satz Ränder für alle: `px-5 sm:px-6`, `py-8 sm:py-10`, `gap-6`. Die
+Kartenseiten (Startseite, Streckenseite, `strecken/neu`) bleiben aussen
+vor — sie haben eine eigene, bewusste Geometrie aus Karte plus Sheet.
+
+### A8 — Das Peek-Fenster der Startseite
+
+Abschnitt 3.1 nennt die vier Eingriffe; hier die Zielwerte:
+
+| Element | Heute | Nachher |
+| --- | --- | --- |
+| Ziehgriff | 36 px | 36 px |
+| Innenabstand oben | `pt-5` (20 px) | `pt-3` (12 px) |
+| Suchzeile | Feld 42 px, Chip-Zeile 59 px darunter | eine Zeile, 44 px: Feld + Standort-`IconButton` |
+| Abstände | `gap-5` (2 × 20 px) | `gap-3` (2 × 12 px) |
+| Trennlinie | nach `pb-6` | direkt |
+| **Summe vor der Liste** | **197 px** | **105 px** |
+| Zeilenhöhe | `h-24` (96 px) | `h-20` (80 px) |
+| **Sichtbare Liste** | **75 px — keine volle Zeile** | **167 px — zwei Zeilen plus Anschnitt** |
+
+`SHEET_PEEK_PX` bleibt bei 272. Der Erklärabsatz für Abgemeldete zieht aus
+dem Sheet heraus; die `<h1>` bleibt `sr-only` darin.
+
+**Alle Zahlen hier sind aus den Klassen gerechnet.** Die Abnahme ist ein
+Screenshot der Startseite im Ruhezustand, auf dem drei Streckennamen zu
+lesen sind — siehe Abschnitt 6.
