@@ -11,6 +11,7 @@ import {
 import { GlobeIcon, LockIcon } from "@/components/VisibilityIcons";
 import { COVERAGE_THRESHOLD_PERCENT } from "@/lib/routeCoverage";
 import Card from "@/components/ui/Card";
+import IconButton from "@/components/ui/IconButton";
 import { Dialog } from "@/components/ui/Dialog";
 import Button from "@/components/ui/Button";
 
@@ -147,16 +148,14 @@ export default function CompletionActionsMenu({
 
   return (
     <div ref={containerRef} className="relative shrink-0">
-      <button
+      <IconButton
         ref={ausloeserRef}
-        type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="Weitere Aktionen"
         aria-expanded={open}
-        className="rounded-full border border-border p-1.5 text-foreground transition-colors duration-fast hover:border-border-strong"
       >
-        <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-      </button>
+        <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+      </IconButton>
       {open && (
         <Card elevated as="div" className="absolute top-full right-0 z-10 mt-1 flex w-60 flex-col overflow-hidden">
           <button

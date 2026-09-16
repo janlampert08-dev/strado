@@ -22,6 +22,7 @@ import {
 import { getCurrentUser } from "@/lib/supabase/server";
 import Card from "@/components/ui/Card";
 import { freieFahrtTitel } from "@/lib/completions";
+import SectionHeading from "@/components/ui/SectionHeading";
 
 export async function generateMetadata({
   params,
@@ -178,10 +179,10 @@ export default async function FahrerPage({
               zeigen kann statt auf halber Breite zu verharren. */}
           {profile.zeigtFahrzeuge && (
             <section className="flex flex-col gap-3">
-              <h2 className="flex items-center gap-1.5 text-sm font-semibold tracking-wide text-muted uppercase">
+              <SectionHeading className="flex items-center gap-1.5">
                 <Car className="h-4 w-4" aria-hidden="true" />
                 Fahrzeuge
-              </h2>
+              </SectionHeading>
               <VehicleGrid vehicles={profile.vehicles} editable={false} />
             </section>
           )}
@@ -189,9 +190,9 @@ export default async function FahrerPage({
           <section className="flex flex-col gap-4">
             {/* Nicht mehr nur "Gefahrene Strecken": die Liste enthält seit
                 0045_freie_fahrten_teilen.sql auch geteilte freie Fahrten. */}
-            <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">
+            <SectionHeading>
               Geteilte Fahrten
-            </h2>
+            </SectionHeading>
             {profile.fahrten.length === 0 ? (
               <p className="text-sm text-muted">Noch keine öffentlichen Fahrten.</p>
             ) : (

@@ -3,6 +3,7 @@
 import { useSyncExternalStore, type ComponentType } from "react";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { THEME_CHANGE_EVENT } from "@/lib/theme";
+import { segmentClassName, segmentHuelleClassName } from "@/components/ui/SegmentedControl";
 
 type ThemePreference = "system" | "light" | "dark";
 
@@ -55,9 +56,16 @@ function applyTheme(pref: ThemePreference) {
 // Nur noch hier auf der Einstellungsseite (app/profil/einstellungen)
 // eingebunden — die vorherige kompakte Pille im Header ist entfallen, die
 // Farbschema-Wahl lebt jetzt ausschliesslich hier. Ohne manuelle Wahl gilt
-// weiterhin "System" als Standard, unverändert. Gleiche Segmented-Control-
-// Optik (aktiv: dunkel gefüllt; inaktiv: nur Rahmen) wie der Privat/
-// Öffentlich-Umschalter in LiveTrackingForm/NeueStreckeForm.
+// weiterhin "System" als Standard, unverändert.
+//
+// Der Kommentar hier behauptete bis zur Vereinheitlichung "gleiche
+// Segmented-Control-Optik wie der Privat/Öffentlich-Umschalter" — und das
+// stimmte nicht: dort rounded-lg und py-1.5, hier rounded-lg und py-2, und
+// die Feed-Reiter waren wieder anders. Fünf Fassungen desselben
+// Bedienelements. Jetzt teilen sich alle die Klassen aus
+// ui/SegmentedControl; die eigene role="radiogroup"-Semantik bleibt, weil
+// ein Farbschema tatsächlich eine Auswahl aus dreien ist und nicht ein
+// gedrückter Zustand.
 export default function ThemeToggle() {
   const preference = useSyncExternalStore(subscribe, readPreference, readServerPreference);
 
@@ -72,7 +80,7 @@ export default function ThemeToggle() {
   }
 
   return (
-    <div role="radiogroup" aria-label="Farbschema" className="flex items-center gap-2">
+    <div role="radiogroup" aria-label="Farbschema" className={segmentHuelleClassName("w-full")}>
       {OPTIONS.map(({ value, label, icon: Icon }) => (
         <button
           key={value}
@@ -80,11 +88,7 @@ export default function ThemeToggle() {
           role="radio"
           aria-checked={preference === value}
           onClick={() => choose(value)}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-            preference === value
-              ? "border-foreground bg-foreground text-background"
-              : "border-border text-muted hover:border-border-strong"
-          }`}
+          className={segmentClassName(preference === value, "flex-1")}
         >
           <Icon className="h-4 w-4" aria-hidden="true" />
           {label}

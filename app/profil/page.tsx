@@ -368,9 +368,9 @@ export default async function ProfilPage() {
               die Garage, eine feste Spalte daneben liess auf Desktop viel
               Leerraum neben der kurzen Fahrzeuge-Liste stehen. */}
           <section className="flex flex-col gap-3">
-            <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">
+            <SectionHeading>
               Meine Fahrten
-            </h2>
+            </SectionHeading>
             <Card className="flex flex-col divide-y divide-border">
               <details open className="group p-4">
                 <SectionSummary
@@ -506,10 +506,10 @@ export default async function ProfilPage() {
               neuen Einstellungen umgezogen (app/profil/einstellungen). */}
           <section className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <h2 className="flex items-center gap-1.5 text-sm font-semibold tracking-wide text-muted uppercase">
+              <SectionHeading className="flex items-center gap-1.5">
                 <Car className="h-4 w-4" aria-hidden="true" />
                 Fahrzeuge
-              </h2>
+              </SectionHeading>
               <Link
                 href="/profil/fahrzeuge/neu"
                 className="text-sm font-medium text-accent hover:underline"
@@ -534,9 +534,9 @@ export default async function ProfilPage() {
               Stripe-Portal sind einer zu viel. */}
           {rollen.length > 0 && (
             <section className="flex flex-col gap-2 md:hidden">
-              <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">
+              <SectionHeading>
                 Deine Bereiche
-              </h2>
+              </SectionHeading>
               <Card className="flex flex-col divide-y divide-border">
                 {rollen.map((rolle) => {
                   const Icon = rolle.icon;

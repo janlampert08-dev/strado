@@ -13,6 +13,7 @@ import { filterLabel, istFahrzeugTyp, motorklassendefinition } from "@/lib/motor
 import type { Klassenfilter } from "@/lib/motorklassen";
 import type { Motorklasse } from "@/types/database";
 import { cn } from "@/lib/utils/cn";
+import SectionHeading from "@/components/ui/SectionHeading";
 
 const SICHTBAR = 5;
 
@@ -73,7 +74,7 @@ export default function RouteLeaderboardPreview({
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">Bestzeiten</h2>
+      <SectionHeading>Bestzeiten</SectionHeading>
 
       <MotorklassenChips
         klassen={klassen}

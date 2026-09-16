@@ -29,6 +29,7 @@ import type { Motorklasse, Vehicle } from "@/types/database";
 import { MEDAL_COLORS } from "@/lib/constants";
 import Card from "@/components/ui/Card";
 import LeaderboardListsSkeleton from "@/components/LeaderboardListsSkeleton";
+import SectionHeading from "@/components/ui/SectionHeading";
 
 export const metadata: Metadata = {
   title: "Bestenlisten – Strado",
@@ -71,7 +72,7 @@ function LeaderboardSection({
 }) {
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">{title}</h2>
+      <SectionHeading>{title}</SectionHeading>
       {entries.length === 0 ? (
         <p className="text-sm text-muted">Noch keine Einträge.</p>
       ) : (

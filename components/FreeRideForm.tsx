@@ -24,6 +24,7 @@ import { buttonVariants } from "@/components/ui/Button";
 import Skeleton from "@/components/ui/Skeleton";
 import Card from "@/components/ui/Card";
 import FullscreenDialog from "@/components/ui/FullscreenDialog";
+import SectionHeading from "@/components/ui/SectionHeading";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
@@ -214,7 +215,7 @@ export default function FreeRideForm({
     return (
       <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)]">
         <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-5 py-8 sm:px-6 sm:py-10">
-          <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">Fazit</h2>
+          <SectionHeading>Fazit</SectionHeading>
 
           <dl className="grid grid-cols-2 gap-4 text-sm">
             <div>
@@ -405,9 +406,9 @@ export default function FreeRideForm({
           {recorder.hasStarted && (
             <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full bg-danger" />
           )}
-          <p className="font-mono text-sm font-semibold tracking-wide text-muted uppercase">
+          <SectionHeading as="p" className="font-mono">
             {recorder.hasStarted ? "Aufzeichnung läuft" : "Warte auf GPS"}
-          </p>
+          </SectionHeading>
         </div>
         {/* Vorwarnung statt einer Überraschung am Ende: das Konto wird erst
             beim Speichern verlangt, aber wer ohne eines losfährt, soll das
