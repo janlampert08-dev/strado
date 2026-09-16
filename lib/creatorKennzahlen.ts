@@ -206,13 +206,12 @@ export function anteilText(zaehler: number, nenner: number): string | null {
   return quote === null ? null : `${String(quote).replace(".", ",")} %`;
 }
 
-// Die Balkenhöhe ist nach lib/balken.ts umgezogen — sie wird inzwischen
-// auch von der Premium-Auswertung gebraucht, und dieses Modul zieht
-// lib/supabase/server.ts (und damit next/headers) nach sich. Die
-// Begründung steht dort ausgeschrieben. Hier bleibt die Weitergabe, damit
-// components/KlickVerlauf.tsx und der Test dieses Moduls unverändert
-// bleiben.
-export { balkenHoehe } from "@/lib/balken";
+// Die Balkenhöhe steht in lib/balken.ts — dieses Modul zieht
+// lib/supabase/server.ts (und damit next/headers) nach sich, eine reine
+// Rechenregel darf davon nicht abhängen. Die Begründung steht dort
+// ausgeschrieben. Bewusst KEIN Re-Export an dieser Stelle: er wäre
+// bequem und würde die Server-Abhängigkeit weiterreichen, ohne dass es
+// jemand merkt.
 
 export interface VerlaufReihe {
   code: string;

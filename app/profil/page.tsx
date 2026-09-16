@@ -379,9 +379,14 @@ export default async function ProfilPage() {
                       route_id: r.route_id,
                       // Streckenfahrt: die Region der Strecke. Freie Fahrt:
                       // die beim Speichern ermittelte Region der Fahrt
-                      // selbst. Dieselbe Reihenfolge wie in public_fahrten
-                      // (0045), damit dieselbe Fahrt nicht je nach Ansicht
-                      // in einer anderen Region liegt.
+                      // selbst. Dieselbe REIHENFOLGE wie das coalesce in
+                      // public_fahrten (0045) — nicht dieselbe Quelle: der
+                      // Embed hier läuft unter der RLS des Aufrufers, jene
+                      // View mit Eigentümerrechten. Eine Fahrt auf einer
+                      // Strecke, die inzwischen privat oder zurückgezogen
+                      // ist, fällt hier auf "Ohne Region", während der Feed
+                      // sie weiter zeigt. Gilt für routes(name) genauso und
+                      // ist dort Bestand.
                       region: r.routes?.region ?? r.region,
                     }))}
                     fahrzeuge={(vehicles ?? []).map((v) => ({

@@ -247,22 +247,41 @@ export function fahrtenProFahrzeug(fahrten: readonly FahrtFuerStatistik[]): Fahr
  * „Das Ortsschild ist die Einheit des Wiedererkennens") — sie beantwortet
  * die einzige Frage, die weder Jahr noch Fahrzeug beantwortet: wo war ich
  * eigentlich?
+ *
+ * DIESE AUSWERTUNG GEHÖRT AUF DIE EIGENE PROFILSEITE UND NIRGENDWO SONST.
+ * Bei einer freien Fahrt stammt die Region aus dem UNGEKÜRZTEN Startpunkt
+ * (`lib/actions/completions.ts` → `reverseGeocode(coordinates[0])`); die
+ * Privatzonen-Kürzung in `lib/track.ts` läuft getrennt davon und nur für
+ * den veröffentlichten Track. Die Körnung ist ausserdem nicht garantiert
+ * kantonal: `lib/geocoding.ts` fällt auf den Ortsnamen zurück, wenn Mapbox
+ * kein `region`-Feature liefert. Eine nach Anteil sortierte Regionenliste
+ * ist damit eine Liste der Heimatgegend — auf `/profil` sieht sie nur die
+ * Person selbst, auf `app/fahrer/[id]`, im Feed oder in einem Teilbild wäre
+ * sie eine Preisgabe. Der Feed zeigt heute schon einzelne Regionen
+ * (`public_fahrten` seit 0045); die Rangliste über alle Fahrten ist eine
+ * andere Aussage als ein einzelner Ortsbezug.
  */
 export function fahrtenProRegion(fahrten: readonly FahrtFuerStatistik[]): RegionZeile[] {
-  const nachRegion = new Map<string | null, StatistikZeile>();
+  // Gruppiert wird auf der kleingeschriebenen Fassung, angezeigt wird die
+  // zuerst gesehene Schreibweise. Der Schlüssel kommt aus zwei Quellen —
+  // routes.region ist von der Moderation getippt, route_completions.region
+  // vom Reverse-Geocoding — und „Zürich" neben „zürich" wären sonst zwei
+  // Zeilen mit je halbem Anteil.
+  const nachRegion = new Map<string | null, { name: string | null; zeile: StatistikZeile }>();
 
   for (const fahrt of fahrten) {
     // Leerstring wie „nicht gesetzt" behandeln: die Spalte ist nur
     // längenbegrenzt (0074), nicht gegen Leerzeichen geschützt.
     const roh = fahrt.region?.trim();
-    const schluessel = roh ? roh : null;
-    const zeile = nachRegion.get(schluessel) ?? leereZeile();
-    zaehle(zeile, fahrt);
-    nachRegion.set(schluessel, zeile);
+    const name = roh ? roh : null;
+    const schluessel = name === null ? null : name.toLowerCase();
+    const eintrag = nachRegion.get(schluessel) ?? { name, zeile: leereZeile() };
+    zaehle(eintrag.zeile, fahrt);
+    nachRegion.set(schluessel, eintrag);
   }
 
-  return [...nachRegion.entries()]
-    .map(([region, zeile]) => ({ region, ...runde(zeile) }))
+  return [...nachRegion.values()]
+    .map(({ name, zeile }) => ({ region: name, ...runde(zeile) }))
     .sort((a, b) => {
       if (a.region === null) return 1;
       if (b.region === null) return -1;
@@ -344,10 +363,17 @@ export function saisonVergleich(
  * wurden, und wie viele es über alle Jahre sind.
  *
  * „Neu" heisst: die früheste Befahrung dieser Strecke fällt in dieses Jahr.
- * Eine zum zehnten Mal gefahrene Hausrunde ist keine Entdeckung, und die
- * Kachel „Pässe befahren" weiter oben auf der Profilseite zählt ohnehin
- * schon jede Strecke einmal über die gesamte Zeit — die Saison-Antwort
- * darauf ist genau diese Zahl.
+ * Eine zum zehnten Mal gefahrene Hausrunde ist keine Entdeckung.
+ *
+ * `gesamt` ist NICHT dieselbe Zahl wie die Kachel „Pässe befahren" weiter
+ * oben auf der Profilseite, auch wenn beide „verschiedene Strecken über die
+ * gesamte Zeit" zählen. Die Kachel zählt auf einer eigenen Abfrage ohne
+ * Dauerfilter; diese Funktion sieht nur die Fahrten, die
+ * `app/profil/page.tsx` mit `.not("dauer_sekunden", "is", null)` holt, und
+ * `dauer_sekunden` ist seit 0008_tracking.sql ausdrücklich optional. Ein
+ * Konto mit alten, ungetimten Fahrten liest oben also eine grössere Zahl als
+ * hier. Beides ist für sich richtig — wer die beiden angleichen will, muss
+ * die Grundgesamtheit angleichen, nicht diese Funktion.
  *
  * Freie Fahrten (route_id = null) bleiben aussen vor: sie haben keine
  * Strecke, die man wiedererkennen könnte.
@@ -383,6 +409,15 @@ export function streckenBilanz(
  * Fahrt.
  */
 export function rekorde(fahrten: readonly FahrtFuerStatistik[]): Rekorde {
+  // Der Vergleich läuft auf den ROHEN Werten, gerundet wird erst bei der
+  // Ausgabe. Andernfalls stünde links ein ungerundeter und rechts ein schon
+  // gerundeter Wert, und eine kleinere Fahrt könnte eine grössere verdrängen:
+  // 120.04 km wird als 120 gemerkt, 120.02 km ist grösser als diese 120 und
+  // überschreibt sie. Die angezeigte ZAHL bliebe dabei richtig — falsch würde
+  // das Datum daneben, und bei einem Bestwert ist „welche Fahrt war das"
+  // die interessantere Hälfte.
+  let laengsteRoh = 0;
+  let hoechsterRoh = 0;
   let laengsteFahrt: Rekord | null = null;
   let hoechsterAnstieg: Rekord | null = null;
   const kmProMonat = new Map<string, { jahr: number; monat: number; km: number }>();
@@ -395,10 +430,14 @@ export function rekorde(fahrten: readonly FahrtFuerStatistik[]): Rekorde {
     const km = fahrt.distanz_km ?? 0;
     const hm = fahrt.hoehenmeter_aufstieg ?? 0;
 
-    if (km > 0 && (laengsteFahrt === null || km > laengsteFahrt.wert)) {
+    // Echt grösser, nie grösser-gleich: so gewinnt bei Gleichstand die
+    // zuerst übergebene Fahrt, wie der Docstring oben zusagt.
+    if (km > 0 && km > laengsteRoh) {
+      laengsteRoh = km;
       laengsteFahrt = { wert: Math.round(km * 10) / 10, datum: fahrt.datum };
     }
-    if (hm > 0 && (hoechsterAnstieg === null || hm > hoechsterAnstieg.wert)) {
+    if (hm > 0 && hm > hoechsterRoh) {
+      hoechsterRoh = hm;
       hoechsterAnstieg = { wert: Math.round(hm), datum: fahrt.datum };
     }
 

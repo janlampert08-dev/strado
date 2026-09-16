@@ -469,7 +469,11 @@ export default function FahrtStatistik({
             ))}
             {regionenRest.length > 0 && (
               <AnteilZeile
-                name={`${regionenRest.length} weitere Regionen`}
+                // mitAnzahl statt Interpolation: bei genau sechs benannten
+                // Regionen bleibt eine übrig, und „1 weitere Regionen" ist
+                // derselbe Fehler, den lib/format.ts beschreibt — er stand
+                // schon einmal live auf dem Teilen-Bild.
+                name={mitAnzahl(regionenRest.length, "weitere Region", "weitere Regionen")}
                 zeile={regionenRestSumme}
                 gesamtKm={gesamtKm}
               />

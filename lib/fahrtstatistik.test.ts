@@ -255,6 +255,20 @@ describe("fahrtenProRegion", () => {
     expect(zeilen.map((z) => z.region)).toEqual(["Graubünden", "Jura", null]);
   });
 
+  // Der Schlüssel kommt aus zwei Quellen — routes.region ist getippt,
+  // route_completions.region geokodiert. Ohne Faltung stünden "Zürich" und
+  // "zürich" als zwei Zeilen mit je halbem Anteil.
+  it("fasst dieselbe Region unabhängig von der Schreibweise zusammen", () => {
+    const zeilen = fahrtenProRegion([
+      fahrt("2026-05-01", 10, 0, "auto", null, "Zürich"),
+      fahrt("2026-05-02", 10, 0, "auto", null, "zürich"),
+    ]);
+    expect(zeilen).toHaveLength(1);
+    expect(zeilen[0].fahrten).toBe(2);
+    // Angezeigt wird die zuerst gesehene Schreibweise, nicht die gefaltete.
+    expect(zeilen[0].region).toBe("Zürich");
+  });
+
   it("behandelt einen leeren String wie eine fehlende Region", () => {
     const zeilen = fahrtenProRegion([
       fahrt("2026-05-01", 10, 0, "auto", null, "   "),
@@ -304,6 +318,26 @@ describe("rekorde", () => {
     ]);
     expect(werte.laengsteFahrt).toEqual({ wert: 120, datum: "2026-05-01" });
     expect(werte.hoechsterAnstieg).toEqual({ wert: 2400, datum: "2026-06-01" });
+  });
+
+  // Der Vergleich lief auf einer bereits gerundeten Bestmarke: 120.04 wurde
+  // als 120 gemerkt, 120.02 war grösser als diese 120 und verdrängte sie.
+  // Die Zahl blieb dabei richtig, das Datum daneben nicht.
+  it("verdrängt die längste Fahrt nicht durch eine kürzere im Rundungsfenster", () => {
+    const werte = rekorde([
+      fahrt("2026-06-01", 120.04, 0),
+      fahrt("2026-05-01", 120.02, 0),
+    ]);
+    expect(werte.laengsteFahrt).toEqual({ wert: 120, datum: "2026-06-01" });
+  });
+
+  it("behält bei Gleichstand die zuerst übergebene Fahrt", () => {
+    const werte = rekorde([
+      fahrt("2026-06-01", 100, 500),
+      fahrt("2026-05-01", 100, 500),
+    ]);
+    expect(werte.laengsteFahrt?.datum).toBe("2026-06-01");
+    expect(werte.hoechsterAnstieg?.datum).toBe("2026-06-01");
   });
 
   it("summiert den stärksten Monat über alle Jahre", () => {
