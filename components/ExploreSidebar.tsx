@@ -115,9 +115,14 @@ export default function ExploreSidebar({
           <h1 className="text-lg font-semibold tracking-tight">
             Die schönsten Strecken rund um Zürich
           </h1>
+          {/* Zwei Zeilen statt drei, auf 390 px gemessen. Beide Aussagen
+              bleiben — kuratiert, und aufzeichnen geht ohne Konto —, nur
+              "Aussuchen, losfahren" fällt weg: das sagt die Liste darunter
+              besser als ein Satz darüber. Die gesparte Zeile ist rund 21 px,
+              und die gehen im Peek-Fenster direkt an die Streckenliste
+              (Rechnung in ExploreView.tsx bei SHEET_PEEK_PX). */}
           <p className="text-sm text-muted">
-            Kurven, Pässe, Aussicht — handverlesen. Aussuchen, losfahren, aufzeichnen. Ein Konto
-            brauchst du erst zum Speichern.
+            Kurven, Pässe, Aussicht — handverlesen. Aufzeichnen geht ohne Konto.
           </p>
         </div>
       )}
