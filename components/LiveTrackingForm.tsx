@@ -18,7 +18,7 @@ import { formatDuration } from "@/lib/format";
 import RideSummaryForm from "@/components/RideSummaryForm";
 import type { KartenStrecke, RouteGeoJSON, Vehicle } from "@/types/database";
 import { Flag, Smartphone } from "lucide-react";
-import { buttonVariants } from "@/components/ui/Button";
+import { buttonVariants, textAktionClassName } from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Skeleton from "@/components/ui/Skeleton";
 import FullscreenDialog from "@/components/ui/FullscreenDialog";
@@ -398,7 +398,7 @@ export default function LiveTrackingForm({
                 <button
                   type="button"
                   onClick={recorder.beginNow}
-                  className="text-sm font-medium text-accent hover:underline"
+                  className={textAktionClassName()}
                 >
                   Bin schon am Start
                 </button>

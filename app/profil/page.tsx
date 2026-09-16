@@ -43,7 +43,7 @@ import Card from "@/components/ui/Card";
 import Kennzahl, { Kennzahlen } from "@/components/ui/Kennzahl";
 import SectionHeading from "@/components/ui/SectionHeading";
 import EmptyState from "@/components/ui/EmptyState";
-import { buttonVariants } from "@/components/ui/Button";
+import { buttonVariants, textAktionClassName } from "@/components/ui/Button";
 import { iconButtonVariants } from "@/components/ui/IconButton";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
@@ -541,10 +541,7 @@ export default async function ProfilPage() {
           <section className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <SectionHeading icon={Car}>Fahrzeuge</SectionHeading>
-              <Link
-                href="/profil/fahrzeuge/neu"
-                className="text-sm font-medium text-accent hover:underline"
-              >
+              <Link href="/profil/fahrzeuge/neu" className={textAktionClassName()}>
                 + Hinzufügen
               </Link>
             </div>

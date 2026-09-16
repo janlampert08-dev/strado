@@ -12,6 +12,7 @@ import type { Klassenfilter } from "@/lib/motorklassen";
 import type { Motorklasse } from "@/types/database";
 import { cn } from "@/lib/utils/cn";
 import { RankingIcon } from "@/components/NavIcons";
+import { textAktionClassName } from "@/components/ui/Button";
 import SectionHeading from "@/components/ui/SectionHeading";
 
 const COLLAPSED_SIZE = 5;
@@ -142,7 +143,7 @@ export default function TrackLeaderboardChooser({
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
-              className="self-start text-xs text-accent hover:underline"
+              className={textAktionClassName({ groesse: "xs", className: "self-start" })}
             >
               {expanded ? "Weniger anzeigen" : "Top 10 anzeigen"}
             </button>

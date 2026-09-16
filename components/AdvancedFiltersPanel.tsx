@@ -3,6 +3,7 @@
 import { ChevronDown, SlidersHorizontal } from "lucide-react";
 import { countActiveFilters, EMPTY_ADVANCED_FILTERS, type AdvancedFilters } from "@/lib/exploreFilters";
 import { fieldClassName } from "@/components/ui/Input";
+import { textAktionClassName } from "@/components/ui/Button";
 
 function toNullableNumber(raw: string): number | null {
   if (raw.trim() === "") return null;
@@ -107,7 +108,7 @@ export default function AdvancedFiltersPanel({
           <button
             type="button"
             onClick={() => onChange(EMPTY_ADVANCED_FILTERS)}
-            className="self-start text-sm font-medium text-accent hover:underline"
+            className={textAktionClassName({ className: "self-start" })}
           >
             Filter zurücksetzen
           </button>

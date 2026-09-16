@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { SternIcon } from "@/components/NavIcons";
 import { cn } from "@/lib/utils/cn";
+import { textAktionClassName } from "@/components/ui/Button";
 
 const SKALA = [1, 2, 3, 4, 5] as const;
 
@@ -68,7 +69,12 @@ export default function SterneEingabe({
           <label
             key={stufe}
             onMouseEnter={() => setVorschau(stufe)}
-            className="cursor-pointer p-0.5"
+            // h-11 w-11 statt p-0.5: das Label ist die Tippfläche, und mit
+            // 0.5 Innenabstand um ein 24-px-Icon waren das 28 px. Fünf
+            // Sterne à 44 px sind 220 px und passen auf 390 px mühelos —
+            // die Grösse kostet hier also nichts und ist der Wert, den
+            // components/ui/IconButton für die App festschreibt.
+            className="flex h-11 w-11 cursor-pointer items-center justify-center"
           >
             <input
               type="radio"
@@ -105,7 +111,7 @@ export default function SterneEingabe({
             setWert(null);
             setVorschau(null);
           }}
-          className="text-xs text-muted transition-colors duration-fast hover:text-foreground"
+          className={textAktionClassName({ groesse: "xs", ton: "gedaempft" })}
         >
           Wertung entfernen
         </button>

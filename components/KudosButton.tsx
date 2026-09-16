@@ -50,7 +50,12 @@ export default function KudosButton({
       aria-pressed={given}
       aria-label={given ? "Kudos zurückziehen" : "Kudos geben"}
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium transition-colors duration-fast disabled:pointer-events-none disabled:opacity-50",
+        // min-h-11/min-w-11: das ist die Reaktion des Kernloops (AGENTS.md,
+        // Schritt 7) und stand mit px-2 py-1 auf 24 px Höhe — unter jeder
+        // Tippgrenze, die diese App sonst einhält (components/ui/IconButton
+        // begründet die 44). Optik unverändert: kein Rahmen, keine Füllung,
+        // nur die Fläche stimmt.
+        "inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full px-2 text-xs font-medium transition-colors duration-fast disabled:pointer-events-none disabled:opacity-50",
         given ? "text-accent" : "text-muted hover:text-foreground",
       )}
     >

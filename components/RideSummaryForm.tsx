@@ -16,7 +16,7 @@ import { ChevronDown } from "lucide-react";
 import { fieldClassName } from "@/components/ui/Input";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import { chipClassName } from "@/components/motorklassenChipStil";
-import { buttonVariants } from "@/components/ui/Button";
+import { buttonVariants, textAktionClassName } from "@/components/ui/Button";
 import SectionHeading from "@/components/ui/SectionHeading";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 
@@ -289,7 +289,7 @@ export default function RideSummaryForm({
           <button
             type="button"
             onClick={() => setShowAddVehicle(true)}
-            className="self-start text-sm font-medium text-accent hover:underline"
+            className={textAktionClassName({ className: "self-start" })}
           >
             + Fahrzeug hinzufügen
           </button>
