@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef } from "react";
 import { updatePassword, type UpdatePasswordState } from "@/lib/actions/auth";
 import { Input } from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
+import useEingabenBewahren from "@/components/useEingabenBewahren";
 
 const initialState: UpdatePasswordState = { error: null };
 
@@ -17,6 +18,11 @@ export default function PasswortAendernForm({
   ausWiederherstellung: boolean;
 }) {
   const [state, formAction, pending] = useActionState(updatePassword, initialState);
+  // Siehe components/useEingabenBewahren.ts. Hier wiegt es am schwersten:
+  // wer ein neues Passwort tippt, hat es sich gerade ausgedacht — nach dem
+  // Leeren ist es unter Umständen nicht mehr rekonstruierbar.
+  const formRef = useRef<HTMLFormElement>(null);
+  useEingabenBewahren(formRef);
 
   return (
     <>
@@ -29,7 +35,7 @@ export default function PasswortAendernForm({
           einem unbeaufsichtigten Gerät dein Konto übernehmen.
         </p>
       )}
-      <form action={formAction} className="flex flex-col gap-4">
+      <form ref={formRef} action={formAction} className="flex flex-col gap-4">
         {!ausWiederherstellung && (
           <label className="flex flex-col gap-1.5 text-sm font-medium">
             Aktuelles Passwort

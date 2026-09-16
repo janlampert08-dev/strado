@@ -175,9 +175,15 @@ export interface RouteRating {
   id: string;
   route_id: string;
   user_id: string;
-  // Sterne-Bewertung entfernt (siehe 0025_ratings_ohne_sterne.sql) — Spalte
-  // bleibt in der DB für evtl. schon vorhandene Alt-Daten, wird von der App
-  // aber nicht mehr geschrieben oder angezeigt.
+  // 1-5 Sterne, optional. 0025_ratings_ohne_sterne.sql hatte die Wertung
+  // herausgenommen und die Spalte nur noch für Alt-Daten stehen lassen;
+  // 0095_sterne_wieder_einfuehren.sql hat sie zurückgeholt, samt einer
+  // NULL-toleranten Check-Constraint.
+  //
+  // null heisst deshalb nicht "keine Daten", sondern "nur kommentiert" —
+  // ein gültiger Zustand, in dem alle Zeilen zwischen 0025 und 0095
+  // stecken. Wer über die Spalte mittelt, muss diese Zeilen aus dem Nenner
+  // nehmen; lib/bewertungen.ts tut genau das.
   sterne: number | null;
   kommentar: string | null;
   erstellt_am: string;

@@ -7,6 +7,8 @@ import { routeShapePath } from "@/lib/routeShape";
 import { formatKm } from "@/lib/format";
 import { withAlpha, type RouteSignature, type SignatureKey } from "@/lib/signature";
 import type { ExploreRoute } from "@/types/database";
+import { schnittText, type Streckenbewertung } from "@/lib/bewertungen";
+import Sterne from "@/components/Sterne";
 import { fieldClassName } from "@/components/ui/Input";
 import EmptyState from "@/components/ui/EmptyState";
 
@@ -23,6 +25,7 @@ const SIGNATURE_ICONS: Record<SignatureKey, typeof Mountain> = {
 
 export default function ExploreSidebar({
   routes,
+  bewertungen,
   loadError = false,
   loggedIn,
   searchQuery,
@@ -35,6 +38,8 @@ export default function ExploreSidebar({
   onHoverRoute,
 }: {
   routes: ExploreRoute[];
+  /** Sternenschnitt je Strecken-ID; Strecken ohne Wertung fehlen darin. */
+  bewertungen: Record<string, Streckenbewertung>;
   loadError?: boolean;
   loggedIn: boolean;
   searchQuery: string;
@@ -156,6 +161,7 @@ export default function ExploreSidebar({
           // bräuchte eine JS-seitige Farbaufl. der CSS-Variable, außerhalb
           // des Scopes dieser Phase (lib/signature.ts bleibt unangetastet).
           const trackColor = signature?.color ?? "#8A8F98";
+          const bewertung = bewertungen[route.id];
 
           return (
             <li key={route.id}>
@@ -185,7 +191,7 @@ export default function ExploreSidebar({
                       </span>
                     )}
                     {signature && (
-                      <span className="flex items-center gap-1.5">
+                      <span className="flex min-w-0 items-center gap-1.5">
                         {(() => {
                           const SignatureIcon = SIGNATURE_ICONS[signature.key];
                           return (
@@ -201,6 +207,26 @@ export default function ExploreSidebar({
                           style={{ color: signature.color }}
                         >
                           {signature.label}
+                        </span>
+                      </span>
+                    )}
+                    {/* Zuletzt und shrink-0: die Zeile davor darf kürzen,
+                        diese Zahl nicht. Und zuletzt statt zuerst, damit die
+                        linke Kante der Liste ausgerichtet bleibt — eine
+                        Strecke ohne Wertung liesse eine führende Spalte sonst
+                        leer und die Liste ausgefranst aussehen.
+
+                        Ohne eine einzige Wertung steht hier nichts statt
+                        "0.0": siehe RatingSection, dieselbe Regel. */}
+                    {bewertung && (
+                      <span className="flex shrink-0 items-center gap-1">
+                        <Sterne wert={bewertung.schnitt} sterneClassName="h-3 w-3" />
+                        <span className="font-mono text-xs tabular-nums text-muted">
+                          {schnittText(bewertung.schnitt)}
+                        </span>
+                        <span className="sr-only">
+                          von 5 Sternen, {bewertung.anzahl}{" "}
+                          {bewertung.anzahl === 1 ? "Bewertung" : "Bewertungen"}
                         </span>
                       </span>
                     )}

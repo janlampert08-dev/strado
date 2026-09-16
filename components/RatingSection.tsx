@@ -1,15 +1,19 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import Link from "next/link";
 import { Flag } from "lucide-react";
 import { submitRating, type RatingFormState } from "@/lib/actions/ratings";
 import { reportRating } from "@/lib/actions/reports";
 import type { RatingWithAuthor } from "@/lib/ratings";
+import { anzahlText, schnittText, type Streckenbewertung } from "@/lib/bewertungen";
 import { Textarea } from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
+import Sterne from "@/components/Sterne";
+import SterneEingabe from "@/components/SterneEingabe";
 import ReportDialog from "@/components/ReportDialog";
 import DeleteRatingButton from "@/components/DeleteRatingButton";
+import useEingabenBewahren from "@/components/useEingabenBewahren";
 
 const initialState: RatingFormState = { error: null };
 
@@ -17,37 +21,53 @@ export default function RatingSection({
   routeId,
   ratings,
   ownRating,
+  bewertung,
   canRate,
   currentUserId,
 }: {
   routeId: string;
   ratings: RatingWithAuthor[];
-  ownRating: { kommentar: string | null } | null;
+  ownRating: { kommentar: string | null; sterne: number | null } | null;
+  /** Schnitt und Anzahl über alle Wertungen dieser Strecke, oder null. */
+  bewertung: Streckenbewertung | null;
   canRate: boolean;
   currentUserId?: string | null;
 }) {
   const action = submitRating.bind(null, routeId);
   const [state, formAction, pending] = useActionState(action, initialState);
   const [reportRatingId, setReportRatingId] = useState<string | null>(null);
+  // Eine abgewiesene Bewertung (Cooldown, zu lang) soll nicht bedeuten, dass
+  // man sie neu tippt — siehe components/useEingabenBewahren.ts. Nach einem
+  // ERFOLGREICHEN Speichern gewinnt weiterhin der key-Remount unten: dessen
+  // frischer defaultValue ersetzt den Knoten, in den hier geschrieben würde.
+  const formRef = useRef<HTMLFormElement>(null);
+  useEingabenBewahren(formRef);
 
   return (
     <section className="flex flex-col gap-4 border-t border-border pt-6">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">
-          Kommentare
-        </h2>
-        {ratings.length > 0 && (
-          <span className="font-mono text-sm tabular-nums text-muted">
-            {ratings.length}
-          </span>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">Bewertungen</h2>
+        {/* Der Schnitt steht in der Überschrift, nicht als eigener Kasten:
+            er ist die Zusammenfassung dessen, was darunter steht, und eine
+            Zahl, die sich in einer Zeile mit dem Titel lesen lässt, kostet
+            keine Fläche. Ohne eine einzige Wertung steht hier nichts — "0.0"
+            wäre eine Aussage über die Strecke, und zwar eine falsche. */}
+        {bewertung && (
+          <p className="flex items-center gap-2">
+            <Sterne wert={bewertung.schnitt} />
+            <span className="font-mono text-sm tabular-nums">
+              {schnittText(bewertung.schnitt)}
+            </span>
+            <span className="text-sm text-muted">{anzahlText(bewertung.anzahl)}</span>
+          </p>
         )}
       </div>
 
-      {/* Kommentieren bleibt angemeldeten Nutzern vorbehalten. Der Hinweis
+      {/* Bewerten bleibt angemeldeten Nutzern vorbehalten. Der Hinweis
           darauf stand früher auf der Streckenseite und deckte dort zugleich
           das Eintragen einer Fahrt ab — das braucht inzwischen kein Konto
           mehr, dieser Teil schon. Verlinkt zurück auf diese Strecke, damit
-          der Kommentar danach dort landet, wo er gemeint war. */}
+          die Bewertung danach dort landet, wo sie gemeint war. */}
       {!canRate && (
         <p className="border-b border-border pb-4 text-sm text-muted">
           <Link
@@ -61,7 +81,17 @@ export default function RatingSection({
       )}
 
       {canRate && (
-        <form action={formAction} className="flex flex-col gap-2 border-b border-border pb-4">
+        <form
+          ref={formRef}
+          action={formAction}
+          className="flex flex-col gap-3 border-b border-border pb-4"
+        >
+          {/* key wie beim Textfeld darunter: die Sternwahl hält ihren Wert
+              in eigenem State und übernähme einen geänderten Anfangswert
+              sonst nicht — nach dem Löschen der eigenen Bewertung stünden
+              die alten Sterne weiter da. */}
+          <SterneEingabe key={ownRating?.sterne ?? "ohne"} anfangswert={ownRating?.sterne ?? null} />
+
           {/* key erzwingt einen Remount, wenn sich der eigene Kommentar
               serverseitig geändert hat. Das Feld ist unkontrolliert, ein
               neuer defaultValue allein würde den bereits gerenderten Text
@@ -71,7 +101,7 @@ export default function RatingSection({
             key={ownRating?.kommentar ?? "leer"}
             name="kommentar"
             defaultValue={ownRating?.kommentar ?? ""}
-            placeholder="Kommentar"
+            placeholder="Kommentar (optional)"
             rows={2}
             maxLength={1000}
           />
@@ -81,24 +111,38 @@ export default function RatingSection({
             </p>
           )}
           <Button type="submit" variant="secondary" size="sm" disabled={pending} className="self-start">
-            {ownRating ? "Kommentar aktualisieren" : "Kommentieren"}
+            {ownRating ? "Bewertung aktualisieren" : "Bewerten"}
           </Button>
         </form>
       )}
 
       {ratings.length === 0 ? (
-        <p className="text-sm text-muted">Noch keine Kommentare.</p>
+        <p className="text-sm text-muted">Noch keine Bewertungen.</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {ratings.map((r) => (
             <li key={r.id} className="flex items-start justify-between gap-2 text-sm">
-              <div>
-                <Link
-                  href={`/fahrer/${r.user_id}`}
-                  className="font-medium transition-colors duration-fast hover:text-accent"
-                >
-                  {r.display_name ?? "Anonym"}
-                </Link>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <Link
+                    href={`/fahrer/${r.user_id}`}
+                    className="font-medium transition-colors duration-fast hover:text-accent"
+                  >
+                    {r.display_name ?? "Anonym"}
+                  </Link>
+                  {/* Nur wenn diese Person tatsächlich Sterne vergeben hat.
+                      Eine Zeile ohne Wertung ist seit 0025 der Normalfall
+                      und keine Null-Wertung — fünf leere Sterne daneben
+                      läsen sich aber genau so. */}
+                  {r.sterne !== null && (
+                    <span className="flex items-center gap-1">
+                      <Sterne wert={r.sterne} sterneClassName="h-3 w-3" />
+                      <span className="sr-only">
+                        {r.sterne} von 5 Sternen
+                      </span>
+                    </span>
+                  )}
+                </div>
                 {r.kommentar && <p className="mt-0.5 text-muted">{r.kommentar}</p>}
               </div>
               {currentUserId === r.user_id ? (
@@ -108,7 +152,7 @@ export default function RatingSection({
                   <button
                     type="button"
                     onClick={() => setReportRatingId(r.id)}
-                    aria-label="Kommentar melden"
+                    aria-label="Bewertung melden"
                     className="shrink-0 text-muted transition-colors duration-fast hover:text-danger"
                   >
                     <Flag className="h-3.5 w-3.5" aria-hidden="true" />
@@ -130,7 +174,7 @@ export default function RatingSection({
         key={reportRatingId ?? "closed"}
         open={reportRatingId !== null}
         onClose={() => setReportRatingId(null)}
-        title="Kommentar melden"
+        title="Bewertung melden"
         action={reportRating.bind(null, reportRatingId ?? "")}
       />
     </section>

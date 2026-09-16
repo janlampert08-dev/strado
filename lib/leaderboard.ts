@@ -8,8 +8,6 @@ export interface LeaderboardEntry {
   name: string;
   avatarUrl: string | null;
   value: number;
-  /** Abzeichen hinter dem Namen (0087). */
-  zeigtPremiumAbzeichen: boolean;
 }
 
 // Zeilenform von public.leaderboard_user_totals (0054_leaderboard_user_totals.sql)
@@ -20,13 +18,10 @@ export interface LeaderboardUserTotalsRow {
   user_id: string;
   display_name: string | null;
   avatar_url: string | null;
-  // ACHTUNG, der Name täuscht: die View gibt unter ist_premium NICHT den
-  // rohen Abo-Status aus, sondern bereits (ist_premium and
-  // zeigt_premium_badge) — siehe 0027/0028 und die Ableitung in
-  // leaderboard_completions (0056/0080). Genau wie avatar_url, das dort
-  // schon mit zeigt_avatar verrechnet ist. Hier also nicht erneut prüfen,
-  // sondern durchreichen.
-  ist_premium: boolean;
+  // ist_premium führen die Views weiterhin (0027/0028/0056/0080, bereits
+  // mit dem Opt-in verrechnet) — diese Datei liest die Spalte aber nicht
+  // mehr und fragt sie deshalb auch nicht ab: das Abzeichen hinter dem
+  // Namen gibt es nicht mehr.
   fahrten_count: number;
   // Summe von hoehenmeter_aufstieg (kumulierter Anstieg aus dem GPS-Track)
   // über alle Fahrten des Nutzers, freie wie Streckenfahrten. Vor
@@ -55,8 +50,6 @@ export function toEntry(row: LeaderboardUserTotalsRow, value: number): Leaderboa
     // nur noch durchgereicht, keine weitere Prüfung nötig.
     avatarUrl: row.avatar_url,
     value,
-    // Wie avatar_url: die View hat das Opt-in bereits eingerechnet.
-    zeigtPremiumAbzeichen: row.ist_premium,
   };
 }
 
@@ -81,7 +74,7 @@ async function topByMetric(
   filter?: Klassenfilter | null,
 ): Promise<LeaderboardEntry[]> {
   const spalten =
-    "user_id, display_name, avatar_url, ist_premium, fahrten_count, hoehenmeter, km, strecken_count";
+    "user_id, display_name, avatar_url, fahrten_count, hoehenmeter, km, strecken_count";
 
   const query = !filter
     ? supabase.from("leaderboard_user_totals").select(spalten)
@@ -147,8 +140,6 @@ export interface RouteTimeEntry {
   userId: string;
   name: string;
   avatarUrl: string | null;
-  /** Abzeichen hinter dem Namen (0087). */
-  zeigtPremiumAbzeichen: boolean;
   dauerSekunden: number;
   // Die gewertete Motorklasse (0080). null für Fahrten, deren Fahrzeug keine
   // Leistungsangabe trägt oder die vor der Einführung entstanden sind — die
@@ -161,8 +152,6 @@ export interface RouteLeaderboardRow {
   user_id: string;
   display_name: string | null;
   avatar_url: string | null;
-  // Bereits mit dem Opt-in verrechnet, siehe LeaderboardUserTotalsRow.
-  ist_premium: boolean;
   dauer_sekunden: number;
   motorklasse: Motorklasse | null;
 }
@@ -221,7 +210,7 @@ export async function getRouteLeaderboard(
   let query = supabase
     .from("route_leaderboard")
     .select(
-      "completion_id, user_id, display_name, avatar_url, ist_premium, dauer_sekunden, motorklasse",
+      "completion_id, user_id, display_name, avatar_url, dauer_sekunden, motorklasse",
     )
     .eq("route_id", routeId);
 
@@ -241,7 +230,6 @@ export async function getRouteLeaderboard(
     name: r.display_name ?? "Anonym",
     // Bereits serverseitig mit zeigt_avatar verrechnet (0028_leaderboard_avatar.sql).
     avatarUrl: r.avatar_url,
-    zeigtPremiumAbzeichen: r.ist_premium,
     dauerSekunden: r.dauer_sekunden,
     klasse: r.motorklasse,
   }));
