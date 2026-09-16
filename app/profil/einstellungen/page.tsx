@@ -58,7 +58,7 @@ export default async function EinstellungenPage() {
     supabase
       .from("profiles")
       .select(
-        "zeigt_fahrzeuge, zeigt_avatar, zeigt_paesse, zeigt_hoehenmeter, zeigt_distanz, zeigt_follower_liste, zeigt_premium_badge, privatzone_radius_m",
+        "zeigt_fahrzeuge, zeigt_avatar, zeigt_paesse, zeigt_hoehenmeter, zeigt_distanz, zeigt_follower_liste, privatzone_radius_m",
       )
       .eq("id", user.id)
       .single(),
@@ -105,12 +105,6 @@ export default async function EinstellungenPage() {
               Fahrt öffentlich ist, entscheidest du beim Speichern oder in
               &bdquo;Getrackte Fahrten&ldquo;.
             </p>
-            {/* zeigtPremiumAbzeichen bekommt das rohe Opt-in
-                (zeigt_premium_badge), nicht die generierte Spalte: der
-                Schalter zeigt, was eingestellt IST, nicht was gerade wirkt.
-                Wäre es umgekehrt, spränge er beim Auslaufen eines Abos von
-                selbst auf "aus" und die Einstellung ginge beim nächsten
-                Speichern verloren. */}
             <VisibilitySettings
               zeigtFahrzeuge={profile?.zeigt_fahrzeuge ?? true}
               zeigtAvatar={profile?.zeigt_avatar ?? true}
@@ -118,8 +112,6 @@ export default async function EinstellungenPage() {
               zeigtHoehenmeter={profile?.zeigt_hoehenmeter ?? true}
               zeigtDistanz={profile?.zeigt_distanz ?? true}
               zeigtFollowerListe={profile?.zeigt_follower_liste ?? true}
-              zeigtPremiumAbzeichen={profile?.zeigt_premium_badge ?? false}
-              istPremium={premiumStatus.aktiv}
               privatzoneRadiusM={
                 profile?.privatzone_radius_m ?? DEFAULT_PRIVACY_RADIUS_M
               }

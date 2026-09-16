@@ -68,18 +68,54 @@ export function getNavItems({
   const mittlereAktionen: NavItem[] =
     surface === "bottom" ? [fahrtStarten] : [fahrtStarten, vorschlagen];
 
+  // Die beiden Rollen-Einträge. Sie stehen NUR im Header.
+  //
+  // Vorher hingen sie in beiden Surfaces, mit der Begründung, wer seine
+  // Zahlen ansehen wolle, tue das eher auf dem Telefon. Das stimmt — nur
+  // war der Preis dafür eine mobile Leiste mit sechs Einträgen für einen
+  // Moderator und sieben für ein Konto, das beides ist. Derselbe Kommentar,
+  // der zwei Absätze weiter oben "sechs Tabs wären auf schmalen Geräten zu
+  // eng" festhält und deshalb "Erstellen" aus der Leiste nimmt, liess hier
+  // eine siebte Spalte zu: bei 360 px Breite sind das 51 px pro Eintrag,
+  // schmaler als die 44 px Mindestgrösse einer Tippfläche plus Abstand, und
+  // die Beschriftungen ("Bestenlisten", "Moderation") brechen oder werden
+  // abgeschnitten.
+  //
+  // Die Leiste ist damit für JEDES Konto fünf Einträge breit. Der mobile Weg
+  // zu den Rollen liegt jetzt dort, wo auch "Erstellen" gelandet ist: auf
+  // /profil, in einem Abschnitt, den app/profil/page.tsx unter md einblendet
+  // — also genau dort, wo diese Leiste die Textnavigation des Headers
+  // ersetzt.
+  const rollen: NavItem[] = [
+    ...(creator ? [{ href: "/creator", label: "Creator", icon: ChartIcon }] : []),
+    ...(moderator ? [{ href: "/moderation", label: "Moderation", icon: ShieldIcon }] : []),
+  ];
+
   return [
     { href: "/", label: "Strecken", icon: MapPinIcon },
     { href: "/feed", label: "Feed", icon: FeedIcon },
     ...mittlereAktionen,
     { href: "/leaderboards", label: "Bestenlisten", icon: RankingIcon },
     { href: "/profil", label: "Profil", icon: PersonIcon },
-    // Wie die Moderation ein Eintrag, den fast niemand sieht — und aus
-    // demselben Grund in beiden Surfaces: wer seine Zahlen ansehen will,
-    // tut das eher auf dem Telefon als am Schreibtisch. Für ein Konto ohne
-    // Code ändert sich nichts, für eines mit Code wird die Leiste so lang
-    // wie sie es für Moderatoren längst ist.
-    ...(creator ? [{ href: "/creator", label: "Creator", icon: ChartIcon }] : []),
-    ...(moderator ? [{ href: "/moderation", label: "Moderation", icon: ShieldIcon }] : []),
+    ...(surface === "bottom" ? [] : rollen),
   ];
+}
+
+/**
+ * Die Rollen-Einträge allein — für app/profil/page.tsx, das sie unter md
+ * anbietet, weil getNavItems sie der mobilen Leiste vorenthält.
+ *
+ * Eigene Funktion statt einer zweiten Liste in der Seite: welche Rolle zu
+ * welchem Pfad und welchem Symbol gehört, soll an einer Stelle stehen.
+ */
+export function getRollenItems({
+  moderator,
+  creator = false,
+}: {
+  moderator: boolean;
+  creator?: boolean;
+}): NavItem[] {
+  return getNavItems({ loggedIn: true, moderator, creator, surface: "header" }).filter(
+    (item) => item.href === "/creator" || item.href === "/moderation",
+  );
 }

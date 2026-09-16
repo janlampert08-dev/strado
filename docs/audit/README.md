@@ -37,7 +37,7 @@ table is a trap; this one now says what it means wherever it sits.
 | §B — dark mode never redefines `--color-danger/success/warning` | **Fixed** | `app/globals.css`: both dark blocks now set `#ef4444` / `#22c55e` / `#f59e0b` (5.23 / 8.63 / 9.16 on the background) |
 | §B — light `--color-muted` at 3.11:1 | **Fixed** | `app/globals.css`: `#666b74`, 5.13:1 on the background and 4.92:1 on `--color-surface` |
 | §B — `lib/actions/moderation.ts` returns `void` and never looks at an error | **Fixed** | every action returns `ModerationResult`; `ModerationActions` / `ReportedContentActions` render it. A DB error and a zero-row hit are reported separately — zero rows means either RLS denied it or the row is already gone, and "try again" is the wrong advice for the second |
-| §B — React 19 wipes the file input across five forms | **Fixed for the photo case only** | `MultiPhotoInput` re-applies `input.files` on the form's `reset` event. **The rest is still open** — see the correction below |
+| §B — React 19 wipes the file input across five forms | **Fixed** | `MultiPhotoInput` re-applies `input.files` on the form's `reset` event; `components/useEingabenBewahren.ts` now does the same for text, checkboxes and selects, and is wired into all five forms plus `VisibilitySettings`. Covered by `lib/eingabenBewahren.test.ts` — the first test in the suite that runs under jsdom (per-file `@vitest-environment`, the project stays on `node`) |
 | §B (performance) — `RouteMap`'s `trafficSegments = []` / `trail = []` defaults | **Fixed** | module-scope constants; `RouteDetailMap` also memoises its `routes={[route]}` |
 | §B — password change requires no re-authentication | **Fixed** | `updatePassword` verifies the current password unless the session came from a reset link; the marker is set server-side in `app/auth/callback/route.ts` (`lib/passwortWiederherstellung.ts`) |
 | §B (performance) — `auth.getUser()` is not memoised (60 call sites, 4 modules use `cache()`) | **Fixed for pages** | thirteen page components now call the memoised `getCurrentUser()`. Route Handlers and Server Actions stay on the direct call by design |
@@ -73,8 +73,15 @@ photo case was singled out:
   silent loss.
 - `AnmeldenForm`, `RegistrierenForm`, `PasswortVergessenForm`,
   `PasswortAendernForm`, `RatingSection` — uncontrolled text fields,
-  still cleared on a failed submit. Annoying, not silent: the person sees
-  the empty field. Open.
+  cleared on a failed submit. **Closed.** `components/useEingabenBewahren.ts`
+  snapshots the form on its `reset` event and writes the values back a
+  microtask later, the same mechanism `MultiPhotoInput` already used for
+  files. Nothing is echoed back through the RSC payload, which is why this
+  and not the `defaultValue`-from-action pattern from the React docs: four
+  of the five forms carry a password field.
+  `VisibilitySettings` was not in this list and had the identical defect —
+  its switches are uncontrolled checkboxes and its action has a reachable
+  error branch. It is fixed with the same hook.
 
 The avatar fix is forward-looking only. Objects orphaned **before** it —
 every account that already swapped a JPG for a PNG, and every account

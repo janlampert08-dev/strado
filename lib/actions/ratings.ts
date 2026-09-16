@@ -12,6 +12,31 @@ export interface RatingFormState {
 const RATING_COOLDOWN_MS = 3000;
 const MAX_KOMMENTAR_LENGTH = 1000;
 
+// Die Skala. Dieselben Grenzen stehen als Check-Constraint in
+// 0095_sterne_wieder_einfuehren.sql — die Prüfung hier ist das schnelle
+// Feedback, die in der Datenbank ist die verbindliche: route_ratings trägt
+// volle Tabellen-Grants, ein direkter PostgREST-Request käme an dieser
+// Funktion vorbei.
+const MIN_STERNE = 1;
+const MAX_STERNE = 5;
+
+// Sterne aus dem Formular lesen.
+//
+// Drei Zustände, und der mittlere ist der Grund für diese Funktion: kein Feld
+// mitgeschickt und ein leeres Feld bedeuten beide "keine Wertung" (null),
+// alles andere muss eine ganze Zahl im Band sein. Ein unbrauchbarer Wert
+// wird NICHT stillschweigend zu null — dann verlöre jemand, der eine Wertung
+// abgeben wollte, sie kommentarlos.
+function sterneLesen(roh: FormDataEntryValue | null): number | null | "ungueltig" {
+  if (roh === null) return null;
+  const text = String(roh).trim();
+  if (text === "") return null;
+
+  const zahl = Number(text);
+  if (!Number.isInteger(zahl) || zahl < MIN_STERNE || zahl > MAX_STERNE) return "ungueltig";
+  return zahl;
+}
+
 export async function submitRating(
   routeId: string,
   _prevState: RatingFormState,
@@ -27,22 +52,39 @@ export async function submitRating(
   if (!user) return { error: "Bitte melde dich zuerst an." };
 
   const kommentar = String(formData.get("kommentar") ?? "").trim() || null;
+  const sterne = sterneLesen(formData.get("sterne"));
 
-  if (!kommentar) {
-    return { error: "Bitte gib einen Kommentar ein." };
+  if (sterne === "ungueltig") {
+    return { error: "Ungültige Wertung. Bitte lade die Seite neu." };
   }
-  if (kommentar.length > MAX_KOMMENTAR_LENGTH) {
+
+  // Bis 0095 war der Kommentar Pflicht, weil es nichts anderes gab. Jetzt
+  // reicht eines von beidem: wer nur Sterne vergeben will, soll nicht
+  // zusätzlich etwas schreiben müssen, und wer nur schreiben will, keine
+  // Zahl erfinden. Leer bleiben dürfen aber nicht beide — das wäre ein
+  // Formular, das nichts aussagt, und beim Aktualisieren löschte es die
+  // bestehende Bewertung durch die Hintertür statt über "Löschen".
+  if (!kommentar && sterne === null) {
+    return { error: "Bitte vergib Sterne oder schreib einen Kommentar." };
+  }
+  if (kommentar && kommentar.length > MAX_KOMMENTAR_LENGTH) {
     return { error: `Kommentar darf höchstens ${MAX_KOMMENTAR_LENGTH} Zeichen lang sein.` };
   }
 
   if (await isRateLimited(supabase, "route_ratings", "erstellt_am", "user_id", user.id, RATING_COOLDOWN_MS)) {
-    return { error: "Bitte warte einen Moment, bevor du erneut kommentierst." };
+    return { error: "Bitte warte einen Moment, bevor du erneut bewertest." };
   }
 
   const { error } = await supabase
     .from("route_ratings")
     .upsert(
-      { route_id: routeId, user_id: user.id, kommentar },
+      // Beide Felder werden immer geschrieben, auch wenn eines null ist: das
+      // Formular trägt den vollständigen Stand der eigenen Bewertung (die
+      // Sternwahl ist mit dem gespeicherten Wert vorbelegt). Nur das
+      // jeweils gefüllte zu schreiben hiesse, dass sich eine einmal
+      // vergebene Wertung nie wieder auf "nur Kommentar" zurücknehmen
+      // liesse.
+      { route_id: routeId, user_id: user.id, kommentar, sterne },
       { onConflict: "route_id,user_id" },
     );
 
@@ -53,9 +95,15 @@ export async function submitRating(
     // eines bestehenden Kommentars (upsert → UPDATE statt INSERT)
     // theoretisch durchrutschen.
     if (error.message.includes("cooldown_active")) {
-      return { error: "Bitte warte einen Moment, bevor du erneut kommentierst." };
+      return { error: "Bitte warte einen Moment, bevor du erneut bewertest." };
     }
-    return { error: "Kommentar konnte nicht gespeichert werden." };
+    // Der Constraint aus 0095. Erreichbar nur, wenn sterneLesen() und die
+    // Datenbank auseinanderlaufen — dann ist die Meldung hier der Hinweis
+    // darauf, und nicht ein generisches "konnte nicht gespeichert werden".
+    if (error.message.includes("route_ratings_sterne_check")) {
+      return { error: "Ungültige Wertung. Bitte lade die Seite neu." };
+    }
+    return { error: "Bewertung konnte nicht gespeichert werden." };
   }
 
   revalidatePath(`/strecken/${routeId}`);

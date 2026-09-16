@@ -82,8 +82,13 @@ export default function RouteActionsMenu({
     // Rückgabe landete er beim <body> — die Tastaturposition wäre verloren.
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key !== "Escape") return;
-      setOpen(false);
-      ausloeserRef.current?.focus();
+      // Schliessen gilt global — ein offen stehengebliebenes Menü soll zugehen,
+      // egal wo der Fokus gerade liegt. Dass der Fokus nur dann zurückgeholt
+      // wird, wenn er auch hier drin liegt, erledigt der Helfer: Tab schliesst
+      // das Menü nicht, wer also daran vorbeitabbt und weiter unten in einem
+      // Textfeld Escape drückt (ein Autofill-Vorschlag ist der häufigste
+      // Anlass), bekäme den Fokus sonst an den Auslöser weiter oben gerissen.
+      schliessenUndFokusZurueck();
     }
     document.addEventListener("mousedown", handleClickOutside);
     document.addEventListener("keydown", handleKeyDown);
@@ -93,6 +98,30 @@ export default function RouteActionsMenu({
     };
   }, [open]);
 
+  // Menü schliessen und den Fokus auf den Auslöser zurücksetzen — aber nur,
+  // wenn er zu diesem Zeitpunkt noch in der Komponente liegt.
+  //
+  // Der Eintrag selbst verschwindet mit dem Menü aus dem DOM; ohne Rückgabe
+  // fällt der Fokus auf <body>, und der nächste Tab fängt wieder am
+  // Seitenanfang an. Einträge, die danach einen Dialog öffnen, brauchen das
+  // nicht — components/ui/Dialog.tsx setzt den Fokus über showModal() ohnehin
+  // um, und eine zweite Zuweisung würde ihm dort nur zuvorkommen.
+  //
+  // Die Bedingung ist nicht Vorsicht, sondern nötig: der Zwischenablage-Zweig
+  // ruft das erst 1200 ms später aus einem Timer. In dieser Sekunde kann der
+  // Nutzer längst woanders geklickt oder getabbt haben — eine bedingungslose
+  // Rückgabe wäre dann derselbe Fokusdiebstahl, den der Escape-Zweig
+  // vermeidet, nur zeitversetzt und schwerer zu sehen.
+  //
+  // Geprüft wird VOR dem Schliessen, solange der ausgelöste Eintrag noch im
+  // Dokument hängt; danach stünde document.activeElement längst auf <body>.
+  function schliessenUndFokusZurueck() {
+    const fokusIstDrin =
+      containerRef.current?.contains(document.activeElement) ?? false;
+    setOpen(false);
+    if (fokusIstDrin) ausloeserRef.current?.focus();
+  }
+
   async function handleShare() {
     const url = `${window.location.origin}/strecken/${route.id}`;
     if (typeof navigator.share === "function") {
@@ -101,7 +130,7 @@ export default function RouteActionsMenu({
       } catch {
         // Nutzer hat den Teilen-Dialog abgebrochen — kein Fehlerzustand nötig.
       }
-      setOpen(false);
+      schliessenUndFokusZurueck();
       return;
     }
     try {
@@ -109,10 +138,10 @@ export default function RouteActionsMenu({
       setCopied(true);
       setTimeout(() => {
         setCopied(false);
-        setOpen(false);
+        schliessenUndFokusZurueck();
       }, 1200);
     } catch {
-      setOpen(false);
+      schliessenUndFokusZurueck();
     }
   }
 
@@ -126,7 +155,7 @@ export default function RouteActionsMenu({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    setOpen(false);
+    schliessenUndFokusZurueck();
   }
 
   return (

@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef } from "react";
 import { updateVisibilitySettings, type ProfileActionState } from "@/lib/actions/profile";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Switch from "@/components/ui/Switch";
 import { fieldClassName } from "@/components/ui/Input";
 import { PRIVACY_RADIUS_OPTIONS } from "@/lib/track";
+import useEingabenBewahren from "@/components/useEingabenBewahren";
 
 const initialState: ProfileActionState = { error: null };
 
@@ -17,15 +18,10 @@ export interface VisibilityFlags {
   zeigtHoehenmeter: boolean;
   zeigtDistanz: boolean;
   zeigtFollowerListe: boolean;
-  zeigtPremiumAbzeichen: boolean;
 }
 
 export interface VisibilitySettingsProps extends VisibilityFlags {
   privatzoneRadiusM: number;
-  /** Nur mit laufendem Abo erscheint der Abzeichen-Schalter. Ein toter
-   *  Schalter für alle anderen wäre eine Zeile mehr in einer Liste, die
-   *  jeder liest, für eine Funktion, die niemand ohne Abo hat. */
-  istPremium: boolean;
 }
 
 const PRIVACY_RADIUS_LABELS: Record<number, string> = {
@@ -56,19 +52,6 @@ const FIELDS: Field[] = [
   },
 ];
 
-// Steht bewusst nicht in FIELDS, sondern wird nur mit Abo angehängt — siehe
-// istPremium oben. Zusammen mit den übrigen Schaltern in derselben Card statt
-// in einem eigenen Block: es ist dieselbe Frage wie darüber ("was sehen
-// andere von mir?"), und ein Premium-Kasten in einer Einstellungsliste wäre
-// Werbung an einer Stelle, an der niemand Werbung sucht.
-const PREMIUM_ABZEICHEN_FELD: Field = {
-  name: "zeigtPremiumAbzeichen",
-  formKey: "zeigt_premium_badge",
-  label: "Premium-Abzeichen hinter dem Namen zeigen",
-  description:
-    "Standardmässig aus. Eingeschaltet sehen andere hinter deinem Namen ein kleines Strado-Zeichen — im Feed, auf deinem Profil und in den Bestenlisten — und wissen dadurch, dass du Strado unterstützt.",
-};
-
 // Kachel-Liste mit iOS-artigen Switches (components/ui/Switch.tsx) statt
 // einer losen Spalte nativer Checkboxen — gleiches Card+divide-y-Muster wie
 // andere Listen der App (z. B. Streckenvorschläge im selben Einstellungen-
@@ -77,24 +60,21 @@ const PREMIUM_ABZEICHEN_FELD: Field = {
 // einen "Speichern"-Button unten statt pro Zeile automatisch zu sichern.
 export default function VisibilitySettings({
   privatzoneRadiusM,
-  istPremium,
   ...flags
 }: VisibilitySettingsProps) {
   const [state, formAction, pending] = useActionState(updateVisibilitySettings, initialState);
-  const felder = istPremium ? [...FIELDS, PREMIUM_ABZEICHEN_FELD] : FIELDS;
+  // Nicht in der Liste des Audit-Befunds §B, aber dieselbe Mechanik: die
+  // Schalter sind unkontrollierte Checkboxen, und der Fehlerzweig der Action
+  // (ungültiger Privatzonen-Wert) lässt das Formular stehen. Ohne das
+  // sprängen alle Schalter auf den gespeicherten Stand zurück, während
+  // daneben steht, dass nichts gespeichert wurde.
+  const formRef = useRef<HTMLFormElement>(null);
+  useEingabenBewahren(formRef);
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
-      {/* Markierung statt Rückschluss aus dem fehlenden Schalter: ein
-          nicht angehakter Schalter schickt nichts, ein nicht GERENDERTER
-          Schalter schickt ebenfalls nichts — und beides sähe in der Server
-          Action gleich aus. Ohne dieses Feld würde jedes Speichern nach dem
-          Ende eines Abos das Opt-in stillschweigend löschen, und nach einem
-          erneuten Abschluss stünde der Schalter wieder auf "aus", ohne dass
-          ihn jemand angefasst hat. */}
-      {istPremium && <input type="hidden" name="premium_abzeichen_vorhanden" value="1" />}
+    <form ref={formRef} action={formAction} className="flex flex-col gap-4">
       <Card className="flex flex-col divide-y divide-border px-4">
-        {felder.map((field) => (
+        {FIELDS.map((field) => (
           <Switch
             key={field.formKey}
             name={field.formKey}

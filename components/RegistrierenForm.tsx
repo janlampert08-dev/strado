@@ -1,21 +1,26 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef } from "react";
 import Link from "next/link";
 import { signUp, type AuthFormState } from "@/lib/actions/auth";
 import { Input } from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import { LEGAL_URLS } from "@/lib/constants";
+import useEingabenBewahren from "@/components/useEingabenBewahren";
 
 const initialState: AuthFormState = { error: null };
 
 export default function RegistrierenForm({ nextHref }: { nextHref?: string } = {}) {
   const [state, formAction, pending] = useActionState(signUp, initialState);
+  // Drei Felder, und ohne das wären nach einem Fehlschlag alle drei leer —
+  // siehe components/useEingabenBewahren.ts.
+  const formRef = useRef<HTMLFormElement>(null);
+  useEingabenBewahren(formRef);
 
   return (
     <>
       <h1 className="text-display font-semibold">Registrieren</h1>
-      <form action={formAction} className="flex flex-col gap-4">
+      <form ref={formRef} action={formAction} className="flex flex-col gap-4">
         {/* Optionales Rücksprungziel, wie in AnmeldenForm — signUp()
             validiert den Wert erneut, bevor daraus ein Redirect bzw. ein
             Bestätigungslink wird. */}

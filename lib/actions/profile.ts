@@ -96,28 +96,13 @@ export async function updateVisibilitySettings(
   }
   const privatzoneRadiusM = radius;
 
-  // Das Premium-Abzeichen ist der einzige Schalter, den die Oberfläche nur
-  // manchmal zeigt (VisibilitySettings rendert ihn ausschliesslich mit
-  // laufendem Abo). Damit ist die übliche Auswertung "nicht mitgeschickt =
-  // false" hier FALSCH: sie träfe nicht nur den abgewählten Schalter,
-  // sondern auch den nie gerenderten. Ein Konto, dessen Abo endet, verlöre
-  // das Opt-in beim nächsten beliebigen Speichern still — und nach einem
-  // erneuten Abschluss stünde der Schalter auf "aus", ohne dass ihn jemand
-  // umgelegt hat.
-  //
-  // Deshalb entscheidet ein verstecktes Markierungsfeld, ob die Spalte
-  // überhaupt Teil des Updates wird. Fehlt es, bleibt der gespeicherte Wert
-  // unangetastet.
-  //
-  // Sicherheitlich unkritisch: Die Markierung ist kein Berechtigungsnachweis.
-  // Wer sie von Hand mitschickt, kann zeigt_premium_badge setzen — sichtbar
-  // wird das Abzeichen davon nicht, weil zeigt_premium_abzeichen (0087)
-  // generiert (ist_premium and zeigt_premium_badge) ist und ist_premium
-  // ausschliesslich aus dem Stripe-Pfad stammt. Die Spalte ist ein reines
-  // Anzeige-Opt-in und steht seit 0034 ohnehin im grant update für
-  // authenticated.
-  const abzeichenGesendet = formData.get("premium_abzeichen_vorhanden") === "1";
-
+  // profiles.zeigt_premium_badge wird hier bewusst NICHT geschrieben. Das
+  // Abzeichen hinter dem Namen ist aus der App entfernt; die Spalte bleibt
+  // im Schema (Kernregel 9 — 0021 und 0087 sind angewandt und werden nicht
+  // angefasst), erreicht aber keine Oberfläche mehr. Sie hier
+  // unerwähnt zu lassen heisst zugleich, dass ein gespeicherter Wert
+  // unangetastet bleibt, statt beim nächsten Speichern still auf false zu
+  // fallen — dasselbe Verhalten wie bei der Entfernung vom 2026-09-07.
   const { error } = await supabase
     .from("profiles")
     .update({
@@ -128,9 +113,6 @@ export async function updateVisibilitySettings(
       zeigt_hoehenmeter: formData.get("zeigt_hoehenmeter") === "true",
       zeigt_distanz: formData.get("zeigt_distanz") === "true",
       zeigt_follower_liste: formData.get("zeigt_follower_liste") === "true",
-      ...(abzeichenGesendet
-        ? { zeigt_premium_badge: formData.get("zeigt_premium_badge") === "true" }
-        : {}),
     })
     .eq("id", user.id);
 
