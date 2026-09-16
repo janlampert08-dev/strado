@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Header from "@/components/Header";
 import ExploreView from "@/components/ExploreView";
 import { getRoutes } from "@/lib/routes";
+import { getBewertungen } from "@/lib/ratings";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { BESCHREIBUNG, SLOGAN } from "@/lib/constants";
 
@@ -42,10 +43,24 @@ export default async function Home() {
   // getRoutes(), weil beide voneinander unabhängig sind.
   const [{ routes, error }, user] = await Promise.all([getRoutes(), getCurrentUser()]);
 
+  // Erst danach, weil die Abfrage die IDs der geladenen Strecken braucht.
+  // Eine Abfrage für die ganze Liste, nicht eine pro Zeile — die Begründung
+  // steht im Kopf von lib/bewertungen.ts.
+  //
+  // Als einfaches Objekt statt als Map über die Server/Client-Grenze:
+  // ExploreView ist eine Client Component, und ein Objekt ist in der
+  // RSC-Nutzlast ohne Rückfrage serialisierbar.
+  const bewertungen = Object.fromEntries(await getBewertungen(routes.map((r) => r.id)));
+
   return (
     <div className="flex h-dvh flex-col">
       <Header />
-      <ExploreView routes={routes} loadError={error} loggedIn={!!user} />
+      <ExploreView
+        routes={routes}
+        bewertungen={bewertungen}
+        loadError={error}
+        loggedIn={!!user}
+      />
     </div>
   );
 }

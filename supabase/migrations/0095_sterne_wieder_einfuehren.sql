@@ -1,0 +1,135 @@
+-- Sterne-Bewertung wieder einführen — die Rücknahme von
+-- 0025_ratings_ohne_sterne.sql.
+--
+-- 0025 nahm die 1–5 Sterne heraus ("Nutzer sollen nur noch kommentieren
+-- können") und liess die Spalte bewusst stehen: "damit bereits vergebene
+-- Sterne nicht verloren gehen, falls sie später doch noch ausgewertet werden
+-- sollen". Genau dieser Fall tritt jetzt ein.
+--
+-- Das ist eine Umkehr einer Produktentscheidung, keine Fehlerbehebung — sie
+-- gehört in die PR-Beschreibung (Kernregel 16) und nicht bloss hierher.
+--
+-- ---------------------------------------------------------------------------
+-- Was diese Migration NICHT tut
+-- ---------------------------------------------------------------------------
+-- Sie setzt die Spalte nicht wieder auf `not null`. Zwischen 0025 und heute
+-- sind reine Kommentarzeilen ohne Sterne entstanden; ein `not null` liesse
+-- sich gegen sie gar nicht erst anlegen, und ein Backfill müsste Sterne
+-- erfinden, die niemand vergeben hat. Eine Bewertung darf deshalb weiterhin
+-- aus einem blossen Kommentar bestehen. Die App verlangt nur, dass mindestens
+-- eines von beidem da ist — diese Regel steht in lib/actions/ratings.ts und
+-- bleibt dort: sie betrifft, was ein Formular absenden darf, nicht was in der
+-- Tabelle stehen kann (Altzeilen erfüllen sie ohnehin).
+--
+-- ---------------------------------------------------------------------------
+-- Warum die Prüfung in die Datenbank gehört
+-- ---------------------------------------------------------------------------
+-- route_ratings trägt volle Tabellen-Grants (es gab nie ein
+-- Spalten-Hardening wie bei profiles in 0034), und die RLS-Policy "Nutzer
+-- verwalten eigene Bewertungen" (0001, präzisiert in 0027) lässt jedes
+-- angemeldete Konto seine eigene Zeile schreiben. Ein direkter
+-- PostgREST-Request kann die Server Action also umgehen. Ohne Constraint
+-- schriebe er `sterne = 9999` und verschöbe damit den öffentlich
+-- angezeigten Durchschnitt einer fremden Strecke — dieselbe Klasse von
+-- Befund wie A1 bei den Fahrten: was angezeigt wird, darf nicht allein vom
+-- Client abhängen.
+--
+-- Der Constraint heisst wieder route_ratings_sterne_check, wie der von 0001,
+-- den 0025 fallen liess. Kein Namenskonflikt: er existiert seit 0025 nicht
+-- mehr.
+--
+-- ---------------------------------------------------------------------------
+-- Warum `not valid`
+-- ---------------------------------------------------------------------------
+-- Ein gewöhnliches `add constraint` prüft den Bestand mit und SCHEITERT, wenn
+-- eine einzige Zeile die Bedingung verletzt. Ein erster Entwurf dieser Datei
+-- hielt das für unmöglich und begründete es so: vor 0025 galt
+-- `check (sterne between 1 and 5)`, danach habe die App die Spalte nicht mehr
+-- geschrieben, es könne also nur 1–5 oder null geben.
+--
+-- Diese Begründung widerspricht dem Absatz direkt darüber. Dort steht, warum
+-- es den Constraint überhaupt braucht: route_ratings ist über PostgREST
+-- direkt beschreibbar, die Server Action ist umgehbar. "Die App hat nicht
+-- geschrieben" heisst also gerade nicht "niemand hat geschrieben" — und das
+-- Fenster dafür stand seit 0025 offen, also genau in dem Zeitraum, für den
+-- der Bestand behauptet wurde. Wer beides gleichzeitig annimmt, nimmt an, das
+-- Loch existiere und sei zugleich nie benutzt worden.
+--
+-- Das wiegt hier schwerer als anderswo: es gibt keine Staging-Datenbank
+-- (AGENTS.md → Release Flow). Die Migration wird genau einmal angewandt, und
+-- zwar gegen die Produktion. Eine Anweisung, die abhängig von Daten scheitern
+-- kann, die niemand nachgesehen hat, ist genau das, was dieses Repo an dieser
+-- Stelle nicht will.
+--
+-- `not valid` löst das: der Constraint gilt ab sofort für jedes INSERT und
+-- jedes UPDATE — also für alles, wogegen er schützen soll — und lässt allein
+-- die Altzeilen ungeprüft. An bestehenden Zeilen kann er damit nicht
+-- scheitern, und er nimmt keinen Table-Scan.
+--
+-- Umsonst ist er deshalb nicht. Zweierlei bleibt; supabase/migrations/README.md
+-- führt beides aus:
+--
+--   1. DIE SPERRE. `add constraint` nimmt `access exclusive` auf die Tabelle,
+--      mit `not valid` genauso wie ohne — nur kurz, weil kein Scan darunter
+--      liegt. Gewährt werden muss sie trotzdem, und hinter einer wartenden
+--      Anforderung stauen sich Lesen und Schreiben. Deshalb steht im README
+--      ein `set lock_timeout` vor dieser Anweisung.
+--   2. DIE ALTZEILEN. Ungeprüft heisst nur: nicht beim Anlegen geprüft. Jedes
+--      spätere UPDATE prüft die ganze neue Zeilenversion, auch die Spalten,
+--      die es nicht anfasst — eine Zeile mit `sterne = 9999` liesse sich danach
+--      nicht einmal mehr am Kommentar ändern. Die Server Action stolpert nicht
+--      darüber (ihr upsert schreibt `sterne` immer mit und repariert die Zeile
+--      dabei), ein direkter PATCH auf nur eine Spalte schon — also genau der
+--      Weg, über den der Wert hätte entstehen können. DELETE bleibt ungeprüft.
+--
+-- Die Altzeilen nachzuziehen ist ein eigener, bewusster Schritt. Erst die
+-- Gegenprobe, und nur wenn sie null Zeilen liefert, die Bestätigung:
+--
+--   select id, sterne from public.route_ratings
+--   where sterne is not null and sterne not between 1 and 5;
+--
+--   alter table public.route_ratings validate constraint route_ratings_sterne_check;
+--
+-- Beides steht bewusst NICHT als Anweisung in dieser Datei. Liefert die
+-- Gegenprobe Zeilen, ist die Frage eine fachliche — löschen, kappen oder auf
+-- null setzen —, und die gehört einem Menschen, nicht einer Migration, die
+-- unbeaufsichtigt durchläuft. Stünde `validate constraint` hier, scheiterte
+-- sie in genau diesem Fall und risse den `not valid`-Teil in derselben
+-- Transaktion wieder mit.
+--
+-- Bis das geschieht, fehlt in der ANZEIGE nichts: ungeprüft bleiben nur
+-- Altzeilen, und die kann lib/bewertungen.ts ab — bewertungAusSternen()
+-- filtert auf die Spannweite 1–5 und nicht bloss auf "endliche Zahl".
+-- Dieser Satz stand hier zuerst in der schwächeren Form ("alles, was keine
+-- endliche Zahl ist"), und die stimmte nicht: 9999 ist endlich und wäre in
+-- den öffentlich angezeigten Schnitt eingegangen — an genau dem Schutz
+-- vorbei, den diese Migration aufbaut. lib/bewertungen.test.ts hält beides
+-- fest.
+
+-- Gilt genau für die eine Anweisung darunter: wird die Tabellensperre nicht
+-- binnen fünf Sekunden frei, bricht die Migration ab, statt Lesen und Schreiben
+-- auf route_ratings hinter sich aufzustauen. Ein zweiter Versuch kostet nichts —
+-- es gibt nichts zurückzunehmen.
+--
+-- `set LOCAL`, nicht `set`: ein blosses `set` gilt für die SITZUNG und
+-- überlebt das COMMIT. Eine Migrationsverbindung wird wiederverwendet — die
+-- fünf Sekunden hingen danach an allem, was auf derselben Verbindung noch
+-- folgt, und liessen eine spätere, völlig andere Anweisung an einer Sperre
+-- scheitern, die sie sich hätte leisten können. `set local` endet mit der
+-- Transaktion.
+--
+-- Bedingung dafür: es MUSS eine Transaktion geben. Ausserhalb eines
+-- Transaktionsblocks ist `set local` wirkungslos und warnt nur — dann stünde
+-- hier gar kein Timeout. Alle Wege, über die diese Datei läuft, öffnen einen:
+-- apply_migration, `supabase db push` und der SQL-Editor fahren die Datei je
+-- in einer Transaktion. Wer die Anweisung von Hand in psql absetzt, klammert
+-- sie in `begin; ... commit;`.
+set local lock_timeout = '5s';
+
+alter table public.route_ratings
+  add constraint route_ratings_sterne_check
+  check (sterne is null or sterne between 1 and 5)
+  not valid;
+
+comment on column public.route_ratings.sterne is
+  '1-5 Sterne, optional. null heisst "nur kommentiert" — so entstanden alle Zeilen zwischen 0025 und 0095, in denen die App die Spalte nicht schrieb. Die Untergrenze "mindestens Sterne ODER Kommentar" setzt lib/actions/ratings.ts durch.';

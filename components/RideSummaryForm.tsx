@@ -38,6 +38,7 @@ export default function RideSummaryForm({
   error,
   vehicles,
   trailJson,
+  ticketJson = "null",
   visibility,
   visibilityNote,
   isPublic,
@@ -55,6 +56,8 @@ export default function RideSummaryForm({
   error: string | null;
   vehicles: Vehicle[];
   trailJson: string;
+  /** Fahrtstart-Ticket als JSON (lib/fahrtstart.ts). "null", wenn keines vorliegt. */
+  ticketJson?: string;
   // null: keine Auswahl anbieten (dann greift visibilityNote als Erklärung).
   visibility: VisibilityChoice | null;
   visibilityNote?: string;
@@ -199,6 +202,10 @@ export default function RideSummaryForm({
           aufgezeichnete GPS-Trail als Rohdaten, keine vom Client berechneten
           Werte, denen vertraut würde. */}
       <input type="hidden" name="trail" value={trailJson} />
+      {/* Der serverseitig aufgezeichnete Start. Ohne ihn wird die Fahrt mit
+          dauer_quelle = "trail" gespeichert und zählt nicht für die
+          Bestenliste (siehe lib/actions/completions.ts). */}
+      <input type="hidden" name="fahrt_start" value={ticketJson} />
 
       {children}
 

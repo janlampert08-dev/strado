@@ -1,20 +1,25 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef } from "react";
 import Link from "next/link";
 import { signIn, type AuthFormState } from "@/lib/actions/auth";
 import { Input } from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
+import useEingabenBewahren from "@/components/useEingabenBewahren";
 
 const initialState: AuthFormState = { error: null };
 
 export default function AnmeldenForm({ nextHref }: { nextHref?: string } = {}) {
   const [state, formAction, pending] = useActionState(signIn, initialState);
+  // Ohne das stünde nach "E-Mail oder Passwort ist falsch." ein leeres
+  // Formular da — siehe components/useEingabenBewahren.ts.
+  const formRef = useRef<HTMLFormElement>(null);
+  useEingabenBewahren(formRef);
 
   return (
     <>
       <h1 className="text-display font-semibold">Anmelden</h1>
-      <form action={formAction} className="flex flex-col gap-4">
+      <form ref={formRef} action={formAction} className="flex flex-col gap-4">
         {/* Optionales Rücksprungziel, analog zu NeuesFahrzeugForm — signIn()
             validiert den Wert erneut, bevor daraus ein Redirect wird. */}
         {nextHref && <input type="hidden" name="next" value={nextHref} />}
