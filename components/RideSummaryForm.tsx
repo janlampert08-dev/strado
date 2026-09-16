@@ -17,6 +17,7 @@ import { fieldClassName } from "@/components/ui/Input";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import { chipClassName } from "@/components/motorklassenChipStil";
 import { buttonVariants } from "@/components/ui/Button";
+import SectionHeading from "@/components/ui/SectionHeading";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 
 export const MAX_NOTIZ_LENGTH = 280;
@@ -213,9 +214,11 @@ export default function RideSummaryForm({
       {children}
 
       <div className="flex flex-col gap-2 text-sm">
-        <h3 className="font-mono text-xs font-semibold tracking-wide text-muted uppercase">
+        {/* Ohne font-mono: die Schwesterzeile "Sichtbarkeit" weiter unten
+            trug es nie, und beide sind dieselbe Rolle. */}
+        <SectionHeading as="h3" groesse="xs">
           Fahrzeug
-        </h3>
+        </SectionHeading>
         {/* Chips statt Auswahlliste. Die meisten Konten haben ein bis drei
             Fahrzeuge; für die ist eine native Auswahlliste ein Umweg über
             einen Systemdialog, um zwischen zwei Dingen zu wählen, die beide
@@ -239,7 +242,7 @@ export default function RideSummaryForm({
                     type="button"
                     aria-pressed={gewaehlt}
                     onClick={() => setSelectedVehicleId(gewaehlt ? "" : v.id)}
-                    className={chipClassName(gewaehlt)}
+                    className={chipClassName(gewaehlt, true)}
                   >
                     {v.marke} {v.modell}
                     {klasse && (
@@ -374,7 +377,7 @@ export default function RideSummaryForm({
       </div>
 
       <div className="flex flex-col gap-1 border-t border-border pt-4 text-sm">
-        <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">Sichtbarkeit</h3>
+        <SectionHeading as="h3" groesse="xs">Sichtbarkeit</SectionHeading>
         {visibility ? (
           <>
             {/* Die folgenreichste Entscheidung dieses Screens — geht die Fahrt
@@ -439,7 +442,9 @@ export default function RideSummaryForm({
           Die Sichtbarkeit bleibt offen: sie entscheidet, ob die Fahrt in
           Feed und Bestenliste geht, und gehört nicht hinter eine Klappe.
           Siehe docs/design-vereinfachung.md, Anhang B3. */}
-      <details className="border-t border-border">
+      {/* group, weil das Chevron unten group-open:rotate-180 trägt — ohne
+          die Klasse am <details> drehte es sich nie. */}
+      <details className="group border-t border-border">
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40">
           <span>
             Notiz &amp; Fotos <span className="font-normal text-muted">— optional</span>
@@ -452,12 +457,9 @@ export default function RideSummaryForm({
         <div className="flex flex-col gap-4 pt-2 pb-4">
         <div className="flex flex-col gap-1 border-t border-border pt-4 text-sm">
           <div className="flex items-baseline justify-between">
-            <label
-              htmlFor="tracking-notiz"
-              className="text-xs font-semibold tracking-wide text-muted uppercase"
-            >
+            <SectionHeading as="label" groesse="xs" htmlFor="tracking-notiz">
               Notiz (optional)
-            </label>
+            </SectionHeading>
             <span className="font-mono text-xs tabular-nums text-muted">
               {notiz.length}/{MAX_NOTIZ_LENGTH}
             </span>

@@ -29,7 +29,7 @@ jeder Commit trägt seine Begründung im Text.
 | A4 Eine Farbquelle | **umgesetzt** — `SIGNATURE_COLORS`, `ROUTE_BLUE_PALETTE` und `TRACK_COLOR` sind weg |
 | A5 `ui/SegmentedControl` | **umgesetzt** — fünf Fassungen werden eine |
 | A6 Zeichen werden Icons | **umgesetzt** — `★ ☆ ⋮` |
-| A7 `ui/Seitenrahmen` | **umgesetzt** für 16 Seiten; `premium/**` bleibt offen (s. u.) |
+| A7 `ui/Seitenrahmen` | **umgesetzt** für 16 Seiten; drei Ausnahmen (s. u.) |
 | A8 Peek-Fenster | **umgesetzt** |
 | B2 Aufzeichnungsschirm | **umgesetzt**, bis auf die Rückfrage beim Beenden (s. u.) |
 | B3 Fazit | **umgesetzt**, bis auf zwei bewusste Abweichungen (s. u.) |
@@ -52,9 +52,26 @@ Abnahme verlangt (§3b.4, §3.9, Anhang C5), geht diese Forderung dem Wort vor.
 
 - **Der Kauf-Fluss** (`/profil/premium` und `/zahlung` zusammenlegen) berührt
   den Stripe-Pfad. Eigener PR, eigene Abnahme — deshalb sind auch die drei
-  Seiten unter `app/profil/premium/**` als einzige nicht auf den
-  `Seitenrahmen` umgestellt. Die Grenze ist die Grenze, auch wenn eine
-  Container-Breite harmlos wäre.
+  Seiten unter `app/profil/premium/**` nicht auf den `Seitenrahmen`
+  umgestellt. Die Grenze ist die Grenze, auch wenn eine Container-Breite
+  harmlos wäre.
+- **Zwei weitere Seiten sind nicht umgestellt, und zwar ohne guten Grund.**
+  Dieser Abschnitt behauptete zuerst, `premium/**` sei „als einzige" aussen
+  vor. Das stimmt nicht: `app/registrieren/bestaetigen/page.tsx`
+  (`max-w-sm … px-6`) und `app/verifiziert/page.tsx`
+  (`max-w-2xl px-4 py-10`) schreiben ihr `<main>` weiter selbst. Sie bleiben
+  es vorerst, aber die Begründung ist eine andere als bei `premium/**` und
+  gehört ausgeschrieben:
+  - `registrieren/bestaetigen` steht auf `gap-3` und `items-start`. Der
+    `Seitenrahmen` bringt `gap-6` mit, und **`lib/utils/cn.ts` ist kein
+    tailwind-merge** — ein angehängtes `gap-3` setzt sich gegen das
+    eingebaute `gap-6` nicht durch (im erzeugten CSS steht `gap-6`
+    dahinter). Die Umstellung wäre also entweder eine sichtbare Änderung an
+    einer Seite, um die niemand gebeten hat, oder ein weiterer Parameter am
+    `Seitenrahmen`. Beides gehört nicht in diesen PR.
+  - `/verifiziert` schlägt §3b.3 dieses Dokuments zur Abschaffung vor. Eine
+    Seite auf einen neuen Rahmen zu heben, deren Abschaffung im selben
+    Dokument steht, ist Arbeit gegen die eigene Empfehlung.
 - **Die Rückfrage beim Beenden einer Aufzeichnung** (`uiux.md` §5.3) ist eine
   Verhaltensänderung, keine Darstellung. Sie gehört abgenommen, nicht
   nebenbei mitgenommen.
@@ -66,6 +83,82 @@ Abnahme verlangt (§3b.4, §3.9, Anhang C5), geht diese Forderung dem Wort vor.
 - **Fotos bleiben im Fazit.** Sie später nachzutragen gibt es heute nicht
   (`CompletionPhotoGallery` kann nur entfernen); das verlangte einen zweiten
   Upload-Pfad in `lib/actions/completions.ts` und ist ein eigenes Vorhaben.
+- **`Kennzahlenzeile` verschweigt leere Werte, und das ist eine
+  Produktentscheidung.** Die Zeile filtert Einträge mit `wert === "—"`
+  heraus (`components/ui/Kennzahl.tsx`). Für das Wetter ist das richtig: „Wetter
+  —" ist keine Information. Für Streckenattribute ist es diskutabel — eine
+  Strecke ohne Angabe zur Maximalsteigung zeigt die Beschriftung gar nicht
+  mehr, und fehlen Tempolimit und Wetter dazu, verschwindet die ganze Zeile
+  wortlos. Das Gegenargument: eine Zeile aus drei Gedankenstrichen ist
+  Platz, der nichts sagt. So gebaut, hier benannt statt still gelassen.
+
+### Was die Code-Review an der Umsetzung gefunden hat
+
+Die zweite Review-Runde (PR #254, 2026-09-16) hat den Code geprüft statt nur
+das Konzept — der PR trug beim ersten Durchgang noch keine einzige
+Code-Zeile. Siebzehn Befunde, alle nachgeprüft, alle zutreffend, alle
+behoben. Vier sind hier festzuhalten, weil sie eine Regel ergeben und nicht
+nur eine Korrektur:
+
+1. **Ein Baustein, der ein Muster ablöst, muss auch dessen Skelett
+   ablösen.** `ui/Seitenrahmen` hat die zwölf `<main>`-Fassungen ersetzt,
+   aber `ui/PageSkeleton` schrieb Breite und Polsterung weiter selbst hin —
+   also zwei Quellen für dieselbe Geometrie, und sie waren bereits
+   auseinandergelaufen: sieben Skelette standen auf einer anderen Breite als
+   ihre Seite. Das Skelett zeichnete ausserdem noch das Flammen-Icon, das
+   der Kopf verloren hatte. **Ein Skelett gehört in denselben Commit wie die
+   Seite, die es spiegelt.**
+2. **Wer einen Eintrag aus der Navigation nimmt, nimmt auch seine
+   Markierung.** `BottomNav` markiert über `pathname.startsWith(href)`.
+   Nach dem Tausch war `/leaderboards` kein Präfix eines verbliebenen
+   Eintrags mehr — auf der Ranglisten-Seite war unten nichts hervorgehoben,
+   dem einzigen Orientierungsanker auf dem Telefon. `NavItem.aktivAuf` in
+   `lib/nav.ts` schliesst das, bewusst dort und nicht als Sonderfall in
+   `BottomNav`.
+3. **`lib/utils/cn.ts` ist kein tailwind-merge.** Eine angehängte Klasse
+   überschreibt eine eingebaute nicht — es entscheidet die Reihenfolge im
+   erzeugten Stylesheet. Das runde Suchfeld in `ExploreSidebar` blieb
+   deshalb ein abgerundetes Rechteck neben dem kreisrunden Standort-Knopf,
+   und ein Kommentar in `ui/IconButton` behauptete das Gegenteil. Wer eine
+   Vorgabe ändern muss, bekommt **einen Parameter**, keine zweite Klasse.
+4. **Eine Farbe aus dem Token zu holen, reicht nicht — sie muss auch neu
+   geholt werden.** Der `TRACK_COLOR`-Fix hat die Layer erwischt, aber nicht
+   die DOM-Overlays: `map.setStyle()` baut einen `mapboxgl.Marker` nicht
+   neu, und der Standortpunkt entsteht genau einmal. Wer mitten in einer
+   Aufzeichnung auf Dunkel umschaltete, behielt ihn im Tagblau. `RoutePicker`
+   trug denselben Hexwert sogar noch unverändert; Ring und Richtungskegel
+   standen als `rgba(61,90,254,…)` da, also in einer Schreibweise, die die
+   Suche nach `#3D5AFE` nicht findet.
+
+Der Rest, knapp: `details.ab-sm-offen` sperrte die Summary auch dort, wo
+`::details-content` fehlt (Chrome < 131, Safari < 18.4, Firefox < 139) —
+Inhalt zu, Chevron weg, nicht klickbar; der `@supports`-Block behebt es, und
+`> svg:last-child` statt des Nachfahren-Kombinators gibt den beiden
+Abschnitten ihr Icon zurück. `/leaderboards` reichte `zeigtFolgeIch={false}`
+durch und verlor damit den Reiter, aus dem man gerade kam. Das Chevron im
+Fazit drehte sich nie (`group` fehlte am `<details>`). Die Fahrzeug-Chips
+waren 36 px, wo der Kommentar daneben 44 versprach — und sie hatten eine
+`<select>` von rund 42 px ersetzt. `premiumKurzform()` strich per Regex genau
+die Klammer, die `lib/premiumVorteile.ts` im Kopf als bewusst gesetzt
+begründet; sie wählt jetzt aus, statt zu kürzen. Sechs Abschnittsmarken
+standen weiter von Hand als `text-xs` da, während `SectionHeading` `text-sm`
+setzt — dieselbe Rolle in zwei Grössen ist teurer als jede der beiden;
+`SectionHeading` hat jetzt eine Grössenstufe. `SegmentedControl` trug
+`role="group"` plus `aria-pressed` für eine sich ausschliessende Wahl,
+ausgerechnet unter dem Sichtbarkeits-Umschalter. `RankingIcon` hatte null
+Abnehmer, während ein Kommentar das Gegenteil behauptete. Und in beiden
+Aufzeichnungsschirmen stand ein `<span>` als direktes Kind eines
+`<dl>`-`<div>` — ungültiges HTML.
+
+Zwei Befunde standen in der Review ausdrücklich als **Vermutung, nicht am
+Gerät geprüft**. Beide sind am Code nachvollzogen und behoben, aber die
+Abnahme auf 390 × 844 steht weiter aus: der doppelte sichere Bereich unter
+dem Speichern-Streifen (der `FullscreenDialog` brachte ihn mit, der
+klebende Streifen noch einmal) und die zentrierten Anmelde-Formulare, die in
+einem `h-dvh`-Flexcontainer mit `justify-center` und ohne Scrollbehälter bei
+eingeblendeter Tastatur oben beschnitten werden — ein Risiko, das dieser PR
+mit 64–80 px zusätzlicher Polsterung vergrössert hat. Sie liegen jetzt in
+einem eigenen Scrollbereich mit `min-h-full`.
 
 ### Drei sichtbare Kosten, die genannt gehören
 

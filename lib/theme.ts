@@ -44,13 +44,30 @@ export function subscribeToThemeChange(callback: () => void): () => void {
 //
 // Serverseitig (kein document) und bei leerem Ergebnis greift der
 // Rückfallwert — sonst bekäme ein Layer einen leeren String.
+//
+// WAS HIER ZURÜCKKOMMT, IST DER ANGEGEBENE WERT, NICHT DER BERECHNETE.
+// getPropertyValue() liefert bei einer eigenen Eigenschaft das, was im
+// Stylesheet steht. Für --color-accent ist das ein fertiges #rrggbb und
+// damit genau das, was Mapbox braucht; für --color-accent-subtle oder
+// --color-border stünde dort der wörtliche color-mix(…)-String, den weder
+// Mapbox noch Canvas parst. Der Name dieser Funktion ist allgemein, ihre
+// Eignung ist es nicht: wer ein anderes Token anfragt, prüft erst in
+// app/globals.css, ob es ein einfacher Farbwert ist.
 export function tokenFarbe(name: string, rueckfall: string): string {
   if (typeof document === "undefined") return rueckfall;
   const wert = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   return wert === "" ? rueckfall : wert;
 }
 
-/** --color-accent, aufgelöst. Rückfallwert ist der helle Themenwert. */
+/**
+ * --color-accent, aufgelöst.
+ *
+ * Der Rückfallwert MUSS mit `:root { --color-accent }` in app/globals.css
+ * übereinstimmen — er ist eine von Hand gepflegte Kopie, ausgerechnet in
+ * der Datei, deren Zweck es ist, solche Kopien abzuschaffen. Erreichbar ist
+ * er heute nicht (alle Aufrufer laufen im Client, wo `document` existiert),
+ * aber still veralten kann er trotzdem.
+ */
 export function akzentFarbe(): string {
   return tokenFarbe("--color-accent", "#3d5afe");
 }

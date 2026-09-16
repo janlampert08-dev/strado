@@ -124,7 +124,7 @@ export default function ExploreSidebar({
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Strecke oder Ort"
-          className={fieldClassName("min-h-11 rounded-full")}
+          className={fieldClassName("min-h-11")}
         />
         {/* Der Standort war eine eigene Zeile mit Textbeschriftung. Als
             Icon-Schaltfläche neben dem Feld kostet er keine Zeilenhöhe mehr

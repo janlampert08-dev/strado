@@ -38,6 +38,29 @@ describe("getNavItems", () => {
     }
   });
 
+  // Die Gegenrechnung zum Tausch, und der Grund, warum NavItem.aktivAuf
+  // existiert: BottomNav markiert einen Eintrag über
+  // pathname.startsWith(href). Nachdem /leaderboards die Leiste verlassen
+  // hatte, war es auch kein Präfix eines verbliebenen Eintrags mehr — wer
+  // auf dem Feed "Rangliste" tippte, stand auf einer Seite, auf der unten
+  // nichts hervorgehoben war. Auf dem Telefon ist die Leiste der einzige
+  // Orientierungsanker.
+  //
+  // Der Test prüft beides zusammen: dass genau ein Eintrag /leaderboards
+  // abdeckt, und dass es der Feed ist — die Seite, auf der die Rangliste
+  // jetzt als dritter Reiter sitzt.
+  it("markiert /leaderboards über den Feed-Eintrag", () => {
+    for (const loggedIn of [false, true]) {
+      for (const surface of ["header", "bottom"] as const) {
+        const items = getNavItems({ loggedIn, moderator: false, surface });
+        const zustaendig = items.filter((i) =>
+          (i.aktivAuf ?? []).some((p) => "/leaderboards".startsWith(p)),
+        );
+        expect(zustaendig.map((i) => i.href)).toEqual(["/feed"]);
+      }
+    }
+  });
+
   // Der Gegentest zum obigen: was ohne Konto nur eine Umleitung auf
   // /anmelden wäre, hat in der abgemeldeten Navigation nichts verloren.
   it("führt für Abgemeldete weder Vorschlagen noch Profil noch Moderation", () => {

@@ -311,17 +311,21 @@ export default function LiveTrackingForm({
             {/* Die drei übrigen Werte als Fliesstext statt als Spalten. Ein
                 sr-only-dt je Wert, damit Hilfstechnik die Paarung behält —
                 sichtbar trägt die Einheit die Bedeutung. */}
+            {/* Der Mittelpunkt steht IM folgenden <dd>, nicht daneben: ein
+                <div> in einem <dl> darf nur <dt> und <dd> enthalten, ein
+                <span> dazwischen ist ungültiges HTML. aria-hidden hält ihn
+                wie zuvor aus der Vorlesereihenfolge heraus. */}
             <div className="flex w-full flex-wrap items-baseline gap-x-2 text-[15px] text-muted">
               <dt className="sr-only">Distanz</dt>
               <dd className="font-mono tabular-nums">{recorder.distanceKm.toFixed(2)} km gefahren</dd>
-              <span aria-hidden="true">·</span>
               <dt className="sr-only">Tempo</dt>
               <dd className="font-mono tabular-nums">
+                <span aria-hidden="true" className="mr-2">·</span>
                 {recorder.speedKmh !== null ? `${recorder.speedKmh.toFixed(0)} km/h` : "—"}
               </dd>
-              <span aria-hidden="true">·</span>
               <dt className="sr-only">Höhe</dt>
               <dd className="font-mono tabular-nums">
+                <span aria-hidden="true" className="mr-2">·</span>
                 {currentElevationM !== null ? `${currentElevationM} m` : "—"}
               </dd>
             </div>
@@ -412,8 +416,15 @@ export default function LiveTrackingForm({
   const isNewBest =
     result !== null && (personalBestSeconds === null || result.seconds < personalBestSeconds);
 
+  // Ohne pb-[var(--safe-bottom)], anders als die Ansichten davor:
+  // diese hier endet auf dem klebenden Speichern-Streifen aus
+  // RideSummaryForm, und der bringt den sicheren Bereich in seiner
+  // EIGENEN Polsterung mit. Beides zusammen ergab, sobald man ganz
+  // nach unten gescrollt hatte, zwei Höhen des Home-Indikators unter
+  // dem Knopf. Der Streifen deckt die untere Kante ohnehin immer ab,
+  // also gehört der Zuschlag dorthin und nicht hierher.
   return (
-    <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)]">
+    <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)]">
       <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-5 py-8 sm:px-6 sm:py-10">
         <SectionHeading>Fazit</SectionHeading>
 

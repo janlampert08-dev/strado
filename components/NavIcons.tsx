@@ -31,8 +31,14 @@ export { BarChart3 as ChartIcon } from "lucide-react";
 // (lib/nav.ts), also gehört ihr Symbol in diese Datei wie die anderen.
 //
 // RankingIcon (Trophy) bleibt exportiert, obwohl die Navigation es nicht
-// mehr braucht: die Bestenlisten-Seite und der Reiter daneben benutzen es
-// weiter.
+// mehr braucht: die Bestenlisten-Seite (app/leaderboards/page.tsx) und die
+// Vorschau auf der Streckenseite (components/RouteLeaderboardPreview.tsx)
+// benutzen es.
+//
+// Die beiden importierten bis zur Review von PR #254 `Trophy` direkt aus
+// lucide-react — an genau dem Wrapper vorbei, den diese Datei beschreibt
+// und AGENTS.md verlangt —, womit dieser Satz hier schlicht falsch war:
+// RankingIcon hatte null Abnehmer. Jetzt stimmt er.
 export { Flame as FlameIcon } from "lucide-react";
 
 // Ebenfalls kein Nav-Icon: die Sterne-Bewertung einer Strecke

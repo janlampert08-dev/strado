@@ -87,13 +87,19 @@ function mapStyleForTheme(): string {
 }
 
 function toFeatureCollection(routes: KartenStrecke[]): GeoJSON.FeatureCollection {
+  // Einmal je Sammlung, nicht einmal je Strecke: streckenFarbe() läuft über
+  // getComputedStyle(document.documentElement), und das ist ein Lesezugriff
+  // auf den Layout-Zustand. Bei rund 39 sichtbaren Strecken je
+  // Aktualisierung war das 39-mal dieselbe Antwort. Die Farbe ist für alle
+  // Strecken dieselbe — sie unterscheiden sich über die Deckkraft.
+  const color = streckenFarbe();
   return {
     type: "FeatureCollection",
     features: routes.map((route) => ({
       type: "Feature",
       id: route.id,
       geometry: route.geometry_geojson,
-      properties: { id: route.id, name: route.name, color: streckenFarbe() },
+      properties: { id: route.id, name: route.name, color },
     })),
   };
 }
@@ -102,8 +108,8 @@ function toFeatureCollection(routes: KartenStrecke[]): GeoJSON.FeatureCollection
 // sonst je ein Punkt am Anfang und am Ende der Strecke.
 function toEndpointFeatureCollection(routes: KartenStrecke[]): GeoJSON.FeatureCollection {
   const features: GeoJSON.Feature[] = [];
+  const color = streckenFarbe();
   for (const route of routes) {
-    const color = streckenFarbe();
     features.push({
       type: "Feature",
       geometry: route.start_geojson,
@@ -161,6 +167,55 @@ function metersToPixelsAtLatitude(meters: number, latitude: number, zoom: number
   return meters / metersPerPixel;
 }
 
+// Ausgeschrieben statt ReturnType<typeof createLocationMarkerElement>: der
+// Erzeuger ruft faerbeStandortMarker selbst auf, ein abgeleiteter Rückgabetyp
+// wäre also zirkulär.
+interface StandortMarker {
+  wrapper: HTMLDivElement;
+  accuracyEl: HTMLDivElement;
+  headingEl: HTMLDivElement;
+  dotEl: HTMLDivElement;
+}
+
+/**
+ * Setzt alle vier Farbflächen des Standort-Markers aus --color-accent.
+ *
+ * Eigene Funktion, weil sie ZWEIMAL laufen muss: einmal beim Erzeugen des
+ * Elements und einmal bei jedem Themenwechsel. Der Marker ist ein
+ * mapboxgl.Marker, also ein DOM-Overlay über der Karte — map.setStyle()
+ * baut ihn nicht neu, und das Element selbst entsteht nur einmal
+ * (locationMarkerRef). Wer also mitten in einer Aufzeichnung auf Dunkel
+ * umschaltet, behielt den Positionspunkt im Tagblau, während die Spur
+ * darunter über "style.load" längst die neue Farbe trug. Der Kommentar bei
+ * setupLayers ("liest alle Farben frisch") gilt für Layer, nicht hierfür.
+ *
+ * Ring und Richtungskegel standen bis zur Review von PR #254 sogar noch als
+ * rgba(61,90,254,…) im Code — derselbe helle Akzentwert wie das frühere
+ * TRACK_COLOR, nur in anderer Schreibweise, weshalb die Suche danach ihn
+ * nicht gefunden hat.
+ */
+function faerbeStandortMarker(elemente: StandortMarker) {
+  const farbe = streckenFarbe();
+  elemente.dotEl.style.backgroundColor = farbe;
+  elemente.accuracyEl.style.backgroundColor = mitDeckkraft(farbe, 0.15);
+  elemente.accuracyEl.style.border = `1px solid ${mitDeckkraft(farbe, 0.35)}`;
+  elemente.headingEl.style.background =
+    `linear-gradient(to bottom, ${mitDeckkraft(farbe, 0.9)}, ${mitDeckkraft(farbe, 0)})`;
+}
+
+/**
+ * Eine aufgelöste Farbe mit Deckkraft. Nimmt den 8-stelligen Hex-Weg, weil
+ * --color-accent in beiden Themes ein #rrggbb ist; alles andere bekommt die
+ * Farbe unverändert zurück, statt einen ungültigen String zu bauen.
+ */
+function mitDeckkraft(farbe: string, deckkraft: number): string {
+  if (!/^#[0-9a-f]{6}$/i.test(farbe)) return farbe;
+  const stufe = Math.round(Math.min(Math.max(deckkraft, 0), 1) * 255)
+    .toString(16)
+    .padStart(2, "0");
+  return `${farbe}${stufe}`;
+}
+
 // Standort-Marker aus drei übereinanderliegenden, unabhängig positionierten
 // Ebenen statt eines einzelnen Punkts — orientiert sich an der üblichen
 // Navi-App-Konvention (Apple/Google Maps): ein Genauigkeits-Ring kommuniziert
@@ -170,7 +225,7 @@ function metersToPixelsAtLatitude(meters: number, latitude: number, zoom: number
 // left/top:0 + translate(-50%,-50%) auf denselben Ankerpunkt zentriert, so
 // bleibt die Zentrierung korrekt, auch wenn der Ring durch wechselnde
 // Genauigkeit laufend seine Grösse ändert.
-function createLocationMarkerElement() {
+function createLocationMarkerElement(): StandortMarker {
   const wrapper = document.createElement("div");
   wrapper.style.position = "relative";
   wrapper.style.width = "0px";
@@ -181,8 +236,6 @@ function createLocationMarkerElement() {
   accuracyEl.style.left = "0";
   accuracyEl.style.top = "0";
   accuracyEl.style.borderRadius = "50%";
-  accuracyEl.style.backgroundColor = "rgba(61, 90, 254, 0.15)";
-  accuracyEl.style.border = "1px solid rgba(61, 90, 254, 0.35)";
   accuracyEl.style.transform = "translate(-50%, -50%)";
   accuracyEl.style.transition = "width 0.3s ease, height 0.3s ease";
   accuracyEl.style.pointerEvents = "none";
@@ -202,8 +255,6 @@ function createLocationMarkerElement() {
   headingEl.style.transform = "translate(-50%, -50%) rotate(0deg)";
   headingEl.style.transformOrigin = "50% 50%";
   headingEl.style.clipPath = "polygon(50% 0%, 14% 100%, 50% 74%, 86% 100%)";
-  headingEl.style.background =
-    "linear-gradient(to bottom, rgba(61,90,254,0.9), rgba(61,90,254,0))";
   headingEl.style.pointerEvents = "none";
   headingEl.style.display = "none";
 
@@ -214,7 +265,6 @@ function createLocationMarkerElement() {
   dotEl.style.width = "12px";
   dotEl.style.height = "12px";
   dotEl.style.borderRadius = "50%";
-  dotEl.style.backgroundColor = streckenFarbe();
   dotEl.style.border = "2.5px solid #FAFAFA";
   dotEl.style.boxShadow = "0 0 0 1px rgba(19,19,22,0.25), 0 1px 3px rgba(19,19,22,0.35)";
   dotEl.style.transform = "translate(-50%, -50%)";
@@ -223,7 +273,9 @@ function createLocationMarkerElement() {
   wrapper.appendChild(headingEl);
   wrapper.appendChild(dotEl);
 
-  return { wrapper, accuracyEl, headingEl, dotEl };
+  const elemente: StandortMarker = { wrapper, accuracyEl, headingEl, dotEl };
+  faerbeStandortMarker(elemente);
+  return elemente;
 }
 
 function toTrackFeatureCollection(trail: [number, number][]): GeoJSON.FeatureCollection {
@@ -885,6 +937,14 @@ export default function RouteMap({
     return subscribeToThemeChange(() => {
       const map = mapRef.current;
       if (!map) return;
+
+      // Der Standort-Marker ist ein DOM-Overlay und überlebt setStyle() —
+      // siehe faerbeStandortMarker. Vor dem Stilwechsel und unabhängig
+      // davon, ob er überhaupt einen auslöst: die Farbe des Markers hängt
+      // am Token, nicht am Kartenstil.
+      const elemente = locationElementsRef.current;
+      if (elemente) faerbeStandortMarker(elemente);
+
       const nextStyle = mapStyleForTheme();
       if (nextStyle === currentStyle) return;
       currentStyle = nextStyle;

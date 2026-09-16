@@ -8,10 +8,20 @@ import { cn } from "@/lib/utils/cn";
 // SC 2.5.8 verlangt 24 px, Apple und Android nennen 44 px bzw. 48 dp —
 // und das hier ist eine App, die im Fahrzeug bedient wird.
 //
-// 44 px ist deshalb keine Empfehlung, sondern der Mindestwert: min-h-11
-// und min-w-11 stehen fest in `basis` und lassen sich über className nicht
-// versehentlich unterbieten (Tailwind würde eine zweite min-h-* zwar
-// gewinnen lassen, aber dafür muss man sie hinschreiben).
+// 44 px ist deshalb keine Empfehlung, sondern der Mindestwert: min-h-11 und
+// min-w-11 stehen fest in `basis`.
+//
+// Was dieser Kommentar bis zur Review von PR #254 behauptete — "Tailwind
+// würde eine zweite min-h-* zwar gewinnen lassen" — stimmt nicht, und der
+// Satz hätte den Nächsten in die Irre geführt: lib/utils/cn.ts ist ein
+// reiner String-Join und kein tailwind-merge. Stehen zwei Utilities
+// derselben Eigenschaft im class-Attribut, entscheidet die Reihenfolge im
+// erzeugten CSS und nicht die im Attribut — welche gewinnt, hängt also
+// davon ab, wie Tailwind sortiert, und nicht davon, wer sie zuletzt
+// hinschreibt. Ein Unterbieten über className ist damit weder verlässlich
+// möglich noch verlässlich verhindert. Wer eine andere Grösse braucht,
+// bekommt einen Parameter (so wie chipClassName einen hat), statt sie
+// anzuhängen.
 //
 // Der sichtbare Rahmen im Ruhezustand ist Absicht: ein Icon ohne Fläche
 // liest sich wie ein Textzeichen, das versehentlich in eine Kopfzeile

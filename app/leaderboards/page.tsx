@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Trophy } from "lucide-react";
 import Header from "@/components/Header";
+import { RankingIcon } from "@/components/NavIcons";
 import FeedReiter from "@/components/FeedReiter";
 import PullToRefreshArea from "@/components/PullToRefreshArea";
 import TrackLeaderboardChooser from "@/components/TrackLeaderboardChooser";
@@ -89,7 +89,7 @@ function LeaderboardSection({
               >
                 {i < 3 ? (
                   <span className="flex w-4 shrink-0 justify-center">
-                    <Trophy className="h-4 w-4" style={{ color: MEDAL_COLORS[i] }} aria-hidden="true" />
+                    <RankingIcon className="h-4 w-4" style={{ color: MEDAL_COLORS[i] }} aria-hidden="true" />
                     <span className="sr-only">Platz {i + 1}</span>
                   </span>
                 ) : (
@@ -251,6 +251,15 @@ export default async function LeaderboardsPage({
   const { klasse: klasseRoh } = await searchParams;
   const klasse = istKlassenfilter(klasseRoh) ? klasseRoh : null;
 
+  // Für die Reiterleiste: "Folge ich" gibt es nur mit Konto. Stand hier
+  // zuerst fest auf false — mit der Folge, dass wer von /feed?scope=following
+  // kommt, drei Reiter sieht, "Rangliste" tippt und dort nur noch zwei
+  // vorfindet: ausgerechnet der, aus dem er kam, fehlte.
+  //
+  // Kostet keinen zusätzlichen Roundtrip: getCurrentUser() ist in React
+  // cache() gewickelt, und <Header /> oben wartet ohnehin schon darauf.
+  const user = await getCurrentUser();
+
   return (
     <div className="flex h-dvh flex-col">
       <Header />
@@ -268,7 +277,7 @@ export default async function LeaderboardsPage({
 
               Die <h1> bleibt sichtbar: sie benennt, was die vier Listen
               darunter sind, und der aktive Reiter allein trüge das nicht. */}
-          <FeedReiter aktiv="rangliste" zeigtFolgeIch={false} />
+          <FeedReiter aktiv="rangliste" zeigtFolgeIch={!!user} />
           <h1 className="text-display font-semibold">Bestenlisten</h1>
           <MotorklassenChips
             klassen={ALLE_KLASSEN}

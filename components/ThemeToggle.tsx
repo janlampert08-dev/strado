@@ -63,9 +63,14 @@ function applyTheme(pref: ThemePreference) {
 // stimmte nicht: dort rounded-lg und py-1.5, hier rounded-lg und py-2, und
 // die Feed-Reiter waren wieder anders. Fünf Fassungen desselben
 // Bedienelements. Jetzt teilen sich alle die Klassen aus
-// ui/SegmentedControl; die eigene role="radiogroup"-Semantik bleibt, weil
-// ein Farbschema tatsächlich eine Auswahl aus dreien ist und nicht ein
-// gedrückter Zustand.
+// ui/SegmentedControl.
+//
+// Die role="radiogroup"-Semantik hier war eine Zeitlang die einzige richtige:
+// die zustandsbehaftete Variante in SegmentedControl kam mit role="group" und
+// aria-pressed heraus, was einen gedrückten Knopf beschreibt statt einer Wahl
+// aus mehreren. Seit der Review von PR #254 trägt sie dasselbe wie hier — die
+// beiden Fassungen unterscheiden sich also nur noch darin, dass diese ihren
+// Wert aus localStorage liest statt aus einer Prop.
 export default function ThemeToggle() {
   const preference = useSyncExternalStore(subscribe, readPreference, readServerPreference);
 

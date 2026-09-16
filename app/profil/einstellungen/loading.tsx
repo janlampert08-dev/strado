@@ -11,7 +11,7 @@ import PageSkeleton from "@/components/ui/PageSkeleton";
 
 export default function Loading() {
   return (
-    <PageSkeleton maxWidth="max-w-2xl lg:max-w-3xl">
+    <PageSkeleton>
       <Skeleton className="h-9 w-56 rounded-md" />
 
       <section className="flex flex-col gap-3">

@@ -5,6 +5,21 @@ export interface NavItem {
   href: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
+  /**
+   * Weitere Pfade, auf denen dieser Eintrag als aktiv gilt.
+   *
+   * Nötig geworden durch den Tausch weiter unten: BottomNav markiert einen
+   * Eintrag über `pathname.startsWith(href)`, und seit /leaderboards kein
+   * eigener Eintrag mehr ist, ist es auch kein Präfix eines verbliebenen —
+   * wer auf dem Feed "Rangliste" tippt, stand danach auf einer Seite, auf
+   * der unten NICHTS hervorgehoben war. Auf dem Telefon ist die Leiste der
+   * einzige Orientierungsanker.
+   *
+   * Die Kompensation steht bewusst hier und nicht als Sonderfall in
+   * BottomNav: sie gehört in dieselbe Datei wie der Tausch, der sie nötig
+   * macht — sonst driftet das eine vom anderen weg.
+   */
+  aktivAuf?: string[];
 }
 
 // Einzige Quelle für die Top-Level-Navigation — Header (Desktop) und
@@ -70,7 +85,7 @@ export function getNavItems({
   if (!loggedIn) {
     return [
       { href: "/", label: "Strecken", icon: MapPinIcon },
-      { href: "/feed", label: "Feed", icon: FeedIcon },
+      { href: "/feed", label: "Feed", icon: FeedIcon, aktivAuf: ["/leaderboards"] },
       fahrtStarten,
       { href: "/anmelden", label: "Anmelden", icon: PersonIcon },
     ];
@@ -112,7 +127,7 @@ export function getNavItems({
 
   return [
     { href: "/", label: "Strecken", icon: MapPinIcon },
-    { href: "/feed", label: "Feed", icon: FeedIcon },
+    { href: "/feed", label: "Feed", icon: FeedIcon, aktivAuf: ["/leaderboards"] },
     ...mittlereAktionen,
     { href: "/aktivitaet", label: "Aktivität", icon: FlameIcon },
     { href: "/profil", label: "Profil", icon: PersonIcon },

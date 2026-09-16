@@ -32,7 +32,15 @@ export default function BottomNav({
     >
       <div className="mx-auto flex max-w-lg items-stretch justify-around">
         {tabs.map((tab) => {
-          const active = tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href);
+          // "/" nur exakt — sonst wäre es auf jeder Seite aktiv. Alle
+          // übrigen per Präfix, plus die Pfade aus aktivAuf (lib/nav.ts):
+          // /leaderboards hat seit dem Leisten-Tausch keinen eigenen
+          // Eintrag mehr und ist auch kein Präfix eines verbliebenen.
+          const active =
+            tab.href === "/"
+              ? pathname === "/"
+              : pathname.startsWith(tab.href) ||
+                (tab.aktivAuf?.some((p) => pathname.startsWith(p)) ?? false);
           const Icon = tab.icon;
           const zeigtZaehler = tab.href === "/aktivitaet" && ungeseheneAktivitaet > 0;
           return (

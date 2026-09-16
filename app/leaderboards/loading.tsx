@@ -2,8 +2,9 @@ import Skeleton from "@/components/ui/Skeleton";
 import PageSkeleton from "@/components/ui/PageSkeleton";
 import LeaderboardListsSkeleton from "@/components/LeaderboardListsSkeleton";
 
-// Spiegelt app/leaderboards/page.tsx: Überschrift im text-display-Grad,
-// darunter die Chip-Leiste, darunter die Ranglisten.
+// Spiegelt app/leaderboards/page.tsx: die Reiterleiste, darunter die
+// Überschrift im text-display-Grad, darunter die Chip-Leiste, darunter die
+// Ranglisten.
 //
 // Der erklärende Absatz unter der Überschrift ist entfallen, hier wie dort —
 // ein Skelett, das eine Zeile zeichnet, die es nicht mehr gibt, erzeugt beim
@@ -15,8 +16,17 @@ import LeaderboardListsSkeleton from "@/components/LeaderboardListsSkeleton";
 
 export default function Loading() {
   return (
-    <PageSkeleton maxWidth="max-w-2xl lg:max-w-5xl">
+    <PageSkeleton breite="weit">
       <div className="flex flex-col gap-3">
+        {/* Die Reiterleiste steht seit der Umstellung ÜBER der Überschrift
+            (components/FeedReiter.tsx) und fehlte hier ganz — rund 44 px,
+            die beim Auflösen nachsprangen. Drei Segmente, weil
+            "Folge ich" für angemeldete Konten dabei ist. */}
+        <div className="inline-flex w-fit items-center gap-1 rounded-full border border-border p-1">
+          <Skeleton className="h-9 w-16 rounded-full" />
+          <Skeleton className="h-9 w-24 rounded-full" />
+          <Skeleton className="h-9 w-24 rounded-full" />
+        </div>
         <Skeleton className="h-9 w-56 rounded-md" />
         {/* Die obere Chip-Zeile: drei Pillen in h-9 wie in
             components/MotorklassenChips.tsx ("Alle", "Autos",
