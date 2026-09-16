@@ -18,14 +18,14 @@ export const metadata = {
 //
 // Zwei Arten von Reaktion, eine Zeitachse: Kudos auf eigenen Fahrten
 // (recent_kudos_received, 0057) und neue Follower (recent_follows_received,
-// 0097). Beide Funktionen sind ausschliesslich auf auth.uid() beschränkt —
+// 0100). Beide Funktionen sind ausschliesslich auf auth.uid() beschränkt —
 // niemand kann die Aktivität eines fremden Kontos abfragen.
 export default async function AktivitaetPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/anmelden");
 
   // getUnseenActivityCount zählt über alle Kudos und Follower, die Listen
-  // liefern nur die letzten 30 (0057/0097). Beides wird gebraucht: die Liste
+  // liefern nur die letzten 30 (0057/0100). Beides wird gebraucht: die Liste
   // zum Anzeigen, die Zahl als Schalter fürs Markieren — siehe unten. Beide
   // Aufrufe sind per React cache() dedupliziert, der Header fragt dieselbe
   // Zahl ohnehin.
@@ -36,7 +36,7 @@ export default async function AktivitaetPage() {
       <Header back="/profil" />
       {/* Markiert beim Laden alles aktuell Ungesehene als gesehen, siehe
           MarkSeen.tsx — hier mit markActivitySeen, das BEIDE Zeitpunkte
-          setzt (0097). Auf /profil läuft dieselbe Komponente mit
+          setzt (0100). Auf /profil läuft dieselbe Komponente mit
           markKudosSeen, weil dort nur die Kudos zu sehen sind.
           Das router.refresh() darin würde die "neu"-Flags dieser Liste
           sofort auf false ziehen, bevor der Nutzer sie gesehen hat —

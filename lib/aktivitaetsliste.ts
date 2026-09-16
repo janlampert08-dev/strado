@@ -21,7 +21,7 @@ export async function getAktivitaet(): Promise<AktivitaetsEintrag[]> {
 
 // Ungesehene Reaktionen insgesamt (Kudos + neue Follower), für das
 // Abzeichen in der Kopfleiste. Ein RPC statt zweier, siehe
-// count_unseen_activity in 0097_folge_benachrichtigungen.sql — <Header />
+// count_unseen_activity in 0100_folge_benachrichtigungen.sql — <Header />
 // läuft auf jeder Seite.
 //
 // Mit React cache() umschlossen aus demselben Grund wie

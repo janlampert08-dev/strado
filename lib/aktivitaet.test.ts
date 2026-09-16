@@ -14,7 +14,6 @@ function kudo(erstelltAm: string, giverId = "g1", completionId = "c1"): Received
     giverId,
     giverDisplayName: "Gebende",
     giverAvatarUrl: null,
-    giverZeigtPremiumAbzeichen: false,
     erstelltAm,
     neu: false,
   };
@@ -25,7 +24,6 @@ function follower(erstelltAm: string, followerId = "f1"): ReceivedFollower {
     followerId,
     followerDisplayName: "Folgende",
     followerAvatarUrl: null,
-    followerZeigtPremiumAbzeichen: false,
     erstelltAm,
     neu: true,
   };
@@ -46,13 +44,12 @@ describe("mischeAktivitaet", () => {
     ]);
   });
 
-  it("übernimmt Person, Abzeichen und neu-Flag aus der jeweiligen Quelle", () => {
+  it("übernimmt Person und neu-Flag aus der jeweiligen Quelle", () => {
     const [eintrag] = mischeAktivitaet([], [
       {
         ...follower("2026-09-09T10:00:00Z"),
         followerDisplayName: "Anna",
         followerAvatarUrl: "https://example.test/a.jpg",
-        followerZeigtPremiumAbzeichen: true,
       },
     ]);
 
@@ -61,14 +58,13 @@ describe("mischeAktivitaet", () => {
       personId: "f1",
       personName: "Anna",
       personAvatarUrl: "https://example.test/a.jpg",
-      personZeigtPremiumAbzeichen: true,
       erstelltAm: "2026-09-09T10:00:00Z",
       neu: true,
     });
   });
 
   it("kappt auf AKTIVITAET_LIMIT und behält dabei die neuesten", () => {
-    // Beide Quellen voll ausgeschöpft (je 30, siehe 0057/0097): die
+    // Beide Quellen voll ausgeschöpft (je 30, siehe 0057/0100): die
     // gemeinsamen letzten 30 dürfen keinen jüngeren Eintrag verlieren.
     const kudos = Array.from({ length: AKTIVITAET_LIMIT }, (_, i) =>
       kudo(new Date(Date.UTC(2026, 8, 1, 0, i)).toISOString(), `g${i}`, `c${i}`),

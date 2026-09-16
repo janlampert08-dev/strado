@@ -16,6 +16,7 @@ import OfflineRouteButton from "@/components/OfflineRouteButton";
 import { getKontextStrecken, getRoute } from "@/lib/routes";
 import { formatKm } from "@/lib/format";
 import { getRatings, getOwnRating } from "@/lib/ratings";
+import { bewertungAusSternen } from "@/lib/bewertungen";
 import { getPersonalBestSeconds } from "@/lib/completions";
 import { getRoutePhotos } from "@/lib/photos";
 import { isFavorite } from "@/lib/favorites";
@@ -164,10 +165,21 @@ export default async function StreckeDetailPage({
   // indexierbare Evergreen-Inhalt der Plattform (app/sitemap.ts listet
   // Strecken mit priority 0.8, Profile bewusst gar nicht).
   //
-  // Bewusst OHNE aggregateRating: route_ratings sind seit 0025 Kommentare
-  // ohne Sternewert. Eine Bewertungszahl zu erfinden, nur damit Google
-  // Sterne anzeigt, wäre genau die Sorte strukturierter Daten, für die
-  // Seiten abgestraft werden.
+  // Der Schnitt, einmal berechnet: er speist sowohl die strukturierten
+  // Daten unten als auch RatingSection weiter unten in der Seite.
+  const bewertung = bewertungAusSternen(ratings.map((r) => r.sterne));
+
+  // aggregateRating steht hier wieder drin, seit es wieder Sterne gibt
+  // (0095). Bis dahin war route_ratings kommentar-only (0025), und der
+  // Kommentar an dieser Stelle hielt fest, warum das Feld fehlt: "eine
+  // Bewertungszahl zu erfinden, nur damit Google Sterne anzeigt, wäre genau
+  // die Sorte strukturierter Daten, für die Seiten abgestraft werden".
+  //
+  // Diese Regel gilt unverändert — deshalb hängt das Feld an `bewertung`
+  // und nicht an der Existenz der Strecke: ohne eine einzige vergebene
+  // Wertung wird es weggelassen, statt eine 0 oder einen Platzhalter zu
+  // melden. ratingCount zählt nur Zeilen MIT Sternen (siehe
+  // lib/bewertungen.ts), ist also nicht die Zahl der Kommentare.
   const strukturierteDaten = {
     "@context": "https://schema.org",
     "@type": "TouristTrip",
@@ -176,6 +188,17 @@ export default async function StreckeDetailPage({
     ...(route.charakter_text ? { description: route.charakter_text } : {}),
     ...(route.laenge_km
       ? { distance: `${route.laenge_km.toFixed(1)} km` }
+      : {}),
+    ...(bewertung
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: Number(bewertung.schnitt.toFixed(1)),
+            ratingCount: bewertung.anzahl,
+            bestRating: 5,
+            worstRating: 1,
+          },
+        }
       : {}),
     itinerary: {
       "@type": "ItemList",
@@ -397,6 +420,12 @@ export default async function StreckeDetailPage({
           routeId={id}
           ratings={ratings}
           ownRating={ownRating}
+          // Kein zweiter Roundtrip für den Schnitt: getRatings(id) hat alle
+          // Wertungen dieser Strecke bereits geladen. getBewertungen()
+          // (lib/bewertungen.ts) ist für die Explore-Liste da, wo es um
+          // dreizehn Strecken auf einmal geht — hier wäre es eine Abfrage
+          // für Zahlen, die schon im Speicher liegen.
+          bewertung={bewertung}
           canRate={!!user}
           currentUserId={user?.id ?? null}
         />

@@ -102,7 +102,7 @@ const ABSICHTLICH_ERHALTEN: Record<string, string> = {
   created_at: "reine Zeilen-Metadaten, not null",
   privatzone_radius_m: "not null; 0 hiesse 'Privatzone aus' und wäre das Gegenteil von neutral",
   kudos_gesehen_am: "not null, kein vom Nutzer eingegebener Wert",
-  // Gleiche Lage wie kudos_gesehen_am (0097): not null, kein eingegebener
+  // Gleiche Lage wie kudos_gesehen_am (0100): not null, kein eingegebener
   // Inhalt, sondern ein Lesezeichen. Ein gelöschtes Konto ruft /aktivitaet
   // nicht mehr auf, der Wert wird also nie wieder gelesen — und er verrät
   // ohne Spalten-Grant auch niemandem etwas.

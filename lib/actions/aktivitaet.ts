@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 
 // Markiert Kudos UND neue Follower als gesehen (mark_activity_seen,
-// 0097_folge_benachrichtigungen.sql) — aufgerufen beim Laden von
+// 0100_folge_benachrichtigungen.sql) — aufgerufen beim Laden von
 // /aktivitaet, wo beides nebeneinander steht. Setzt damit das Abzeichen in
 // der Kopfleiste zurück (lib/aktivitaet.ts, getUnseenActivityCount).
 //

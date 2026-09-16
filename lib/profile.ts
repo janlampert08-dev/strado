@@ -14,10 +14,6 @@ export interface PublicProfile {
   zeigtHoehenmeter: boolean;
   zeigtDistanz: boolean;
   zeigtFollowerListe: boolean;
-  /** Abzeichen neben dem Namen: Abo aktiv UND Opt-in gesetzt. Die
-   *  Verknüpfung fällt in der Datenbank (0087), hier kommt nur das
-   *  Ergebnis an. */
-  zeigtPremiumAbzeichen: boolean;
   vehicles: Vehicle[];
   fahrten: PublicFahrt[];
   passCount: number;
@@ -43,7 +39,7 @@ export const getPublicProfile = cache(async function getPublicProfile(
   const { data: profile, error } = await supabase
     .from("profiles")
     .select(
-      "id, display_name, avatar_url, zeigt_fahrzeuge, zeigt_avatar, zeigt_paesse, zeigt_hoehenmeter, zeigt_distanz, zeigt_follower_liste, zeigt_premium_abzeichen",
+      "id, display_name, avatar_url, zeigt_fahrzeuge, zeigt_avatar, zeigt_paesse, zeigt_hoehenmeter, zeigt_distanz, zeigt_follower_liste",
     )
     .eq("id", userId)
     .maybeSingle();
@@ -99,7 +95,6 @@ export const getPublicProfile = cache(async function getPublicProfile(
     zeigtHoehenmeter: profile.zeigt_hoehenmeter,
     zeigtDistanz: profile.zeigt_distanz,
     zeigtFollowerListe: profile.zeigt_follower_liste,
-    zeigtPremiumAbzeichen: profile.zeigt_premium_abzeichen,
     vehicles: (vehiclesResult.data as Vehicle[]) ?? [],
     fahrten,
     passCount,

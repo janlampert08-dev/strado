@@ -21,9 +21,8 @@ interface AktivitaetBasis {
   personName: string | null;
   personAvatarUrl: string | null;
   /** Abzeichen hinter dem Namen (0087). */
-  personZeigtPremiumAbzeichen: boolean;
   erstelltAm: string;
-  /** Seit dem letzten Besuch dazugekommen — siehe 0097 bzw. 0057. */
+  /** Seit dem letzten Besuch dazugekommen — siehe 0100 bzw. 0057. */
   neu: boolean;
 }
 
@@ -56,7 +55,7 @@ export const AKTIVITAET_LIMIT = 30;
 //
 // Das Kappen auf AKTIVITAET_LIMIT nach dem Mischen ist korrekt, nicht nur
 // pragmatisch: beide Quellen liefern bereits die jeweils letzten 30 (0057
-// bzw. 0097). Die gemeinsamen letzten 30 können aus einer Quelle höchstens
+// bzw. 0100). Die gemeinsamen letzten 30 können aus einer Quelle höchstens
 // 30 Einträge enthalten — es kann also kein Eintrag fehlen, der es in die
 // gemischte Liste geschafft hätte.
 export function mischeAktivitaet(
@@ -71,7 +70,6 @@ export function mischeAktivitaet(
         personId: k.giverId,
         personName: k.giverDisplayName,
         personAvatarUrl: k.giverAvatarUrl,
-        personZeigtPremiumAbzeichen: k.giverZeigtPremiumAbzeichen,
         erstelltAm: k.erstelltAm,
         neu: k.neu,
       }),
@@ -82,7 +80,6 @@ export function mischeAktivitaet(
         personId: f.followerId,
         personName: f.followerDisplayName,
         personAvatarUrl: f.followerAvatarUrl,
-        personZeigtPremiumAbzeichen: f.followerZeigtPremiumAbzeichen,
         erstelltAm: f.erstelltAm,
         neu: f.neu,
       }),

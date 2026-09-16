@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Check, Sparkles } from "lucide-react";
+import { Check } from "lucide-react";
 import Card from "@/components/ui/Card";
 import { Signet } from "@/components/Wortmarke";
+import PremiumBadge from "@/components/PremiumBadge";
 import { buttonVariants } from "@/components/ui/Button";
 import { datumCH } from "@/lib/format";
 import { planName } from "@/lib/premiumAngebot";
@@ -60,10 +61,7 @@ export default function PremiumWillkommen({
       </div>
 
       <div className="flex flex-col items-center gap-3">
-        <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-accent-subtle px-3 py-1 text-xs font-semibold tracking-wide text-accent uppercase">
-          <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-          Premium aktiv
-        </span>
+        <PremiumBadge label="Premium aktiv" />
         <h1 className="text-display font-semibold">Willkommen bei Premium</h1>
         <p className="text-sm text-muted">
           Danke — du trägst Strado jetzt mit. Alles unten ist ab sofort für dich freigeschaltet.

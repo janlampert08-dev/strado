@@ -16,7 +16,7 @@ export default async function Header({ back }: { back?: string } = {}) {
   // ungeseheneAktivitaet ist der Rückkanal für "Community reagiert" im
   // Kernloop (siehe AGENTS.md, "Core User Loop") — ohne diesen Zähler
   // erfährt der Fahrer sonst nie aktiv, dass eine geteilte Fahrt Kudos
-  // bekommen hat oder ihm jemand neu folgt (0097: eine Zahl, ein RPC, weil
+  // bekommen hat oder ihm jemand neu folgt (0100: eine Zahl, ein RPC, weil
   // dieser Kopf auf jeder Seite läuft).
   // Zeigt sich am Flammen-Icon unten, das auf jeder Bildschirmgrösse
   // sichtbar ist (anders als die reine Text-Nav, die auf Mobile hinter
@@ -90,7 +90,7 @@ export default async function Header({ back }: { back?: string } = {}) {
               // "Aktivität" war der Zähler für Screenreader nicht vorhanden.
               // Genau dieser Zähler ist Schritt 8 des Kernloops.
               // Neutral formuliert, seit der Zähler zwei Arten von
-              // Reaktion zusammenfasst (Kudos und neue Follower, 0097):
+              // Reaktion zusammenfasst (Kudos und neue Follower, 0100):
               // "3 neue Kudos" wäre schlicht falsch, sobald ein Follower
               // mitzählt, und die Zahl nach Art aufzuschlüsseln hiesse zwei
               // Zahlen zu laden, wo eine reicht.

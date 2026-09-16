@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import Header from "@/components/Header";
 import Avatar from "@/components/Avatar";
-import PremiumSignet from "@/components/PremiumSignet";
 import KudosButton from "@/components/KudosButton";
 import ShareRideButton from "@/components/ShareRideButton";
 import CompletionActionsMenu from "@/components/CompletionActionsMenu";
@@ -29,6 +28,7 @@ import { getKudosForCompletions } from "@/lib/kudos";
 import { featuredMilestone, getUserAchievementStats } from "@/lib/achievements";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { formatDuration } from "@/lib/format";
+import VerifiziertAbzeichen from "@/components/VerifiziertAbzeichen";
 import { publicationBlockReason } from "@/lib/track";
 import Card from "@/components/ui/Card";
 import MotorklasseBadge from "@/components/MotorklasseBadge";
@@ -203,11 +203,8 @@ export default async function FahrtDetailPage({
             >
               <Avatar url={completion.avatarUrl} name={completion.displayName} size={44} />
               <div className="min-w-0 flex-1">
-                <p className="flex min-w-0 items-center text-sm font-medium transition-colors duration-fast group-hover:text-accent">
-                  <span className="truncate">
-                    {completion.isOwner ? "Deine Fahrt" : (completion.displayName ?? "Fahrer")}
-                  </span>
-                  <PremiumSignet zeigen={completion.zeigtPremiumAbzeichen} />
+                <p className="truncate text-sm font-medium transition-colors duration-fast group-hover:text-accent">
+                  {completion.isOwner ? "Deine Fahrt" : (completion.displayName ?? "Fahrer")}
                 </p>
                 <p className="text-xs text-muted">
                   {new Date(completion.datum).toLocaleDateString("de-CH", {
@@ -420,6 +417,16 @@ export default async function FahrtDetailPage({
               {zeigtBewegtzeit && (
                 <dd className="font-mono text-xs tabular-nums text-muted">
                   {formatDuration(completion.bewegteZeitSekunden!)} in Bewegung
+                </dd>
+              )}
+              {/* Steht bewusst in der Zeit-Kachel und nicht im Seitenkopf: die
+                  Verifikation betrifft genau diese eine Zahl und keine andere.
+                  Distanz, Höhenmeter und Abdeckung sind serverseitig
+                  abgesichert (0052/0059/0074/0078) und brauchen kein
+                  Abzeichen. */}
+              {completion.dauerSekunden !== null && (
+                <dd className="pt-1">
+                  <VerifiziertAbzeichen quelle={completion.dauerQuelle} />
                 </dd>
               )}
             </Card>

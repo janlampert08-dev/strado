@@ -3,27 +3,47 @@
 import { useState } from "react";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
-import PremiumSignet from "@/components/PremiumSignet";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import { AktivitaetIcon } from "@/components/NavIcons";
 import { aktivitaetsSchluessel, type AktivitaetsEintrag } from "@/lib/aktivitaet";
 
-// Snapshot beim ersten Rendern statt live aus den Props abgeleitet:
-// MarkSeen (siehe app/aktivitaet/page.tsx) löst nach dem Laden ein
-// router.refresh() aus, das auch diese Seite serverseitig neu rendert —
-// ohne den eigenen State würden recent_kudos_received() und
-// recent_follows_received() beim Refresh gegen die gerade erst
-// aktualisierten "gesehen"-Zeitpunkte neu auswerten und jedes "neu"-Flag
-// wäre sofort false, noch bevor der Nutzer die Liste überhaupt gesehen hat
-// (die Markierung wäre witzlos). initialEintraege spiegelt bewusst nur den
-// Stand beim ersten Laden der Seite.
+// Die Liste selbst kommt LIVE aus den Props, die "neu"-Markierungen aus
+// einem Schnappschuss des ersten Rendervorgangs. Die Trennung ist der
+// ganze Witz dieser Komponente, und sie hat zwei Gegenspieler:
+//
+//  * MarkSeen (siehe app/aktivitaet/page.tsx) loest nach dem Laden ein
+//    router.refresh() aus. Dabei werten recent_kudos_received() und
+//    recent_follows_received() gegen die gerade erst aktualisierten
+//    "gesehen"-Zeitpunkte neu aus — jedes neu-Flag waere sofort false,
+//    noch bevor der Nutzer die Markierung gesehen hat.
+//  * PullToRefreshArea loest DASSELBE router.refresh() aus, diesmal aber
+//    ausdruecklich vom Nutzer angefordert: er will neue Kudos und
+//    Follower sehen, und eine Fahrt, der jemand wieder entfolgt ist, soll
+//    verschwinden.
+//
+// Ein useState-Schnappschuss ueber den ganzen Eintrag bediente den ersten
+// Fall und brach den zweiten: die Liste stand fest, und Ziehen zum
+// Neuladen tat sichtbar nichts. Deshalb wird nur das gemerkt, was der
+// Refresh kaputtmacht — die Menge der beim Laden neuen Eintraege —, und
+// alles uebrige kommt aus den frischen Props.
 export default function ActivityList({
   initialEintraege,
 }: {
   initialEintraege: AktivitaetsEintrag[];
 }) {
-  const [eintraege] = useState(initialEintraege);
+  // Nur die Schluessel, nicht die Eintraege: der Initialisierer laeuft
+  // einmal, spaetere Props aendern die Menge nicht mehr.
+  const [neuBeimLaden] = useState(
+    () =>
+      new Set(
+        initialEintraege.filter((e) => e.neu).map((e) => aktivitaetsSchluessel(e)),
+      ),
+  );
+
+  const eintraege = initialEintraege.map((eintrag) =>
+    neuBeimLaden.has(aktivitaetsSchluessel(eintrag)) ? { ...eintrag, neu: true } : eintrag,
+  );
 
   if (eintraege.length === 0) {
     return (
@@ -58,7 +78,6 @@ export default function ActivityList({
                 Lösung wie in der Feed-Karte (app/feed/page.tsx). */}
             <p className="flex items-center text-sm">
               <span className="truncate font-medium">{eintrag.personName ?? "Ein Fahrer"}</span>
-              <PremiumSignet zeigen={eintrag.personZeigtPremiumAbzeichen} />
               <span className="ml-1 truncate">
                 {eintrag.art === "kudos" ? "hat deiner Fahrt Kudos gegeben" : "folgt dir jetzt"}
               </span>

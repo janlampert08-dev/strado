@@ -43,7 +43,7 @@ export async function toggleFollow(targetUserId: string): Promise<{ ok: boolean 
   // Der Aktivitäts-Rückkanal des Gefolgten (Kernloop-Schritt 8) und der
   // Ungelesen-Zähler im Header hängen an dieser Beziehung — beim Entfolgen
   // genauso wie beim Folgen: die Meldung wird aus der follows-Zeile
-  // abgeleitet (0097) und verschwindet mit ihr wieder.
+  // abgeleitet (0100) und verschwindet mit ihr wieder.
   revalidatePath("/aktivitaet");
   return { ok: true };
 }
