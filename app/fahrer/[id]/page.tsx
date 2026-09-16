@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { OG_GEERBT } from "@/lib/openGraph";
 import Link from "next/link";
-import { Car } from "lucide-react";
+import { Car, Route as RouteIcon } from "lucide-react";
 import Header from "@/components/Header";
 import Avatar from "@/components/Avatar";
 import KudosButton from "@/components/KudosButton";
@@ -180,10 +180,7 @@ export default async function FahrerPage({
               zeigen kann statt auf halber Breite zu verharren. */}
           {profile.zeigtFahrzeuge && (
             <section className="flex flex-col gap-3">
-              <SectionHeading className="flex items-center gap-1.5">
-                <Car className="h-4 w-4" aria-hidden="true" />
-                Fahrzeuge
-              </SectionHeading>
+              <SectionHeading icon={Car}>Fahrzeuge</SectionHeading>
               <VehicleGrid vehicles={profile.vehicles} editable={false} />
             </section>
           )}
@@ -191,9 +188,7 @@ export default async function FahrerPage({
           <section className="flex flex-col gap-4">
             {/* Nicht mehr nur "Gefahrene Strecken": die Liste enthält seit
                 0045_freie_fahrten_teilen.sql auch geteilte freie Fahrten. */}
-            <SectionHeading>
-              Geteilte Fahrten
-            </SectionHeading>
+            <SectionHeading icon={RouteIcon}>Geteilte Fahrten</SectionHeading>
             {profile.fahrten.length === 0 ? (
               <p className="text-sm text-muted">Noch keine öffentlichen Fahrten.</p>
             ) : (

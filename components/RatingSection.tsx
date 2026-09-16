@@ -14,6 +14,7 @@ import SterneEingabe from "@/components/SterneEingabe";
 import ReportDialog from "@/components/ReportDialog";
 import DeleteRatingButton from "@/components/DeleteRatingButton";
 import useEingabenBewahren from "@/components/useEingabenBewahren";
+import { SternIcon } from "@/components/NavIcons";
 import SectionHeading from "@/components/ui/SectionHeading";
 import IconButton from "@/components/ui/IconButton";
 
@@ -48,7 +49,7 @@ export default function RatingSection({
   return (
     <section className="flex flex-col gap-4 border-t border-border pt-6">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <SectionHeading>Bewertungen</SectionHeading>
+        <SectionHeading icon={SternIcon}>Bewertungen</SectionHeading>
         {/* Der Schnitt steht in der Überschrift, nicht als eigener Kasten:
             er ist die Zusammenfassung dessen, was darunter steht, und eine
             Zahl, die sich in einer Zeile mit dem Titel lesen lässt, kostet

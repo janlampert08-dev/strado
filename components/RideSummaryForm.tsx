@@ -22,6 +22,26 @@ import { ConfirmDialog } from "@/components/ui/Dialog";
 
 export const MAX_NOTIZ_LENGTH = 280;
 
+/**
+ * Die eine Geometrie für jeden Abschnitt dieses Formulars: Trennlinie oben,
+ * 16 px Luft darunter, 8 px zwischen Marke und Bedienelement.
+ *
+ * Exportiert, weil FreeRideForm einen eigenen Abschnitt als children
+ * einhängt (den Titel der freien Fahrt) — ohne diese Klasse schriebe er
+ * seine eigene, und genau daran krankte das Formular:
+ *
+ *   Fahrzeug        keine Trennlinie, gap-2
+ *   Sichtbarkeit    Trennlinie, pt-4, gap-1
+ *   Notiz & Fotos   Trennlinie, kein pt
+ *   Notiz (innen)   NOCH EINE Trennlinie, 8 px unter der vorigen
+ *   Titel (extern)  keine Trennlinie, gap-1
+ *
+ * Fünf Abschnitte, fünf Abstände, und zwei Linien mit 24 px Abstand
+ * untereinander, sobald die Klappe offen war. Auf einem 390-px-Schirm liest
+ * sich das nicht als Gliederung, sondern als Fehler.
+ */
+export const FAZIT_ABSCHNITT = "flex flex-col gap-2 border-t border-border pt-4 text-sm";
+
 export interface VisibilityChoice {
   // Verhindert die Auswahl "öffentlich" (z.B. Deckungsgrad unterschritten).
   publicDisabled: boolean;
@@ -213,7 +233,7 @@ export default function RideSummaryForm({
 
       {children}
 
-      <div className="flex flex-col gap-2 text-sm">
+      <div className={FAZIT_ABSCHNITT}>
         {/* Ohne font-mono: die Schwesterzeile "Sichtbarkeit" weiter unten
             trug es nie, und beide sind dieselbe Rolle. */}
         <SectionHeading as="h3" groesse="xs">
@@ -376,7 +396,7 @@ export default function RideSummaryForm({
         )}
       </div>
 
-      <div className="flex flex-col gap-1 border-t border-border pt-4 text-sm">
+      <div className={FAZIT_ABSCHNITT}>
         <SectionHeading as="h3" groesse="xs">Sichtbarkeit</SectionHeading>
         {visibility ? (
           <>
@@ -443,7 +463,11 @@ export default function RideSummaryForm({
           Feed und Bestenliste geht, und gehört nicht hinter eine Klappe.
           Siehe docs/design-vereinfachung.md, Anhang B3. */}
       {/* group, weil das Chevron unten group-open:rotate-180 trägt — ohne
-          die Klasse am <details> drehte es sich nie. */}
+          die Klasse am <details> drehte es sich nie.
+
+          Die Trennlinie ist dieselbe wie an den Abschnitten oben; das pt
+          fehlt hier bewusst, weil die Summary mit min-h-11 ihre eigene
+          Höhe mitbringt und der Text darin mittig sitzt. */}
       <details className="group border-t border-border">
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40">
           <span>
@@ -454,8 +478,13 @@ export default function RideSummaryForm({
             aria-hidden="true"
           />
         </summary>
-        <div className="flex flex-col gap-4 pt-2 pb-4">
-        <div className="flex flex-col gap-1 border-t border-border pt-4 text-sm">
+        {/* KEINE zweite Trennlinie hier. Sie stand bis hierher am Notiz-Feld
+            und lag damit 24 px unter der des <details> — zwei Haarlinien
+            dicht untereinander, sobald die Klappe offen war. Der Inhalt
+            einer Klappe ist kein neuer Abschnitt, er gehört zu der Marke
+            darüber. */}
+        <div className="flex flex-col gap-4 pt-1 pb-4">
+        <div className="flex flex-col gap-1 text-sm">
           <div className="flex items-baseline justify-between">
             <SectionHeading as="label" groesse="xs" htmlFor="tracking-notiz">
               Notiz (optional)

@@ -8,6 +8,7 @@ import {
   CalendarDays,
   ChevronDown,
   ChevronRight,
+  Gauge,
   Route as RouteIcon,
   Settings,
   Timer,
@@ -24,7 +25,7 @@ import CountUp from "@/components/CountUp";
 import FollowCounts from "@/components/FollowCounts";
 import PremiumCard from "@/components/PremiumCard";
 import FahrtStatistik from "@/components/FahrtStatistik";
-import { ChartIcon } from "@/components/NavIcons";
+import { ChartIcon, ShieldIcon } from "@/components/NavIcons";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
 import { isModerator } from "@/lib/moderation";
@@ -290,7 +291,7 @@ export default async function ProfilPage() {
             Seitenrahmens, was auf dem Telefon 32 px Breite zurückgibt.
             Siehe docs/design-vereinfachung.md, Abschnitt 3.9. */}
         <section className="flex flex-col gap-3">
-          <SectionHeading>Kennzahlen</SectionHeading>
+          <SectionHeading icon={Gauge}>Kennzahlen</SectionHeading>
           <Kennzahlen>
             <Kennzahl beschriftung="Pässe befahren" wert={<CountUp value={passCount} />} />
             <Kennzahl
@@ -369,9 +370,7 @@ export default async function ProfilPage() {
               die Garage, eine feste Spalte daneben liess auf Desktop viel
               Leerraum neben der kurzen Fahrzeuge-Liste stehen. */}
           <section className="flex flex-col gap-3">
-            <SectionHeading>
-              Meine Fahrten
-            </SectionHeading>
+            <SectionHeading icon={RouteIcon}>Meine Fahrten</SectionHeading>
             <Card className="flex flex-col divide-y divide-border">
               <details open className="group p-4">
                 <SectionSummary
@@ -507,10 +506,7 @@ export default async function ProfilPage() {
               neuen Einstellungen umgezogen (app/profil/einstellungen). */}
           <section className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <SectionHeading className="flex items-center gap-1.5">
-                <Car className="h-4 w-4" aria-hidden="true" />
-                Fahrzeuge
-              </SectionHeading>
+              <SectionHeading icon={Car}>Fahrzeuge</SectionHeading>
               <Link
                 href="/profil/fahrzeuge/neu"
                 className="text-sm font-medium text-accent hover:underline"
@@ -535,9 +531,7 @@ export default async function ProfilPage() {
               Stripe-Portal sind einer zu viel. */}
           {rollen.length > 0 && (
             <section className="flex flex-col gap-2 md:hidden">
-              <SectionHeading>
-                Deine Bereiche
-              </SectionHeading>
+              <SectionHeading icon={ShieldIcon}>Deine Bereiche</SectionHeading>
               <Card className="flex flex-col divide-y divide-border">
                 {rollen.map((rolle) => {
                   const Icon = rolle.icon;

@@ -99,10 +99,7 @@ export default async function EinstellungenPage() {
           <h1 className="text-display font-semibold">Einstellungen</h1>
 
           <section className="flex flex-col gap-3">
-            <SectionHeading className="flex items-center gap-1.5">
-              <Lock className="h-4 w-4" aria-hidden="true" />
-              Privatsphäre
-            </SectionHeading>
+            <SectionHeading icon={Lock}>Privatsphäre</SectionHeading>
             <p className="text-sm text-muted">
               Legt fest, was andere auf deinem Profil sehen. Ob eine einzelne
               Fahrt öffentlich ist, entscheidest du beim Speichern oder in
@@ -122,10 +119,7 @@ export default async function EinstellungenPage() {
           </section>
 
           <section className="flex flex-col gap-3">
-            <SectionHeading className="flex items-center gap-1.5">
-              <Palette className="h-4 w-4" aria-hidden="true" />
-              Darstellung
-            </SectionHeading>
+            <SectionHeading icon={Palette}>Darstellung</SectionHeading>
             <Card className="flex flex-col gap-3 p-4">
               <p className="text-sm text-muted">
                 Farbschema für die ganze App.
@@ -135,10 +129,7 @@ export default async function EinstellungenPage() {
           </section>
 
           <section className="flex flex-col gap-3">
-            <SectionHeading className="flex items-center gap-1.5">
-              <MapPin className="h-4 w-4" aria-hidden="true" />
-              Meine Strecken
-            </SectionHeading>
+            <SectionHeading icon={MapPin}>Meine Strecken</SectionHeading>
             {ownRoutes && ownRoutes.length > 0 ? (
               <Card as="ul" className="divide-y divide-border">
                 {ownRoutes.map((route) => {
@@ -195,10 +186,7 @@ export default async function EinstellungenPage() {
               der unumkehrbaren, in derselben Card. Wer schnell abmelden
               will, soll dabei nichts Endgültiges streifen. */}
           <section className="flex flex-col gap-3">
-            <SectionHeading className="flex items-center gap-1.5">
-              <LogOut className="h-4 w-4" aria-hidden="true" />
-              Sitzung
-            </SectionHeading>
+            <SectionHeading icon={LogOut}>Sitzung</SectionHeading>
             <Card className="flex flex-col gap-3 p-4">
               <p className="text-sm text-muted">
                 Du bist auf diesem Gerät angemeldet.
@@ -237,10 +225,7 @@ export default async function EinstellungenPage() {
               "Konto" daneben. Siehe docs/design-vereinfachung.md, Anhang C3,
               Moment 3. */}
           <section className="flex flex-col gap-3">
-            <SectionHeading className="flex items-center gap-1.5">
-              <Sparkles className="h-4 w-4" aria-hidden="true" />
-              Premium
-            </SectionHeading>
+            <SectionHeading icon={Sparkles}>Premium</SectionHeading>
             <Card className="flex items-center justify-between gap-3 p-4">
               <p className="min-w-0 text-sm text-muted">
                 {premiumStatus.aktiv ? "Abo-Status, Rechnungen, Kündigung." : premiumKurzform()}
@@ -259,10 +244,7 @@ export default async function EinstellungenPage() {
           </section>
 
           <section className="flex flex-col gap-3">
-            <SectionHeading className="flex items-center gap-1.5">
-              <KeyRound className="h-4 w-4" aria-hidden="true" />
-              Konto
-            </SectionHeading>
+            <SectionHeading icon={KeyRound}>Konto</SectionHeading>
             <Card className="flex flex-col gap-3 p-4">
               <p className="text-sm">
                 <span className="text-muted">E-Mail:</span>{" "}
@@ -284,10 +266,7 @@ export default async function EinstellungenPage() {
 
           {zeigeStagingLink && (
             <section className="flex flex-col gap-3">
-              <SectionHeading className="flex items-center gap-1.5">
-                <FlaskConical className="h-4 w-4" aria-hidden="true" />
-                Moderation
-              </SectionHeading>
+              <SectionHeading icon={FlaskConical}>Moderation</SectionHeading>
               <Card className="flex flex-col gap-2 p-4">
                 <a
                   href={STAGING_URL}
@@ -312,10 +291,7 @@ export default async function EinstellungenPage() {
               genannte Adresse — für jemanden, der gerade in der App auf
               einen Fehler gestossen ist, kein auffindbarer Weg. */}
           <section className="flex flex-col gap-3">
-            <SectionHeading className="flex items-center gap-1.5">
-              <MessageSquare className="h-4 w-4" aria-hidden="true" />
-              Feedback
-            </SectionHeading>
+            <SectionHeading icon={MessageSquare}>Feedback</SectionHeading>
             <Card className="flex flex-col gap-3 p-4">
               <p className="text-sm text-muted">
                 Fehler gefunden, etwas vermisst oder eine Idee? Schreib uns direkt aus der App.
@@ -325,10 +301,7 @@ export default async function EinstellungenPage() {
           </section>
 
           <section className="flex flex-col gap-3">
-            <SectionHeading className="flex items-center gap-1.5">
-              <Scale className="h-4 w-4" aria-hidden="true" />
-              Rechtliches
-            </SectionHeading>
+            <SectionHeading icon={Scale}>Rechtliches</SectionHeading>
             <Card className="flex flex-col divide-y divide-border p-0">
               <a
                 href={LEGAL_URLS.impressum}

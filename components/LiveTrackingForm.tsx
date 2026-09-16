@@ -17,7 +17,7 @@ import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
 import { formatDuration } from "@/lib/format";
 import RideSummaryForm from "@/components/RideSummaryForm";
 import type { KartenStrecke, RouteGeoJSON, Vehicle } from "@/types/database";
-import { Smartphone } from "lucide-react";
+import { Flag, Smartphone } from "lucide-react";
 import { buttonVariants } from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Skeleton from "@/components/ui/Skeleton";
@@ -426,7 +426,7 @@ export default function LiveTrackingForm({
   return (
     <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)]">
       <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-5 py-8 sm:px-6 sm:py-10">
-        <SectionHeading>Fazit</SectionHeading>
+        <SectionHeading icon={Flag}>Fazit</SectionHeading>
 
         <dl className="grid grid-cols-2 gap-4 text-sm">
           <div>

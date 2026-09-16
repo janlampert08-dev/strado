@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import Header from "@/components/Header";
 import Card from "@/components/ui/Card";
+import { CreditCard, Scale } from "lucide-react";
+import { SparklesIcon } from "@/components/NavIcons";
 import SectionHeading from "@/components/ui/SectionHeading";
 import PremiumBadge from "@/components/PremiumBadge";
 import PremiumCheckoutForm from "@/components/PremiumCheckoutForm";
@@ -108,7 +110,7 @@ export default async function PremiumZahlungPage({
             Überschrift — der Betrag, den man gleich zahlt, war der kleinste
             Text auf der Seite. */}
         <section className="flex flex-col gap-3">
-          <SectionHeading>Deine Auswahl</SectionHeading>
+          <SectionHeading icon={SparklesIcon}>Deine Auswahl</SectionHeading>
           <Card className="flex flex-col gap-1 px-4 py-3.5">
             <span className="text-sm font-semibold text-foreground">
               {planTitel(gewaehlt.plan)}
@@ -128,7 +130,7 @@ export default async function PremiumZahlungPage({
             Ziffern AGB niemand vor dem Bezahlen liest — und unmittelbar über
             dem Formular, das die Zahlungspflicht auslöst. */}
         <section className="flex flex-col gap-3">
-          <SectionHeading>Bevor du bestätigst</SectionHeading>
+          <SectionHeading icon={Scale}>Bevor du bestätigst</SectionHeading>
           <Card surface className="flex flex-col gap-2 px-4 py-3 text-sm text-muted">
             <p>
               Das Abo verlängert sich automatisch um{" "}
@@ -161,7 +163,7 @@ export default async function PremiumZahlungPage({
         </section>
 
         <section className="flex flex-col gap-3">
-          <SectionHeading>Zahlungsdaten</SectionHeading>
+          <SectionHeading icon={CreditCard}>Zahlungsdaten</SectionHeading>
           {/* key auf dem Plan: käme jemand über die Zurück-Schaltfläche mit
               einem anderen Plan zurück auf diese Seite, muss ein bereits
               vorbereitetes Payment Element verworfen werden — sonst zahlte

@@ -116,7 +116,7 @@ export default async function CreatorPage() {
               </Card>
 
               <div className="flex flex-col gap-3">
-                <SectionHeading>Je Link</SectionHeading>
+                <SectionHeading icon={LinkIcon}>Je Link</SectionHeading>
                 {kennzahlen.map((k) => {
                   const reihe = reiheFuer.get(k.code);
                   return (

@@ -1,6 +1,7 @@
-import { Suspense } from "react";
+import { Suspense, type ComponentType } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { Compass, Route, Ruler, TrendingUp } from "lucide-react";
 import Header from "@/components/Header";
 import { RankingIcon } from "@/components/NavIcons";
 import PullToRefreshArea from "@/components/PullToRefreshArea";
@@ -55,12 +56,15 @@ export const metadata: Metadata = {
 
 function LeaderboardSection({
   title,
+  icon,
   entries,
   unit,
   format = (v) => v.toLocaleString("de-CH"),
   currentUserId,
 }: {
   title: string;
+  /** Jede Abschnittsmarke trägt eines — siehe components/ui/SectionHeading.tsx. */
+  icon: ComponentType<{ className?: string }>;
   entries: LeaderboardEntry[];
   // Entweder eine feste Einheit ("km", "m") oder eine, die sich nach dem Wert
   // richtet — "1 Fahrt" statt "1 Fahrten". Die Einheit hängt hier am
@@ -72,7 +76,7 @@ function LeaderboardSection({
 }) {
   return (
     <section className="flex flex-col gap-3">
-      <SectionHeading>{title}</SectionHeading>
+      <SectionHeading icon={icon}>{title}</SectionHeading>
       {entries.length === 0 ? (
         <p className="text-sm text-muted">Noch keine Einträge.</p>
       ) : (
@@ -202,12 +206,14 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
     <div className="flex flex-col gap-8 sm:grid sm:grid-cols-2 sm:items-start sm:gap-6 xl:grid-cols-4">
       <LeaderboardSection
         title={`Meiste Fahrten${klassenZusatz}`}
+        icon={Route}
         entries={meisteFahrten}
         unit={(n) => nomen(n, "Fahrt", "Fahrten")}
         currentUserId={currentUserId}
       />
       <LeaderboardSection
         title={`Meiste Höhenmeter${klassenZusatz}`}
+        icon={TrendingUp}
         entries={meisteHoehenmeter}
         unit="m"
         format={(v) => Math.round(v).toLocaleString("de-CH")}
@@ -215,6 +221,7 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
       />
       <LeaderboardSection
         title={`Meiste km gefahren${klassenZusatz}`}
+        icon={Ruler}
         entries={meisteKm}
         unit="km"
         format={(v) => v.toFixed(0)}
@@ -222,6 +229,7 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
       />
       <LeaderboardSection
         title={`Entdecker${klassenZusatz}`}
+        icon={Compass}
         entries={meisteStrecken}
         unit={(n) => nomen(n, "Strecke", "Strecken")}
         currentUserId={currentUserId}

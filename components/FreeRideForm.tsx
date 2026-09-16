@@ -4,7 +4,7 @@ import { useActionState, useEffect, useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Route as RouteIcon, Smartphone } from "lucide-react";
+import { Flag, Route as RouteIcon, Smartphone } from "lucide-react";
 import { logFreeRide, type FreeRideFormState } from "@/lib/actions/completions";
 import { useRideRecorder } from "@/components/useRideRecorder";
 import { useLiveLapHint } from "@/components/useLiveLapHint";
@@ -14,7 +14,7 @@ import {
   GUEST_TRACKING_USER_ID,
   issueGuestContinuationToken,
 } from "@/lib/trackingStorage";
-import RideSummaryForm from "@/components/RideSummaryForm";
+import RideSummaryForm, { FAZIT_ABSCHNITT } from "@/components/RideSummaryForm";
 import { formatDuration } from "@/lib/format";
 import { movingSeconds, publicationBlockReason } from "@/lib/track";
 import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
@@ -222,7 +222,7 @@ export default function FreeRideForm({
     return (
       <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)]">
         <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-5 py-8 sm:px-6 sm:py-10">
-          <SectionHeading>Fazit</SectionHeading>
+          <SectionHeading icon={Flag}>Fazit</SectionHeading>
 
           <dl className="grid grid-cols-2 gap-4 text-sm">
             <div>
@@ -357,7 +357,10 @@ export default function FreeRideForm({
               onSubmit={() => setSubmitted(true)}
               onDiscard={handleExit}
             >
-              <div className="flex flex-col gap-1 text-sm">
+              {/* Dieselbe Abschnittsgeometrie wie die Abschnitte im Fazit
+                  selbst — dieser hier wird nur von aussen eingehängt, ist
+                  aber keiner anderen Art. Siehe FAZIT_ABSCHNITT. */}
+              <div className={FAZIT_ABSCHNITT}>
                 <div className="flex items-baseline justify-between">
                   <SectionHeading as="label" groesse="xs" htmlFor="freie-fahrt-titel">
                     Titel (optional)
