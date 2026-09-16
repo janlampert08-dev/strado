@@ -32,6 +32,16 @@ import { safeInternalPath } from "@/lib/utils/url";
 // nicht dieses Cookie, sondern der Code selbst (er liegt nur im fremden
 // Postfach) und die Bremsen in lib/actions/auth.ts, die das Durchprobieren
 // pro Adresse und pro IP begrenzen.
+//
+// NAME UND FRIST STEHEN IN DER DATENSCHUTZERKLÄRUNG
+//
+// Wörtlich, und zwar in zwei Repositories: docs/rechtstexte/datenschutz.md
+// (Cookie-Tabelle in Ziff. 3.10) und die veröffentlichte HTML-Fassung in
+// janlampert08-dev/stradoinfo. Anders als beim Herkunfts-Cookie steckt hier
+// ein Personenbezug drin — die E-Mail-Adresse selbst —, weshalb die Zeile
+// dort nicht verzichtbar ist. Eine Änderung an Name, Laufzeit oder Inhalt
+// ist damit eine Rechtstext-Änderung und kein Refactor;
+// lib/bestaetigung.test.ts nagelt beide Werte dafür fest.
 export const BESTAETIGUNG_COOKIE = "strado_bestaetigung";
 
 // 60 Minuten — dieselbe Dauer, die Supabase dem Code gibt (Email OTP

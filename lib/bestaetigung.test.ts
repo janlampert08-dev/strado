@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  BESTAETIGUNG_COOKIE,
   BESTAETIGUNG_GUELTIG_SEKUNDEN,
   BESTAETIGUNG_PFAD,
   CODE_LAENGE,
@@ -53,9 +54,24 @@ describe("codeNormalisieren", () => {
   });
 });
 
+describe("Cookie-Eckdaten", () => {
+  // Dieselbe Klammer wie in lib/herkunft.test.ts, und aus demselben Grund:
+  // docs/rechtstexte/datenschutz.md und die veröffentlichte Fassung im Repo
+  // stradoinfo nennen diesen Namen und diese Frist wörtlich. Ändert sich
+  // hier etwas, ist das eine Rechtstext-Änderung in zwei Repositories und
+  // kein Refactor — ohne diesen Test ginge sie stillschweigend durch.
+  it("heisst wie in der Datenschutzerklärung genannt", () => {
+    expect(BESTAETIGUNG_COOKIE).toBe("strado_bestaetigung");
+    expect(BESTAETIGUNG_GUELTIG_SEKUNDEN).toBe(60 * 60);
+  });
+});
+
 describe("offeneBestaetigungLesen", () => {
   it("liest zurück, was gepackt wurde", () => {
-    const roh = offeneBestaetigungPacken("fahrerin@example.com", "/fahrten/neu");
+    const roh = offeneBestaetigungPacken(
+      "fahrerin@example.com",
+      "/fahrten/neu",
+    );
     expect(offeneBestaetigungLesen(roh)).toEqual({
       email: "fahrerin@example.com",
       next: "/fahrten/neu",
@@ -100,7 +116,9 @@ describe("offeneBestaetigungLesen", () => {
     expect(offeneBestaetigungLesen("{}")).toBeNull();
     expect(offeneBestaetigungLesen('{"email":42}')).toBeNull();
     expect(offeneBestaetigungLesen('{"email":"ohne-at"}')).toBeNull();
-    expect(offeneBestaetigungLesen('{"email":"mit leer@example.com"}')).toBeNull();
+    expect(
+      offeneBestaetigungLesen('{"email":"mit leer@example.com"}'),
+    ).toBeNull();
   });
 
   it("weist eine überlange Adresse ab", () => {

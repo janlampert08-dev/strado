@@ -989,7 +989,13 @@ additional care and review before merging changes to them:
   the way out. Widening what it accepts widens both. Anything importing it
   must stay server-side: it reaches `next/headers`, and a client import
   breaks the build (the `premiumLimits.ts` trap — `BestaetigenForm` takes
-  `CODE_LAENGE` as a prop for exactly this reason).
+  `CODE_LAENGE` as a prop for exactly this reason). Like `lib/herkunft.ts`,
+  its **name and lifetime are quoted verbatim** in the privacy policy in
+  both repositories (`docs/rechtstexte/datenschutz.md` Ziff. 3.10 and the
+  published HTML in `janlampert08-dev/stradoinfo`) — and this one carries a
+  person's e-mail address, which is why the row is not optional. A change
+  here is a legal-text change in two repositories;
+  `lib/bestaetigung.test.ts` pins both values.
 - `/lib/actions/moderation.ts` — route approval/rejection (moderator-only
   mutations).
 - `/lib/actions/creatorLinks.ts` — moderator-only mutations on
