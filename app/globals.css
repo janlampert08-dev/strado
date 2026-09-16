@@ -422,3 +422,62 @@ main {
     scroll-behavior: auto !important;
   }
 }
+
+/* Ein <details>, das auf dem Telefon zu und ab sm offen ist.
+
+   Das `open`-Attribut ist Markup und lässt sich serverseitig nicht pro
+   Breakpoint setzen — es gäbe nur einen Client-Anteil, der nach dem Mount
+   umschaltet, und der würde beim ersten Bild sichtbar springen.
+
+   Der Weg über CSS: das Element bleibt geschlossen (kein `open`), und ab sm
+   erzwingt `display: block` auf dem ::details-content-Pseudoelement, dass
+   der Inhalt trotzdem gezeigt wird.
+
+   DIE ZWEITE HÄLFTE MUSS HINTER @supports, und das war sie zuerst nicht.
+   Der ursprüngliche Kommentar begründete den Verzicht mit Parität zu
+   :has() — das ist falsch: :has() gibt es seit Chrome 105 und Safari 15.4,
+   ::details-content erst seit Chrome 131, Safari 18.4 und Firefox 139.
+   Dazwischen liegen Jahre. `pointer-events` und `display: none` wirken aber
+   überall, also galt in einem Browser dieser Spanne gleichzeitig: Inhalt
+   bleibt zu, Chevron weg, Summary nicht anklickbar — "Auszeichnungen" und
+   "Aktivität" waren mit der Maus dauerhaft unerreichbar. Nur die Tastatur
+   kam noch hinein (Enter öffnet weiter). Das ist nicht der versprochene
+   Rückfall auf den Ausgangszustand, sondern etwas Kaputtes.
+
+   Jetzt trägt nur das Aufklappen kein @supports (es ist von sich aus
+   wirkungslos, wo das Pseudoelement fehlt); alles, was daraus folgt —
+   Summary stilllegen, Chevron ausblenden — steht dahinter und greift nur,
+   wo auch aufgeklappt wurde.
+
+   `> svg:last-child` statt `svg:last-child`: der Kombinator zwischen
+   summary und svg war ein NACHFAHREN-Kombinator. In SectionSummary steckt
+   das führende Abschnitts-Icon in einem <span>, wo es — solange kein
+   Zähler danebensteht, und beide Aufrufer übergeben keinen — das einzige
+   Elementkind und damit selbst :last-child ist. Ab sm verschwanden also
+   auch das Award- und das Kalender-Icon, und die Abschnittsliste im Profil
+   war auf dem Desktop halb bebildert.
+
+   Genutzt von app/profil/page.tsx für Auszeichnungen und den
+   Aktivitätskalender — ein Jahresraster, das auf 390 px entweder unlesbar
+   klein oder quer scrollbar ist und dort zwischen den Kennzahlen und den
+   Fahrten im Weg stand. */
+@media (min-width: 640px) {
+  details.ab-sm-offen::details-content {
+    display: block;
+    content-visibility: visible;
+    block-size: auto;
+  }
+}
+
+@supports selector(::details-content) {
+  @media (min-width: 640px) {
+    details.ab-sm-offen > summary {
+      cursor: default;
+      pointer-events: none;
+    }
+
+    details.ab-sm-offen > summary > svg:last-child {
+      display: none;
+    }
+  }
+}

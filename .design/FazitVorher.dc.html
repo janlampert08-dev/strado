@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500;600&amp;display=swap">
+  <style>
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #fafafa; color: #131316; }
+    a { color: #3d5afe; } a:hover { color: #2f49d6; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+    .h3 { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; font-weight: 600;
+          letter-spacing: .1em; text-transform: uppercase; color: #666b74; margin: 0; }
+    .feld { height: 42px; border: 1px solid rgba(19,19,22,.12); border-radius: 12px; display: flex;
+            align-items: center; padding: 0 12px; font-size: 16px; color: #666b74; background: #fafafa; }
+    .tr { border-top: 1px solid rgba(19,19,22,.12); padding-top: 16px; margin-top: 16px; }
+    .mess { position: absolute; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 9px;
+            font-weight: 600; color: #b45309; background: #fafafa; padding: 1px 5px; border-radius: 4px;
+            border: 1px solid #b45309; white-space: nowrap; z-index: 5; }
+  </style>
+</helmet>
+
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; background: #fafafa; padding: 24px 20px; box-sizing: border-box;">
+
+  <p class="h3">Fazit</p>
+  <div style="height: 14px;"></div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+    <div><div style="font-size: 14px; color: #666b74;">Distanz</div><div class="mono" style="font-size: 18px;">14.21 km</div></div>
+    <div><div style="font-size: 14px; color: #666b74;">Zeit</div><div class="mono" style="font-size: 18px;">18:42</div></div>
+    <div><div style="font-size: 14px; color: #666b74;">Ø Tempo</div><div class="mono" style="font-size: 18px;">46 km/h</div></div>
+    <div><div style="font-size: 14px; color: #666b74;">Abdeckung</div><div class="mono" style="font-size: 18px;">97%</div></div>
+  </div>
+
+  <div class="tr">
+    <p class="h3">Fahrzeug</p>
+    <div style="height: 8px;"></div>
+    <div class="feld">Ducati Monster · Mittel</div>
+    <div style="height: 8px;"></div>
+    <span style="font-size: 14px; font-weight: 500; color: #3d5afe;">+ Fahrzeug hinzufügen</span>
+  </div>
+
+  <div class="tr">
+    <div style="display: flex; align-items: baseline; justify-content: space-between;">
+      <p class="h3">Notiz (optional)</p>
+      <span class="mono" style="font-size: 12px; color: #666b74;">0/280</span>
+    </div>
+    <div style="height: 6px;"></div>
+    <div style="height: 62px; border: 1px solid rgba(19,19,22,.12); border-radius: 12px; padding: 10px 12px; font-size: 16px; color: #666b74; box-sizing: border-box;">z.B. nasse Fahrbahn, mit der Ducati…</div>
+  </div>
+
+  <div class="tr">
+    <p class="h3">Sichtbarkeit</p>
+    <div style="height: 8px;"></div>
+    <div style="display: flex; gap: 8px;">
+      <span style="display: inline-flex; align-items: center; gap: 6px; height: 34px; border-radius: 8px; border: 1px solid #131316; background: #131316; color: #fafafa; padding: 0 12px; font-size: 14px;">
+        <svg viewBox="0 0 24 24" style="width: 15px; height: 15px; stroke: #fafafa; fill: none; stroke-width: 2;" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        Privat
+      </span>
+      <span style="display: inline-flex; align-items: center; gap: 6px; height: 34px; border-radius: 8px; border: 1px solid rgba(19,19,22,.12); color: #666b74; padding: 0 12px; font-size: 14px;">
+        <svg viewBox="0 0 24 24" style="width: 15px; height: 15px; stroke: #666b74; fill: none; stroke-width: 2;" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/></svg>
+        Öffentlich
+      </span>
+    </div>
+    <div style="height: 6px;"></div>
+    <p style="margin: 0; font-size: 12px; color: #666b74;">Nur du siehst diese Fahrt. Sie zählt nicht für die Bestenliste.</p>
+  </div>
+
+  <div class="tr">
+    <p class="h3">Fotos</p>
+    <div style="height: 8px;"></div>
+    <div style="height: 70px; border: 1px dashed rgba(19,19,22,.12); border-radius: 12px;"></div>
+  </div>
+
+  <span class="mess" style="left: 20px; top: 202px;">öffnet sechs weitere Felder — am Strassenrand</span>
+  <span class="mess" style="right: 20px; top: 24px;">sechs Abschnitte bis zum Speichern</span>
+
+  <!-- Falz -->
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 90px; background: linear-gradient(to bottom, rgba(250,250,250,0), #fafafa 60%); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 12px;">
+    <span class="mono" style="font-size: 10px; font-weight: 600; color: #b45309; border: 1px solid #b45309; border-radius: 4px; padding: 2px 6px; background: #fafafa;">„Fahrt speichern" liegt darunter</span>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

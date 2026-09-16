@@ -25,6 +25,22 @@ export { MessageSquare as FeedbackIcon, Mail as MailIcon } from "lucide-react";
 // AGENTS.md diesen Wrapper, deshalb steht dieses eine hier und nicht dort.
 export { BarChart3 as ChartIcon } from "lucide-react";
 
+// Die Flamme. Sie sass bis zur Umstellung fest in components/Header.tsx als
+// direkter lucide-Import — dort war sie ein Sonder-Icon neben der Navigation
+// statt Teil von ihr. Jetzt ist "Aktivität" ein gewöhnlicher Nav-Eintrag
+// (lib/nav.ts), also gehört ihr Symbol in diese Datei wie die anderen.
+//
+// RankingIcon (Trophy) bleibt exportiert, obwohl die Navigation es nicht
+// mehr braucht: die Bestenlisten-Seite (app/leaderboards/page.tsx) und die
+// Vorschau auf der Streckenseite (components/RouteLeaderboardPreview.tsx)
+// benutzen es.
+//
+// Die beiden importierten bis zur Review von PR #254 `Trophy` direkt aus
+// lucide-react — an genau dem Wrapper vorbei, den diese Datei beschreibt
+// und AGENTS.md verlangt —, womit dieser Satz hier schlicht falsch war:
+// RankingIcon hatte null Abnehmer. Jetzt stimmt er.
+export { Flame as FlameIcon } from "lucide-react";
+
 // Ebenfalls kein Nav-Icon: die Sterne-Bewertung einer Strecke
 // (components/Sterne.tsx, components/SterneEingabe.tsx). Steht aus demselben
 // Grund hier wie die übrigen — AGENTS.md nennt diese Datei als den Ort für

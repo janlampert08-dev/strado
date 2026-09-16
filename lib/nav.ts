@@ -1,14 +1,47 @@
 import type { ComponentType } from "react";
-import { MapPinIcon, PlusIcon, RankingIcon, PersonIcon, ShieldIcon, FeedIcon, RecordIcon, ChartIcon } from "@/components/NavIcons";
+import { MapPinIcon, PlusIcon, PersonIcon, ShieldIcon, FeedIcon, RecordIcon, ChartIcon, FlameIcon } from "@/components/NavIcons";
 
 export interface NavItem {
   href: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
+  /**
+   * Weitere Pfade, auf denen dieser Eintrag als aktiv gilt.
+   *
+   * Nötig geworden durch den Tausch weiter unten: BottomNav markiert einen
+   * Eintrag über `pathname.startsWith(href)`, und seit /leaderboards kein
+   * eigener Eintrag mehr ist, ist es auch kein Präfix eines verbliebenen —
+   * wer auf dem Feed "Rangliste" tippt, stand danach auf einer Seite, auf
+   * der unten NICHTS hervorgehoben war. Auf dem Telefon ist die Leiste der
+   * einzige Orientierungsanker.
+   *
+   * Die Kompensation steht bewusst hier und nicht als Sonderfall in
+   * BottomNav: sie gehört in dieselbe Datei wie der Tausch, der sie nötig
+   * macht — sonst driftet das eine vom anderen weg.
+   */
+  aktivAuf?: string[];
 }
 
 // Einzige Quelle für die Top-Level-Navigation — Header (Desktop) und
 // BottomNav (Mobile) rendern beide dieselbe Liste.
+//
+// JEDER EINTRAG IST EIN SCHRITT DES KERNLOOPS (siehe AGENTS.md). Das war
+// nicht immer so, und der Tausch, der es hergestellt hat, ist der Kern von
+// docs/design-vereinfachung.md, Abschnitt 3b:
+//
+//   raus: "Bestenlisten". Der Eintrag kam in keinem der neun Schritte vor
+//         und hielt trotzdem einen der fünf Plätze. Die Rangliste je Strecke
+//         sitzt ohnehin auf der Streckenseite (RouteLeaderboardPreview), wo
+//         sie zu Schritt 1 gehört; die globale erreicht man jetzt als
+//         dritten Reiter neben dem Feed (components/FeedReiter.tsx) — dort,
+//         wo man sowieso schaut, was andere gefahren sind.
+//
+//   rein: "Aktivität". Das IST Schritt 8, der die Schleife schliesst, und es
+//         war der einzige Loop-Schritt ohne Platz in der Leiste — erreichbar
+//         nur über ein 20-px-Flammensymbol oben rechts im Kopf. AGENTS.md
+//         schreibt zu diesem Schritt: "eine Reaktion, von der niemand
+//         erfährt, schliesst den Loop nicht." Die Navigation widersprach
+//         dem Satz.
 //
 // Ein Unterschied bleibt seit dem Aufzeichnen freier Fahrten: die mobile
 // Leiste trägt an der mittleren, am leichtesten erreichbaren Position
@@ -40,19 +73,20 @@ export function getNavItems({
   // den Recorder: aufzeichnen darf jeder, ein Konto braucht erst das
   // Speichern (siehe app/fahrten/neu/page.tsx und FreeRideForm.tsx).
   //
-  // Feed und Bestenlisten stehen hier ebenfalls, weil beide Seiten ohnehin
-  // öffentlich lesbar sind (public_fahrten bzw. die Leaderboard-Views sind
-  // an anon freigegeben) — sie fehlten in dieser Liste nur, wodurch es für
-  // Abgemeldete keinen Weg dorthin gab ausser über einen geteilten Link.
-  // Das ist genau der Teil des Produkts, der jemanden ohne Konto überzeugen
-  // kann. "Erstellen" und "Profil" bleiben weg: beide sind ohne Konto
-  // nichts als eine Umleitung auf /anmelden.
+  // Der Feed steht hier ebenfalls, weil public_fahrten an anon freigegeben
+  // ist — er fehlte in dieser Liste nur, wodurch es für Abgemeldete keinen
+  // Weg dorthin gab ausser über einen geteilten Link. Das ist genau der
+  // Teil des Produkts, der jemanden ohne Konto überzeugen kann. Die
+  // Bestenlisten sind ebenso öffentlich und ebenso erreichbar — als Reiter
+  // neben dem Feed, statt als eigener Eintrag.
+  //
+  // "Erstellen", "Profil" und "Aktivität" bleiben weg: alle drei sind ohne
+  // Konto nichts als eine Umleitung auf /anmelden.
   if (!loggedIn) {
     return [
       { href: "/", label: "Strecken", icon: MapPinIcon },
-      { href: "/feed", label: "Feed", icon: FeedIcon },
+      { href: "/feed", label: "Feed", icon: FeedIcon, aktivAuf: ["/leaderboards"] },
       fahrtStarten,
-      { href: "/leaderboards", label: "Bestenlisten", icon: RankingIcon },
       { href: "/anmelden", label: "Anmelden", icon: PersonIcon },
     ];
   }
@@ -93,9 +127,9 @@ export function getNavItems({
 
   return [
     { href: "/", label: "Strecken", icon: MapPinIcon },
-    { href: "/feed", label: "Feed", icon: FeedIcon },
+    { href: "/feed", label: "Feed", icon: FeedIcon, aktivAuf: ["/leaderboards"] },
     ...mittlereAktionen,
-    { href: "/leaderboards", label: "Bestenlisten", icon: RankingIcon },
+    { href: "/aktivitaet", label: "Aktivität", icon: FlameIcon },
     { href: "/profil", label: "Profil", icon: PersonIcon },
     ...(surface === "bottom" ? [] : rollen),
   ];

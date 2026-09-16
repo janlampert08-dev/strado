@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Skeleton from "@/components/ui/Skeleton";
-import { cn } from "@/lib/utils/cn";
+import Seitenrahmen, { type Seitenbreite } from "@/components/ui/Seitenrahmen";
 
 // Gemeinsames Grundgerüst für alle Segment-Skelette (app/**/loading.tsx).
 //
@@ -32,10 +32,14 @@ export function HeaderSkeleton() {
     <div className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border bg-background/85 px-4 pt-[calc(0.75rem+var(--safe-top))] pb-3 backdrop-blur-xl sm:px-6 sm:pt-[calc(1rem+var(--safe-top))] sm:pb-4">
       <Skeleton className="h-[18px] w-[71px] rounded-sm" />
       <div className="flex shrink-0 items-center gap-3 sm:gap-4">
-        {/* Das Flammen-Icon (Aktivität) rechts aussen — auf jeder
-            Bildschirmgrösse sichtbar, anders als die Textnavigation. */}
-        <Skeleton className="h-8 w-8 rounded-full" />
-        {/* Textnavigation nur ab md, genau wie im Header selbst. */}
+        {/* Hier stand bis zur Review von PR #254 ein rundes Flammen-Icon —
+            der eigene Aktivitäts-Knopf, den der Kopf damals rechts aussen
+            trug. Seit "Aktivität" ein gewöhnlicher Nav-Eintrag ist
+            (lib/nav.ts), gibt es ihn nicht mehr, und das Skelett blitzte
+            ihn bei JEDER Navigation auf JEDER Seite kurz auf: genau der
+            Sprung, den diese Datei laut ihrem eigenen Kopf verhindern soll.
+
+            Textnavigation nur ab md, genau wie im Header selbst. */}
         <div className="hidden items-center gap-3 sm:gap-6 md:flex">
           <Skeleton className="h-4 w-16 rounded-sm" />
           <Skeleton className="h-4 w-12 rounded-sm" />
@@ -74,26 +78,34 @@ export function BottomNavSkeleton() {
  * Aktivität, Fahrtdetail, …): Kopfleiste, scrollender Bereich, zentriertes
  * <main> mit denselben Innenabständen wie die echten Seiten.
  *
- * @param maxWidth Die max-w-*-Klassen der jeweiligen Seite, inklusive
- *   Breakpoint-Varianten (z. B. "max-w-2xl lg:max-w-4xl").
+ * Der Rahmen kommt aus components/ui/Seitenrahmen.tsx — derselbe Baustein,
+ * den die echten Seiten benutzen. Bis zur Review von PR #254 schrieb diese
+ * Datei die Polsterung wörtlich noch einmal hin und nahm die Breite als
+ * freien String entgegen; damit gab es zwei Quellen für dieselbe Geometrie,
+ * und sie waren bereits auseinandergelaufen: sieben Skelette standen auf
+ * einer anderen Breite als ihre Seite, zwei auf einem anderen Seitenabstand.
+ * Auf dem Desktop ruckte dadurch die Spaltenbreite bei jedem Seitenwechsel.
+ *
+ * Eine Breite, die hier nicht zu wählen ist, gehört nach Seitenrahmen — und
+ * damit auch auf die Seite. Genau das ist der Zweck.
+ *
+ * @param breite Dieselbe Breite, die die Seite an Seitenrahmen übergibt.
  * @param children Die seitenspezifischen Platzhalter. Der Abstand zwischen
- *   ihnen ist hier gap-6; Seiten mit grösseren Abständen setzen ihn in
- *   ihrem eigenen Skelett nach.
+ *   ihnen ist gap-6; Seiten mit grösseren Abständen setzen ihn in ihrem
+ *   eigenen Skelett nach.
  */
 export default function PageSkeleton({
-  maxWidth = "max-w-2xl",
+  breite = "normal",
   children,
 }: {
-  maxWidth?: string;
+  breite?: Seitenbreite;
   children: ReactNode;
 }) {
   return (
     <div className="flex h-dvh flex-col">
       <HeaderSkeleton />
       <div className="flex-1 overflow-y-auto">
-        <main className={cn("mx-auto flex w-full flex-col gap-6 px-5 py-8 sm:px-6 sm:py-10", maxWidth)}>
-          {children}
-        </main>
+        <Seitenrahmen breite={breite}>{children}</Seitenrahmen>
       </div>
       <BottomNavSkeleton />
     </div>

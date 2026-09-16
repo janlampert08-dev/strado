@@ -1,0 +1,115 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500;600&amp;display=swap">
+  <style>
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #fafafa; color: #131316; }
+    a { color: #3d5afe; } a:hover { color: #2f49d6; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+    .n { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 13px; font-weight: 600;
+         width: 28px; height: 28px; border-radius: 999px; display: flex; align-items: center;
+         justify-content: center; flex-shrink: 0; }
+  </style>
+</helmet>
+
+<div style="display: flex; flex-direction: column; gap: 24px; padding: 44px 40px; background: #fafafa; min-height: 100%; box-sizing: border-box;">
+
+  <div style="display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid rgba(19,19,22,.12); padding-bottom: 18px;">
+    <span class="mono" style="font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #666b74;">Kernloop</span>
+    <h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -.02em; line-height: 1.15;">Neun Schritte, sechs Fl&auml;chen</h1>
+    <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #666b74;">Die Schleife aus <span class="mono" style="font-size: 12px;">AGENTS.md</span>, gegen die Fl&auml;chen gelegt, auf denen sie heute stattfindet. Ein Schritt, der keine eigene Fl&auml;che braucht, ist gesund &mdash; er l&auml;uft ohne Seitenwechsel ab.</p>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 0;">
+
+    <div style="display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid rgba(19,19,22,.12);">
+      <span class="n" style="background: #3d5afe; color: #fafafa;">1</span>
+      <div style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1;">
+        <span style="font-size: 14px; font-weight: 600;">Strecke entdecken</span>
+        <span class="mono" style="font-size: 11px; color: #666b74;">/ &middot; /strecken/[id]</span>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid rgba(19,19,22,.12);">
+      <span class="n" style="background: #3d5afe; color: #fafafa;">2</span>
+      <div style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1;">
+        <span style="font-size: 14px; font-weight: 600;">Fahrt starten</span>
+        <span class="mono" style="font-size: 11px; color: #666b74;">GefahrenSection &middot; /fahrten/neu</span>
+        <span style="font-size: 12px; line-height: 1.5; color: #666b74;">Auch ohne Konto. Das Konto verlangt erst das Speichern.</span>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid rgba(19,19,22,.12);">
+      <span class="n" style="background: #ebedfa; color: #3d5afe;">3</span>
+      <div style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1;">
+        <span style="font-size: 14px; font-weight: 600;">Fahren</span>
+        <span class="mono" style="font-size: 11px; color: #666b74;">Vollbild-Overlay &mdash; keine eigene Adresse</span>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid rgba(19,19,22,.12);">
+      <span class="n" style="background: #ebedfa; color: #3d5afe;">4</span>
+      <div style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1;">
+        <span style="font-size: 14px; font-weight: 600;">Aufzeichnen</span>
+        <span class="mono" style="font-size: 11px; color: #666b74;">useRideRecorder &middot; trackingStorage</span>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid rgba(19,19,22,.12);">
+      <span class="n" style="background: #ebedfa; color: #3d5afe;">5</span>
+      <div style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1;">
+        <span style="font-size: 14px; font-weight: 600;">Fazit</span>
+        <span class="mono" style="font-size: 11px; color: #666b74;">RideSummaryForm &mdash; keine eigene Adresse</span>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid rgba(19,19,22,.12);">
+      <span class="n" style="background: #3d5afe; color: #fafafa;">6</span>
+      <div style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1;">
+        <span style="font-size: 14px; font-weight: 600;">Fahrt ver&ouml;ffentlichen</span>
+        <span class="mono" style="font-size: 11px; color: #666b74;">/fahrten/[id]</span>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid rgba(19,19,22,.12);">
+      <span class="n" style="background: #3d5afe; color: #fafafa;">7</span>
+      <div style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1;">
+        <span style="font-size: 14px; font-weight: 600;">Andere reagieren</span>
+        <span class="mono" style="font-size: 11px; color: #666b74;">KudosButton &middot; RatingSection</span>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 14px; padding: 14px 14px; border-radius: 12px; background: #ebedfa; border: 1.5px solid #3d5afe; margin: 6px 0;">
+      <span class="n" style="background: #3d5afe; color: #fafafa;">8</span>
+      <div style="display: flex; flex-direction: column; gap: 4px; flex-grow: 1;">
+        <span style="font-size: 14px; font-weight: 600; color: #3d5afe;">Die Reaktion erreicht die Fahrerin</span>
+        <span class="mono" style="font-size: 11px; color: #3d5afe;">/aktivitaet &mdash; erreichbar nur &uuml;ber ein 20-px-Symbol</span>
+        <span style="font-size: 12px; line-height: 1.5; color: #3d5afe;">Der Schritt, der die Schleife schliesst, ist der einzige ohne Platz in der Leiste. Eine Reaktion, von der niemand erf&auml;hrt, schliesst den Loop nicht &mdash; das steht so in <span class="mono" style="font-size: 11px;">AGENTS.md</span>, und die Navigation widerspricht ihm.</span>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid rgba(19,19,22,.12);">
+      <span class="n" style="background: #3d5afe; color: #fafafa;">9</span>
+      <div style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1;">
+        <span style="font-size: 14px; font-weight: 600;">N&auml;chste Fahrt</span>
+        <span class="mono" style="font-size: 11px; color: #666b74;">/feed &rarr; zur&uuml;ck zu Schritt 1</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 8px; border: 1px solid #b45309; border-radius: 12px; background: #ffffff; padding: 16px;">
+    <span style="font-size: 13px; font-weight: 600; color: #b45309;">Was nicht im Loop vorkommt</span>
+    <span style="font-size: 12px; line-height: 1.55; color: #666b74;"><span class="mono" style="font-size: 11px;">/leaderboards</span> ist in keinem der neun Schritte genannt &mdash; und h&auml;lt trotzdem einen der f&uuml;nf Pl&auml;tze in der mobilen Leiste. Das ist kein Argument gegen Ranglisten: die Rangliste je Strecke sitzt bereits auf der Streckenseite, wo sie zu Schritt&nbsp;1 geh&ouml;rt. Es ist ein Argument gegen den <em>Platz</em>.</span>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

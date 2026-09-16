@@ -756,6 +756,7 @@ area**; each is a few hundred lines at most.
 | `.agents/deployment.md` | Applying migrations, shipping to Vercel/Stripe |
 | `docs/audit/README.md` | Completions, leaderboards, RLS views, auth — check the remediation table before reporting a "new" finding |
 | `docs/premium-plan.md` | Anything premium, Stripe, or entitlement-shaped |
+| `docs/design-vereinfachung.md` | Visual/structural UI work. **Read its "Umsetzungsstand" section first** — most of it shipped, four items are deliberately open and two of those need a product decision, not a design one. The section says which |
 | `supabase/migrations/README.md` | Whenever migration order or the applied/unapplied gap matters |
 
 `README.md` is the human setup guide and is not a substitute for any of

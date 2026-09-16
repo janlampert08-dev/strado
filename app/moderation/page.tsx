@@ -21,6 +21,7 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import { buttonVariants } from "@/components/ui/Button";
 import { MapPinIcon, ShieldIcon, LinkIcon, FeedbackIcon, MailIcon } from "@/components/NavIcons";
 import { POSTFACH_URL } from "@/lib/constants";
+import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
 export const metadata = { title: "Moderation – Strado" };
 
@@ -201,7 +202,7 @@ export default async function ModerationPage() {
             Bestenlisten) und wie im Skelett nebenan — px-6 py-10 auch auf dem
             Telefon war der Ausreisser, und das Skelett sprang beim Auflösen
             entsprechend. */}
-        <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-5 py-8 sm:px-6 sm:py-10">
+        <Seitenrahmen>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h1 className="text-display font-semibold">Moderation</h1>
@@ -340,7 +341,7 @@ export default async function ModerationPage() {
               ))
             )}
           </section>
-        </main>
+        </Seitenrahmen>
       </div>
     </div>
   );

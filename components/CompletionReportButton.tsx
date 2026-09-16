@@ -1,5 +1,6 @@
 "use client";
 
+import IconButton from "@/components/ui/IconButton";
 import { useState } from "react";
 import { Flag } from "lucide-react";
 import ReportDialog from "@/components/ReportDialog";
@@ -15,15 +16,14 @@ export default function CompletionReportButton({ completionId }: { completionId:
 
   return (
     <>
-      <button
-        type="button"
+      <IconButton
         onClick={() => setOpen(true)}
+        ton="gefahr"
         title="Fahrt melden"
         aria-label="Fahrt melden"
-        className="shrink-0 text-muted transition-colors duration-fast hover:text-danger"
       >
-        <Flag className="h-4 w-4" aria-hidden="true" />
-      </button>
+        <Flag className="h-5 w-5" aria-hidden="true" />
+      </IconButton>
       <ReportDialog
         open={open}
         onClose={() => setOpen(false)}

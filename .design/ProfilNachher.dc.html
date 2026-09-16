@@ -1,0 +1,120 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500;600&amp;display=swap">
+  <style>
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #fafafa; color: #131316; }
+    a { color: #3d5afe; } a:hover { color: #2f49d6; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+    .sh { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; font-weight: 600;
+          letter-spacing: .1em; text-transform: uppercase; color: #666b74; }
+    .kachel { display: flex; flex-direction: column; justify-content: space-between; gap: 4px;
+              border: 1px solid rgba(19,19,22,.12); border-radius: 16px; background: #f3f3f4; padding: 16px; }
+    .kl { font-size: 14px; color: #666b74; }
+    .kw { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums;
+          font-size: 20px; font-weight: 600; }
+    .zeile { display: flex; align-items: center; justify-content: space-between; padding: 14px 0;
+             border-bottom: 1px solid rgba(19,19,22,.12); }
+    .mess { position: absolute; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 9px;
+            font-weight: 600; color: #1a7f37; background: #fafafa; padding: 1px 5px; border-radius: 4px;
+            border: 1px solid #1a7f37; white-space: nowrap; z-index: 5; }
+  </style>
+</helmet>
+
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; background: #fafafa;">
+
+  <div style="position: absolute; inset: 0 0 auto 0; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid rgba(19,19,22,.12); background: rgba(250,250,250,.85); z-index: 4;">
+    <svg viewBox="0 0 268.83 67.92" style="height: 18px; width: auto; fill: #131316;" aria-hidden="true"><path d="M23.17 67.92Q14.83 67.92 9.88 65.29Q4.92 62.67 2.63 58.67Q0.33 54.67 0 50.67L12.83 50.67Q13.25 52.83 14.63 54.63Q16 56.42 18.42 57.5Q20.83 58.58 24.08 58.58Q28.5 58.58 30.88 56.88Q33.25 55.17 33.25 52.5Q33.25 50 31.17 48.75Q29.08 47.5 24.75 46.67L17 45.17Q9.58 43.75 5.71 39.79Q1.83 35.83 1.83 29.83Q1.83 24.42 4.5 20.42Q7.17 16.42 11.96 14.17Q16.75 11.92 23.17 11.92Q29.83 11.92 34.54 14.17Q39.25 16.42 41.83 20.29Q44.42 24.17 44.83 29L32.33 29Q31.83 25.67 29.29 23.63Q26.75 21.58 22.83 21.58Q19 21.58 16.83 23.21Q14.67 24.83 14.67 27.5Q14.67 29.83 16.63 31.13Q18.58 32.42 22.42 33.17L30.5 34.75Q38.25 36.25 42.17 40.25Q46.08 44.25 46.08 50.25Q46.08 55.58 43.29 59.63Q40.5 63.67 35.42 65.79Q30.33 67.92 23.17 67.92Z"/></svg>
+  </div>
+
+  <div style="position: absolute; top: 56px; left: 0; right: 0; bottom: 64px; overflow: hidden; padding: 20px;">
+
+    <div style="display: flex; align-items: flex-start; justify-content: space-between;">
+      <div style="width: 64px; height: 64px; border-radius: 999px; background: #f3f3f4; border: 1px solid rgba(19,19,22,.12); display: flex; align-items: center; justify-content: center;">
+        <span class="mono" style="font-size: 20px; color: #666b74;">JL</span>
+      </div>
+      <span style="width: 44px; height: 44px; border: 1px solid rgba(19,19,22,.12); border-radius: 999px; display: flex; align-items: center; justify-content: center;">
+        <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; stroke: #666b74; fill: none; stroke-width: 2;" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
+      </span>
+    </div>
+
+    <div style="height: 14px;"></div>
+    <h1 style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -.02em;">Jan Lampert</h1>
+    <div style="height: 4px;"></div>
+    <span style="font-size: 14px; color: #666b74;">jan@example.ch</span>
+    <div style="height: 6px;"></div>
+    <span style="font-size: 14px; color: #666b74;"><strong style="color: #131316;">12</strong> Follower &middot; <strong style="color: #131316;">8</strong> Folge ich</span>
+
+    <div style="height: 16px;"></div>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; position: relative;">
+      <span style="display: flex; align-items: center; justify-content: center; height: 44px; border-radius: 999px; background: #131316; color: #fafafa; font-size: 14px; font-weight: 500;">Strecke erstellen</span>
+      <span style="display: flex; align-items: center; justify-content: center; height: 44px; border-radius: 999px; border: 1px solid rgba(19,19,22,.12); font-size: 14px; font-weight: 500;">Öffentlich ansehen</span>
+    </div>
+    <span class="mess" style="left: 20px; top: 270px;">eine Form, 44 px</span>
+
+    <div style="height: 24px;"></div>
+    <span class="sh">Kennzahlen</span>
+    <div style="height: 10px;"></div>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; position: relative;">
+      <div class="kachel"><span class="kl">Pässe befahren</span><span class="kw">23</span></div>
+      <div class="kachel"><span class="kl">Höhenmeter</span><span class="kw">14 820 m</span></div>
+      <div class="kachel"><span class="kl">Km gefahren</span><span class="kw">1 284 km</span></div>
+      <div class="kachel"><span class="kl">Fahrten</span><span class="kw">41</span></div>
+      <span class="mess" style="right: -4px; top: -10px;">eine Betonung, kein Aussenrahmen</span>
+    </div>
+
+    <div style="height: 24px;"></div>
+
+    <div style="position: relative;">
+      <span class="sh">Meine Fahrten</span>
+      <div style="height: 6px;"></div>
+
+      <div class="zeile">
+        <span style="font-size: 15px; font-weight: 500;">Getrackte Fahrten <span class="mono" style="font-size: 13px; color: #666b74;">41</span></span>
+        <svg viewBox="0 0 24 24" style="width: 18px; height: 18px; stroke: #666b74; fill: none; stroke-width: 2;" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg>
+      </div>
+
+      <div style="padding: 4px 0 10px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0;">
+          <div style="display: flex; flex-direction: column; gap: 3px;">
+            <span style="font-size: 15px; font-weight: 500;">Albispass</span>
+            <span class="mono" style="font-size: 13px; color: #666b74;">14.09.2026 &middot; 18:42 &middot; 46 km/h</span>
+          </div>
+          <span style="width: 44px; height: 44px; border: 1px solid rgba(19,19,22,.12); border-radius: 999px; display: flex; align-items: center; justify-content: center;">
+            <svg viewBox="0 0 24 24" style="width: 18px; height: 18px; stroke: #666b74; fill: none; stroke-width: 2; stroke-linecap: round;" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18"/></svg>
+          </span>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0;">
+          <div style="display: flex; flex-direction: column; gap: 3px;">
+            <span style="font-size: 15px; font-weight: 500;">Sattelegg</span>
+            <span class="mono" style="font-size: 13px; color: #666b74;">07.09.2026 &middot; 24:10 &middot; 52 km/h</span>
+          </div>
+          <span style="width: 44px; height: 44px; border: 1px solid rgba(19,19,22,.12); border-radius: 999px; display: flex; align-items: center; justify-content: center;">
+            <svg viewBox="0 0 24 24" style="width: 18px; height: 18px; stroke: #666b74; fill: none; stroke-width: 2; stroke-linecap: round;" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          </span>
+        </div>
+      </div>
+
+      <div class="zeile"><span style="font-size: 15px; font-weight: 500;">Favoriten <span class="mono" style="font-size: 13px; color: #666b74;">6</span></span><svg viewBox="0 0 24 24" style="width: 18px; height: 18px; stroke: #666b74; fill: none; stroke-width: 2;" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div>
+      <div class="zeile"><span style="font-size: 15px; font-weight: 500;">Auszeichnungen</span><svg viewBox="0 0 24 24" style="width: 18px; height: 18px; stroke: #666b74; fill: none; stroke-width: 2;" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div>
+      <div class="zeile" style="border-bottom: none;"><span style="font-size: 15px; font-weight: 500;">Aktivitätskalender</span><svg viewBox="0 0 24 24" style="width: 18px; height: 18px; stroke: #666b74; fill: none; stroke-width: 2;" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div>
+
+      <span class="mess" style="right: 0; top: 122px;">auf dem Telefon zugeklappt</span>
+    </div>
+
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 64px; border-top: 1px solid rgba(19,19,22,.12); background: #fafafa; z-index: 4;"></div>
+
+</div>
+</x-dc>
+</body>
+</html>

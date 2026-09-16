@@ -4,7 +4,7 @@ import { useActionState, useEffect, useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Route as RouteIcon } from "lucide-react";
+import { Route as RouteIcon, Smartphone } from "lucide-react";
 import { logFreeRide, type FreeRideFormState } from "@/lib/actions/completions";
 import { useRideRecorder } from "@/components/useRideRecorder";
 import { useLiveLapHint } from "@/components/useLiveLapHint";
@@ -24,6 +24,7 @@ import { buttonVariants } from "@/components/ui/Button";
 import Skeleton from "@/components/ui/Skeleton";
 import Card from "@/components/ui/Card";
 import FullscreenDialog from "@/components/ui/FullscreenDialog";
+import SectionHeading from "@/components/ui/SectionHeading";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
@@ -211,10 +212,17 @@ export default function FreeRideForm({
     const avgKmh =
       result && result.seconds > 0 ? result.distanceKm / (result.seconds / 3600) : null;
 
+    // Ohne pb-[var(--safe-bottom)], anders als die Ansichten davor:
+    // diese hier endet auf dem klebenden Speichern-Streifen aus
+    // RideSummaryForm, und der bringt den sicheren Bereich in seiner
+    // EIGENEN Polsterung mit. Beides zusammen ergab, sobald man ganz
+    // nach unten gescrollt hatte, zwei Höhen des Home-Indikators unter
+    // dem Knopf. Der Streifen deckt die untere Kante ohnehin immer ab,
+    // also gehört der Zuschlag dorthin und nicht hierher.
     return (
-      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)]">
+      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)]">
         <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-5 py-8 sm:px-6 sm:py-10">
-          <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">Fazit</h2>
+          <SectionHeading>Fazit</SectionHeading>
 
           <dl className="grid grid-cols-2 gap-4 text-sm">
             <div>
@@ -351,12 +359,9 @@ export default function FreeRideForm({
             >
               <div className="flex flex-col gap-1 text-sm">
                 <div className="flex items-baseline justify-between">
-                  <label
-                    htmlFor="freie-fahrt-titel"
-                    className="text-xs font-semibold tracking-wide text-muted uppercase"
-                  >
+                  <SectionHeading as="label" groesse="xs" htmlFor="freie-fahrt-titel">
                     Titel (optional)
-                  </label>
+                  </SectionHeading>
                   <span className="font-mono text-xs tabular-nums text-muted">
                     {titel.length}/{MAX_TITEL_LENGTH}
                   </span>
@@ -397,32 +402,49 @@ export default function FreeRideForm({
         />
       </div>
       <div className="flex flex-col gap-3 border-t border-border-strong bg-background p-4 pb-[calc(1rem+var(--safe-bottom))]">
-        <p className="text-xs font-semibold tracking-wide text-muted uppercase">
-          {recorder.hasStarted ? "Aufzeichnung läuft" : "Warte auf GPS"}
-        </p>
+        {/* Wie LiveTrackingForm: ein Punkt zeigt, dass wirklich
+            aufgezeichnet wird, und die Beschriftung steht in 14 statt 12 px.
+            Die beiden Aufzeichnungsschirme sollen sich nicht unterscheiden —
+            es ist dieselbe Handlung. */}
+        <div className="flex items-center gap-2">
+          {recorder.hasStarted && (
+            <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full bg-danger" />
+          )}
+          <SectionHeading as="p" className="font-mono">
+            {recorder.hasStarted ? "Aufzeichnung läuft" : "Warte auf GPS"}
+          </SectionHeading>
+        </div>
         {/* Vorwarnung statt einer Überraschung am Ende: das Konto wird erst
             beim Speichern verlangt, aber wer ohne eines losfährt, soll das
             vor der Fahrt wissen und nicht erst im Fazit. */}
         {istGast && (
-          <p className="text-xs text-muted">
+          <p className="text-sm text-muted">
             Ohne Konto: aufzeichnen geht, zum Speichern der Fahrt brauchst du am Ende eine
             Anmeldung.
           </p>
         )}
-        <dl className="grid grid-cols-3 gap-3">
+        {/* Eine Zahl gross statt dreier mittlerer. Bei der freien Fahrt
+            gibt es kein "noch … km" — es gibt keine Strecke, die zu Ende
+            geht —, also trägt die Zeit allein. Distanz und Tempo stehen
+            darunter in 15 px. Dieselbe Begründung wie in
+            LiveTrackingForm.tsx, siehe dort. */}
+        <dl className="flex flex-wrap items-end gap-x-6 gap-y-2">
           <div>
-            <dt className="text-xs text-muted">Distanz</dt>
-            <dd className="font-mono text-xl tabular-nums">{recorder.distanceKm.toFixed(2)} km</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted">Zeit</dt>
-            <dd className="font-mono text-xl tabular-nums">
+            <dt className="text-[15px] text-muted">Zeit</dt>
+            <dd className="font-mono text-4xl leading-none font-semibold tabular-nums">
               {formatDuration(recorder.elapsedSeconds)}
             </dd>
           </div>
-          <div>
-            <dt className="text-xs text-muted">Tempo</dt>
-            <dd className="font-mono text-lg tabular-nums">
+          {/* Der Mittelpunkt steht IM folgenden <dd>, nicht daneben: ein
+              <div> in einem <dl> darf nur <dt> und <dd> enthalten, ein
+              <span> dazwischen ist ungültiges HTML. aria-hidden hält ihn
+              wie zuvor aus der Vorlesereihenfolge heraus. */}
+          <div className="flex w-full flex-wrap items-baseline gap-x-2 text-[15px] text-muted">
+            <dt className="sr-only">Distanz</dt>
+            <dd className="font-mono tabular-nums">{recorder.distanceKm.toFixed(2)} km gefahren</dd>
+            <dt className="sr-only">Tempo</dt>
+            <dd className="font-mono tabular-nums">
+              <span aria-hidden="true" className="mr-2">·</span>
               {recorder.speedKmh !== null ? `${recorder.speedKmh.toFixed(0)} km/h` : "—"}
             </dd>
           </div>
@@ -451,12 +473,18 @@ export default function FreeRideForm({
           </p>
         )}
         {recorder.locationError && <p role="alert" className="text-sm text-danger">{recorder.locationError}</p>}
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Der Wachhinweis vor der Handlung statt als Fussnote daneben —
+            siehe LiveTrackingForm.tsx und docs/audit/uiux.md §5.4. */}
+        <p className="flex items-start gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm leading-snug">
+          <Smartphone className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+          <span>Bildschirm an lassen — sonst pausiert die Aufzeichnung.</span>
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
           {recorder.hasStarted ? (
             <button
               type="button"
               onClick={recorder.stop}
-              className={buttonVariants({ variant: "accent", size: "lg" })}
+              className={buttonVariants({ variant: "accent", size: "lg", className: "flex-1" })}
             >
               Fahrt beenden
             </button>
@@ -464,14 +492,11 @@ export default function FreeRideForm({
             <button
               type="button"
               onClick={handleExit}
-              className={buttonVariants({ variant: "secondary", size: "lg" })}
+              className={buttonVariants({ variant: "secondary", size: "lg", className: "flex-1" })}
             >
               Abbrechen
             </button>
           )}
-          <p className="text-xs text-muted">
-            Bildschirm eingeschaltet lassen — GPS-Tracking im Browser pausiert sonst.
-          </p>
         </div>
       </div>
     </FullscreenDialog>

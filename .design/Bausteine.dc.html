@@ -1,0 +1,231 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500;600&amp;display=swap">
+  <style>
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #fafafa; color: #131316; }
+    a { color: #3d5afe; } a:hover { color: #2f49d6; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+    .blk { display: flex; flex-direction: column; gap: 14px; border: 1px solid rgba(19,19,22,.12);
+           border-radius: 16px; background: #ffffff; padding: 20px; }
+    .bt { font-size: 15px; font-weight: 600; }
+    .bs { font-size: 13px; line-height: 1.55; color: #666b74; }
+    .tag { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px; font-weight: 600;
+           letter-spacing: .08em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; }
+    .vor { color: #b45309; border: 1px solid #b45309; background: #fff; }
+    .nach { color: #1a7f37; border: 1px solid #1a7f37; background: #fff; }
+    .paar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .zelle { display: flex; flex-direction: column; gap: 10px; border-radius: 12px; background: #f3f3f4; padding: 14px; }
+    .ib44 { width: 44px; height: 44px; border: 1px solid rgba(19,19,22,.12); border-radius: 999px;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: #fff; }
+    table { border-collapse: collapse; width: 100%; }
+    td, th { text-align: left; padding: 5px 10px 5px 0; font-size: 12px; }
+    th { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px; font-weight: 600;
+         letter-spacing: .08em; text-transform: uppercase; color: #666b74; border-bottom: 1px solid rgba(19,19,22,.12); }
+    td { border-bottom: 1px solid rgba(19,19,22,.12); }
+    .m { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  </style>
+</helmet>
+
+<div style="display: flex; flex-direction: column; gap: 28px; padding: 44px; background: #fafafa; min-height: 100%; box-sizing: border-box;">
+
+  <div style="display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid rgba(19,19,22,.12); padding-bottom: 20px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <svg viewBox="0 0 92 54" style="height: 15px; width: auto; fill: #131316;" aria-hidden="true"><path d="M0 27A46 27 0 1 1 92 27A46 27 0 1 1 0 27ZM12 23.5A34 14.5 0 1 0 80 23.5A34 14.5 0 1 0 12 23.5Z"/></svg>
+      <span class="mono" style="font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #666b74;">Bausteine</span>
+    </div>
+    <h1 style="margin: 0; font-size: 32px; font-weight: 600; letter-spacing: -.02em; line-height: 1.1;">Sieben Muster, je eine Quelle</h1>
+    <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #666b74; max-width: 80ch;">Konkrete Werte, keine Richtung. Jeder Block sagt, was heute dasteht und was an seine Stelle tritt &mdash; mit den Zahlen, die in den Code gehen. Farben und Radien stammen unverändert aus <span class="mono" style="font-size: 13px;">app/globals.css</span>; neu ist keine einzige.</p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px;">
+
+    <!-- 1 Schaltflächen -->
+    <div class="blk">
+      <div style="display: flex; align-items: baseline; gap: 10px;"><span class="bt">1 &middot; Schaltflächen</span><span class="mono" style="font-size: 11px; color: #666b74;">ui/Button.tsx</span></div>
+      <p class="bs" style="margin: 0;">Fünf Varianten, zwei Silhouetten: <span class="mono">primary</span>/<span class="mono">accent</span>/<span class="mono">danger</span> sind Pillen, <span class="mono">secondary</span>/<span class="mono">ghost</span> Rechtecke. Im Profil stehen beide in derselben Zeile.</p>
+      <div class="paar">
+        <div class="zelle">
+          <span class="tag vor">Vorher</span>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span style="display: inline-flex; align-items: center; height: 36px; border-radius: 999px; background: #131316; color: #fafafa; font-size: 12px; font-weight: 500; padding: 0 14px;">Erstellen</span>
+            <span style="display: inline-flex; align-items: center; height: 36px; border-radius: 8px; border: 1px solid rgba(19,19,22,.12); font-size: 12px; font-weight: 500; padding: 0 14px; background: #fff;">Ansehen</span>
+          </div>
+        </div>
+        <div class="zelle">
+          <span class="tag nach">Nachher</span>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span style="display: inline-flex; align-items: center; height: 36px; border-radius: 999px; background: #131316; color: #fafafa; font-size: 12px; font-weight: 500; padding: 0 14px;">Erstellen</span>
+            <span style="display: inline-flex; align-items: center; height: 36px; border-radius: 999px; border: 1px solid rgba(19,19,22,.12); font-size: 12px; font-weight: 500; padding: 0 14px; background: #fff;">Ansehen</span>
+          </div>
+        </div>
+      </div>
+      <p class="bs" style="margin: 0;">Alle fünf auf <span class="mono">rounded-full</span>. Die Rangfolge trägt Fläche und Rahmen, nicht die Silhouette. <span class="mono">Card</span>, Felder und Dialoge behalten <span class="mono">--radius-lg</span> &mdash; damit wird &bdquo;rund = Handlung, weich-eckig = Fläche&ldquo; zur Regel statt zum Zufall.</p>
+      <table>
+        <tr><th>Grösse</th><th>Höhe</th><th>Wofür</th></tr>
+        <tr><td class="m">sm</td><td class="m">36 px</td><td>Nebensächliches ausserhalb des Fahrzeugs</td></tr>
+        <tr><td class="m">md</td><td class="m">44 px</td><td>Standard &mdash; die Daumengrenze</td></tr>
+        <tr><td class="m">lg</td><td class="m">52 px</td><td>Aufzeichnung, mit Handschuhen</td></tr>
+      </table>
+    </div>
+
+    <!-- 2 Kennzahl -->
+    <div class="blk">
+      <div style="display: flex; align-items: baseline; gap: 10px;"><span class="bt">2 &middot; Kennzahl</span><span class="mono" style="font-size: 11px; color: #666b74;">neu: ui/Kennzahl.tsx</span></div>
+      <p class="bs" style="margin: 0;">Dasselbe Raster steht dreimal von Hand in <span class="mono">app/</span>, mit uneinheitlicher Betonung: die ersten beiden Kacheln <span class="mono">text-title</span>/600, der Rest einmal <span class="mono">font-mono</span>, einmal <span class="mono">text-lg</span>. Gleiche Rolle, drei Grössen.</p>
+      <div class="paar">
+        <div class="zelle">
+          <span class="tag vor">Vorher</span>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+            <div style="background: #fff; border: 1px solid rgba(19,19,22,.12); border-radius: 12px; padding: 10px;"><div style="font-size: 12px; color: #666b74;">Pässe</div><div class="m" style="font-size: 19px; font-weight: 600;">23</div></div>
+            <div style="background: #fff; border: 1px solid rgba(19,19,22,.12); border-radius: 12px; padding: 10px;"><div style="font-size: 12px; color: #666b74;">Fahrten</div><div class="m" style="font-size: 16px; font-weight: 400;">41</div></div>
+          </div>
+        </div>
+        <div class="zelle">
+          <span class="tag nach">Nachher</span>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+            <div style="background: #fff; border: 1px solid rgba(19,19,22,.12); border-radius: 12px; padding: 10px;"><div style="font-size: 12px; color: #666b74;">Pässe</div><div class="m" style="font-size: 19px; font-weight: 600;">23</div></div>
+            <div style="background: #fff; border: 1px solid rgba(19,19,22,.12); border-radius: 12px; padding: 10px;"><div style="font-size: 12px; color: #666b74;">Fahrten</div><div class="m" style="font-size: 19px; font-weight: 600;">41</div></div>
+          </div>
+        </div>
+      </div>
+      <table>
+        <tr><th>Teil</th><th>Wert</th></tr>
+        <tr><td>Beschriftung</td><td class="m">14 px / 400 / --color-muted</td></tr>
+        <tr><td>Wert</td><td class="m">--text-title / 600 / mono / tabular-nums</td></tr>
+        <tr><td>Fläche</td><td class="m">--color-surface, --radius-lg, 16 px Innenabstand</td></tr>
+        <tr><td>Höchstens</td><td class="m">4 Kacheln je Raster</td></tr>
+      </table>
+      <p class="bs" style="margin: 0;">Was darüber hinausgeht, wird eine Zeile darunter: <span class="mono" style="font-size: 12px;">Max. Steigung 12 % · Ø 62 km/h · 8 °C</span>. Auf der Streckenseite sind das 190 px statt 348.</p>
+    </div>
+
+    <!-- 3 IconButton -->
+    <div class="blk">
+      <div style="display: flex; align-items: baseline; gap: 10px;"><span class="bt">3 &middot; Icon-Schaltfläche</span><span class="mono" style="font-size: 11px; color: #666b74;">neu: ui/IconButton.tsx</span></div>
+      <p class="bs" style="margin: 0;">In der Kopfzeile der Fahrtseite stehen drei davon mit <span class="mono">gap-3</span> nebeneinander, jede ohne Innenabstand. WCAG 2.2 SC 2.5.8 verlangt 24 px, Apple 44.</p>
+      <div class="paar">
+        <div class="zelle">
+          <span class="tag vor">Vorher</span>
+          <div style="display: flex; gap: 12px; align-items: center; height: 44px;">
+            <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; stroke: #666b74; fill: none; stroke-width: 2;" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>
+            <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; stroke: #666b74; fill: none; stroke-width: 2;" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></svg>
+            <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; stroke: #666b74; fill: none; stroke-width: 2;" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M2 12h20"/></svg>
+          </div>
+          <span class="mono" style="font-size: 11px; color: #b45309;">16 px, 12 px Abstand</span>
+        </div>
+        <div class="zelle">
+          <span class="tag nach">Nachher</span>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span class="ib44"><svg viewBox="0 0 24 24" style="width: 20px; height: 20px; stroke: #666b74; fill: none; stroke-width: 2;" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg></span>
+            <span class="ib44"><svg viewBox="0 0 24 24" style="width: 20px; height: 20px; stroke: #666b74; fill: none; stroke-width: 2;" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></svg></span>
+            <span class="ib44"><svg viewBox="0 0 24 24" style="width: 20px; height: 20px; stroke: #666b74; fill: none; stroke-width: 2;" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M2 12h20"/></svg></span>
+          </div>
+          <span class="mono" style="font-size: 11px; color: #1a7f37;">44 px, sichtbare Fläche</span>
+        </div>
+      </div>
+      <p class="bs" style="margin: 0;">Ersetzt in einem Zug: Teilen, Melden, Sichtbarkeit, Kommentar melden, beide &bdquo;Weitere Aktionen&ldquo;-Auslöser und die Foto-Kreuze. Schliesst nebenbei <span class="mono" style="font-size: 12px;">uiux.md §5.2</span>.</p>
+    </div>
+
+    <!-- 4 Farbe -->
+    <div class="blk">
+      <div style="display: flex; align-items: baseline; gap: 10px;"><span class="bt">4 &middot; Farbe</span><span class="mono" style="font-size: 11px; color: #666b74;">lib/signature.ts, RouteMap.tsx</span></div>
+      <p class="bs" style="margin: 0;">Drei Farbsysteme für dieselbe Sache: fünf Signaturfarben, acht Blautöne als Fallback und die Tokens. Keines weiss vom anderen, keines wird für den Dunkelmodus umdefiniert.</p>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <span style="width: 34px; height: 34px; border-radius: 8px; background: #E8590C;"></span>
+        <span style="width: 34px; height: 34px; border-radius: 8px; background: #7C3AED;"></span>
+        <span style="width: 34px; height: 34px; border-radius: 8px; background: #0EA5E9;"></span>
+        <span style="width: 34px; height: 34px; border-radius: 8px; background: #16A34A;"></span>
+        <span style="width: 34px; height: 34px; border-radius: 8px; background: #3D5AFE;"></span>
+        <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; stroke: #666b74; fill: none; stroke-width: 2; margin: 0 6px;" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        <span style="width: 34px; height: 34px; border-radius: 8px; background: #3d5afe;"></span>
+        <span class="mono" style="font-size: 11px; color: #666b74;">--color-accent</span>
+      </div>
+      <table>
+        <tr><th>Signatur</th><th>auf hell</th><th>auf dunkel</th></tr>
+        <tr><td class="m">#E8590C Kehren</td><td class="m" style="color: #b45309; font-weight: 600;">3,43</td><td class="m">5,49</td></tr>
+        <tr><td class="m">#7C3AED Steigung</td><td class="m">5,46</td><td class="m" style="color: #b45309; font-weight: 600;">3,45</td></tr>
+        <tr><td class="m">#0EA5E9 Höhe</td><td class="m" style="color: #b45309; font-weight: 600;">2,66</td><td class="m">7,10</td></tr>
+        <tr><td class="m">#16A34A Tempo</td><td class="m" style="color: #b45309; font-weight: 600;">3,16</td><td class="m">5,97</td></tr>
+        <tr><td class="m">#3D5AFE Länge</td><td class="m">4,92</td><td class="m" style="color: #b45309; font-weight: 600;">3,83</td></tr>
+      </table>
+      <p class="bs" style="margin: 0;">Das Label ist <span class="mono">text-xs</span>, die Schwelle also 4,5:1. Die Signatur behält Icon und Text in <span class="mono">--color-muted</span>; Linie, linker Rand und Form nehmen den Akzent. Die Karte liest ihn einmal per <span class="mono" style="font-size: 12px;">getComputedStyle</span> im Listener, der ohnehin den Kartenstil tauscht &mdash; damit folgt auch der aufgezeichnete Track dem Thema.</p>
+    </div>
+
+    <!-- 5 Segmentierte Wahl -->
+    <div class="blk">
+      <div style="display: flex; align-items: baseline; gap: 10px;"><span class="bt">5 &middot; Segmentierte Wahl</span><span class="mono" style="font-size: 11px; color: #666b74;">neu: ui/SegmentedControl.tsx</span></div>
+      <p class="bs" style="margin: 0;">Fünf Fassungen desselben Bedienelements: Privat/Öffentlich in <span class="mono">RideSummaryForm</span> und <span class="mono">NeueStreckeForm</span>, Ja/Nein für Rundfahrt, der Theme-Schalter und die Feed-Reiter &mdash; <span class="mono">rounded-lg</span> gegen <span class="mono">rounded-full</span>, <span class="mono">py-1.5</span> gegen <span class="mono">py-2</span>.</p>
+      <div class="paar">
+        <div class="zelle">
+          <span class="tag vor">Vorher</span>
+          <div style="display: flex; gap: 6px;">
+            <span style="font-size: 12px; border-radius: 8px; border: 1px solid #3d5afe; background: #3d5afe; color: #fafafa; padding: 6px 12px;">Privat</span>
+            <span style="font-size: 12px; border-radius: 8px; border: 1px solid rgba(19,19,22,.12); padding: 6px 12px; background: #fff;">Öffentlich</span>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <span style="font-size: 13px; border-radius: 999px; background: #131316; color: #fafafa; padding: 8px 14px;">Alle</span>
+            <span style="font-size: 13px; border-radius: 999px; color: #666b74; padding: 8px 14px;">Folge ich</span>
+          </div>
+        </div>
+        <div class="zelle">
+          <span class="tag nach">Nachher</span>
+          <div style="display: inline-flex; gap: 4px; border: 1px solid rgba(19,19,22,.12); border-radius: 999px; padding: 4px; background: #fff; align-self: flex-start;">
+            <span style="font-size: 13px; font-weight: 500; border-radius: 999px; background: #131316; color: #fafafa; padding: 9px 16px;">Privat</span>
+            <span style="font-size: 13px; font-weight: 500; border-radius: 999px; color: #666b74; padding: 9px 16px;">Öffentlich</span>
+          </div>
+          <span class="mono" style="font-size: 11px; color: #1a7f37;">Segmenthöhe 36, Gesamthöhe 44</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6 Zeichen statt Icons + 7 Seitenrahmen -->
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+
+      <div class="blk">
+        <div style="display: flex; align-items: baseline; gap: 10px;"><span class="bt">6 &middot; Zeichen sind keine Icons</span></div>
+        <p class="bs" style="margin: 0;">Drei Stellen zeichnen ihr Symbol als Textzeichen. Was die Plattformschrift daraus macht, ist auf jedem Gerät anders breit, hoch und schwer.</p>
+        <div class="paar">
+          <div class="zelle">
+            <span class="tag vor">Vorher</span>
+            <div style="display: flex; gap: 16px; align-items: center; font-size: 17px;">
+              <span>&#9734; Merken</span><span>&#9733; Gemerkt</span><span>&#8942;</span>
+            </div>
+          </div>
+          <div class="zelle">
+            <span class="tag nach">Nachher</span>
+            <div style="display: flex; gap: 12px; align-items: center;">
+              <span class="ib44"><svg viewBox="0 0 24 24" style="width: 20px; height: 20px; stroke: #666b74; fill: none; stroke-width: 2; stroke-linejoin: round;" aria-hidden="true"><path d="m12 17.27 5.18 3.13-1.37-5.9 4.57-3.96-6.02-.52L12 4.5 9.64 10.02l-6.02.52 4.57 3.96-1.37 5.9z"/></svg></span>
+              <span class="ib44"><svg viewBox="0 0 24 24" style="width: 20px; height: 20px; stroke: #3d5afe; fill: #3d5afe; stroke-width: 2; stroke-linejoin: round;" aria-hidden="true"><path d="m12 17.27 5.18 3.13-1.37-5.9 4.57-3.96-6.02-.52L12 4.5 9.64 10.02l-6.02.52 4.57 3.96-1.37 5.9z"/></svg></span>
+              <span class="ib44"><svg viewBox="0 0 24 24" style="width: 20px; height: 20px; stroke: #666b74; fill: #666b74;" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span>
+            </div>
+          </div>
+        </div>
+        <p class="bs" style="margin: 0;">Dazu ein echter Vertrag für die 50 Icons aus 39 Dateien: <span class="mono">ui/Icon.tsx</span> legt Strichstärke fest (unter 20 px: 1.75, darüber 1.5) und streicht die Doppelungen &mdash; <span class="mono">Route</span>/<span class="mono">RouteIcon</span>, <span class="mono">Timer</span>/<span class="mono">Clock</span>.</p>
+      </div>
+
+      <div class="blk">
+        <div style="display: flex; align-items: baseline; gap: 10px;"><span class="bt">7 &middot; Seitenrahmen</span><span class="mono" style="font-size: 11px; color: #666b74;">neu: ui/Seitenrahmen.tsx</span></div>
+        <p class="bs" style="margin: 0;">Zwölf verschiedene <span class="mono">&lt;main&gt;</span>-Fassungen für 26 Seiten. Auf dem Telefon sichtbar ist davon fast nur der Rand: <span class="mono">px-6</span> auf acht Seiten, <span class="mono">px-5</span> auf zwölf. Beim Wechsel springt die Textkante um vier Pixel.</p>
+        <table>
+          <tr><th>Breite</th><th>Wert</th><th>Wofür</th></tr>
+          <tr><td class="m">schmal</td><td class="m">max-w-md</td><td>Formulare, Anmeldung</td></tr>
+          <tr><td class="m">normal</td><td class="m">max-w-2xl lg:max-w-3xl</td><td>alles Übrige</td></tr>
+          <tr><td class="m">weit</td><td class="m">max-w-2xl lg:max-w-5xl</td><td>Bestenlisten</td></tr>
+        </table>
+        <p class="bs" style="margin: 0;">Ein Satz Ränder für alle: <span class="mono">px-5 sm:px-6</span>, <span class="mono">py-8 sm:py-10</span>, <span class="mono">gap-6</span>. Die Kartenseiten bleiben aussen vor &mdash; sie haben eine eigene, bewusste Geometrie.</p>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

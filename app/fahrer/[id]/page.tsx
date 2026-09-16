@@ -22,6 +22,8 @@ import {
 import { getCurrentUser } from "@/lib/supabase/server";
 import Card from "@/components/ui/Card";
 import { freieFahrtTitel } from "@/lib/completions";
+import SectionHeading from "@/components/ui/SectionHeading";
+import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
 export async function generateMetadata({
   params,
@@ -115,7 +117,7 @@ export default async function FahrerPage({
     <div className="flex h-dvh flex-col">
       <Header back="/" />
       <div className="flex-1 overflow-y-auto">
-        <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-5 py-8 sm:px-6 sm:py-10 lg:max-w-4xl">
+        <Seitenrahmen>
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Avatar
@@ -178,10 +180,10 @@ export default async function FahrerPage({
               zeigen kann statt auf halber Breite zu verharren. */}
           {profile.zeigtFahrzeuge && (
             <section className="flex flex-col gap-3">
-              <h2 className="flex items-center gap-1.5 text-sm font-semibold tracking-wide text-muted uppercase">
+              <SectionHeading className="flex items-center gap-1.5">
                 <Car className="h-4 w-4" aria-hidden="true" />
                 Fahrzeuge
-              </h2>
+              </SectionHeading>
               <VehicleGrid vehicles={profile.vehicles} editable={false} />
             </section>
           )}
@@ -189,9 +191,9 @@ export default async function FahrerPage({
           <section className="flex flex-col gap-4">
             {/* Nicht mehr nur "Gefahrene Strecken": die Liste enthält seit
                 0045_freie_fahrten_teilen.sql auch geteilte freie Fahrten. */}
-            <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">
+            <SectionHeading>
               Geteilte Fahrten
-            </h2>
+            </SectionHeading>
             {profile.fahrten.length === 0 ? (
               <p className="text-sm text-muted">Noch keine öffentlichen Fahrten.</p>
             ) : (
@@ -229,7 +231,7 @@ export default async function FahrerPage({
         </div>
 
         {istPrivat && <p className="text-sm text-muted">Dieses Profil ist privat.</p>}
-        </main>
+        </Seitenrahmen>
       </div>
     </div>
   );

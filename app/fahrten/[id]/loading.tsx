@@ -10,7 +10,7 @@ import PageSkeleton from "@/components/ui/PageSkeleton";
 
 export default function Loading() {
   return (
-    <PageSkeleton maxWidth="max-w-2xl lg:max-w-3xl">
+    <PageSkeleton>
       {/* Fahrer plus Datum links, Kudos/Teilen/Menü rechts */}
       <div className="flex items-center gap-3">
         <Skeleton className="h-11 w-11 shrink-0 rounded-full" />

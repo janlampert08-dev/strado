@@ -7,7 +7,7 @@ import type { DataDrivenPropertyValueSpecification } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { ZURICH_CENTER, DEFAULT_ZOOM } from "@/lib/constants";
 import { sliceRouteBySpeed, speedColor } from "@/lib/speed";
-import { isDarkTheme, subscribeToThemeChange } from "@/lib/theme";
+import { akzentFarbe, isDarkTheme, subscribeToThemeChange } from "@/lib/theme";
 import { MIN_ACCURACY_M } from "@/components/useRideRecorder";
 import type { KartenStrecke, TempolimitSegment } from "@/types/database";
 import Skeleton from "@/components/ui/Skeleton";
@@ -30,7 +30,6 @@ const HIGHLIGHT_LINE_LAYER = "route-highlight-line";
 // ROUTES_SOURCE laufen.
 const TRACK_SOURCE = "ride-track";
 const TRACK_LINE_LAYER = "ride-track-line";
-const TRACK_COLOR = "#3D5AFE";
 // Leere Vorgaben für die optionalen Listen-Props auf Modulebene statt als
 // Destrukturierungs-Default. `trail = []` im Signatur-Kopf erzeugt bei JEDEM
 // Render ein neues Array — und damit eine neue Referenz für die
@@ -49,36 +48,21 @@ const TERRAIN_EXAGGERATION = 1.4;
 const TILTED_PITCH = 60;
 const TILTED_BEARING = -17;
 
-// Verwandte Blautöne, damit einzelne Strecken auf der Übersichtskarte
-// unterscheidbar sind, ohne aus dem Farbschema auszubrechen.
-const ROUTE_BLUE_PALETTE = [
-  "#3D5AFE",
-  "#0EA5E9",
-  "#2563EB",
-  "#6366F1",
-  "#0284C7",
-  "#4F46E5",
-  "#38BDF8",
-  "#1D4ED8",
-];
-
-// Stabiler Hash der Strecken-ID statt Listenindex, damit eine Strecke ihre
-// Farbe behält, auch wenn Filter die Reihenfolge/Auswahl ändern. Dient nur
-// noch als Fallback, wenn keine Signatur-Farbe übergeben wurde (z.B. auf der
-// Detailkarte mit nur einer Strecke).
-function colorForRoute(id: string): string {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
-  }
-  return ROUTE_BLUE_PALETTE[hash % ROUTE_BLUE_PALETTE.length];
-}
-
-// Farbe kommt primär aus dem Signatur-Merkmal der Strecke (siehe
-// lib/signature.ts) — so tragen Kartenlinie und Sidebar-Karte dieselbe
-// Bedeutung: gleiches Merkmal, gleiche Farbe.
-function resolveColor(colors: Map<string, string> | undefined, id: string): string {
-  return colors?.get(id) ?? colorForRoute(id);
+// Eine Farbe für alle Streckenlinien: --color-accent, zur Laufzeit
+// aufgelöst (lib/theme.ts).
+//
+// Vorher standen hier ZWEI weitere Farbsysteme neben dem Token-System: die
+// fünf Signaturfarben aus lib/signature.ts, durchgereicht als colors-Map,
+// und acht fest verdrahtete Blautöne als Fallback, per ID-Hash verteilt.
+// Drei Systeme für dieselbe Sache, keines wusste vom anderen, und keines
+// folgte dem Thema — obwohl die Karte ihren Stil längst tauschte.
+//
+// Unterschieden wird jetzt über Deckkraft und Linienstärke statt über den
+// Farbton (CONTEXT_ROUTE_OPACITY weiter unten, plus der Hervorhebungs-
+// Layer). Das ist auf einem Telefon im Sonnenlicht ohnehin das Robustere:
+// Farbe ist das erste, was draussen zusammenbricht.
+function streckenFarbe(): string {
+  return akzentFarbe();
 }
 
 // Deckkraft der Kontext-Strecken, sobald eine Strecke als primär markiert ist
@@ -102,30 +86,30 @@ function mapStyleForTheme(): string {
   return isDarkTheme() ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/streets-v12";
 }
 
-function toFeatureCollection(
-  routes: KartenStrecke[],
-  colors?: Map<string, string>,
-): GeoJSON.FeatureCollection {
+function toFeatureCollection(routes: KartenStrecke[]): GeoJSON.FeatureCollection {
+  // Einmal je Sammlung, nicht einmal je Strecke: streckenFarbe() läuft über
+  // getComputedStyle(document.documentElement), und das ist ein Lesezugriff
+  // auf den Layout-Zustand. Bei rund 39 sichtbaren Strecken je
+  // Aktualisierung war das 39-mal dieselbe Antwort. Die Farbe ist für alle
+  // Strecken dieselbe — sie unterscheiden sich über die Deckkraft.
+  const color = streckenFarbe();
   return {
     type: "FeatureCollection",
     features: routes.map((route) => ({
       type: "Feature",
       id: route.id,
       geometry: route.geometry_geojson,
-      properties: { id: route.id, name: route.name, color: resolveColor(colors, route.id) },
+      properties: { id: route.id, name: route.name, color },
     })),
   };
 }
 
 // Bei Rundfahrten liegen Start und Ziel am selben Ort — dort nur ein Punkt,
 // sonst je ein Punkt am Anfang und am Ende der Strecke.
-function toEndpointFeatureCollection(
-  routes: KartenStrecke[],
-  colors?: Map<string, string>,
-): GeoJSON.FeatureCollection {
+function toEndpointFeatureCollection(routes: KartenStrecke[]): GeoJSON.FeatureCollection {
   const features: GeoJSON.Feature[] = [];
+  const color = streckenFarbe();
   for (const route of routes) {
-    const color = resolveColor(colors, route.id);
     features.push({
       type: "Feature",
       geometry: route.start_geojson,
@@ -183,6 +167,55 @@ function metersToPixelsAtLatitude(meters: number, latitude: number, zoom: number
   return meters / metersPerPixel;
 }
 
+// Ausgeschrieben statt ReturnType<typeof createLocationMarkerElement>: der
+// Erzeuger ruft faerbeStandortMarker selbst auf, ein abgeleiteter Rückgabetyp
+// wäre also zirkulär.
+interface StandortMarker {
+  wrapper: HTMLDivElement;
+  accuracyEl: HTMLDivElement;
+  headingEl: HTMLDivElement;
+  dotEl: HTMLDivElement;
+}
+
+/**
+ * Setzt alle vier Farbflächen des Standort-Markers aus --color-accent.
+ *
+ * Eigene Funktion, weil sie ZWEIMAL laufen muss: einmal beim Erzeugen des
+ * Elements und einmal bei jedem Themenwechsel. Der Marker ist ein
+ * mapboxgl.Marker, also ein DOM-Overlay über der Karte — map.setStyle()
+ * baut ihn nicht neu, und das Element selbst entsteht nur einmal
+ * (locationMarkerRef). Wer also mitten in einer Aufzeichnung auf Dunkel
+ * umschaltet, behielt den Positionspunkt im Tagblau, während die Spur
+ * darunter über "style.load" längst die neue Farbe trug. Der Kommentar bei
+ * setupLayers ("liest alle Farben frisch") gilt für Layer, nicht hierfür.
+ *
+ * Ring und Richtungskegel standen bis zur Review von PR #254 sogar noch als
+ * rgba(61,90,254,…) im Code — derselbe helle Akzentwert wie das frühere
+ * TRACK_COLOR, nur in anderer Schreibweise, weshalb die Suche danach ihn
+ * nicht gefunden hat.
+ */
+function faerbeStandortMarker(elemente: StandortMarker) {
+  const farbe = streckenFarbe();
+  elemente.dotEl.style.backgroundColor = farbe;
+  elemente.accuracyEl.style.backgroundColor = mitDeckkraft(farbe, 0.15);
+  elemente.accuracyEl.style.border = `1px solid ${mitDeckkraft(farbe, 0.35)}`;
+  elemente.headingEl.style.background =
+    `linear-gradient(to bottom, ${mitDeckkraft(farbe, 0.9)}, ${mitDeckkraft(farbe, 0)})`;
+}
+
+/**
+ * Eine aufgelöste Farbe mit Deckkraft. Nimmt den 8-stelligen Hex-Weg, weil
+ * --color-accent in beiden Themes ein #rrggbb ist; alles andere bekommt die
+ * Farbe unverändert zurück, statt einen ungültigen String zu bauen.
+ */
+function mitDeckkraft(farbe: string, deckkraft: number): string {
+  if (!/^#[0-9a-f]{6}$/i.test(farbe)) return farbe;
+  const stufe = Math.round(Math.min(Math.max(deckkraft, 0), 1) * 255)
+    .toString(16)
+    .padStart(2, "0");
+  return `${farbe}${stufe}`;
+}
+
 // Standort-Marker aus drei übereinanderliegenden, unabhängig positionierten
 // Ebenen statt eines einzelnen Punkts — orientiert sich an der üblichen
 // Navi-App-Konvention (Apple/Google Maps): ein Genauigkeits-Ring kommuniziert
@@ -192,7 +225,7 @@ function metersToPixelsAtLatitude(meters: number, latitude: number, zoom: number
 // left/top:0 + translate(-50%,-50%) auf denselben Ankerpunkt zentriert, so
 // bleibt die Zentrierung korrekt, auch wenn der Ring durch wechselnde
 // Genauigkeit laufend seine Grösse ändert.
-function createLocationMarkerElement() {
+function createLocationMarkerElement(): StandortMarker {
   const wrapper = document.createElement("div");
   wrapper.style.position = "relative";
   wrapper.style.width = "0px";
@@ -203,8 +236,6 @@ function createLocationMarkerElement() {
   accuracyEl.style.left = "0";
   accuracyEl.style.top = "0";
   accuracyEl.style.borderRadius = "50%";
-  accuracyEl.style.backgroundColor = "rgba(61, 90, 254, 0.15)";
-  accuracyEl.style.border = "1px solid rgba(61, 90, 254, 0.35)";
   accuracyEl.style.transform = "translate(-50%, -50%)";
   accuracyEl.style.transition = "width 0.3s ease, height 0.3s ease";
   accuracyEl.style.pointerEvents = "none";
@@ -224,8 +255,6 @@ function createLocationMarkerElement() {
   headingEl.style.transform = "translate(-50%, -50%) rotate(0deg)";
   headingEl.style.transformOrigin = "50% 50%";
   headingEl.style.clipPath = "polygon(50% 0%, 14% 100%, 50% 74%, 86% 100%)";
-  headingEl.style.background =
-    "linear-gradient(to bottom, rgba(61,90,254,0.9), rgba(61,90,254,0))";
   headingEl.style.pointerEvents = "none";
   headingEl.style.display = "none";
 
@@ -236,7 +265,6 @@ function createLocationMarkerElement() {
   dotEl.style.width = "12px";
   dotEl.style.height = "12px";
   dotEl.style.borderRadius = "50%";
-  dotEl.style.backgroundColor = "#3D5AFE";
   dotEl.style.border = "2.5px solid #FAFAFA";
   dotEl.style.boxShadow = "0 0 0 1px rgba(19,19,22,0.25), 0 1px 3px rgba(19,19,22,0.35)";
   dotEl.style.transform = "translate(-50%, -50%)";
@@ -245,7 +273,9 @@ function createLocationMarkerElement() {
   wrapper.appendChild(headingEl);
   wrapper.appendChild(dotEl);
 
-  return { wrapper, accuracyEl, headingEl, dotEl };
+  const elemente: StandortMarker = { wrapper, accuracyEl, headingEl, dotEl };
+  faerbeStandortMarker(elemente);
+  return elemente;
 }
 
 function toTrackFeatureCollection(trail: [number, number][]): GeoJSON.FeatureCollection {
@@ -360,7 +390,6 @@ export default function RouteMap({
   showSpeedLimits = false,
   showTraffic = false,
   show3D = false,
-  colors,
   hoveredRouteId = null,
   primaryRouteId = null,
   flyToRouteId = null,
@@ -408,12 +437,6 @@ export default function RouteMap({
   // Schattierung. Das Umschalten bewegt also die Ansicht — bei reduzierter
   // Bewegung springt sie, statt zu fahren (bewegungsdauer()).
   show3D?: boolean;
-  // Farbe je Strecken-ID, abgeleitet aus dem Signatur-Merkmal
-  // (lib/signature.ts), damit Kartenlinie und Sidebar-Karte dasselbe
-  // bedeuten. Fehlt der Eintrag, greift ein stabiler Hash der ID
-  // (colorForRoute) — nie der Listenindex, sonst wechselte eine Strecke beim
-  // Filtern die Farbe.
-  colors?: Map<string, string>;
   // Diese Strecke bekommt Halo und kräftige Linie. Teilt sich den
   // Hervorhebungs-Layer mit primaryRouteId; gesetzt wird er vom Zeiger über
   // der Seitenleiste, weshalb er beim Rendern Vorrang hat.
@@ -490,7 +513,6 @@ export default function RouteMap({
   // ExploreView) — ohne das wäre die Karte für ein bis zwei Sekunden leer.
   const [isReady, setIsReady] = useState(false);
   const routesRef = useRef(routes);
-  const colorsRef = useRef(colors);
   const trailRef = useRef(trail);
   const routesClickableRef = useRef(routesClickable);
   const fitRoutesRef = useRef(fitRoutes);
@@ -528,9 +550,6 @@ export default function RouteMap({
     fitRoutesRef.current = fitRoutes;
   }, [fitRoutes]);
 
-  useEffect(() => {
-    colorsRef.current = colors;
-  }, [colors]);
 
   useEffect(() => {
     trailRef.current = trail;
@@ -633,7 +652,7 @@ export default function RouteMap({
 
       map.addSource(ROUTES_SOURCE, {
         type: "geojson",
-        data: toFeatureCollection(routesRef.current, colorsRef.current),
+        data: toFeatureCollection(routesRef.current),
       });
 
       map.addLayer(
@@ -682,7 +701,7 @@ export default function RouteMap({
           source: TRACK_SOURCE,
           layout: { "line-join": "round", "line-cap": "round" },
           paint: {
-            "line-color": TRACK_COLOR,
+            "line-color": streckenFarbe(),
             "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2.5, 14, 4.5],
           },
         },
@@ -765,7 +784,7 @@ export default function RouteMap({
                 {
                   type: "Feature",
                   geometry: hoveredRoute.geometry_geojson,
-                  properties: { color: resolveColor(colorsRef.current, hoveredRoute.id) },
+                  properties: { color: streckenFarbe() },
                 },
               ],
             }
@@ -800,7 +819,7 @@ export default function RouteMap({
 
       map.addSource(ENDPOINTS_SOURCE, {
         type: "geojson",
-        data: toEndpointFeatureCollection(routesRef.current, colorsRef.current),
+        data: toEndpointFeatureCollection(routesRef.current),
       });
       map.addLayer(
         {
@@ -918,6 +937,14 @@ export default function RouteMap({
     return subscribeToThemeChange(() => {
       const map = mapRef.current;
       if (!map) return;
+
+      // Der Standort-Marker ist ein DOM-Overlay und überlebt setStyle() —
+      // siehe faerbeStandortMarker. Vor dem Stilwechsel und unabhängig
+      // davon, ob er überhaupt einen auslöst: die Farbe des Markers hängt
+      // am Token, nicht am Kartenstil.
+      const elemente = locationElementsRef.current;
+      if (elemente) faerbeStandortMarker(elemente);
+
       const nextStyle = mapStyleForTheme();
       if (nextStyle === currentStyle) return;
       currentStyle = nextStyle;
@@ -926,17 +953,20 @@ export default function RouteMap({
     });
   }, []);
 
-  // Kartendaten aktualisieren, wenn sich die gefilterte Streckenliste oder die
-  // Signatur-Farben ändern.
+  // Kartendaten aktualisieren, wenn sich die gefilterte Streckenliste ändert.
+  // Die Farbe hängt nicht mehr daran: sie kommt aus --color-accent und
+  // wechselt nur mit dem Thema — und dann tauscht der Effekt weiter unten
+  // ohnehin den Kartenstil, was über "style.load" setupLayers() neu laufen
+  // lässt und alle Farben frisch aus dem Token liest.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !styleLoadedRef.current) return;
     const source = map.getSource(ROUTES_SOURCE) as mapboxgl.GeoJSONSource | undefined;
     if (!source) return;
-    source.setData(toFeatureCollection(routes, colors));
+    source.setData(toFeatureCollection(routes));
 
     const endpointsSource = map.getSource(ENDPOINTS_SOURCE) as mapboxgl.GeoJSONSource | undefined;
-    endpointsSource?.setData(toEndpointFeatureCollection(routes, colors));
+    endpointsSource?.setData(toEndpointFeatureCollection(routes));
 
     const single = routes.length === 1 ? routes[0] : null;
     const speedSource = map.getSource(SPEED_SOURCE) as mapboxgl.GeoJSONSource | undefined;
@@ -960,7 +990,7 @@ export default function RouteMap({
       fitToRoutes(map, fitTargets(routes, primaryRouteId), true, bottomInsetRef.current);
       eingepasstMitInsetRef.current = bottomInsetRef.current;
     }
-  }, [routes, colors, fitRoutes, primaryRouteId]);
+  }, [routes, fitRoutes, primaryRouteId]);
 
   // Ändert sich die vom Sheet verdeckte Fläche (auf-, zu- oder ganz
   // weggezogen, Drehung des Geräts), passt sich der Ausschnitt an die neue
@@ -1009,7 +1039,7 @@ export default function RouteMap({
               {
                 type: "Feature",
                 geometry: route.geometry_geojson,
-                properties: { color: resolveColor(colorsRef.current, route.id) },
+                properties: { color: streckenFarbe() },
               },
             ],
           }

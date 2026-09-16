@@ -20,11 +20,26 @@ import { cn } from "@/lib/utils/cn";
 // sondern ein Verweis. Solche geteilten Werte gehören deshalb in ein Modul
 // ohne "use client"; von dort dürfen beide Seiten importieren.
 // lib/reactGrenze.test.ts hält diese Regel fest.
-export function chipClassName(aktiv: boolean): string {
+/**
+ * @param gross 44 px statt 36 — der Mindestwert aus components/ui/IconButton.tsx.
+ *
+ * Ein Parameter und keine angehängte Klasse: lib/utils/cn.ts ist ein reiner
+ * String-Join, ein zweites min-h-* im class-Attribut überschreibt das erste
+ * also nicht verlässlich (die Reihenfolge im erzeugten CSS entscheidet).
+ *
+ * Gebraucht wird er im Fazit (components/RideSummaryForm.tsx): die
+ * Fahrzeug-Chips haben dort die <select>-Liste ersetzt, die mit rund 42 px
+ * GRÖSSER war als die 36 px, die sie zuerst bekamen — und der Kommentar
+ * daneben versprach 44. Das ist der Schirm am Strassenrand, und die
+ * Motorklasse entscheidet über die Wertung.
+ *
+ * Die Filterleiste auf /leaderboards bleibt bei 36: dort stehen bis zu neun
+ * Chips in zwei Zeilen, und sie wird im Sitzen bedient.
+ */
+export function chipClassName(aktiv: boolean, gross = false): string {
   return cn(
-    // min-h-9 wie die kleinen Schaltflächen in components/ui/Button.tsx —
-    // diese Leiste wird im Zweifel im Fahrzeug bedient.
-    "inline-flex min-h-9 shrink-0 items-center rounded-full border px-3 text-sm font-medium whitespace-nowrap transition-colors duration-fast",
+    "inline-flex shrink-0 items-center rounded-full border px-3 text-sm font-medium whitespace-nowrap transition-colors duration-fast",
+    gross ? "min-h-11" : "min-h-9",
     aktiv
       ? "border-accent bg-accent text-background"
       : "border-border text-muted hover:border-border-strong hover:text-foreground",

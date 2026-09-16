@@ -2,17 +2,18 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Trophy } from "lucide-react";
 import { formatDuration } from "@/lib/format";
 import type { RouteTimeEntry } from "@/lib/leaderboard";
 import { MEDAL_COLORS } from "@/lib/constants";
 import Avatar from "@/components/Avatar";
+import { RankingIcon } from "@/components/NavIcons";
 import Card from "@/components/ui/Card";
 import MotorklassenChips from "@/components/MotorklassenChips";
 import { filterLabel, istFahrzeugTyp, motorklassendefinition } from "@/lib/motorklassen";
 import type { Klassenfilter } from "@/lib/motorklassen";
 import type { Motorklasse } from "@/types/database";
 import { cn } from "@/lib/utils/cn";
+import SectionHeading from "@/components/ui/SectionHeading";
 
 const SICHTBAR = 5;
 
@@ -73,7 +74,7 @@ export default function RouteLeaderboardPreview({
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">Bestzeiten</h2>
+      <SectionHeading>Bestzeiten</SectionHeading>
 
       <MotorklassenChips
         klassen={klassen}
@@ -97,7 +98,7 @@ export default function RouteLeaderboardPreview({
             <li key={entry.completionId} className="flex items-center gap-3 px-4 py-3 text-sm">
               {i < 3 ? (
                 <span className="flex w-4 shrink-0 justify-center">
-                  <Trophy className="h-4 w-4" style={{ color: MEDAL_COLORS[i] }} aria-hidden="true" />
+                  <RankingIcon className="h-4 w-4" style={{ color: MEDAL_COLORS[i] }} aria-hidden="true" />
                   <span className="sr-only">Platz {i + 1}</span>
                 </span>
               ) : (

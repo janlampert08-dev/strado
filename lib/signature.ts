@@ -3,9 +3,32 @@
 // Ansicht durch eine aus den ohnehin vorhandenen Streckendaten abgeleitete
 // Eigenschaft. Für jede Strecke wird das Merkmal gewählt, in dem sie
 // (perzentilbasiert) im Vergleich zu den anderen Strecken am meisten
-// heraussticht. Zwei Strecken mit demselben Merkmal teilen sich dieselbe
-// Farbe (Karte + Liste) — die Farbe transportiert also Bedeutung statt nur
-// Unterscheidbarkeit.
+// heraussticht.
+//
+// FRÜHER TRUG DIESE DATEI AUCH FÜNF FARBEN — jetzt nicht mehr, und das ist
+// der Punkt. Jedes Merkmal hatte einen festen Hex-Wert (#E8590C, #7C3AED,
+// #0EA5E9, #16A34A, #3D5AFE), der in der Explore-Liste gleichzeitig den
+// linken Rand, den Hover-Hintergrund, die getönte Fläche hinter der
+// Streckenform, die Form selbst UND das Label einfärbte. Drei Probleme
+// daran, jedes für sich ausreichend:
+//
+// 1. Das Label steht in text-xs, die Kontrastschwelle ist also 4,5:1.
+//    Gerechnet gegen die echten Hintergrund-Tokens fielen im hellen Theme
+//    drei der fünf durch (2,66 / 3,16 / 3,43) und im dunklen zwei
+//    (3,45 / 3,83).
+// 2. Die Werte waren Konstanten in einer .ts-Datei und wussten nichts von
+//    prefers-color-scheme. Sie wurden in KEINEM Theme je umdefiniert —
+//    dieselbe Lücke, die app/globals.css für die Statusfarben längst
+//    geschlossen hat.
+// 3. Fünf Farben mit nicht lernbarer Bedeutung sind auf einem 390-px-Schirm
+//    kein Ordnungssystem, sondern Buntheit. Niemand merkt sich, dass
+//    Violett "Steigung" heisst — direkt daneben stehen ohnehin das Icon und
+//    das Wort.
+//
+// Die Signatur behält deshalb Icon und Text und verliert die Farbe; Linie,
+// linker Rand und Form nehmen --color-accent. Die Perzentil-Logik hier ist
+// davon unberührt und bleibt der eigentliche Wert dieser Datei.
+// Siehe docs/design-vereinfachung.md, Anhang A4.
 import { averageTempolimit } from "@/lib/geo";
 import { mitAnzahl } from "@/lib/format";
 import type { ExploreRoute } from "@/types/database";
@@ -15,16 +38,7 @@ export type SignatureKey = "kehren" | "steigung" | "hoehe" | "tempo" | "laenge";
 export interface RouteSignature {
   key: SignatureKey;
   label: string;
-  color: string;
 }
-
-export const SIGNATURE_COLORS: Record<SignatureKey, string> = {
-  kehren: "#E8590C",
-  steigung: "#7C3AED",
-  hoehe: "#0EA5E9",
-  tempo: "#16A34A",
-  laenge: "#3D5AFE",
-};
 
 // Reihenfolge bei Gleichstand der Perzentile — seltenere/technischere
 // Merkmale gewinnen vor der immer vorhandenen Länge, die als einziges Feld
@@ -56,15 +70,6 @@ function percentileRanks(values: (number | null)[]): (number | null)[] {
   return values.map((_, i) => rankOf.get(i) ?? null);
 }
 
-// Wandelt eine Signaturfarbe (immer #rrggbb, siehe SIGNATURE_COLORS) in eine
-// transluzente rgba()-Variante um — für Hover-Hintergründe, die dieselbe
-// Farbe wie das Signatur-Merkmal tragen sollen, aber nicht deckend sein dürfen.
-export function withAlpha(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
 
 function formatSignature(key: SignatureKey, route: ExploreRoute): string {
   switch (key) {
@@ -128,7 +133,6 @@ export function computeSignatures(routes: ExploreRoute[]): Map<string, RouteSign
     result.set(route.id, {
       key: best,
       label: formatSignature(best, route),
-      color: SIGNATURE_COLORS[best],
     });
   });
 

@@ -11,6 +11,7 @@ import { filterLabel } from "@/lib/motorklassen";
 import type { Klassenfilter } from "@/lib/motorklassen";
 import type { Motorklasse } from "@/types/database";
 import { cn } from "@/lib/utils/cn";
+import SectionHeading from "@/components/ui/SectionHeading";
 
 const COLLAPSED_SIZE = 5;
 const EXPANDED_SIZE = 10;
@@ -64,9 +65,9 @@ export default function TrackLeaderboardChooser({
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">
+        <SectionHeading>
           Streckenbestzeiten
-        </h2>
+        </SectionHeading>
         {routes.length > 0 && (
           <select
             // Ohne Beschriftung meldet ein Screenreader hier nur "Auswahl" —

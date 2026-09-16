@@ -14,6 +14,8 @@ import SterneEingabe from "@/components/SterneEingabe";
 import ReportDialog from "@/components/ReportDialog";
 import DeleteRatingButton from "@/components/DeleteRatingButton";
 import useEingabenBewahren from "@/components/useEingabenBewahren";
+import SectionHeading from "@/components/ui/SectionHeading";
+import IconButton from "@/components/ui/IconButton";
 
 const initialState: RatingFormState = { error: null };
 
@@ -46,7 +48,7 @@ export default function RatingSection({
   return (
     <section className="flex flex-col gap-4 border-t border-border pt-6">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">Bewertungen</h2>
+        <SectionHeading>Bewertungen</SectionHeading>
         {/* Der Schnitt steht in der Überschrift, nicht als eigener Kasten:
             er ist die Zusammenfassung dessen, was darunter steht, und eine
             Zahl, die sich in einer Zeile mit dem Titel lesen lässt, kostet
@@ -149,14 +151,14 @@ export default function RatingSection({
                 <DeleteRatingButton ratingId={r.id} />
               ) : (
                 currentUserId && (
-                  <button
-                    type="button"
+                  <IconButton
                     onClick={() => setReportRatingId(r.id)}
+                    ton="gefahr"
+                    title="Bewertung melden"
                     aria-label="Bewertung melden"
-                    className="shrink-0 text-muted transition-colors duration-fast hover:text-danger"
                   >
-                    <Flag className="h-3.5 w-3.5" aria-hidden="true" />
-                  </button>
+                    <Flag className="h-5 w-5" aria-hidden="true" />
+                  </IconButton>
                 )
               )}
             </li>

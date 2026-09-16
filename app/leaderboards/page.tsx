@@ -1,8 +1,9 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Trophy } from "lucide-react";
 import Header from "@/components/Header";
+import { RankingIcon } from "@/components/NavIcons";
+import FeedReiter from "@/components/FeedReiter";
 import PullToRefreshArea from "@/components/PullToRefreshArea";
 import TrackLeaderboardChooser from "@/components/TrackLeaderboardChooser";
 import Avatar from "@/components/Avatar";
@@ -28,6 +29,8 @@ import type { Motorklasse, Vehicle } from "@/types/database";
 import { MEDAL_COLORS } from "@/lib/constants";
 import Card from "@/components/ui/Card";
 import LeaderboardListsSkeleton from "@/components/LeaderboardListsSkeleton";
+import SectionHeading from "@/components/ui/SectionHeading";
+import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
 export const metadata: Metadata = {
   title: "Bestenlisten – Strado",
@@ -70,7 +73,7 @@ function LeaderboardSection({
 }) {
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">{title}</h2>
+      <SectionHeading>{title}</SectionHeading>
       {entries.length === 0 ? (
         <p className="text-sm text-muted">Noch keine Einträge.</p>
       ) : (
@@ -86,7 +89,7 @@ function LeaderboardSection({
               >
                 {i < 3 ? (
                   <span className="flex w-4 shrink-0 justify-center">
-                    <Trophy className="h-4 w-4" style={{ color: MEDAL_COLORS[i] }} aria-hidden="true" />
+                    <RankingIcon className="h-4 w-4" style={{ color: MEDAL_COLORS[i] }} aria-hidden="true" />
                     <span className="sr-only">Platz {i + 1}</span>
                   </span>
                 ) : (
@@ -248,14 +251,33 @@ export default async function LeaderboardsPage({
   const { klasse: klasseRoh } = await searchParams;
   const klasse = istKlassenfilter(klasseRoh) ? klasseRoh : null;
 
+  // Für die Reiterleiste: "Folge ich" gibt es nur mit Konto. Stand hier
+  // zuerst fest auf false — mit der Folge, dass wer von /feed?scope=following
+  // kommt, drei Reiter sieht, "Rangliste" tippt und dort nur noch zwei
+  // vorfindet: ausgerechnet der, aus dem er kam, fehlte.
+  //
+  // Kostet keinen zusätzlichen Roundtrip: getCurrentUser() ist in React
+  // cache() gewickelt, und <Header /> oben wartet ohnehin schon darauf.
+  const user = await getCurrentUser();
+
   return (
     <div className="flex h-dvh flex-col">
       <Header />
       {/* Ziehen zum Aktualisieren (nur Touch) — siehe PullToRefreshArea.tsx */}
       <PullToRefreshArea>
       <div className="flex-1 overflow-y-auto">
-        <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-5 py-8 sm:px-6 sm:py-10 lg:max-w-5xl">
+        <Seitenrahmen breite="weit">
         <div className="flex flex-col gap-3">
+          {/* Dieselbe Reiterleiste wie auf /feed. Die Bestenlisten sind seit
+              der Umstellung auf die Loop-Leiste kein eigener Eintrag in der
+              Navigation mehr, sondern der dritte Reiter neben dem Feed —
+              siehe components/FeedReiter.tsx und lib/nav.ts. Die Seite
+              bleibt eine eigene Adresse mit eigenem Datenbedarf; nur der Weg
+              hierher hat sich geändert.
+
+              Die <h1> bleibt sichtbar: sie benennt, was die vier Listen
+              darunter sind, und der aktive Reiter allein trüge das nicht. */}
+          <FeedReiter aktiv="rangliste" zeigtFolgeIch={!!user} />
           <h1 className="text-display font-semibold">Bestenlisten</h1>
           <MotorklassenChips
             klassen={ALLE_KLASSEN}
@@ -281,7 +303,7 @@ export default async function LeaderboardsPage({
         <Suspense fallback={null}>
           <Streckenwahl />
         </Suspense>
-        </main>
+        </Seitenrahmen>
       </div>
       </PullToRefreshArea>
     </div>

@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500;600&amp;display=swap">
+  <style>
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #fafafa; color: #131316; }
+    a { color: #3d5afe; } a:hover { color: #2f49d6; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+    .h3 { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; font-weight: 600;
+          letter-spacing: .1em; text-transform: uppercase; color: #666b74; margin: 0; }
+    .chip { display: inline-flex; align-items: center; height: 44px; border-radius: 999px;
+            border: 1px solid rgba(19,19,22,.12); padding: 0 16px; font-size: 14px; font-weight: 500; color: #666b74; }
+    .chipAn { border-color: #131316; background: #131316; color: #fafafa; }
+    .zeile { display: flex; align-items: center; justify-content: space-between;
+             border-top: 1px solid rgba(19,19,22,.12); padding: 16px 0; }
+    .mess { position: absolute; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 9px;
+            font-weight: 600; color: #1a7f37; background: #fafafa; padding: 1px 5px; border-radius: 4px;
+            border: 1px solid #1a7f37; white-space: nowrap; z-index: 6; }
+  </style>
+</helmet>
+
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; background: #fafafa;">
+
+  <div style="padding: 28px 20px 0;">
+
+    <!-- Ergebnis -->
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <span style="font-size: 14px; color: #666b74;">Albispass &middot; 14.09.2026</span>
+      <div style="display: flex; align-items: baseline; gap: 12px;">
+        <span class="mono" style="font-size: 52px; font-weight: 600; line-height: 1;">18:42</span>
+        <span style="display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; background: #ebedfa; color: #3d5afe; font-size: 12px; font-weight: 600; padding: 5px 10px;">
+          <svg viewBox="0 0 24 24" style="width: 13px; height: 13px; stroke: #3d5afe; fill: none; stroke-width: 2.5; stroke-linecap: round;" aria-hidden="true"><path d="m5 13 4 4L19 7"/></svg>
+          Neue Bestzeit
+        </span>
+      </div>
+      <span style="font-size: 15px; color: #666b74;">14.21 km &middot; 46 km/h &middot; 640 m &middot; 97 % Abdeckung</span>
+    </div>
+
+    <div style="height: 22px;"></div>
+
+    <!-- Fahrzeug als Chips -->
+    <p class="h3">Fahrzeug</p>
+    <div style="height: 8px;"></div>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap; position: relative;">
+      <span class="chip chipAn">Ducati Monster</span>
+      <span class="chip">Golf GTI</span>
+      <span class="chip" style="width: 44px; padding: 0; justify-content: center;">
+        <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; stroke: #666b74; fill: none; stroke-width: 2; stroke-linecap: round;" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      </span>
+    </div>
+    <span class="mess" style="right: 20px; top: 150px;">Chips statt Auswahlliste</span>
+
+    <div style="height: 20px;"></div>
+
+    <!-- Sichtbarkeit -->
+    <p class="h3">Sichtbarkeit</p>
+    <div style="height: 8px;"></div>
+    <div style="display: inline-flex; gap: 4px; border: 1px solid rgba(19,19,22,.12); border-radius: 999px; padding: 4px; background: #fafafa;">
+      <span style="display: inline-flex; align-items: center; gap: 6px; height: 36px; border-radius: 999px; background: #131316; color: #fafafa; padding: 0 16px; font-size: 13px; font-weight: 500;">
+        <svg viewBox="0 0 24 24" style="width: 15px; height: 15px; stroke: #fafafa; fill: none; stroke-width: 2;" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        Privat
+      </span>
+      <span style="display: inline-flex; align-items: center; gap: 6px; height: 36px; border-radius: 999px; color: #666b74; padding: 0 16px; font-size: 13px; font-weight: 500;">
+        <svg viewBox="0 0 24 24" style="width: 15px; height: 15px; stroke: #666b74; fill: none; stroke-width: 2;" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/></svg>
+        Öffentlich
+      </span>
+    </div>
+    <div style="height: 6px;"></div>
+    <p style="margin: 0; font-size: 14px; color: #666b74;">Nur du siehst diese Fahrt. Sie zählt nicht für die Bestenliste.</p>
+
+    <div style="height: 14px;"></div>
+
+    <!-- Notiz und Fotos, zugeklappt -->
+    <div class="zeile" style="position: relative;">
+      <span style="font-size: 15px; font-weight: 500;">Notiz &amp; Fotos <span style="font-weight: 400; color: #666b74;">— optional</span></span>
+      <svg viewBox="0 0 24 24" style="width: 18px; height: 18px; stroke: #666b74; fill: none; stroke-width: 2;" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </div>
+    <span class="mess" style="right: 20px; top: 404px;">zugeklappt — beides geht auch danach</span>
+
+  </div>
+
+  <!-- Feste Fusszeile -->
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; border-top: 1px solid rgba(19,19,22,.12); background: #fafafa; padding: 14px 20px 22px; display: flex; flex-direction: column; gap: 10px;">
+    <span style="display: flex; align-items: center; justify-content: center; height: 52px; border-radius: 999px; background: #3d5afe; color: #fafafa; font-size: 16px; font-weight: 500;">Fahrt speichern</span>
+    <span style="text-align: center; font-size: 14px; color: #666b74;">Verwerfen</span>
+  </div>
+  <span class="mess" style="left: 20px; bottom: 116px;">Speichern immer sichtbar</span>
+
+</div>
+</x-dc>
+</body>
+</html>

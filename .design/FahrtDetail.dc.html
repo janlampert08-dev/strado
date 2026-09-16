@@ -1,0 +1,106 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500;600&amp;display=swap">
+  <style>
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #fafafa; color: #131316; }
+    a { color: #3d5afe; } a:hover { color: #2f49d6; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+    .ib { width: 44px; height: 44px; border: 1px solid rgba(19,19,22,.12); border-radius: 999px;
+          display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .kachel { display: flex; flex-direction: column; justify-content: space-between; gap: 4px;
+              border: 1px solid rgba(19,19,22,.12); border-radius: 16px; background: #f3f3f4; padding: 14px; }
+    .kl { font-size: 14px; color: #666b74; }
+    .kw { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums;
+          font-size: 20px; font-weight: 600; }
+    .mess { position: absolute; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 9px;
+            font-weight: 600; color: #1a7f37; background: #fafafa; padding: 1px 5px; border-radius: 4px;
+            border: 1px solid #1a7f37; white-space: nowrap; z-index: 5; }
+  </style>
+</helmet>
+
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; background: #fafafa;">
+
+  <div style="position: absolute; inset: 0 0 auto 0; height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid rgba(19,19,22,.12); background: rgba(250,250,250,.85); z-index: 4;">
+    <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; stroke: #131316; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+    <svg viewBox="0 0 268.83 67.92" style="height: 18px; width: auto; fill: #131316;" aria-hidden="true"><path d="M23.17 67.92Q14.83 67.92 9.88 65.29Q4.92 62.67 2.63 58.67Q0.33 54.67 0 50.67L12.83 50.67Q13.25 52.83 14.63 54.63Q16 56.42 18.42 57.5Q20.83 58.58 24.08 58.58Q28.5 58.58 30.88 56.88Q33.25 55.17 33.25 52.5Q33.25 50 31.17 48.75Q29.08 47.5 24.75 46.67L17 45.17Q9.58 43.75 5.71 39.79Q1.83 35.83 1.83 29.83Q1.83 24.42 4.5 20.42Q7.17 16.42 11.96 14.17Q16.75 11.92 23.17 11.92Q29.83 11.92 34.54 14.17Q39.25 16.42 41.83 20.29Q44.42 24.17 44.83 29L32.33 29Q31.83 25.67 29.29 23.63Q26.75 21.58 22.83 21.58Q19 21.58 16.83 23.21Q14.67 24.83 14.67 27.5Q14.67 29.83 16.63 31.13Q18.58 32.42 22.42 33.17L30.5 34.75Q38.25 36.25 42.17 40.25Q46.08 44.25 46.08 50.25Q46.08 55.58 43.29 59.63Q40.5 63.67 35.42 65.79Q30.33 67.92 23.17 67.92Z"/></svg>
+  </div>
+
+  <div style="position: absolute; top: 56px; left: 0; right: 0; bottom: 64px; overflow: hidden; padding: 20px;">
+
+    <!-- Kopfzeile: Fahrer + drei 44-px-Flächen -->
+    <div style="display: flex; align-items: center; gap: 12px; position: relative;">
+      <div style="width: 44px; height: 44px; border-radius: 999px; background: #f3f3f4; border: 1px solid rgba(19,19,22,.12); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+        <span class="mono" style="font-size: 14px; color: #666b74;">MB</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1; min-width: 0;">
+        <span style="font-size: 15px; font-weight: 500;">M. Brunner</span>
+        <span style="font-size: 13px; color: #666b74;">Montag, 14. September 2026</span>
+      </div>
+      <div style="display: flex; gap: 8px; flex-shrink: 0;">
+        <span class="ib"><svg viewBox="0 0 24 24" style="width: 20px; height: 20px; stroke: #666b74; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></span>
+        <span class="ib"><svg viewBox="0 0 24 24" style="width: 20px; height: 20px; stroke: #666b74; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg></span>
+        <span class="ib"><svg viewBox="0 0 24 24" style="width: 20px; height: 20px; stroke: #666b74; fill: #666b74;" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span>
+      </div>
+      <span class="mess" style="right: 20px; top: -8px;">drei 44-px-Flächen statt drei 16-px-Zeichen</span>
+    </div>
+
+    <div style="height: 18px;"></div>
+
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <span style="font-size: 14px; color: #666b74;">Zürichsee</span>
+      <div style="display: flex; align-items: baseline; gap: 10px;">
+        <h1 style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -.02em;">Albispass</h1>
+        <span style="display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; border: 1px solid #1a7f37; color: #1a7f37; font-size: 11px; font-weight: 600; padding: 3px 9px;">
+          <svg viewBox="0 0 24 24" style="width: 12px; height: 12px; stroke: #1a7f37; fill: none; stroke-width: 2.5; stroke-linecap: round;" aria-hidden="true"><path d="m5 13 4 4L19 7"/></svg>
+          Verifiziert
+        </span>
+      </div>
+      <span style="font-size: 14px; color: #666b74;">Zürich &rarr; Hausen am Albis</span>
+    </div>
+
+    <div style="height: 16px;"></div>
+
+    <div style="height: 168px; border: 1px solid rgba(19,19,22,.12); border-radius: 16px; background: #eceff1; overflow: hidden;">
+      <svg viewBox="0 0 348 166" style="width: 100%; height: 100%;" aria-hidden="true">
+        <path d="M14 140 C 60 132, 90 80, 150 70 S 250 40, 334 20" fill="none" stroke="#3d5afe" stroke-width="4" stroke-linecap="round"/>
+        <circle cx="14" cy="140" r="6" fill="#3d5afe"/><circle cx="334" cy="20" r="6" fill="#131316"/>
+      </svg>
+    </div>
+
+    <div style="height: 16px;"></div>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; position: relative;">
+      <div class="kachel"><span class="kl">Distanz</span><span class="kw">14.21 km</span></div>
+      <div class="kachel"><span class="kl">Zeit</span><span class="kw">18:42</span></div>
+      <div class="kachel"><span class="kl">Ø Tempo</span><span class="kw">46 km/h</span></div>
+      <div class="kachel"><span class="kl">Aufstieg</span><span class="kw">640 m</span></div>
+      <span class="mess" style="right: -4px; top: -10px;">eine Betonungsstufe</span>
+    </div>
+
+    <div style="height: 16px;"></div>
+
+    <div style="display: flex; align-items: center; gap: 12px; border: 1px solid rgba(19,19,22,.12); border-radius: 16px; background: #f3f3f4; padding: 14px;">
+      <span style="width: 40px; height: 40px; border-radius: 999px; border: 1px solid rgba(19,19,22,.12); background: #fafafa; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+        <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; stroke: #666b74; fill: none; stroke-width: 2; stroke-linecap: round;" aria-hidden="true"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 17.5h-6l-3-6 4-3h4l3 4"/></svg>
+      </span>
+      <div style="display: flex; flex-direction: column; gap: 3px;">
+        <span style="font-size: 15px; font-weight: 500;">Ducati Monster</span>
+        <span style="font-size: 13px; color: #666b74;">Motorrad &middot; Mittel</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 64px; border-top: 1px solid rgba(19,19,22,.12); background: #fafafa; z-index: 4;"></div>
+
+</div>
+</x-dc>
+</body>
+</html>

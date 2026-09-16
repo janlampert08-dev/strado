@@ -6,6 +6,7 @@ import PullToRefreshArea from "@/components/PullToRefreshArea";
 import Avatar from "@/components/Avatar";
 import KudosButton from "@/components/KudosButton";
 import ProfileSearch from "@/components/ProfileSearch";
+import FeedReiter from "@/components/FeedReiter";
 import { Signet } from "@/components/Wortmarke";
 import { getFeed, type FeedScope } from "@/lib/feed";
 import { freieFahrtTitel } from "@/lib/completions";
@@ -13,7 +14,7 @@ import { getCurrentUser } from "@/lib/supabase/server";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import { buttonVariants } from "@/components/ui/Button";
-import { cn } from "@/lib/utils/cn";
+import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
 export const metadata: Metadata = {
   title: "Feed – Strado",
@@ -58,7 +59,7 @@ export default async function FeedPage({
       {/* Ziehen zum Aktualisieren (nur Touch) — siehe PullToRefreshArea.tsx */}
       <PullToRefreshArea>
       <div className="flex-1 overflow-y-auto">
-        <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-5 py-8 sm:px-6 sm:py-10">
+        <Seitenrahmen>
         <div>
           <h1 className="text-display font-semibold">Feed</h1>
           <p className="mt-1 text-sm text-muted">Geteilte Fahrten aus der Community.</p>
@@ -66,32 +67,16 @@ export default async function FeedPage({
 
         <ProfileSearch />
 
-        {user && (
-          <div className="flex gap-2 border-b border-border pb-3">
-            <Link
-              href="/feed"
-              // Der aktive Filter war ausschliesslich an der Hintergrundfarbe
-              // erkennbar. BottomNav.tsx macht es im selben Repo richtig.
-              aria-current={scope === "global" ? "page" : undefined}
-              className={cn(
-                "rounded-full px-3 py-1.5 text-sm font-medium transition-colors duration-fast",
-                scope === "global" ? "bg-foreground text-background" : "text-muted hover:text-foreground",
-              )}
-            >
-              Alle
-            </Link>
-            <Link
-              href="/feed?scope=following"
-              aria-current={scope === "following" ? "page" : undefined}
-              className={cn(
-                "rounded-full px-3 py-1.5 text-sm font-medium transition-colors duration-fast",
-                scope === "following" ? "bg-foreground text-background" : "text-muted hover:text-foreground",
-              )}
-            >
-              Folge ich
-            </Link>
-          </div>
-        )}
+        {/* Die Reiter stehen jetzt in einer eigenen Komponente, weil sie
+            /leaderboards mitbenutzt: die Ranglisten sind seit der Umstellung
+            auf die Loop-Leiste der dritte Reiter neben dem Feed statt eines
+            eigenen Eintrags in der Navigation (siehe lib/nav.ts).
+
+            Anders als vorher werden sie auch Abgemeldeten gezeigt — "Alle"
+            und "Rangliste" sind beide ohne Konto lesbar, und ohne die Leiste
+            gäbe es für sie keinen sichtbaren Weg zu den Bestenlisten mehr.
+            Nur "Folge ich" bleibt angemeldeten Konten vorbehalten. */}
+        <FeedReiter aktiv={scope === "following" ? "following" : "global"} zeigtFolgeIch={!!user} />
 
         {feed.length === 0 ? (
           <EmptyState
@@ -134,54 +119,87 @@ export default async function FeedPage({
                 key={item.completion_id}
                 className="group relative overflow-hidden transition-colors duration-fast hover:border-border-strong has-[a:active]:bg-surface"
               >
-                <div className="flex flex-col gap-3 p-4">
-                  <div className="flex items-center gap-3">
-                    <Link href={`/fahrer/${item.user_id}`} className="relative z-10 shrink-0">
-                      <Avatar url={item.avatar_url} name={item.display_name} size={40} />
-                    </Link>
-                    <div className="min-w-0 flex-1">
-                      <Link
-                        href={`/fahrer/${item.user_id}`}
-                        className="relative z-10 block truncate text-sm font-medium transition-colors duration-fast hover:text-accent"
-                      >
-                        {item.display_name ?? "Fahrer"}
-                      </Link>
-                      <p className="text-xs text-muted">{new Date(item.datum).toLocaleDateString("de-CH")}</p>
-                    </div>
-                  </div>
+                {/* Zwei Zeilen statt vier. Vorher trug die Karte Fahrer mit
+                    Avatar und Datum, dann Titel mit Distanz, dann Region mit
+                    Art-Chip, dann Kudos in einer eigenen rechtsbündigen
+                    Zeile — auf 390 px passten damit rund zwei Fahrten auf
+                    einen Schirm. Schritt 9 des Kernloops lebt aber davon,
+                    wie viele fremde Fahrten auf einen Blick passen.
 
-                  <Link
-                    href={`/fahrten/${item.completion_id}`}
-                    className="flex items-baseline justify-between gap-2 transition-colors duration-fast hover:text-accent after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-accent/40"
-                  >
-                    <span className="min-w-0 truncate font-medium">
-                      {item.art === "frei"
-                        ? freieFahrtTitel(item.titel, item.start_ort)
-                        : item.route_name}
-                    </span>
-                    <span className="flex shrink-0 items-center gap-1 font-mono text-sm tabular-nums text-muted">
-                      {(item.distanz_km ?? item.laenge_km ?? 0).toFixed(1)} km
+                    Und die erste Zeile trug den NAMEN DES FAHRERS. AGENTS.md
+                    nennt den Ortsnamen "the unit of recognition": er ist das,
+                    woran jemand seine Strasse wiedererkennt und weshalb er
+                    weiterschaut. Er steht jetzt zuerst; Fahrer, Region und
+                    Distanz bilden die Zeile darunter.
+                    Siehe docs/design-vereinfachung.md, Anhang B5. */}
+                <div className="flex items-center gap-3 p-4">
+                  <Link href={`/fahrer/${item.user_id}`} className="relative z-10 shrink-0">
+                    <Avatar url={item.avatar_url} name={item.display_name} size={40} />
+                  </Link>
+
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <Link
+                      href={`/fahrten/${item.completion_id}`}
+                      className="flex items-baseline gap-2 transition-colors duration-fast hover:text-accent after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-accent/40"
+                    >
+                      <span className="min-w-0 truncate text-base font-medium">
+                        {item.art === "frei"
+                          ? freieFahrtTitel(item.titel, item.start_ort)
+                          : item.route_name}
+                      </span>
                       <ChevronRight
                         className="h-4 w-4 shrink-0 text-muted transition-transform duration-fast group-hover:translate-x-0.5"
                         aria-hidden="true"
                       />
-                    </span>
-                  </Link>
-                  {/* Freie Fahrten sind als solche gekennzeichnet: sie
-                      führen über keine geprüfte Strecke, und der Unterschied
-                      soll in der Liste sichtbar sein statt nur im Titel
-                      mitschwingen. */}
-                  <p className="flex items-center gap-1.5 text-xs text-muted">
-                    {item.art === "frei" && (
-                      <span className="rounded-full border border-border px-1.5 py-0.5">
-                        Freie Fahrt
+                    </Link>
+
+                    {/* Fahrer, Region, Distanz in einer Zeile. Der Fahrername
+                        bleibt eigenständig anklickbar (z-10 über dem
+                        gestreckten Link der Karte), steht aber nicht mehr
+                        vor dem Ortsnamen. Freie Fahrten tragen ihre
+                        Kennzeichnung hier statt in einer eigenen Zeile —
+                        sie führen über keine geprüfte Strecke, und das soll
+                        sichtbar bleiben. */}
+                    <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-sm text-muted">
+                      <Link
+                        href={`/fahrer/${item.user_id}`}
+                        className="relative z-10 shrink-0 transition-colors duration-fast hover:text-foreground"
+                      >
+                        {item.display_name ?? "Fahrer"}
+                      </Link>
+                      <span aria-hidden="true">·</span>
+                      <span className="truncate">{item.region}</span>
+                      <span aria-hidden="true">·</span>
+                      <span className="font-mono tabular-nums">
+                        {(item.distanz_km ?? item.laenge_km ?? 0).toFixed(1)} km
                       </span>
-                    )}
-                    {item.region}
-                  </p>
+                      <span aria-hidden="true">·</span>
+                      {/* Kurzform ohne Jahr: der Feed ist nach Datum
+                          sortiert, das Jahr trägt auf zehn sichtbaren
+                          Einträgen nichts bei und kostet vier Zeichen in
+                          einer Zeile, die auf 390 px ohnehin knapp ist.
+                          <time> statt <span>, damit das vollständige Datum
+                          für Hilfstechnik und Suchmaschinen erhalten bleibt. */}
+                      <time
+                        dateTime={item.datum}
+                        className="font-mono tabular-nums"
+                        title={new Date(item.datum).toLocaleDateString("de-CH")}
+                      >
+                        {new Date(item.datum).toLocaleDateString("de-CH", {
+                          day: "2-digit",
+                          month: "2-digit",
+                        })}
+                      </time>
+                      {item.art === "frei" && (
+                        <span className="shrink-0 rounded-full border border-border px-1.5 py-0.5 text-xs">
+                          Freie Fahrt
+                        </span>
+                      )}
+                    </p>
+                  </div>
 
                   {user && (
-                    <div className="relative z-10 flex justify-end">
+                    <div className="relative z-10 shrink-0">
                       <KudosButton
                         completionId={item.completion_id}
                         initialCount={item.kudos.count}
@@ -194,7 +212,7 @@ export default async function FeedPage({
             ))}
           </ul>
         )}
-        </main>
+        </Seitenrahmen>
       </div>
       </PullToRefreshArea>
     </div>

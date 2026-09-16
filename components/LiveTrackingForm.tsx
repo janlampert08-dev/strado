@@ -17,10 +17,12 @@ import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
 import { formatDuration } from "@/lib/format";
 import RideSummaryForm from "@/components/RideSummaryForm";
 import type { KartenStrecke, RouteGeoJSON, Vehicle } from "@/types/database";
+import { Smartphone } from "lucide-react";
 import { buttonVariants } from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Skeleton from "@/components/ui/Skeleton";
 import FullscreenDialog from "@/components/ui/FullscreenDialog";
+import SectionHeading from "@/components/ui/SectionHeading";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
@@ -269,40 +271,64 @@ export default function LiveTrackingForm({
           />
         </div>
         <div className="flex flex-col gap-3 border-t border-border-strong bg-background p-4 pb-[calc(1rem+var(--safe-bottom))]">
-          <p className="text-xs font-semibold tracking-wide text-muted uppercase">
-            {recorder.hasStarted ? "Aufzeichnung läuft" : "Unterwegs zum Start"}
-          </p>
-          <dl className="grid grid-cols-3 gap-3 sm:grid-cols-5">
+          {/* DER EINZIGE SCHIRM DER APP, DER IN BEWEGUNG GELESEN WIRD —
+              und bis hierher beschriftete er seine Zahlen in text-xs, also
+              12 px, und zeigte fünf Werte in grid-cols-3, davon zwei in
+              text-xl und drei in text-lg. Gleiche Rolle, zwei Grössen, und
+              auf 390 px rund 120 px Spaltenbreite je Wert.
+
+              Jetzt zwei Zahlen gross und der Rest in einer Zeile. Gross sind
+              die beiden HANDLUNGSLEITENDEN: die gefahrene Zeit — das, was
+              die Bestenliste misst — und "noch … km", der einzige Wert, aus
+              dem sich in dem Moment eine Entscheidung ableiten lässt.
+              Distanz, Tempo und Höhe sind interessant, aber nicht
+              handlungsleitend; sie stehen darunter in 15 px statt in eigenen
+              Spalten. Siehe docs/design-vereinfachung.md, Anhang B2. */}
+          <div className="flex items-center gap-2">
+            {recorder.hasStarted && (
+              <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full bg-danger" />
+            )}
+            <SectionHeading as="p" className="font-mono">
+              {recorder.hasStarted ? "Aufzeichnung läuft" : "Unterwegs zum Start"}
+            </SectionHeading>
+          </div>
+          <dl className="flex flex-wrap items-end gap-x-6 gap-y-2">
             <div>
-              <dt className="text-xs text-muted">Distanz</dt>
-              <dd className="font-mono text-xl tabular-nums">
-                {recorder.distanceKm.toFixed(2)} km
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted">Zeit</dt>
-              <dd className="font-mono text-xl tabular-nums">
+              <dt className="text-[15px] text-muted">Zeit</dt>
+              <dd className="font-mono text-4xl leading-none font-semibold tabular-nums">
                 {formatDuration(recorder.elapsedSeconds)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted">Tempo</dt>
-              <dd className="font-mono text-lg tabular-nums">
-                {recorder.speedKmh !== null ? `${recorder.speedKmh.toFixed(0)} km/h` : "—"}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted">Höhe</dt>
-              <dd className="font-mono text-lg tabular-nums">
-                {currentElevationM !== null ? `${currentElevationM} m` : "—"}
               </dd>
             </div>
             {remainingKm !== null && (
               <div>
-                <dt className="text-xs text-muted">Noch</dt>
-                <dd className="font-mono text-lg tabular-nums">{remainingKm.toFixed(1)} km</dd>
+                <dt className="text-[15px] text-accent">noch</dt>
+                <dd className="font-mono text-4xl leading-none font-semibold tabular-nums text-accent">
+                  {remainingKm.toFixed(1)}
+                  <span className="ml-1 text-[15px] font-normal"> km</span>
+                </dd>
               </div>
             )}
+            {/* Die drei übrigen Werte als Fliesstext statt als Spalten. Ein
+                sr-only-dt je Wert, damit Hilfstechnik die Paarung behält —
+                sichtbar trägt die Einheit die Bedeutung. */}
+            {/* Der Mittelpunkt steht IM folgenden <dd>, nicht daneben: ein
+                <div> in einem <dl> darf nur <dt> und <dd> enthalten, ein
+                <span> dazwischen ist ungültiges HTML. aria-hidden hält ihn
+                wie zuvor aus der Vorlesereihenfolge heraus. */}
+            <div className="flex w-full flex-wrap items-baseline gap-x-2 text-[15px] text-muted">
+              <dt className="sr-only">Distanz</dt>
+              <dd className="font-mono tabular-nums">{recorder.distanceKm.toFixed(2)} km gefahren</dd>
+              <dt className="sr-only">Tempo</dt>
+              <dd className="font-mono tabular-nums">
+                <span aria-hidden="true" className="mr-2">·</span>
+                {recorder.speedKmh !== null ? `${recorder.speedKmh.toFixed(0)} km/h` : "—"}
+              </dd>
+              <dt className="sr-only">Höhe</dt>
+              <dd className="font-mono tabular-nums">
+                <span aria-hidden="true" className="mr-2">·</span>
+                {currentElevationM !== null ? `${currentElevationM} m` : "—"}
+              </dd>
+            </div>
           </dl>
           {!recorder.hasStarted && (
             <p className="text-sm text-muted">
@@ -337,36 +363,47 @@ export default function LiveTrackingForm({
               Anmeldung.
             </p>
           )}
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Der Wachhinweis stand als 12-px-Fussnote RECHTS NEBEN dem
+              Beenden-Knopf — also in der kleinsten Schrift der App, direkt
+              neben der grössten Schaltfläche, auf dem Schirm, der in
+              Bewegung gelesen wird. Wer ihn übersieht, verliert die halbe
+              Aufzeichnung, weil der Browser das GPS pausiert.
+
+              Jetzt eine eigene Zeile über den Schaltflächen, in 14 px und
+              mit Symbol. Er steht vor dem Beenden und nicht daneben, damit
+              er nicht mit der Handlung konkurriert.
+              docs/audit/uiux.md §5.4. */}
+          <p className="flex items-start gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm leading-snug">
+            <Smartphone className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+            <span>Bildschirm an lassen — sonst pausiert die Aufzeichnung.</span>
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
             {recorder.hasStarted ? (
               <button
                 type="button"
                 onClick={recorder.stop}
-                className={buttonVariants({ variant: "accent", size: "lg" })}
+                className={buttonVariants({ variant: "accent", size: "lg", className: "flex-1" })}
               >
                 Strecke beenden
               </button>
             ) : (
-              <div className="flex items-center gap-3">
+              <>
                 <button
                   type="button"
                   onClick={handleExit}
-                  className={buttonVariants({ variant: "secondary", size: "lg" })}
+                  className={buttonVariants({ variant: "secondary", size: "lg", className: "flex-1" })}
                 >
                   Abbrechen
                 </button>
                 <button
                   type="button"
                   onClick={recorder.beginNow}
-                  className="text-xs font-medium text-accent hover:underline"
+                  className="text-sm font-medium text-accent hover:underline"
                 >
                   Bin schon am Start
                 </button>
-              </div>
+              </>
             )}
-            <p className="text-xs text-muted">
-              Bildschirm eingeschaltet lassen — GPS-Tracking im Browser pausiert sonst.
-            </p>
           </div>
         </div>
       </FullscreenDialog>
@@ -379,10 +416,17 @@ export default function LiveTrackingForm({
   const isNewBest =
     result !== null && (personalBestSeconds === null || result.seconds < personalBestSeconds);
 
+  // Ohne pb-[var(--safe-bottom)], anders als die Ansichten davor:
+  // diese hier endet auf dem klebenden Speichern-Streifen aus
+  // RideSummaryForm, und der bringt den sicheren Bereich in seiner
+  // EIGENEN Polsterung mit. Beides zusammen ergab, sobald man ganz
+  // nach unten gescrollt hatte, zwei Höhen des Home-Indikators unter
+  // dem Knopf. Der Streifen deckt die untere Kante ohnehin immer ab,
+  // also gehört der Zuschlag dorthin und nicht hierher.
   return (
-    <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)]">
+    <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)]">
       <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-5 py-8 sm:px-6 sm:py-10">
-        <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">Fazit</h2>
+        <SectionHeading>Fazit</SectionHeading>
 
         <dl className="grid grid-cols-2 gap-4 text-sm">
           <div>
