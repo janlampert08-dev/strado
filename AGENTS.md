@@ -756,6 +756,7 @@ area**; each is a few hundred lines at most.
 | `.agents/deployment.md` | Applying migrations, shipping to Vercel/Stripe |
 | `docs/audit/README.md` | Completions, leaderboards, RLS views, auth — check the remediation table before reporting a "new" finding |
 | `docs/premium-plan.md` | Anything premium, Stripe, or entitlement-shaped |
+| `docs/design-vereinfachung.md` | Visual/structural UI work — the mobile-first simplification concept: one source per pattern, the token system over ad-hoc colour, the phone's screen as a budget |
 | `supabase/migrations/README.md` | Whenever migration order or the applied/unapplied gap matters |
 
 `README.md` is the human setup guide and is not a substitute for any of
