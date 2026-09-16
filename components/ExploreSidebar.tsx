@@ -7,8 +7,8 @@ import { routeShapePath } from "@/lib/routeShape";
 import { formatKm } from "@/lib/format";
 import { type RouteSignature, type SignatureKey } from "@/lib/signature";
 import type { ExploreRoute } from "@/types/database";
-import { schnittText, type Streckenbewertung } from "@/lib/bewertungen";
-import Sterne from "@/components/Sterne";
+import { anzahlText, type Streckenbewertung } from "@/lib/bewertungen";
+import Sternschnitt from "@/components/Sternschnitt";
 import { fieldClassName } from "@/components/ui/Input";
 import EmptyState from "@/components/ui/EmptyState";
 import IconButton from "@/components/ui/IconButton";
@@ -109,11 +109,11 @@ export default function ExploreSidebar({
           für Screenreader und Suchmaschinen behält — nur der erklärende
           Absatz entfällt. */}
       {loggedIn ? (
-        <h1 className="sr-only">Die schönsten Strecken rund um Zürich</h1>
+        <h1 className="sr-only">Die schönsten Strecken der Schweiz</h1>
       ) : (
         <div className="flex flex-col gap-1">
           <h1 className="text-lg font-semibold tracking-tight">
-            Die schönsten Strecken rund um Zürich
+            Die schönsten Strecken der Schweiz
           </h1>
           {/* Zwei Zeilen statt drei, auf 390 px gemessen. Beide Aussagen
               bleiben — kuratiert, und aufzeichnen geht ohne Konto —, nur
@@ -295,16 +295,13 @@ export default function ExploreSidebar({
                         Ohne eine einzige Wertung steht hier nichts statt
                         "0.0": siehe RatingSection, dieselbe Regel. */}
                     {bewertung && (
-                      <span className="flex shrink-0 items-center gap-1">
-                        <Sterne wert={bewertung.schnitt} sterneClassName="h-3 w-3" />
-                        <span className="font-mono text-xs tabular-nums text-muted">
-                          {schnittText(bewertung.schnitt)}
-                        </span>
-                        <span className="sr-only">
-                          von 5 Sternen, {bewertung.anzahl}{" "}
-                          {bewertung.anzahl === 1 ? "Bewertung" : "Bewertungen"}
-                        </span>
-                      </span>
+                      <Sternschnitt
+                        schnitt={bewertung.schnitt}
+                        zahlClassName="text-xs text-muted"
+                        sternClassName="h-3 w-3"
+                      >
+                        <span className="sr-only">{anzahlText(bewertung.anzahl)}</span>
+                      </Sternschnitt>
                     )}
                   </div>
                 </div>

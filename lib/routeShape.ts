@@ -59,7 +59,8 @@ export function routeShapePath(
   const maxLat = Math.max(...lats);
 
   // Meter pro Längengrad hängt vom Breitengrad ab (Kosinus-Korrektur) — ohne
-  // sie würde jede Strecke im Kanton Zürich sichtbar in die Breite gezogen.
+  // sie würde jede Strecke auf Schweizer Breitengraden sichtbar in die Breite
+  // gezogen.
   const lonScale = Math.cos(((minLat + maxLat) / 2) * (Math.PI / 180));
 
   const w = (maxLon - minLon) * lonScale || 1e-9;

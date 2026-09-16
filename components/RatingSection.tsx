@@ -6,10 +6,11 @@ import { Flag } from "lucide-react";
 import { submitRating, type RatingFormState } from "@/lib/actions/ratings";
 import { reportRating } from "@/lib/actions/reports";
 import type { RatingWithAuthor } from "@/lib/ratings";
-import { anzahlText, schnittText, type Streckenbewertung } from "@/lib/bewertungen";
+import { anzahlText, type Streckenbewertung } from "@/lib/bewertungen";
 import { Textarea } from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import Sterne from "@/components/Sterne";
+import Sternschnitt from "@/components/Sternschnitt";
 import SterneEingabe from "@/components/SterneEingabe";
 import ReportDialog from "@/components/ReportDialog";
 import DeleteRatingButton from "@/components/DeleteRatingButton";
@@ -57,10 +58,7 @@ export default function RatingSection({
             wäre eine Aussage über die Strecke, und zwar eine falsche. */}
         {bewertung && (
           <p className="flex items-center gap-2">
-            <Sterne wert={bewertung.schnitt} />
-            <span className="font-mono text-sm tabular-nums">
-              {schnittText(bewertung.schnitt)}
-            </span>
+            <Sternschnitt schnitt={bewertung.schnitt} />
             <span className="text-sm text-muted">{anzahlText(bewertung.anzahl)}</span>
           </p>
         )}

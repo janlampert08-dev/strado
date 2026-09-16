@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import mapboxgl from "mapbox-gl";
 import type { DataDrivenPropertyValueSpecification } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { ZURICH_CENTER, DEFAULT_ZOOM } from "@/lib/constants";
+import { SCHWEIZ_ZENTRUM, DEFAULT_ZOOM } from "@/lib/constants";
 import { sliceRouteBySpeed, speedColor } from "@/lib/speed";
 import { akzentFarbe, isDarkTheme, subscribeToThemeChange, tokenFarbe } from "@/lib/theme";
 import { SIGNATUR_RUECKFALL, SIGNATUR_TOKEN, type SignatureKey } from "@/lib/signature";
@@ -662,7 +662,7 @@ export default function RouteMap({
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: mapStyleForTheme(),
-      center: ZURICH_CENTER,
+      center: SCHWEIZ_ZENTRUM,
       zoom: DEFAULT_ZOOM,
       // Standard-Attribution aus, unten durch die kompakte Variante ersetzt:
       // statt der ausgeschriebenen Zeile "© Mapbox © OpenStreetMap Improve
