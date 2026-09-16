@@ -248,7 +248,17 @@ export default function ExploreSidebar({
                   </span>
                   <div className="flex items-center gap-2">
                     {showPlainKm && (
-                      <span className="font-mono text-sm tabular-nums text-muted">
+                      // shrink-0 und whitespace-nowrap: ohne beides ist diese
+                      // Zahl das erste, was der Flexbox ausgeht. Am Preview
+                      // auf 390 px nachgesehen — aus "33.1 km" wurden zwei
+                      // Zeilen, "33.1" über "km", und die Zeile wuchs über
+                      // ihre 80 px hinaus.
+                      //
+                      // Schrumpfen soll das Signatur-Label daneben: es hat
+                      // truncate und kürzt mit Auslassungspunkten, was bei
+                      // "Ø 114 km/h" lesbar bleibt. Eine umbrechende
+                      // Masszahl ist dagegen nie richtig.
+                      <span className="shrink-0 font-mono text-sm tabular-nums whitespace-nowrap text-muted">
                         {formatKm(route.laenge_km)} km
                       </span>
                     )}
