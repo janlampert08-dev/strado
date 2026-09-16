@@ -278,29 +278,29 @@ export async function requestPasswordReset(
   // das sich der Link aus der E-Mail später nicht einlösen liesse. Das legt
   // auth-js ab, BEVOR es die Anfrage abschickt (gemessen: 7 ms gegen 1229 ms
   // bis zur Antwort). Siehe lib/pruefwertCookie.ts.
-  const versand = supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(PASSWORT_AENDERN_PFAD)}`,
-  });
-
-  // after() hält die Funktion über die Antwort hinaus am Leben, damit der
-  // Versand zu Ende läuft und sein Ergebnis im Log landet — dasselbe Muster
-  // wie der Klickzähler in app/c/[code]/route.ts.
-  //
-  // NUR INS SERVERLOG, NIE IN DIE ANTWORT.
-  //
-  // Bei einer unbekannten Adresse antwortet resetPasswordForEmail fehlerfrei
-  // (Supabase verhindert so selbst schon Konto-Enumeration) — es wird ja gar
-  // nichts verschickt. Daraus folgt die Umkehrung: ein Fehler entsteht hier
-  // ausschliesslich für eine Adresse, zu der ein Konto existiert. Eine daran
-  // hängende Meldung unterschiede die Antwort also nach Kontoexistenz und
-  // wäre genau das Orakel, das die konstante Antwort verhindern soll. Die
-  // Eigenschaft steht namentlich in docs/audit/security.md unter "What is
-  // done well", ausdrücklich damit sie nicht versehentlich rückgängig
-  // gemacht wird. Seit der Versand nicht mehr abgewartet wird, ist sie
-  // ohnehin unvermeidbar: die Antwort steht, bevor das Ergebnis vorliegt.
-  after(async () => {
-    try {
-      const { error } = await versand;
+  const versand = supabase.auth
+    .resetPasswordForEmail(email, {
+      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(PASSWORT_AENDERN_PFAD)}`,
+    })
+    // Die Behandlung haengt hier und nicht erst im after()-Callback: sonst
+    // laege zwischen dem Start des Versands und dem Anhaengen des Handlers
+    // ein Fenster, in dem eine Rejection unbehandelt waere — und eine
+    // unbehandelte Rejection beendet den Node-Prozess.
+    //
+    // NUR INS SERVERLOG, NIE IN DIE ANTWORT.
+    //
+    // Bei einer unbekannten Adresse antwortet resetPasswordForEmail
+    // fehlerfrei (Supabase verhindert so selbst schon Konto-Enumeration) —
+    // es wird ja gar nichts verschickt. Daraus folgt die Umkehrung: ein
+    // Fehler entsteht hier ausschliesslich fuer eine Adresse, zu der ein
+    // Konto existiert. Eine daran haengende Meldung unterschiede die Antwort
+    // also nach Kontoexistenz und waere genau das Orakel, das die konstante
+    // Antwort verhindern soll. Die Eigenschaft steht namentlich in
+    // docs/audit/security.md unter "What is done well", ausdruecklich damit
+    // sie nicht versehentlich rueckgaengig gemacht wird. Seit der Versand
+    // nicht mehr abgewartet wird, ist sie ohnehin unvermeidbar: die Antwort
+    // steht, bevor das Ergebnis vorliegt.
+    .then(({ error }) => {
       if (error) {
         console.error("Passwort-Zuruecksetzen: Versand fehlgeschlagen", {
           status: error.status,
@@ -308,10 +308,22 @@ export async function requestPasswordReset(
           message: error.message,
         });
       }
-    } catch (fehler) {
+    })
+    .catch((fehler) => {
       console.error("Passwort-Zuruecksetzen: Versand geworfen", fehler);
-    }
-  });
+    });
+
+  // after() haelt die Funktion ueber die Antwort hinaus am Leben, damit der
+  // Versand zu Ende laeuft und sein Ergebnis im Log landet — dasselbe Muster
+  // wie der Klickzaehler in app/c/[code]/route.ts.
+  //
+  // Es laeuft laut node_modules/next/dist/docs/01-app/03-api-reference/
+  // 04-functions/after.md nur bis zur Max-Duration der Route. Reicht die
+  // nicht, geht die LOG-ZEILE verloren, nicht die E-Mail: sobald die Anfrage
+  // bei GoTrue liegt, verschickt der unabhaengig von uns weiter — gemessen
+  // am 2026-09-16, als unser Client nach 36 s aufgab und der Versand nach
+  // 83 s trotzdem mit Status 200 fertig wurde.
+  after(() => versand);
 
   // Läuft die Wartezeit ab, wird trotzdem geantwortet: der Versand läuft
   // weiter, und ein fehlender Prüfwert kostet einen zweiten Anlauf — ein

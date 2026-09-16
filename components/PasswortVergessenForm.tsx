@@ -36,8 +36,8 @@ export default function PasswortVergessenForm({
             nach Kontoexistenz unterscheiden würde. */}
         <p className="text-sm text-foreground">
           Falls ein Konto mit dieser E-Mail-Adresse existiert, ist ein Link zum Zurücksetzen
-          unterwegs. Der Versand kann ein paar Minuten dauern — schau auch im Spam-Ordner nach,
-          bevor du einen neuen Link anforderst.
+          unterwegs. Der Versand braucht 1–2 Minuten — schau auch im Spam-Ordner nach, bevor du
+          einen neuen Link anforderst.
         </p>
         <p className="text-sm text-muted">
           <Link href="/anmelden" className="font-medium text-accent hover:underline">
@@ -61,6 +61,17 @@ export default function PasswortVergessenForm({
       <p className="text-sm text-muted">
         Gib deine E-Mail-Adresse ein — wir schicken dir einen Link zum Zurücksetzen.
       </p>
+      {/* Die Zahl ist gemessen, nicht geschätzt: der Versand über Supabase
+          brauchte am 2026-09-16 rund 83 Sekunden (lib/actions/auth.ts nennt
+          die Messung). Sie steht hier und nicht erst in der Bestätigung,
+          weil sie dort zu spät käme — wer nach zwanzig Sekunden nichts im
+          Postfach sieht, fordert sonst einen zweiten Link an, und jeder
+          weitere Anlauf kostet wieder dieselbe Zeit.
+
+          Kleiner gesetzt als der Satz darüber: es ist eine Fussnote zur
+          Anleitung, keine zweite Anweisung. -mt-4 gegen den gap-6 des
+          Containers, damit sie an dem Satz hängt, auf den sie sich bezieht. */}
+      <p className="-mt-4 text-xs text-muted">Die E-Mail braucht 1–2 Minuten.</p>
       <form ref={formRef} action={formAction} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           E-Mail
