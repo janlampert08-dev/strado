@@ -30,9 +30,26 @@ export const SCHWEIZ_ZENTRUM: [number, number] = [8.2306, 46.8014];
 
 // Zoomstufe, auf der die Schweiz als Ganzes ins Bild passt (vorher 10.5, der
 // Ausschnitt für den Raum Zürich). Die Ost-West-Ausdehnung des Landes von
-// rund 4.5 Längengraden ist der bindende Wert: bei Handybreite (~390 px)
-// zeigt Stufe 7 knapp 4.3°, Stufe 6.9 rund 4.6° — deshalb 6.9 und nicht 7.
-export const DEFAULT_ZOOM = 6.9;
+// rund 4.5 Längengraden ist der bindende Wert.
+//
+// 5.9 und nicht 6.9: Mapbox GL JS rechnet seine Zoomstufen auf 512-px-Kacheln,
+// nicht auf die 256 px, mit denen Google Maps und Leaflet ihre Stufen zählen.
+// Dieselbe Zahl zeigt hier also den halben Ausschnitt — die Stufen sind um
+// genau eine versetzt. Gemessen (Chromium, Viewport 390 px breit,
+// map.getBounds()):
+//
+//   Stufe 6.9 -> 2.30° sichtbar (7.08°E bis 9.38°E)
+//   Stufe 5.9 -> 4.59° sichtbar (5.93°E bis 10.53°E)
+//
+// Bei 6.9 lagen Genf (6.14°E) und das Engadin (St. Moritz 9.84°E, Val Müstair
+// 10.49°E) ausserhalb des Bildes: der erste Blick auf eine schweizweite App
+// zeigte das Mittelland. Bei 5.9 passt das Land mit etwas Luft hinein.
+//
+// In beiden Aufrufern ist das nur der erste Frame — RouteMap passt per
+// fitBounds auf die geladenen Strecken ein, RoutePicker zentriert auf den
+// Standort. Sichtbar ist diese Stufe also genau so lange, wie noch nichts
+// davon vorliegt.
+export const DEFAULT_ZOOM = 5.9;
 
 export const KATEGORIEN = [
   { value: "kurvig", label: "Kurvig" },
