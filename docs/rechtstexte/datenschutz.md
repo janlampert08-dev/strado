@@ -21,7 +21,7 @@
 
 ---
 
-**Stand: 14. September 2026**
+**Stand: 16. September 2026**
 
 ## 1. Verantwortliche Stelle
 
@@ -252,6 +252,7 @@ hinweg**. Verwendet werden:
 | Zweck | Technik | Bemerkung |
 | --- | --- | --- |
 | Anmeldung / Sitzung | Cookies des Authentifizierungsdienstes | technisch notwendig; werden bei jedem Seitenaufruf erneuert |
+| Offene E-Mail-Bestätigung | Cookie `strado_bestaetigung` | technisch notwendig; entsteht nur bei einer Registrierung, deren Adresse noch nicht bestätigt ist. Enthält die eingegebene E-Mail-Adresse und, falls vorhanden, die Seite, auf der es danach weitergehen soll — ohne diese Angabe liesse sich der Code aus der E-Mail keiner Adresse zuordnen. 60 Minuten, wird nach der Bestätigung gelöscht |
 | Herkunft einer Registrierung (Ziff. 3.11) | Cookie `strado_herkunft` | nur nach Aufruf eines Creator-Links; enthält allein dessen Code, 90 Tage, wird bei der Registrierung gelöscht |
 | Farbschema (hell/dunkel) | `localStorage` | reine Anzeigepräferenz |
 | Zwischenstand einer laufenden Aufzeichnung | `localStorage` | siehe Abschnitt 3.4 |

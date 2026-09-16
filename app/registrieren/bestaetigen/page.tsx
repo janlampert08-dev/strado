@@ -8,6 +8,7 @@ import {
   leseBestaetigung,
 } from "@/lib/bestaetigung";
 import { NICHT_INDEXIEREN } from "@/lib/seo";
+import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
 // Hatte bisher keine Metadata und erbte damit den Titel "Strado" aus dem
 // Layout — dieselbe Zeile wie die Startseite, für eine Zwischenseite, die
@@ -32,48 +33,63 @@ export default async function BestaetigenPage() {
   return (
     <div className="flex h-dvh flex-col">
       <Header back="/" />
-      <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-5 px-6">
-        {offen ? (
-          <BestaetigenForm
-            emailHinweis={emailAndeuten(offen.email)}
-            codeLaenge={CODE_LAENGE}
-          />
-        ) : (
-          // Kein Cookie: abgelaufen (60 Minuten), in einem anderen Browser
-          // registriert, oder jemand ruft die Adresse einfach so auf. Ohne
-          // die Adresse lässt sich der Code nicht einlösen, und sie hier
-          // abzufragen wäre genau das Formular, das lib/bestaetigung.ts
-          // vermeidet. Der Weg zurück führt deshalb über die Anmeldung: wer
-          // sein Passwort kennt, landet von dort automatisch wieder hier.
-          <>
-            <h1 className="text-display font-semibold">E-Mail bestätigen</h1>
-            <p className="text-sm text-muted">
-              Wir wissen gerade nicht, für welche Adresse der Code gilt — das
-              passiert, wenn der Link zu lange offen lag oder du dich in einem
-              anderen Browser registriert hast.
-            </p>
-            <p className="text-sm text-muted">
-              Melde dich mit deiner E-Mail-Adresse und deinem Passwort an, dann
-              kommst du direkt hierher zurück und kannst einen neuen Code
-              anfordern.
-            </p>
-            <div className="flex flex-col gap-2 text-sm">
-              <Link
-                href="/anmelden"
-                className="font-medium text-accent hover:underline"
-              >
-                Zur Anmeldung
-              </Link>
-              <Link
-                href="/registrieren"
-                className="font-medium text-accent hover:underline"
-              >
-                Neues Konto anlegen
-              </Link>
-            </div>
-          </>
-        )}
-      </main>
+      {/* Dieselbe Geometrie wie /anmelden und /registrieren seit #270:
+          Seitenrahmen für den einen Seitenabstand der App, darum ein eigener
+          Scrollbehälter mit min-h-full statt flex-1. "justify-center" in
+          einem h-dvh-Flexcontainer zentriert auch dann noch, wenn der Inhalt
+          höher ist als der Platz — und dann ist die OBERE Kante nicht mehr
+          erreichbar, weil es nichts zu scrollen gibt.
+
+          Diese Seite braucht das so dringend wie die beiden anderen: sie
+          trägt ein Eingabefeld, das auf dem Telefon die Tastatur öffnet und
+          damit rund die Hälfte der Höhe wegnimmt. Sie stand bis hierher noch
+          auf dem abgelösten handgeschriebenen <main> mit px-6 — die
+          Umstellung in #270 kam an ihr vorbei, weil sie zur selben Zeit auf
+          einem anderen Zweig entstand. */}
+      <div className="flex-1 overflow-y-auto">
+        <Seitenrahmen breite="schmal" className="min-h-full justify-center">
+          {offen ? (
+            <BestaetigenForm
+              emailHinweis={emailAndeuten(offen.email)}
+              codeLaenge={CODE_LAENGE}
+            />
+          ) : (
+            // Kein Cookie: abgelaufen (60 Minuten), in einem anderen Browser
+            // registriert, oder jemand ruft die Adresse einfach so auf. Ohne
+            // die Adresse lässt sich der Code nicht einlösen, und sie hier
+            // abzufragen wäre genau das Formular, das lib/bestaetigung.ts
+            // vermeidet. Der Weg zurück führt deshalb über die Anmeldung: wer
+            // sein Passwort kennt, landet von dort automatisch wieder hier.
+            <>
+              <h1 className="text-display font-semibold">E-Mail bestätigen</h1>
+              <p className="text-sm text-muted">
+                Wir wissen gerade nicht, für welche Adresse der Code gilt — das
+                passiert, wenn der Link zu lange offen lag oder du dich in einem
+                anderen Browser registriert hast.
+              </p>
+              <p className="text-sm text-muted">
+                Melde dich mit deiner E-Mail-Adresse und deinem Passwort an,
+                dann kommst du direkt hierher zurück und kannst einen neuen Code
+                anfordern.
+              </p>
+              <div className="flex flex-col gap-2 text-sm">
+                <Link
+                  href="/anmelden"
+                  className="font-medium text-accent hover:underline"
+                >
+                  Zur Anmeldung
+                </Link>
+                <Link
+                  href="/registrieren"
+                  className="font-medium text-accent hover:underline"
+                >
+                  Neues Konto anlegen
+                </Link>
+              </div>
+            </>
+          )}
+        </Seitenrahmen>
+      </div>
     </div>
   );
 }
