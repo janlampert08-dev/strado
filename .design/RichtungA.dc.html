@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+  <style>
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #fafafa; color: #131316; }
+    a { color: #3d5afe; } a:hover { color: #2f49d6; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+    .tab { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px; flex: 1 1 0; }
+    .tl { font-size: 11px; font-weight: 500; }
+  </style>
+</helmet>
+
+<div style="display: flex; flex-direction: column; height: 844px; background: #fafafa; box-sizing: border-box;">
+
+  <div style="display: flex; flex-direction: column; gap: 14px; padding: 24px 20px 0; flex-grow: 1;">
+
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <span class="mono" style="font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #666b74;">Richtung A</span>
+      <h1 style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -.02em; line-height: 1.15;">Drei Ziele</h1>
+      <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #666b74;">Alles Schauen kommt unter ein Dach. Die Leiste tr&auml;gt nur noch drei Ziele, jedes eine Absicht: schauen, fahren, ich.</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px; border: 1px solid rgba(19,19,22,.12); border-radius: 16px; background: #ffffff; padding: 16px;">
+      <span class="mono" style="font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #666b74;">Entdecken tr&auml;gt drei Segmente</span>
+      <div style="display: flex; gap: 6px;">
+        <span class="mono" style="font-size: 11px; border: 1px solid #3d5afe; background: #3d5afe; color: #fafafa; border-radius: 999px; padding: 5px 11px;">Strecken</span>
+        <span class="mono" style="font-size: 11px; border: 1px solid rgba(19,19,22,.12); color: #666b74; border-radius: 999px; padding: 5px 11px;">Fahrten</span>
+        <span class="mono" style="font-size: 11px; border: 1px solid rgba(19,19,22,.12); color: #666b74; border-radius: 999px; padding: 5px 11px;">Rangliste</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 5px; border-top: 1px solid rgba(19,19,22,.12); padding-top: 10px;">
+        <span class="mono" style="font-size: 11px; color: #131316;">Entdecken &rarr; / &middot; /feed &middot; /leaderboards</span>
+        <span class="mono" style="font-size: 11px; color: #131316;">Fahren &nbsp;&nbsp;&rarr; /fahrten/neu</span>
+        <span class="mono" style="font-size: 11px; color: #131316;">Ich &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&rarr; Profil + Aktivit&auml;t + Einstellungen</span>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; flex-direction: column; gap: 4px; border-left: 3px solid #1a7f37; padding-left: 12px;">
+        <span style="font-size: 12px; font-weight: 600; color: #1a7f37;">Daf&uuml;r</span>
+        <span style="font-size: 12px; line-height: 1.55; color: #666b74;">Die aufger&auml;umteste Leiste &mdash; drei Ziele statt f&uuml;nf, jedes mit 130&nbsp;px Tippfl&auml;che statt 78. Jede Fl&auml;che hat genau eine Absicht.</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px; border-left: 3px solid #dc2626; padding-left: 12px;">
+        <span style="font-size: 12px; font-weight: 600; color: #dc2626;">Dagegen</span>
+        <span style="font-size: 12px; line-height: 1.55; color: #666b74;">Schritt&nbsp;8 verschwindet wieder &mdash; die Aktivit&auml;t steckt im Tab &bdquo;Ich&ldquo; und ist damit so versteckt wie heute im Kopf, nur an anderer Stelle. Und der Feed kostet ab jetzt zwei Tipper statt einem.</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="display: flex; border-top: 1px solid rgba(19,19,22,.12); background: #ffffff; height: 64px; align-items: stretch;">
+    <div class="tab">
+      <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; stroke: #3d5afe; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+      <span class="tl" style="color: #3d5afe;">Entdecken</span>
+    </div>
+    <div class="tab">
+      <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; stroke: #666b74; fill: none; stroke-width: 2;" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg>
+      <span class="tl" style="color: #666b74;">Fahren</span>
+    </div>
+    <div class="tab">
+      <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; stroke: #666b74; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span class="tl" style="color: #666b74;">Ich</span>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

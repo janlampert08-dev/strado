@@ -1,0 +1,92 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+  <style>
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #fafafa; color: #131316; }
+    a { color: #3d5afe; } a:hover { color: #2f49d6; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+    .tab { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 9px 2px; flex: 1 1 0; }
+    .tl { font-size: 10px; font-weight: 500; }
+    .st { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 8px; }
+  </style>
+</helmet>
+
+<div style="display: flex; flex-direction: column; height: 844px; background: #fafafa; box-sizing: border-box;">
+
+  <div style="display: flex; flex-direction: column; gap: 14px; padding: 24px 20px 0; flex-grow: 1;">
+
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="mono" style="font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #666b74;">Richtung B</span>
+        <span class="mono" style="font-size: 9px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #fafafa; background: #3d5afe; border-radius: 999px; padding: 3px 8px;">Vorschlag</span>
+      </div>
+      <h1 style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -.02em; line-height: 1.15;">Die Leiste ist der Loop</h1>
+      <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #666b74;">Jeder Tab ist ein Schritt. Was kein Schritt ist, verl&auml;sst die Leiste; der Schritt, der die Schleife schliesst, bekommt endlich einen Platz darin.</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px; border: 1.5px solid #3d5afe; border-radius: 16px; background: #ebedfa; padding: 16px;">
+      <span class="mono" style="font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #3d5afe;">Zwei Tausche</span>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; align-items: flex-start; gap: 8px;">
+          <span class="mono" style="font-size: 13px; color: #b45309; flex-shrink: 0;">&minus;</span>
+          <span style="font-size: 12px; line-height: 1.5; color: #131316;"><span class="mono" style="font-size: 11px;">Bestenlisten</span> verl&auml;sst die Leiste und wird der dritte Reiter im Feed.</span>
+        </div>
+        <div style="display: flex; align-items: flex-start; gap: 8px;">
+          <span class="mono" style="font-size: 13px; color: #1a7f37; flex-shrink: 0;">+</span>
+          <span style="font-size: 12px; line-height: 1.5; color: #131316;"><span class="mono" style="font-size: 11px;">Aktivit&auml;t</span> verl&auml;sst den Kopf und wird ein Tab &mdash; Schritt&nbsp;8, sichtbar.</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 5px; border: 1px solid rgba(19,19,22,.12); border-radius: 16px; background: #ffffff; padding: 16px;">
+      <span class="mono" style="font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #666b74; margin-bottom: 3px;">Dazu, unabh&auml;ngig von der Leiste</span>
+      <span style="font-size: 12px; line-height: 1.55; color: #666b74;">Eine Profilfl&auml;che statt zwei. Vier Formularseiten werden Dialoge. 27&nbsp;&rarr;&nbsp;20 Fl&auml;chen.</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; flex-direction: column; gap: 4px; border-left: 3px solid #1a7f37; padding-left: 12px;">
+        <span style="font-size: 12px; font-weight: 600; color: #1a7f37;">Daf&uuml;r</span>
+        <span style="font-size: 12px; line-height: 1.55; color: #666b74;">Die einzige Richtung, in der <em>jeder</em> Loop-Schritt einen Platz hat. Kein Segmentwechsel auf dem Weg durch die Schleife, und die Leiste bleibt f&uuml;nf Tabs breit &mdash; also kein neuer Umbau am Platzbedarf.</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px; border-left: 3px solid #dc2626; padding-left: 12px;">
+        <span style="font-size: 12px; font-weight: 600; color: #dc2626;">Dagegen</span>
+        <span style="font-size: 12px; line-height: 1.55; color: #666b74;">F&uuml;nf Tabs bleiben f&uuml;nf Tabs &mdash; die Leiste wird nicht schlanker, nur richtiger belegt. Und die Rangliste verliert Sichtbarkeit: das ist ein Produktentscheid, kein Designentscheid.</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="display: flex; border-top: 1px solid rgba(19,19,22,.12); background: #ffffff; height: 64px; align-items: stretch;">
+    <div class="tab">
+      <svg viewBox="0 0 24 24" style="width: 22px; height: 22px; stroke: #3d5afe; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
+      <span class="tl" style="color: #3d5afe;">Strecken</span><span class="st" style="color: #3d5afe;">1</span>
+    </div>
+    <div class="tab">
+      <svg viewBox="0 0 24 24" style="width: 22px; height: 22px; stroke: #666b74; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span class="tl" style="color: #666b74;">Feed</span><span class="st" style="color: #666b74;">9</span>
+    </div>
+    <div class="tab">
+      <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; stroke: #666b74; fill: none; stroke-width: 2;" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg>
+      <span class="tl" style="color: #666b74;">Fahren</span><span class="st" style="color: #666b74;">2&ndash;6</span>
+    </div>
+    <div class="tab" style="background: #ebedfa;">
+      <svg viewBox="0 0 24 24" style="width: 22px; height: 22px; stroke: #3d5afe; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+      <span class="tl" style="color: #3d5afe;">Aktivit&auml;t</span><span class="st" style="color: #3d5afe;">8</span>
+    </div>
+    <div class="tab">
+      <svg viewBox="0 0 24 24" style="width: 22px; height: 22px; stroke: #666b74; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span class="tl" style="color: #666b74;">Ich</span><span class="st" style="color: #666b74;">&nbsp;</span>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

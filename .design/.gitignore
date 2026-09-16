@@ -1,0 +1,4 @@
+# Die zusammengebaute Canvas-Seite. Rund 2,5 MB, davon ist fast alles der
+# mitgelieferte Editor — der gehört nicht in die Versionsgeschichte.
+# Sie wird aus den .dc.html-Dateien daneben neu erzeugt, siehe README.md.
+strado-struktur.html

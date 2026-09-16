@@ -513,6 +513,130 @@ ausdrücklich abgenommen, nicht nebenbei mitgenommen.
 
 ---
 
+## 3b. Die Struktur selbst — 27 Flächen, und die falschen fünf in der Leiste
+
+Alles bis hier räumt *innerhalb* der Seiten auf. Dieser Abschnitt fragt, ob
+es die Seiten in dieser Zahl und Anordnung überhaupt geben soll. Er ist
+später entstanden als der Rest und ist der eingreifendere Teil des
+Konzepts — entsprechend braucht er eine Abnahme, keine Umsetzung auf Zuruf.
+
+Ein begleitender Canvas zeichnet dasselbe: Ist-Struktur, die drei
+Richtungen nebeneinander und den ausgearbeiteten Vorschlag. Die Quellen
+dazu liegen unter `.design/` (siehe `.design/README.md`); die Zahlen dort
+sind dieselben wie hier.
+
+### 3b.1 Der Befund: eine Vertauschung
+
+Die App hat **27 Seiten**. Das ist für ein Produkt mit Konten, Zahlung und
+Moderation nicht viel — der Befund liegt nicht in der Zahl. Er liegt darin,
+welche davon einen der fünf Plätze in der mobilen Leiste bekommen haben.
+
+Legt man die neun Schritte des Kernloops (`AGENTS.md`) gegen die Flächen,
+tragen **sechs** Seiten den Loop: `/`, `/strecken/[id]`, `/fahrten/neu`,
+`/fahrten/[id]`, `/aktivitaet`, `/feed`. Die Schritte 3, 4 und 5 haben gar
+keine eigene Adresse — sie laufen als Vollbild im Recorder ab, und das ist
+gesund, nicht lückenhaft.
+
+Die Leiste trägt heute: Strecken, Feed, Fahrt starten, **Bestenlisten**,
+Profil. Daneben, als 20-px-Flamme im Kopf: **Aktivität**.
+
+- `/leaderboards` kommt in **keinem** der neun Schritte vor — und hält
+  einen der fünf Plätze.
+- `/aktivitaet` **ist** Schritt 8, derjenige, der die Schleife schliesst —
+  und hat als einziger Loop-Schritt keinen Platz in der Leiste.
+
+`AGENTS.md` schreibt zu Schritt 8: „eine Reaktion, von der niemand
+erfährt, schliesst den Loop nicht". Die Navigation widerspricht dem Satz.
+Das ist kein Argument gegen Ranglisten — die Rangliste je Strecke sitzt
+bereits auf der Streckenseite, wo sie zu Schritt 1 gehört. Es ist ein
+Argument gegen den **Platz**.
+
+Dazu zwei Dubletten, die keine Navigationsfrage sind, sondern eine
+Modellfrage:
+
+- **Ein Begriff, zwei Seiten.** `/profil` (570 Zeilen, sieben Abschnitte)
+  und `/fahrer/[id]` (236) zeigen dieselben Begriffe — Identität, Zahlen,
+  Garage, Fahrten — mit verschiedenen Kacheln, Schriftgrössen und Rahmen.
+  Die Kennzahlen sind auf der einen vier verschachtelte `Card surface`, auf
+  der anderen ein `Card as="dl"` ohne Kacheln.
+- **Vier Seiten sind Formulare.** Fahrzeug anlegen, Passwort ändern, Abo
+  verwalten, Zahlung — jedes eine eigene Adresse mit Kopf, Leiste und
+  Rückweg, für im Schnitt vier Felder.
+
+### 3b.2 Drei Richtungen, entlang verschiedener Achsen
+
+Nicht drei Abstufungen derselben Idee — jede verschiebt etwas anderes, und
+jede hat einen echten Preis.
+
+| | Leiste | Dafür | Dagegen |
+| --- | --- | --- | --- |
+| **A — Drei Ziele** | Entdecken · Fahren · Ich | Die aufgeräumteste Leiste: drei Ziele statt fünf, 130 px Tippfläche statt 78. Jede Fläche hat genau eine Absicht. | Schritt 8 verschwindet wieder — Aktivität steckt in „Ich" und ist so versteckt wie heute im Kopf, nur anderswo. Der Feed kostet zwei Tipper statt einem. |
+| **B — Die Leiste ist der Loop** | Strecken · Feed · Fahren · Aktivität · Ich | Die einzige Richtung, in der **jeder** Loop-Schritt einen Platz hat. Kein Segmentwechsel auf dem Weg durch die Schleife, und fünf Tabs bleiben fünf Tabs — kein neuer Platzbedarf. | Die Leiste wird nicht schlanker, nur richtiger belegt. Die Rangliste verliert Sichtbarkeit. |
+| **C — Die Karte ist die App** | keine | Die ruhigste Fassung: 64 px zurück an den Inhalt, und die App sieht aus wie nichts sonst. Karte und Sheet sind gebaut. | Schritt 9 bricht weg. Ohne sichtbaren Feed schliesst die Schleife nicht mehr von der fremden Fahrt zur eigenen nächsten — der Schritt, der aus einer Karte ein Produkt macht. |
+
+**Empfehlung: B.** Der Auftrag war, es einfacher zu machen und den Kernloop
+trotzdem ins Zentrum zu stellen. A ist einfacher, stellt den Loop aber
+schlechter dar als heute. C ist am einfachsten und bricht ihn. B ist die
+einzige, die beides hält — und sie ist zugleich die kleinste Änderung an
+der bestehenden Mechanik.
+
+### 3b.3 Was B konkret heisst
+
+Zwei Tausche in der Leiste:
+
+- `Bestenlisten` verlässt sie und wird der **dritte Reiter im Feed**, neben
+  „Alle" und „Folge ich", die es dort schon gibt (`app/feed/page.tsx`).
+- `Aktivität` verlässt den Kopf und wird ein **Tab**.
+
+Und sieben Flächen weniger, unabhängig von der Leiste:
+
+| Fällt weg | Geht nach | Anmerkung |
+| --- | --- | --- |
+| `/leaderboards` | Reiter im Feed | **Produktentscheid** — Sichtbarkeit sinkt |
+| `/verifiziert` | Sheet hinter dem Abzeichen | ein Erklärtext ist keine Seite |
+| `/profil` | geht in `/fahrer/[id]` auf | eine Profilfläche statt zwei |
+| `/profil/fahrzeuge/neu` | Dialog in der Garage | vier Felder |
+| `/profil/passwort-aendern` | Dialog im Abschnitt Konto | dort sitzt schon das Löschen |
+| `/profil/einstellungen/abo` | Abschnitt in den Einstellungen | der Weg ins Stripe-Portal ist eine Schaltfläche |
+| `/profil/premium/zahlung` | geht in `/profil/premium` auf | **geschützter Bereich**, eigener PR |
+
+**27 → 20 Flächen.** `/profil/premium/abschluss` bleibt: die Rückkehr von
+Stripe braucht eine echte Adresse.
+
+### 3b.4 Was daran abgenommen gehört, bevor jemand baut
+
+Zwei Punkte sind keine Designentscheide und stehen mir nicht zu:
+
+1. **Die Bestenlisten verlieren ihren Platz in der Leiste.** Ich kann
+   begründen, warum der Platz falsch belegt ist. Ob die globale Rangliste
+   als Top-Level-Ziel trotzdem gewollt ist, ist eine Produktfrage.
+2. **Der Kauf-Fluss wird zusammengelegt.** Das berührt
+   `app/profil/premium/**` und damit den Stripe-Pfad — geschützter Bereich
+   nach `AGENTS.md`. Eigener PR, eigene Abnahme, und nicht im selben
+   Schritt wie eine Navigationsänderung.
+
+Alles Übrige in 3b.3 ist Umbau ohne Regeländerung: dieselben Server
+Actions, dieselben RLS-Policies, dieselben Geschäftsregeln (Kernregel 16).
+
+### 3b.5 Reihenfolge
+
+Vor Abschnitt 5, nicht danach — die Struktur entscheidet, welche Seiten es
+überhaupt noch gibt, und es ist Verschwendung, eine Seite aufzuräumen, die
+danach verschwindet.
+
+| # | Inhalt | Risiko |
+| --- | --- | --- |
+| S1 | Aktivität wird ein Tab, Bestenlisten wird ein Feed-Reiter | mittel — **braucht Abnahme** |
+| S2 | Eine Profilfläche statt zwei | mittel — zwei Seiten, eine Vorlage |
+| S3 | Drei Formularseiten werden Dialoge | gering |
+| S4 | `/verifiziert` wird ein Sheet | gering |
+| S5 | Kauf-Fluss zusammenlegen | **geschützter Bereich, eigene Abnahme** |
+
+Danach erst die neun PRs aus Abschnitt 5 — auf dann noch 20 Flächen statt
+27, also auch weniger Arbeit.
+
+---
+
 ## 4. Ausdrücklich verworfen
 
 Diese drei Ideen liegen nahe, sind geprüft und sollen **nicht** umgesetzt

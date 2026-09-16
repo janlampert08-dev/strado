@@ -1,0 +1,188 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+  <style>
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #fafafa; color: #131316; }
+    a { color: #3d5afe; } a:hover { color: #2f49d6; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  </style>
+</helmet>
+
+<div style="display: flex; flex-direction: column; gap: 36px; padding: 48px; background: #fafafa; min-height: 100%; box-sizing: border-box;">
+
+  <!-- Kopf -->
+  <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; border-bottom: 1px solid rgba(19,19,22,.12); padding-bottom: 20px;">
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <svg viewBox="0 0 92 54" style="height: 15px; width: auto; fill: #131316;" aria-hidden="true"><path d="M0 27A46 27 0 1 1 92 27A46 27 0 1 1 0 27ZM12 23.5A34 14.5 0 1 0 80 23.5A34 14.5 0 1 0 12 23.5Z"/></svg>
+        <span class="mono" style="font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #666b74;">Soll-Struktur</span>
+      </div>
+      <h1 style="margin: 0; font-size: 34px; font-weight: 600; letter-spacing: -.02em; line-height: 1.1;">Die Leiste ist der Loop</h1>
+      <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #666b74; max-width: 70ch;">Jeder Tab ist ein Schritt des Kernloops &mdash; und kein Tab ist etwas anderes. Was kein Schritt ist, verliert seinen Platz ganz oben und wird dort eingebaut, wo man es ohnehin sucht.</p>
+    </div>
+    <div style="display: flex; gap: 10px; flex-shrink: 0;">
+      <div style="display: flex; flex-direction: column; gap: 2px; align-items: center; border: 1px solid rgba(19,19,22,.12); border-radius: 12px; background: #f3f3f4; padding: 12px 18px;">
+        <span class="mono" style="font-size: 26px; font-weight: 600; color: #666b74; text-decoration: line-through;">27</span>
+        <span style="font-size: 11px; color: #666b74;">Fl&auml;chen heute</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 2px; align-items: center; border: 1px solid #3d5afe; border-radius: 12px; background: #ebedfa; padding: 12px 18px;">
+        <span class="mono" style="font-size: 26px; font-weight: 600; color: #3d5afe;">20</span>
+        <span style="font-size: 11px; color: #3d5afe;">danach</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Die Leiste -->
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <span class="mono" style="font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #666b74;">Die Leiste, 64&nbsp;px, f&uuml;nf Tabs</span>
+    <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; border: 1px solid rgba(19,19,22,.12); border-radius: 16px; background: #ffffff; overflow: hidden;">
+
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px 8px; border-right: 1px solid rgba(19,19,22,.12);">
+        <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; stroke: #3d5afe; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
+        <span style="font-size: 12px; font-weight: 500; color: #3d5afe;">Strecken</span>
+        <span class="mono" style="font-size: 10px; color: #666b74;">Schritt 1</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px 8px; border-right: 1px solid rgba(19,19,22,.12);">
+        <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; stroke: #666b74; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span style="font-size: 12px; font-weight: 500; color: #666b74;">Feed</span>
+        <span class="mono" style="font-size: 10px; color: #666b74;">Schritt 9</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px 8px; border-right: 1px solid rgba(19,19,22,.12); background: #ebedfa;">
+        <svg viewBox="0 0 24 24" style="width: 26px; height: 26px; stroke: #3d5afe; fill: #3d5afe; stroke-width: 2;" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg>
+        <span style="font-size: 12px; font-weight: 600; color: #3d5afe;">Fahren</span>
+        <span class="mono" style="font-size: 10px; color: #3d5afe;">Schritt 2&ndash;6</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px 8px; border-right: 1px solid rgba(19,19,22,.12);">
+        <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; stroke: #666b74; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+        <span style="font-size: 12px; font-weight: 500; color: #666b74;">Aktivit&auml;t</span>
+        <span class="mono" style="font-size: 10px; color: #3d5afe; font-weight: 600;">Schritt 8 &middot; neu</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px 8px;">
+        <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; stroke: #666b74; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span style="font-size: 12px; font-weight: 500; color: #666b74;">Ich</span>
+        <span class="mono" style="font-size: 10px; color: #666b74;">Identit&auml;t</span>
+      </div>
+
+    </div>
+    <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #666b74;">Heute steht <span class="mono" style="color: #131316;">Bestenlisten</span> an vierter Stelle und <span class="mono" style="color: #131316;">Aktivit&auml;t</span> als Flammen-Symbol oben rechts im Kopf. Das ist vertauscht: Bestenlisten sind kein Schritt des Loops, Aktivit&auml;t ist der Schritt, der ihn schliesst.</p>
+  </div>
+
+  <!-- Was in jedem Tab liegt -->
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <span class="mono" style="font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #666b74;">Was jeder Tab tr&auml;gt</span>
+    <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px;">
+
+      <div style="display: flex; flex-direction: column; gap: 8px; border: 1px solid rgba(19,19,22,.12); border-radius: 12px; background: #ffffff; padding: 16px;">
+        <span style="font-size: 13px; font-weight: 600;">Strecken</span>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span class="mono" style="font-size: 12px; color: #131316;">/</span>
+          <span class="mono" style="font-size: 12px; color: #131316;">/strecken/[id]</span>
+          <span class="mono" style="font-size: 12px; color: #131316;">/strecken/[id]/bearbeiten</span>
+          <span class="mono" style="font-size: 12px; color: #131316;">/strecken/neu</span>
+        </div>
+        <p style="margin: 4px 0 0; font-size: 12px; line-height: 1.5; color: #666b74;">Karte und Liste bleiben, wie sie sind &mdash; nur zeigt der Ruhezustand jetzt Strecken statt Bedienelemente.</p>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px; border: 1px solid rgba(19,19,22,.12); border-radius: 12px; background: #ffffff; padding: 16px;">
+        <span style="font-size: 13px; font-weight: 600;">Feed</span>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span class="mono" style="font-size: 12px; color: #131316;">/feed</span>
+          <span class="mono" style="font-size: 12px; color: #131316;">/fahrten/[id]</span>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px;">
+          <span class="mono" style="font-size: 11px; border: 1px solid #3d5afe; background: #3d5afe; color: #fafafa; border-radius: 999px; padding: 3px 9px;">Alle</span>
+          <span class="mono" style="font-size: 11px; border: 1px solid rgba(19,19,22,.12); color: #666b74; border-radius: 999px; padding: 3px 9px;">Folge ich</span>
+          <span class="mono" style="font-size: 11px; border: 1px dashed #3d5afe; color: #3d5afe; border-radius: 999px; padding: 3px 9px;">Rangliste</span>
+        </div>
+        <p style="margin: 4px 0 0; font-size: 12px; line-height: 1.5; color: #666b74;">Die Reiter gibt es schon. Die Rangliste kommt als dritter dazu.</p>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px; border: 1px solid #3d5afe; border-radius: 12px; background: #ebedfa; padding: 16px;">
+        <span style="font-size: 13px; font-weight: 600; color: #3d5afe;">Fahren</span>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span class="mono" style="font-size: 12px; color: #131316;">/fahrten/neu</span>
+          <span class="mono" style="font-size: 12px; color: #666b74;">Recorder &middot; Vollbild</span>
+          <span class="mono" style="font-size: 12px; color: #666b74;">Fazit &middot; Vollbild</span>
+        </div>
+        <p style="margin: 4px 0 0; font-size: 12px; line-height: 1.5; color: #3d5afe;">Die Mitte der Leiste, wie heute. Vier Schritte des Loops laufen hier ohne Seitenwechsel ab.</p>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px; border: 1px solid rgba(19,19,22,.12); border-radius: 12px; background: #ffffff; padding: 16px;">
+        <span style="font-size: 13px; font-weight: 600;">Aktivit&auml;t</span>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span class="mono" style="font-size: 12px; color: #131316;">/aktivitaet</span>
+        </div>
+        <p style="margin: 4px 0 0; font-size: 12px; line-height: 1.5; color: #666b74;">Kudos und neue Follower auf einer Zeitleiste &mdash; gibt es seit <span class="mono">0100</span> bereits. Nur der Platz ist neu.</p>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px; border: 1px solid rgba(19,19,22,.12); border-radius: 12px; background: #ffffff; padding: 16px;">
+        <span style="font-size: 13px; font-weight: 600;">Ich</span>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span class="mono" style="font-size: 12px; color: #131316;">/fahrer/[id]</span>
+          <span class="mono" style="font-size: 12px; color: #131316;">/profil/einstellungen</span>
+          <span class="mono" style="font-size: 12px; color: #131316;">/profil/premium</span>
+        </div>
+        <p style="margin: 4px 0 0; font-size: 12px; line-height: 1.5; color: #666b74;">Eine Profilfl&auml;che statt zwei. Das eigene Konto sieht dieselbe Seite wie alle anderen, plus eine Bearbeiten-Kante.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Was wegfällt -->
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <span class="mono" style="font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #666b74;">Sieben Fl&auml;chen weniger &mdash; und wohin sie gehen</span>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;">
+
+      <div style="display: flex; flex-direction: column; gap: 4px; border: 1px solid rgba(19,19,22,.12); border-left: 3px solid #b45309; border-radius: 12px; background: #f3f3f4; padding: 14px 16px;">
+        <span class="mono" style="font-size: 12px; font-weight: 600;">/leaderboards</span>
+        <span style="font-size: 12px; line-height: 1.5; color: #666b74;">wird der dritte Reiter im Feed. <strong style="color: #b45309; font-weight: 600;">Produktentscheid</strong> &mdash; die Rangliste verliert Sichtbarkeit.</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 4px; border: 1px solid rgba(19,19,22,.12); border-left: 3px solid rgba(19,19,22,.30); border-radius: 12px; background: #f3f3f4; padding: 14px 16px;">
+        <span class="mono" style="font-size: 12px; font-weight: 600;">/verifiziert</span>
+        <span style="font-size: 12px; line-height: 1.5; color: #666b74;">wird ein Sheet hinter dem Abzeichen. Ein Erkl&auml;rtext braucht keine eigene Seite.</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 4px; border: 1px solid rgba(19,19,22,.12); border-left: 3px solid rgba(19,19,22,.30); border-radius: 12px; background: #f3f3f4; padding: 14px 16px;">
+        <span class="mono" style="font-size: 12px; font-weight: 600;">/profil</span>
+        <span style="font-size: 12px; line-height: 1.5; color: #666b74;">geht in <span class="mono">/fahrer/[id]</span> auf. Heute zwei Umsetzungen desselben Begriffs, mit verschiedener Optik.</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 4px; border: 1px solid rgba(19,19,22,.12); border-left: 3px solid rgba(19,19,22,.30); border-radius: 12px; background: #f3f3f4; padding: 14px 16px;">
+        <span class="mono" style="font-size: 12px; font-weight: 600;">/profil/fahrzeuge/neu</span>
+        <span style="font-size: 12px; line-height: 1.5; color: #666b74;">wird ein Dialog in der Garage. Ein Formular mit vier Feldern ist keine Seite.</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 4px; border: 1px solid rgba(19,19,22,.12); border-left: 3px solid rgba(19,19,22,.30); border-radius: 12px; background: #f3f3f4; padding: 14px 16px;">
+        <span class="mono" style="font-size: 12px; font-weight: 600;">/profil/passwort-aendern</span>
+        <span style="font-size: 12px; line-height: 1.5; color: #666b74;">wird ein Dialog im Abschnitt Konto &mdash; dort, wo schon das L&ouml;schen sitzt.</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 4px; border: 1px solid rgba(19,19,22,.12); border-left: 3px solid rgba(19,19,22,.30); border-radius: 12px; background: #f3f3f4; padding: 14px 16px;">
+        <span class="mono" style="font-size: 12px; font-weight: 600;">/profil/einstellungen/abo</span>
+        <span style="font-size: 12px; line-height: 1.5; color: #666b74;">wird ein Abschnitt in den Einstellungen. Der Weg ins Stripe-Portal ist eine Schaltfl&auml;che, keine Seite.</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 4px; border: 1px solid rgba(19,19,22,.12); border-left: 3px solid #b45309; border-radius: 12px; background: #f3f3f4; padding: 14px 16px; grid-column: span 2;">
+        <span class="mono" style="font-size: 12px; font-weight: 600;">/profil/premium/zahlung</span>
+        <span style="font-size: 12px; line-height: 1.5; color: #666b74;">geht in <span class="mono">/profil/premium</span> auf &mdash; ein Kauf ist ein Fluss, keine zwei Seiten. <strong style="color: #b45309; font-weight: 600;">Gesch&uuml;tzter Bereich</strong>: ber&uuml;hrt den Stripe-Pfad, also eigener PR mit eigener Abnahme. <span class="mono">/premium/abschluss</span> bleibt &mdash; die R&uuml;ckkehr von Stripe braucht eine echte Adresse.</span>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>
