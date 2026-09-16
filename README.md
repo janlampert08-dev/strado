@@ -1,6 +1,6 @@
 # Strado
 
-Für alle, die den Umweg nehmen. Kuratierte Auto-/Motorrad-Fahrstrecken — primär Raum Zürich/Schweiz.
+Für alle, die den Umweg nehmen. Kuratierte Auto-/Motorrad-Fahrstrecken in der ganzen Schweiz.
 
 ## Setup
 

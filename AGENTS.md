@@ -17,30 +17,61 @@ this document can drift out of date, the codebase is the source of truth.
 
 ## Product
 
-Strado is a curated car and motorcycle route platform, launching **Zürich
-first** — the canton and what is within a comfortable Sunday of it, not
-Switzerland as a whole. Users discover and propose scenic driving/riding
-routes, track completions ("Fahrten"), rate routes, compete on leaderboards,
-and can subscribe to a Premium tier (Stripe) for additional features.
+Strado is a curated car and motorcycle route platform for **Switzerland**.
+Users discover and propose scenic driving/riding routes, track completions
+("Fahrten"), rate routes, compete on leaderboards, and can subscribe to a
+Premium tier (Stripe) for additional features.
 
-The Zürich-first scope is a growth decision, not a stage we are waiting to
-outgrow, and it is the reason to resist "while we're here" additions of
-routes elsewhere. A rider who recognises the place on a shared ride — *that's
-the road above my village* — forwards it to someone who also drives it; a
-rider who recognises nothing has nothing to forward. Word of mouth is local
-before it is national, so density inside one region beats coverage across
-many, and a half-empty national map reads as an abandoned product while a
-full regional one reads as a finished one. Two consequences for everyday
-work:
+**The scope became national on 2026-09-16, by the owner's instruction.**
+The decision was given directly ("rebrande die app von zürich -> schweiz")
+and reconfirmed when the same session was told to merge it; this paragraph
+is the record of it, and the PR that wrote it is #259. That provenance is
+not decoration — a positioning is the owner's call, not a PR's, and this
+file is the only one an agent loads automatically, so an unsourced "it is
+national now" here would outrank every correct detail elsewhere. Whoever
+changes it next owes the same sentence: who decided, and when.
 
-- **The place name is the unit of recognition.** Whatever a non-user sees
-  first — the share image from `lib/shareImage.ts`, the OG images, route
-  titles — leads with *where* the ride was, not with its statistics. Distance
-  and elevation are for the rider who was there; the name is for the person
-  deciding whether to tap.
-- **Proximity is worth more than reach.** When judging a promotion channel,
-  the question is what share of its audience lives within driving distance of
-  a route that already exists in the app — not how large that audience is.
+Until then this section said "launching Zürich first", and the reasoning it
+gave was not wrong — it was about density. Read the change as *the unit of
+density moved from the canton to the country*, not as permission to spread
+thin: the arguments below are what survived, and they still forbid a
+half-empty map.
+
+- **Being Swiss is the positioning, not an attribute of the content.** The
+  competitors that matter are international apps with a Swiss filter
+  (calimoto, Kurviger, REVER, Liberty Rider) and Swiss editorial sites
+  without a product. The position that is institutionally free is
+  *"SchweizMobil for motorised traffic"* — a national, curated route
+  network — and it cannot be claimed from one canton.
+  `docs/markt/schweizer-identitaet.md` is where that is spelled out; read it
+  before touching first-run copy, the info page, or anything a non-user sees
+  first.
+- **The place name is still the unit of recognition.** Whatever a non-user
+  sees first — the share image from `lib/shareImage.ts`, the OG images,
+  route titles — leads with *where* the ride was, not with its statistics.
+  Nationally this matters more, not less: on a Zürich map the neighbourhood
+  carried a badly named route, on a Swiss map nothing does.
+- **Density still beats coverage — per region, now, instead of once.** A
+  canton with two routes on it is the half-empty map the old wording warned
+  about, and one route per canton across the country is twenty-six of them.
+  The growth unit is a *region that is worth a drive* (a pass group, a
+  valley, a Jura ridge), not a pin. When judging a promotion channel, the
+  question remains what share of its audience lives within driving distance
+  of a route that already exists — the catchment simply is no longer capped
+  at one canton.
+  - **The count today is the weakest part of this, and it is small.** Do
+    not quote a figure from this file without checking it at the objects:
+    the "live count is thirteen" further down was measured on 2026-09-14
+    and a review on 2026-09-16 reported **nine** approved public routes
+    (seven of them Zürich, one Graubünden, one Zug) — that second figure is
+    a report this file has not itself verified. Either way the honest
+    reading is the same: the national map starts close to empty, and
+    closing that is route work, not copy work.
+- **What actually gets forwarded is a pass.** That was the strongest
+  argument against the canton (`docs/markt/konkurrenzanalyse-schweiz.md`,
+  §6.3): Zürich has none, and the Klausen/Pragel/Sattelegg class starts an
+  hour outside it. Every new route still owes the forwarding test — would
+  somebody send this to a friend? — and agglomeration loops still fail it.
 
 The UI, the code comments, and the migration filenames are **German**. Match
 that when adding to them; this document and the `.agents/` role files are the
@@ -580,6 +611,30 @@ is what should be corrected.
     size the ring's counter closes at the icon routes' proportion. The
     script leans on `sharp` from Next.js's own dependency tree rather than
     declaring it — it runs by hand and says so loudly if that ever breaks.
+- **The app says "Schweiz" since 2026-09-16, and three things deliberately
+  still say "Zürich".** The rebrand is copy, metadata and one map constant —
+  no schema, no route data, no business rule. What moved: `BESCHREIBUNG` in
+  `lib/constants.ts`, the home title (`app/page.tsx`), the visible `<h1>` in
+  `components/ExploreSidebar.tsx`, the `/feed` and `/leaderboards`
+  descriptions, the free-ride placeholder, and `ZURICH_CENTER` →
+  `SCHWEIZ_ZENTRUM` (Älggialp) with `DEFAULT_ZOOM` 10.5 → 6.9. The three
+  that stay, each for its own reason:
+  - **The legal texts.** AGB Ziff. 1.3 still reads "mit Schwerpunkt Schweiz,
+    vorerst Raum Zürich", and the published HTML in
+    `janlampert08-dev/stradoinfo` is untouched. Changing it is an AGB change
+    under Ziff. 14.1 — 30 days' notice by e-mail and in-app — and there is
+    already an unpublished draft (the Ziff. 11.4/12.6 rewrite) waiting for
+    that same notice. Both belong in **one** notice, not two. The proposed
+    wording is in `docs/markt/schweizer-identitaet.md`. The provider address,
+    the Gerichtsstand and the impressum name Zürich as the *company's* seat
+    and are not affected at all.
+  - **`amtlich` on `TempolimitSegment`.** The official signalised-speed
+    dataset is the canton of Zürich's (GDS 102). Outside it the flag is
+    simply false — that is a fact about coverage, not stale copy, and the
+    comments in `types/database.ts` and `lib/speed.ts` say so on purpose.
+  - **`docs/marketing/**/daten.mjs`.** Frozen snapshots of the eight routes
+    that existed when they were written. They are records of what was
+    published, not live copy.
 - `types/database.ts` exports `Database = any`; the row types next to it are
   hand-maintained and cover only some tables.
 
@@ -756,6 +811,8 @@ area**; each is a few hundred lines at most.
 | `.agents/deployment.md` | Applying migrations, shipping to Vercel/Stripe |
 | `docs/audit/README.md` | Completions, leaderboards, RLS views, auth — check the remediation table before reporting a "new" finding |
 | `docs/premium-plan.md` | Anything premium, Stripe, or entitlement-shaped |
+| `docs/markt/schweizer-identitaet.md` | First-run copy, the info page, share/OG images, anything a non-user sees first |
+| `docs/markt/konkurrenzanalyse-schweiz.md` | Positioning, pricing, or a "why would anyone use this" question |
 | `supabase/migrations/README.md` | Whenever migration order or the applied/unapplied gap matters |
 
 `README.md` is the human setup guide and is not a substitute for any of

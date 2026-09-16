@@ -90,11 +90,11 @@ export default function ExploreSidebar({
           für Screenreader und Suchmaschinen behält — nur der erklärende
           Absatz entfällt. */}
       {loggedIn ? (
-        <h1 className="sr-only">Die schönsten Strecken rund um Zürich</h1>
+        <h1 className="sr-only">Die schönsten Strecken der Schweiz</h1>
       ) : (
         <div className="flex flex-col gap-1">
           <h1 className="text-lg font-semibold tracking-tight">
-            Die schönsten Strecken rund um Zürich
+            Die schönsten Strecken der Schweiz
           </h1>
           <p className="text-sm text-muted">
             Kurven, Pässe, Aussicht — handverlesen. Aussuchen, losfahren, aufzeichnen. Ein Konto

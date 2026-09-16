@@ -32,7 +32,7 @@ import LeaderboardListsSkeleton from "@/components/LeaderboardListsSkeleton";
 export const metadata: Metadata = {
   title: "Bestenlisten – Strado",
   description:
-    "Die schnellsten Zeiten je Strecke und Fahrzeugklasse — und die Fahrerinnen und Fahrer mit den meisten Kilometern rund um Zürich.",
+    "Die schnellsten Zeiten je Strecke und Fahrzeugklasse — und die Fahrerinnen und Fahrer mit den meisten Kilometern in der Schweiz.",
   // Kanonische Adresse. Die App wird unter mehr als einem Hostnamen
   // ausgeliefert — app.strado.ch, die Vorschau-Adressen jedes Deployments,
   // dazu Staging — und lieferte bis hierher auf keiner davon ein Canonical
