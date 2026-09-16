@@ -368,7 +368,7 @@ export default function FreeRideForm({
                   maxLength={MAX_TITEL_LENGTH}
                   value={titel}
                   onChange={(e) => setTitel(e.target.value)}
-                  placeholder="z.B. Sonntagsrunde Zürichsee"
+                  placeholder="z.B. Sonntagsrunde Klausenpass"
                   className={fieldClassName()}
                 />
               </div>
