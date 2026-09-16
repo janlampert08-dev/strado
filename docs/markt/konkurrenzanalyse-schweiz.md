@@ -417,8 +417,12 @@ ist.** Eine Bestenliste, die sich auf Fälschung verteidigen muss, ist
 schlimmer als keine.
 
 Drei Optionen, aufsteigend nach Radikalität:
-- **(a)** Zeitrangliste als Opt-in belassen (ist sie bereits, Migration 0014)
-  und in der Aussenkommunikation nie als Hauptfunktion zeigen.
+- **(a)** Zeitrangliste in der Aussenkommunikation nie als Hauptfunktion
+  zeigen. **Korrektur 2026-09-16:** hier stand „als Opt-in belassen (ist sie
+  bereits, Migration 0014)". Das stimmt nicht — `0014` legte `auf_leaderboard`
+  an, `0016` schaffte die Spalte ab, `0017` benannte sie in `ist_oeffentlich`
+  um. Einen zeitspezifischen Schalter gibt es nicht; wer eine Streckenfahrt
+  öffentlich stellt, stellt damit auch ihre Zeit zur Wertung.
 - **(b)** Die primäre Rangliste von Zeit auf Zeit-unabhängige Metriken
   umstellen: Anzahl gefahrener Strecken, Höhenmeter, Abdeckung, Streaks,
   Vollständigkeit einer Region. Die Pässe-Challenge von motorradland.ch macht

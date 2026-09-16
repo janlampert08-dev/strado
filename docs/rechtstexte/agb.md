@@ -15,7 +15,9 @@
 > Es gibt **keine Platzhalter** mehr in diesem Dokument (Stand 2026-09-07).
 >
 > Entwurfsdatum: 2026-09-07 · Stand der veröffentlichten Fassung:
-> 7. September 2026
+> **14. September 2026** (stand hier bis zum 2026-09-16 falsch auf dem
+> 7. September — der Rest einer früheren Fassung; massgeblich ist der Kasten
+> weiter unten und Ziff. 1 dieses Dokuments)
 
 > ### Hinweis zum Umsetzungsstand
 >
@@ -94,11 +96,17 @@
 > übermittelt, solange die Fahrt nicht gespeichert wird", und bei nicht
 > angemeldeten Besuchenden bleibe sie „ausschliesslich lokal". Da
 > `fahrt_start_puls` ausdrücklich auch an `anon` vergeben ist, trifft der
-> zweite Satz nicht mehr zu, **sobald der Code aus PR #249 ausgeliefert
-> ist** — nicht schon mit dem Merge dieses PRs. Daraus folgt eine
-> Reihenfolge: `docs/rechtstexte/datenschutz.md` **und** die veröffentlichte
-> HTML-Fassung müssen geändert sein, bevor #249 die Produktion erreicht.
-> Zwei Repositories, dieselbe Logik wie beim Herkunfts-Cookie.
+> zweite Satz nicht mehr zu, sobald der Code aus PR #249 ausgeliefert ist.
+>
+> **Stand 2026-09-16: das ist eingetreten.** `60a4098` (Promotion
+> `staging` → `main`, PR #253) ist um 06:54 UTC gemergt und in Produktion.
+> Die ursprüngliche Fassung dieses Kastens schrieb „müssen geändert sein,
+> **bevor** #249 die Produktion erreicht" — diese Reihenfolge ist nicht mehr
+> einzuhalten, sondern nachzuholen. Die Datenschutzerklärung ist damit in
+> beiden Repositories **derzeit unzutreffend**, nicht bloss bald. Die
+> Nacharbeit läuft ausserhalb dieses PR (`strado`#255,
+> `stradoinfo`#19); dieser Kasten hält nur fest, dass sie zwingend ist und
+> warum. Zwei Repositories, dieselbe Logik wie beim Herkunfts-Cookie.
 >
 > **Nicht anwaltlich geprüft.** Ziff. 11.3/11.4 berühren die Abgrenzung zu
 > Art. 90 Abs. 3 und 4 SVG (Raserartikel). Die Änderung verengt ein zu weites
@@ -501,17 +509,22 @@ Kilometer, Höhenmeter und Anzahl unterschiedlicher Strecken. Tempo verbessert
 dort keine Platzierung.
 
 Daneben führt Strado je Strecke eine **Bestzeitenliste**. Sie ist eine
-Nebenwertung und ausdrücklich kein Ziel der Plattform: Sie erfasst nur
-Fahrten, die die Nutzenden selbst öffentlich gestellt haben, sie führt nur
-verifizierte Zeiten (Ziff. 12.6), sie fliesst in keine plattformweite
-Rangliste ein, und aus ihr folgt keine Auszeichnung und kein Vorteil auf
-Strado.
+Nebenwertung und kein Ziel der Plattform: Sie erfasst nur Fahrten, die die
+Nutzenden selbst öffentlich gestellt haben, sie führt nur verifizierte Zeiten
+(Ziff. 12.6), und sie fliesst in keine plattformweite Rangliste ein. Aus einer
+Platzierung folgt **kein Vorteil auf Strado** — keine Funktion, kein
+Premium-Bestandteil, keine Sichtbarkeit ausserhalb der betreffenden
+Streckenseite. Die ersten drei Plätze werden dort mit einem Pokalsymbol
+markiert; mehr als diese Markierung folgt aus ihnen nicht.
 
 Eine Zeit entsteht bei jeder aufgezeichneten Fahrt. Was die Nutzenden
 entscheiden, ist nicht die Messung, sondern die **Veröffentlichung**: Wer eine
-Fahrt öffentlich stellt, stellt damit auch ihre Zeit in die Bestzeitenliste
-der Strecke; wer sie privat lässt, erscheint dort nicht. Die Sichtbarkeit
-lässt sich jederzeit nachträglich ändern.
+Fahrt privat lässt, erscheint in keiner Bestzeitenliste. Wer sie öffentlich
+stellt, **kann** dort erscheinen — vorausgesetzt, es handelt sich um die Fahrt
+einer freigegebenen, nicht privaten Strecke und die Zeit ist verifiziert
+(Ziff. 12.6). Eine freie Fahrt ohne Strecke und eine Fahrt ohne verifizierte
+Zeit erscheinen nie. Die Sichtbarkeit lässt sich jederzeit nachträglich
+ändern.
 
 Fahrten, die unter Missachtung von Verkehrsregeln zustande gekommen sind,
 dürfen nicht veröffentlicht werden.
