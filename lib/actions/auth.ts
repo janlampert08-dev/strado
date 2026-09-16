@@ -14,7 +14,6 @@ import {
   istWiederherstellung,
   verbraucheWiederherstellung,
 } from "@/lib/passwortWiederherstellung";
-import { versandFehlerText } from "@/lib/authFehler";
 
 export interface AuthFormState {
   error: string | null;
@@ -278,22 +277,34 @@ export async function requestPasswordReset(
   // ein Link unterwegs. Derselbe Nutzer hat danach ein zweites Konto mit
   // einer anderen Adresse angelegt.
   //
-  // Das verrät nichts über die Adresse: bei einer unbekannten Adresse
-  // antwortet resetPasswordForEmail fehlerfrei (Supabase verhindert so
-  // selbst schon Konto-Enumeration), ein Fehler hier kommt also vom
-  // Versandweg und nicht vom Konto. Die konstante Erfolgsmeldung unten
-  // bleibt deshalb genau das, was sie war — sie deckt nur nicht mehr
-  // zusätzlich den kaputten Versand mit ab.
+  // NUR INS SERVERLOG, NIE IN DIE ANTWORT.
+  //
+  // Bei einer unbekannten Adresse antwortet resetPasswordForEmail fehlerfrei
+  // (Supabase verhindert so selbst schon Konto-Enumeration) — es wird ja gar
+  // nichts verschickt. Daraus folgt die Umkehrung: ein Fehler entsteht hier
+  // ausschliesslich für eine Adresse, zu der ein Konto existiert. Eine daran
+  // hängende Meldung unterschiede die Antwort also nach Kontoexistenz und
+  // wäre genau das Orakel, das die konstante Antwort verhindern soll —
+  // derzeit sogar ein verlässliches, weil der 504 oben fast jedes Mal
+  // eintritt.
+  //
+  // Eine frühere Fassung dieses Zweigs gab den Fehler aus und begründete das
+  // mit derselben Prämisse, aber der umgekehrten Schlussfolgerung. Die
+  // Eigenschaft steht namentlich in docs/audit/security.md unter "What is
+  // done well", ausdrücklich damit sie nicht versehentlich rückgängig
+  // gemacht wird.
+  //
+  // Was der Nutzer wissen muss — dass der Versand dauern kann und ein Blick
+  // in den Spam-Ordner lohnt —, steht deshalb in der konstanten
+  // Erfolgsmeldung selbst (components/PasswortVergessenForm.tsx). Die
+  // Information geht so niemandem verloren, ohne dass die Antwort von der
+  // Adresse abhängt.
   if (error) {
     console.error("Passwort-Zuruecksetzen: Versand fehlgeschlagen", {
       status: error.status,
       code: error.code,
       message: error.message,
     });
-    // Welche der drei Aussagen zutrifft, haengt am Status — siehe die
-    // Messung in lib/authFehler.ts. Ein 504 heisst hier nicht "weg", sondern
-    // "dauert"; wer daraufhin sofort neu anfordert, verdoppelt nur die Last.
-    return { error: versandFehlerText(error.status, error.code), requested: false };
   }
 
   return { error: null, requested: true };

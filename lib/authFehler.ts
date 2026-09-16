@@ -46,49 +46,19 @@ export function authFehlerText(
   // searchParams liefert bei doppeltem Parameter ein Array — dann gilt keine
   // der beiden Angaben, statt sich für eine zu entscheiden.
   if (typeof roh !== "string") return null;
-  return MELDUNGEN[roh] ?? null;
+  // Object.hasOwn statt blossem Indexzugriff: MELDUNGEN ist ein
+  // Objektliteral und erbt damit von Object.prototype. MELDUNGEN["toString"]
+  // liefert eine FUNKTION statt undefined, und die kommt an "?? null" vorbei,
+  // weil eine Funktion nicht nullish ist. Der Wert ginge dann als Prop an
+  // eine Client-Komponente, was den RSC-Render abbricht — gemessen gegen das
+  // Preview-Deployment: /anmelden?fehler=toString lieferte HTTP 200 mit 32 KB
+  // statt 45 KB und OHNE das Anmeldeformular. Ein Link mit diesem Parameter
+  // hätte die Anmeldeseite für den Empfänger unbenutzbar gemacht.
+  //
+  // Dieselbe Lücke für valueOf, constructor, hasOwnProperty und __proto__;
+  // lib/authFehler.test.ts hält alle fünf fest. Die feste Zuordnung oben
+  // schützt gegen eingeschleusten TEXT — gegen geerbte Schlüssel nicht.
+  if (!Object.hasOwn(MELDUNGEN, roh)) return null;
+  return MELDUNGEN[roh];
 }
 
-// ---------------------------------------------------------------------------
-// Versandfehler beim Anfordern eines Zurücksetzen-Links.
-//
-// Gemessen am 2026-09-16 gegen die Produktion: das Gateway von Supabase bricht
-// /auth/v1/recover nach 10 s ab und wiederholt es dreimal, der Client bekommt
-// nach rund 36 s einen 504 — der Versand selbst läuft danach aber weiter und
-// war beim vierten Anlauf nach insgesamt 83 s erfolgreich (Status 200). Die
-// Mail kommt in diesem Fall also doch, nur sehr spät.
-//
-// Deshalb hier drei Aussagen statt einer. Eine pauschale Fehlermeldung wäre im
-// häufigsten Fall schlicht falsch: sie schickt jemanden zum erneuten Versuch,
-// während die erste Mail noch unterwegs ist — und jeder Versuch kostet wieder
-// anderthalb Minuten und eine weitere Mail.
-//
-// Keine dieser Meldungen hängt davon ab, ob es das Konto gibt: bei unbekannter
-// Adresse antwortet Supabase fehlerfrei. Sie verraten also nichts.
-// ---------------------------------------------------------------------------
-
-/** Zu viele Anfragen — Supabase bremst selbst (429). */
-const ZU_VIELE =
-  "Zu viele Anfragen. Bitte warte ein paar Minuten und versuche es erneut.";
-
-/** Zeitüberschreitung: der Versand läuft weiter und kommt vermutlich noch an. */
-const DAUERT_LANGE =
-  "Der Versand dauert gerade ungewöhnlich lange. Schau in den nächsten Minuten in dein Postfach (auch im Spam-Ordner) — kommt nichts an, fordere den Link hier noch einmal an.";
-
-/** Alles andere: der Versand ist wirklich gescheitert. */
-const GESCHEITERT =
-  "Der Link konnte gerade nicht verschickt werden. Bitte versuche es in ein paar Minuten noch einmal.";
-
-export function versandFehlerText(
-  status: number | undefined,
-  code: string | undefined,
-): string {
-  if (status === 429 || code === "over_email_send_rate_limit") return ZU_VIELE;
-  // 504 ist der gemessene Fall; 408 und 502/503 gehören zur selben Familie —
-  // die Anfrage hat das Ziel erreicht oder war unterwegs, nur die Antwort kam
-  // nicht rechtzeitig zurück.
-  if (status === 408 || status === 502 || status === 503 || status === 504) {
-    return DAUERT_LANGE;
-  }
-  return GESCHEITERT;
-}

@@ -52,7 +52,6 @@ export default async function AnmeldenPage({
       <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-6">
         {fehlerText && (
           <p
-            role="alert"
             className="rounded-lg border border-danger/40 px-4 py-3 text-sm text-danger"
           >
             {fehlerText}

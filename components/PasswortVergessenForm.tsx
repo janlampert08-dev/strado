@@ -28,9 +28,16 @@ export default function PasswortVergessenForm({
     return (
       <>
         <h1 className="text-display font-semibold">Passwort vergessen</h1>
+        {/* Bewusst konstant: dieselbe Antwort, ob es das Konto gibt oder
+            nicht, und auch dann, wenn der Versand serverseitig gescheitert
+            ist (Begründung in lib/actions/auth.ts). Der Hinweis auf Dauer und
+            Spam-Ordner steht deshalb hier — er gilt unabhängig von der
+            Adresse und ersetzt die Fehlermeldung, die die Antwort sonst
+            nach Kontoexistenz unterscheiden würde. */}
         <p className="text-sm text-foreground">
-          Falls ein Konto mit dieser E-Mail-Adresse existiert, wurde ein Link zum Zurücksetzen
-          verschickt.
+          Falls ein Konto mit dieser E-Mail-Adresse existiert, ist ein Link zum Zurücksetzen
+          unterwegs. Der Versand kann ein paar Minuten dauern — schau auch im Spam-Ordner nach,
+          bevor du einen neuen Link anforderst.
         </p>
         <p className="text-sm text-muted">
           <Link href="/anmelden" className="font-medium text-accent hover:underline">
@@ -46,7 +53,6 @@ export default function PasswortVergessenForm({
       <h1 className="text-display font-semibold">Passwort vergessen</h1>
       {hinweis && (
         <p
-          role="alert"
           className="-mt-3 rounded-lg border border-danger/40 px-4 py-3 text-sm text-danger"
         >
           {hinweis}
