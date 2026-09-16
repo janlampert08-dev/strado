@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { safeInternalPath } from "@/lib/utils/url";
+import { FEHLER_BESTAETIGUNG, FEHLER_LINK } from "@/lib/authFehler";
 import {
   PASSWORT_AENDERN_PFAD,
   merkeWiederherstellung,
@@ -47,5 +48,20 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/anmelden?fehler=bestaetigung`);
+  // Einlösen gescheitert (Link abgelaufen, schon verwendet, oder in einem
+  // anderen Browser geöffnet als dem, aus dem er angefordert wurde — der
+  // PKCE-Prüfwert liegt als Cookie genau dort). Wohin es dann geht, hängt
+  // davon ab, was der Link vorhatte: beim Zurücksetzen ist die Anmeldung die
+  // eine Seite, die nicht weiterhilft, denn das Passwort ist ja unbekannt.
+  //
+  // Der Parameter war bis hierher wirkungslos — gesetzt, aber von keiner
+  // Seite gelesen. Wer auf einem toten Link landete, bekam ein
+  // kommentarloses Anmeldeformular. Die Meldungen stehen in
+  // lib/authFehler.ts.
+  const fehlerZiel =
+    next === PASSWORT_AENDERN_PFAD
+      ? `/anmelden/passwort-vergessen?fehler=${FEHLER_LINK}`
+      : `/anmelden?fehler=${FEHLER_BESTAETIGUNG}`;
+
+  return NextResponse.redirect(`${origin}${fehlerZiel}`);
 }

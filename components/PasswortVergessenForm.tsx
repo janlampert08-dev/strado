@@ -9,7 +9,15 @@ import useEingabenBewahren from "@/components/useEingabenBewahren";
 
 const initialState: RequestPasswordResetState = { error: null, requested: false };
 
-export default function PasswortVergessenForm() {
+export default function PasswortVergessenForm({
+  // Warum der vorherige Link nicht funktioniert hat, sofern es einen gab —
+  // gesetzt von der Seite aus dem ?fehler=-Parameter, den
+  // app/auth/callback/route.ts hinterlässt. Fester Text aus
+  // lib/authFehler.ts, nie durchgereichte Adresszeile.
+  hinweis = null,
+}: {
+  hinweis?: string | null;
+} = {}) {
   const [state, formAction, pending] = useActionState(requestPasswordReset, initialState);
   // Siehe components/useEingabenBewahren.ts. Der Erfolgszweig unten hängt
   // das Formular ohnehin ab, bewahrt wird also nur der Fehlerfall.
@@ -36,6 +44,14 @@ export default function PasswortVergessenForm() {
   return (
     <>
       <h1 className="text-display font-semibold">Passwort vergessen</h1>
+      {hinweis && (
+        <p
+          role="alert"
+          className="-mt-3 rounded-lg border border-danger/40 px-4 py-3 text-sm text-danger"
+        >
+          {hinweis}
+        </p>
+      )}
       <p className="text-sm text-muted">
         Gib deine E-Mail-Adresse ein — wir schicken dir einen Link zum Zurücksetzen.
       </p>

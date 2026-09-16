@@ -262,14 +262,40 @@ export async function requestPasswordReset(
   // Wiederherstellungs-Merkmal nur für exakt diesen Pfad. Liefen die beiden
   // auseinander, käme niemand mehr durch den Zurücksetzen-Fluss — er
   // landete auf der Seite, die ihn nach dem alten Passwort fragt.
-  await supabase.auth.resetPasswordForEmail(email, {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(PASSWORT_AENDERN_PFAD)}`,
   });
 
-  // resetPasswordForEmail liefert bei unbekannter Adresse ebenfalls keinen
-  // Fehler (Supabase verhindert damit selbst schon Konto-Enumeration) — die
-  // konstante Erfolgsmeldung hier ist daher die korrekte Antwort in beiden
-  // Fällen, kein Verstecken eines echten Fehlers.
+  // Der Rückgabewert wurde bisher gar nicht erst entgegengenommen. Damit war
+  // diese Aktion gegen jeden Versandfehler blind: sie meldete "Link
+  // verschickt", auch wenn nie einer verschickt wurde, und hinterliess
+  // nirgends eine Spur davon (kein Sentry in dieser App, siehe AGENTS.md).
+  //
+  // Genau das ist am 2026-09-16 passiert: der E-Mail-Versand von Supabase
+  // lief in die 10-Sekunden-Grenze des Gateways, /auth/v1/recover antwortete
+  // dreimal hintereinander mit 504 — und die Seite sagte jedes Mal, es sei
+  // ein Link unterwegs. Derselbe Nutzer hat danach ein zweites Konto mit
+  // einer anderen Adresse angelegt.
+  //
+  // Das verrät nichts über die Adresse: bei einer unbekannten Adresse
+  // antwortet resetPasswordForEmail fehlerfrei (Supabase verhindert so
+  // selbst schon Konto-Enumeration), ein Fehler hier kommt also vom
+  // Versandweg und nicht vom Konto. Die konstante Erfolgsmeldung unten
+  // bleibt deshalb genau das, was sie war — sie deckt nur nicht mehr
+  // zusätzlich den kaputten Versand mit ab.
+  if (error) {
+    console.error("Passwort-Zuruecksetzen: Versand fehlgeschlagen", {
+      status: error.status,
+      code: error.code,
+      message: error.message,
+    });
+    return {
+      error:
+        "Der Link konnte gerade nicht verschickt werden. Bitte versuche es in ein paar Minuten noch einmal.",
+      requested: false,
+    };
+  }
+
   return { error: null, requested: true };
 }
 
