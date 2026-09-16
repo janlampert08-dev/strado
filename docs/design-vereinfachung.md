@@ -24,7 +24,7 @@ jeder Commit trägt seine Begründung im Text.
 | Teil | Stand |
 | --- | --- |
 | A1 Schaltflächen, eine Silhouette | **umgesetzt** |
-| A2 `ui/Kennzahl`, höchstens vier Kacheln | **umgesetzt** — Strecken-, Fahrt- und Profilseite |
+| A2 `ui/Kennzahl`, höchstens vier Kacheln | **umgesetzt** — Strecken-, Fahrt- und Profilseite, `/creator` und `/moderation/creator` nachgezogen |
 | A3 `ui/IconButton`, 44 px | **umgesetzt** — acht Stellen, schliesst `uiux.md` §5.2 |
 | A4 Eine Farbquelle | **umgesetzt** — `SIGNATURE_COLORS`, `ROUTE_BLUE_PALETTE` und `TRACK_COLOR` sind weg |
 | A5 `ui/SegmentedControl` | **umgesetzt** — fünf Fassungen werden eine |
@@ -998,6 +998,40 @@ Max. Steigung 12 % · Ø 62 km/h · 8 °C leicht bewölkt
 Auf der Streckenseite sind das **190 px statt 348** — die
 Bestenlisten-Vorschau rückt damit über die Falz. Bleiben als Kacheln:
 Länge, Höhe, Kehren, Fahrzeit.
+
+**Nachtrag: `/creator` und `/moderation/creator`.** Die beiden Seiten
+blieben bei der ersten Umsetzung stehen — `KennzahlKachel.tsx` lebte
+weiter, mit `text-2xl sm:text-3xl` also einer zweiten Betonungsstufe, und
+daneben standen drei rohe `grid grid-cols-3`. Inzwischen ist die Komponente
+gelöscht statt „darauf zurückgeführt": als Aufsatz hätte sie nichts mehr
+getragen, seit `ui/Kennzahl` einen `zusatz`-Slot hat. Drei Punkte, die den
+Weg dorthin bestimmt haben:
+
+- **Der Trichter darf dreispaltig bleiben.** Aufrufe → Konten → Abos ist
+  eine Aussage über das Nebeneinander; im Standardraster
+  (`grid-cols-2 sm:grid-cols-4`) stünde „Abos" auf dem Telefon allein in
+  der zweiten Zeile. Dafür gibt es `Kennzahlen spalten={3}` — ein
+  Parameter und keine angehängte Klasse, weil `lib/utils/cn.ts` kein
+  tailwind-merge ist. Die Vier-Kachel-Grenze bleibt unberührt.
+- **Die Hinweistexte sind der Preis dafür.** Auf 390 px ist eine von drei
+  Kacheln 109 px breit, abzüglich 2 × 16 px Innenabstand bleiben 75 px —
+  gemessen im Browser, nicht gerechnet. „Premium abgeschlossen" brach dort
+  um. Der Prozentwert („12,5 %") passt in eine Zeile und steht jetzt als
+  `zusatz`; was die Hinweise erklärten, sagt die Karte darunter in ganzen
+  Sätzen.
+- **Die Je-Link-Zahlen werden eine `Kennzahlenzeile`.** Beide Seiten listen
+  jeden Code untereinander; drei Kacheln je Karte wären drei mal N. Als
+  Zeile sind es rund 20 px statt rund 60 — derselbe Tausch wie auf der
+  Streckenseite.
+
+Dabei ist ein Fehler in der Primitive selbst aufgefallen: `Kennzahl` stand
+auf `justify-between`. Solange alle Kacheln einer Zeile gleich gebaut sind,
+sind sie gleich hoch und es fällt nicht auf — trägt aber eine Kachel eine
+Zeile mehr, streckt das Raster die übrigen mit, und deren Wert rutschte an
+den unteren Rand. Auf `/fahrten/[id]` (eine Zeit-Kachel mit Zusatz und
+Abzeichen, drei ohne) standen die vier Zahlen dadurch auf zwei Höhen. Jetzt
+steht oben zusammen, was zusammengehört, und nur der `fuss` wird per
+`mt-auto` nach unten geschoben — wofür `justify-between` eigentlich da war.
 
 ### A3 — `ui/IconButton.tsx` (neu)
 
