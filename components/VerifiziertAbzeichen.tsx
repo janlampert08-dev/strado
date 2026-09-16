@@ -18,9 +18,12 @@ import type { DauerQuelle } from "@/types/database";
 // ausdrückliche, ruhige Negativzustand nimmt dem die Spitze — und sagt
 // zugleich, was fehlt.
 //
-// Der Text ist an AGB Ziff. 12.6 gebunden: "verifiziert" heisst dort
-// ausdrücklich NICHT, dass die Anbieterin die Fahrt bestätigt hat. Diese
-// Komponente darf deshalb nie "bestätigt", "geprüft" oder "echt" behaupten.
+// Der Text ist an AGB Ziff. 12.4 gebunden: Zeiten in Bestenlisten sind
+// dort ausdrücklich keine geeichte Zeitmessung. "Verifiziert" heisst also
+// NICHT, dass die Anbieterin die Fahrt bestätigt hat. Diese Komponente darf
+// deshalb nie "bestätigt", "geprüft" oder "echt" behaupten. (Der Entwurf
+// einer Ziff. 12.6, die die verifizierte Fahrt eigens definiert, liegt auf
+// einem offenen Zweig und ist nicht in Kraft.)
 
 export default function VerifiziertAbzeichen({
   quelle,
