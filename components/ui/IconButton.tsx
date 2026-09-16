@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from "react";
+import type { ButtonHTMLAttributes, Ref } from "react";
 import { cn } from "@/lib/utils/cn";
 
 // Die eine Icon-Schaltfläche der App. Vorher zeichnete jede Stelle ihre
@@ -44,6 +44,12 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   ton?: IconButtonTon;
   /** Pflicht: die Schaltfläche trägt nur ein Icon, der Text muss woanders her. */
   "aria-label": string;
+  // React 19 reicht ref als gewöhnliche Prop an Funktionskomponenten durch —
+  // forwardRef ist dafür nicht mehr nötig. Deklariert werden muss sie
+  // trotzdem, weil ButtonHTMLAttributes sie nicht mitbringt. Gebraucht wird
+  // sie von den Menü-Auslösern, die den Fokus nach dem Schliessen
+  // zurückholen (RouteActionsMenu, CompletionActionsMenu).
+  ref?: Ref<HTMLButtonElement>;
 }
 
 export default function IconButton({ ton = "neutral", className, ...props }: IconButtonProps) {

@@ -422,3 +422,40 @@ main {
     scroll-behavior: auto !important;
   }
 }
+
+/* Ein <details>, das auf dem Telefon zu und ab sm offen ist.
+
+   Das `open`-Attribut ist Markup und lässt sich serverseitig nicht pro
+   Breakpoint setzen — es gäbe nur einen Client-Anteil, der nach dem Mount
+   umschaltet, und der würde beim ersten Bild sichtbar springen.
+
+   Der Weg über CSS: das Element bleibt geschlossen (kein `open`), und ab sm
+   erzwingt `display: block` auf dem ::details-content-Pseudoelement, dass
+   der Inhalt trotzdem gezeigt wird. Unterstützt wird ::details-content in
+   allen Browsern, die auch ::backdrop und :has() können; wo nicht, bleibt
+   der Abschnitt zugeklappt und ist per Tipp zu öffnen — also degradiert es
+   zum Ausgangszustand und nicht zu etwas Kaputtem.
+
+   Der Marker dreht sich dabei nicht mit: ab sm ist das Chevron ausgeblendet,
+   weil dort nichts mehr zu klappen ist.
+
+   Genutzt von app/profil/page.tsx für Auszeichnungen und den
+   Aktivitätskalender — ein Jahresraster, das auf 390 px entweder unlesbar
+   klein oder quer scrollbar ist und dort zwischen den Kennzahlen und den
+   Fahrten im Weg stand. */
+@media (min-width: 640px) {
+  details.ab-sm-offen::details-content {
+    display: block;
+    content-visibility: visible;
+    block-size: auto;
+  }
+
+  details.ab-sm-offen > summary {
+    cursor: default;
+    pointer-events: none;
+  }
+
+  details.ab-sm-offen > summary svg:last-child {
+    display: none;
+  }
+}

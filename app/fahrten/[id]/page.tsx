@@ -31,6 +31,7 @@ import { formatDuration } from "@/lib/format";
 import VerifiziertAbzeichen from "@/components/VerifiziertAbzeichen";
 import { publicationBlockReason } from "@/lib/track";
 import Card from "@/components/ui/Card";
+import Kennzahl, { Kennzahlen } from "@/components/ui/Kennzahl";
 import MotorklasseBadge from "@/components/MotorklasseBadge";
 import { motorklasseLabel } from "@/lib/motorklassen";
 
@@ -393,68 +394,73 @@ export default async function FahrtDetailPage({
             displayName={completion.displayName}
           />
 
-          {/* Bento-Stats — dasselbe Muster wie app/strecken/[id]/page.tsx und
-              app/profil/page.tsx: Distanz/Zeit als betonte Kacheln, Rest
-              kleinteiliger daneben. */}
-          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Card surface className="flex flex-col justify-between gap-1 p-4">
-              <dt className="flex items-center gap-1.5 text-sm text-muted">
-                <Ruler className="h-3.5 w-3.5" aria-hidden="true" />
-                Distanz
-              </dt>
-              <dd className="text-title font-mono font-semibold tabular-nums">
-                {(completion.distanzKm ?? route?.laenge_km ?? 0).toFixed(1)} km
-              </dd>
-            </Card>
-            <Card surface className="flex flex-col justify-between gap-1 p-4">
-              <dt className="flex items-center gap-1.5 text-sm text-muted">
-                <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-                Zeit
-              </dt>
-              <dd className="text-title font-mono font-semibold tabular-nums">
-                {completion.dauerSekunden !== null ? formatDuration(completion.dauerSekunden) : "—"}
-              </dd>
-              {zeigtBewegtzeit && (
-                <dd className="font-mono text-xs tabular-nums text-muted">
-                  {formatDuration(completion.bewegteZeitSekunden!)} in Bewegung
-                </dd>
-              )}
-              {/* Steht bewusst in der Zeit-Kachel und nicht im Seitenkopf: die
-                  Verifikation betrifft genau diese eine Zahl und keine andere.
-                  Distanz, Höhenmeter und Abdeckung sind serverseitig
-                  abgesichert (0052/0059/0074/0078) und brauchen kein
-                  Abzeichen. */}
-              {completion.dauerSekunden !== null && (
-                <dd className="pt-1">
+          {/* Vier Kennzahlen, eine Betonungsstufe. Vorher trugen Distanz
+              und Zeit text-title/600 und die beiden daneben nur font-mono —
+              gleiche Rolle, zwei Grössen, und zwar an jeder der drei
+              Stellen, die dieses Raster von Hand nachbauten, leicht anders.
+              Siehe docs/design-vereinfachung.md, Anhang A2. */}
+          <Kennzahlen>
+            <Kennzahl
+              beschriftung={
+                <>
+                  <Ruler className="h-3.5 w-3.5" aria-hidden="true" />
+                  Distanz
+                </>
+              }
+              wert={`${(completion.distanzKm ?? route?.laenge_km ?? 0).toFixed(1)} km`}
+            />
+            <Kennzahl
+              beschriftung={
+                <>
+                  <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                  Zeit
+                </>
+              }
+              wert={
+                completion.dauerSekunden !== null ? formatDuration(completion.dauerSekunden) : "—"
+              }
+              zusatz={
+                zeigtBewegtzeit
+                  ? `${formatDuration(completion.bewegteZeitSekunden!)} in Bewegung`
+                  : undefined
+              }
+              // Steht bewusst in der Zeit-Kachel und nicht im Seitenkopf: die
+              // Verifikation betrifft genau diese eine Zahl und keine andere.
+              // Distanz, Höhenmeter und Abdeckung sind serverseitig
+              // abgesichert (0052/0059/0074/0078) und brauchen kein Abzeichen.
+              fuss={
+                completion.dauerSekunden !== null ? (
                   <VerifiziertAbzeichen quelle={completion.dauerQuelle} />
-                </dd>
-              )}
-            </Card>
-            <Card surface className="flex flex-col justify-between gap-1 p-4">
-              <dt className="flex items-center gap-1.5 text-sm text-muted">
-                <Gauge className="h-3.5 w-3.5" aria-hidden="true" />
-                Ø Tempo
-              </dt>
-              <dd className="font-mono tabular-nums">
-                {avgKmh !== null ? `${avgKmh.toFixed(0)} km/h` : "—"}
-              </dd>
-            </Card>
-            <Card surface className="flex flex-col justify-between gap-1 p-4">
-              <dt className="flex items-center gap-1.5 text-sm text-muted">
-                <Mountain className="h-3.5 w-3.5" aria-hidden="true" />
-                {istFreieFahrt ? "Aufstieg" : "Höhe"}
-              </dt>
-              <dd className="font-mono tabular-nums">
-                {istFreieFahrt
+                ) : undefined
+              }
+            />
+            <Kennzahl
+              beschriftung={
+                <>
+                  <Gauge className="h-3.5 w-3.5" aria-hidden="true" />
+                  Ø Tempo
+                </>
+              }
+              wert={avgKmh !== null ? `${avgKmh.toFixed(0)} km/h` : "—"}
+            />
+            <Kennzahl
+              beschriftung={
+                <>
+                  <Mountain className="h-3.5 w-3.5" aria-hidden="true" />
+                  {istFreieFahrt ? "Aufstieg" : "Höhe"}
+                </>
+              }
+              wert={
+                istFreieFahrt
                   ? completion.hoehenmeterAufstieg !== null
                     ? `${completion.hoehenmeterAufstieg} m`
                     : "—"
                   : route!.hoehe_m !== null
                     ? `${route!.hoehe_m} m`
-                    : "—"}
-              </dd>
-            </Card>
-          </dl>
+                    : "—"
+              }
+            />
+          </Kennzahlen>
 
           {hoehenprofil && hoehenprofil.length > 1 && <ElevationProfile punkte={hoehenprofil} />}
         </main>

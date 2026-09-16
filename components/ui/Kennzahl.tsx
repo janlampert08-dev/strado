@@ -17,12 +17,16 @@ export default function Kennzahl({
   beschriftung,
   wert,
   zusatz,
+  fuss,
   className,
 }: {
   beschriftung: React.ReactNode;
   wert: React.ReactNode;
   /** Zweite, kleinere Zeile unter dem Wert (z. B. "12:04 in Bewegung"). */
   zusatz?: React.ReactNode;
+  /** Freier Platz ganz unten — für ein Abzeichen statt einer Zahl. Trägt
+   *  bewusst keine Schriftvorgaben, anders als `zusatz`. */
+  fuss?: React.ReactNode;
   className?: string;
 }) {
   return (
@@ -37,6 +41,7 @@ export default function Kennzahl({
       {zusatz !== undefined && zusatz !== null && (
         <dd className="font-mono text-xs tabular-nums text-muted">{zusatz}</dd>
       )}
+      {fuss !== undefined && fuss !== null && <dd className="pt-1">{fuss}</dd>}
     </div>
   );
 }

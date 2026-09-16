@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Download, Trash2 } from "lucide-react";
 import {
-  getAllOfflineRoutes,
   getOfflineRoute,
   isIndexedDbAvailable,
   removeOfflineRoute,
@@ -12,7 +11,7 @@ import {
   type OfflineRoute,
 } from "@/lib/offlineRoutes";
 import { MAX_OFFLINE_STRECKEN_GRATIS } from "@/lib/premiumLimits";
-import { buttonVariants } from "@/components/ui/Button";
+import IconButton from "@/components/ui/IconButton";
 
 // route wird bereits fertig auf das schlanke OfflineRoute-Shape reduziert
 // von der Seite übergeben (app/strecken/[id]/page.tsx) — eine reine
@@ -31,10 +30,19 @@ import { buttonVariants } from "@/components/ui/Button";
 // Strecken ist es genau umgekehrt: dort ist die Clientgrenze Anzeige und die
 // Schranke sitzt im Server.
 //
-// Die Entscheidung fällt trotzdem in saveOfflineRouteMitGrenze und nicht
-// hier: `anzahl` unten ist Anzeige, und zwei offene Tabs sähen beide
-// dieselbe Zahl. Die Zählung gehört in dieselbe IndexedDB-Transaktion wie
-// der Schreibvorgang, damit die angezeigte Grenze auch die tatsächliche ist.
+// Die Entscheidung fällt in saveOfflineRouteMitGrenze und nicht hier: die
+// Zählung gehört in dieselbe IndexedDB-Transaktion wie der Schreibvorgang,
+// damit die geprüfte Grenze auch die tatsächliche ist — zwei offene Tabs
+// sähen sonst beide dieselbe veraltete Zahl.
+//
+// Diese Komponente führte bis zur Umstellung auf ui/IconButton eine eigene
+// Kopie des Zählers mit, allein um die Beschriftung auf "Offline speichern
+// (Premium)" umzuschalten, sobald das Kontingent knapp wurde. Die
+// Beschriftung ist weg (der Preis gehört nicht an ein Bedienelement im
+// Ruhezustand, siehe docs/design-vereinfachung.md Anhang C2), und damit
+// auch der Zähler: er war der einzige Leser. Der Hinweis unten kommt
+// weiterhin aus dem Rückgabewert der Transaktion — also von der Stelle, die
+// es wirklich weiss.
 export default function OfflineRouteButton({
   route,
   istPremium,
@@ -49,24 +57,19 @@ export default function OfflineRouteButton({
   // (nur noch in den .then()/.catch()-Callbacks, siehe unten).
   const [saved, setSaved] = useState<boolean | null>(() => (isIndexedDbAvailable() ? null : false));
   const [pending, setPending] = useState(false);
-  const [anzahl, setAnzahl] = useState(0);
   const [hinweis, setHinweis] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isIndexedDbAvailable()) return;
-    Promise.all([getOfflineRoute(route.id), getAllOfflineRoutes()])
-      .then(([existing, alle]) => {
+    getOfflineRoute(route.id)
+      .then((existing) => {
         setSaved(existing !== null);
-        setAnzahl(alle.length);
       })
       .catch(() => setSaved(false));
   }, [route.id]);
 
   if (!isIndexedDbAvailable() || saved === null) return null;
 
-  // Nur für die Beschriftung: die verbindliche Entscheidung trifft
-  // saveOfflineRouteMitGrenze in der Transaktion.
-  const kontingentKnapp = !istPremium && !saved && anzahl >= MAX_OFFLINE_STRECKEN_GRATIS;
 
   async function toggle() {
     setPending(true);
@@ -75,7 +78,6 @@ export default function OfflineRouteButton({
       if (saved) {
         await removeOfflineRoute(route.id);
         setSaved(false);
-        setAnzahl((n) => Math.max(0, n - 1));
       } else {
         const ergebnis = await saveOfflineRouteMitGrenze(
           route,
@@ -86,12 +88,9 @@ export default function OfflineRouteButton({
             `Ohne Premium lassen sich ${MAX_OFFLINE_STRECKEN_GRATIS} Strecken offline speichern. ` +
               "Entferne eine andere — oder hol dir Premium für unbegrenzt viele.",
           );
-          const alle = await getAllOfflineRoutes();
-          setAnzahl(alle.length);
           return;
         }
         setSaved(true);
-        setAnzahl((n) => n + 1);
       }
     } catch {
       // Zustand unverändert lassen, der Button bleibt für einen erneuten
@@ -119,32 +118,32 @@ export default function OfflineRouteButton({
     }
   }
 
+  // Die Beschriftung trug bisher "(Premium)", sobald das Gratis-Kontingent
+  // knapp war — also ein Preis am Bedienelement selbst, dauerhaft sichtbar.
+  // Der HINWEIS darunter war schon immer richtig: er erscheint erst, wenn
+  // die drei Strecken wirklich voll sind. Nur die Beschriftung nahm das
+  // vorweg. Jetzt trägt sie es nicht mehr; der Hinweis bleibt unverändert.
+  // Siehe docs/design-vereinfachung.md, Anhang C2, Regel 1.
+  const label = saved ? "Offline entfernen" : "Offline speichern";
+
   return (
     <div className="flex flex-col items-start gap-1.5">
-      <button
-        type="button"
+      <IconButton
         onClick={toggle}
         disabled={pending}
         aria-pressed={saved}
-        className={buttonVariants({ variant: "secondary", size: "sm" })}
+        ton={saved ? "aktiv" : "neutral"}
+        title={label}
+        aria-label={label}
       >
         {saved ? (
-          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+          <Trash2 className="h-5 w-5" aria-hidden="true" />
         ) : (
-          <Download className="h-3.5 w-3.5" aria-hidden="true" />
+          <Download className="h-5 w-5" aria-hidden="true" />
         )}
-        {/* "Offline download" war der einzige englische UI-String im
-            gesamten Projekt — und klein geschrieben, wo das Deutsche ein
-            Substantiv gross schreibt. "speichern" benennt zudem die
-            Aktion; "download" beschreibt nur den Transport. */}
-        {saved
-          ? "Offline entfernen"
-          : kontingentKnapp
-            ? "Offline speichern (Premium)"
-            : "Offline speichern"}
-      </button>
+      </IconButton>
       {hinweis && (
-        <p role="status" className="text-xs text-muted">
+        <p role="status" className="text-sm text-muted">
           {hinweis}{" "}
           <Link href="/profil/premium" className="underline">
             Mehr erfahren

@@ -39,6 +39,8 @@ import { publicationBlockReason } from "@/lib/track";
 import { summiereHoehenmeter } from "@/lib/hoehenmeter";
 import type { FahrtArt, Vehicle } from "@/types/database";
 import Card from "@/components/ui/Card";
+import Kennzahl, { Kennzahlen } from "@/components/ui/Kennzahl";
+import SectionHeading from "@/components/ui/SectionHeading";
 import EmptyState from "@/components/ui/EmptyState";
 import { buttonVariants } from "@/components/ui/Button";
 
@@ -274,45 +276,45 @@ export default async function ProfilPage() {
           </div>
         </div>
 
-        {/* Statistiken: Kennzahlen-Grid, Auszeichnungen und Aktivitätskalender
-            gehören inhaltlich zusammen ("meine Zahlen") und stecken deshalb in
-            einer gemeinsamen Gruppen-Card statt als drei gleichrangige,
-            eigenständige Sections — Auszeichnungen/Aktivität als native
-            <details> darin (siehe SectionSummary oben), auf/zu ohne eigenes
-            State-Management. Beide standardmässig offen: dieselben Infos wie
-            vorher sind weiterhin ohne Klick sichtbar, nur jetzt gruppiert und
-            bei Bedarf einklappbar. */}
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">Statistiken</h2>
-          <Card className="flex flex-col divide-y divide-border">
-            <dl className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4">
-              <Card surface className="flex flex-col justify-between gap-1 p-4">
-                <dt className="text-sm text-muted">Pässe befahren</dt>
-                <dd className="text-title font-mono font-semibold tabular-nums">
-                  <CountUp value={passCount} />
-                </dd>
-              </Card>
-              <Card surface className="flex flex-col justify-between gap-1 p-4">
-                <dt className="text-sm text-muted">Höhenmeter gesammelt</dt>
-                <dd className="text-title font-mono font-semibold tabular-nums">
-                  <CountUp value={hoehenmeter} unit="m" />
-                </dd>
-              </Card>
-              <Card surface className="flex flex-col justify-between gap-1 p-4">
-                <dt className="text-sm text-muted">Km gefahren</dt>
-                <dd className="font-mono text-lg tabular-nums">
-                  <CountUp value={getrackteDistanzGesamt} unit="km" />
-                </dd>
-              </Card>
-              <Card surface className="flex flex-col justify-between gap-1 p-4">
-                <dt className="text-sm text-muted">Anzahl Fahrten</dt>
-                <dd className="font-mono text-lg tabular-nums">
-                  <CountUp value={trackedRides?.length ?? 0} />
-                </dd>
-              </Card>
-            </dl>
+        {/* Eine Rahmenebene statt drei. Vorher lag hier eine Gruppen-Card
+            um vier verschachtelte Kacheln und drei <details> — auf einem
+            390-px-Schirm sind das drei ineinandergeschachtelte Rahmenlinien
+            um denselben Inhalt, und die äusserste umschloss am Ende fast die
+            ganze Seitenbreite, rahmte also nichts ein, was nicht ohnehin
+            abgegrenzt gewesen wäre.
 
-            <details open className="group p-4">
+            Die Überschrift und die Trennlinien zwischen den Abschnitten
+            leisten die Gruppierung. Mit dem Rahmen geht auch sein
+            Innenabstand: die Inhalte laufen jetzt bis an den Seitenrand des
+            Seitenrahmens, was auf dem Telefon 32 px Breite zurückgibt.
+            Siehe docs/design-vereinfachung.md, Abschnitt 3.9. */}
+        <section className="flex flex-col gap-3">
+          <SectionHeading>Kennzahlen</SectionHeading>
+          <Kennzahlen>
+            <Kennzahl beschriftung="Pässe befahren" wert={<CountUp value={passCount} />} />
+            <Kennzahl
+              beschriftung="Höhenmeter gesammelt"
+              wert={<CountUp value={hoehenmeter} unit="m" />}
+            />
+            <Kennzahl
+              beschriftung="Km gefahren"
+              wert={<CountUp value={getrackteDistanzGesamt} unit="km" />}
+            />
+            <Kennzahl beschriftung="Fahrten" wert={<CountUp value={trackedRides?.length ?? 0} />} />
+          </Kennzahlen>
+
+          <div className="flex flex-col divide-y divide-border border-t border-border">
+            {/* Auf dem Telefon zugeklappt, ab sm offen. Der
+                Aktivitätskalender ist ein Jahresraster — auf 390 px
+                entweder unlesbar klein oder quer scrollbar —, und er stand
+                zwischen den Kennzahlen und den Fahrten, also mitten im Weg
+                zu dem, weswegen man die Seite öffnet.
+
+                Das `open` kommt aus CSS statt aus dem Markup: details[open]
+                lässt sich serverseitig nicht pro Breakpoint setzen, und ein
+                Client-Anteil nur dafür wäre zu viel. Siehe
+                app/globals.css, Regel `details.ab-sm-offen`. */}
+            <details className="group ab-sm-offen py-4">
               <SectionSummary icon={Award} label="Auszeichnungen" />
               <div className="mt-4">
                 <AchievementBadges
@@ -323,25 +325,19 @@ export default async function ProfilPage() {
               </div>
             </details>
 
-            <details open className="group p-4">
+            <details className="group ab-sm-offen py-4">
               <SectionSummary icon={CalendarDays} label="Aktivität" />
               <div className="mt-4">
                 <ActivityHeatmap dates={(trackedRides ?? []).map((r) => r.datum)} />
               </div>
             </details>
 
-            {/* Premium-Auswertung. Steht INNERHALB derselben Gruppen-Card wie
-                die vier Kacheln, weil es inhaltlich dieselbe Frage ist
-                ("meine Zahlen") — nur eine Ebene tiefer aufgelöst.
-
-                Additiv: Ohne Abo bleibt oben alles, wie es war. Wer kein Abo
-                hat, sieht hier nichts statt eines gesperrten Symbols — ein
-                Schloss an einer Stelle, an der vorher nichts war, liest sich
-                als Wegnahme, und genau das soll additives Gating vermeiden
-                (docs/premium-plan.md, Abschnitt 4). Die Kaufseite wirbt
-                ohnehin damit; sie ist der Ort dafür. */}
+            {/* Additiv: Ohne Abo steht hier nichts statt eines gesperrten
+                Symbols — ein Schloss an einer Stelle, an der vorher nichts
+                war, liest sich als Wegnahme (docs/premium-plan.md,
+                Abschnitt 4). Die Kaufseite wirbt ohnehin damit. */}
             {premiumStatus.aktiv && (
-              <details open className="group p-4">
+              <details open className="group py-4">
                 <SectionSummary icon={ChartIcon} label="Auswertung" />
                 <div className="mt-4">
                   <FahrtStatistik
@@ -360,7 +356,7 @@ export default async function ProfilPage() {
                 </div>
               </details>
             )}
-          </Card>
+          </div>
         </section>
 
         <div className="flex flex-col gap-8">
