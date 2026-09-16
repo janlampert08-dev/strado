@@ -317,6 +317,17 @@ export default function FahrtStatistik({
                         reihe.jahr === heuteJahr &&
                         heuteMonat !== null &&
                         index + 1 > heuteMonat;
+                      // Einmal formuliert, zweimal ausgeliefert: als
+                      // aria-label für Vorlesehilfen und als title für den
+                      // Zeiger. Vorher stand der Wert nur im Label, womit
+                      // ein Balken für alle sehenden Nutzer mit Maus eine
+                      // Fläche ohne Zahl blieb — dieselbe Doppelung nutzt
+                      // ActivityHeatmap.tsx schon.
+                      const beschriftung = stehtAus
+                        ? `${MONATE_LANG[index]} ${reihe.jahr}: steht noch aus`
+                        : monat.km > 0
+                          ? `${MONATE_LANG[index]} ${reihe.jahr}: ${zahl(monat.km)} km, ${mitAnzahl(monat.fahrten, "Fahrt", "Fahrten")}`
+                          : `${MONATE_LANG[index]} ${reihe.jahr}: keine Fahrt`;
                       return (
                         <li
                           // aria-label auf dem <li> ERSETZT dessen Inhalt, es
@@ -325,13 +336,8 @@ export default function FahrtStatistik({
                           // Reihenfolge, die man raten müsste.
                           key={MONATSKUERZEL[index] + index}
                           className="flex min-w-0 flex-1 items-end self-stretch"
-                          aria-label={
-                            stehtAus
-                              ? `${MONATE_LANG[index]} ${reihe.jahr}: steht noch aus`
-                              : monat.km > 0
-                                ? `${MONATE_LANG[index]} ${reihe.jahr}: ${zahl(monat.km)} km, ${mitAnzahl(monat.fahrten, "Fahrt", "Fahrten")}`
-                                : `${MONATE_LANG[index]} ${reihe.jahr}: keine Fahrt`
-                          }
+                          aria-label={beschriftung}
+                          title={beschriftung}
                         >
                           <div
                             className={
