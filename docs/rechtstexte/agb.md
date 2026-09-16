@@ -41,10 +41,29 @@
 >
 > **Was geändert wurde (Entwurf vom 15. September 2026):**
 > - **Ziff. 11.3** hält „kein Wettbewerb um Geschwindigkeit" als Grundsatz
->   fest, benennt aber neu ausdrücklich, dass die öffentlichen Ranglisten auf
->   tempounabhängigen Grössen beruhen (Anzahl, Distanz, Höhenmeter,
->   Abdeckung, Wiederholungen, Regelmässigkeit) und dass Zeiten ein Opt-in
->   und ein Nebenwert sind.
+>   fest und trennt neu zwei Dinge, die vorher vermengt waren: die
+>   **plattformweiten** Bestenlisten beruhen ausschliesslich auf
+>   tempounabhängigen Grössen — und zwar genau auf den vier, die
+>   `lib/leaderboard.ts` tatsächlich führt (Anzahl Fahrten, Kilometer,
+>   Höhenmeter, Anzahl unterschiedlicher Strecken) —, während die
+>   **Bestzeitenliste je Strecke** als Nebenwertung benannt und eingegrenzt
+>   wird: nur selbst veröffentlichte Fahrten, nur verifizierte Zeiten, keine
+>   Auszeichnung, kein Vorteil.
+>
+>   **Korrektur nach Review (2026-09-16).** Ein erster Entwurf nannte hier
+>   „Streckenabdeckung, Wiederholungen und Regelmässigkeit" — drei Wertungen,
+>   die es nicht gibt — und liess die Bestzeitenliste weg, die es gibt. Er
+>   behauptete ausserdem, schnelleres Fahren erreiche „nichts, was nicht auch
+>   durch häufigeres … Fahren zu erreichen wäre". Das ist falsch:
+>   `lib/leaderboard.ts` sortiert die Streckenliste nach `dauer_sekunden`
+>   aufsteigend und behält je Konto nur die schnellste Fahrt — Platz 1 ist
+>   dort **allein** durch schnelleres Fahren erreichbar. Ausgerechnet dieser
+>   Satz sollte die Abgrenzung gegen Art. 90 SVG tragen. Die jetzige Fassung
+>   sagt stattdessen, was die Liste ist und was aus ihr **nicht** folgt.
+>   Ebenfalls berichtigt: Zeiten sind kein Opt-in — sie entstehen bei jeder
+>   Aufzeichnung. Opt-in ist die Veröffentlichung der Fahrt (einen
+>   zeitspezifischen Schalter gab es bis `0016`, seit `0017` heisst die
+>   Spalte `ist_oeffentlich`).
 > - **Ziff. 11.4** untersagte bisher „jedes Verhalten, das darauf zielt, eine
 >   … geführte Zeit zu unterbieten" — und damit auch das regelkonforme
 >   erneute Befahren einer Strecke, unter Androhung der Kontosperre nach
@@ -67,10 +86,26 @@
 > veröffentlichte HTML-Fassung im Repo `janlampert08-dev/stradoinfo` bleibt
 > bis zum Inkrafttreten auf dem Stand vom 14. September 2026.
 >
+> **Blocker, der NICHT in diesem Dokument liegt: die Datenschutzerklärung.**
+> Ziff. 12.6 beschreibt Positionsmeldungen, die **während** der Fahrt an den
+> Server gehen. Die veröffentlichte Datenschutzerklärung
+> (`janlampert08-dev/stradoinfo`, `legal/datenschutz.html`) sagt heute das
+> Gegenteil: die Aufzeichnung liege „auf dem Gerät und wird nicht an uns
+> übermittelt, solange die Fahrt nicht gespeichert wird", und bei nicht
+> angemeldeten Besuchenden bleibe sie „ausschliesslich lokal". Da
+> `fahrt_start_puls` ausdrücklich auch an `anon` vergeben ist, trifft der
+> zweite Satz nicht mehr zu, **sobald der Code aus PR #249 ausgeliefert
+> ist** — nicht schon mit dem Merge dieses PRs. Daraus folgt eine
+> Reihenfolge: `docs/rechtstexte/datenschutz.md` **und** die veröffentlichte
+> HTML-Fassung müssen geändert sein, bevor #249 die Produktion erreicht.
+> Zwei Repositories, dieselbe Logik wie beim Herkunfts-Cookie.
+>
 > **Nicht anwaltlich geprüft.** Ziff. 11.3/11.4 berühren die Abgrenzung zu
 > Art. 90 Abs. 3 und 4 SVG (Raserartikel). Die Änderung verengt ein zu weites
 > Verbot, sie erlaubt kein Rennen — aber ob die Formulierung trägt, gehört
-> auf die Prüfliste am Ende dieses Dokuments.
+> auf die Prüfliste am Ende dieses Dokuments. Der anwaltlichen Durchsicht ist
+> der **korrigierte** Sachverhalt vorzulegen: es gibt eine Bestzeitenliste,
+> und auf ihr gewinnt, wer schneller fährt.
 
 ---
 
@@ -459,17 +494,24 @@ Strassenverkehrsgesetzgebung.**
 gesetzlich nicht erlaubt ist. Die Aufzeichnung einer Fahrt ist vor der Abfahrt
 zu starten und nach dem Anhalten zu beenden.
 
-**11.3 Kein Wettbewerb um Geschwindigkeit.** Strado wertet Fahrten aus und
-führt Bestenlisten, ist aber **kein Wettbewerb um Geschwindigkeit**. Massgeblich
-für die öffentlichen Ranglisten sind Grössen, die nicht vom Tempo abhängen —
-Anzahl der Fahrten, Distanz, Höhenmeter, Streckenabdeckung, Wiederholungen und
-Regelmässigkeit.
+**11.3 Kein Wettbewerb um Geschwindigkeit.** Strado ist **kein Wettbewerb um
+Geschwindigkeit**. Die **plattformweiten** Bestenlisten beruhen ausschliesslich
+auf Grössen, die nicht vom Tempo abhängen: Anzahl der Fahrten, gefahrene
+Kilometer, Höhenmeter und Anzahl unterschiedlicher Strecken. Tempo verbessert
+dort keine Platzierung.
 
-Zeiten werden nur erfasst und nur dann in einer Streckenbestenliste geführt,
-wenn die Nutzenden das für die betreffende Fahrt selbst aktivieren (Ziff. 12.6).
-Sie sind ein Nebenwert und kein Ziel: Wer eine Strecke schneller fährt, erreicht
-bei Strado nichts, was nicht auch durch häufigeres, vollständigeres oder
-regelmässigeres Fahren zu erreichen wäre.
+Daneben führt Strado je Strecke eine **Bestzeitenliste**. Sie ist eine
+Nebenwertung und ausdrücklich kein Ziel der Plattform: Sie erfasst nur
+Fahrten, die die Nutzenden selbst öffentlich gestellt haben, sie führt nur
+verifizierte Zeiten (Ziff. 12.6), sie fliesst in keine plattformweite
+Rangliste ein, und aus ihr folgt keine Auszeichnung und kein Vorteil auf
+Strado.
+
+Eine Zeit entsteht bei jeder aufgezeichneten Fahrt. Was die Nutzenden
+entscheiden, ist nicht die Messung, sondern die **Veröffentlichung**: Wer eine
+Fahrt öffentlich stellt, stellt damit auch ihre Zeit in die Bestzeitenliste
+der Strecke; wer sie privat lässt, erscheint dort nicht. Die Sichtbarkeit
+lässt sich jederzeit nachträglich ändern.
 
 Fahrten, die unter Missachtung von Verkehrsregeln zustande gekommen sind,
 dürfen nicht veröffentlicht werden.

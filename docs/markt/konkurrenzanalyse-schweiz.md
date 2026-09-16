@@ -1,9 +1,16 @@
 # Konkurrenzanalyse Schweiz — Strado
 
-Stand: 2026-09-15. Erhoben per Web-Recherche; jede Zahl ist unten mit Quelle
-belegt. Wo ich schätze, steht **Schätzung** dabei — diese Zahlen sind
-Grössenordnungen, keine Messwerte, und dürfen nicht als Fakten weitergegeben
-werden.
+Stand: 2026-09-15, korrigiert 2026-09-16. Erhoben per Web-Recherche.
+
+**Zur Beleglage, ehrlicher als die erste Fassung.** Abschnitt 8 nennt die
+Quellen **namentlich, nicht als Link** — das Dokument enthält keine URLs und
+keine Abrufdaten, und Abschnitt 8 deckt die in Abschnitt 9 nachgetragene
+Auto-Seite nicht ab. Die erste Fassung behauptete an dieser Stelle „jede Zahl
+ist unten mit Quelle belegt"; das war zu stark. Wer eine einzelne Zahl
+weiterverwendet, sollte sie am Original nachschlagen. Angaben mit Spannweite
+(The Drivers 13'000–20'000, Open Road „50'000+") sind Herstellerangaben aus
+Sekundärquellen, keine Messwerte. Wo ich selbst schätze, steht **Schätzung**
+dabei.
 
 **Was diese Analyse nicht ist:** kein Beweis, dass Strado eine Lücke hat. Sie
 zeigt eine Lücke — und daneben ein Schweizer Projekt, das dieselbe Lücke seit
@@ -306,13 +313,20 @@ Legende: ✅ vorhanden · ⚠️ teilweise/schwach · ❌ fehlt
 
 ## 5. Wo die echte Lücke ist
 
-Drei Dinge kann **keiner** der untersuchten Anbieter, und alle drei hat Strado:
+Drei Dinge, die Strado hat und die im Feld selten bis einmalig sind —
+**abgeschwächt gegenüber der ersten Fassung**, die hier „kann keiner der
+untersuchten Anbieter" behauptete. Abschnitt 9 widerlegt das für Punkt 1 und 3;
+diese Aufzählung ist entsprechend nachgezogen:
 
-1. **Zeitbasierte Bestenlisten pro Strecke für motorisierte Fahrzeuge.**
-   Strava hat die Mechanik und verbietet die Fahrzeuge. Die Motorrad-Apps
-   haben die Fahrzeuge und meiden die Mechanik. Diese Lücke ist echt,
-   nachweisbar und wird nachgefragt (Strava-Community-Hub). Sie ist zugleich
-   das grösste Risiko des Produkts — siehe 6.2.
+1. **Zeitbasierte Bestenlisten pro Strecke — im DACH-Motorradmarkt.**
+   Strava hat die Mechanik und verbietet die Fahrzeuge; calimoto, Kurviger,
+   Riser und Porsche haben die Fahrzeuge und meiden die Mechanik. **Auf der
+   Auto-Seite gilt das nicht:** Open Road, Road & Rally, Spottr, TripRank und
+   FastTrack führen Ranglisten (Abschnitt 9) — überwiegend auf Top-Speed und
+   Beschleunigung, nicht auf Streckenzeit. Die Lücke ist also enger als
+   zunächst beschrieben, aber im grössten Teilmarkt real und nachgefragt
+   (Strava-Community-Hub). Sie ist zugleich das grösste Risiko des
+   Produkts — siehe 6.2.
 2. **Auto und Motorrad gleichberechtigt in einem Produkt.** Die gesamte
    Kategorie ist nach Fahrzeugtyp getrennt. Porsche ROADS ist die einzige
    ernsthafte Auto-App und iOS-only. Strados Motorklassen-Wertung
@@ -320,7 +334,10 @@ Drei Dinge kann **keiner** der untersuchten Anbieter, und alle drei hat Strado:
    einer Rangliste fair nebeneinanderstellt.
 3. **Ortsgebundene Kuratierung mit Produktqualität.** Die Schweizer Portale
    haben die Ortskenntnis ohne Produkt; die internationalen Apps haben das
-   Produkt ohne Ortskenntnis. The Tours ist der einzige, der beides versucht.
+   Produkt ohne Ortskenntnis. **Nicht einmalig:** The Tours versucht beides,
+   und The Drivers (Abschnitt 9) hat es mit 13'000–20'000 Mitgliedern und
+   250–400 kuratierten Schweizer Routen erreicht. Die erste Fassung nannte
+   hier nur The Tours — das war der Fehler, aus dem Abschnitt 9 entstand.
 
 Die zweitwichtigste Lücke: **Es gibt kein SchweizMobil für Motorisierte.**
 Das nationale, offizielle, kuratierte Routennetz existiert für Wandern, Velo
@@ -558,7 +575,11 @@ aus Sekundärquellen.
 Eine parallele Analyse (ChatGPT, vom Auftraggeber eingebracht) hat sieben
 Wettbewerber genannt, die diese Recherche nicht erfasst hatte, weil sie
 motorradseitig angesetzt war. **Alle sieben existieren** — ich habe jeden
-einzeln gegen App-Store-Listing und Herstellerseite geprüft. Was in jener
+einzeln gegen Suchtreffer zu seinem App-Store-Listing und seiner
+Herstellerseite geprüft — **nicht** gegen die Listings selbst: die App-Stores
+sind aus der Recherche-Umgebung gesperrt (Abschnitt 8). Was geprüft wurde, ist
+also Existenz, Anbieter und Funktionsbeschreibung, nicht die Store-Metrik. Die
+Überschrift „verifiziert" ist in diesem engeren Sinn zu lesen. Was in jener
 Analyse fehlte, waren Zahlen: sie enthält keine einzige Nutzerzahl, keinen
 Preis, kein Datum und keine Quelle. Die Zahlen unten sind nachgetragen.
 
