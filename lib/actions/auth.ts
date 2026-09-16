@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -9,6 +10,7 @@ import { getClientIp, isRateLimitedByKey } from "@/lib/rateLimit";
 import { leseHerkunft, verbraucheHerkunft } from "@/lib/herkunft";
 import { getStripe } from "@/lib/stripe";
 import { AVATAR_BUCKET, avatareEntfernen } from "@/lib/avatarSpeicher";
+import { warteAufPruefwert } from "@/lib/pruefwertCookie";
 import {
   PASSWORT_AENDERN_PFAD,
   istWiederherstellung,
@@ -262,20 +264,27 @@ export async function requestPasswordReset(
   // Wiederherstellungs-Merkmal nur für exakt diesen Pfad. Liefen die beiden
   // auseinander, käme niemand mehr durch den Zurücksetzen-Fluss — er
   // landete auf der Seite, die ihn nach dem alten Passwort fragt.
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+  // NICHT abgewartet — das ist der Kern dieser Änderung.
+  //
+  // Gemessen am 2026-09-16 gegen die Produktion: /auth/v1/recover wird vom
+  // Supabase-Gateway nach 10 s abgebrochen und dreimal wiederholt, der
+  // Client bekommt nach rund 36 s einen 504; der Versand selbst läuft weiter
+  // und war nach 83 s erfolgreich. So lange stand "Wird gesendet…" im
+  // Formular — und ein Browser, der einen POST nicht beliebig lange offen
+  // hält (Mobilfunk, Tabwechsel), brach ihn ab: die Action warf, und
+  // app/error.tsx zeigte einen Fehlerschirm. Beide Symptome, ein Grund.
+  //
+  // Warten muss die Antwort nur auf eines: das PKCE-Prüfwert-Cookie, ohne
+  // das sich der Link aus der E-Mail später nicht einlösen liesse. Das legt
+  // auth-js ab, BEVOR es die Anfrage abschickt (gemessen: 7 ms gegen 1229 ms
+  // bis zur Antwort). Siehe lib/pruefwertCookie.ts.
+  const versand = supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(PASSWORT_AENDERN_PFAD)}`,
   });
 
-  // Der Rückgabewert wurde bisher gar nicht erst entgegengenommen. Damit war
-  // diese Aktion gegen jeden Versandfehler blind: sie meldete "Link
-  // verschickt", auch wenn nie einer verschickt wurde, und hinterliess
-  // nirgends eine Spur davon (kein Sentry in dieser App, siehe AGENTS.md).
-  //
-  // Genau das ist am 2026-09-16 passiert: der E-Mail-Versand von Supabase
-  // lief in die 10-Sekunden-Grenze des Gateways, /auth/v1/recover antwortete
-  // dreimal hintereinander mit 504 — und die Seite sagte jedes Mal, es sei
-  // ein Link unterwegs. Derselbe Nutzer hat danach ein zweites Konto mit
-  // einer anderen Adresse angelegt.
+  // after() hält die Funktion über die Antwort hinaus am Leben, damit der
+  // Versand zu Ende läuft und sein Ergebnis im Log landet — dasselbe Muster
+  // wie der Klickzähler in app/c/[code]/route.ts.
   //
   // NUR INS SERVERLOG, NIE IN DIE ANTWORT.
   //
@@ -284,27 +293,33 @@ export async function requestPasswordReset(
   // nichts verschickt. Daraus folgt die Umkehrung: ein Fehler entsteht hier
   // ausschliesslich für eine Adresse, zu der ein Konto existiert. Eine daran
   // hängende Meldung unterschiede die Antwort also nach Kontoexistenz und
-  // wäre genau das Orakel, das die konstante Antwort verhindern soll —
-  // derzeit sogar ein verlässliches, weil der 504 oben fast jedes Mal
-  // eintritt.
-  //
-  // Eine frühere Fassung dieses Zweigs gab den Fehler aus und begründete das
-  // mit derselben Prämisse, aber der umgekehrten Schlussfolgerung. Die
+  // wäre genau das Orakel, das die konstante Antwort verhindern soll. Die
   // Eigenschaft steht namentlich in docs/audit/security.md unter "What is
   // done well", ausdrücklich damit sie nicht versehentlich rückgängig
-  // gemacht wird.
-  //
-  // Was der Nutzer wissen muss — dass der Versand dauern kann und ein Blick
-  // in den Spam-Ordner lohnt —, steht deshalb in der konstanten
-  // Erfolgsmeldung selbst (components/PasswortVergessenForm.tsx). Die
-  // Information geht so niemandem verloren, ohne dass die Antwort von der
-  // Adresse abhängt.
-  if (error) {
-    console.error("Passwort-Zuruecksetzen: Versand fehlgeschlagen", {
-      status: error.status,
-      code: error.code,
-      message: error.message,
-    });
+  // gemacht wird. Seit der Versand nicht mehr abgewartet wird, ist sie
+  // ohnehin unvermeidbar: die Antwort steht, bevor das Ergebnis vorliegt.
+  after(async () => {
+    try {
+      const { error } = await versand;
+      if (error) {
+        console.error("Passwort-Zuruecksetzen: Versand fehlgeschlagen", {
+          status: error.status,
+          code: error.code,
+          message: error.message,
+        });
+      }
+    } catch (fehler) {
+      console.error("Passwort-Zuruecksetzen: Versand geworfen", fehler);
+    }
+  });
+
+  // Läuft die Wartezeit ab, wird trotzdem geantwortet: der Versand läuft
+  // weiter, und ein fehlender Prüfwert kostet einen zweiten Anlauf — ein
+  // hängender Request kostet die ganze Seite.
+  if (!(await warteAufPruefwert())) {
+    console.error(
+      "Passwort-Zuruecksetzen: PKCE-Pruefwert stand nicht rechtzeitig im Cookie-Speicher",
+    );
   }
 
   return { error: null, requested: true };
