@@ -252,18 +252,69 @@ betroffenen Zeilen, und die fachliche Entscheidung (auf null setzen, kappen,
 löschen) räumt sie weg. Danach geht Schritt 3 durch, und ab dann kann es
 solche Zeilen nicht mehr geben.
 
-## Noch NICHT eingespielt: 0100_folge_benachrichtigungen
+## Eingespielt: 0100_folge_benachrichtigungen (2026-09-16, Produktion)
 
-Gehört zum Zweig `claude/follower-notifications-7gy701` (neue Follower
-erscheinen auf /aktivitaet). **Muss vor dem Deploy des Codes eingespielt
-werden**, nicht danach — die Reihenfolge ist hier nicht bloss die
-bevorzugte:
+Neue Follower erscheinen auf `/aktivitaet` (PR #250). Eingespielt **vor**
+dem Merge des Codes — die Reihenfolge war hier nicht bloss die bevorzugte:
+ohne `recent_follows_received()` wirft `/aktivitaet`, weil
+`getRecentFollowersReceived` einen Query-Fehler bewusst nicht als "keine
+Follower" durchgehen lässt (`lib/queryError.ts`). Eine Fehlerseite, kein
+stiller Rückfall. (`count_unseen_activity()` hätte die Kopfleiste still auf
+0 degradieren lassen, `mark_activity_seen()` hätte nichts markiert — beides
+ohne Ausfall.)
 
-| Ohne die Migration | Folge |
-| --- | --- |
-| `recent_follows_received()` fehlt | `/aktivitaet` wirft — `getRecentFollowersReceived` lässt einen Query-Fehler bewusst nicht als "keine Follower" durchgehen (`lib/queryError.ts`). Die Seite landet auf der Fehlerseite. |
-| `count_unseen_activity()` fehlt | Die Kopfleiste degradiert still auf 0 (`getUnseenActivityCount` schluckt den Fehler) — kein Abzeichen, aber auch kein Ausfall. |
-| `mark_activity_seen()` fehlt | Nichts wird als gesehen markiert; `MarkSeen` löst ohne `ok` keinen Refresh aus. |
+### Vorher geprüft
+
+`follows_gesehen_am` existierte nicht, die drei Funktionen existierten
+nicht — nichts halb angewandt, die Migration konnte sauber laufen.
+
+### Nachher am Katalog geprüft (nicht am Ledger)
+
+```
+recent_follows_received   secdef=t  search_path=public  anon=false  authenticated=true
+count_unseen_activity     secdef=t  search_path=public  anon=false  authenticated=true
+mark_activity_seen        secdef=t  search_path=public  anon=false  authenticated=true
+
+profiles.follows_gesehen_am  timestamptz  not null  default now()
+  anon SELECT=false   authenticated SELECT=false   authenticated UPDATE=false
+```
+
+Die Grant-Falle aus `0047`/`0048`/`0091`/`0097` ist damit **nicht** ein
+fünftes Mal zugeschnappt: das ausdrückliche `revoke execute … from anon`
+neben dem `from public` hat getragen. Die Spalte trägt wie
+`kudos_gesehen_am` keinerlei Grant.
+
+Alle 17 Profile tragen **denselben** `follows_gesehen_am` — das ist der
+Beweis, dass `add column … default now()` den schnellen Weg genommen hat
+(`now()` ist stable, der Default wird einmal ausgewertet und als
+`attmissingval` hinterlegt, kein Table-Rewrite). Genau das ist die Absicht:
+Bestandsnutzer bekommen ihre Follower-Historie nicht als "neu" vorgesetzt.
+
+### Funktionstest (zurückgerollte Transaktion, Produktion)
+
+`DO`-Block, Ergebnis über `raise exception` ausgelesen — die Ausnahme rollt
+denselben Block zurück. Ein bestehendes Konto bekam sein Lesezeichen
+künstlich zehn Tage in die Vergangenheit gesetzt:
+
+```
+angemeldet:  liste=1  neu_vorher=t  zaehler_vorher=1
+nach mark:   neu=f    zaehler=0
+als anon:    liste=0  zaehler=0     mark=Ausnahme: not authenticated
+```
+
+Der dritte Block ist der wichtige: ohne Sitzung liefern beide Lesefunktionen
+nichts (`auth.uid()` ist NULL, der Vergleich nie wahr) und die Schreibfunktion
+verweigert. Danach gegengeprüft: 17 Profile, 10 Follows, **0** Lesezeichen in
+der Vergangenheit — der Testschreibvorgang ist vollständig zurückgerollt.
+
+### Rückweg
+
+```sql
+drop function if exists public.mark_activity_seen();
+drop function if exists public.count_unseen_activity();
+drop function if exists public.recent_follows_received();
+alter table public.profiles drop column if exists follows_gesehen_am;
+```
 
 Die Nummer ist **0100**, und sie war vorher **0097** — eine echte
 Kollision, keine blosse Luecke. `0097` gehoert seit dem 15. September
