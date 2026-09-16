@@ -1,5 +1,5 @@
-// Auswertung der eigenen Fahrten über die Zeit und über die Fahrzeuge —
-// die Datengrundlage der Premium-Statistik auf der Profilseite.
+// Auswertung der eigenen Fahrten über die Zeit, die Fahrzeuge und die
+// Regionen — die Datengrundlage der Premium-Statistik auf der Profilseite.
 //
 // ---------------------------------------------------------------------------
 // Warum hier keine Zeit und kein Tempo vorkommt
@@ -9,14 +9,14 @@
 //   1. **Belastbarkeit.** Von den drei Beinen des Audit-Befunds A1
 //      (docs/audit/README.md) sind zwei geschlossen: die Trigger aus 0052,
 //      0059 und 0074 rechnen Abdeckung neu und begrenzen die Werte, 0078
-//      macht die Abdeckung richtungsempfindlich. Offen ist genau eines —
-//      dauer_sekunden. Die Dauer entsteht zwar serverseitig aus dem Trail
-//      (lib/actions/completions.ts → computeTrailStats), aber die
-//      Zeitstempel im Trail kommen vom Client: ein echter Track mit ×0,4
-//      gestauchten Zeiten bleibt im 200-km/h-Band aus 0059 und kommt durch.
-//      distanz_km dagegen wird in 0059 gegen st_length(track) gegengeprüft,
-//      hoehenmeter_aufstieg stammt aus dem Höhenprofil. Diese beiden Zahlen
-//      und die blosse Anzahl sind das, was sich verkaufen lässt.
+//      macht die Abdeckung richtungsempfindlich. Das dritte —
+//      dauer_sekunden — ist seit 0096–0098 hart eingeschnürt (Serverstart,
+//      Positionspulse, Endpunktprüfung), aber ausdrücklich NICHT
+//      geschlossen: die Position in einem Puls kommt wie jeder GPS-Fix vom
+//      Gerät. distanz_km dagegen wird in 0059 gegen st_length(track)
+//      gegengeprüft, hoehenmeter_aufstieg stammt aus dem Höhenprofil. Diese
+//      beiden Zahlen und die blosse Anzahl sind das, was sich verkaufen
+//      lässt.
 //   2. **AGB Ziff. 11.3.** „Strado ist kein Wettbewerb um Geschwindigkeit."
 //      Eine Auswertung, die jemandem sein steigendes Durchschnittstempo
 //      vorhält, arbeitet gegen den eigenen Rechtstext — und gegen Ziff.
@@ -34,6 +34,23 @@
 // Zone westlich davon liefert getFullYear() dann 2025. Eine Fahrt vom
 // 1. Januar landete so im Vorjahr, und zwar nur für einen Teil der Nutzer.
 // Deshalb wird die Zeichenkette zerlegt und nie in ein Date verwandelt.
+//
+// Aus demselben Grund vergleicht saisonVergleich() Zeichenketten der Form
+// "MM-TT" statt Zeitpunkte: "09-16" <= "09-16" ist eine lexikografische
+// Prüfung, die in jeder Zone dasselbe Ergebnis liefert.
+//
+// ---------------------------------------------------------------------------
+// Warum der Jahresvergleich ein Fenster hat
+// ---------------------------------------------------------------------------
+// Bis hierher stellte die Auswertung dem laufenden Jahr das VOLLE Vorjahr
+// gegenüber (kmGegenVorjahr). Das ist bis zum 31. Dezember jedes Jahres
+// falsch, und zwar systematisch zu Ungunsten der Nutzerin: im Februar stehen
+// sechs Wochen gegen zwölf Monate, und die Auswertung, für die jemand
+// bezahlt, meldet als Erstes einen Einbruch, den es nicht gibt. Verglichen
+// wird deshalb derselbe Zeitraum — 1. Januar bis zum heutigen Tag, in beiden
+// Jahren. Ist das betrachtete Jahr abgeschlossen (die letzte Fahrt liegt in
+// einem früheren Jahr), läuft das Fenster bis zum 31. Dezember und der
+// Vergleich ist wieder der volle.
 
 export interface FahrtFuerStatistik {
   /** DATE-Spalte, Format "YYYY-MM-DD". */
@@ -41,6 +58,13 @@ export interface FahrtFuerStatistik {
   distanz_km: number | null;
   hoehenmeter_aufstieg: number | null;
   fahrzeug_id: string | null;
+  /** Die befahrene Strecke; null bei freien Fahrten (0044). Grundlage für
+   *  die Zahl der in einer Saison neu entdeckten Strecken. */
+  route_id: string | null;
+  /** Bei Streckenfahrten aus routes.region, bei freien Fahrten aus
+   *  route_completions.region (0044) — beides kann fehlen, wenn das
+   *  Reverse-Geocoding nichts geliefert hat. */
+  region: string | null;
 }
 
 export interface StatistikZeile {
@@ -54,11 +78,6 @@ export interface StatistikZeile {
 
 export interface JahresZeile extends StatistikZeile {
   jahr: number;
-  /** Differenz der Kilometer zum Vorjahr. null für das älteste Jahr und
-   *  für jedes Jahr, dessen Vorjahr keine Fahrt enthält — eine Lücke ist
-   *  kein Rückgang auf null, und ein erfundener Vergleichswert wäre die
-   *  schlechtere Antwort als gar keiner. */
-  kmGegenVorjahr: number | null;
 }
 
 export interface FahrzeugZeile extends StatistikZeile {
@@ -68,9 +87,58 @@ export interface FahrzeugZeile extends StatistikZeile {
   fahrzeugId: string | null;
 }
 
+export interface RegionZeile extends StatistikZeile {
+  /** null sammelt alle Fahrten ohne bekannte Region. */
+  region: string | null;
+}
+
+export interface SaisonVergleich {
+  jahr: number;
+  /** Das Jahr läuft noch — der Vergleich ist dann auf den heutigen Tag
+   *  beschnitten und die Oberfläche muss das dazusagen. */
+  laufend: boolean;
+  /** Ende des Vergleichsfensters als "MM-TT". */
+  bisTag: string;
+  aktuell: StatistikZeile;
+  /**
+   * Derselbe Zeitraum im Vorjahr — null, wenn das Vorjahr überhaupt keine
+   * Fahrt enthält. Eine Lücke ist kein Rückgang auf null, und ein
+   * erfundener Vergleichswert wäre die schlechtere Antwort als gar keiner.
+   *
+   * Eine Null STEHT dagegen, wenn im Vorjahr zwar gefahren wurde, aber erst
+   * nach dem Stichtag: „+420 km gegenüber der letzten Saison" ist dann die
+   * richtige Aussage über dieses Fenster, und der Fussnotensatz der
+   * Oberfläche nennt das Fenster.
+   */
+  vorjahr: StatistikZeile | null;
+}
+
+export interface StreckenBilanz {
+  /** Strecken, deren allererste Befahrung in dieses Jahr fällt. */
+  neuImJahr: number;
+  /** Verschiedene Strecken über alle Jahre. */
+  gesamt: number;
+}
+
+export interface Rekord {
+  wert: number;
+  datum: string;
+}
+
+export interface Rekorde {
+  /** Kilometer der längsten einzelnen Fahrt. */
+  laengsteFahrt: Rekord | null;
+  /** Höhenmeter der Fahrt mit dem grössten Anstieg. */
+  hoechsterAnstieg: Rekord | null;
+  /** Der Monat mit den meisten Kilometern, über alle Jahre. */
+  staerksterMonat: { jahr: number; monat: number; km: number } | null;
+}
+
+const DATUM_MUSTER = /^(\d{4})-(\d{2})-(\d{2})$/;
+
 /** Jahr aus "YYYY-MM-DD", oder null wenn die Zeichenkette nicht passt. */
 export function jahrAus(datum: string): number | null {
-  const treffer = /^(\d{4})-(\d{2})-(\d{2})$/.exec(datum);
+  const treffer = DATUM_MUSTER.exec(datum);
   if (!treffer) return null;
   const jahr = Number(treffer[1]);
   return Number.isFinite(jahr) ? jahr : null;
@@ -78,10 +146,21 @@ export function jahrAus(datum: string): number | null {
 
 /** Monat (1-12) aus "YYYY-MM-DD", oder null. */
 export function monatAus(datum: string): number | null {
-  const treffer = /^(\d{4})-(\d{2})-(\d{2})$/.exec(datum);
+  const treffer = DATUM_MUSTER.exec(datum);
   if (!treffer) return null;
   const monat = Number(treffer[2]);
   return monat >= 1 && monat <= 12 ? monat : null;
+}
+
+/**
+ * Der Tag im Jahr als "MM-TT", oder null. Bewusst als Zeichenkette: zwei
+ * solche Werte lassen sich direkt vergleichen, ohne dass irgendwo ein Date
+ * und damit eine Zeitzone entsteht (siehe Kopf dieser Datei).
+ */
+export function tagImJahrAus(datum: string): string | null {
+  const treffer = DATUM_MUSTER.exec(datum);
+  if (!treffer) return null;
+  return monatAus(datum) === null ? null : `${treffer[2]}-${treffer[3]}`;
 }
 
 function leereZeile(): StatistikZeile {
@@ -102,6 +181,13 @@ function runde(zeile: StatistikZeile): StatistikZeile {
   };
 }
 
+/** Summiert eine beliebige Auswahl von Fahrten zu einer fertigen Zeile. */
+function summiere(fahrten: Iterable<FahrtFuerStatistik>): StatistikZeile {
+  const zeile = leereZeile();
+  for (const fahrt of fahrten) zaehle(zeile, fahrt);
+  return runde(zeile);
+}
+
 /**
  * Ein Eintrag pro Jahr mit mindestens einer Fahrt, neuestes zuerst.
  *
@@ -120,18 +206,9 @@ export function fahrtenProJahr(fahrten: readonly FahrtFuerStatistik[]): JahresZe
     nachJahr.set(jahr, zeile);
   }
 
-  const jahre = [...nachJahr.keys()].sort((a, b) => b - a);
-
-  return jahre.map((jahr) => {
-    const gerundet = runde(nachJahr.get(jahr)!);
-    const vorjahr = nachJahr.get(jahr - 1);
-    return {
-      jahr,
-      ...gerundet,
-      kmGegenVorjahr:
-        vorjahr === undefined ? null : Math.round((gerundet.km - runde(vorjahr).km) * 10) / 10,
-    };
-  });
+  return [...nachJahr.keys()]
+    .sort((a, b) => b - a)
+    .map((jahr) => ({ jahr, ...runde(nachJahr.get(jahr)!) }));
 }
 
 /**
@@ -160,25 +237,184 @@ export function fahrtenProFahrzeug(fahrten: readonly FahrtFuerStatistik[]): Fahr
 }
 
 /**
- * Zwölf Zahlen: wie viele Fahrten in welchem Monat des gegebenen Jahres.
- * Index 0 ist Januar.
+ * Ein Eintrag pro Region, nach Kilometern absteigend; Fahrten ohne bekannte
+ * Region sammeln sich in einer Zeile mit region = null am Ende — aus
+ * demselben Grund wie bei den Fahrzeugen: die Zeilen müssen sich auf die
+ * Gesamtsumme aufaddieren, sonst beschreiben sie einen anderen Bestand als
+ * die Kacheln darüber.
+ *
+ * Die Region ist im Produkt die Einheit des Wiedererkennens (AGENTS.md:
+ * „Das Ortsschild ist die Einheit des Wiedererkennens") — sie beantwortet
+ * die einzige Frage, die weder Jahr noch Fahrzeug beantwortet: wo war ich
+ * eigentlich?
+ */
+export function fahrtenProRegion(fahrten: readonly FahrtFuerStatistik[]): RegionZeile[] {
+  const nachRegion = new Map<string | null, StatistikZeile>();
+
+  for (const fahrt of fahrten) {
+    // Leerstring wie „nicht gesetzt" behandeln: die Spalte ist nur
+    // längenbegrenzt (0074), nicht gegen Leerzeichen geschützt.
+    const roh = fahrt.region?.trim();
+    const schluessel = roh ? roh : null;
+    const zeile = nachRegion.get(schluessel) ?? leereZeile();
+    zaehle(zeile, fahrt);
+    nachRegion.set(schluessel, zeile);
+  }
+
+  return [...nachRegion.entries()]
+    .map(([region, zeile]) => ({ region, ...runde(zeile) }))
+    .sort((a, b) => {
+      if (a.region === null) return 1;
+      if (b.region === null) return -1;
+      return b.km - a.km;
+    });
+}
+
+/**
+ * Zwölf Zeilen: Fahrten, Kilometer und Höhenmeter je Monat des gegebenen
+ * Jahres. Index 0 ist Januar.
  *
  * Anders als bei den Jahren sind die Nullen hier der Inhalt — die Kurve
  * eines Fahrjahres besteht gerade darin, dass von November bis Februar
  * nichts passiert.
+ *
+ * Die Vorgängerfunktion lieferte nur die ANZAHL. Das ist die schwächste der
+ * drei Zahlen: eine Feierabendrunde und eine Alpentour zählen gleich viel,
+ * und genau den Unterschied soll eine Saisonkurve zeigen.
  */
-export function fahrtenProMonat(
+export function monatsWerte(
   fahrten: readonly FahrtFuerStatistik[],
   jahr: number,
-): number[] {
-  const monate = new Array<number>(12).fill(0);
+): StatistikZeile[] {
+  const monate = Array.from({ length: 12 }, leereZeile);
 
   for (const fahrt of fahrten) {
     if (jahrAus(fahrt.datum) !== jahr) continue;
     const monat = monatAus(fahrt.datum);
     if (monat === null) continue;
-    monate[monat - 1] += 1;
+    zaehle(monate[monat - 1], fahrt);
   }
 
-  return monate;
+  return monate.map(runde);
+}
+
+/**
+ * Das betrachtete Jahr gegen dasselbe Fenster des Vorjahres.
+ *
+ * `heute` ist das aktuelle Kalenderdatum als "YYYY-MM-DD" — auf der
+ * Profilseite todayInZurich() aus lib/format.ts. Als Parameter statt als
+ * Uhrzeit-Zugriff, damit die Funktion rein bleibt und der Fall „1. Januar"
+ * prüfbar ist.
+ */
+export function saisonVergleich(
+  fahrten: readonly FahrtFuerStatistik[],
+  jahr: number,
+  heute: string,
+): SaisonVergleich {
+  const heuteJahr = jahrAus(heute);
+  const heuteTag = tagImJahrAus(heute);
+  // Läuft das betrachtete Jahr noch? Nur dann wird das Fenster beschnitten.
+  // Ein unlesbares `heute` fällt bewusst auf „abgeschlossen" zurück statt
+  // alles zu verwerfen: der volle Jahresvergleich ist die harmlosere
+  // falsche Antwort.
+  const laufend = heuteJahr === jahr && heuteTag !== null;
+  const bisTag = laufend ? heuteTag! : "12-31";
+
+  const imFenster = (fahrt: FahrtFuerStatistik, zielJahr: number) => {
+    if (jahrAus(fahrt.datum) !== zielJahr) return false;
+    const tag = tagImJahrAus(fahrt.datum);
+    return tag !== null && tag <= bisTag;
+  };
+
+  const vorjahrHatFahrten = fahrten.some((f) => jahrAus(f.datum) === jahr - 1);
+
+  return {
+    jahr,
+    laufend,
+    bisTag,
+    aktuell: summiere(fahrten.filter((f) => imFenster(f, jahr))),
+    vorjahr: vorjahrHatFahrten
+      ? summiere(fahrten.filter((f) => imFenster(f, jahr - 1)))
+      : null,
+  };
+}
+
+/**
+ * Wie viele verschiedene Strecken im gegebenen Jahr zum ERSTEN Mal befahren
+ * wurden, und wie viele es über alle Jahre sind.
+ *
+ * „Neu" heisst: die früheste Befahrung dieser Strecke fällt in dieses Jahr.
+ * Eine zum zehnten Mal gefahrene Hausrunde ist keine Entdeckung, und die
+ * Kachel „Pässe befahren" weiter oben auf der Profilseite zählt ohnehin
+ * schon jede Strecke einmal über die gesamte Zeit — die Saison-Antwort
+ * darauf ist genau diese Zahl.
+ *
+ * Freie Fahrten (route_id = null) bleiben aussen vor: sie haben keine
+ * Strecke, die man wiedererkennen könnte.
+ */
+export function streckenBilanz(
+  fahrten: readonly FahrtFuerStatistik[],
+  jahr: number,
+): StreckenBilanz {
+  const erstesJahr = new Map<string, number>();
+
+  for (const fahrt of fahrten) {
+    if (fahrt.route_id === null) continue;
+    const fahrtJahr = jahrAus(fahrt.datum);
+    if (fahrtJahr === null) continue;
+    const bisher = erstesJahr.get(fahrt.route_id);
+    if (bisher === undefined || fahrtJahr < bisher) {
+      erstesJahr.set(fahrt.route_id, fahrtJahr);
+    }
+  }
+
+  let neuImJahr = 0;
+  for (const wert of erstesJahr.values()) if (wert === jahr) neuImJahr += 1;
+
+  return { neuImJahr, gesamt: erstesJahr.size };
+}
+
+/**
+ * Drei Bestwerte, alle aus den belastbaren Grössen (Distanz, Anstieg,
+ * Kilometer je Monat) — bewusst keine Bestzeit, siehe Kopf dieser Datei.
+ *
+ * Bei Gleichstand gewinnt die zuerst übergebene Fahrt. Die Profilseite
+ * liefert die neuesten zuerst, ein Gleichstand zeigt also die jüngere
+ * Fahrt.
+ */
+export function rekorde(fahrten: readonly FahrtFuerStatistik[]): Rekorde {
+  let laengsteFahrt: Rekord | null = null;
+  let hoechsterAnstieg: Rekord | null = null;
+  const kmProMonat = new Map<string, { jahr: number; monat: number; km: number }>();
+
+  for (const fahrt of fahrten) {
+    const jahr = jahrAus(fahrt.datum);
+    const monat = monatAus(fahrt.datum);
+    if (jahr === null || monat === null) continue;
+
+    const km = fahrt.distanz_km ?? 0;
+    const hm = fahrt.hoehenmeter_aufstieg ?? 0;
+
+    if (km > 0 && (laengsteFahrt === null || km > laengsteFahrt.wert)) {
+      laengsteFahrt = { wert: Math.round(km * 10) / 10, datum: fahrt.datum };
+    }
+    if (hm > 0 && (hoechsterAnstieg === null || hm > hoechsterAnstieg.wert)) {
+      hoechsterAnstieg = { wert: Math.round(hm), datum: fahrt.datum };
+    }
+
+    const schluessel = `${jahr}-${monat}`;
+    const eintrag = kmProMonat.get(schluessel) ?? { jahr, monat, km: 0 };
+    eintrag.km += km;
+    kmProMonat.set(schluessel, eintrag);
+  }
+
+  let staerksterMonat: { jahr: number; monat: number; km: number } | null = null;
+  for (const eintrag of kmProMonat.values()) {
+    if (eintrag.km <= 0) continue;
+    if (staerksterMonat === null || eintrag.km > staerksterMonat.km) {
+      staerksterMonat = { ...eintrag, km: Math.round(eintrag.km * 10) / 10 };
+    }
+  }
+
+  return { laengsteFahrt, hoechsterAnstieg, staerksterMonat };
 }
