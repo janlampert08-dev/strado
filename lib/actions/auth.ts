@@ -14,6 +14,7 @@ import {
   istWiederherstellung,
   verbraucheWiederherstellung,
 } from "@/lib/passwortWiederherstellung";
+import { versandFehlerText } from "@/lib/authFehler";
 
 export interface AuthFormState {
   error: string | null;
@@ -289,11 +290,10 @@ export async function requestPasswordReset(
       code: error.code,
       message: error.message,
     });
-    return {
-      error:
-        "Der Link konnte gerade nicht verschickt werden. Bitte versuche es in ein paar Minuten noch einmal.",
-      requested: false,
-    };
+    // Welche der drei Aussagen zutrifft, haengt am Status — siehe die
+    // Messung in lib/authFehler.ts. Ein 504 heisst hier nicht "weg", sondern
+    // "dauert"; wer daraufhin sofort neu anfordert, verdoppelt nur die Last.
+    return { error: versandFehlerText(error.status, error.code), requested: false };
   }
 
   return { error: null, requested: true };
