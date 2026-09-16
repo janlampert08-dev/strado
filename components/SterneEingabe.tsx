@@ -74,6 +74,13 @@ export default function SterneEingabe({
             // Sterne à 44 px sind 220 px und passen auf 390 px mühelos —
             // die Grösse kostet hier also nichts und ist der Wert, den
             // components/ui/IconButton für die App festschreibt.
+            //
+            // Das Icon wächst mit (h-7 statt h-6). Sonst stünden fünf
+            // 24-px-Sterne mit 20 px Luft dazwischen, und eine
+            // Sternenreihe, deren Sterne nicht zusammenstehen, liest sich
+            // nicht mehr als Skala. Mit 28 px bleiben 16 px — luftig, aber
+            // erkennbar eine Reihe. Die ANZEIGE (components/Sterne.tsx)
+            // bleibt unberührt: dort ist es ein Wert, kein Bedienelement.
             className="flex h-11 w-11 cursor-pointer items-center justify-center"
           >
             <input
@@ -90,7 +97,7 @@ export default function SterneEingabe({
             <SternIcon
               aria-hidden="true"
               className={cn(
-                "h-6 w-6 rounded-sm transition-colors duration-fast",
+                "h-7 w-7 rounded-sm transition-colors duration-fast",
                 "peer-focus-visible:ring-2 peer-focus-visible:ring-accent/40",
                 // Gedeckt statt Rahmen-Ton für die noch nicht gewählten
                 // Sterne — Begründung samt Kontrastwerten in
