@@ -44,6 +44,7 @@ import Kennzahl, { Kennzahlen } from "@/components/ui/Kennzahl";
 import SectionHeading from "@/components/ui/SectionHeading";
 import EmptyState from "@/components/ui/EmptyState";
 import { buttonVariants } from "@/components/ui/Button";
+import { iconButtonVariants } from "@/components/ui/IconButton";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
 // Gemeinsamer Stil für die aufklappbaren Unterabschnitte innerhalb einer
@@ -239,11 +240,18 @@ export default async function ProfilPage() {
                 Abmelden ist jetzt der Abschnitt "Sitzung" in den Einstellungen
                 (app/profil/einstellungen), dafür hier ein unauffälliger
                 Zugang zu den Einstellungen selbst statt eines zweiten,
-                redundanten Links weiter unten. */}
+                redundanten Links weiter unten.
+
+                iconButtonVariants statt einer eigenen Klassenkette: die war
+                p-2 um ein 16-px-Icon, also 32 px Tippfläche. IconButton
+                schreibt 44 px fest (min-h-11/min-w-11) und begründet den
+                Wert in seinem eigenen Kopf — diese Stelle war schlicht an
+                ihm vorbeigebaut. Die Form ist identisch (runder Rahmen,
+                gedämpftes Icon), nur die Fläche stimmt jetzt. */}
             <Link
               href="/profil/einstellungen"
               aria-label="Einstellungen"
-              className="shrink-0 rounded-full border border-border p-2 text-muted transition-colors duration-fast hover:border-border-strong hover:text-foreground"
+              className={iconButtonVariants()}
             >
               <Settings className="h-4 w-4" aria-hidden="true" />
             </Link>
@@ -258,22 +266,35 @@ export default async function ProfilPage() {
               following={following}
             />
           </div>
-          {/* grid statt flex-wrap: beide Buttons sollen gleich breit sein
-              (die halbe Zeile), unabhängig von ihrer unterschiedlich langen
-              Beschriftung — mit flex-wrap wäre jeder Button nur so breit wie
-              sein eigener Text. */}
+          {/* grid statt flex-wrap: beide Schaltflächen sollen gleich breit
+              sein (die halbe Zeile), unabhängig von ihrer unterschiedlich
+              langen Beschriftung — mit flex-wrap wäre jede nur so breit wie
+              ihr eigener Text.
+
+              size="md" statt "sm", und "Öffentliches Profil" statt
+              "Öffentliches Profil ansehen". Nachgerechnet für 390 px: der
+              Seitenrahmen nimmt 2 × 20 px, das gap 8 px, jede Zelle bleibt
+              bei 171 px. Die alte Beschriftung braucht in text-xs rund
+              150 px plus 2 × 12 px Innenabstand — sie lief also über und
+              brach in zwei Zeilen um. "ansehen" sagt dabei nichts, was der
+              Knopf nicht ohnehin tut.
+
+              "sm" ist ausserdem 36 px hoch. Das ist die Grösse für einen
+              Knopf IN einer Liste, nicht für die zwei Hauptwege einer
+              Seite; 44 px ist der Wert, den components/ui/IconButton für
+              diese App festschreibt. */}
           <div className="grid grid-cols-2 gap-2">
             <Link
               href="/strecken/neu"
-              className={buttonVariants({ variant: "primary", size: "sm", className: "w-full" })}
+              className={buttonVariants({ variant: "primary", className: "w-full" })}
             >
               + Strecke erstellen
             </Link>
             <Link
               href={`/fahrer/${user.id}`}
-              className={buttonVariants({ variant: "secondary", size: "sm", className: "w-full" })}
+              className={buttonVariants({ variant: "secondary", className: "w-full" })}
             >
-              Öffentliches Profil ansehen
+              Öffentliches Profil
             </Link>
           </div>
         </div>
@@ -371,8 +392,21 @@ export default async function ProfilPage() {
               Leerraum neben der kurzen Fahrzeuge-Liste stehen. */}
           <section className="flex flex-col gap-3">
             <SectionHeading icon={RouteIcon}>Meine Fahrten</SectionHeading>
-            <Card className="flex flex-col divide-y divide-border">
-              <details open className="group p-4">
+            {/* Flach wie der Kennzahlen-Block darüber, nicht in einer Card.
+                Die Card hier war die dritte Rahmenebene, die Abschnitt 3.9
+                des Konzepts eigentlich abschaffen wollte — sie ist bei den
+                Kennzahlen gefallen und hier stehen geblieben, mit dem
+                Ergebnis, dass zwei benachbarte Abschnitte derselben Seite
+                unterschiedlich gerahmt waren.
+
+                Sie kostete ausserdem echte Breite: Card-Rahmen plus p-4 der
+                <details> plus der Rahmen der Liste darin sind auf einem
+                390-px-Schirm drei ineinanderliegende Linien und 2 × 17 px
+                Innenabstand. Jetzt trägt die Liste den einzigen Rahmen, und
+                die Trennlinien zwischen den Klappen leisten die Gruppierung
+                — dasselbe Muster, das der Kennzahlen-Block schon benutzt. */}
+            <div className="flex flex-col divide-y divide-border border-t border-border">
+              <details open className="group py-4">
                 <SectionSummary
                   icon={RouteIcon}
                   label="Getrackte Fahrten"
@@ -459,7 +493,7 @@ export default async function ProfilPage() {
                   gerade gefahren bin" — im Unterschied zu allen anderen
                   Abschnitten hier verliert niemand etwas Wichtiges, wenn das
                   erst auf Wunsch aufklappt. */}
-              <details className="group p-4">
+              <details className="group py-4">
                 <SectionSummary icon={Bookmark} label="Favoriten" count={favorites?.length ?? 0} />
                 <div className="mt-4">
                   {favorites && favorites.length > 0 ? (
@@ -495,7 +529,7 @@ export default async function ProfilPage() {
                   )}
                 </div>
               </details>
-            </Card>
+            </div>
           </section>
 
           {/* Fahrzeuge: eigenständige, volle Breite statt in einer

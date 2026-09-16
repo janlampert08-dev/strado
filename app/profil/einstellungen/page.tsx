@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
+  ExternalLink,
   FlaskConical,
   KeyRound,
   Lock,
@@ -120,10 +121,15 @@ export default async function EinstellungenPage() {
 
           <section className="flex flex-col gap-3">
             <SectionHeading icon={Palette}>Darstellung</SectionHeading>
-            <Card className="flex flex-col gap-3 p-4">
-              <p className="text-sm text-muted">
-                Farbschema für die ganze App.
-              </p>
+            {/* Die Erklärung steht UNTER der Marke und AUSSERHALB der Card —
+                so wie bei "Privatsphäre" darüber. Vorher hatte diese Seite
+                beide Anordnungen: Privatsphäre erklärte sich aussen, die
+                fünf Abschnitte darunter innen. Neun Abschnitte, zwei
+                Muster. Aussen ist das richtige: beim Überfliegen laufen
+                Marke und Erklärung so in einem Zug, und die Card enthält
+                nur noch das, was man bedienen kann. */}
+            <p className="text-sm text-muted">Farbschema für die ganze App.</p>
+            <Card className="p-4">
               <ThemeToggle />
             </Card>
           </section>
@@ -146,32 +152,48 @@ export default async function EinstellungenPage() {
                       ? "text-danger"
                       : "text-muted";
                   return (
+                    // Zwei Zeilen statt einer. Auf 390 px standen Name,
+                    // Status, "Bearbeiten" und der Löschen-Knopf in EINER
+                    // Zeile: dem Namen blieben bei einer abgelehnten
+                    // Strecke rund 120 px, er war also praktisch immer
+                    // abgeschnitten — und "Bearbeiten" stand als text-xs
+                    // daneben, eine 16 px hohe Tippfläche zwischen zwei
+                    // anderen Zielen.
+                    //
+                    // Jetzt: Name und Status oben (der Status schrumpft
+                    // nicht, der Name kürzt), die Handlungen darunter in
+                    // ihrer eigenen Zeile mit 44 px Höhe. Ab sm ist genug
+                    // Platz, dann läuft wieder alles in einer Zeile.
                     <li
                       key={route.id}
-                      className="flex items-center justify-between gap-3 px-4 py-3"
+                      className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
                     >
-                      <Link
-                        href={`/strecken/${route.id}`}
-                        className="truncate transition-colors duration-fast hover:text-accent"
-                      >
-                        {route.name}
-                      </Link>
-                      <div className="flex shrink-0 items-center gap-3">
-                        <span className={`text-sm font-medium ${color}`}>
+                      <div className="flex min-w-0 items-center justify-between gap-3 sm:justify-start">
+                        <Link
+                          href={`/strecken/${route.id}`}
+                          className="truncate transition-colors duration-fast hover:text-accent"
+                        >
+                          {route.name}
+                        </Link>
+                        <span className={`shrink-0 text-sm font-medium ${color}`}>
                           {label}
                         </span>
-                        {!route.status_ok && (
-                          <Link
-                            href={`/strecken/${route.id}/bearbeiten`}
-                            className="text-xs text-muted hover:text-foreground"
-                          >
-                            Bearbeiten
-                          </Link>
-                        )}
-                        {route.abgelehnt_am && (
-                          <DeleteProposalButton routeId={route.id} />
-                        )}
                       </div>
+                      {(!route.status_ok || route.abgelehnt_am) && (
+                        <div className="-my-1 flex shrink-0 items-center gap-3">
+                          {!route.status_ok && (
+                            <Link
+                              href={`/strecken/${route.id}/bearbeiten`}
+                              className="inline-flex min-h-11 items-center text-sm text-muted transition-colors duration-fast hover:text-foreground"
+                            >
+                              Bearbeiten
+                            </Link>
+                          )}
+                          {route.abgelehnt_am && (
+                            <DeleteProposalButton routeId={route.id} />
+                          )}
+                        </div>
+                      )}
                     </li>
                   );
                 })}
@@ -187,17 +209,14 @@ export default async function EinstellungenPage() {
               will, soll dabei nichts Endgültiges streifen. */}
           <section className="flex flex-col gap-3">
             <SectionHeading icon={LogOut}>Sitzung</SectionHeading>
-            <Card className="flex flex-col gap-3 p-4">
-              <p className="text-sm text-muted">
-                Du bist auf diesem Gerät angemeldet.
-              </p>
+            <p className="text-sm text-muted">Du bist auf diesem Gerät angemeldet.</p>
+            <Card className="p-4">
               <form action="/auth/abmelden" method="post">
-                <Button
-                  type="submit"
-                  variant="secondary"
-                  size="sm"
-                  className="self-start"
-                >
+                {/* size="md" (44 px) statt "sm" (36 px): Abmelden ist die
+                    einzige Handlung dieses Abschnitts und kein Knopf in
+                    einer Zeile. Gilt für die drei Geschwister darunter
+                    ebenso. */}
+                <Button type="submit" variant="secondary">
                   Abmelden
                 </Button>
               </form>
@@ -226,17 +245,19 @@ export default async function EinstellungenPage() {
               Moment 3. */}
           <section className="flex flex-col gap-3">
             <SectionHeading icon={Sparkles}>Premium</SectionHeading>
-            <Card className="flex items-center justify-between gap-3 p-4">
-              <p className="min-w-0 text-sm text-muted">
-                {premiumStatus.aktiv ? "Abo-Status, Rechnungen, Kündigung." : premiumKurzform()}
-              </p>
+            <p className="text-sm text-muted">
+              {premiumStatus.aktiv ? "Abo-Status, Rechnungen, Kündigung." : premiumKurzform()}
+            </p>
+            {/* Text und Knopf standen nebeneinander in einer Zeile. Ohne Abo
+                ist der Text premiumKurzform() und damit ein ganzer Satz —
+                auf 390 px blieben dem Knopf daneben rund 120 px, der Satz
+                brach auf drei Zeilen um, und die Card wurde höher als die
+                aller Nachbarn. Jetzt läuft der Satz über die volle Breite
+                und der Knopf steht darunter, wie in "Sitzung" und "Konto". */}
+            <Card className="p-4">
               <Link
                 href={premiumStatus.aktiv ? "/profil/einstellungen/abo" : "/profil/premium"}
-                className={buttonVariants({
-                  variant: "secondary",
-                  size: "sm",
-                  className: "shrink-0",
-                })}
+                className={buttonVariants({ variant: "secondary" })}
               >
                 {premiumStatus.aktiv ? "Abo verwalten" : "Premium ansehen"}
               </Link>
@@ -245,18 +266,17 @@ export default async function EinstellungenPage() {
 
           <section className="flex flex-col gap-3">
             <SectionHeading icon={KeyRound}>Konto</SectionHeading>
+            {/* break-all an der Adresse: eine lange E-Mail ohne Leerzeichen
+                sprengt auf 390 px sonst die Card nach rechts, statt
+                umzubrechen. */}
+            <p className="text-sm">
+              <span className="text-muted">E-Mail:</span>{" "}
+              <span className="break-all text-foreground">{user.email}</span>
+            </p>
             <Card className="flex flex-col gap-3 p-4">
-              <p className="text-sm">
-                <span className="text-muted">E-Mail:</span>{" "}
-                <span className="text-foreground">{user.email}</span>
-              </p>
               <Link
                 href="/profil/passwort-aendern"
-                className={buttonVariants({
-                  variant: "secondary",
-                  size: "sm",
-                  className: "self-start",
-                })}
+                className={buttonVariants({ variant: "secondary", className: "self-start" })}
               >
                 Passwort ändern
               </Link>
@@ -267,19 +287,34 @@ export default async function EinstellungenPage() {
           {zeigeStagingLink && (
             <section className="flex flex-col gap-3">
               <SectionHeading icon={FlaskConical}>Moderation</SectionHeading>
-              <Card className="flex flex-col gap-2 p-4">
+              {/* DIESER TEXT WAR FALSCH, und zwar auf die teure Art. Er
+                  versprach "eigene Datenbank" — es gibt keine. Staging
+                  redet mit der Produktionsdatenbank (AGENTS.md, Release
+                  Flow: ein einziges Supabase-Projekt, vom Eigentümer am
+                  2026-09-14 bestätigt und so gewollt). Jedes Testkonto,
+                  jede Testfahrt und jede Sandbox-Zahlung dort landet in
+                  denselben Tabellen wie echte Nutzerdaten.
+
+                  Ein Satz, der einem Moderator das Gegenteil sagt, lädt
+                  genau zu dem ein, wovor die Verfassung warnt. Nur die
+                  Stripe-Hälfte stimmte: die Sandbox ist wirklich getrennt,
+                  eine Testzahlung kostet kein Geld. */}
+              <p className="text-sm text-muted">
+                Vorabversion der App, nur für Moderatoren erreichbar.
+                Zahlungen laufen über die Stripe-Sandbox und kosten kein
+                Geld — die <strong className="font-medium text-foreground">Datenbank ist dieselbe wie
+                in der Produktion</strong>. Testkonten, Testfahrten und
+                Teststrecken sind echte Daten.
+              </p>
+              <Card className="p-4">
                 <a
                   href={STAGING_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-accent underline underline-offset-2 self-start"
+                  className={buttonVariants({ variant: "secondary" })}
                 >
-                  Staging-Umgebung öffnen
+                  Staging öffnen
                 </a>
-                <p className="text-xs text-muted">
-                  Vorabversion mit eigener Datenbank und Test-Zahlungen. Nur für
-                  Moderatoren erreichbar.
-                </p>
               </Card>
             </section>
           )}
@@ -292,41 +327,40 @@ export default async function EinstellungenPage() {
               einen Fehler gestossen ist, kein auffindbarer Weg. */}
           <section className="flex flex-col gap-3">
             <SectionHeading icon={MessageSquare}>Feedback</SectionHeading>
-            <Card className="flex flex-col gap-3 p-4">
-              <p className="text-sm text-muted">
-                Fehler gefunden, etwas vermisst oder eine Idee? Schreib uns direkt aus der App.
-              </p>
+            <p className="text-sm text-muted">
+              Fehler gefunden, etwas vermisst oder eine Idee? Schreib uns direkt aus der App.
+            </p>
+            <Card className="p-4">
               <FeedbackDialog />
             </Card>
           </section>
 
           <section className="flex flex-col gap-3">
             <SectionHeading icon={Scale}>Rechtliches</SectionHeading>
-            <Card className="flex flex-col divide-y divide-border p-0">
-              <a
-                href={LEGAL_URLS.impressum}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-3 text-sm transition-colors duration-fast hover:text-accent"
-              >
-                Impressum
-              </a>
-              <a
-                href={LEGAL_URLS.datenschutz}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-3 text-sm transition-colors duration-fast hover:text-accent"
-              >
-                Datenschutzerklärung
-              </a>
-              <a
-                href={LEGAL_URLS.agb}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-3 text-sm transition-colors duration-fast hover:text-accent"
-              >
-                AGB
-              </a>
+            {/* Drei gleiche Zeilen aus einer Schleife statt dreimal
+                derselben Klassenkette: min-h-11 (die Zeilen waren 41 px und
+                damit knapp unter der Tippgrenze) und ein Pfeil, der sagt,
+                dass der Link die App verlässt — alle drei öffnen strado.ch
+                in einem neuen Tab, und das stand nirgends. */}
+            <Card as="ul" className="divide-y divide-border">
+              {[
+                { href: LEGAL_URLS.impressum, label: "Impressum" },
+                { href: LEGAL_URLS.datenschutz, label: "Datenschutzerklärung" },
+                { href: LEGAL_URLS.agb, label: "AGB" },
+              ].map((eintrag) => (
+                <li key={eintrag.href}>
+                  <a
+                    href={eintrag.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex min-h-11 items-center justify-between gap-3 px-4 py-3 text-sm transition-colors duration-fast hover:text-accent"
+                  >
+                    {eintrag.label}
+                    <ExternalLink className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
+                    <span className="sr-only">(öffnet in neuem Tab)</span>
+                  </a>
+                </li>
+              ))}
             </Card>
           </section>
         </Seitenrahmen>
