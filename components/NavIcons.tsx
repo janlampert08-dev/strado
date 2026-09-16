@@ -30,3 +30,8 @@ export { BarChart3 as ChartIcon } from "lucide-react";
 // Grund hier wie die übrigen — AGENTS.md nennt diese Datei als den Ort für
 // den Wrapper, und eine eigene Datei für ein Symbol wäre schlimmer.
 export { Star as SternIcon } from "lucide-react";
+
+// Ebenfalls kein Nav-Icon: der Leerzustand der Aktivitätsliste
+// (components/ActivityList.tsx). Dasselbe Zeichen, das die Kopfleiste als
+// Einstieg in /aktivitaet zeigt.
+export { Flame as AktivitaetIcon } from "lucide-react";

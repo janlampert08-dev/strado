@@ -252,6 +252,113 @@ betroffenen Zeilen, und die fachliche Entscheidung (auf null setzen, kappen,
 löschen) räumt sie weg. Danach geht Schritt 3 durch, und ab dann kann es
 solche Zeilen nicht mehr geben.
 
+## Eingespielt: 0100_folge_benachrichtigungen (2026-09-16, Produktion)
+
+Neue Follower erscheinen auf `/aktivitaet` (PR #250). Eingespielt **vor**
+dem Merge des Codes — die Reihenfolge war hier nicht bloss die bevorzugte:
+ohne `recent_follows_received()` wirft `/aktivitaet`, weil
+`getRecentFollowersReceived` einen Query-Fehler bewusst nicht als "keine
+Follower" durchgehen lässt (`lib/queryError.ts`). Eine Fehlerseite, kein
+stiller Rückfall. (`count_unseen_activity()` hätte die Kopfleiste still auf
+0 degradieren lassen, `mark_activity_seen()` hätte nichts markiert — beides
+ohne Ausfall.)
+
+### Vorher geprüft
+
+`follows_gesehen_am` existierte nicht, die drei Funktionen existierten
+nicht — nichts halb angewandt, die Migration konnte sauber laufen.
+
+### Nachher am Katalog geprüft (nicht am Ledger)
+
+```
+recent_follows_received   secdef=t  search_path=public  anon=false  authenticated=true
+count_unseen_activity     secdef=t  search_path=public  anon=false  authenticated=true
+mark_activity_seen        secdef=t  search_path=public  anon=false  authenticated=true
+
+profiles.follows_gesehen_am  timestamptz  not null  default now()
+  anon SELECT=false   authenticated SELECT=false   authenticated UPDATE=false
+```
+
+Die Grant-Falle aus `0047`/`0048`/`0091`/`0097` ist damit **nicht** ein
+fünftes Mal zugeschnappt: das ausdrückliche `revoke execute … from anon`
+neben dem `from public` hat getragen. Die Spalte trägt wie
+`kudos_gesehen_am` keinerlei Grant.
+
+Alle 17 Profile tragen **denselben** `follows_gesehen_am` — das ist der
+Beweis, dass `add column … default now()` den schnellen Weg genommen hat
+(`now()` ist stable, der Default wird einmal ausgewertet und als
+`attmissingval` hinterlegt, kein Table-Rewrite). Genau das ist die Absicht:
+Bestandsnutzer bekommen ihre Follower-Historie nicht als "neu" vorgesetzt.
+
+### Funktionstest (zurückgerollte Transaktion, Produktion)
+
+`DO`-Block, Ergebnis über `raise exception` ausgelesen — die Ausnahme rollt
+denselben Block zurück. Ein bestehendes Konto bekam sein Lesezeichen
+künstlich zehn Tage in die Vergangenheit gesetzt:
+
+```
+angemeldet:  liste=1  neu_vorher=t  zaehler_vorher=1
+nach mark:   neu=f    zaehler=0
+als anon:    liste=0  zaehler=0     mark=Ausnahme: not authenticated
+```
+
+Der dritte Block ist der wichtige: ohne Sitzung liefern beide Lesefunktionen
+nichts (`auth.uid()` ist NULL, der Vergleich nie wahr) und die Schreibfunktion
+verweigert. Danach gegengeprüft: 17 Profile, 10 Follows, **0** Lesezeichen in
+der Vergangenheit — der Testschreibvorgang ist vollständig zurückgerollt.
+
+### Rückweg
+
+```sql
+drop function if exists public.mark_activity_seen();
+drop function if exists public.count_unseen_activity();
+drop function if exists public.recent_follows_received();
+alter table public.profiles drop column if exists follows_gesehen_am;
+```
+
+Die Nummer ist **0100**, und sie war vorher **0097** — eine echte
+Kollision, keine blosse Luecke. `0097` gehoert seit dem 15. September
+`0097_fahrtstart_einloesen_nur_angemeldet` aus PR #249, und diese Migration
+ist **in der Produktion eingespielt**. Zwei gleich nummerierte Dateien, von
+denen eine bereits angewandt ist, machen jede spaetere Abstimmung nach
+Nummer mehrdeutig (`AGENTS.md`: "Migration numbers are not unique" —
+sechs Altpaare, kein siebtes). `staging` traegt inzwischen `0095` bis
+`0099`, also ist `0100` die naechste freie Nummer.
+
+`scripts/check-migration-prefixes.mjs` konnte das nicht sehen: es kennt nur
+den eigenen Zweig. Der Check, der hier zaehlt, ist der, den
+`.agents/database.md` verlangt — die offenen PRs lesen, bevor man eine
+Nummer waehlt. Hier hat er gefehlt, und die Kollision ist erst beim
+Zusammenfuehren aufgefallen.
+
+Rein additiv: eine Spalte (`profiles.follows_gesehen_am`, `not null default
+now()`, ohne Spalten-Grant) und drei neue Funktionen. Keine bestehende
+Funktion wird ersetzt, keine Policy verengt, kein Backfill. Der Rückweg ist
+entsprechend kurz — `drop function` für die drei, `drop column` für die
+eine —, und es gibt keinen Zustand, in dem ein halb angewendeter Stand Daten
+verlöre.
+
+Zwei Dinge, die beim Anwenden zu prüfen sind, beide aus den Lehren von
+`0047`/`0048`/`0091`:
+
+```sql
+-- 1. Kein direkter EXECUTE-Grant an anon (Supabase vergibt ihn per
+--    Default-Privileg an JEDE neue Funktion in public; ein revoke von
+--    PUBLIC entfernt ihn NICHT).
+select p.proname, r.rolname, has_function_privilege(r.rolname, p.oid, 'execute')
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+cross join (values ('anon'), ('authenticated')) as r(rolname)
+where n.nspname = 'public'
+  and p.proname in ('recent_follows_received', 'count_unseen_activity', 'mark_activity_seen');
+-- Erwartet: anon = false, authenticated = true, für alle drei.
+
+-- 2. Die Spalte trägt keinen Grant (sonst verriete sie, wann ein
+--    beliebiger Nutzer zuletzt seine Aktivität angesehen hat).
+select grantee, privilege_type from information_schema.column_privileges
+where table_name = 'profiles' and column_name = 'follows_gesehen_am';
+-- Erwartet: keine Zeile für anon/authenticated.
+```
 ## Eingespielt: 0094_creator_verlauf_nur_aufrufe (2026-09-15, Produktion)
 
 | Datei | Ledger-`version` | Was |

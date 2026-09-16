@@ -254,6 +254,34 @@ is what should be corrected.
     buckets, or narrowing the `0034` grant — the last of which would also
     close the standing finding named in `0087`'s own header. The privacy
     text now says this plainly rather than promising more than it keeps.
+  - **`0100_folge_benachrichtigungen` went in on 2026-09-16** (PR #250),
+    again ahead of its code, and here the order was mandatory rather than
+    merely intended: without `recent_follows_received()` the `/aktivitaet`
+    page *throws* — `getRecentFollowersReceived` deliberately refuses to
+    let a query error pass as "no followers" (`lib/queryError.ts`) — so
+    merging the code first would have handed every visitor an error page.
+    It adds `profiles.follows_gesehen_am` plus three parameterless
+    `SECURITY DEFINER` functions, all scoped to `auth.uid()`.
+    **It was renumbered from `0097` before applying**: two branches had
+    independently picked `0097`, and the other one
+    (`0097_fahrtstart_einloesen_nur_angemeldet`) was already live. The
+    number is the thing that makes a deploy reconcilable, so a second
+    `0097` — one half of it applied — would have been worse than the six
+    legacy pairs, which are at least both-halves-live. Same lesson as
+    `0087`/`0088`: `scripts/check-migration-prefixes.mjs` only sees one
+    branch, so reading the open PRs is the check that counts.
+    Two things it is worth remembering for. **The grant trap did not bite a
+    fifth time** — the explicit `revoke execute … from anon` alongside the
+    `from public` held, measured `anon=false` on all three; write the role
+    out, every time. And **`add column … default now()` is cheap here**:
+    `now()` is stable, so PostgreSQL stores the default once as
+    `attmissingval` instead of rewriting the table — which is also why all
+    17 existing profiles share one identical timestamp, exactly the
+    intent (nobody gets their whole follower history served as "new").
+    Verified against the catalog and by a rolled-back functional test
+    (signed-in sees the follower as new, marking clears it, `anon` gets
+    zero rows and `not authenticated` on the write); the queries and the
+    way back are in `supabase/migrations/README.md`.
   - **`0096`–`0099` went in on 2026-09-15, in that order, ahead of their
     code** (PR #249 — still open when they were applied, which is the
     intended order: schema first). `0095` is **taken, not free**: PR #248
@@ -608,11 +636,21 @@ handoff to the next isn't done.
    `lib/actions/ratings.ts` on the route itself; moderation of reactions via
    `components/CompletionActionsMenu.tsx` / `lib/actions/reports.ts`.
 8. **The reaction gets back to the rider** — `app/aktivitaet/page.tsx`
-   (`lib/kudos.ts` → `getRecentKudosReceived`, `components/MarkKudosSeen.tsx`,
-   `components/ActivityKudosList.tsx`, seen-state from migration `0057`) plus
-   the unseen-kudos badge in `components/Header.tsx`. This is the step that
-   makes step 7 visible to the person who rode; a reaction nobody is told
-   about does not close the loop.
+   shows **two** kinds of reaction on one timeline: kudos on your own rides
+   (`lib/kudos.ts` → `getRecentKudosReceived`, seen-state from migration
+   `0057`) and people who started following you (`lib/follows.ts` →
+   `getRecentFollowersReceived`, seen-state from `0100`). They are merged by
+   `mischeAktivitaet()` in `lib/aktivitaet.ts` — the pure half, deliberately
+   free of any server import because `components/ActivityList.tsx` is a
+   client component; the queries live next door in
+   `lib/aktivitaetsliste.ts`. `components/MarkSeen.tsx` takes the
+   mark-seen action as a prop, which is what keeps the two surfaces apart:
+   `/profil` shows only rides and therefore clears only the kudos
+   (`markKudosSeen`), `/aktivitaet` shows both and clears both
+   (`markActivitySeen`). The badge in `components/Header.tsx` counts both in
+   one number (`count_unseen_activity`, one RPC because the header runs on
+   every page). This is the step that makes step 7 visible to the person who
+   rode; a reaction nobody is told about does not close the loop.
 9. **Next ride** — `app/feed/page.tsx` (global/following feed) surfaces
    others' rides and routes, closing the loop back to step 1.
 
