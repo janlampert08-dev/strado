@@ -43,11 +43,38 @@ const RouteMap = dynamic(() => import("@/components/RouteMap"), {
   loading: () => <Skeleton className="h-full w-full" />,
 });
 
-// Bottom-Sheet-Masse (Mobile). PEEK entspricht ungefähr der bisherigen festen
-// Kartenhöhe (h-64 = 256px) plus Platz für den Ziehgriff. Aufgezogen deckt das
-// Sheet die Karte vollständig ab (siehe DragSheet.tsx) — der Kontext "wo bin
-// ich?" hängt dann an der Liste selbst, nicht mehr an einem Streifen Karte.
-const SHEET_PEEK_PX = 272;
+// Bottom-Sheet-Masse (Mobile). Aufgezogen deckt das Sheet die Karte
+// vollständig ab (siehe DragSheet.tsx) — der Kontext "wo bin ich?" hängt
+// dann an der Liste selbst, nicht mehr an einem Streifen Karte.
+//
+// 320 statt 272, und diesmal gemessen statt hergeleitet. Der alte Wert kam
+// aus der Kartenhöhe, die es vor dem Sheet gab (h-64 = 256 px, plus Griff);
+// er sagte nichts darüber, was im Fenster tatsächlich ankommt.
+//
+// Am Preview auf 390 x 844 nachgemessen, abgemeldet — also in dem Zustand,
+// in dem ein geteilter Link landet:
+//
+//   Inhaltsfläche des Peek-Fensters   235 px  (272 minus Ziehgriff)
+//   pt-3                               12
+//   Überschrift + Erklärabsatz         92
+//   gap-3                              12
+//   Suchzeile                          44
+//   gap-3 + Trennlinie + gap-3         25
+//   ------------------------------------------
+//   für die Liste übrig                50 px  —  eine Zeile ist 80 px hoch
+//
+// Es war also KEINE vollständige Streckenzeile zu sehen. Anhang A8 des
+// Konzepts rechnet mit "zwei volle plus Anschnitt" — das gilt für den
+// angemeldeten Fall, in dem der Erklärabsatz gar nicht erst gerendert wird.
+// Für den abgemeldeten, den derselbe Abschnitt ausdrücklich als den
+// wichtigen benennt, stimmte es nicht.
+//
+// 320 px gibt der Liste 98 px, und der auf zwei Zeilen gekürzte Absatz
+// (ExploreSidebar.tsx) weitere rund 21 — zusammen rund 119 px: eine volle
+// Zeile plus ein deutlicher Anschnitt der nächsten, der zeigt, dass es
+// weitergeht. Die Karte behält auf demselben Gerät rund 369 px und damit
+// mehr als die halbe Höhe.
+const SHEET_PEEK_PX = 320;
 
 // Wie lange der Zufallsvorschlag (siehe unten) stehen bleibt. Die Kamerafahrt
 // dorthin dauert 800 ms, danach bleiben gut vier Sekunden zum Lesen und
@@ -149,9 +176,20 @@ export default function ExploreView({
   // die sichtbare Auswahl ein, ohne die Perzentile (und damit die Merkmale)
   // der übrigen Strecken zu verschieben.
   //
-  // Eine Farbe gehört nicht mehr dazu: die Signatur trägt Icon und Text, die
-  // Linie nimmt --color-accent (siehe lib/signature.ts).
+  // Die Signatur trägt Icon, Text UND Farbe — Letzteres wieder, seit die
+  // fünf Töne als Design-Tokens in app/globals.css stehen statt als
+  // Hex-Konstanten (siehe lib/signature.ts). Dieselbe Map speist deshalb
+  // beides: die Seitenleiste und die Kartenlinien.
   const signatures = useMemo(() => computeSignatures(routes), [routes]);
+
+  // Nur der Schlüssel, ohne das Label — mehr braucht die Karte nicht, und
+  // ein eigener useMemo hält die RouteMap-Prop stabil, statt bei jedem
+  // Render eine neue Map zu übergeben (der setData-Effekt dort führt sie in
+  // seinen Abhängigkeiten).
+  const kartenSignaturen = useMemo(
+    () => new Map([...signatures].map(([id, sig]) => [id, sig.key])),
+    [signatures],
+  );
   const visibleRoutes = useMemo(() => {
     // searchInput statt des (debounced) URL-Werts: die Liste soll bei jedem
     // Tastendruck sofort reagieren, nicht erst nach dem URL-Sync-Delay.
@@ -195,6 +233,7 @@ export default function ExploreView({
       >
         <RouteMap
           routes={visibleRoutes}
+          signaturen={kartenSignaturen}
           userLocation={userLocation}
           // Hover und Zufallsvorschlag speisen denselben
           // Hervorhebungs-Layer, bleiben aber getrennte Zustände: der

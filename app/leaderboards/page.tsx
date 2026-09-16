@@ -1,9 +1,9 @@
-import { Suspense } from "react";
+import { Suspense, type ComponentType } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { Compass, Route, Ruler, TrendingUp } from "lucide-react";
 import Header from "@/components/Header";
 import { RankingIcon } from "@/components/NavIcons";
-import FeedReiter from "@/components/FeedReiter";
 import PullToRefreshArea from "@/components/PullToRefreshArea";
 import TrackLeaderboardChooser from "@/components/TrackLeaderboardChooser";
 import Avatar from "@/components/Avatar";
@@ -33,7 +33,7 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
 export const metadata: Metadata = {
-  title: "Bestenlisten – Strado",
+  title: "Ranglisten – Strado",
   description:
     "Die schnellsten Zeiten je Strecke und Fahrzeugklasse — und die Fahrerinnen und Fahrer mit den meisten Kilometern rund um Zürich.",
   // Kanonische Adresse. Die App wird unter mehr als einem Hostnamen
@@ -56,12 +56,15 @@ export const metadata: Metadata = {
 
 function LeaderboardSection({
   title,
+  icon,
   entries,
   unit,
   format = (v) => v.toLocaleString("de-CH"),
   currentUserId,
 }: {
   title: string;
+  /** Jede Abschnittsmarke trägt eines — siehe components/ui/SectionHeading.tsx. */
+  icon: ComponentType<{ className?: string }>;
   entries: LeaderboardEntry[];
   // Entweder eine feste Einheit ("km", "m") oder eine, die sich nach dem Wert
   // richtet — "1 Fahrt" statt "1 Fahrten". Die Einheit hängt hier am
@@ -73,7 +76,7 @@ function LeaderboardSection({
 }) {
   return (
     <section className="flex flex-col gap-3">
-      <SectionHeading>{title}</SectionHeading>
+      <SectionHeading icon={icon}>{title}</SectionHeading>
       {entries.length === 0 ? (
         <p className="text-sm text-muted">Noch keine Einträge.</p>
       ) : (
@@ -203,12 +206,14 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
     <div className="flex flex-col gap-8 sm:grid sm:grid-cols-2 sm:items-start sm:gap-6 xl:grid-cols-4">
       <LeaderboardSection
         title={`Meiste Fahrten${klassenZusatz}`}
+        icon={Route}
         entries={meisteFahrten}
         unit={(n) => nomen(n, "Fahrt", "Fahrten")}
         currentUserId={currentUserId}
       />
       <LeaderboardSection
         title={`Meiste Höhenmeter${klassenZusatz}`}
+        icon={TrendingUp}
         entries={meisteHoehenmeter}
         unit="m"
         format={(v) => Math.round(v).toLocaleString("de-CH")}
@@ -216,6 +221,7 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
       />
       <LeaderboardSection
         title={`Meiste km gefahren${klassenZusatz}`}
+        icon={Ruler}
         entries={meisteKm}
         unit="km"
         format={(v) => v.toFixed(0)}
@@ -223,6 +229,7 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
       />
       <LeaderboardSection
         title={`Entdecker${klassenZusatz}`}
+        icon={Compass}
         entries={meisteStrecken}
         unit={(n) => nomen(n, "Strecke", "Strecken")}
         currentUserId={currentUserId}
@@ -251,15 +258,6 @@ export default async function LeaderboardsPage({
   const { klasse: klasseRoh } = await searchParams;
   const klasse = istKlassenfilter(klasseRoh) ? klasseRoh : null;
 
-  // Für die Reiterleiste: "Folge ich" gibt es nur mit Konto. Stand hier
-  // zuerst fest auf false — mit der Folge, dass wer von /feed?scope=following
-  // kommt, drei Reiter sieht, "Rangliste" tippt und dort nur noch zwei
-  // vorfindet: ausgerechnet der, aus dem er kam, fehlte.
-  //
-  // Kostet keinen zusätzlichen Roundtrip: getCurrentUser() ist in React
-  // cache() gewickelt, und <Header /> oben wartet ohnehin schon darauf.
-  const user = await getCurrentUser();
-
   return (
     <div className="flex h-dvh flex-col">
       <Header />
@@ -268,23 +266,24 @@ export default async function LeaderboardsPage({
       <div className="flex-1 overflow-y-auto">
         <Seitenrahmen breite="weit">
         <div className="flex flex-col gap-3">
-          {/* Dieselbe Reiterleiste wie auf /feed. Die Bestenlisten sind seit
-              der Umstellung auf die Loop-Leiste kein eigener Eintrag in der
-              Navigation mehr, sondern der dritte Reiter neben dem Feed —
-              siehe components/FeedReiter.tsx und lib/nav.ts. Die Seite
-              bleibt eine eigene Adresse mit eigenem Datenbedarf; nur der Weg
-              hierher hat sich geändert.
-
-              Die <h1> bleibt sichtbar: sie benennt, was die vier Listen
-              darunter sind, und der aktive Reiter allein trüge das nicht. */}
-          <FeedReiter aktiv="rangliste" zeigtFolgeIch={!!user} />
-          <h1 className="text-display font-semibold">Bestenlisten</h1>
+          {/* Keine Reiterleiste mehr: die Ranglisten sind ein eigener Bereich
+              mit eigenem Eintrag in der Navigation (lib/nav.ts) statt eines
+              Reiters auf /feed. Sie haben eigene Daten, einen eigenen Filter
+              und einen eigenen Anlass — als dritter Reiter einer anderen
+              Seite waren sie so auffindbar wie ein Menüeintrag, den man erst
+              aufklappt. */}
+          <div>
+            <h1 className="text-display font-semibold">Ranglisten</h1>
+            <p className="mt-1 text-sm text-muted">
+              Wer am meisten unterwegs war — und die schnellsten Zeiten je Strecke.
+            </p>
+          </div>
           <MotorklassenChips
             klassen={ALLE_KLASSEN}
             aktiv={klasse}
             hrefAlle={klassenHref(null)}
             hrefs={KLASSEN_HREFS}
-            label="Bestenlisten nach Motorklasse filtern"
+            label="Ranglisten nach Motorklasse filtern"
             vorne={
               <Suspense fallback={null}>
                 <MeineKlasseChip aktiv={klasse} />

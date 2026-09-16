@@ -8,7 +8,7 @@ import CreatorZuweisung from "@/components/CreatorZuweisung";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import SectionHeading from "@/components/ui/SectionHeading";
-import { LinkIcon } from "@/components/NavIcons";
+import { LinkIcon, ShieldIcon } from "@/components/NavIcons";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { isModerator } from "@/lib/moderation";
 import { alleCreatorLinks, einstiegsPfad, einstiegsUrl } from "@/lib/creatorLinks";
@@ -80,12 +80,12 @@ export default async function CreatorLinksPage() {
           </Card>
 
           <div className="flex flex-col gap-3">
-            <SectionHeading>Neuen Link anlegen</SectionHeading>
+            <SectionHeading icon={LinkIcon}>Neuen Link anlegen</SectionHeading>
             <CreatorLinkForm />
           </div>
 
           <div className="flex flex-col gap-3">
-            <SectionHeading>Vergeben</SectionHeading>
+            <SectionHeading icon={ShieldIcon}>Vergeben</SectionHeading>
             {links.length === 0 ? (
               <EmptyState
                 icon={LinkIcon}

@@ -74,7 +74,7 @@ export default function RouteLeaderboardPreview({
 
   return (
     <div className="flex flex-col gap-3">
-      <SectionHeading>Bestzeiten</SectionHeading>
+      <SectionHeading icon={RankingIcon}>Bestzeiten</SectionHeading>
 
       <MotorklassenChips
         klassen={klassen}

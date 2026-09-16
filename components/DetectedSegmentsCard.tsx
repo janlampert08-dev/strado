@@ -17,8 +17,7 @@ export default function DetectedSegmentsCard({ segments }: { segments: DetectedS
 
   return (
     <Card surface className="flex flex-col gap-3 p-4">
-      <SectionHeading as="p" groesse="xs" className="flex items-center gap-1.5">
-        <RouteIcon className="h-3.5 w-3.5" aria-hidden="true" />
+      <SectionHeading as="p" groesse="xs" icon={RouteIcon}>
         Auf dieser Fahrt erkannt
       </SectionHeading>
       <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">

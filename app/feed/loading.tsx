@@ -20,7 +20,7 @@ export default function Loading() {
       {/* Die Reiterleiste (components/FeedReiter.tsx): eine umrandete Hülle
           mit p-1, drei Segmente à min-h-9, keine Trennlinie darunter.
           Gezeichnet werden drei — angemeldet sind es drei ("Alle",
-          "Folge ich", "Rangliste"), und angemeldet ist der Fall, in dem
+          "Folge ich", "Aktivität"), und angemeldet ist der Fall, in dem
           dieses Skelett fast immer erscheint.
 
           Vorher standen hier zwei Pillen mit border-b: der Umschalter, den

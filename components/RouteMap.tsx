@@ -7,7 +7,8 @@ import type { DataDrivenPropertyValueSpecification } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { ZURICH_CENTER, DEFAULT_ZOOM } from "@/lib/constants";
 import { sliceRouteBySpeed, speedColor } from "@/lib/speed";
-import { akzentFarbe, isDarkTheme, subscribeToThemeChange } from "@/lib/theme";
+import { akzentFarbe, isDarkTheme, subscribeToThemeChange, tokenFarbe } from "@/lib/theme";
+import { SIGNATUR_RUECKFALL, SIGNATUR_TOKEN, type SignatureKey } from "@/lib/signature";
 import { MIN_ACCURACY_M } from "@/components/useRideRecorder";
 import type { KartenStrecke, TempolimitSegment } from "@/types/database";
 import Skeleton from "@/components/ui/Skeleton";
@@ -48,21 +49,33 @@ const TERRAIN_EXAGGERATION = 1.4;
 const TILTED_PITCH = 60;
 const TILTED_BEARING = -17;
 
-// Eine Farbe für alle Streckenlinien: --color-accent, zur Laufzeit
-// aufgelöst (lib/theme.ts).
+// Die Farbe einer Streckenlinie: der Signaturton der Strecke, sonst
+// --color-accent. Beides zur Laufzeit aus den Tokens aufgelöst
+// (lib/theme.ts), weil ein Mapbox-Layer keine CSS-Variable annimmt.
 //
-// Vorher standen hier ZWEI weitere Farbsysteme neben dem Token-System: die
-// fünf Signaturfarben aus lib/signature.ts, durchgereicht als colors-Map,
-// und acht fest verdrahtete Blautöne als Fallback, per ID-Hash verteilt.
-// Drei Systeme für dieselbe Sache, keines wusste vom anderen, und keines
-// folgte dem Thema — obwohl die Karte ihren Stil längst tauschte.
+// DIE VORGESCHICHTE, DAMIT SIE SICH NICHT WIEDERHOLT. Hier standen einmal
+// ZWEI Farbsysteme neben dem Token-System: die fünf Signaturfarben als
+// fertige Hex-Werte aus lib/signature.ts, durchgereicht als colors-Map, und
+// acht fest verdrahtete Blautöne als Rückfall, per ID-Hash verteilt. Drei
+// Systeme für dieselbe Sache, keines wusste vom anderen, und keines folgte
+// dem Thema — obwohl die Karte ihren Stil längst tauschte. PR #254 hat alle
+// drei auf --color-accent zusammengezogen, was den Fehler behob und mit ihm
+// die Farbe.
 //
-// Unterschieden wird jetzt über Deckkraft und Linienstärke statt über den
-// Farbton (CONTEXT_ROUTE_OPACITY weiter unten, plus der Hervorhebungs-
-// Layer). Das ist auf einem Telefon im Sonnenlicht ohnehin das Robustere:
-// Farbe ist das erste, was draussen zusammenbricht.
-function streckenFarbe(): string {
-  return akzentFarbe();
+// Jetzt ist es EIN System: die Signatur der Strecke zeigt in der Liste und
+// auf der Karte denselben Ton, und beide holen ihn aus demselben Token in
+// app/globals.css. Der Ton folgt dem Thema, weil er zur Laufzeit gelesen
+// wird — und die Sammlungen unten werden nach jedem "style.load" neu
+// gebaut, also auch nach einem Themenwechsel.
+//
+// Was NICHT zurückkommt: der ID-Hash. Eine Strecke ohne Signatur bekommt
+// den Akzent, keine ausgewürfelte Farbe. Und unterschieden wird zwischen
+// Haupt- und Kontextlinie weiterhin über Deckkraft und Linienstärke
+// (CONTEXT_ROUTE_OPACITY unten), nicht über den Farbton: auf einem Telefon
+// im Sonnenlicht ist Farbe das erste, was zusammenbricht.
+function streckenFarbe(signatur?: SignatureKey | null): string {
+  if (!signatur) return akzentFarbe();
+  return tokenFarbe(SIGNATUR_TOKEN[signatur], SIGNATUR_RUECKFALL[signatur]);
 }
 
 // Deckkraft der Kontext-Strecken, sobald eine Strecke als primär markiert ist
@@ -86,30 +99,63 @@ function mapStyleForTheme(): string {
   return isDarkTheme() ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/streets-v12";
 }
 
-function toFeatureCollection(routes: KartenStrecke[]): GeoJSON.FeatureCollection {
-  // Einmal je Sammlung, nicht einmal je Strecke: streckenFarbe() läuft über
-  // getComputedStyle(document.documentElement), und das ist ein Lesezugriff
-  // auf den Layout-Zustand. Bei rund 39 sichtbaren Strecken je
-  // Aktualisierung war das 39-mal dieselbe Antwort. Die Farbe ist für alle
-  // Strecken dieselbe — sie unterscheiden sich über die Deckkraft.
-  const color = streckenFarbe();
+/**
+ * Die aufgelösten Farben aller vorkommenden Signaturen plus die des
+ * Akzents — einmal je Sammlung statt einmal je Strecke.
+ *
+ * streckenFarbe() läuft über getComputedStyle(document.documentElement),
+ * und das ist ein Lesezugriff auf den Layout-Zustand. Bei rund 39
+ * sichtbaren Strecken je Aktualisierung wären das 39 Aufrufe für höchstens
+ * sechs verschiedene Antworten. Vor der Rückkehr der Farbe war es eine
+ * einzige Antwort und dieser Cache eine Variable; jetzt ist es eine Map,
+ * die Begründung ist dieselbe.
+ */
+function farbenFuer(
+  routes: KartenStrecke[],
+  signaturen: Map<string, SignatureKey> | undefined,
+): (id: string) => string {
+  const cache = new Map<SignatureKey | "akzent", string>();
+  const hol = (key: SignatureKey | null): string => {
+    const k = key ?? "akzent";
+    let wert = cache.get(k);
+    if (wert === undefined) {
+      wert = streckenFarbe(key);
+      cache.set(k, wert);
+    }
+    return wert;
+  };
+  // Einmal vorwärmen, damit der erste Aufruf je Ton nicht mitten in der
+  // Feature-Schleife hängt.
+  for (const route of routes) hol(signaturen?.get(route.id) ?? null);
+  return (id: string) => hol(signaturen?.get(id) ?? null);
+}
+
+function toFeatureCollection(
+  routes: KartenStrecke[],
+  signaturen?: Map<string, SignatureKey>,
+): GeoJSON.FeatureCollection {
+  const farbe = farbenFuer(routes, signaturen);
   return {
     type: "FeatureCollection",
     features: routes.map((route) => ({
       type: "Feature",
       id: route.id,
       geometry: route.geometry_geojson,
-      properties: { id: route.id, name: route.name, color },
+      properties: { id: route.id, name: route.name, color: farbe(route.id) },
     })),
   };
 }
 
 // Bei Rundfahrten liegen Start und Ziel am selben Ort — dort nur ein Punkt,
 // sonst je ein Punkt am Anfang und am Ende der Strecke.
-function toEndpointFeatureCollection(routes: KartenStrecke[]): GeoJSON.FeatureCollection {
+function toEndpointFeatureCollection(
+  routes: KartenStrecke[],
+  signaturen?: Map<string, SignatureKey>,
+): GeoJSON.FeatureCollection {
   const features: GeoJSON.Feature[] = [];
-  const color = streckenFarbe();
+  const farbe = farbenFuer(routes, signaturen);
   for (const route of routes) {
+    const color = farbe(route.id);
     features.push({
       type: "Feature",
       geometry: route.start_geojson,
@@ -384,6 +430,7 @@ function fitToTrail(
 
 export default function RouteMap({
   routes,
+  signaturen,
   userLocation,
   userAccuracyM = null,
   userHeadingDeg = null,
@@ -414,6 +461,15 @@ export default function RouteMap({
   // Kontext-Strecken des Aufzeichnungsschirms, die nur die Zeichenfelder
   // tragen, erfüllen ihn ebenfalls.
   routes: KartenStrecke[];
+  // Das Signatur-Merkmal je Strecken-ID (lib/signature.ts). Bestimmt die
+  // Linienfarbe, damit eine Strecke in der Liste und auf der Karte denselben
+  // Ton trägt — die Explore-Ansicht berechnet die Signaturen ohnehin für die
+  // Seitenleiste und reicht dieselbe Map hierher.
+  //
+  // Optional, und ohne sie bleibt alles beim Akzent: die Detailkarte und
+  // die beiden Aufzeichnungsschirme zeigen eine bzw. eine hervorgehobene
+  // Strecke, dort ordnet Farbe nichts.
+  signaturen?: Map<string, SignatureKey>;
   // null blendet den Standort-Marker aus, statt ihn auf einer alten Position
   // stehen zu lassen.
   userLocation?: [number, number] | null;
@@ -538,9 +594,18 @@ export default function RouteMap({
   // Kamerafahrt nach — er läuft mit, sobald stilGeneration steigt.
   const eingepasstMitInsetRef = useRef<number | null>(null);
 
+  // Wie routesRef: setupLayers() läuft nach jedem "style.load" und liest
+  // die Sammlungen aus Refs statt aus den Props, weil es ausserhalb des
+  // Render-Laufs aufgerufen wird.
+  const signaturenRef = useRef(signaturen);
+
   useEffect(() => {
     routesRef.current = routes;
   }, [routes]);
+
+  useEffect(() => {
+    signaturenRef.current = signaturen;
+  }, [signaturen]);
 
   useEffect(() => {
     routesClickableRef.current = routesClickable;
@@ -652,7 +717,7 @@ export default function RouteMap({
 
       map.addSource(ROUTES_SOURCE, {
         type: "geojson",
-        data: toFeatureCollection(routesRef.current),
+        data: toFeatureCollection(routesRef.current, signaturenRef.current),
       });
 
       map.addLayer(
@@ -819,7 +884,7 @@ export default function RouteMap({
 
       map.addSource(ENDPOINTS_SOURCE, {
         type: "geojson",
-        data: toEndpointFeatureCollection(routesRef.current),
+        data: toEndpointFeatureCollection(routesRef.current, signaturenRef.current),
       });
       map.addLayer(
         {
@@ -953,20 +1018,23 @@ export default function RouteMap({
     });
   }, []);
 
-  // Kartendaten aktualisieren, wenn sich die gefilterte Streckenliste ändert.
-  // Die Farbe hängt nicht mehr daran: sie kommt aus --color-accent und
-  // wechselt nur mit dem Thema — und dann tauscht der Effekt weiter unten
-  // ohnehin den Kartenstil, was über "style.load" setupLayers() neu laufen
-  // lässt und alle Farben frisch aus dem Token liest.
+  // Kartendaten aktualisieren, wenn sich die gefilterte Streckenliste oder
+  // die Signatur-Zuordnung ändert.
+  //
+  // Am Thema hängt der Effekt weiterhin NICHT: ein Themenwechsel tauscht
+  // über den Effekt weiter unten den Kartenstil, das löst "style.load" aus,
+  // und setupLayers() baut beide Sammlungen neu — mit frisch aus den Tokens
+  // gelesenen Farben. Das galt, als alle Linien den Akzent trugen, und gilt
+  // für die Signaturtöne unverändert, weil sie denselben Weg nehmen.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !styleLoadedRef.current) return;
     const source = map.getSource(ROUTES_SOURCE) as mapboxgl.GeoJSONSource | undefined;
     if (!source) return;
-    source.setData(toFeatureCollection(routes));
+    source.setData(toFeatureCollection(routes, signaturen));
 
     const endpointsSource = map.getSource(ENDPOINTS_SOURCE) as mapboxgl.GeoJSONSource | undefined;
-    endpointsSource?.setData(toEndpointFeatureCollection(routes));
+    endpointsSource?.setData(toEndpointFeatureCollection(routes, signaturen));
 
     const single = routes.length === 1 ? routes[0] : null;
     const speedSource = map.getSource(SPEED_SOURCE) as mapboxgl.GeoJSONSource | undefined;
@@ -990,7 +1058,7 @@ export default function RouteMap({
       fitToRoutes(map, fitTargets(routes, primaryRouteId), true, bottomInsetRef.current);
       eingepasstMitInsetRef.current = bottomInsetRef.current;
     }
-  }, [routes, fitRoutes, primaryRouteId]);
+  }, [routes, signaturen, fitRoutes, primaryRouteId]);
 
   // Ändert sich die vom Sheet verdeckte Fläche (auf-, zu- oder ganz
   // weggezogen, Drehung des Geräts), passt sich der Ausschnitt an die neue

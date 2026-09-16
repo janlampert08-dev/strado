@@ -24,6 +24,24 @@ const SIGNATURE_ICONS: Record<SignatureKey, typeof Mountain> = {
   laenge: Ruler,
 };
 
+// Die Utility-Klassen je Merkmal. Ausgeschrieben und nicht zusammengesetzt:
+// Tailwind liest Klassennamen statisch aus dem Quelltext, ein
+// `text-signatur-${key}` stünde in keinem erzeugten Stylesheet.
+//
+// Drei Klassen je Merkmal, weil drei Dinge in der Zeile denselben Ton
+// tragen: die linke Kante (was für eine Strecke das ist), das Icon samt
+// Label (worin sie heraussticht) und die Streckenform rechts (ihr
+// Vorschaubild). Die Hex-Werte dahinter stehen in app/globals.css, sind
+// für hell und dunkel gesetzt und gegen Hintergrund, Fläche und Hover-Grund
+// nachgerechnet — siehe lib/signature.ts.
+const SIGNATUR_KLASSEN: Record<SignatureKey, { rand: string; text: string }> = {
+  kehren: { rand: "border-l-signatur-kehren", text: "text-signatur-kehren" },
+  steigung: { rand: "border-l-signatur-steigung", text: "text-signatur-steigung" },
+  hoehe: { rand: "border-l-signatur-hoehe", text: "text-signatur-hoehe" },
+  tempo: { rand: "border-l-signatur-tempo", text: "text-signatur-tempo" },
+  laenge: { rand: "border-l-signatur-laenge", text: "text-signatur-laenge" },
+};
+
 export default function ExploreSidebar({
   routes,
   bewertungen,
@@ -97,9 +115,14 @@ export default function ExploreSidebar({
           <h1 className="text-lg font-semibold tracking-tight">
             Die schönsten Strecken rund um Zürich
           </h1>
+          {/* Zwei Zeilen statt drei, auf 390 px gemessen. Beide Aussagen
+              bleiben — kuratiert, und aufzeichnen geht ohne Konto —, nur
+              "Aussuchen, losfahren" fällt weg: das sagt die Liste darunter
+              besser als ein Satz darüber. Die gesparte Zeile ist rund 21 px,
+              und die gehen im Peek-Fenster direkt an die Streckenliste
+              (Rechnung in ExploreView.tsx bei SHEET_PEEK_PX). */}
           <p className="text-sm text-muted">
-            Kurven, Pässe, Aussicht — handverlesen. Aussuchen, losfahren, aufzeichnen. Ein Konto
-            brauchst du erst zum Speichern.
+            Kurven, Pässe, Aussicht — handverlesen. Aufzeichnen geht ohne Konto.
           </p>
         </div>
       )}
@@ -179,6 +202,10 @@ export default function ExploreSidebar({
           // km-Zahl daneben zeigen — sonst steht dieselbe Länge zweimal da.
           const showPlainKm = signature?.key !== "laenge";
           const bewertung = bewertungen[route.id];
+          // Ohne Signatur (kann nicht vorkommen, solange computeSignatures
+          // auf demselben Bestand lief — der Typ lässt es trotzdem zu) bleibt
+          // die Zeile bei der neutralen Strukturkante.
+          const ton = signature ? SIGNATUR_KLASSEN[signature.key] : null;
 
           return (
             <li key={route.id}>
@@ -195,21 +222,25 @@ export default function ExploreSidebar({
                 // Peek-Fenster aus einer angeschnittenen Zeile zwei volle
                 // plus Anschnitt.
                 //
-                // DER LINKE RAND IST BEWUSST NICHT AKZENTFARBEN. Er trug
-                // vorher eine der fünf Signaturfarben; naheliegend wäre
-                // gewesen, ihn einfach auf --color-accent zu setzen. Dagegen
-                // spricht components/Sterne.tsx: "Der Akzent ist in dieser
-                // App die eine Farbe für 'hier steht ein Wert'." In dieser
-                // Zeile steht ein Wert — der Sternenschnitt —, und stünden
-                // Rand und Streckenform ebenfalls im Akzent, trügen ihn drei
-                // Elemente, zwei davon rein dekorativ. Die Regel wäre dann
-                // keine mehr.
+                // DER LINKE RAND TRÄGT DEN SIGNATURTON, NICHT DEN AKZENT.
                 //
-                // Also: der Rand ist eine Strukturkante (--color-border-strong),
-                // die Form ist ein Vorschaubild (--color-muted), und der
-                // Akzent bleibt dem einen Wert. Der Hover-Grund darf ihn
-                // tragen — er ist ein Zustand, keine dauerhafte Markierung.
-                className="group flex h-20 items-center gap-3 border-b border-border border-l-[3px] border-l-border-strong py-3 pr-2 pl-3 transition-colors duration-fast hover:bg-accent-subtle active:bg-accent-subtle"
+                // Die Unterscheidung, die hier vorher stand, gilt weiter und
+                // ist der Grund, warum das geht: der Akzent ist in dieser App
+                // die eine Farbe für "hier steht ein Wert"
+                // (components/Sterne.tsx). In dieser Zeile steht ein Wert —
+                // der Sternenschnitt —, und trüge der Rand ebenfalls den
+                // Akzent, wäre die Regel keine mehr.
+                //
+                // Der Signaturton ist kein Akzent, sondern eine eigene
+                // Kategorie: er sagt, WAS für eine Strecke das ist, und sagt
+                // es an drei Stellen derselben Zeile (Kante, Label, Form).
+                // Der Akzent bleibt dem einen Wert und dem Hover, der ein
+                // Zustand ist und keine dauerhafte Markierung.
+                //
+                // border-l-[3px] bleibt: die Kante ist das, was man beim
+                // Überfliegen der Liste zuerst sieht, und 3 px sind auch
+                // ohne Farbwahrnehmung noch eine Kante.
+                className={`group flex h-20 items-center gap-3 border-b border-border border-l-[3px] py-3 pr-2 pl-3 transition-colors duration-fast hover:bg-accent-subtle active:bg-accent-subtle ${ton?.rand ?? "border-l-border-strong"}`}
               >
                 <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5">
                   <span className="truncate text-base font-medium transition-colors duration-fast group-hover:text-accent">
@@ -217,24 +248,40 @@ export default function ExploreSidebar({
                   </span>
                   <div className="flex items-center gap-2">
                     {showPlainKm && (
-                      <span className="font-mono text-sm tabular-nums text-muted">
+                      // shrink-0 und whitespace-nowrap: ohne beides ist diese
+                      // Zahl das erste, was der Flexbox ausgeht. Am Preview
+                      // auf 390 px nachgesehen — aus "33.1 km" wurden zwei
+                      // Zeilen, "33.1" über "km", und die Zeile wuchs über
+                      // ihre 80 px hinaus.
+                      //
+                      // Schrumpfen soll das Signatur-Label daneben: es hat
+                      // truncate und kürzt mit Auslassungspunkten, was bei
+                      // "Ø 114 km/h" lesbar bleibt. Eine umbrechende
+                      // Masszahl ist dagegen nie richtig.
+                      <span className="shrink-0 font-mono text-sm tabular-nums whitespace-nowrap text-muted">
                         {formatKm(route.laenge_km)} km
                       </span>
                     )}
                     {signature && (
                       <span className="flex min-w-0 items-center gap-1.5">
-                        {/* Icon und Label in --color-muted. Vorher trugen
-                            beide die Signaturfarbe — bei text-xs ist die
-                            Schwelle 4,5:1, und drei der fünf Farben fielen
-                            im hellen Theme durch, zwei im dunklen. Das Token
-                            ist auf beiden Hintergründen nachgerechnet. */}
+                        {/* Icon und Label im Signaturton. Bei text-xs ist die
+                            Schwelle 4,5:1 — genau daran war die alte Palette
+                            gescheitert (drei von fünf fielen im hellen Theme
+                            durch). Die Tokens dahinter sind gegen alle drei
+                            Untergründe gerechnet, auf denen diese Zeile
+                            vorkommt; der schlechteste Wert ist 4,70:1. */}
                         {(() => {
                           const SignatureIcon = SIGNATURE_ICONS[signature.key];
                           return (
-                            <SignatureIcon className="h-3 w-3 shrink-0 text-muted" aria-hidden="true" />
+                            <SignatureIcon
+                              className={`h-3 w-3 shrink-0 ${ton?.text ?? "text-muted"}`}
+                              aria-hidden="true"
+                            />
                           );
                         })()}
-                        <span className="truncate text-xs font-medium tracking-wide text-muted">
+                        <span
+                          className={`truncate text-xs font-medium tracking-wide ${ton?.text ?? "text-muted"}`}
+                        >
                           {signature.label}
                         </span>
                       </span>
@@ -262,11 +309,16 @@ export default function ExploreSidebar({
                   </div>
                 </div>
 
-                {/* SVG-Routenform auf --color-surface statt auf einer
-                    getönten Signaturfarbe — kein Foto hier: hochgeladene
-                    Fahrt-Fotos sind bewusst nur auf der jeweiligen
-                    Streckenseite (Fotos-Sektion) bzw. der Fahrt-Detailseite
-                    sichtbar, nicht als Vorschaubild in der Explore-Liste.
+                {/* SVG-Routenform im Signaturton auf --color-surface. Die
+                    Fläche bleibt neutral — getönt wäre sie ein vierter Ton
+                    in derselben Zeile, und die Form darauf müsste dann gegen
+                    ihn gerechnet werden statt gegen die zwei Untergründe, die
+                    es ohnehin gibt.
+
+                    Kein Foto hier: hochgeladene Fahrt-Fotos sind bewusst nur
+                    auf der jeweiligen Streckenseite (Fotos-Sektion) bzw. der
+                    Fahrt-Detailseite sichtbar, nicht als Vorschaubild in der
+                    Explore-Liste.
 
                     h-14 statt h-16, passend zur auf 80 px verkürzten Zeile. */}
                 <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-md bg-surface">
@@ -274,7 +326,7 @@ export default function ExploreSidebar({
                     <svg
                       viewBox="0 0 64 48"
                       aria-hidden="true"
-                      className="absolute inset-0 h-full w-full text-muted opacity-80 transition-opacity duration-fast group-hover:text-accent group-hover:opacity-100"
+                      className={`absolute inset-0 h-full w-full opacity-80 transition-opacity duration-fast group-hover:opacity-100 ${ton?.text ?? "text-muted"}`}
                     >
                       <path
                         d={shape}

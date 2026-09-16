@@ -28,6 +28,38 @@
   --color-success: #1a7f37;
   --color-warning: #b45309;
 
+  /* DIE FÜNF SIGNATURTÖNE — die Farbe, die in PR #254 aus der App
+     verschwunden war, zurück als Token statt als Konstante.
+
+     Sie standen bis dahin als feste Hex-Werte in lib/signature.ts und
+     färbten in der Explore-Liste den linken Rand, die Streckenform, das
+     Icon und das Label. Entfernt wurden sie aus drei Gründen, von denen
+     zwei die Farbe gar nicht betrafen, sondern wo sie stand: sie wussten
+     nichts von prefers-color-scheme (kein Theme definierte sie je um), und
+     drei von fünf fielen im hellen Theme unter die 4,5:1, die das Label in
+     text-xs verlangt. Genau das ist hier behoben — die Werte stehen als
+     Token neben --color-danger und Geschwistern, werden für beide Themes
+     gesetzt, und jeder ist gegen die drei Untergründe nachgerechnet, auf
+     denen er wirklich vorkommt: --color-background, --color-surface und
+     --color-accent-subtle (der Hover-Grund der Zeile).
+
+     Hell, gerechnet (bg / surface / hover):
+       kehren   #9a3412  7.00 / 6.59 / 6.27
+       steigung #6d28d9  6.81 / 6.40 / 6.10
+       hoehe    #0f766e  5.24 / 4.93 / 4.70
+       tempo    #a21caf  6.06 / 5.70 / 5.43
+       laenge   #166534  6.83 / 6.43 / 6.12
+
+     Der dritte Grund von damals bleibt bestehen und ist der Grund für die
+     Zurückhaltung hier: fünf Farben mit nicht lernbarer Bedeutung sind
+     kein Ordnungssystem. Deshalb trägt die Zeile weiterhin Icon UND Wort —
+     die Farbe ist die dritte Kodierung, nie die einzige. */
+  --color-signatur-kehren: #9a3412;
+  --color-signatur-steigung: #6d28d9;
+  --color-signatur-hoehe: #0f766e;
+  --color-signatur-tempo: #a21caf;
+  --color-signatur-laenge: #166534;
+
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
   --radius-lg: 1rem;
@@ -92,6 +124,18 @@
     --color-danger: #ef4444;
     --color-success: #22c55e;
     --color-warning: #f59e0b;
+    /* Die fünf Signaturtöne im Dunkeln — die hellen Stufen derselben
+       Farbtöne. Gerechnet (bg / surface / hover):
+         kehren   #fb923c   8.69 / 7.76 / 7.45
+         steigung #a78bfa   7.23 / 6.45 / 6.19
+         hoehe    #2dd4bf  10.56 / 9.43 / 9.05
+         tempo    #e879f9   7.99 / 7.13 / 6.85
+         laenge   #4ade80  11.29 / 10.07 / 9.67 */
+    --color-signatur-kehren: #fb923c;
+    --color-signatur-steigung: #a78bfa;
+    --color-signatur-hoehe: #2dd4bf;
+    --color-signatur-tempo: #e879f9;
+    --color-signatur-laenge: #4ade80;
 
     --shadow-sm: 0 1px 3px color-mix(in oklch, black 40%, transparent);
     --shadow-elevated: 0 2px 8px -2px color-mix(in oklch, black 50%, transparent),
@@ -140,6 +184,18 @@
   --color-danger: #ef4444;
   --color-success: #22c55e;
   --color-warning: #f59e0b;
+  /* Die fünf Signaturtöne im Dunkeln — die hellen Stufen derselben
+     Farbtöne. Gerechnet (bg / surface / hover):
+       kehren   #fb923c   8.69 / 7.76 / 7.45
+       steigung #a78bfa   7.23 / 6.45 / 6.19
+       hoehe    #2dd4bf  10.56 / 9.43 / 9.05
+       tempo    #e879f9   7.99 / 7.13 / 6.85
+       laenge   #4ade80  11.29 / 10.07 / 9.67 */
+  --color-signatur-kehren: #fb923c;
+  --color-signatur-steigung: #a78bfa;
+  --color-signatur-hoehe: #2dd4bf;
+  --color-signatur-tempo: #e879f9;
+  --color-signatur-laenge: #4ade80;
 
   --shadow-sm: 0 1px 3px color-mix(in oklch, black 40%, transparent);
   --shadow-elevated: 0 2px 8px -2px color-mix(in oklch, black 50%, transparent),
@@ -163,6 +219,15 @@
   --color-danger: var(--color-danger);
   --color-success: var(--color-success);
   --color-warning: var(--color-warning);
+
+  /* Erst diese fünf Zeilen machen aus den Tokens oben Utilities
+     (text-signatur-kehren, border-l-signatur-kehren …). Ohne sie stünden
+     die Werte da und nichts könnte sie benutzen. */
+  --color-signatur-kehren: var(--color-signatur-kehren);
+  --color-signatur-steigung: var(--color-signatur-steigung);
+  --color-signatur-hoehe: var(--color-signatur-hoehe);
+  --color-signatur-tempo: var(--color-signatur-tempo);
+  --color-signatur-laenge: var(--color-signatur-laenge);
 
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);

@@ -24,9 +24,22 @@ import { cn } from "@/lib/utils/cn";
 // damit höher als jede Schaltfläche daneben. Wer es doch braucht, bekommt
 // einen Parameter — nicht ein angehängtes min-h-11, das lib/utils/cn.ts
 // nicht verlässlich durchsetzt.
+// max-w-full + overflow-x-auto: die Segmente tragen whitespace-nowrap, die
+// Hülle ist inline-flex — ohne diese beiden Klassen schiebt eine Leiste, die
+// nicht mehr passt, die ganze Seite nach rechts, statt selbst zu scrollen.
+//
+// Nachgerechnet für die längste Leiste der App (Feed: "Alle" / "Folge ich" /
+// "Aktivität" samt Zähler): rund 296 px. Auf 390 px bleiben nach dem
+// Seitenrahmen 350 px, auf 360 px noch 320 — beides passt. Auf 320 px
+// (iPhone SE der ersten Generation) fehlen 16 px, und genau dort greift das
+// Scrollen.
+//
+// Die 4 px Innenabstand der Hülle sind dabei nicht bloss Optik: der
+// Fokusring eines Segments liegt mit ring-offset-2 zwei Pixel ausserhalb,
+// und ein overflow-Container würde ihn ohne dieses Polster abschneiden.
 export function segmentHuelleClassName(className?: string): string {
   return cn(
-    "inline-flex items-center gap-1 rounded-full border border-border p-1",
+    "inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-border p-1",
     className,
   );
 }

@@ -67,7 +67,22 @@ export default async function AnmeldenPage({
           Der Hover machte den Text dunkler als den Ruhezustand — die
           Rückmeldung lief also andersherum als überall sonst. Jetzt ist der
           Ruhezustand lesbar und der Hover hebt weiter an. */}
-      <footer className="pb-6 text-center text-xs text-muted">
+      {/* Der Innenabstand unten rechnet die BottomNav mit ein. Dieser
+          <footer> ist ein Geschwister des Scrollbehälters, kein <main> —
+          die zentrale Regel in app/globals.css
+          (`main { padding-bottom: var(--bottom-nav-h) }`) greift hier also
+          nicht, und die fixierte Leiste lag genau über den beiden Links.
+          Am Preview auf 390 × 844 nachgesehen: sie waren vollständig
+          verdeckt.
+
+          Das ist mehr als ein Schönheitsfehler. Der Kommentar direkt
+          darüber begründet die Textfarbe damit, dass von dieser Seite aus
+          "der einzige Weg" zu Impressum und Datenschutzerklärung über diese
+          zwei Links führt — und dieser Weg war auf dem Telefon keiner.
+
+          --bottom-nav-h ist ab md 0 (siehe globals.css), der Zuschlag
+          verschwindet auf dem Desktop also von selbst. */}
+      <footer className="pb-[calc(1.5rem+var(--bottom-nav-h))] text-center text-xs text-muted">
         <a
           href={LEGAL_URLS.impressum}
           target="_blank"

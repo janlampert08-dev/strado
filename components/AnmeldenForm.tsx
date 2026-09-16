@@ -4,7 +4,7 @@ import { useActionState, useRef } from "react";
 import Link from "next/link";
 import { signIn, type AuthFormState } from "@/lib/actions/auth";
 import { Input } from "@/components/ui/Input";
-import Button from "@/components/ui/Button";
+import Button, { textAktionClassName } from "@/components/ui/Button";
 import useEingabenBewahren from "@/components/useEingabenBewahren";
 
 const initialState: AuthFormState = { error: null };
@@ -33,7 +33,12 @@ export default function AnmeldenForm({ nextHref }: { nextHref?: string } = {}) {
         </label>
         <Link
           href="/anmelden/passwort-vergessen"
-          className="-mt-2 self-start text-sm text-muted hover:text-accent hover:underline"
+          // Gedämpft statt im Akzent: der Link steht direkt unter dem
+          // Passwortfeld und soll dem Anmelden-Knopf darunter nicht die
+          // Aufmerksamkeit streitig machen. -mt-4 nimmt die Höhe, die die
+          // 44-px-Tippfläche dazubringt, aus dem Abstand zum Feld darüber
+          // wieder heraus (das Formular steht auf gap-4).
+          className={textAktionClassName({ ton: "gedaempft", className: "-mt-4 self-start" })}
         >
           Passwort vergessen?
         </Link>

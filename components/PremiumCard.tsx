@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SparklesIcon } from "@/components/NavIcons";
 import SectionHeading from "@/components/ui/SectionHeading";
 import SubmitButton from "@/components/ui/SubmitButton";
 import { buttonVariants } from "@/components/ui/Button";
@@ -33,7 +34,7 @@ import type { PremiumStatus } from "@/lib/premiumLimits";
 export default function PremiumCard({ status }: { status: PremiumStatus }) {
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-border bg-surface px-4 py-4">
-      <SectionHeading>Premium</SectionHeading>
+      <SectionHeading icon={SparklesIcon}>Premium</SectionHeading>
 
       {status.aktiv ? (
         <>

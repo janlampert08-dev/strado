@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { Dialog } from "@/components/ui/Dialog";
 import type { RoutePhoto } from "@/types/database";
+import { Image as ImageIcon } from "lucide-react";
 import SectionHeading from "@/components/ui/SectionHeading";
 
 export default function PhotoGallery({ photos }: { photos: RoutePhoto[] }) {
@@ -39,7 +40,7 @@ export default function PhotoGallery({ photos }: { photos: RoutePhoto[] }) {
 
   return (
     <section className="flex flex-col gap-3 border-t border-border pt-6">
-      <SectionHeading>
+      <SectionHeading icon={ImageIcon}>
         Fotos {photos.length > 0 && `(${photos.length})`}
       </SectionHeading>
       {photos.length === 0 ? (
