@@ -21,7 +21,7 @@
 
 ---
 
-**Stand: 14. September 2026**
+**Stand: 16. September 2026**
 
 ## 1. Verantwortliche Stelle
 
@@ -136,10 +136,27 @@ nach dem Zuschnitt zu wenig übrig, wird gar keine Karte veröffentlicht.
 der Zwischenstand (bisheriger Trail, Distanz, Startzeit) **lokal im Browser**
 gespeichert, damit eine unterbrochene Aufzeichnung — geschlossener Tab,
 Absturz, Bildschirmsperre — fortgesetzt werden kann. Dieser Zwischenspeicher
-liegt auf dem Gerät und wird nicht an uns übermittelt, solange die Fahrt nicht
-gespeichert wird. Auch **nicht angemeldete Besuchende** können eine freie Fahrt
-aufzeichnen; die Aufzeichnung bleibt dann bis zu einer allfälligen Anmeldung
-ausschliesslich lokal.
+liegt auf dem Gerät. Der **Trail selbst** wird nicht an uns übermittelt,
+solange die Fahrt nicht gespeichert wird. Auch **nicht angemeldete Besuchende**
+können eine freie Fahrt aufzeichnen; der Trail bleibt dann bis zu einer
+allfälligen Anmeldung auf dem Gerät. Unabhängig davon melden wir während der
+Aufzeichnung einzelne Positionen an den Server — siehe den nächsten Absatz.
+
+**Positionsmeldungen während der Aufzeichnung.** Besteht eine Verbindung,
+meldet die Anwendung während einer laufenden Aufzeichnung etwa **alle 20
+Sekunden** die aktuelle Position an unseren Server, der sie mit seiner eigenen
+Uhr stempelt. Das gilt **auch für nicht angemeldete Besuchende**. Zweck ist
+allein, die Dauer einer Fahrt gegen eine Uhr zu prüfen, die nicht auf dem Gerät
+läuft; ohne das liesse sich eine Bestzeit durch Verändern der Gerätezeit
+fälschen (berechtigtes Interesse an manipulationsfreien Bestenlisten). Wir
+speichern dazu **nur die jeweils letzte Meldung** — Zeitpunkt und Position —
+sowie deren Anzahl; jede neue Meldung überschreibt die vorherige, es entsteht
+also **keine Spur des Wegs**. Eine Aufzeichnung, die nie gespeichert wird,
+löschen wir spätestens nach **48 Stunden**. Wird die Fahrt gespeichert, bleibt
+die letzte Meldung als Nachweis der gemessenen Dauer bei der Fahrt; sie wird
+mit dem Konto gelöscht. Wer die Standortfreigabe verweigert oder ohne
+Verbindung fährt, kann normal aufzeichnen; die Fahrt wird dann lediglich nicht
+als „verifiziert" gekennzeichnet.
 
 **Standort ausserhalb der Aufzeichnung.** In der Streckensuche und bei der
 Streckenwahl kann der aktuelle Standort abgefragt werden, um Strecken in der
