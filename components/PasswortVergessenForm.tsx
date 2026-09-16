@@ -30,14 +30,22 @@ export default function PasswortVergessenForm({
         <h1 className="text-display font-semibold">Passwort vergessen</h1>
         {/* Bewusst konstant: dieselbe Antwort, ob es das Konto gibt oder
             nicht, und auch dann, wenn der Versand serverseitig gescheitert
-            ist (Begründung in lib/actions/auth.ts). Der Hinweis auf Dauer und
-            Spam-Ordner steht deshalb hier — er gilt unabhängig von der
-            Adresse und ersetzt die Fehlermeldung, die die Antwort sonst
-            nach Kontoexistenz unterscheiden würde. */}
+            ist (Begründung in lib/actions/auth.ts).
+
+            KEINE ZEITANGABE. Hier stand "1–2 Minuten", gestützt auf die
+            gemessenen 83 Sekunden bis zur Bestätigung von Supabase. Diese
+            Bestätigung heisst aber nur "angenommen", nicht "zugestellt":
+            solange kein eigener SMTP-Dienstleister konfiguriert ist,
+            verweigert Supabase Auth die Zustellung an jede Adresse, die
+            nicht zum Projekt-Team gehört — nachgelesen in der Supabase-
+            Dokumentation, nachgewiesen an zwei Anfragen vom 2026-09-16
+            (Status 200, keine Mail). Eine Dauer zu nennen hiesse also eine
+            Ankunft zu versprechen, die für die meisten Adressen gar nicht
+            stattfindet. Sobald der Versand über einen eigenen Dienst läuft,
+            gehört die Angabe wieder her — dann stimmt sie auch. */}
         <p className="text-sm text-foreground">
           Falls ein Konto mit dieser E-Mail-Adresse existiert, ist ein Link zum Zurücksetzen
-          unterwegs. Der Versand braucht 1–2 Minuten — schau auch im Spam-Ordner nach, bevor du
-          einen neuen Link anforderst.
+          unterwegs. Schau auch im Spam-Ordner nach.
         </p>
         <p className="text-sm text-muted">
           <Link href="/anmelden" className="font-medium text-accent hover:underline">
@@ -61,17 +69,6 @@ export default function PasswortVergessenForm({
       <p className="text-sm text-muted">
         Gib deine E-Mail-Adresse ein — wir schicken dir einen Link zum Zurücksetzen.
       </p>
-      {/* Die Zahl ist gemessen, nicht geschätzt: der Versand über Supabase
-          brauchte am 2026-09-16 rund 83 Sekunden (lib/actions/auth.ts nennt
-          die Messung). Sie steht hier und nicht erst in der Bestätigung,
-          weil sie dort zu spät käme — wer nach zwanzig Sekunden nichts im
-          Postfach sieht, fordert sonst einen zweiten Link an, und jeder
-          weitere Anlauf kostet wieder dieselbe Zeit.
-
-          Kleiner gesetzt als der Satz darüber: es ist eine Fussnote zur
-          Anleitung, keine zweite Anweisung. -mt-4 gegen den gap-6 des
-          Containers, damit sie an dem Satz hängt, auf den sie sich bezieht. */}
-      <p className="-mt-4 text-xs text-muted">Die E-Mail braucht 1–2 Minuten.</p>
       <form ref={formRef} action={formAction} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           E-Mail
