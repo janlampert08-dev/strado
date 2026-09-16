@@ -16,6 +16,77 @@ geschlossen sind (etwa §5.1, die Grösse der Start-/Stopp-Schaltflächen — he
 
 ---
 
+## Umsetzungsstand (2026-09-16)
+
+Das Konzept ist zum grossen Teil gebaut. Diese Tabelle ist die Kurzfassung;
+jeder Commit trägt seine Begründung im Text.
+
+| Teil | Stand |
+| --- | --- |
+| A1 Schaltflächen, eine Silhouette | **umgesetzt** |
+| A2 `ui/Kennzahl`, höchstens vier Kacheln | **umgesetzt** — Strecken-, Fahrt- und Profilseite |
+| A3 `ui/IconButton`, 44 px | **umgesetzt** — acht Stellen, schliesst `uiux.md` §5.2 |
+| A4 Eine Farbquelle | **umgesetzt** — `SIGNATURE_COLORS`, `ROUTE_BLUE_PALETTE` und `TRACK_COLOR` sind weg |
+| A5 `ui/SegmentedControl` | **umgesetzt** — fünf Fassungen werden eine |
+| A6 Zeichen werden Icons | **umgesetzt** — `★ ☆ ⋮` |
+| A7 `ui/Seitenrahmen` | **umgesetzt** für 16 Seiten; `premium/**` bleibt offen (s. u.) |
+| A8 Peek-Fenster | **umgesetzt** |
+| B2 Aufzeichnungsschirm | **umgesetzt**, bis auf die Rückfrage beim Beenden (s. u.) |
+| B3 Fazit | **umgesetzt**, bis auf zwei bewusste Abweichungen (s. u.) |
+| B4 Aktivität wird ein Tab | **umgesetzt** |
+| B5 Feed, zwei Zeilen je Karte | **umgesetzt** |
+| C2/C3 Premium-Platzierung | **umgesetzt** — Dauerschloss weg, Zeile statt Card, eine Liste |
+| 3.9 Profil entschachteln | **umgesetzt** |
+| 3b Kauf-Fluss zusammenlegen | **offen — geschützter Bereich, eigener PR** |
+
+### Was bewusst offen ist
+
+- **Der Kauf-Fluss** (`/profil/premium` und `/zahlung` zusammenlegen) berührt
+  den Stripe-Pfad. Eigener PR, eigene Abnahme — deshalb sind auch die drei
+  Seiten unter `app/profil/premium/**` als einzige nicht auf den
+  `Seitenrahmen` umgestellt. Die Grenze ist die Grenze, auch wenn eine
+  Container-Breite harmlos wäre.
+- **Die Rückfrage beim Beenden einer Aufzeichnung** (`uiux.md` §5.3) ist eine
+  Verhaltensänderung, keine Darstellung. Sie gehört abgenommen, nicht
+  nebenbei mitgenommen.
+- **Das Formular „+ Fahrzeug hinzufügen"** im Fazit bleibt, wo es ist. Der
+  Entwurf wollte es in die Garage schicken — aber es ist bereits zugeklappt
+  und opt-in, und wer es am Strassenrand braucht, braucht es genau dort: die
+  Motorklasse entscheidet über die Wertung. Es zu entfernen wäre eine
+  Wegnahme ohne Ersatz gewesen.
+- **Fotos bleiben im Fazit.** Sie später nachzutragen gibt es heute nicht
+  (`CompletionPhotoGallery` kann nur entfernen); das verlangte einen zweiten
+  Upload-Pfad in `lib/actions/completions.ts` und ist ein eigenes Vorhaben.
+
+### Drei sichtbare Kosten, die genannt gehören
+
+1. Die Anmelde-Formulare sind ab `sm` 64 px breiter (`max-w-sm` →
+   `max-w-md`). Auf dem Telefon unverändert.
+2. Profil und öffentliches Profil sind ab `lg` schmaler (`max-w-4xl` →
+   `max-w-3xl`); das Fahrzeug-Raster verliert auf sehr breiten Schirmen eine
+   Spalte. Das ist der Preis von drei Breiten statt zwölf. Eine vierte Breite
+   nur für zwei Seiten wäre der Anfang zurück zu zwölf.
+3. Auf der Karte unterscheiden sich Strecken nicht mehr über den Farbton,
+   sondern über Deckkraft und Linienstärke. Beabsichtigt — Farbe ist das
+   erste, was auf einem Telefon im Sonnenlicht zusammenbricht.
+
+### Was die Umsetzung zusätzlich gefunden hat
+
+- `TRACK_COLOR` war `#3D5AFE`, also der Akzentwert des **hellen** Themes,
+  fest verdrahtet. Die Karte tauschte ihren Stil im Dunkelmodus längst
+  korrekt — die aufgezeichnete Spur und der Live-Positionspunkt blieben im
+  Tagblau stehen. Genau der Fall, für den der Dunkelmodus da ist: die
+  Aufzeichnung bei Nacht. `lib/theme.ts` löst das Token jetzt zur Laufzeit
+  auf.
+- Der Kommentar in `ThemeToggle.tsx` behauptete „gleiche
+  Segmented-Control-Optik wie der Privat/Öffentlich-Umschalter". Das stimmte
+  nicht: dort `py-1.5`, hier `py-2`, und die Feed-Reiter waren wieder anders.
+- Ohne den Eintrag in der Leiste gäbe es für **abgemeldete** Besucher keinen
+  sichtbaren Weg mehr zu den Bestenlisten. Die Reiterleiste wird ihnen
+  deshalb jetzt gezeigt — vorher war sie an eine Session gebunden.
+
+---
+
 ## 0. Was „mobile-first" hier heisst
 
 Nicht „funktioniert auch auf dem Handy". Sondern: **das Telefon ist das
