@@ -1,0 +1,131 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500;600&amp;display=swap">
+  <style>
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #fafafa; color: #131316; }
+    a { color: #3d5afe; } a:hover { color: #2f49d6; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+    .tab { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 9px 2px; flex: 1 1 0; }
+    .tl { font-size: 10px; font-weight: 500; }
+    .av { width: 40px; height: 40px; border-radius: 999px; background: #f3f3f4;
+          border: 1px solid rgba(19,19,22,.12); display: flex; align-items: center;
+          justify-content: center; flex-shrink: 0; font-family: "IBM Plex Mono", monospace;
+          font-size: 13px; color: #666b74; }
+    .karte { display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px solid rgba(19,19,22,.12); }
+    .mess { position: absolute; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 9px;
+            font-weight: 600; color: #1a7f37; background: #fafafa; padding: 1px 5px; border-radius: 4px;
+            border: 1px solid #1a7f37; white-space: nowrap; z-index: 5; }
+  </style>
+</helmet>
+
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; background: #fafafa;">
+
+  <div style="position: absolute; inset: 0 0 auto 0; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid rgba(19,19,22,.12); background: rgba(250,250,250,.85); z-index: 4;">
+    <svg viewBox="0 0 268.83 67.92" style="height: 18px; width: auto; fill: #131316;" aria-hidden="true"><path d="M23.17 67.92Q14.83 67.92 9.88 65.29Q4.92 62.67 2.63 58.67Q0.33 54.67 0 50.67L12.83 50.67Q13.25 52.83 14.63 54.63Q16 56.42 18.42 57.5Q20.83 58.58 24.08 58.58Q28.5 58.58 30.88 56.88Q33.25 55.17 33.25 52.5Q33.25 50 31.17 48.75Q29.08 47.5 24.75 46.67L17 45.17Q9.58 43.75 5.71 39.79Q1.83 35.83 1.83 29.83Q1.83 24.42 4.5 20.42Q7.17 16.42 11.96 14.17Q16.75 11.92 23.17 11.92Q29.83 11.92 34.54 14.17Q39.25 16.42 41.83 20.29Q44.42 24.17 44.83 29L32.33 29Q31.83 25.67 29.29 23.63Q26.75 21.58 22.83 21.58Q19 21.58 16.83 23.21Q14.67 24.83 14.67 27.5Q14.67 29.83 16.63 31.13Q18.58 32.42 22.42 33.17L30.5 34.75Q38.25 36.25 42.17 40.25Q46.08 44.25 46.08 50.25Q46.08 55.58 43.29 59.63Q40.5 63.67 35.42 65.79Q30.33 67.92 23.17 67.92Z"/></svg>
+  </div>
+
+  <div style="position: absolute; top: 56px; left: 0; right: 0; bottom: 64px; overflow: hidden; padding: 16px 20px 0;">
+
+    <!-- Drei Reiter -->
+    <div style="display: inline-flex; gap: 4px; border: 1px solid rgba(19,19,22,.12); border-radius: 999px; padding: 4px; position: relative;">
+      <span style="height: 36px; display: inline-flex; align-items: center; border-radius: 999px; background: #131316; color: #fafafa; padding: 0 16px; font-size: 13px; font-weight: 500;">Alle</span>
+      <span style="height: 36px; display: inline-flex; align-items: center; border-radius: 999px; color: #666b74; padding: 0 16px; font-size: 13px; font-weight: 500;">Folge ich</span>
+      <span style="height: 36px; display: inline-flex; align-items: center; border-radius: 999px; color: #3d5afe; padding: 0 16px; font-size: 13px; font-weight: 500; border: 1px dashed #3d5afe;">Rangliste</span>
+    </div>
+    <span class="mess" style="right: 20px; top: 22px;">die Bestenlisten ziehen hier ein</span>
+
+    <div style="height: 8px;"></div>
+
+    <div class="karte" style="position: relative;">
+      <div class="av">MB</div>
+      <div style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1; min-width: 0;">
+        <span style="font-size: 16px; font-weight: 500;">Albispass</span>
+        <span style="font-size: 14px; color: #666b74;">M. Brunner &middot; Zürichsee &middot; 14.2 km</span>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; flex-shrink: 0;">
+        <svg viewBox="0 0 56 24" style="width: 56px; height: 24px;" aria-hidden="true"><path d="M3 21 C 14 18, 18 8, 28 6 S 46 4, 53 3" fill="none" stroke="#3d5afe" stroke-width="2" stroke-linecap="round"/></svg>
+        <span style="display: inline-flex; align-items: center; gap: 5px; height: 32px; border-radius: 999px; border: 1px solid rgba(19,19,22,.12); padding: 0 10px;">
+          <svg viewBox="0 0 24 24" style="width: 15px; height: 15px; stroke: #666b74; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+          <span class="mono" style="font-size: 13px; color: #666b74;">12</span>
+        </span>
+      </div>
+      <span class="mess" style="left: 52px; top: -6px;">Ortsname zuerst</span>
+    </div>
+
+    <div class="karte">
+      <div class="av">SK</div>
+      <div style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1; min-width: 0;">
+        <span style="font-size: 16px; font-weight: 500;">Runde ab Wädenswil</span>
+        <span style="font-size: 14px; color: #666b74;">S. Keller &middot; Zürichsee &middot; 38.0 km</span>
+        <span style="display: inline-flex; align-self: flex-start; font-size: 12px; color: #666b74; border: 1px solid rgba(19,19,22,.12); border-radius: 999px; padding: 2px 8px; margin-top: 2px;">Freie Fahrt</span>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; flex-shrink: 0;">
+        <svg viewBox="0 0 56 24" style="width: 56px; height: 24px;" aria-hidden="true"><path d="M5 12 C 10 2, 22 2, 28 12 S 46 22, 51 12" fill="none" stroke="#3d5afe" stroke-width="2" stroke-linecap="round"/></svg>
+        <span style="display: inline-flex; align-items: center; gap: 5px; height: 32px; border-radius: 999px; border: 1px solid #3d5afe; background: #ebedfa; padding: 0 10px;">
+          <svg viewBox="0 0 24 24" style="width: 15px; height: 15px; stroke: #3d5afe; fill: #3d5afe; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+          <span class="mono" style="font-size: 13px; color: #3d5afe;">5</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="karte">
+      <div class="av">JL</div>
+      <div style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1; min-width: 0;">
+        <span style="font-size: 16px; font-weight: 500;">Sattelegg</span>
+        <span style="font-size: 14px; color: #666b74;">J. Lampert &middot; Schwyz &middot; 22.4 km</span>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; flex-shrink: 0;">
+        <svg viewBox="0 0 56 24" style="width: 56px; height: 24px;" aria-hidden="true"><path d="M3 18 C 12 20, 18 4, 28 8 S 46 20, 53 10" fill="none" stroke="#3d5afe" stroke-width="2" stroke-linecap="round"/></svg>
+        <span style="display: inline-flex; align-items: center; gap: 5px; height: 32px; border-radius: 999px; border: 1px solid rgba(19,19,22,.12); padding: 0 10px;">
+          <svg viewBox="0 0 24 24" style="width: 15px; height: 15px; stroke: #666b74; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+          <span class="mono" style="font-size: 13px; color: #666b74;">3</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="karte">
+      <div class="av">AM</div>
+      <div style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1; min-width: 0;">
+        <span style="font-size: 16px; font-weight: 500;">Hulftegg</span>
+        <span style="font-size: 14px; color: #666b74;">A. Meier &middot; Toggenburg &middot; 18.7 km</span>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; flex-shrink: 0;">
+        <svg viewBox="0 0 56 24" style="width: 56px; height: 24px;" aria-hidden="true"><path d="M4 8 C 14 6, 20 18, 30 16 S 46 8, 52 14" fill="none" stroke="#3d5afe" stroke-width="2" stroke-linecap="round"/></svg>
+        <span style="display: inline-flex; align-items: center; gap: 5px; height: 32px; border-radius: 999px; border: 1px solid rgba(19,19,22,.12); padding: 0 10px;">
+          <svg viewBox="0 0 24 24" style="width: 15px; height: 15px; stroke: #666b74; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+          <span class="mono" style="font-size: 13px; color: #666b74;">7</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="karte" style="border-bottom: none;">
+      <div class="av">RF</div>
+      <div style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1; min-width: 0;">
+        <span style="font-size: 16px; font-weight: 500;">Ricken</span>
+        <span style="font-size: 14px; color: #666b74;">R. Frei &middot; St. Gallen &middot; 11.9 km</span>
+      </div>
+    </div>
+
+    <span class="mess" style="left: 20px; bottom: 26px;">fünf Fahrten statt zwei</span>
+
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 64px; display: flex; border-top: 1px solid rgba(19,19,22,.12); background: #fafafa; z-index: 4;">
+    <div class="tab"><svg viewBox="0 0 24 24" style="width: 22px; height: 22px; stroke: #666b74; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg><span class="tl" style="color: #666b74;">Strecken</span></div>
+    <div class="tab"><svg viewBox="0 0 24 24" style="width: 22px; height: 22px; stroke: #3d5afe; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg><span class="tl" style="color: #3d5afe;">Feed</span></div>
+    <div class="tab"><svg viewBox="0 0 24 24" style="width: 24px; height: 24px; stroke: #666b74; fill: none; stroke-width: 2;" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg><span class="tl" style="color: #666b74;">Fahren</span></div>
+    <div class="tab"><svg viewBox="0 0 24 24" style="width: 22px; height: 22px; stroke: #666b74; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg><span class="tl" style="color: #666b74;">Aktivität</span></div>
+    <div class="tab"><svg viewBox="0 0 24 24" style="width: 22px; height: 22px; stroke: #666b74; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="tl" style="color: #666b74;">Ich</span></div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500;600&amp;display=swap">
+  <style>
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #fafafa; color: #131316; }
+    a { color: #3d5afe; } a:hover { color: #2f49d6; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+    .mess { position: absolute; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 9px;
+            font-weight: 600; color: #b45309; background: #fafafa; padding: 1px 5px; border-radius: 4px;
+            border: 1px solid #b45309; white-space: nowrap; z-index: 5; }
+  </style>
+</helmet>
+
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; background: #fafafa;">
+
+  <!-- Karte -->
+  <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 272px; background: #eceff1;">
+    <svg viewBox="0 0 390 572" style="width: 100%; height: 100%;" aria-hidden="true">
+      <path d="M-10 430 C 70 400, 110 300, 180 270 S 300 180, 400 90" fill="none" stroke="#3D5AFE" stroke-width="5" stroke-linecap="round"/>
+      <circle cx="180" cy="270" r="9" fill="#3d5afe" stroke="#fafafa" stroke-width="3"/>
+    </svg>
+  </div>
+
+  <!-- Bedienfeld -->
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 272px; border-top: 1px solid rgba(19,19,22,.30); background: #fafafa; padding: 16px; box-sizing: border-box;">
+
+    <p class="mono" style="margin: 0; font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #666b74;">Aufzeichnung läuft</p>
+
+    <div style="height: 12px;"></div>
+
+    <!-- 5 Werte in grid-cols-3 -->
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; position: relative;">
+      <div><div style="font-size: 12px; color: #666b74;">Distanz</div><div class="mono" style="font-size: 20px;">8.40 km</div></div>
+      <div><div style="font-size: 12px; color: #666b74;">Zeit</div><div class="mono" style="font-size: 20px;">11:24</div></div>
+      <div><div style="font-size: 12px; color: #666b74;">Tempo</div><div class="mono" style="font-size: 18px;">62 km/h</div></div>
+      <div><div style="font-size: 12px; color: #666b74;">Höhe</div><div class="mono" style="font-size: 18px;">640 m</div></div>
+      <div><div style="font-size: 12px; color: #666b74;">Noch</div><div class="mono" style="font-size: 18px;">5.8 km</div></div>
+      <div></div>
+    </div>
+
+    <span class="mess" style="left: 16px; top: 44px;">Beschriftungen 12 px</span>
+    <span class="mess" style="right: 16px; top: 72px;">20 px neben 18 px</span>
+
+    <div style="height: 16px;"></div>
+
+    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; position: relative;">
+      <span style="display: inline-flex; align-items: center; justify-content: center; height: 52px; border-radius: 999px; background: #3d5afe; color: #fafafa; font-size: 16px; font-weight: 500; padding: 0 24px;">Strecke beenden</span>
+      <p style="margin: 0; font-size: 12px; color: #666b74; max-width: 150px; line-height: 1.4;">Bildschirm eingeschaltet lassen — GPS-Tracking im Browser pausiert sonst.</p>
+    </div>
+
+    <span class="mess" style="left: 16px; top: 232px;">ein Tipper, unwiderruflich</span>
+    <span class="mess" style="right: 16px; top: 232px;">Warnung so gross wie eine Fussnote</span>
+
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

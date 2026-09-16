@@ -5,19 +5,21 @@ Die Artboards, aus denen der Struktur-Canvas zum Konzept in
 veröffentlichter Canvas sonst nur als fertige Seite existiert und niemand
 mehr nachvollziehen kann, woher eine Zahl darin stammt.
 
-Fünf Seiten, dreizehn Artboards:
+Neun Seiten, 21 Artboards:
 
-| Seite | Datei | Zeigt |
+| Seite | Dateien | Zeigt |
 | --- | --- | --- |
-| Bildschirme | `StartVorher` / `StartNachher` | Startseite, 390 × 844, mit den gerechneten Höhen |
-| | `StreckeVorher` / `StreckeNachher` | Streckenseite — 7 Kacheln gegen 4 plus Zeile |
-| | `ProfilVorher` / `ProfilNachher` | Profil — drei Rahmenebenen gegen eine |
-| Bausteine | `Bausteine.dc.html` | Die sieben Muster mit den exakten Werten (= Anhang A) |
-| Soll-Struktur | `Main.dc.html` | Der ausgearbeitete Vorschlag (Richtung B) |
-| Befund | `Ist.dc.html` | Die 27 Flächen, gruppiert |
-| | `Kernloop.dc.html` | Die neun Schritte gegen die Flächen gelegt |
-| Richtungen | `RichtungA/B/C.dc.html` | Die drei Alternativen mit ihrem Preis |
-| — | `canvas.json` | Seiten, Anordnung, Notizen |
+| Userflow | `Flow` | Die vier Übergänge, an denen die Schleife hakt (= Anhang B) |
+| Fahren | `TrackingVorher/Nachher`, `FazitVorher/Nachher` | Die beiden Schirme, die im Fahrzeug bedient werden |
+| Feed & Fahrt | `Feed`, `FahrtDetail` | Schritt 9 und Schritt 6/7 |
+| Premium | `Premium` | Wo das Angebot auftaucht und wie leise (= Anhang C) |
+| Bildschirme | `StartVorher/Nachher`, `StreckeVorher/Nachher`, `ProfilVorher/Nachher` | Die drei Kernflächen im Paar |
+| Bausteine | `Bausteine` | Die sieben Muster mit den exakten Werten (= Anhang A) |
+| Soll-Struktur | `Main` | Der ausgearbeitete Vorschlag (Richtung B) |
+| Befund | `Ist`, `Kernloop` | Die 27 Flächen und die neun Schritte dagegengelegt |
+| Richtungen | `RichtungA/B/C` | Die drei Alternativen mit ihrem Preis |
+
+`canvas.json` trägt Seiten, Anordnung und Notizen.
 
 ## Die „Vorher"-Bildschirme sind nachgebaut, nicht erfunden
 

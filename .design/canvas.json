@@ -1,5 +1,9 @@
 {
   "pages": [
+    { "id": "flow", "name": "Userflow" },
+    { "id": "fahren", "name": "Fahren" },
+    { "id": "gemeinschaft", "name": "Feed & Fahrt" },
+    { "id": "premium", "name": "Premium" },
     { "id": "bildschirme", "name": "Bildschirme" },
     { "id": "bausteine", "name": "Bausteine" },
     { "id": "soll", "name": "Soll-Struktur" },
@@ -7,6 +11,18 @@
     { "id": "richtungen", "name": "Richtungen" }
   ],
   "artboards": [
+    { "file": "Flow.dc.html", "page": "flow", "x": 0, "y": 0, "w": 1280, "h": 1020, "title": "Vier Übergänge" },
+
+    { "file": "TrackingVorher.dc.html",  "page": "fahren", "x": 0,    "y": 0, "w": 390, "h": 844, "title": "Aufzeichnung — heute" },
+    { "file": "TrackingNachher.dc.html", "page": "fahren", "x": 510,  "y": 0, "w": 390, "h": 844, "title": "Aufzeichnung — Vorschlag" },
+    { "file": "FazitVorher.dc.html",     "page": "fahren", "x": 1120, "y": 0, "w": 390, "h": 844, "title": "Fazit — heute" },
+    { "file": "FazitNachher.dc.html",    "page": "fahren", "x": 1630, "y": 0, "w": 390, "h": 844, "title": "Fazit — Vorschlag" },
+
+    { "file": "Feed.dc.html",        "page": "gemeinschaft", "x": 0,   "y": 0, "w": 390, "h": 844, "title": "Feed — Vorschlag" },
+    { "file": "FahrtDetail.dc.html", "page": "gemeinschaft", "x": 510, "y": 0, "w": 390, "h": 844, "title": "Fahrt — Vorschlag" },
+
+    { "file": "Premium.dc.html", "page": "premium", "x": 0, "y": 0, "w": 1280, "h": 1320, "title": "Premium — wo und wie leise" },
+
     { "file": "StartVorher.dc.html",    "page": "bildschirme", "x": 0,    "y": 0, "w": 390, "h": 844, "title": "Start — heute" },
     { "file": "StartNachher.dc.html",   "page": "bildschirme", "x": 510,  "y": 0, "w": 390, "h": 844, "title": "Start — Vorschlag" },
     { "file": "StreckeVorher.dc.html",  "page": "bildschirme", "x": 1120, "y": 0, "w": 390, "h": 844, "title": "Strecke — heute" },
@@ -26,6 +42,38 @@
     { "file": "RichtungC.dc.html", "page": "richtungen", "x": 1020, "y": 0, "w": 390, "h": 844, "title": "C — Die Karte ist die App" }
   ],
   "annotations": [
+    {
+      "id": "note-flow",
+      "page": "flow",
+      "x": 0,
+      "y": -150,
+      "w": 780,
+      "text": "Die Schritte selbst funktionieren. Was klemmt, sind die vier Übergänge dazwischen.\n\nOrange markiert: hier bricht der Übergang heute. Blau: läuft."
+    },
+    {
+      "id": "note-fahren",
+      "page": "fahren",
+      "x": 0,
+      "y": -170,
+      "w": 900,
+      "text": "Die beiden Schirme, die im Fahrzeug bedient werden — links heute, rechts der Vorschlag.\n\nDer Aufzeichnungsschirm beschriftet seine Zahlen heute in 12 px. Das Fazit stellt sechs Abschnitte zwischen die Fahrt und das Wort „gespeichert“."
+    },
+    {
+      "id": "note-gemeinschaft",
+      "page": "gemeinschaft",
+      "x": 0,
+      "y": -150,
+      "w": 780,
+      "text": "Schritt 9 und Schritt 6/7.\n\nIm Feed steht der Ortsname zuerst — er ist laut AGENTS.md die Einheit des Wiedererkennens. Vier Zeilen je Karte werden zwei, damit fünf statt zwei Fahrten auf einen Schirm passen."
+    },
+    {
+      "id": "note-premium",
+      "page": "premium",
+      "x": 0,
+      "y": -150,
+      "w": 780,
+      "text": "Additives Gating ist entschieden (docs/premium-plan.md). Diese Seite sagt nur, wie es aussieht.\n\nDie kurze Antwort: am Punkt der Reibung, nie als Dauerzustand, nie auf einem deaktivierten Bedienelement, und nie im gefüllten Akzent — der gehört den Handlungen des Nutzers."
+    },
     {
       "id": "note-bildschirme",
       "page": "bildschirme",
@@ -67,5 +115,5 @@
       "text": "Drei Richtungen entlang verschiedener Achsen, nicht drei Abstufungen derselben.\n\nA reduziert die Zahl der Ziele, B richtet sie am Loop aus, C schafft sie ab. Jede mit ihrem echten Preis daneben."
     }
   ],
-  "launch": { "view": "canvas", "page": "bildschirme" }
+  "launch": { "view": "canvas", "page": "flow" }
 }

@@ -1,0 +1,192 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500;600&amp;display=swap">
+  <style>
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #fafafa; color: #131316; }
+    a { color: #3d5afe; } a:hover { color: #2f49d6; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+    .blk { display: flex; flex-direction: column; gap: 14px; border: 1px solid rgba(19,19,22,.12);
+           border-radius: 16px; background: #ffffff; padding: 20px; }
+    .bt { font-size: 15px; font-weight: 600; }
+    .bs { font-size: 13px; line-height: 1.55; color: #666b74; margin: 0; }
+    table { border-collapse: collapse; width: 100%; }
+    td, th { text-align: left; padding: 7px 10px 7px 0; font-size: 12.5px; vertical-align: top; line-height: 1.5; }
+    th { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px; font-weight: 600;
+         letter-spacing: .08em; text-transform: uppercase; color: #666b74; border-bottom: 1px solid rgba(19,19,22,.12); }
+    td { border-bottom: 1px solid rgba(19,19,22,.12); }
+    .m { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11.5px; }
+    .ok { color: #1a7f37; font-weight: 600; }
+    .no { color: #b45309; font-weight: 600; }
+    .frag { width: 300px; border: 1px solid rgba(19,19,22,.12); border-radius: 14px;
+            background: #fafafa; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .regel { display: flex; gap: 12px; align-items: flex-start; }
+    .rn { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; font-weight: 600;
+          color: #fafafa; background: #131316; width: 22px; height: 22px; border-radius: 999px;
+          display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  </style>
+</helmet>
+
+<div style="display: flex; flex-direction: column; gap: 26px; padding: 44px; background: #fafafa; min-height: 100%; box-sizing: border-box;">
+
+  <div style="display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid rgba(19,19,22,.12); padding-bottom: 20px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <svg viewBox="0 0 92 54" style="height: 15px; width: auto; fill: #131316;" aria-hidden="true"><path d="M0 27A46 27 0 1 1 92 27A46 27 0 1 1 0 27ZM12 23.5A34 14.5 0 1 0 80 23.5A34 14.5 0 1 0 12 23.5Z"/></svg>
+      <span class="mono" style="font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #666b74;">Premium</span>
+    </div>
+    <h1 style="margin: 0; font-size: 32px; font-weight: 600; letter-spacing: -.02em; line-height: 1.1;">Wo es auftaucht — und wie leise</h1>
+    <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #666b74; max-width: 84ch;"><span class="mono" style="font-size: 13px;">docs/premium-plan.md</span> setzt <strong style="color: #131316; font-weight: 600;">additives Gating</strong>: Premium hebt Grenzen an und legt Neues obendrauf, es nimmt nichts weg. Die Regel steht &mdash; die Darstellung hält sie an einer Stelle nicht ein.</p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1.15fr 1fr; gap: 20px;">
+
+    <!-- Heute -->
+    <div class="blk">
+      <span class="bt">Heute: fünf Stellen</span>
+      <table>
+        <tr><th style="width: 34%;">Ort</th><th style="width: 30%;">Wie</th><th>Urteil</th></tr>
+        <tr>
+          <td class="m">RouteActionsMenu</td>
+          <td>deaktivierter Eintrag<br>„GPX exportieren (Premium)"</td>
+          <td><span class="no">Dauerzustand.</span> Ein Schloss auf jeder Streckenseite, für jedes Gratis-Konto, immer &mdash; auch wenn niemand je exportieren wollte.</td>
+        </tr>
+        <tr>
+          <td class="m">/profil, zuunterst</td>
+          <td>Card mit Aufzählung und gefülltem Knopf</td>
+          <td><span class="no">Falscher Ort.</span> Das Profil ist die Selbstdarstellung des Nutzers, kein Werbeplatz. Immerhin steht sie unten und unterbricht nichts.</td>
+        </tr>
+        <tr>
+          <td class="m">OfflineRouteButton</td>
+          <td>Beschriftung „(Premium)" + Hinweis bei vollem Kontingent</td>
+          <td><span class="ok">Der Hinweis ist richtig</span> &mdash; er kommt, wenn die drei Strecken wirklich voll sind. Die Dauerbeschriftung ist es nicht.</td>
+        </tr>
+        <tr>
+          <td class="m">MultiPhotoInput</td>
+          <td>6 statt 12 Fotos</td>
+          <td><span class="ok">Vorbildlich.</span> Unsichtbar, bis es zählt.</td>
+        </tr>
+        <tr>
+          <td class="m">/profil/premium</td>
+          <td>die Kaufseite</td>
+          <td><span class="ok">Der Ort dafür.</span></td>
+        </tr>
+      </table>
+      <p class="bs">Dazu ein Wartungsproblem, das der Code selbst benennt: die Vorteilsliste steht in <strong style="color: #131316;">drei Kopien</strong>. Eine davon warb nach Migration <span class="mono">0086</span> monatelang mit „Eigene Strecken erstellen", obwohl das längst wieder kostenlos war.</p>
+    </div>
+
+    <!-- Regeln -->
+    <div class="blk">
+      <span class="bt">Drei Regeln</span>
+      <div class="regel">
+        <span class="rn">1</span>
+        <div><p class="bs" style="color: #131316; font-weight: 500;">Premium erscheint am Punkt der Reibung, nicht als Dauerzustand.</p><p class="bs">Ein Bedienelement trägt im Ruhezustand nie „(Premium)". Es arbeitet. Erst wenn die Gratis-Grenze wirklich erreicht ist, erscheint das Angebot &mdash; inline, einmal, mit der konkreten Zahl.</p></div>
+      </div>
+      <div class="regel">
+        <span class="rn">2</span>
+        <div><p class="bs" style="color: #131316; font-weight: 500;">Kein deaktiviertes Bedienelement trägt den Preis.</p><p class="bs">Der GPX-Eintrag bleibt bedienbar; das Antippen zeigt das Angebot. Ein Tipper mehr für Gratis-Konten, dafür null dauerhafte Unruhe für alle.</p></div>
+      </div>
+      <div class="regel">
+        <span class="rn">3</span>
+        <div><p class="bs" style="color: #131316; font-weight: 500;">Eine Liste, ein Ort.</p><p class="bs">Die Vorteile leben in <span class="mono">lib/premiumVorteile.ts</span>. Drei Kopien werden eine; die Profilseite zeigt eine Zeile, keine Aufzählung.</p></div>
+      </div>
+      <div style="border-top: 1px solid rgba(19,19,22,.12); padding-top: 14px;">
+        <p class="bs" style="color: #131316; font-weight: 500; margin-bottom: 6px;">Und optisch:</p>
+        <p class="bs">Der Verkauf bekommt nie den gefüllten Akzent &mdash; der gehört den Handlungen des Nutzers („Strecke starten", „Fahrt speichern"). Premium wirbt im Umriss oder als Textlink.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Die Momente -->
+  <div class="blk">
+    <span class="bt">Die vier Momente, gezeichnet</span>
+    <p class="bs">Mehr gibt es nicht. Kein Banner über dem Feed, keins über der Karte, keins im Aufzeichnungsschirm.</p>
+    <div style="display: flex; gap: 18px; flex-wrap: wrap;">
+
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <span class="mono" style="font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #666b74;">1 &middot; Kontingent erreicht</span>
+        <div class="frag">
+          <span style="display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; height: 44px; border-radius: 999px; border: 1px solid rgba(19,19,22,.12); padding: 0 16px; font-size: 14px; font-weight: 500;">
+            <svg viewBox="0 0 24 24" style="width: 18px; height: 18px; stroke: #131316; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            Offline speichern
+          </span>
+          <div style="display: flex; flex-direction: column; gap: 6px; border-radius: 12px; background: #f3f3f4; padding: 12px;">
+            <span style="font-size: 13px; line-height: 1.5;">Drei Strecken sind offline gespeichert — das ist das Gratis-Kontingent. Entferne eine, oder nimm Premium für unbegrenzt viele.</span>
+            <span style="font-size: 13px; font-weight: 500; color: #3d5afe;">Premium ansehen →</span>
+          </div>
+        </div>
+        <span class="mono" style="font-size: 10px; color: #1a7f37;">gibt es heute schon — bleibt</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <span class="mono" style="font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #666b74;">2 &middot; GPX antippen</span>
+        <div class="frag">
+          <div style="display: flex; flex-direction: column; border: 1px solid rgba(19,19,22,.12); border-radius: 12px; overflow: hidden;">
+            <span style="font-size: 13px; padding: 11px 14px; border-bottom: 1px solid rgba(19,19,22,.12);">Melden</span>
+            <span style="font-size: 13px; padding: 11px 14px;">GPX exportieren</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px; border-radius: 12px; background: #f3f3f4; padding: 12px;">
+            <span style="font-size: 13px; line-height: 1.5;">Kuratierte Strecken als GPX gehören zu Premium. Deine eigenen Fahrten kannst du immer exportieren.</span>
+            <span style="font-size: 13px; font-weight: 500; color: #3d5afe;">Premium ansehen →</span>
+          </div>
+        </div>
+        <span class="mono" style="font-size: 10px; color: #b45309;">heute: deaktiviert mit „(Premium)"</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <span class="mono" style="font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #666b74;">3 &middot; Einstellungen</span>
+        <div class="frag">
+          <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(19,19,22,.12); padding-bottom: 12px;">
+            <span style="font-size: 14px; font-weight: 500;">Darstellung</span>
+            <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; stroke: #666b74; fill: none; stroke-width: 2;" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          </div>
+          <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(19,19,22,.12); padding-bottom: 12px;">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 14px; font-weight: 500;">Premium</span>
+              <span style="font-size: 12px; color: #666b74;">Offline ohne Limit, 12 Fotos, GPX</span>
+            </div>
+            <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; stroke: #666b74; fill: none; stroke-width: 2;" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          </div>
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: 14px; font-weight: 500;">Konto</span>
+            <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; stroke: #666b74; fill: none; stroke-width: 2;" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          </div>
+        </div>
+        <span class="mono" style="font-size: 10px; color: #1a7f37;">eine Zeile unter Gleichen</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <span class="mono" style="font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #666b74;">4 &middot; Profil, zuunterst</span>
+        <div class="frag">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid rgba(19,19,22,.12); padding-top: 14px;">
+            <span style="font-size: 13px; color: #666b74; line-height: 1.5;">Unbegrenzt offline, 12 Fotos pro Fahrt, GPX-Export.</span>
+            <span style="display: inline-flex; align-items: center; height: 36px; border-radius: 999px; border: 1px solid rgba(19,19,22,.12); padding: 0 14px; font-size: 13px; font-weight: 500; flex-shrink: 0;">Premium</span>
+          </div>
+        </div>
+        <span class="mono" style="font-size: 10px; color: #b45309;">heute: Card, Aufzählung, gefüllter Knopf</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Was nie passiert -->
+  <div class="blk" style="border-color: #b45309;">
+    <span class="bt" style="color: #b45309;">Was nie passiert</span>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 28px;">
+      <p class="bs">&mdash; Kein Banner über dem Feed, der Karte oder im Aufzeichnungsschirm. Was zahlende Nutzer hervorbringt, ist die Nutzung selbst.</p>
+      <p class="bs">&mdash; Kein Schloss an einer Stelle, an der vorher nichts war. Ein Schloss dort liest sich als Wegnahme &mdash; genau das, was additives Gating vermeiden soll.</p>
+      <p class="bs">&mdash; Keine Schranke in der Kernschleife. Entdecken, Fahrt starten, Aufzeichnen, Posten, Kudos, Bewertungen, Bestenlisten und Feed bleiben frei &mdash; jede Schranke darin senkt die Aktivität, aus der die Zahlungsbereitschaft erst entsteht.</p>
+      <p class="bs">&mdash; Kein Zählerstand als Dauerhinweis („2 von 3 Strecken offline"). Eine Grenze wird erwähnt, wenn sie erreicht ist, nicht während man auf sie zuläuft.</p>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

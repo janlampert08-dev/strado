@@ -915,3 +915,190 @@ dem Sheet heraus; die `<h1>` bleibt `sr-only` darin.
 **Alle Zahlen hier sind aus den Klassen gerechnet.** Die Abnahme ist ein
 Screenshot der Startseite im Ruhezustand, auf dem drei Streckennamen zu
 lesen sind — siehe Abschnitt 6.
+
+---
+
+## Anhang B — Der Userflow: vier Übergänge
+
+Die neun Schritte funktionieren einzeln. Was klemmt, sind die Stellen
+dazwischen — und `AGENTS.md` sagt genau das: *„a feature that strengthens a
+single step but breaks the handoff to the next isn't done."* Dieser Anhang
+nimmt die vier Übergänge, an denen es heute hakt.
+
+Die Schritte **3 und 4** stehen absichtlich nicht darunter: Fahren und
+Aufzeichnen laufen als Vollbild ohne Seitenwechsel ab. Das ist gesund, nicht
+lückenhaft — was dieser Schirm braucht, steht in B2.
+
+### B1 — 1 → 2: Entdecken wird Fahren
+
+Der Übergang beginnt damit, dass überhaupt eine Strecke zu sehen ist.
+Abschnitt 3.1 und Anhang A8 haben die Zahlen: abgemeldet **null** sichtbare
+Strecken, angemeldet eine angeschnittene. Dazu auf der Streckenseite:
+„Strecke starten" steht unter dem Titel *und* einer Zeile aus drei
+Schaltflächen in zwei verschiedenen Formen.
+
+**Nachher:** zwei volle Zeilen plus Anschnitt in beiden Fällen; „Strecke
+starten" auf voller Breite direkt unter dem Ortsnamen, die drei
+Nebenhandlungen als 44-px-Icon-Flächen daneben.
+
+### B2 — Der Aufzeichnungsschirm (Schritte 3 und 4)
+
+Kein Strukturproblem, ein Lesbarkeitsproblem. `LiveTrackingForm.tsx` zeigt
+fünf Werte in `grid-cols-3`; die Beschriftungen stehen in **`text-xs`, also
+12 px** — auf dem einzigen Schirm der App, der in Bewegung gelesen wird.
+Dazu dieselbe willkürliche Betonung wie bei den Kacheln (Distanz und Zeit
+`text-xl`, der Rest `text-lg`).
+
+| Teil | Heute | Nachher |
+| --- | --- | --- |
+| Werte | 5 Stück, 20 px und 18 px gemischt | **zwei** gross (44 px): die gefahrene Zeit und „noch … km" |
+| Der Rest | eigene Spalten | eine Zeile, 15 px: `8.40 km gefahren · 62 km/h · 640 m` |
+| Beschriftungen | 12 px | 15 px |
+| Wachhinweis | 12 px `text-muted` neben dem Stopp-Knopf | eigene Pille über der Karte, 14 px, mit Symbol |
+| Beenden | ein Tipper, unwiderruflich | volle Breite, 52 px — **und eine Rückfrage**, solange das Streckenende nicht erreicht ist |
+
+Die Rückfrage ist `docs/audit/uiux.md` §5.3 und eine Verhaltensänderung, also
+abnahmepflichtig: ein Fehltipp bei km 3 einer 20-km-Strecke beendet heute
+den Versuch, und es gibt kein „Weiterfahren".
+
+Warum ausgerechnet die **Zeit** und das **„noch"** gross werden: die Zeit ist
+das, was die Bestenliste misst, und „noch 5.8 km" ist der einzige Wert, aus
+dem sich in dem Moment eine Entscheidung ableiten lässt. Distanz, Tempo und
+Höhe sind interessant, aber nicht handlungsleitend.
+
+### B3 — 5 → 6: Fazit wird gespeicherte Fahrt
+
+Der Moment mit der höchsten Zufriedenheit und der geringsten Geduld: man
+steht am Strassenrand, im Helm, und will wissen, dass es gespeichert ist.
+`RideSummaryForm.tsx` stellt dorthin **sechs Abschnitte** — Fazit, Fahrzeug,
+Notiz, Sichtbarkeit, Fotos, Knöpfe — und der Speichern-Knopf liegt unter der
+Falz. Mittendrin öffnet „+ Fahrzeug hinzufügen" ein Formular mit **sechs
+Feldern** (Typ, Getriebe, Marke, Modell, Baujahr, Leistung).
+
+**Nachher, drei Abschnitte:**
+
+1. **Das Ergebnis**, gross: die Zeit in 52 px, daneben „Neue Bestzeit", wenn
+   es eine ist; darunter eine Zeile `14.21 km · 46 km/h · 640 m · 97 %`.
+2. **Fahrzeug als Chips** statt Auswahlliste — die meisten Konten haben ein
+   bis drei. Das Pluszeichen führt in die Garage, nicht in ein Formular am
+   Strassenrand.
+3. **Sichtbarkeit** bleibt sichtbar. Das ist die folgenreiche Entscheidung
+   (Feed und Bestenliste, ja oder nein) und gehört nicht hinter eine Klappe.
+
+**Notiz und Fotos klappen zu**, als eine Zeile „Notiz & Fotos — optional".
+Der Speichern-Knopf sitzt fest am unteren Rand, immer sichtbar; `Verwerfen`
+darunter als Textlink.
+
+**Zwei Einschränkungen, ehrlich benannt.** Die Standard-Sichtbarkeit bleibt,
+wie sie ist — das ist eine Geschäftsregel (Kernregel 16), keine Stilfrage.
+Und Fotos bleiben **im** Fazit: sie später hinzuzufügen gibt es heute nicht
+(`CompletionPhotoGallery` kann nur entfernen), das verlangte einen zweiten
+Upload-Pfad in `lib/actions/completions.ts`. Das ist ein eigenes Vorhaben,
+kein Nebeneffekt einer Layout-Änderung.
+
+### B4 — 7 → 8: Die Reaktion erreicht die Fahrerin
+
+Abschnitt 3b.1 hat es: der Schritt, der die Schleife schliesst, ist der
+einzige ohne Platz in der Leiste. Aktivität wird ein Tab, Bestenlisten
+werden der dritte Reiter im Feed.
+
+### B5 — 9 → 1: Fremde Fahrt wird eigene nächste
+
+Der Schritt, der aus einer Karte ein Produkt macht. Er lebt von zwei Dingen:
+wie viele fremde Fahrten auf einen Blick passen, und ob man sie wiedererkennt.
+
+`app/feed/page.tsx` baut heute **vier Zeilen je Karte** — Fahrer mit Avatar
+und Datum, dann Titel mit Distanz, dann Region mit Art-Chip, dann Kudos in
+einer eigenen rechtsbündigen Zeile. Auf 390 px passen damit rund zwei
+Fahrten auf einen Schirm. Und die erste Zeile trägt den **Namen des
+Fahrers**, nicht den Ortsnamen — obwohl `AGENTS.md` den Ortsnamen die
+„unit of recognition" nennt.
+
+**Nachher, zwei Zeilen:**
+
+```
+[Avatar]  Albispass                              [Streckenform]
+          M. Brunner · Zürichsee · 14.2 km            [🔥 12]
+```
+
+Fünf Fahrten statt zwei, der Ortsname zuerst, Kudos als 44-px-Fläche. Die
+Streckenform rechts ist dasselbe SVG-Muster wie in der Explore-Liste
+(`lib/routeShape.ts`) — eine Wiedererkennungshilfe, die es schon gibt und die
+im Feed bisher fehlt.
+
+---
+
+## Anhang C — Premium: wo es auftaucht, und wie leise
+
+Das **Ob** ist entschieden: `docs/premium-plan.md` setzt additives Gating —
+Premium hebt Grenzen an und legt Neues obendrauf, es nimmt nichts weg. Dieser
+Anhang sagt nur, wie das aussieht. Er ändert keine Preise, keine Grenzen und
+keinen Funktionsumfang.
+
+### C1 — Die fünf Stellen heute
+
+| Ort | Wie | Urteil |
+| --- | --- | --- |
+| `RouteActionsMenu.tsx` | **deaktivierter** Menüeintrag „GPX exportieren (Premium)" | Ein Schloss als Dauerzustand — auf jeder Streckenseite, für jedes Gratis-Konto, immer |
+| `app/profil/page.tsx`, zuunterst | `PremiumCard`: Aufzählung plus gefüllter Knopf | Falscher Ort. Das Profil ist die Selbstdarstellung des Nutzers. Immerhin unten und ohne Unterbrechung |
+| `OfflineRouteButton.tsx` | Beschriftung „(Premium)" **plus** Hinweis bei vollem Kontingent | Der Hinweis ist richtig. Die Dauerbeschriftung nicht |
+| `MultiPhotoInput.tsx` | 6 statt 12 Fotos | Vorbildlich — unsichtbar, bis es zählt |
+| `app/profil/premium/` | die Kaufseite | Der Ort dafür |
+
+Dazu ein Wartungsproblem, das der Code selbst benennt: die Vorteilsliste
+steht in **drei Kopien**. Eine davon warb nach Migration `0086` weiter mit
+„Eigene Strecken erstellen", obwohl das Erstellen längst wieder kostenlos
+war.
+
+### C2 — Drei Regeln
+
+1. **Premium erscheint am Punkt der Reibung, nicht als Dauerzustand.** Ein
+   Bedienelement trägt im Ruhezustand nie „(Premium)". Es arbeitet. Erst
+   wenn die Gratis-Grenze wirklich erreicht ist, erscheint das Angebot —
+   inline, einmal, mit der konkreten Zahl. `OfflineRouteButton` macht das
+   über `kontingentKnapp` bereits richtig; nur die Beschriftung fällt weg.
+2. **Kein deaktiviertes Bedienelement trägt den Preis.** Der GPX-Eintrag
+   bleibt bedienbar; das Antippen zeigt das Angebot. Ein Tipper mehr für
+   Gratis-Konten, dafür null dauerhafte Unruhe für alle — auch für die, die
+   nie exportieren wollten.
+3. **Eine Liste, ein Ort.** Die Vorteile leben in `lib/premiumVorteile.ts`.
+   Drei Kopien werden eine; die Profilseite zeigt **eine Zeile**, keine
+   Aufzählung.
+
+**Und optisch:** der Verkauf bekommt nie den gefüllten Akzent. Der gehört
+den Handlungen des Nutzers — „Strecke starten", „Fahrt speichern". Premium
+wirbt im Umriss oder als Textlink.
+
+### C3 — Die vier Momente
+
+Mehr gibt es nicht.
+
+| # | Wann | Wie |
+| --- | --- | --- |
+| 1 | Das Offline-Kontingent ist voll | Inline-Hinweis unter der Schaltfläche, mit der Zahl und einem Textlink. **Gibt es heute schon** |
+| 2 | Jemand tippt GPX-Export an | Der Eintrag ist aktiv; das Antippen zeigt den Hinweis samt Link |
+| 3 | Einstellungen | Eine Zeile unter Gleichen: „Premium — Offline ohne Limit, 12 Fotos, GPX" mit Chevron |
+| 4 | Profil, zuunterst | Eine Zeile plus Umriss-Schaltfläche statt Card mit Aufzählung |
+
+### C4 — Was nie passiert
+
+- **Kein Banner** über dem Feed, der Karte oder im Aufzeichnungsschirm. Was
+  zahlende Nutzer hervorbringt, ist die Nutzung selbst.
+- **Kein Schloss an einer Stelle, an der vorher nichts war.** Ein Schloss
+  dort liest sich als Wegnahme — genau das, was additives Gating vermeiden
+  soll (`app/profil/page.tsx` begründet das im Code bereits ausführlich).
+- **Keine Schranke in der Kernschleife.** Entdecken, Fahrt starten,
+  Aufzeichnen, Posten, Kudos, Bewertungen, Bestenlisten und Feed bleiben
+  frei. `docs/premium-plan.md` nennt den Grund: jede Schranke darin senkt
+  genau die Aktivität, aus der die Zahlungsbereitschaft erst entsteht.
+- **Kein Zählerstand als Dauerhinweis** („2 von 3 Strecken offline"). Eine
+  Grenze wird erwähnt, wenn sie erreicht ist — nicht, während man auf sie
+  zuläuft.
+
+### C5 — Was daran abgenommen gehört
+
+Nichts davon berührt eine Geschäftsregel: dieselben Grenzen, dieselben
+Preise, derselbe Funktionsumfang. Regel 2 ist die einzige echte
+Verhaltensänderung — ein heute deaktivierter Eintrag wird bedienbar — und
+sie erweitert nichts, was ohne Abo möglich wäre: der Export selbst bleibt
+gesperrt, nur die Erklärung wandert vom Dauerzustand in den Moment.
