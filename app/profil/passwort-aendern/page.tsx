@@ -3,6 +3,7 @@ import Header from "@/components/Header";
 import PasswortAendernForm from "@/components/PasswortAendernForm";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { istWiederherstellung } from "@/lib/passwortWiederherstellung";
+import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
 export const metadata = { title: "Passwort ändern – Strado" };
 
@@ -22,9 +23,9 @@ export default async function PasswortAendernPage() {
   return (
     <div className="flex h-dvh flex-col">
       <Header back="/profil" />
-      <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-6">
+      <Seitenrahmen breite="schmal" className="flex-1 justify-center">
         <PasswortAendernForm ausWiederherstellung={ausWiederherstellung} />
-      </main>
+      </Seitenrahmen>
     </div>
   );
 }

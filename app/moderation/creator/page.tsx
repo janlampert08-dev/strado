@@ -14,6 +14,7 @@ import { isModerator } from "@/lib/moderation";
 import { alleCreatorLinks, einstiegsPfad, einstiegsUrl } from "@/lib/creatorLinks";
 import { creatorKennzahlen } from "@/lib/creatorKennzahlen";
 import { siteUrl } from "@/lib/siteUrl";
+import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
 export const metadata = { title: "Creator-Links – Strado" };
 
@@ -46,7 +47,7 @@ export default async function CreatorLinksPage() {
     <div className="flex h-dvh flex-col">
       <Header back="/moderation" />
       <div className="flex-1 overflow-y-auto">
-        <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-10">
+        <Seitenrahmen>
           <div>
             <h1 className="text-display font-semibold">Creator-Links</h1>
             <p className="text-sm text-muted">
@@ -179,7 +180,7 @@ export default async function CreatorLinksPage() {
               Zurück zur Moderation
             </Link>
           </p>
-        </main>
+        </Seitenrahmen>
       </div>
     </div>
   );

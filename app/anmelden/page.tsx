@@ -4,6 +4,7 @@ import AnmeldenForm from "@/components/AnmeldenForm";
 import { LEGAL_URLS } from "@/lib/constants";
 import { safeInternalPath } from "@/lib/utils/url";
 import { NICHT_INDEXIEREN } from "@/lib/seo";
+import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
 export const metadata: Metadata = {
   title: "Anmelden – Strado",
@@ -41,9 +42,9 @@ export default async function AnmeldenPage({
   return (
     <div className="flex h-dvh flex-col">
       <Header back="/" />
-      <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-6">
+      <Seitenrahmen breite="schmal" className="flex-1 justify-center">
         <AnmeldenForm nextHref={nextHref} />
-      </main>
+      </Seitenrahmen>
       {/* text-muted statt text-muted/50: bei halber Deckkraft ergaben die
           beiden Links #b0b2b7 auf #fafafa — ein Kontrast von 2.03:1 bei 12px,
           nicht einmal die Hälfte der von WCAG AA geforderten 4.5:1. Das ist

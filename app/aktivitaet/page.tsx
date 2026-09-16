@@ -6,6 +6,7 @@ import ActivityList from "@/components/ActivityList";
 import { getAktivitaet, getUnseenActivityCount } from "@/lib/aktivitaetsliste";
 import { markActivitySeen } from "@/lib/actions/aktivitaet";
 import { getCurrentUser } from "@/lib/supabase/server";
+import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
 export const metadata = {
   title: "Aktivität – Strado",
@@ -54,7 +55,7 @@ export default async function AktivitaetPage() {
       {/* Ziehen zum Aktualisieren (nur Touch) — siehe PullToRefreshArea.tsx */}
       <PullToRefreshArea>
       <div className="flex-1 overflow-y-auto">
-        <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-5 py-8 sm:px-6 sm:py-10">
+        <Seitenrahmen>
           <div>
             <h1 className="text-display font-semibold">Aktivität</h1>
             <p className="mt-1 text-sm text-muted">
@@ -63,7 +64,7 @@ export default async function AktivitaetPage() {
           </div>
 
           <ActivityList initialEintraege={eintraege} />
-        </main>
+        </Seitenrahmen>
       </div>
       </PullToRefreshArea>
     </div>

@@ -18,6 +18,7 @@ import {
 } from "@/lib/creatorKennzahlen";
 import { siteUrl } from "@/lib/siteUrl";
 import { mitAnzahl, nomen } from "@/lib/format";
+import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
 export const metadata = { title: "Deine Zahlen – Strado" };
 
@@ -61,7 +62,7 @@ export default async function CreatorPage() {
     <div className="flex h-dvh flex-col">
       <Header />
       <div className="flex-1 overflow-y-auto">
-        <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-10">
+        <Seitenrahmen>
           <div>
             <h1 className="text-display font-semibold">Deine Zahlen</h1>
             <p className="text-sm text-muted">
@@ -172,7 +173,7 @@ export default async function CreatorPage() {
               </div>
             </>
           )}
-        </main>
+        </Seitenrahmen>
       </div>
     </div>
   );

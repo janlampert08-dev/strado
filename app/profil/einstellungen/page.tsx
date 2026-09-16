@@ -28,6 +28,7 @@ import Card from "@/components/ui/Card";
 import Button, { buttonVariants } from "@/components/ui/Button";
 import { LEGAL_URLS } from "@/lib/constants";
 import SectionHeading from "@/components/ui/SectionHeading";
+import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
 // Ein Einstellungen-Tab statt vorher verstreuter Zugänge: Privatsphäre
 // (bisher app/profil/privatsphaere, hierher verschoben), Darstellung
@@ -94,7 +95,7 @@ export default async function EinstellungenPage() {
     <div className="flex h-dvh flex-col">
       <Header back="/profil" />
       <div className="flex-1 overflow-y-auto">
-        <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-5 py-8 sm:px-6 sm:py-10 lg:max-w-3xl">
+        <Seitenrahmen>
           <h1 className="text-display font-semibold">Einstellungen</h1>
 
           <section className="flex flex-col gap-3">
@@ -355,7 +356,7 @@ export default async function EinstellungenPage() {
               </a>
             </Card>
           </section>
-        </main>
+        </Seitenrahmen>
       </div>
     </div>
   );

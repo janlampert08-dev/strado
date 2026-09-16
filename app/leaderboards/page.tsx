@@ -30,6 +30,7 @@ import { MEDAL_COLORS } from "@/lib/constants";
 import Card from "@/components/ui/Card";
 import LeaderboardListsSkeleton from "@/components/LeaderboardListsSkeleton";
 import SectionHeading from "@/components/ui/SectionHeading";
+import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
 export const metadata: Metadata = {
   title: "Bestenlisten – Strado",
@@ -256,7 +257,7 @@ export default async function LeaderboardsPage({
       {/* Ziehen zum Aktualisieren (nur Touch) — siehe PullToRefreshArea.tsx */}
       <PullToRefreshArea>
       <div className="flex-1 overflow-y-auto">
-        <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-5 py-8 sm:px-6 sm:py-10 lg:max-w-5xl">
+        <Seitenrahmen breite="weit">
         <div className="flex flex-col gap-3">
           {/* Dieselbe Reiterleiste wie auf /feed. Die Bestenlisten sind seit
               der Umstellung auf die Loop-Leiste kein eigener Eintrag in der
@@ -293,7 +294,7 @@ export default async function LeaderboardsPage({
         <Suspense fallback={null}>
           <Streckenwahl />
         </Suspense>
-        </main>
+        </Seitenrahmen>
       </div>
       </PullToRefreshArea>
     </div>

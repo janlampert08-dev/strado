@@ -43,6 +43,7 @@ import Kennzahl, { Kennzahlen } from "@/components/ui/Kennzahl";
 import SectionHeading from "@/components/ui/SectionHeading";
 import EmptyState from "@/components/ui/EmptyState";
 import { buttonVariants } from "@/components/ui/Button";
+import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
 // Gemeinsamer Stil für die aufklappbaren Unterabschnitte innerhalb einer
 // Gruppen-Card (siehe AdvancedFiltersPanel.tsx für dasselbe native
@@ -229,7 +230,7 @@ export default async function ProfilPage() {
       {/* Ziehen zum Aktualisieren (nur Touch) — siehe PullToRefreshArea.tsx */}
       <PullToRefreshArea>
       <div className="flex-1 overflow-y-auto">
-        <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-5 py-8 sm:px-6 sm:py-10 lg:max-w-4xl">
+        <Seitenrahmen>
         <div className="flex flex-col gap-4">
           <div className="flex items-start justify-between gap-4">
             <AvatarUpload avatarUrl={profile?.avatar_url ?? null} name={profile?.display_name ?? null} />
@@ -558,7 +559,7 @@ export default async function ProfilPage() {
 
           {!premiumStatus.aktiv && <PremiumCard status={premiumStatus} />}
         </div>
-        </main>
+        </Seitenrahmen>
       </div>
       </PullToRefreshArea>
     </div>

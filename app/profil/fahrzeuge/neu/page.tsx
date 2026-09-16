@@ -1,6 +1,7 @@
 import Header from "@/components/Header";
 import NeuesFahrzeugForm from "@/components/NeuesFahrzeugForm";
 import { safeInternalPath } from "@/lib/utils/url";
+import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
 // ?next steuert, wohin's nach dem Speichern zurückgeht, statt immer fest zu
 // /profil. Fehlt der Parameter oder zeigt er nicht auf einen internen Pfad,
@@ -16,9 +17,9 @@ export default async function NeuesFahrzeugPage({
   return (
     <div className="flex h-dvh flex-col">
       <Header back={nextHref} />
-      <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-6">
+      <Seitenrahmen breite="schmal" className="flex-1 justify-center">
         <NeuesFahrzeugForm nextHref={nextHref} />
-      </main>
+      </Seitenrahmen>
     </div>
   );
 }
