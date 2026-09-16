@@ -193,6 +193,19 @@ export function anteil(zaehler: number, nenner: number): number | null {
   return Math.round((zaehler / nenner) * 1000) / 10;
 }
 
+// Derselbe Anteil als fertiger Text, oder null, wenn anteil() null sagt.
+//
+// Komma statt Punkt: die Oberfläche ist deutschsprachig. Das weicht bewusst
+// von toLocaleString("de-CH") ab, das hier "12.5" lieferte — ein Punkt
+// neben dem Apostroph-Tausender der übrigen Zahlen liest sich auf einer
+// Prozentangabe wie ein Tippfehler. Stand hier schon so, als der Trichter
+// noch eine eigene Kachel-Komponente hatte; die ist weg, die Schreibweise
+// bleibt.
+export function anteilText(zaehler: number, nenner: number): string | null {
+  const quote = anteil(zaehler, nenner);
+  return quote === null ? null : `${String(quote).replace(".", ",")} %`;
+}
+
 // Balkenhöhe in Prozent für den Verlauf. Ein Tag mit Wert > 0 bekommt
 // mindestens 10 %, sonst wäre ein einzelner Klick neben einem Ausreisser
 // optisch dasselbe wie gar nichts.

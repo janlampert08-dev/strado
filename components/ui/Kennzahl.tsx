@@ -29,10 +29,26 @@ export default function Kennzahl({
   fuss?: React.ReactNode;
   className?: string;
 }) {
+  // Beschriftung, Wert und Zusatz stehen oben zusammen; nur der `fuss`
+  // wird nach unten geschoben (mt-auto).
+  //
+  // Vorher stand hier justify-between, und das ging gut, solange alle
+  // Kacheln einer Zeile gleich gebaut waren: dann sind sie gleich hoch,
+  // es bleibt kein freier Platz, und die Verteilung fällt nicht auf.
+  // Sobald eine Kachel eine Zeile mehr trägt, streckt das Raster die
+  // übrigen mit — und justify-between schob deren Wert an den unteren
+  // Rand. Auf /fahrten/[id] (eine Zeit-Kachel mit Zusatz und Abzeichen,
+  // drei ohne) standen die vier Zahlen damit auf zwei Höhen; auf
+  // /creator, wo die erste Trichterstufe keinen Prozentwert hat und die
+  // drei Zahlen genau zum Vergleich nebeneinander stehen, wäre es der
+  // Unterschied zwischen einer Reihe und drei Kacheln gewesen.
+  //
+  // Für gleich gebaute Zeilen (Strecken- und Profilseite) ändert sich
+  // nichts: ohne freien Platz verteilt justify-between nichts.
   return (
     <div
       className={cn(
-        "flex flex-col justify-between gap-1 rounded-lg border border-border bg-surface p-4",
+        "flex flex-col gap-1 rounded-lg border border-border bg-surface p-4",
         className,
       )}
     >
@@ -41,17 +57,42 @@ export default function Kennzahl({
       {zusatz !== undefined && zusatz !== null && (
         <dd className="font-mono text-xs tabular-nums text-muted">{zusatz}</dd>
       )}
-      {fuss !== undefined && fuss !== null && <dd className="pt-1">{fuss}</dd>}
+      {fuss !== undefined && fuss !== null && <dd className="mt-auto pt-1">{fuss}</dd>}
     </div>
   );
 }
 
 // Das Raster darum — höchstens vier Kacheln, damit auf dem Telefon nicht
 // vier Zeilen Kästen entstehen, bevor der eigentliche Inhalt beginnt.
-export function Kennzahlen({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <dl className={cn("grid grid-cols-2 gap-3 sm:grid-cols-4", className)}>{children}</dl>
-  );
+//
+// `spalten` ist die eine erlaubte Abweichung, und sie hat genau einen
+// Grund: eine Reihe, deren Nebeneinander selbst die Aussage ist. Auf
+// /creator sind die drei Kacheln ein Trichter (Aufrufe → Konten → Abos);
+// im Standardraster bräche er auf dem Telefon in 2 + 1 um, und zwei plus
+// eins liest sich nicht als Trichter, sondern als Kachel, die übrig blieb.
+//
+// Nicht über className, weil lib/utils/cn.ts kein tailwind-merge ist: ein
+// angehängtes grid-cols-3 höbe das eingebaute grid-cols-2 nicht auf,
+// sondern überliesse die Entscheidung der Reihenfolge im Stylesheet. Wer
+// eine Vorgabe ändern muss, bekommt einen Parameter — dieselbe Regel, die
+// dort ausgeschrieben steht.
+const raster = {
+  /** Der Normalfall: zwei Kacheln je Zeile auf dem Telefon, vier ab sm. */
+  2: "grid-cols-2 sm:grid-cols-4",
+  /** Eine Dreierreihe, die als Reihe gelesen werden muss — auch auf 390 px. */
+  3: "grid-cols-3",
+} as const;
+
+export function Kennzahlen({
+  spalten = 2,
+  children,
+  className,
+}: {
+  spalten?: keyof typeof raster;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <dl className={cn("grid gap-3", raster[spalten], className)}>{children}</dl>;
 }
 
 // Der Rest, der nicht als Kachel taugt: eine Zeile aus Wertpaaren, mit
