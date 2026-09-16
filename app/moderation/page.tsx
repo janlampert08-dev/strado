@@ -265,7 +265,7 @@ export default async function ModerationPage() {
                   <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                     <Link
                       href={`/strecken/${route.id}`}
-                      className="font-medium transition-colors duration-fast hover:text-accent"
+                      className="-my-1.5 py-1.5 font-medium transition-colors duration-fast hover:text-accent"
                     >
                       {route.name}
                     </Link>
@@ -306,7 +306,7 @@ export default async function ModerationPage() {
                   </div>
                   <Link
                     href={meldung.href}
-                    className="font-medium transition-colors duration-fast hover:text-accent"
+                    className="-my-1.5 py-1.5 font-medium transition-colors duration-fast hover:text-accent"
                   >
                     {meldung.titel}
                   </Link>

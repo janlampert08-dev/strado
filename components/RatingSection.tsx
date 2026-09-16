@@ -129,7 +129,15 @@ export default function RatingSection({
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                   <Link
                     href={`/fahrer/${r.user_id}`}
-                    className="font-medium transition-colors duration-fast hover:text-accent"
+                    // -my-1.5 py-1.5: der Name ist ein Byline-Link, kein
+                    // Knopf — textAktionClassName mit seinen 44 px wäre
+                    // hier falsch, es risse die Zeile auseinander, in der
+                    // Name und Sterne nebeneinander stehen. 20 px sind aber
+                    // auch als Byline zu wenig: WCAG 2.2 SC 2.5.8 verlangt
+                    // 24. Am Preview auf 390 px gemessen waren es 24 × 20.
+                    // Die 12 px Polsterung heben das auf 32 und das
+                    // negative Aussenmass nimmt sie optisch wieder weg.
+                    className="-my-1.5 py-1.5 font-medium transition-colors duration-fast hover:text-accent"
                   >
                     {r.display_name ?? "Anonym"}
                   </Link>
