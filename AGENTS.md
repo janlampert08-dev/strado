@@ -320,22 +320,30 @@ is what should be corrected.
     writes real rows into the production tables that hang off the payment
     path — `creator_konversionen` (0088, live since 2026-09-14) is the
     newest of them; only the Stripe side is genuinely separate.
-- **`0095_sterne_wieder_einfuehren` is written but NOT applied.** It is the
-  first migration in a while that ships in the same PR as its code, and the
-  usual order still holds: apply it before deploying. Unlike `0087` the code
-  does not break without it — `route_ratings.sterne` exists and is nullable
+- **`0095_sterne_wieder_einfuehren` was applied on 2026-09-16, all three
+  steps** — `not valid`, counter-check, `validate constraint`. The constraint
+  is fully valid, so a rating outside 1–5 can no longer be stored, not even
+  by a direct PostgREST request past the Server Action. The counter-check
+  found **three rows, all `sterne is null`** — comment-only ratings, exactly
+  what `0025` leaves behind — and nothing outside the scale. That does not
+  make `not valid` the wrong call: it was chosen before anyone had looked,
+  and with one database and no rehearsal, a statement that depends on unseen
+  data is the wrong shape whatever the look later shows. Unlike `0087` the code
+  did not break without it — `route_ratings.sterne` exists and is nullable
   since `0025`, so the app writes and reads stars the same with or without
-  the constraint. What is missing until it runs is the bound: the table carries full grants and its
-  RLS policy lets an account write its own row, so a direct PostgREST
-  request could put `sterne = 9999` into a rating. What that costs is
+  the constraint. What it adds is the bound: the table carries full grants and its
+  RLS policy lets an account write its own row, so before it ran a direct
+  PostgREST request could have put `sterne = 9999` into a rating — measured
+  afterwards, none ever did. What that would have cost is
   **invalid stored data, not a shifted average** — `bewertungAusSternen()`
   filters to 1–5 rather than merely to "finite", so such a value never
   reaches the displayed figure. (This line first claimed the average would
   shift; that was true only while the app filtered on finiteness alone, and
   the same commit that tightened the filter made it false.) The rollout —
   apply, then the preflight query, then `validate constraint` as a separate
-  step — is written out in `supabase/migrations/README.md`, which is where
-  the applied/un-applied distinction lives. The migration adds back
+  step — is written out in `supabase/migrations/README.md`, together with
+  what each step actually returned; that file is where the
+  applied/un-applied distinction lives. The migration adds back
   `check (sterne is null or sterne between 1 and 5)` — null-tolerant,
   because comment-only ratings are the normal case for every row created
   between `0025` and now, and **`not valid`**, which is the part worth

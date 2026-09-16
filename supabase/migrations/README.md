@@ -130,11 +130,61 @@ alter table public.route_completions
 drop table if exists public.fahrt_starts;
 ```
 
-## NOCH NICHT eingespielt: 0095_sterne_wieder_einfuehren
+## Eingespielt: 0095_sterne_wieder_einfuehren (2026-09-16, Produktion)
 
-Der erste Eintrag hier, der keine Einspielung beschreibt, sondern eine
-ausstehende. Er steht trotzdem oben, weil genau das die Frage ist, für die
-diese Datei gelesen wird.
+**Alle drei Schritte sind durch** — `not valid` angelegt, Gegenprobe
+gelaufen, `validate constraint` bestätigt. Der Constraint ist damit
+vollständig gültig; eine Zeile ausserhalb 1–5 kann es nicht mehr geben,
+auch nicht per direktem PostgREST-Request an der Server Action vorbei.
+
+Was die Gegenprobe ergab, und warum das die Vorsicht nicht entwertet:
+`route_ratings` hielt **drei Zeilen, alle mit `sterne is null`** — reine
+Kommentarzeilen, genau der Bestand, den `0025` hinterlässt. Null Zeilen
+ausserhalb der Skala. Die befürchtete `sterne = 9999` gab es also nicht.
+`not valid` war trotzdem die richtige Form: die Entscheidung fiel, *bevor*
+jemand nachgesehen hatte, und eine Anweisung, die von ungesehenen Daten
+abhängt, ist bei einer Datenbank ohne Probelauf das falsche Werkzeug —
+unabhängig davon, wie der Blick nachher ausfällt.
+
+### Nachher geprüft
+
+```
+route_ratings_sterne_check  contype=c  convalidated=true
+  CHECK (((sterne IS NULL) OR ((sterne >= 1) AND (sterne <= 5))))
+```
+
+Funktionstest in einer zurückgerollten Transaktion. Der Cooldown-Trigger aus
+`0024`/`0041` steht jedem Schreibversuch im Weg, deshalb
+`set local session_replication_role = 'replica'` — das legt die **Trigger**
+still, während CHECK-Constraints weiter greifen, also genau das, was geprüft
+werden soll:
+
+```
+sterne=1     -> angenommen (richtig)
+sterne=3     -> angenommen (richtig)
+sterne=5     -> angenommen (richtig)
+sterne=0     -> abgewiesen (richtig)
+sterne=6     -> abgewiesen (richtig)
+sterne=9999  -> abgewiesen (richtig)
+sterne=NULL  -> angenommen (richtig: nur kommentiert)
+```
+
+Danach gegengeprüft: weiterhin 3 Zeilen, alle `sterne is null` — der Test ist
+vollständig zurückgerollt. Und `current_setting('lock_timeout')` steht wieder
+auf `0`: das `set local` aus der Migration hat die Sitzung **nicht**
+überlebt, also genau das Verhalten, um dessentwillen es in Review-Runde 3
+von `set` auf `set local` geändert wurde.
+
+### Rückweg
+
+```sql
+alter table public.route_ratings drop constraint route_ratings_sterne_check;
+```
+
+---
+
+Die Anleitung, nach der vorgegangen wurde, steht unverändert darunter —
+sie ist der Grund, warum die drei Schritte getrennt sind.
 
 **Was sie tut.** Sie holt die Prüfung `sterne between 1 and 5` zurück, die
 `0025_ratings_ohne_sterne` fallen liess, als die Sterne-Wertung aus dem
