@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import Card from "@/components/ui/Card";
+import { LEGAL_URLS } from "@/lib/constants";
 import VerifiziertAbzeichen from "@/components/VerifiziertAbzeichen";
 
 export const metadata: Metadata = {
@@ -12,11 +12,17 @@ export const metadata: Metadata = {
 // Die Erklärseite hinter dem Verifiziert-Abzeichen.
 //
 // Sie existiert, weil ein Vertrauensversprechen nur trägt, solange man
-// nachlesen kann, worauf es beruht — und weil AGB Ziff. 12.6 ausdrücklich
-// verlangt, die Grenze zu benennen: "verifiziert" heisst nicht, dass die
-// Anbieterin die Fahrt bestätigt hat. Der Abschnitt "Was es nicht heisst"
-// ist deshalb kein Kleingedrucktes, sondern der Grund, warum die Seite
-// überhaupt steht.
+// nachlesen kann, worauf es beruht — und weil AGB Ziff. 12.4 die Grenze
+// bereits zieht: "Zeiten in Bestenlisten sind keine geeichte Zeitmessung."
+// "Verifiziert" heisst deshalb nicht, dass die Anbieterin die Fahrt
+// bestätigt hat. Der Abschnitt "Was es nicht heisst" ist kein
+// Kleingedrucktes, sondern der Grund, warum die Seite überhaupt steht.
+//
+// Ziff. 12.6 wäre die genauere Stelle — sie definiert die verifizierte
+// Fahrt —, aber sie steht nur in einem Entwurf auf einem offenen Zweig und
+// ist nach Ziff. 14.1 nicht in Kraft. Bis sie es ist, zeigt diese Seite auf
+// 12.4; ein Verweis auf eine Ziffer, die in den veröffentlichten AGB nicht
+// existiert, ist schlimmer als ein ungenauer auf eine, die es gibt.
 //
 // Bewusst ohne Zahlenwerk (Intervalle, Toleranzen): wer die Mechanik genau
 // wissen will, liest die Migration. Hier steht, was jemand wissen muss, der
@@ -92,12 +98,14 @@ export default function VerifiziertPage() {
 
       <p className="mt-8 text-sm text-muted">
         Die verbindliche Fassung steht in{" "}
-        <Link
-          href="https://strado.ch/legal/agb"
+        <a
+          href={LEGAL_URLS.agb}
+          target="_blank"
+          rel="noopener noreferrer"
           className="text-accent underline underline-offset-2"
         >
-          Ziff. 12.6 der AGB
-        </Link>
+          Ziff. 12.4 der AGB
+        </a>
         .
       </p>
     </main>
