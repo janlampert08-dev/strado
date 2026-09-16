@@ -262,14 +262,51 @@ export async function requestPasswordReset(
   // Wiederherstellungs-Merkmal nur für exakt diesen Pfad. Liefen die beiden
   // auseinander, käme niemand mehr durch den Zurücksetzen-Fluss — er
   // landete auf der Seite, die ihn nach dem alten Passwort fragt.
-  await supabase.auth.resetPasswordForEmail(email, {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(PASSWORT_AENDERN_PFAD)}`,
   });
 
-  // resetPasswordForEmail liefert bei unbekannter Adresse ebenfalls keinen
-  // Fehler (Supabase verhindert damit selbst schon Konto-Enumeration) — die
-  // konstante Erfolgsmeldung hier ist daher die korrekte Antwort in beiden
-  // Fällen, kein Verstecken eines echten Fehlers.
+  // Der Rückgabewert wurde bisher gar nicht erst entgegengenommen. Damit war
+  // diese Aktion gegen jeden Versandfehler blind: sie meldete "Link
+  // verschickt", auch wenn nie einer verschickt wurde, und hinterliess
+  // nirgends eine Spur davon (kein Sentry in dieser App, siehe AGENTS.md).
+  //
+  // Genau das ist am 2026-09-16 passiert: der E-Mail-Versand von Supabase
+  // lief in die 10-Sekunden-Grenze des Gateways, /auth/v1/recover antwortete
+  // dreimal hintereinander mit 504 — und die Seite sagte jedes Mal, es sei
+  // ein Link unterwegs. Derselbe Nutzer hat danach ein zweites Konto mit
+  // einer anderen Adresse angelegt.
+  //
+  // NUR INS SERVERLOG, NIE IN DIE ANTWORT.
+  //
+  // Bei einer unbekannten Adresse antwortet resetPasswordForEmail fehlerfrei
+  // (Supabase verhindert so selbst schon Konto-Enumeration) — es wird ja gar
+  // nichts verschickt. Daraus folgt die Umkehrung: ein Fehler entsteht hier
+  // ausschliesslich für eine Adresse, zu der ein Konto existiert. Eine daran
+  // hängende Meldung unterschiede die Antwort also nach Kontoexistenz und
+  // wäre genau das Orakel, das die konstante Antwort verhindern soll —
+  // derzeit sogar ein verlässliches, weil der 504 oben fast jedes Mal
+  // eintritt.
+  //
+  // Eine frühere Fassung dieses Zweigs gab den Fehler aus und begründete das
+  // mit derselben Prämisse, aber der umgekehrten Schlussfolgerung. Die
+  // Eigenschaft steht namentlich in docs/audit/security.md unter "What is
+  // done well", ausdrücklich damit sie nicht versehentlich rückgängig
+  // gemacht wird.
+  //
+  // Was der Nutzer wissen muss — dass der Versand dauern kann und ein Blick
+  // in den Spam-Ordner lohnt —, steht deshalb in der konstanten
+  // Erfolgsmeldung selbst (components/PasswortVergessenForm.tsx). Die
+  // Information geht so niemandem verloren, ohne dass die Antwort von der
+  // Adresse abhängt.
+  if (error) {
+    console.error("Passwort-Zuruecksetzen: Versand fehlgeschlagen", {
+      status: error.status,
+      code: error.code,
+      message: error.message,
+    });
+  }
+
   return { error: null, requested: true };
 }
 
