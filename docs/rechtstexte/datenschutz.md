@@ -152,9 +152,11 @@ fälschen (berechtigtes Interesse an manipulationsfreien Bestenlisten). Wir
 speichern dazu **nur die jeweils letzte Meldung** — Zeitpunkt und Position —
 sowie deren Anzahl; jede neue Meldung überschreibt die vorherige, es entsteht
 also **keine Spur des Wegs**. Eine Aufzeichnung, die nie gespeichert wird,
-löschen wir spätestens nach **48 Stunden**. Wird die Fahrt gespeichert, bleibt
-die letzte Meldung als Nachweis der gemessenen Dauer bei der Fahrt; sie wird
-mit dem Konto gelöscht. Wer die Standortfreigabe verweigert oder ohne
+lässt sich nach **24 Stunden** nicht mehr verwenden — weder nimmt der Server
+weitere Meldungen dazu an noch lässt sie sich einer Fahrt zuordnen — und wird
+danach gelöscht, in der Regel innert 48 Stunden. Wird die Fahrt gespeichert,
+bleibt die letzte Meldung als Nachweis der gemessenen Dauer bei der Fahrt; sie
+wird mit dem Konto gelöscht. Wer die Standortfreigabe verweigert oder ohne
 Verbindung fährt, kann normal aufzeichnen; die Fahrt wird dann lediglich nicht
 als „verifiziert" gekennzeichnet.
 

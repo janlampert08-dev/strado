@@ -29,6 +29,82 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Eingespielt: 0101_anonymisierung_fahrtstarts (2026-09-16, Produktion)
+
+Nacharbeit zur Datenschutzerklärung (`strado`#255 / `stradoinfo`#19) und
+zugleich eine echte Lücke: `anonymize_account()` hat `fahrt_starts` nie
+angefasst.
+
+**Warum die Fremdschlüssel nicht reichten.** `fahrt_starts.user_id` und
+`.eingeloest_von` tragen seit `0096` beide `on delete cascade`. Die Kaskade
+feuert nur nie, weil `deleteAccount()` die Zeile in `auth.users` **nicht
+löscht**, sondern das Konto anonymisiert und die Zugangsdaten per
+`updateUserById()` entwertet. Genau diesen Satz schreiben `0090` und `0092`
+bereits in ihre Köpfe; `0096` ist zwei Tage später entstanden und hat ihn
+nicht gelesen. Die Folge: `letzter_puls_punkt` — eine GPS-Position aus
+derselben Fahrt, deren `route_completions.track` die Funktion zwei
+Anweisungen weiter oben ausdrücklich auf NULL setzt — blieb nach einer
+Kontolöschung stehen.
+
+**Vorher geprüft.** Der Rumpf wurde aus der Produktionsdatenbank
+ausgelesen (`pg_get_functiondef`) und gegen `0092` verglichen: Anweisung für
+Anweisung deckungsgleich, keine Abweichung, die ein `create or replace`
+still zurückgedreht hätte. Das ist die Lehre aus `0088`/`0090`/`0092`, und
+sie gilt hier genauso.
+
+**Danach geprüft, gegen den Katalog:**
+
+```sql
+select
+  position('delete from public.fahrt_starts' in pg_get_functiondef(p.oid)) > 0 as hat_delete,
+  position('eingeloest_von = p_user_id' in pg_get_functiondef(p.oid)) > 0    as beide_spalten,
+  position('creator_links' in pg_get_functiondef(p.oid)) > 0                 as rumpf_0092_intakt,
+  p.prosecdef, p.proconfig,
+  has_function_privilege('anon',          p.oid, 'execute') as anon,
+  has_function_privilege('authenticated', p.oid, 'execute') as authenticated,
+  has_function_privilege('service_role',  p.oid, 'execute') as service_role
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public' and p.proname = 'anonymize_account';
+```
+
+Ergebnis: alle drei `position`-Prüfungen `true`, `prosecdef = true`,
+`search_path = public, pg_temp`, und **`anon = false`, `authenticated =
+false`, `service_role = true`** — die Rechte, die `0076` gesetzt hat, stehen
+unverändert. Die Fallgrube aus `0047`/`0048`/`0091`/`0097` hat hier nicht
+zugeschlagen, weil `create or replace` Rechte ohnehin nicht anfasst; die
+`revoke`/`grant`-Zeilen am Ende der Datei sind Zusicherung, keine Reparatur.
+
+**Und funktional, zurückgerollt.** Ein `DO`-Block hat zwei Zeilen in
+`fahrt_starts` angelegt — eine mit `user_id` (eigenes Ticket), eine mit
+`user_id = null` und `eingeloest_von` (Gast, der sich zwischen Start und
+Speichern angemeldet hat) —, dann `anonymize_account()` für dieses Konto
+aufgerufen und das Ergebnis über `raise exception` zurückgegeben, was
+denselben Block zurückrollt. Ergebnis: **0 verbleibende Zeilen** für beide
+Fälle, und das Profil war innerhalb des Blocks anonymisiert
+(`display_name` von gesetzt auf NULL) — der Beweis, dass wirklich die
+Funktion lief und nicht nur das Prädikat. Danach gemessen: 17 aktive
+Profile, 17 mit Namen, 7 Fahrten, alle mit Track — nichts zurückgeblieben.
+
+Die beiden Spalten sind bewusst beide im `where`: ein Gast zeichnet ohne
+Konto auf (`user_id` NULL) und meldet sich erst beim Speichern an — dann
+steht die Person **nur** in `eingeloest_von`. Wer nur über `user_id`
+löscht, lässt genau den Fall stehen, für den `0096` die zweite Spalte
+eingeführt hat.
+
+**Der Weg zurück**, falls nötig: `0092` erneut anwenden — der Rumpf dort ist
+derselbe minus der letzten Anweisung.
+
+**Was diese Migration NICHT löst.** Gast-Zeilen ohne jedes Konto
+(`user_id` und `eingeloest_von` beide NULL) hängen an keiner Kontolöschung.
+Sie räumt der Lauf in `fahrt_start_anlegen` (`0096`) ab — und der hängt
+hinter `random() < 0.02`, läuft also nur, wenn jemand eine Fahrt startet,
+und dann in 2 % der Fälle. Eine Frist sichert das nicht zu; die
+Datenschutzerklärung sagt deshalb „in der Regel innert 48 Stunden" und
+nennt als harte Grenze die **24 Stunden**, nach denen `fahrt_start_puls`
+und `fahrt_start_einloesen` die Zeile beide nicht mehr annehmen. Wer daraus
+eine echte Frist machen will, braucht einen Cron wie `premium_abgleich()`
+(`0059`) — eigene Entscheidung, keine Nacharbeit zu dieser.
+
 ## Eingespielt: 0096–0098 (Fahrtstart serverseitig, 2026-09-15, Produktion)
 
 | Datei | Was |
