@@ -31,6 +31,7 @@
 /lib/publicTrack.ts          @janlampert08-dev
 /lib/track.ts                @janlampert08-dev
 /lib/utils/url.ts            @janlampert08-dev
+/lib/bestaetigung.ts         @janlampert08-dev
 /.github/                    @janlampert08-dev
 /.claude/                    @janlampert08-dev
 /.agents/                    @janlampert08-dev

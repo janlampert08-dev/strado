@@ -179,6 +179,44 @@ is what should be corrected.
     `NEXT_PUBLIC_` prefix buys nothing and costs this freezing. Renaming it
     to `SITE_URL` would make it a true runtime value; that needs the repo
     and the Vercel dashboard changed together, so it has not been done.
+- **Sign-up is confirmed with a six-digit code, not a link, since
+  2026-09-16.** The Supabase *Confirm signup* template now renders
+  `{{ .Token }}`; the versioned copy of it is
+  `supabase/email-vorlagen/bestaetigung.html`, and like a migration it is
+  **not applied by anything** — it is pasted into the dashboard by hand, and
+  the README next to it lists the two project settings it depends on (Email
+  OTP Expiration `3600`, Confirm email on). The reason for the switch is the
+  failure the app already documented in `lib/authFehler.ts`: the link is
+  redeemed over PKCE, and the verifier is a cookie in the browser the
+  sign-up came from, so opening the mail on a phone after registering on a
+  laptop never worked. A typed code has no such binding.
+  - `signUp()` writes the address and the `next` target into a 60-minute
+    httpOnly cookie (`lib/bestaetigung.ts`) and sends the person to
+    `/registrieren/bestaetigen`, where `bestaetigeRegistrierung()` redeems
+    the code with `verifyOtp({ type: "signup" })`. The address comes **only**
+    from that cookie — a form field would turn the page into a "type a
+    stranger's address and guess codes" machine. What actually stops that is
+    not the cookie (anyone may edit their own) but the per-address and per-IP
+    limits in `lib/actions/auth.ts`: ten redemptions per ten minutes against
+    a one-in-a-million code that lives 60 minutes.
+  - `signIn()` no longer answers `email_not_confirmed` with a dead-end
+    message. It writes the same cookie and redirects to the code page, which
+    is safe because GoTrue only returns that error **after** a successful
+    password check. It deliberately does not send a mail — otherwise every
+    stray sign-in attempt would; `sendeBestaetigungErneut()` behind the
+    page's button does, at most three per address per ten minutes, and
+    without awaiting the send for the reason `requestPasswordReset()`
+    already documents.
+  - `app/auth/callback/route.ts` stays: the password-reset template still
+    sends a link, and confirmation mails from before the switch are still in
+    inboxes. `emailRedirectTo` is still passed for the same reason. Its
+    `?token_hash=` branch from #264 would work for sign-up too — the code
+    was kept anyway, because that kind of link *is* the key on its own
+    (`lib/otpTyp.ts`), a price worth paying for password reset, where a link
+    is the only form that works, and not here.
+  - Delivery is the standing limit, not this flow: without a custom SMTP
+    provider Supabase Auth only delivers to project-team addresses, so the
+    template can only really be checked against one of those.
 - **Die CSP wird durchgesetzt, nicht mehr nur berichtet.** `next.config.ts`
   liefert seit dem Wechsel eine echte `Content-Security-Policy` statt
   `Content-Security-Policy-Report-Only` aus. Der Report-Only-Modus war als
@@ -944,6 +982,13 @@ additional care and review before merging changes to them:
   user-supplied `?next=`; `abmelden/route.ts` ends the session.
 - `/lib/utils/url.ts` — `safeInternalPath()`, the app's only open-redirect
   guard. Every `?next=` in the app depends on it.
+- `/lib/bestaetigung.ts` — the sign-up confirmation cookie. It decides which
+  address `verifyOtp` is asked about, and it carries a `next` that ends in a
+  `redirect()`, so it re-checks that value through `safeInternalPath()` on
+  the way out. Widening what it accepts widens both. Anything importing it
+  must stay server-side: it reaches `next/headers`, and a client import
+  breaks the build (the `premiumLimits.ts` trap — `BestaetigenForm` takes
+  `CODE_LAENGE` as a prop for exactly this reason).
 - `/lib/actions/moderation.ts` — route approval/rejection (moderator-only
   mutations).
 - `/lib/actions/creatorLinks.ts` — moderator-only mutations on
