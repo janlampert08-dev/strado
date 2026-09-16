@@ -1,5 +1,6 @@
 "use client";
 
+import IconButton from "@/components/ui/IconButton";
 import { useState } from "react";
 import { Share2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -165,23 +166,21 @@ export default function ShareRideButton({
   // zwei Sekunden — ein blosses Ausgrauen liest sich in der Zeit wie "tot".
   // Der Spinner hat dieselbe Kantenlänge wie das Icon, der Knopf springt nicht.
   return (
-    <button
-      type="button"
+    <IconButton
       title="Fahrt als Bild teilen"
       aria-label="Fahrt als Bild teilen"
       aria-busy={loading}
       disabled={loading}
       onClick={handleShare}
-      className="shrink-0 text-muted transition-colors duration-fast hover:text-accent disabled:opacity-50"
     >
       {loading ? (
         <span
           aria-hidden="true"
-          className="block h-4 w-4 animate-spin rounded-full border-2 border-accent/30 border-t-accent"
+          className="block h-5 w-5 animate-spin rounded-full border-2 border-accent/30 border-t-accent"
         />
       ) : (
-        <Share2 className="h-4 w-4" aria-hidden="true" />
+        <Share2 className="h-5 w-5" aria-hidden="true" />
       )}
-    </button>
+    </IconButton>
   );
 }

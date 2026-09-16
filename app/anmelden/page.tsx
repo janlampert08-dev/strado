@@ -5,6 +5,7 @@ import { LEGAL_URLS } from "@/lib/constants";
 import { safeInternalPath } from "@/lib/utils/url";
 import { authFehlerText } from "@/lib/authFehler";
 import { NICHT_INDEXIEREN } from "@/lib/seo";
+import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
 export const metadata: Metadata = {
   title: "Anmelden – Strado",
@@ -49,16 +50,32 @@ export default async function AnmeldenPage({
   return (
     <div className="flex h-dvh flex-col">
       <Header back="/" />
-      <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-6">
-        {fehlerText && (
-          <p
-            className="rounded-lg border border-danger/40 px-4 py-3 text-sm text-danger"
-          >
-            {fehlerText}
-          </p>
-        )}
-        <AnmeldenForm nextHref={nextHref} />
-      </main>
+{/* Eigener Scrollbehälter um den zentrierten Rahmen, und min-h-full
+          statt flex-1: "justify-center" in einem h-dvh-Flexcontainer
+          zentriert auch dann, wenn der Inhalt höher ist als der Platz —
+          und überlaufender Inhalt ist an der OBEREN Kante dann nicht mehr
+          erreichbar, weil es nichts zu scrollen gibt. Auf 390 × 844 mit
+          eingeblendeter Tastatur ist genau das der Fall, und der
+          Seitenrahmen bringt 64–80 px senkrechte Polsterung mit, die das
+          frühere <main> nicht hatte. Mit min-h-full zentriert es weiter,
+          solange es passt, und wächst darüber hinaus in den Scrollbereich
+          statt zu beschneiden.
+
+          Die Fehlermeldung darin kommt aus main (?fehler= aus dem
+          Auth-Callback, Text aus lib/authFehler.ts). Sie stand dort im
+          abgelösten <main>; beim Zusammenführen gehört sie in den
+          Seitenrahmen, nicht daneben — sonst stünde sie ausserhalb der
+          Spalte, auf die sie sich bezieht, und ohne deren Seitenrand. */}
+      <div className="flex-1 overflow-y-auto">
+        <Seitenrahmen breite="schmal" className="min-h-full justify-center">
+          {fehlerText && (
+            <p className="rounded-lg border border-danger/40 px-4 py-3 text-sm text-danger">
+              {fehlerText}
+            </p>
+          )}
+          <AnmeldenForm nextHref={nextHref} />
+        </Seitenrahmen>
+      </div>
       {/* text-muted statt text-muted/50: bei halber Deckkraft ergaben die
           beiden Links #b0b2b7 auf #fafafa — ein Kontrast von 2.03:1 bei 12px,
           nicht einmal die Hälfte der von WCAG AA geforderten 4.5:1. Das ist
@@ -69,7 +86,22 @@ export default async function AnmeldenPage({
           Der Hover machte den Text dunkler als den Ruhezustand — die
           Rückmeldung lief also andersherum als überall sonst. Jetzt ist der
           Ruhezustand lesbar und der Hover hebt weiter an. */}
-      <footer className="pb-6 text-center text-xs text-muted">
+      {/* Der Innenabstand unten rechnet die BottomNav mit ein. Dieser
+          <footer> ist ein Geschwister des Scrollbehälters, kein <main> —
+          die zentrale Regel in app/globals.css
+          (`main { padding-bottom: var(--bottom-nav-h) }`) greift hier also
+          nicht, und die fixierte Leiste lag genau über den beiden Links.
+          Am Preview auf 390 × 844 nachgesehen: sie waren vollständig
+          verdeckt.
+
+          Das ist mehr als ein Schönheitsfehler. Der Kommentar direkt
+          darüber begründet die Textfarbe damit, dass von dieser Seite aus
+          "der einzige Weg" zu Impressum und Datenschutzerklärung über diese
+          zwei Links führt — und dieser Weg war auf dem Telefon keiner.
+
+          --bottom-nav-h ist ab md 0 (siehe globals.css), der Zuschlag
+          verschwindet auf dem Desktop also von selbst. */}
+      <footer className="pb-[calc(1.5rem+var(--bottom-nav-h))] text-center text-xs text-muted">
         <a
           href={LEGAL_URLS.impressum}
           target="_blank"

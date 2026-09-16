@@ -7,11 +7,12 @@ function hrefs(items: { href: string }[]): string[] {
 
 describe("getNavItems", () => {
   // Alles, was ohne Konto benutzbar ist, steht auch für Abgemeldete in der
-  // Navigation: Strecken, Feed und Bestenlisten sind öffentlich lesbar, und
+  // Navigation: Strecken, Feed und Ranglisten sind öffentlich lesbar, und
   // aufzeichnen darf inzwischen jeder (das Konto verlangt erst das
-  // Speichern, siehe FreeRideForm.tsx). Vorher fehlten Feed und
-  // Bestenlisten hier, obwohl beide Seiten längst ohne Session
-  // funktionierten — erreichbar nur über einen geteilten Link.
+  // Speichern, siehe FreeRideForm.tsx).
+  //
+  // /aktivitaet steht nicht dabei und darf es nicht: ohne Konto gibt es
+  // weder eigene Fahrten noch Follower, die Seite leitet auf /anmelden um.
   it("zeigt abgemeldeten Besuchern alles ohne Konto Nutzbare", () => {
     for (const surface of ["header", "bottom"] as const) {
       expect(hrefs(getNavItems({ loggedIn: false, moderator: false, surface }))).toEqual([
@@ -21,6 +22,54 @@ describe("getNavItems", () => {
         "/leaderboards",
         "/anmelden",
       ]);
+    }
+  });
+
+  // Die Zuordnung, die der Kopf von lib/nav.ts begründet, festgehalten:
+  // die Ranglisten sind ein eigener Bereich und stehen in der Leiste, die
+  // Aktivität ist eine Ansicht auf dieselbe Frage wie der Feed und steht
+  // dort als Reiter (components/FeedReiter.tsx).
+  it("trägt die Ranglisten und nicht die Aktivität", () => {
+    for (const surface of ["header", "bottom"] as const) {
+      const items = hrefs(getNavItems({ loggedIn: true, moderator: false, surface }));
+      expect(items).toContain("/leaderboards");
+      expect(items).not.toContain("/aktivitaet");
+    }
+  });
+
+  // Die Gegenrechnung, und der Grund, warum NavItem.aktivAuf existiert:
+  // BottomNav markiert einen Eintrag über pathname.startsWith(href).
+  // /aktivitaet hat keinen eigenen Eintrag mehr und ist auch kein Präfix
+  // eines verbliebenen — wer im Feed "Aktivität" tippt, stünde sonst auf
+  // einer Seite, auf der unten NICHTS hervorgehoben ist. Auf dem Telefon
+  // ist die Leiste der einzige Orientierungsanker.
+  //
+  // Der Test prüft beides zusammen: dass genau ein Eintrag /aktivitaet
+  // abdeckt, und dass es der Feed ist — die Seite, auf der die Aktivität
+  // als Reiter sitzt.
+  it("markiert /aktivitaet über den Feed-Eintrag", () => {
+    const items = getNavItems({ loggedIn: true, moderator: false, surface: "bottom" });
+    const zustaendig = items.filter((i) =>
+      (i.aktivAuf ?? []).some((p) => "/aktivitaet".startsWith(p)),
+    );
+    expect(zustaendig.map((i) => i.href)).toEqual(["/feed"]);
+  });
+
+  // Die Ranglisten brauchen umgekehrt KEIN aktivAuf: sie sind wieder ein
+  // eigener Eintrag, also deckt sie ihr eigenes Präfix ab. Ein zusätzlicher
+  // Eintrag, der /leaderboards mitmarkiert, würde auf der Ranglisten-Seite
+  // zwei Tabs gleichzeitig hervorheben.
+  it("markiert /leaderboards über genau einen Eintrag", () => {
+    for (const loggedIn of [false, true]) {
+      for (const surface of ["header", "bottom"] as const) {
+        const items = getNavItems({ loggedIn, moderator: false, surface });
+        const zustaendig = items.filter(
+          (i) =>
+            (i.href !== "/" && "/leaderboards".startsWith(i.href)) ||
+            (i.aktivAuf ?? []).some((p) => "/leaderboards".startsWith(p)),
+        );
+        expect(zustaendig.map((i) => i.href)).toEqual(["/leaderboards"]);
+      }
     }
   });
 

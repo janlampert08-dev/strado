@@ -62,11 +62,11 @@ export default function VerifiziertPage() {
           Ein Telefon kann jede beliebige Uhrzeit behaupten. Wer eine echte Aufzeichnung
           nimmt und ihre Zeitstempel staucht, erzeugt eine Fahrt, die auf dem Papier
           stimmt und trotzdem nie so stattgefunden hat. Solange die Zeit allein vom Gerät
-          kommt, ist jede Bestenliste nur so viel wert wie das Vertrauen darin, dass
+          kommt, ist jede Rangliste nur so viel wert wie das Vertrauen darin, dass
           niemand das tut.
         </p>
         <p className="mt-3 text-sm text-muted">
-          Deshalb misst der Server mit. Eine Zeit, die hier in einer Bestenliste steht,
+          Deshalb misst der Server mit. Eine Zeit, die hier in einer Rangliste steht,
           ist über ihre volle Länge beobachtet worden.
         </p>
       </Card>
@@ -91,7 +91,7 @@ export default function VerifiziertPage() {
         <p className="mt-2 text-sm text-muted">
           Das ist kein Vorwurf und meistens schlicht ein Funkloch. Deine Fahrt bleibt
           vollständig erhalten: Distanz, Höhenmeter, Abdeckung, Fotos, Notiz — alles
-          zählt und alles ist sichtbar. Nur die Zeit erscheint nicht in der Bestenliste
+          zählt und alles ist sichtbar. Nur die Zeit erscheint nicht in der Rangliste
           der Strecke.
         </p>
       </Card>

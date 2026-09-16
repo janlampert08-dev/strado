@@ -2,12 +2,15 @@ import Skeleton from "@/components/ui/Skeleton";
 import PageSkeleton from "@/components/ui/PageSkeleton";
 import LeaderboardListsSkeleton from "@/components/LeaderboardListsSkeleton";
 
-// Spiegelt app/leaderboards/page.tsx: Überschrift im text-display-Grad,
-// darunter die Chip-Leiste, darunter die Ranglisten.
+// Spiegelt app/leaderboards/page.tsx: Überschrift im text-display-Grad mit
+// Unterzeile, darunter die Chip-Leiste, darunter die Ranglisten.
 //
-// Der erklärende Absatz unter der Überschrift ist entfallen, hier wie dort —
-// ein Skelett, das eine Zeile zeichnet, die es nicht mehr gibt, erzeugt beim
-// Auflösen genau den Sprung, den es verhindern soll.
+// Die Reiterleiste ist entfallen, hier wie dort: die Ranglisten sind wieder
+// ein eigener Bereich mit eigenem Eintrag in der Navigation statt eines
+// Reiters auf /feed (lib/nav.ts). Ein Skelett, das eine Leiste zeichnet, die
+// es nicht mehr gibt, erzeugt beim Auflösen genau den Sprung, den es
+// verhindern soll — und dafür fehlte umgekehrt die Unterzeile, die es jetzt
+// gibt.
 //
 // Die Listen kommen aus components/LeaderboardListsSkeleton.tsx, weil die
 // Suspense-Grenze in page.tsx dasselbe Bild braucht. Zwei Kopien liefen
@@ -15,9 +18,12 @@ import LeaderboardListsSkeleton from "@/components/LeaderboardListsSkeleton";
 
 export default function Loading() {
   return (
-    <PageSkeleton maxWidth="max-w-2xl lg:max-w-5xl">
+    <PageSkeleton breite="weit">
       <div className="flex flex-col gap-3">
-        <Skeleton className="h-9 w-56 rounded-md" />
+        <div className="flex flex-col gap-1">
+          <Skeleton className="h-9 w-56 rounded-md" />
+          <Skeleton className="h-4 w-72 max-w-full rounded-sm" />
+        </div>
         {/* Die obere Chip-Zeile: drei Pillen in h-9 wie in
             components/MotorklassenChips.tsx ("Alle", "Autos",
             "Motorräder"). Die zweite Zeile mit den Leistungsbändern

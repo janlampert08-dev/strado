@@ -28,3 +28,40 @@ export const PREMIUM_VORTEILE = [
   "Unbegrenzt Strecken offline speichern",
   "GPX-Export kuratierter Strecken",
 ] as const;
+
+// Die Kurzform für Stellen, an denen kein Platz für fünf Zeilen ist: die
+// Zeile im Profil (components/PremiumCard.tsx) und die Zeile in den
+// Einstellungen.
+//
+// Sie leitet sich aus derselben Liste ab, statt daneben zu existieren — und
+// das ist der Punkt. Bis hierher stand im Profil eine dritte, von Hand
+// gepflegte Kopie ("Unbegrenzt private Strecken, 12 Fotos pro Fahrt, Offline
+// ohne Limit, GPX-Export"), obwohl der Kopf dieser Datei von "eine Liste,
+// zwei Seiten" ausgeht. Genau diese Kopie ist mit Migration 0086 verrutscht:
+// sie warb weiter mit "Eigene Strecken erstellen", während das Erstellen
+// längst wieder kostenlos war. Eine abgeleitete Zeile kann das nicht.
+//
+// Drei Punkte, nicht fünf: die Zeile soll überflogen werden, nicht gelesen.
+// Wer es genau wissen will, tippt und landet auf der Kaufseite, wo die volle
+// Liste steht.
+//
+// AUSGEWÄHLT, NICHT GEKÜRZT — und das ist der Unterschied, um den es geht.
+// Diese Funktion strich zuerst per Regex jede Klammer aus den ersten drei
+// Punkten. Damit wurde aus "Unbegrenzt private Strecken (ohne Abo: eine)"
+// die Zeile "Unbegrenzt private Strecken" — ausgerechnet die Klammer, von
+// der der Kopf dieser Datei zwanzig Zeilen weiter oben sagt, sie stehe
+// bewusst dabei: "ein Vorteil, der verschweigt, was es auch ohne Abo gibt,
+// wird spätestens beim ersten Ausprobieren als Übertreibung gelesen". Und
+// zu sehen bekommen diese Zeile genau die Konten OHNE Abo, in der
+// Profilkarte und in den Einstellungen — also das Publikum, für das der
+// Satz geschrieben wurde.
+//
+// Deshalb wird jetzt gefiltert statt ersetzt: übrig bleiben die Punkte, die
+// ohne Einschränkung auskommen. Die Zeile besteht damit aus Einträgen der
+// Liste im Wortlaut, und keine Formulierung kann sich hier still ändern.
+// lib/premiumVorteile.test.ts hält genau das offen.
+export function premiumKurzform(): string {
+  return PREMIUM_VORTEILE.filter((v) => !v.includes("("))
+    .slice(0, 3)
+    .join(" · ");
+}

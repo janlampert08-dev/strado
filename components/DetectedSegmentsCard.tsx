@@ -4,6 +4,7 @@ import RideVisibilityToggle from "@/components/RideVisibilityToggle";
 import { formatDuration } from "@/lib/format";
 import type { DetectedSegment } from "@/lib/completions";
 import Card from "@/components/ui/Card";
+import SectionHeading from "@/components/ui/SectionHeading";
 
 // Innerhalb dieser freien Fahrt automatisch erkannte Streckenabschnitte
 // (lib/lapDetection.ts) — nur dem Besitzer sichtbar, siehe getDetectedSegments
@@ -16,10 +17,9 @@ export default function DetectedSegmentsCard({ segments }: { segments: DetectedS
 
   return (
     <Card surface className="flex flex-col gap-3 p-4">
-      <p className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted uppercase">
-        <RouteIcon className="h-3.5 w-3.5" aria-hidden="true" />
+      <SectionHeading as="p" groesse="xs" icon={RouteIcon}>
         Auf dieser Fahrt erkannt
-      </p>
+      </SectionHeading>
       <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
         {segments.map((segment) => {
           const avgKmh =

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Signet } from "@/components/Wortmarke";
 import { buttonVariants, type ButtonVariant } from "./Button";
 import { cn } from "@/lib/utils/cn";
+import SectionHeading from "@/components/ui/SectionHeading";
 
 interface BaseAction {
   label: string;
@@ -54,7 +55,7 @@ export default function StatusPage({
           dann die Nachricht. */}
       {marke && <Signet className="h-8 w-auto text-accent" />}
       {eyebrow && (
-        <p className="text-sm font-semibold tracking-wide text-muted uppercase">{eyebrow}</p>
+        <SectionHeading as="p">{eyebrow}</SectionHeading>
       )}
       <h1 className="text-lg font-medium text-foreground">{title}</h1>
       {description && <p className="max-w-sm text-sm text-muted">{description}</p>}

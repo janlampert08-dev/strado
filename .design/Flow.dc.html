@@ -1,0 +1,115 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500;600&amp;display=swap">
+  <style>
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #fafafa; color: #131316; }
+    a { color: #3d5afe; } a:hover { color: #2f49d6; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+    .knoten { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1 1 0; }
+    .kreis { width: 34px; height: 34px; border-radius: 999px; display: flex; align-items: center;
+             justify-content: center; font-family: "IBM Plex Mono", monospace; font-size: 13px;
+             font-weight: 600; flex-shrink: 0; }
+    .kn { font-size: 12px; text-align: center; line-height: 1.35; }
+    .pfeil { align-self: flex-start; margin-top: 9px; flex-shrink: 0; }
+    .blk { display: flex; flex-direction: column; gap: 12px; border: 1px solid rgba(19,19,22,.12);
+           border-radius: 16px; background: #ffffff; padding: 20px; }
+    .bs { font-size: 13px; line-height: 1.55; color: #666b74; margin: 0; }
+    .paar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .z { display: flex; flex-direction: column; gap: 5px; border-radius: 12px; padding: 12px; }
+    .zv { background: #f3f3f4; border-left: 3px solid #b45309; }
+    .zn { background: #f3f3f4; border-left: 3px solid #1a7f37; }
+    .zt { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px; font-weight: 600;
+          letter-spacing: .08em; text-transform: uppercase; }
+  </style>
+</helmet>
+
+<div style="display: flex; flex-direction: column; gap: 26px; padding: 44px; background: #fafafa; min-height: 100%; box-sizing: border-box;">
+
+  <div style="display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid rgba(19,19,22,.12); padding-bottom: 20px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <svg viewBox="0 0 92 54" style="height: 15px; width: auto; fill: #131316;" aria-hidden="true"><path d="M0 27A46 27 0 1 1 92 27A46 27 0 1 1 0 27ZM12 23.5A34 14.5 0 1 0 80 23.5A34 14.5 0 1 0 12 23.5Z"/></svg>
+      <span class="mono" style="font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #666b74;">Userflow</span>
+    </div>
+    <h1 style="margin: 0; font-size: 32px; font-weight: 600; letter-spacing: -.02em; line-height: 1.1;">Vier Übergänge, an denen die Schleife hakt</h1>
+    <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #666b74; max-width: 84ch;">Die Schritte selbst funktionieren. Was klemmt, sind die Stellen <em>dazwischen</em> &mdash; und <span class="mono" style="font-size: 13px;">AGENTS.md</span> sagt genau das: „a feature that strengthens a single step but breaks the handoff to the next isn't done".</p>
+  </div>
+
+  <!-- Die Schleife -->
+  <div style="display: flex; align-items: flex-start; gap: 4px;">
+    <div class="knoten"><span class="kreis" style="background: #b45309; color: #fafafa;">1</span><span class="kn" style="color: #b45309; font-weight: 500;">Strecke<br>entdecken</span></div>
+    <svg class="pfeil" viewBox="0 0 24 24" style="width: 16px; height: 16px; stroke: #b45309; fill: none; stroke-width: 2.5;" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    <div class="knoten"><span class="kreis" style="background: #3d5afe; color: #fafafa;">2</span><span class="kn">Fahrt<br>starten</span></div>
+    <svg class="pfeil" viewBox="0 0 24 24" style="width: 16px; height: 16px; stroke: rgba(19,19,22,.30); fill: none; stroke-width: 2.5;" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    <div class="knoten"><span class="kreis" style="background: #ebedfa; color: #3d5afe;">3</span><span class="kn">Fahren</span></div>
+    <svg class="pfeil" viewBox="0 0 24 24" style="width: 16px; height: 16px; stroke: rgba(19,19,22,.30); fill: none; stroke-width: 2.5;" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    <div class="knoten"><span class="kreis" style="background: #ebedfa; color: #3d5afe;">4</span><span class="kn">Auf-<br>zeichnen</span></div>
+    <svg class="pfeil" viewBox="0 0 24 24" style="width: 16px; height: 16px; stroke: rgba(19,19,22,.30); fill: none; stroke-width: 2.5;" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    <div class="knoten"><span class="kreis" style="background: #b45309; color: #fafafa;">5</span><span class="kn" style="color: #b45309; font-weight: 500;">Fazit</span></div>
+    <svg class="pfeil" viewBox="0 0 24 24" style="width: 16px; height: 16px; stroke: #b45309; fill: none; stroke-width: 2.5;" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    <div class="knoten"><span class="kreis" style="background: #3d5afe; color: #fafafa;">6</span><span class="kn">Fahrt<br>posten</span></div>
+    <svg class="pfeil" viewBox="0 0 24 24" style="width: 16px; height: 16px; stroke: rgba(19,19,22,.30); fill: none; stroke-width: 2.5;" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    <div class="knoten"><span class="kreis" style="background: #b45309; color: #fafafa;">7</span><span class="kn" style="color: #b45309; font-weight: 500;">Andere<br>reagieren</span></div>
+    <svg class="pfeil" viewBox="0 0 24 24" style="width: 16px; height: 16px; stroke: #b45309; fill: none; stroke-width: 2.5;" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    <div class="knoten"><span class="kreis" style="background: #b45309; color: #fafafa;">8</span><span class="kn" style="color: #b45309; font-weight: 500;">Fahrerin<br>erfährt es</span></div>
+    <svg class="pfeil" viewBox="0 0 24 24" style="width: 16px; height: 16px; stroke: #b45309; fill: none; stroke-width: 2.5;" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    <div class="knoten"><span class="kreis" style="background: #b45309; color: #fafafa;">9</span><span class="kn" style="color: #b45309; font-weight: 500;">Nächste<br>Fahrt</span></div>
+    <svg class="pfeil" viewBox="0 0 24 24" style="width: 18px; height: 18px; stroke: #b45309; fill: none; stroke-width: 2.5;" aria-hidden="true"><path d="M9 4 4 9l5 5M4 9h11a5 5 0 0 1 0 10H8"/></svg>
+  </div>
+
+  <!-- Die vier Übergänge -->
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px;">
+
+    <div class="blk">
+      <div style="display: flex; align-items: baseline; gap: 10px;"><span style="font-size: 15px; font-weight: 600;">1 &rarr; 2 &nbsp;Entdecken wird Fahren</span></div>
+      <p class="bs">Der Übergang beginnt damit, dass überhaupt eine Strecke zu sehen ist. Für Abgemeldete &mdash; also den, der über einen geteilten Link kommt &mdash; beginnt die Liste heute unterhalb der Peek-Kante.</p>
+      <div class="paar">
+        <div class="z zv"><span class="zt" style="color: #b45309;">Heute</span><span style="font-size: 13px; line-height: 1.5;">0 Strecken sichtbar (abgemeldet), 1 angeschnittene (angemeldet). Auf der Streckenseite steht „Strecke starten" unter Titel und drei Schaltflächen in zwei Formen.</span></div>
+        <div class="z zn"><span class="zt" style="color: #1a7f37;">Nachher</span><span style="font-size: 13px; line-height: 1.5;">2 volle Zeilen plus Anschnitt, in beiden Fällen. „Strecke starten" auf voller Breite, direkt unter dem Ortsnamen.</span></div>
+      </div>
+    </div>
+
+    <div class="blk">
+      <div style="display: flex; align-items: baseline; gap: 10px;"><span style="font-size: 15px; font-weight: 600;">5 &rarr; 6 &nbsp;Fazit wird gespeicherte Fahrt</span></div>
+      <p class="bs">Der Moment mit der höchsten Zufriedenheit und der geringsten Geduld: man steht am Strassenrand, im Helm, und will wissen, dass es gespeichert ist.</p>
+      <div class="paar">
+        <div class="z zv"><span class="zt" style="color: #b45309;">Heute</span><span style="font-size: 13px; line-height: 1.5;">Sechs Abschnitte bis zum Speichern-Knopf, der unter der Falz liegt. „+ Fahrzeug hinzufügen" öffnet mittendrin ein Formular mit sechs Feldern.</span></div>
+        <div class="z zn"><span class="zt" style="color: #1a7f37;">Nachher</span><span style="font-size: 13px; line-height: 1.5;">Drei Abschnitte, Speichern fest am unteren Rand. Fahrzeug als Chips, Notiz und Fotos zugeklappt &mdash; beides geht auch danach noch.</span></div>
+      </div>
+    </div>
+
+    <div class="blk">
+      <div style="display: flex; align-items: baseline; gap: 10px;"><span style="font-size: 15px; font-weight: 600;">7 &rarr; 8 &nbsp;Die Reaktion erreicht die Fahrerin</span></div>
+      <p class="bs">Der Schritt, der die Schleife schliesst. <span class="mono" style="font-size: 12px;">AGENTS.md</span>: „eine Reaktion, von der niemand erfährt, schliesst den Loop nicht."</p>
+      <div class="paar">
+        <div class="z zv"><span class="zt" style="color: #b45309;">Heute</span><span style="font-size: 13px; line-height: 1.5;">Eine 20-px-Flamme oben rechts im Kopf &mdash; der einzige Loop-Schritt ohne Platz in der Leiste. Daneben hält <span class="mono" style="font-size: 11px;">/leaderboards</span> einen der fünf Plätze, obwohl es in keinem Schritt vorkommt.</span></div>
+        <div class="z zn"><span class="zt" style="color: #1a7f37;">Nachher</span><span style="font-size: 13px; line-height: 1.5;">Ein Tab. Die Bestenlisten werden der dritte Reiter im Feed &mdash; dort, wo man ohnehin schaut, was andere gefahren sind.</span></div>
+      </div>
+    </div>
+
+    <div class="blk">
+      <div style="display: flex; align-items: baseline; gap: 10px;"><span style="font-size: 15px; font-weight: 600;">9 &rarr; 1 &nbsp;Fremde Fahrt wird eigene nächste</span></div>
+      <p class="bs">Der Schritt, der aus einer Karte ein Produkt macht. Er lebt davon, wie viele fremde Fahrten auf einen Blick passen &mdash; und davon, dass der Ortsname zuerst steht.</p>
+      <div class="paar">
+        <div class="z zv"><span class="zt" style="color: #b45309;">Heute</span><span style="font-size: 13px; line-height: 1.5;">Vier Zeilen je Karte (Fahrer, Titel, Region, Kudos in eigener Zeile). Rund zwei Fahrten auf einem Schirm, und der Name des Fahrers steht vor dem Ortsnamen.</span></div>
+        <div class="z zn"><span class="zt" style="color: #1a7f37;">Nachher</span><span style="font-size: 13px; line-height: 1.5;">Zwei Zeilen: Ortsname gross, darunter Fahrer &middot; Region &middot; Distanz. Fünf Fahrten auf einem Schirm, Kudos als 44-px-Fläche daneben.</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="display: flex; gap: 14px; align-items: flex-start; border: 1px solid #3d5afe; border-radius: 16px; background: #ebedfa; padding: 18px 20px;">
+    <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; stroke: #3d5afe; fill: none; stroke-width: 2; flex-shrink: 0; margin-top: 1px;" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
+    <p style="margin: 0; font-size: 13.5px; line-height: 1.55; color: #131316;"><strong style="font-weight: 600;">Die Schritte 3 und 4 stehen absichtlich nicht auf der Liste.</strong> Fahren und Aufzeichnen laufen als Vollbild ohne Seitenwechsel ab &mdash; das ist gesund, nicht lückenhaft. Was der Aufzeichnungsschirm braucht, ist keine neue Struktur, sondern lesbare Zahlen: die Beschriftungen stehen heute in 12&nbsp;px auf dem einzigen Schirm, der in Bewegung gelesen wird.</p>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

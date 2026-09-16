@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Flame } from "lucide-react";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { isModerator } from "@/lib/moderation";
 import { istCreator } from "@/lib/creatorKennzahlen";
@@ -18,10 +17,13 @@ export default async function Header({ back }: { back?: string } = {}) {
   // erfährt der Fahrer sonst nie aktiv, dass eine geteilte Fahrt Kudos
   // bekommen hat oder ihm jemand neu folgt (0100: eine Zahl, ein RPC, weil
   // dieser Kopf auf jeder Seite läuft).
-  // Zeigt sich am Flammen-Icon unten, das auf jeder Bildschirmgrösse
-  // sichtbar ist (anders als die reine Text-Nav, die auf Mobile hinter
-  // BottomNav zurücktritt) — deshalb hier zentral berechnet statt separat
-  // je Surface.
+  // Zeigt sich als Zahl am Feed-Eintrag, in der Textleiste wie in der
+  // BottomNav — deshalb hier zentral berechnet statt separat je Surface.
+  // Am Feed und nicht an der Aktivität selbst, weil die Aktivität seit dem
+  // Leisten-Tausch ein Reiter des Feeds ist und keinen eigenen Eintrag mehr
+  // hat (lib/nav.ts). Die Zahl wandert damit an den Ort, von dem aus man
+  // hinkommt — was sie besser macht als vorher, nicht schlechter: sie steht
+  // jetzt neben etwas, das man ohnehin öffnet.
   //
   // Beide Abfragen hängen nur an user, nicht voneinander. Sequenziell waren
   // das zwei Roundtrips hintereinander, und zwar auf jeder Seite: <Header />
@@ -77,38 +79,6 @@ export default async function Header({ back }: { back?: string } = {}) {
           <LogoLink />
         </div>
         <div className="flex shrink-0 items-center gap-3 sm:gap-4">
-          {/* Eigener Icon-Link statt eines Nav-Eintrags: liegt hier
-              ausserhalb des "hidden md:flex"-Blocks unten und bleibt damit
-              auch auf Mobile sichtbar, wo BottomNav die Textnavigation
-              ersetzt — Instagram-artige Platzierung oben rechts statt eines
-              siebten/sechsten BottomNav-Tabs (siehe lib/nav.ts, dort schon
-              als zu eng bewertet). */}
-          {user && (
-            <Link
-              href="/aktivitaet"
-              // aria-label ersetzt den Inhalt vollständig — mit dem festen Text
-              // "Aktivität" war der Zähler für Screenreader nicht vorhanden.
-              // Genau dieser Zähler ist Schritt 8 des Kernloops.
-              // Neutral formuliert, seit der Zähler zwei Arten von
-              // Reaktion zusammenfasst (Kudos und neue Follower, 0100):
-              // "3 neue Kudos" wäre schlicht falsch, sobald ein Follower
-              // mitzählt, und die Zahl nach Art aufzuschlüsseln hiesse zwei
-              // Zahlen zu laden, wo eine reicht.
-              aria-label={
-                ungeseheneAktivitaet > 0
-                  ? `Aktivität, ${ungeseheneAktivitaet} ${ungeseheneAktivitaet === 1 ? "neue Reaktion" : "neue Reaktionen"}`
-                  : "Aktivität"
-              }
-              className="relative flex items-center justify-center rounded-full p-1.5 text-foreground transition-colors duration-fast hover:text-accent"
-            >
-              <Flame className="h-5 w-5" aria-hidden="true" />
-              {ungeseheneAktivitaet > 0 && (
-                <span aria-hidden="true" className="absolute top-0 right-0 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-1 text-[9px] font-semibold text-background">
-                  {ungeseheneAktivitaet > 9 ? "9+" : ungeseheneAktivitaet}
-                </span>
-              )}
-            </Link>
-          )}
           {/* Auf Mobile übernimmt BottomNav die Navigation — diese Textleiste
               bleibt nur auf Desktop sichtbar, um die Tab-Leiste nicht zu
               duplizieren. Die Hell/Dunkel-Wahl (vormals hier als eigenes
@@ -129,16 +99,37 @@ export default async function Header({ back }: { back?: string } = {}) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  // Der Zähler hängt am Feed: dort liegt die Aktivität als
+                  // Reiter (components/FeedReiter.tsx), und die Zahl gehört
+                  // an den Eintrag, der dorthin führt.
+                  aria-label={
+                    item.href === "/feed" && ungeseheneAktivitaet > 0
+                      ? `${item.label}, ${ungeseheneAktivitaet} ${ungeseheneAktivitaet === 1 ? "neue Reaktion" : "neue Reaktionen"}`
+                      : undefined
+                  }
                   className="flex items-center gap-1.5 whitespace-nowrap text-foreground transition-colors duration-fast hover:text-accent"
                 >
                   {item.label}
+                  {item.href === "/feed" && ungeseheneAktivitaet > 0 && (
+                    <span
+                      aria-hidden="true"
+                      className="flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-background"
+                    >
+                      {ungeseheneAktivitaet > 9 ? "9+" : ungeseheneAktivitaet}
+                    </span>
+                  )}
                 </Link>
               ),
             )}
           </nav>
         </div>
       </header>
-      <BottomNav loggedIn={!!user} moderator={moderator} creator={creator} />
+      <BottomNav
+        loggedIn={!!user}
+        moderator={moderator}
+        creator={creator}
+        ungeseheneAktivitaet={ungeseheneAktivitaet}
+      />
     </>
   );
 }

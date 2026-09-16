@@ -5,11 +5,12 @@ import EmptyState from "@/components/ui/EmptyState";
 import SectionHeading from "@/components/ui/SectionHeading";
 import { LinkIcon } from "@/components/NavIcons";
 import CopyButton from "@/components/CopyButton";
-import KennzahlKachel from "@/components/KennzahlKachel";
+import Kennzahl, { Kennzahlen, Kennzahlenzeile } from "@/components/ui/Kennzahl";
 import KlickVerlauf from "@/components/KlickVerlauf";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { einstiegsUrl } from "@/lib/creatorLinks";
 import {
+  anteilText,
   creatorKennzahlen,
   creatorVerlauf,
   eigeneCodes,
@@ -18,6 +19,7 @@ import {
 } from "@/lib/creatorKennzahlen";
 import { siteUrl } from "@/lib/siteUrl";
 import { mitAnzahl, nomen } from "@/lib/format";
+import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
 export const metadata = { title: "Deine Zahlen – Strado" };
 
@@ -61,7 +63,7 @@ export default async function CreatorPage() {
     <div className="flex h-dvh flex-col">
       <Header />
       <div className="flex-1 overflow-y-auto">
-        <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-10">
+        <Seitenrahmen>
           <div>
             <h1 className="text-display font-semibold">Deine Zahlen</h1>
             <p className="text-sm text-muted">
@@ -77,32 +79,48 @@ export default async function CreatorPage() {
             />
           ) : (
             <>
-              <div className="grid grid-cols-3 gap-3">
-                <KennzahlKachel
-                  wert={summe.klicks}
+              {/* Der Trichter: Aufrufe → Konten → Abos. Das Nebeneinander
+                  IST die Aussage, deshalb spalten={3} — im Standardraster
+                  stünde "Abos" auf dem Telefon allein in der zweiten Zeile.
+
+                  Die Prozentangabe steht als `zusatz` und ist alles, was
+                  unter dem Wert noch Platz hat: auf 390 px ist eine Kachel
+                  rund 109 px breit, abzüglich der 16 px Innenabstand je
+                  Seite bleiben rund 77 px. Die früheren Hinweise ("Premium
+                  abgeschlossen") brachen dort auf drei Zeilen um. Sie sind
+                  nicht verloren, sondern stehen eine Karte tiefer in ganzen
+                  Sätzen — dort, wo ohnehin schon erklärt wird, was gezählt
+                  wird.
+
+                  anteilText() gibt bei Nenner 0 null zurück statt "0 %",
+                  und Kennzahl lässt einen fehlenden zusatz weg: keine
+                  Kachel behauptet ein Ergebnis, wo nichts gemessen wurde. */}
+              <Kennzahlen spalten={3}>
+                <Kennzahl
                   beschriftung={nomen(summe.klicks, "Aufruf", "Aufrufe")}
-                  hinweis="deiner Links"
+                  wert={summe.klicks.toLocaleString("de-CH")}
                 />
-                <KennzahlKachel
-                  wert={summe.registrierungen}
+                <Kennzahl
                   beschriftung={nomen(summe.registrierungen, "Konto", "Konten")}
-                  hinweis="danach angemeldet"
-                  anteilVon={summe.klicks}
+                  wert={summe.registrierungen.toLocaleString("de-CH")}
+                  zusatz={anteilText(summe.registrierungen, summe.klicks)}
                 />
-                <KennzahlKachel
-                  wert={summe.abos}
+                <Kennzahl
                   beschriftung={nomen(summe.abos, "Abo", "Abos")}
-                  hinweis="Premium abgeschlossen"
-                  anteilVon={summe.registrierungen}
+                  wert={summe.abos.toLocaleString("de-CH")}
+                  zusatz={anteilText(summe.abos, summe.registrierungen)}
                 />
-              </div>
+              </Kennzahlen>
 
               <Card className="flex flex-col gap-2 p-4 text-sm text-muted">
                 <p>
-                  Ein Konto zählt, wenn es über deinen Link entstanden ist. Ein
+                  Ein Konto zählt, wenn es über deinen Link entstanden ist,
+                  ein Abo, wenn dieses Konto Premium abgeschlossen hat. Ein
                   Abo zählt auch dann noch, wenn es{" "}
                   <strong className="text-foreground">Monate später</strong>{" "}
-                  dazukommt — die Zuordnung bleibt am Konto hängen.
+                  dazukommt — die Zuordnung bleibt am Konto hängen. Die
+                  Prozentzahl unter einer Kachel ist ihr Anteil an der Stufe
+                  davor.
                 </p>
                 <p>
                   Die Aufrufzahl ist eine Anzeige, keine Messung: Codes stehen
@@ -115,7 +133,7 @@ export default async function CreatorPage() {
               </Card>
 
               <div className="flex flex-col gap-3">
-                <SectionHeading>Je Link</SectionHeading>
+                <SectionHeading icon={LinkIcon}>Je Link</SectionHeading>
                 {kennzahlen.map((k) => {
                   const reihe = reiheFuer.get(k.code);
                   return (
@@ -144,26 +162,23 @@ export default async function CreatorPage() {
                         <CopyButton text={einstiegsUrl(basis, k.code)} />
                       </div>
 
-                      <dl className="grid grid-cols-3 gap-3 text-sm">
-                        <div>
-                          <dt className="text-muted">Aufrufe</dt>
-                          <dd className="text-lg font-semibold tabular-nums">
-                            {k.klicks.toLocaleString("de-CH")}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-muted">Konten</dt>
-                          <dd className="text-lg font-semibold tabular-nums">
-                            {k.registrierungen.toLocaleString("de-CH")}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-muted">Abos</dt>
-                          <dd className="text-lg font-semibold tabular-nums">
-                            {k.abos.toLocaleString("de-CH")}
-                          </dd>
-                        </div>
-                      </dl>
+                      {/* Eine Zeile, keine Kacheln: die Summe oben ist die
+                          Kachelstufe, hier steht dieselbe Dreiergruppe je
+                          Link — und das für jeden Link untereinander. Als
+                          Raster wären das drei Kästen mal N Karten; als
+                          Zeile sind es rund 20 px statt rund 60, und die
+                          Karte bleibt auf dem Telefon überschaubar.
+                          Siehe docs/design-vereinfachung.md, Anhang A2. */}
+                      <Kennzahlenzeile
+                        eintraege={[
+                          { beschriftung: "Aufrufe", wert: k.klicks.toLocaleString("de-CH") },
+                          {
+                            beschriftung: "Konten",
+                            wert: k.registrierungen.toLocaleString("de-CH"),
+                          },
+                          { beschriftung: "Abos", wert: k.abos.toLocaleString("de-CH") },
+                        ]}
+                      />
 
                       {reihe && <KlickVerlauf reihe={reihe} />}
                     </Card>
@@ -172,7 +187,7 @@ export default async function CreatorPage() {
               </div>
             </>
           )}
-        </main>
+        </Seitenrahmen>
       </div>
     </div>
   );

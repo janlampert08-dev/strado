@@ -12,11 +12,35 @@ import {
   motorklasseLabel,
   psInKw,
 } from "@/lib/motorklassen";
+import { ChevronDown } from "lucide-react";
 import { fieldClassName } from "@/components/ui/Input";
-import { buttonVariants } from "@/components/ui/Button";
+import SegmentedControl from "@/components/ui/SegmentedControl";
+import { chipClassName } from "@/components/motorklassenChipStil";
+import { buttonVariants, textAktionClassName } from "@/components/ui/Button";
+import SectionHeading from "@/components/ui/SectionHeading";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 
 export const MAX_NOTIZ_LENGTH = 280;
+
+/**
+ * Die eine Geometrie für jeden Abschnitt dieses Formulars: Trennlinie oben,
+ * 16 px Luft darunter, 8 px zwischen Marke und Bedienelement.
+ *
+ * Exportiert, weil FreeRideForm einen eigenen Abschnitt als children
+ * einhängt (den Titel der freien Fahrt) — ohne diese Klasse schriebe er
+ * seine eigene, und genau daran krankte das Formular:
+ *
+ *   Fahrzeug        keine Trennlinie, gap-2
+ *   Sichtbarkeit    Trennlinie, pt-4, gap-1
+ *   Notiz & Fotos   Trennlinie, kein pt
+ *   Notiz (innen)   NOCH EINE Trennlinie, 8 px unter der vorigen
+ *   Titel (extern)  keine Trennlinie, gap-1
+ *
+ * Fünf Abschnitte, fünf Abstände, und zwei Linien mit 24 px Abstand
+ * untereinander, sobald die Klappe offen war. Auf einem 390-px-Schirm liest
+ * sich das nicht als Gliederung, sondern als Fehler.
+ */
+export const FAZIT_ABSCHNITT = "flex flex-col gap-2 border-t border-border pt-4 text-sm";
 
 export interface VisibilityChoice {
   // Verhindert die Auswahl "öffentlich" (z.B. Deckungsgrad unterschritten).
@@ -209,26 +233,49 @@ export default function RideSummaryForm({
 
       {children}
 
-      <div className="flex flex-col gap-2 text-sm">
-        <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">Fahrzeug</h3>
+      <div className={FAZIT_ABSCHNITT}>
+        {/* Ohne font-mono: die Schwesterzeile "Sichtbarkeit" weiter unten
+            trug es nie, und beide sind dieselbe Rolle. */}
+        <SectionHeading as="h3" groesse="xs">
+          Fahrzeug
+        </SectionHeading>
+        {/* Chips statt Auswahlliste. Die meisten Konten haben ein bis drei
+            Fahrzeuge; für die ist eine native Auswahlliste ein Umweg über
+            einen Systemdialog, um zwischen zwei Dingen zu wählen, die beide
+            auf den Schirm passen. Mit Chips sieht man die Wahl, ohne sie zu
+            öffnen — und trifft sie mit einem Tipp von 44 px.
+            Siehe docs/design-vereinfachung.md, Anhang B3.
+
+            Der Wert reist weiter über ein hidden input, das Formular ändert
+            sich also nicht: fahrzeug_id kommt unverändert in der FormData an,
+            und der Server entscheidet wie bisher. */}
         {vehicleList.length > 0 && (
-          <select
-            name="fahrzeug_id"
-            value={selectedVehicleId}
-            onChange={(e) => setSelectedVehicleId(e.target.value)}
-            className={fieldClassName()}
-          >
-            <option value="">—</option>
-            {vehicleList.map((v) => {
-              const klasse = motorklasseFor(v);
-              return (
-                <option key={v.id} value={v.id}>
-                  {v.marke} {v.modell}
-                  {klasse && ` · ${motorklasseLabel(klasse)}`}
-                </option>
-              );
-            })}
-          </select>
+          <>
+            <input type="hidden" name="fahrzeug_id" value={selectedVehicleId} />
+            <div role="group" aria-label="Fahrzeug dieser Fahrt" className="flex flex-wrap gap-2">
+              {vehicleList.map((v) => {
+                const klasse = motorklasseFor(v);
+                const gewaehlt = selectedVehicleId === v.id;
+                return (
+                  <button
+                    key={v.id}
+                    type="button"
+                    aria-pressed={gewaehlt}
+                    onClick={() => setSelectedVehicleId(gewaehlt ? "" : v.id)}
+                    className={chipClassName(gewaehlt, true)}
+                  >
+                    {v.marke} {v.modell}
+                    {klasse && (
+                      <span className={gewaehlt ? "opacity-70" : "opacity-80"}>
+                        {" · "}
+                        {motorklasseLabel(klasse)}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </>
         )}
         {/* Vor dem Speichern sichtbar machen, in welcher Klasse diese Fahrt
             antritt — die Klasse wird beim Speichern eingefroren und lässt
@@ -242,7 +289,7 @@ export default function RideSummaryForm({
           <button
             type="button"
             onClick={() => setShowAddVehicle(true)}
-            className="self-start text-sm font-medium text-accent hover:underline"
+            className={textAktionClassName({ className: "self-start" })}
           >
             + Fahrzeug hinzufügen
           </button>
@@ -349,69 +396,45 @@ export default function RideSummaryForm({
         )}
       </div>
 
-      <div className="flex flex-col gap-1 border-t border-border pt-4 text-sm">
-        <div className="flex items-baseline justify-between">
-          <label
-            htmlFor="tracking-notiz"
-            className="text-xs font-semibold tracking-wide text-muted uppercase"
-          >
-            Notiz (optional)
-          </label>
-          <span className="font-mono text-xs tabular-nums text-muted">
-            {notiz.length}/{MAX_NOTIZ_LENGTH}
-          </span>
-        </div>
-        <textarea
-          id="tracking-notiz"
-          name="notiz"
-          rows={2}
-          maxLength={MAX_NOTIZ_LENGTH}
-          value={notiz}
-          onChange={(e) => setNotiz(e.target.value)}
-          placeholder="z.B. nasse Fahrbahn, mit der Ducati…"
-          className={fieldClassName()}
-        />
-      </div>
-
-      <div className="flex flex-col gap-1 border-t border-border pt-4 text-sm">
-        <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">Sichtbarkeit</h3>
+      <div className={FAZIT_ABSCHNITT}>
+        <SectionHeading as="h3" groesse="xs">Sichtbarkeit</SectionHeading>
         {visibility ? (
           <>
             {/* Die folgenreichste Entscheidung dieses Screens — geht die Fahrt
                 in Feed und Bestenlisten oder nicht — war rein visuell markiert.
                 role="group" plus aria-pressed macht Auswahl und
                 Zusammengehörigkeit für Hilfstechnik ablesbar. */}
-            <div className="flex gap-2" role="group" aria-label="Sichtbarkeit der Fahrt">
-              <button
-                type="button"
-                aria-pressed={!isPublic}
-                onClick={() => onIsPublicChange(false)}
-                className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors duration-fast ${
-                  !isPublic
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border text-muted hover:border-border-strong"
-                }`}
-              >
-                <LockIcon className="h-4 w-4" />
-                Privat
-              </button>
-              <button
-                type="button"
-                aria-pressed={isPublic}
-                onClick={() => onIsPublicChange(true)}
-                disabled={visibility.publicDisabled}
-                title={visibility.publicDisabled ? visibility.publicDisabledHint : undefined}
-                className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors duration-fast disabled:cursor-not-allowed disabled:opacity-40 ${
-                  isPublic
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border text-muted hover:enabled:border-border-strong"
-                }`}
-              >
-                <GlobeIcon className="h-4 w-4" />
-                Öffentlich
-              </button>
-            </div>
-            <p className="text-xs text-muted">
+            {/* Eine Fassung statt einer eigenen: dasselbe Bedienelement
+                stand in NeueStreckeForm noch einmal, mit leicht anderen
+                Klassen. Siehe components/ui/SegmentedControl.tsx. */}
+            <SegmentedControl
+              label="Sichtbarkeit der Fahrt"
+              wert={isPublic ? "oeffentlich" : "privat"}
+              onChange={(w: "privat" | "oeffentlich") => onIsPublicChange(w === "oeffentlich")}
+              segmente={[
+                {
+                  wert: "privat" as const,
+                  label: (
+                    <>
+                      <LockIcon className="h-4 w-4" />
+                      Privat
+                    </>
+                  ),
+                },
+                {
+                  wert: "oeffentlich" as const,
+                  label: (
+                    <>
+                      <GlobeIcon className="h-4 w-4" />
+                      Öffentlich
+                    </>
+                  ),
+                  gesperrt: visibility.publicDisabled,
+                  hinweis: visibility.publicDisabledHint,
+                },
+              ]}
+            />
+            <p className="text-sm text-muted">
               {visibility.publicDisabled
                 ? visibility.publicDisabledHint
                 : isPublic
@@ -420,16 +443,70 @@ export default function RideSummaryForm({
             </p>
           </>
         ) : (
-          <p className="flex items-center gap-1.5 text-xs text-muted">
+          <p className="flex items-center gap-1.5 text-sm text-muted">
             <LockIcon className="h-4 w-4 shrink-0" />
             {visibilityNote}
           </p>
         )}
       </div>
 
-      <div className="border-t border-border pt-4">
-        <MultiPhotoInput name="foto" id="tracking-foto" maxPhotos={maxPhotos} />
-      </div>
+      {/* Notiz und Fotos hinter einer Klappe, standardmässig zu.
+
+          Dieser Schirm erscheint in dem Moment, in dem jemand am
+          Strassenrand steht, im Helm, und wissen will, dass die Fahrt
+          gespeichert ist. Davor standen bisher sechs Abschnitte, und der
+          Speichern-Knopf lag unter der Falz. Beides hier ist ausdrücklich
+          optional — die Notiz sagt es sogar im eigenen Label —, und beides
+          lässt sich auf der Fahrtseite nachtragen.
+
+          Die Sichtbarkeit bleibt offen: sie entscheidet, ob die Fahrt in
+          Feed und Bestenliste geht, und gehört nicht hinter eine Klappe.
+          Siehe docs/design-vereinfachung.md, Anhang B3. */}
+      {/* group, weil das Chevron unten group-open:rotate-180 trägt — ohne
+          die Klasse am <details> drehte es sich nie.
+
+          Die Trennlinie ist dieselbe wie an den Abschnitten oben; das pt
+          fehlt hier bewusst, weil die Summary mit min-h-11 ihre eigene
+          Höhe mitbringt und der Text darin mittig sitzt. */}
+      <details className="group border-t border-border">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40">
+          <span>
+            Notiz &amp; Fotos <span className="font-normal text-muted">— optional</span>
+          </span>
+          <ChevronDown
+            className="h-4 w-4 text-muted transition-transform duration-fast group-open:rotate-180"
+            aria-hidden="true"
+          />
+        </summary>
+        {/* KEINE zweite Trennlinie hier. Sie stand bis hierher am Notiz-Feld
+            und lag damit 24 px unter der des <details> — zwei Haarlinien
+            dicht untereinander, sobald die Klappe offen war. Der Inhalt
+            einer Klappe ist kein neuer Abschnitt, er gehört zu der Marke
+            darüber. */}
+        <div className="flex flex-col gap-4 pt-1 pb-4">
+        <div className="flex flex-col gap-1 text-sm">
+          <div className="flex items-baseline justify-between">
+            <SectionHeading as="label" groesse="xs" htmlFor="tracking-notiz">
+              Notiz (optional)
+            </SectionHeading>
+            <span className="font-mono text-xs tabular-nums text-muted">
+              {notiz.length}/{MAX_NOTIZ_LENGTH}
+            </span>
+          </div>
+          <textarea
+            id="tracking-notiz"
+            name="notiz"
+            rows={2}
+            maxLength={MAX_NOTIZ_LENGTH}
+            value={notiz}
+            onChange={(e) => setNotiz(e.target.value)}
+            placeholder="z.B. nasse Fahrbahn, mit der Ducati…"
+            className={fieldClassName()}
+          />
+        </div>
+          <MultiPhotoInput name="foto" id="tracking-foto" maxPhotos={maxPhotos} />
+        </div>
+      </details>
 
       {!isOnline && (
         <p className="text-sm text-muted">
@@ -444,14 +521,33 @@ export default function RideSummaryForm({
         </p>
       )}
 
-      <div className="flex items-center gap-4">
-        <button type="submit" disabled={pending} className={buttonVariants({ variant: "accent" })}>
+      {/* Der Speichern-Knopf klebt am unteren Rand, statt ans Ende einer
+          langen Spalte zu rutschen. Vorher lag er hinter sechs Abschnitten
+          und damit auf dem Telefon unter der Falz — in genau dem Moment, in
+          dem jemand im Helm am Strassenrand steht und nur wissen will, dass
+          es gespeichert ist. NeueStreckeForm.tsx macht es an derselben
+          Stelle seit jeher so; hier fehlte es.
+
+          sticky statt fixed: das Formular liegt in einem eigenen
+          Scroll-Container (FullscreenDialog), und fixed würde aus ihm
+          ausbrechen. Der negative Aussenabstand hebt das Polster des
+          Containers auf, damit der Streifen bis an die Kanten läuft.
+
+          size="lg" (52 px) und volle Breite: dieselbe Begründung wie beim
+          Beenden-Knopf eine Ansicht davor — hier wird mit Handschuhen
+          getippt. */}
+      <div className="sticky bottom-0 -mx-5 mt-2 flex flex-col gap-2 border-t border-border bg-background px-5 pt-3 pb-[calc(0.75rem+var(--safe-bottom))] sm:-mx-6 sm:px-6">
+        <button
+          type="submit"
+          disabled={pending}
+          className={buttonVariants({ variant: "accent", size: "lg", className: "w-full" })}
+        >
           {pending ? "Speichern…" : "Fahrt speichern"}
         </button>
         <button
           type="button"
           onClick={() => setDiscardConfirmOpen(true)}
-          className="px-2 py-2 text-sm text-muted transition-colors duration-fast hover:text-foreground"
+          className="min-h-11 text-sm text-muted transition-colors duration-fast hover:text-foreground"
         >
           Verwerfen
         </button>

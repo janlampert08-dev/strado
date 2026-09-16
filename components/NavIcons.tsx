@@ -25,6 +25,19 @@ export { MessageSquare as FeedbackIcon, Mail as MailIcon } from "lucide-react";
 // AGENTS.md diesen Wrapper, deshalb steht dieses eine hier und nicht dort.
 export { BarChart3 as ChartIcon } from "lucide-react";
 
+// Die Flamme der Aktivität. Sie sass einmal fest in components/Header.tsx
+// als direkter lucide-Import, war danach kurz das Icon eines eigenen
+// Nav-Eintrags, und ist jetzt beides nicht mehr: "Aktivität" ist ein Reiter
+// des Feeds (components/FeedReiter.tsx, lib/nav.ts), und eine Reiterleiste
+// trägt Text, keine Symbole.
+//
+// Sie bleibt trotzdem hier und heisst AktivitaetIcon (weiter unten) —
+// dieselbe Flamme, gebraucht vom Leerzustand der Aktivitätsliste. Ein
+// zweiter Alias FlameIcon auf dasselbe Symbol stand daneben, solange die
+// Navigation ihn brauchte; ohne Abnehmer ist er nur ein zweiter Name für
+// eine Sache, und genau das hat dieser Datei schon einmal einen falschen
+// Kommentar eingetragen (siehe RankingIcon oben).
+
 // Ebenfalls kein Nav-Icon: die Sterne-Bewertung einer Strecke
 // (components/Sterne.tsx, components/SterneEingabe.tsx). Steht aus demselben
 // Grund hier wie die übrigen — AGENTS.md nennt diese Datei als den Ort für

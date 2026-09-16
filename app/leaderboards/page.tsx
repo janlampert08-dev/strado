@@ -1,8 +1,9 @@
-import { Suspense } from "react";
+import { Suspense, type ComponentType } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Trophy } from "lucide-react";
+import { Compass, Route, Ruler, TrendingUp } from "lucide-react";
 import Header from "@/components/Header";
+import { RankingIcon } from "@/components/NavIcons";
 import PullToRefreshArea from "@/components/PullToRefreshArea";
 import TrackLeaderboardChooser from "@/components/TrackLeaderboardChooser";
 import Avatar from "@/components/Avatar";
@@ -28,9 +29,11 @@ import type { Motorklasse, Vehicle } from "@/types/database";
 import { MEDAL_COLORS } from "@/lib/constants";
 import Card from "@/components/ui/Card";
 import LeaderboardListsSkeleton from "@/components/LeaderboardListsSkeleton";
+import SectionHeading from "@/components/ui/SectionHeading";
+import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
 export const metadata: Metadata = {
-  title: "Bestenlisten – Strado",
+  title: "Ranglisten – Strado",
   description:
     "Die schnellsten Zeiten je Strecke und Fahrzeugklasse — und die Fahrerinnen und Fahrer mit den meisten Kilometern in der Schweiz.",
   // Kanonische Adresse. Die App wird unter mehr als einem Hostnamen
@@ -53,12 +56,15 @@ export const metadata: Metadata = {
 
 function LeaderboardSection({
   title,
+  icon,
   entries,
   unit,
   format = (v) => v.toLocaleString("de-CH"),
   currentUserId,
 }: {
   title: string;
+  /** Jede Abschnittsmarke trägt eines — siehe components/ui/SectionHeading.tsx. */
+  icon: ComponentType<{ className?: string }>;
   entries: LeaderboardEntry[];
   // Entweder eine feste Einheit ("km", "m") oder eine, die sich nach dem Wert
   // richtet — "1 Fahrt" statt "1 Fahrten". Die Einheit hängt hier am
@@ -70,7 +76,7 @@ function LeaderboardSection({
 }) {
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">{title}</h2>
+      <SectionHeading icon={icon}>{title}</SectionHeading>
       {entries.length === 0 ? (
         <p className="text-sm text-muted">Noch keine Einträge.</p>
       ) : (
@@ -86,7 +92,7 @@ function LeaderboardSection({
               >
                 {i < 3 ? (
                   <span className="flex w-4 shrink-0 justify-center">
-                    <Trophy className="h-4 w-4" style={{ color: MEDAL_COLORS[i] }} aria-hidden="true" />
+                    <RankingIcon className="h-4 w-4" style={{ color: MEDAL_COLORS[i] }} aria-hidden="true" />
                     <span className="sr-only">Platz {i + 1}</span>
                   </span>
                 ) : (
@@ -200,12 +206,14 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
     <div className="flex flex-col gap-8 sm:grid sm:grid-cols-2 sm:items-start sm:gap-6 xl:grid-cols-4">
       <LeaderboardSection
         title={`Meiste Fahrten${klassenZusatz}`}
+        icon={Route}
         entries={meisteFahrten}
         unit={(n) => nomen(n, "Fahrt", "Fahrten")}
         currentUserId={currentUserId}
       />
       <LeaderboardSection
         title={`Meiste Höhenmeter${klassenZusatz}`}
+        icon={TrendingUp}
         entries={meisteHoehenmeter}
         unit="m"
         format={(v) => Math.round(v).toLocaleString("de-CH")}
@@ -213,6 +221,7 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
       />
       <LeaderboardSection
         title={`Meiste km gefahren${klassenZusatz}`}
+        icon={Ruler}
         entries={meisteKm}
         unit="km"
         format={(v) => v.toFixed(0)}
@@ -220,6 +229,7 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
       />
       <LeaderboardSection
         title={`Entdecker${klassenZusatz}`}
+        icon={Compass}
         entries={meisteStrecken}
         unit={(n) => nomen(n, "Strecke", "Strecken")}
         currentUserId={currentUserId}
@@ -254,15 +264,26 @@ export default async function LeaderboardsPage({
       {/* Ziehen zum Aktualisieren (nur Touch) — siehe PullToRefreshArea.tsx */}
       <PullToRefreshArea>
       <div className="flex-1 overflow-y-auto">
-        <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-5 py-8 sm:px-6 sm:py-10 lg:max-w-5xl">
+        <Seitenrahmen breite="weit">
         <div className="flex flex-col gap-3">
-          <h1 className="text-display font-semibold">Bestenlisten</h1>
+          {/* Keine Reiterleiste mehr: die Ranglisten sind ein eigener Bereich
+              mit eigenem Eintrag in der Navigation (lib/nav.ts) statt eines
+              Reiters auf /feed. Sie haben eigene Daten, einen eigenen Filter
+              und einen eigenen Anlass — als dritter Reiter einer anderen
+              Seite waren sie so auffindbar wie ein Menüeintrag, den man erst
+              aufklappt. */}
+          <div>
+            <h1 className="text-display font-semibold">Ranglisten</h1>
+            <p className="mt-1 text-sm text-muted">
+              Wer am meisten unterwegs war — und die schnellsten Zeiten je Strecke.
+            </p>
+          </div>
           <MotorklassenChips
             klassen={ALLE_KLASSEN}
             aktiv={klasse}
             hrefAlle={klassenHref(null)}
             hrefs={KLASSEN_HREFS}
-            label="Bestenlisten nach Motorklasse filtern"
+            label="Ranglisten nach Motorklasse filtern"
             vorne={
               <Suspense fallback={null}>
                 <MeineKlasseChip aktiv={klasse} />
@@ -281,7 +302,7 @@ export default async function LeaderboardsPage({
         <Suspense fallback={null}>
           <Streckenwahl />
         </Suspense>
-        </main>
+        </Seitenrahmen>
       </div>
       </PullToRefreshArea>
     </div>

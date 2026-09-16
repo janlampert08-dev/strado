@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { MoreHorizontal } from "lucide-react";
 import { buildGoogleMapsUrl } from "@/lib/googleMaps";
 import { buildGpx, gpxFileName } from "@/lib/gpx";
 import { deleteRouteAsModerator } from "@/lib/actions/routes";
 import { reportRoute } from "@/lib/actions/reports";
 import type { RouteGeoJSON } from "@/types/database";
 import Card from "@/components/ui/Card";
+import IconButton from "@/components/ui/IconButton";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import ReportDialog from "@/components/ReportDialog";
 
@@ -58,6 +60,9 @@ export default function RouteActionsMenu({
   const [copied, setCopied] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  // Der Premium-Hinweis zum GPX-Export — erscheint erst beim Antippen,
+  // nicht als Dauerzustand am Eintrag (siehe unten).
+  const [gpxHinweis, setGpxHinweis] = useState(false);
   const [deleting, startDelete] = useTransition();
   const containerRef = useRef<HTMLDivElement>(null);
   const ausloeserRef = useRef<HTMLButtonElement>(null);
@@ -160,16 +165,21 @@ export default function RouteActionsMenu({
 
   return (
     <div ref={containerRef} className="relative">
-      <button
+      {/* Vorher ein "⋮" als Textzeichen in einem rounded-lg-Rahmen. Zwei
+          Probleme: die Plattformschrift rendert es auf jedem Gerät anders
+          breit und schwer, und CompletionActionsMenu zeichnete denselben
+          Auslöser als Lucide-Icon — eine Handlung, zwei Bildsprachen. */}
+      <IconButton
         ref={ausloeserRef}
-        type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          setOpen((v) => !v);
+          setGpxHinweis(false);
+        }}
         aria-label="Weitere Aktionen"
         aria-expanded={open}
-        className="rounded-lg border border-border px-3 py-1.5 text-sm text-foreground transition-colors duration-fast hover:border-border-strong"
       >
-        ⋮
-      </button>
+        <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+      </IconButton>
       {open && (
         <Card elevated as="div" className="absolute top-full left-0 z-10 mt-1 flex w-56 flex-col overflow-hidden">
           <button type="button" onClick={handleShare} className={ITEM_CLASS}>
@@ -184,19 +194,41 @@ export default function RouteActionsMenu({
           >
             In Google Maps öffnen ↗
           </a>
+          {/* Der Eintrag bleibt BEDIENBAR, auch ohne Abo — und heisst nicht
+              "(Premium)". Vorher stand hier ein dauerhaft deaktivierter
+              Eintrag mit dem Wort im Namen: ein Schloss auf jeder
+              Streckenseite, für jedes Gratis-Konto, immer, auch wenn nie
+              jemand exportieren wollte. Ein Schloss an einer Stelle, an der
+              vorher nichts war, liest sich als Wegnahme — genau das, was das
+              additive Gating aus docs/premium-plan.md vermeiden soll.
+
+              Jetzt erscheint die Erklärung erst beim Antippen: ein Tipper
+              mehr für Gratis-Konten, dafür null dauerhafte Unruhe für alle.
+              Der Export selbst bleibt gesperrt — es wird nichts freigegeben,
+              nur der Zeitpunkt der Erklärung verschoben.
+              Siehe docs/design-vereinfachung.md, Anhang C2. */}
           <button
             type="button"
-            onClick={istPremium || isOwner ? handleGpxExport : undefined}
-            disabled={!istPremium && !isOwner}
-            title={
-              istPremium || isOwner
-                ? undefined
-                : "GPX-Export kuratierter Strecken gehört zu Premium. Eigene Fahrten kannst du immer exportieren."
-            }
-            className={`${ITEM_CLASS} disabled:cursor-not-allowed disabled:text-muted`}
+            onClick={istPremium || isOwner ? handleGpxExport : () => setGpxHinweis(true)}
+            className={ITEM_CLASS}
           >
-            {istPremium || isOwner ? "GPX exportieren" : "GPX exportieren (Premium)"}
+            GPX exportieren
           </button>
+          {gpxHinweis && (
+            <div className="flex flex-col gap-2 border-t border-border bg-surface px-3 py-2.5">
+              <p className="text-sm leading-relaxed text-muted">
+                Kuratierte Strecken als GPX gehören zu Premium. Deine eigenen Fahrten kannst du
+                immer exportieren.
+              </p>
+              <Link
+                href="/profil/premium"
+                onClick={() => setOpen(false)}
+                className="text-sm font-medium text-accent hover:underline"
+              >
+                Premium ansehen →
+              </Link>
+            </div>
+          )}
           {route.saison_status === "saisonal" && (
             <a
               href={TCS_PORTAL_URL}

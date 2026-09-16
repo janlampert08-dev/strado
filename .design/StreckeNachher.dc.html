@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500;600&amp;display=swap">
+  <style>
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #fafafa; color: #131316; }
+    a { color: #3d5afe; } a:hover { color: #2f49d6; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+    .kachel { display: flex; flex-direction: column; justify-content: space-between; gap: 4px;
+              border: 1px solid rgba(19,19,22,.12); border-radius: 16px; background: #f3f3f4; padding: 16px; }
+    .kl { font-size: 14px; color: #666b74; }
+    .kw { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums;
+          font-size: 20px; font-weight: 600; }
+    .ib { width: 44px; height: 44px; border: 1px solid rgba(19,19,22,.12); border-radius: 999px;
+          display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .mess { position: absolute; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 9px;
+            font-weight: 600; color: #1a7f37; background: #fafafa; padding: 1px 5px; border-radius: 4px;
+            border: 1px solid #1a7f37; white-space: nowrap; z-index: 5; }
+  </style>
+</helmet>
+
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; background: #fafafa;">
+
+  <div style="position: absolute; inset: 0 0 auto 0; height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid rgba(19,19,22,.12); background: rgba(250,250,250,.85); z-index: 4;">
+    <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; stroke: #131316; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+    <svg viewBox="0 0 268.83 67.92" style="height: 18px; width: auto; fill: #131316;" aria-hidden="true"><path d="M23.17 67.92Q14.83 67.92 9.88 65.29Q4.92 62.67 2.63 58.67Q0.33 54.67 0 50.67L12.83 50.67Q13.25 52.83 14.63 54.63Q16 56.42 18.42 57.5Q20.83 58.58 24.08 58.58Q28.5 58.58 30.88 56.88Q33.25 55.17 33.25 52.5Q33.25 50 31.17 48.75Q29.08 47.5 24.75 46.67L17 45.17Q9.58 43.75 5.71 39.79Q1.83 35.83 1.83 29.83Q1.83 24.42 4.5 20.42Q7.17 16.42 11.96 14.17Q16.75 11.92 23.17 11.92Q29.83 11.92 34.54 14.17Q39.25 16.42 41.83 20.29Q44.42 24.17 44.83 29L32.33 29Q31.83 25.67 29.29 23.63Q26.75 21.58 22.83 21.58Q19 21.58 16.83 23.21Q14.67 24.83 14.67 27.5Q14.67 29.83 16.63 31.13Q18.58 32.42 22.42 33.17L30.5 34.75Q38.25 36.25 42.17 40.25Q46.08 44.25 46.08 50.25Q46.08 55.58 43.29 59.63Q40.5 63.67 35.42 65.79Q30.33 67.92 23.17 67.92Z"/></svg>
+  </div>
+
+  <div style="position: absolute; top: 56px; left: 0; right: 0; bottom: 64px; overflow: hidden; padding: 20px;">
+
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+      <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+        <span style="font-size: 14px; color: #666b74;">Zürichsee</span>
+        <h1 style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -.02em; line-height: 1.15;">Albispass</h1>
+        <span style="font-size: 14px; color: #666b74;">Zürich &rarr; Hausen am Albis</span>
+      </div>
+      <div style="display: flex; gap: 8px; flex-shrink: 0; position: relative;">
+        <span class="ib"><svg viewBox="0 0 24 24" style="width: 20px; height: 20px; stroke: #666b74; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><path d="m12 17.27 5.18 3.13-1.37-5.9 4.57-3.96-6.02-.52L12 4.5 9.64 10.02l-6.02.52 4.57 3.96-1.37 5.9z"/></svg></span>
+        <span class="ib"><svg viewBox="0 0 24 24" style="width: 20px; height: 20px; stroke: #666b74; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></span>
+        <span class="ib"><svg viewBox="0 0 24 24" style="width: 20px; height: 20px; stroke: #666b74; fill: #666b74; stroke-width: 2;" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span>
+      </div>
+    </div>
+    <span class="mess" style="right: 20px; top: 120px;">3 &times; 44 px, eine Form</span>
+
+    <div style="height: 20px;"></div>
+
+    <div style="display: flex;">
+      <span style="display: flex; flex-grow: 1; align-items: center; justify-content: center; height: 52px; border-radius: 999px; background: #3d5afe; color: #fafafa; font-size: 16px; font-weight: 500;">Strecke starten</span>
+    </div>
+
+    <div style="height: 16px;"></div>
+
+    <!-- 4 Kacheln -->
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; position: relative;">
+      <div class="kachel"><span class="kl">Länge</span><span class="kw">14.2 km</span></div>
+      <div class="kachel"><span class="kl">Höhe</span><span class="kw">791 m</span></div>
+      <div class="kachel"><span class="kl">Kehren</span><span class="kw">11</span></div>
+      <div class="kachel"><span class="kl">Fahrzeit</span><span class="kw">~24 min</span></div>
+    </div>
+
+    <div style="height: 10px;"></div>
+    <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #666b74;">Max. Steigung 12&nbsp;% &middot; Ø 62&nbsp;km/h &middot; 8&nbsp;°C leicht bewölkt</p>
+
+    <div style="position: absolute; right: 4px; top: 252px; width: 6px; height: 190px; background: rgba(26,127,55,.25); border-left: 2px solid #1a7f37;"></div>
+    <span class="mess" style="right: 14px; top: 336px;">190 px statt 348</span>
+
+    <div style="height: 16px;"></div>
+
+    <div style="height: 80px; border: 1px solid rgba(19,19,22,.12); border-radius: 16px; background: #fafafa; overflow: hidden;">
+      <svg viewBox="0 0 348 78" style="width: 100%; height: 100%;" aria-hidden="true">
+        <path d="M0 62 C 50 58, 80 30, 130 26 S 220 44, 260 18 S 320 30, 348 22 L348 78 L0 78 Z" fill="rgba(61,90,254,.12)"/>
+        <path d="M0 62 C 50 58, 80 30, 130 26 S 220 44, 260 18 S 320 30, 348 22" fill="none" stroke="#3d5afe" stroke-width="2"/>
+      </svg>
+    </div>
+
+    <div style="height: 20px;"></div>
+
+    <!-- Bestenliste, jetzt über der Falz -->
+    <div style="position: relative;">
+      <span class="mono" style="font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #666b74;">Bestenliste</span>
+      <div style="height: 10px;"></div>
+      <div style="display: flex; flex-direction: column; border: 1px solid rgba(19,19,22,.12); border-radius: 16px; overflow: hidden;">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid rgba(19,19,22,.12); background: #ebedfa;">
+          <span class="mono" style="font-size: 13px; font-weight: 600; color: #3d5afe; width: 16px;">1</span>
+          <span style="font-size: 14px; font-weight: 500; flex-grow: 1;">M. Brunner</span>
+          <span class="mono" style="font-size: 14px; color: #3d5afe;">18:42</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px;">
+          <span class="mono" style="font-size: 13px; font-weight: 600; color: #666b74; width: 16px;">2</span>
+          <span style="font-size: 14px; font-weight: 500; flex-grow: 1;">S. Keller</span>
+          <span class="mono" style="font-size: 14px; color: #666b74;">19:05</span>
+        </div>
+      </div>
+      <span class="mess" style="right: 0; top: -4px;">steht jetzt über der Falz</span>
+    </div>
+
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 64px; border-top: 1px solid rgba(19,19,22,.12); background: #fafafa; z-index: 4;"></div>
+
+</div>
+</x-dc>
+</body>
+</html>

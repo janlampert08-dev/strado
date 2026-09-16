@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { SCHWEIZ_ZENTRUM, DEFAULT_ZOOM } from "@/lib/constants";
-import { isDarkTheme, subscribeToThemeChange } from "@/lib/theme";
+import { akzentFarbe, isDarkTheme, subscribeToThemeChange } from "@/lib/theme";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 const LINE_SOURCE = "picker-line";
@@ -81,7 +81,14 @@ export default function RoutePicker({
         type: "line",
         source: LINE_SOURCE,
         layout: { "line-join": "round", "line-cap": "round" },
-        paint: { "line-color": "#3D5AFE", "line-width": 3 },
+        // Aus dem Token, nicht als fester Hexwert. Hier stand bis zur
+        // Review von PR #254 "#3D5AFE" — der Akzentwert des HELLEN Themes,
+        // fest verdrahtet, während diese Komponente ihren Kartenstil beim
+        // Themenwechsel längst tauscht (mapStyleForTheme oben). Auf
+        // /strecken/neu und /strecken/[id]/bearbeiten lag im Dunkelmodus
+        // also eine tagblaue Linie auf dunkler Karte. Derselbe Fehler, den
+        // dieser PR in RouteMap.tsx behebt — nur eine Datei weiter.
+        paint: { "line-color": akzentFarbe(), "line-width": 3 },
       });
     });
 
@@ -100,6 +107,15 @@ export default function RoutePicker({
     return subscribeToThemeChange(() => {
       const map = mapRef.current;
       if (!map) return;
+
+      // Der erste Wegpunkt-Marker ist ein DOM-Overlay, kein Kartenlayer —
+      // setStyle() baut ihn nicht neu, und der Effekt weiter unten zeichnet
+      // die Marker nur, wenn sich die Wegpunkte ändern. Ohne diese Zeile
+      // behielte er beim Themenwechsel seine alte Farbe, während die Linie
+      // daneben über "style.load" längst die neue trägt.
+      const ersterMarker = markersRef.current[0]?.getElement();
+      if (ersterMarker) ersterMarker.style.background = akzentFarbe();
+
       const nextStyle = mapStyleForTheme();
       if (nextStyle === currentStyle) return;
       currentStyle = nextStyle;
@@ -140,7 +156,7 @@ export default function RoutePicker({
       el.style.cssText =
         "background:#131316;color:#FAFAFA;width:22px;height:22px;display:flex;" +
         "align-items:center;justify-content:center;font:600 12px/1 Inter,sans-serif;" +
-        (i === 0 ? "background:#3D5AFE;" : "");
+        (i === 0 ? `background:${akzentFarbe()};` : "");
       return new mapboxgl.Marker({ element: el }).setLngLat(point).addTo(map);
     });
   }, [waypoints]);

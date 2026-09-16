@@ -29,6 +29,7 @@ import { KATEGORIEN } from "@/lib/constants";
 import { averageTempolimit, estimateRouteDurationMinutes, formatMinutes } from "@/lib/geo";
 import type { Vehicle } from "@/types/database";
 import Card from "@/components/ui/Card";
+import Kennzahl, { Kennzahlen, Kennzahlenzeile } from "@/components/ui/Kennzahl";
 import { buttonVariants } from "@/components/ui/Button";
 
 const KATEGORIE_LABEL = Object.fromEntries(
@@ -263,6 +264,12 @@ export default async function StreckeDetailPage({
           </Card>
         )}
 
+        {/* Drei gleich geformte 44-px-Flächen statt dreier Schaltflächen in
+            zwei Silhouetten (rounded-lg neben rounded-full) mit Textlabels.
+            Die Zeile trug damit fast so viel Höhe wie die Überschrift
+            darüber — für Nebenhandlungen. "Bearbeiten" behält seinen Text:
+            es ist eine seltene, folgenreiche Handlung und nur für die
+            Besitzerin sichtbar. */}
         <div className="flex flex-wrap items-start gap-2">
           {user && <FavoriteButton routeId={id} initialFavorite={favorite} />}
           <OfflineRouteButton
@@ -321,72 +328,55 @@ export default async function StreckeDetailPage({
           <ElevationProfile punkte={route.hoehenprofil} />
         )}
 
-        {/* Bento-Layout statt einer gleichförmigen dl-Tabelle: Länge/Höhe als
-            grössere, betonte Kacheln (die zwei Zahlen, die beim ersten Blick
-            auf eine Strecke am meisten zählen), Rest kleinteiliger darunter.
-            dl bleibt als semantischer Rahmen um alle dt/dd-Paare erhalten —
-            HTML5 erlaubt dt/dd-Gruppen, die einzeln in div (hier: Card)
-            gewrappt sind. */}
-        <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Card surface className="col-span-1 flex flex-col justify-between gap-1 p-4">
-            <dt className="text-sm text-muted">Länge</dt>
-            <dd className="text-title font-mono font-semibold tabular-nums">
-              {formatKm(route.laenge_km)} km
-            </dd>
-          </Card>
-          <Card surface className="col-span-1 flex flex-col justify-between gap-1 p-4">
-            <dt className="text-sm text-muted">Höhe</dt>
-            <dd className="text-title font-mono font-semibold tabular-nums">
-              {route.hoehe_m !== null ? `${route.hoehe_m} m` : "—"}
-            </dd>
-          </Card>
-          <Card surface className="flex flex-col justify-between gap-1 p-4">
-            <dt className="text-sm text-muted">Max. Steigung</dt>
-            <dd className="font-mono tabular-nums">
-              {route.max_steigung_prozent !== null ? `${route.max_steigung_prozent}%` : "—"}
-            </dd>
-          </Card>
-          <Card surface className="flex flex-col justify-between gap-1 p-4">
-            <dt className="text-sm text-muted">Kehren</dt>
-            <dd className="font-mono tabular-nums">{route.kehren ?? "—"}</dd>
-          </Card>
-          <Card surface className="flex flex-col justify-between gap-1 p-4">
-            <dt className="text-sm text-muted">Ø Tempolimit</dt>
-            <dd className="font-mono tabular-nums">
-              {averageTempolimit(route.tempolimits) !== null
-                ? `${averageTempolimit(route.tempolimits)} km/h`
-                : "—"}
-            </dd>
-          </Card>
-          <Card surface className="flex flex-col justify-between gap-1 p-4">
-            <dt className="text-sm text-muted">Fahrzeit</dt>
-            <dd className="font-mono tabular-nums">
-              ~
-              {formatMinutes(
-                estimateRouteDurationMinutes(
-                  route.laenge_km,
-                  route.kategorien,
-                  route.tempolimits,
-                ),
-              )}
-            </dd>
-          </Card>
-          <Card surface className="col-span-2 flex flex-col justify-between gap-1 p-4 sm:col-span-2">
-            <dt className="text-sm text-muted">Wetter</dt>
-            <dd className="font-mono tabular-nums">
-              {weather ? (
-                <>
-                  {weather.tempC}°C
-                  <span className="ml-1.5 font-sans text-xs normal-case text-muted">
-                    {weather.label}
-                  </span>
-                </>
-              ) : (
-                "—"
-              )}
-            </dd>
-          </Card>
-        </dl>
+        {/* Vier Kacheln, nicht sieben. Vorher standen hier Länge, Höhe,
+            Max. Steigung, Kehren, Ø Tempolimit, Fahrzeit und Wetter als
+            gleichrangige Kästen — in grid-cols-2 sind das auf dem Telefon
+            vier Zeilen à rund 78 px, also rund 348 px, bevor die
+            Bestenlisten-Vorschau überhaupt beginnt. Für Zahlen, die vor dem
+            Losfahren kaum jemand liest.
+
+            Geblieben sind die vier, nach denen man eine Strecke aussucht.
+            Der Rest steht als Zeile darunter — dieselbe Information,
+            rund 190 statt 348 px, und die Bestenliste rückt über die Falz.
+
+            Das Wetter gehört ohnehin nicht in eine Kachel: es ist eine
+            Momentaufnahme und behauptete neben "Kehren" eine
+            Dauerhaftigkeit, die es nicht hat.
+            Siehe docs/design-vereinfachung.md, Anhang A2. */}
+        <Kennzahlen>
+          <Kennzahl beschriftung="Länge" wert={`${formatKm(route.laenge_km)} km`} />
+          <Kennzahl
+            beschriftung="Höhe"
+            wert={route.hoehe_m !== null ? `${route.hoehe_m} m` : "—"}
+          />
+          <Kennzahl beschriftung="Kehren" wert={route.kehren ?? "—"} />
+          <Kennzahl
+            beschriftung="Fahrzeit"
+            wert={`~${formatMinutes(
+              estimateRouteDurationMinutes(route.laenge_km, route.kategorien, route.tempolimits),
+            )}`}
+          />
+        </Kennzahlen>
+
+        <Kennzahlenzeile
+          eintraege={[
+            {
+              beschriftung: "Max. Steigung",
+              wert: route.max_steigung_prozent !== null ? `${route.max_steigung_prozent} %` : "—",
+            },
+            {
+              beschriftung: "Ø Tempolimit",
+              wert:
+                averageTempolimit(route.tempolimits) !== null
+                  ? `${averageTempolimit(route.tempolimits)} km/h`
+                  : "—",
+            },
+            {
+              beschriftung: "Wetter",
+              wert: weather ? `${weather.tempC} °C, ${weather.label}` : "—",
+            },
+          ]}
+        />
 
         <RouteLeaderboardPreview
           routeId={id}

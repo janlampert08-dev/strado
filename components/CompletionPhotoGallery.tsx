@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react";
 import Image from "next/image";
-import { X } from "lucide-react";
+import { Image as ImageIcon, X } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { removeCompletionPhoto } from "@/lib/actions/completions";
 import type { CompletionPhotoItem } from "@/lib/completions";
+import SectionHeading from "@/components/ui/SectionHeading";
 
 // Fotos-Sektion der Fahrt-Detailseite (app/fahrten/[id]/page.tsx), ersetzt
 // CompletionPhoto.tsx (ein einzelnes Foto) — ab 0036_completion_photos.sql
@@ -86,9 +87,7 @@ export default function CompletionPhotoGallery({
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">
-        Fotos ({items.length})
-      </h2>
+      <SectionHeading icon={ImageIcon}>Fotos ({items.length})</SectionHeading>
       {error && <p className="text-sm text-danger">{error}</p>}
       <div className="grid grid-cols-3 gap-1">
         {items.map((photo, i) => (

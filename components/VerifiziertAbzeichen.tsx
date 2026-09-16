@@ -57,7 +57,7 @@ export default function VerifiziertAbzeichen({
   // gehen — und für Screenreader den Grund, warum hier überhaupt etwas steht.
   const titel = verifiziert
     ? "Die Dauer stammt aus Positionsmeldungen, die während der Fahrt an den Server gingen."
-    : "Die Dauer stammt aus den Zeitstempeln des Geräts. Die Fahrt zählt, ihre Zeit erscheint aber nicht in der Bestenliste.";
+    : "Die Dauer stammt aus den Zeitstempeln des Geräts. Die Fahrt zählt, ihre Zeit erscheint aber nicht in der Rangliste.";
 
   if (!verlinkt) {
     return (

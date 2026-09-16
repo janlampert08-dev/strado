@@ -5,6 +5,7 @@ import { toggleCompletionVisibility } from "@/lib/actions/completions";
 import { GlobeIcon, LockIcon } from "@/components/VisibilityIcons";
 import { COVERAGE_THRESHOLD_PERCENT } from "@/lib/routeCoverage";
 import Card from "@/components/ui/Card";
+import IconButton from "@/components/ui/IconButton";
 
 export default function RideVisibilityToggle({
   completionId,
@@ -29,11 +30,13 @@ export default function RideVisibilityToggle({
 
   return (
     <div className="relative shrink-0">
-      <button
-        type="button"
+      <IconButton
+        ton={isPublic ? "aktiv" : "neutral"}
+        aria-pressed={isPublic}
+        aria-label={isPublic ? "Fahrt ist öffentlich — privat machen" : "Fahrt ist privat — öffentlich machen"}
         title={
           isPublic
-            ? "Öffentlich — auf Bestenlisten/Profil sichtbar. Klicken um privat zu machen."
+            ? "Öffentlich — in Ranglisten und Profil sichtbar. Klicken um privat zu machen."
             : blocked
               ? (blockedReason ??
                 `Kann nicht öffentlich gemacht werden — deckt nur ${Math.round(coveragePercent ?? 0)}% der Strecke ab.`)
@@ -46,14 +49,13 @@ export default function RideVisibilityToggle({
             setError(result.error);
           })
         }
-        className="text-muted transition-colors duration-fast hover:text-accent disabled:opacity-30"
       >
-        {isPublic ? <GlobeIcon className="h-4 w-4" /> : <LockIcon className="h-4 w-4" />}
-      </button>
+        {isPublic ? <GlobeIcon className="h-5 w-5" /> : <LockIcon className="h-5 w-5" />}
+      </IconButton>
       {error && (
         <Card
           elevated
-          className="absolute top-full right-0 z-10 mt-1 w-48 p-2 text-right text-xs text-danger"
+          className="absolute top-full right-0 z-10 mt-1 w-48 p-2 text-right text-sm text-danger"
         >
           {error}
         </Card>

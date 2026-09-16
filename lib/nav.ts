@@ -1,14 +1,58 @@
 import type { ComponentType } from "react";
-import { MapPinIcon, PlusIcon, RankingIcon, PersonIcon, ShieldIcon, FeedIcon, RecordIcon, ChartIcon } from "@/components/NavIcons";
+import { MapPinIcon, PlusIcon, PersonIcon, ShieldIcon, FeedIcon, RecordIcon, ChartIcon, RankingIcon } from "@/components/NavIcons";
 
 export interface NavItem {
   href: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
+  /**
+   * Weitere Pfade, auf denen dieser Eintrag als aktiv gilt.
+   *
+   * BottomNav markiert einen Eintrag über `pathname.startsWith(href)`.
+   * Eine Seite, die als Reiter unter einem Eintrag hängt, aber eine eigene
+   * Adresse hat, ist kein Präfix davon — ohne diese Liste wäre unten dann
+   * NICHTS hervorgehoben, und auf dem Telefon ist die Leiste der einzige
+   * Orientierungsanker.
+   *
+   * Konkret betrifft das /aktivitaet: es ist der dritte Reiter des Feeds
+   * (components/FeedReiter.tsx), aber weiterhin eine eigene Seite.
+   *
+   * Die Kompensation steht bewusst hier und nicht als Sonderfall in
+   * BottomNav: sie gehört in dieselbe Datei wie die Zuordnung, die sie
+   * nötig macht — sonst driftet das eine vom anderen weg.
+   */
+  aktivAuf?: string[];
 }
 
 // Einzige Quelle für die Top-Level-Navigation — Header (Desktop) und
 // BottomNav (Mobile) rendern beide dieselbe Liste.
+//
+// FÜNF PLÄTZE, UND WER SIE BEKOMMT
+//
+// Die mobile Leiste ist auf fünf Einträge gedeckelt (Begründung weiter
+// unten bei den Rollen). Was also hineinkommt, verdrängt etwas.
+//
+// "Ranglisten" steht darin, "Aktivität" nicht — und zwar in genau dieser
+// Zuordnung:
+//
+//   Ranglisten sind ein eigener Bereich. Sie haben eigene Daten (vier
+//   Volumenlisten plus die Streckenbestzeiten), einen eigenen Filter
+//   (Motorklasse) und einen eigenen Grund, sie zu öffnen: nachsehen, wo man
+//   steht. Das ist keine Ansicht auf den Feed, sondern eine Seite neben ihm,
+//   und als dritter Reiter einer anderen Seite war sie genau so auffindbar
+//   wie ein Eintrag in einem Menü, das man erst öffnen muss.
+//
+//   Aktivität steht unter dem Feed. Beide beantworten "was ist passiert,
+//   seit ich zuletzt geschaut habe" — der Feed für die anderen, die
+//   Aktivität für einen selbst. Sie teilen sich deshalb die Reiterleiste
+//   (components/FeedReiter.tsx), und der Zähler ungesehener Reaktionen
+//   sitzt am Feed-Eintrag, damit er auch dann sichtbar ist, wenn man gerade
+//   nicht auf der Aktivitätsseite steht.
+//
+// Der Loop-Schritt 8 aus AGENTS.md ("eine Reaktion, von der niemand
+// erfährt, schliesst den Loop nicht") bleibt damit vertreten: erreichbar in
+// einem Tipp auf die Leiste, mit der Zahl daneben. Was er nicht mehr
+// braucht, ist eine eigene Spalte — er ist eine Ansicht, kein Ort.
 //
 // Ein Unterschied bleibt seit dem Aufzeichnen freier Fahrten: die mobile
 // Leiste trägt an der mittleren, am leichtesten erreichbaren Position
@@ -40,19 +84,27 @@ export function getNavItems({
   // den Recorder: aufzeichnen darf jeder, ein Konto braucht erst das
   // Speichern (siehe app/fahrten/neu/page.tsx und FreeRideForm.tsx).
   //
-  // Feed und Bestenlisten stehen hier ebenfalls, weil beide Seiten ohnehin
-  // öffentlich lesbar sind (public_fahrten bzw. die Leaderboard-Views sind
-  // an anon freigegeben) — sie fehlten in dieser Liste nur, wodurch es für
-  // Abgemeldete keinen Weg dorthin gab ausser über einen geteilten Link.
-  // Das ist genau der Teil des Produkts, der jemanden ohne Konto überzeugen
-  // kann. "Erstellen" und "Profil" bleiben weg: beide sind ohne Konto
-  // nichts als eine Umleitung auf /anmelden.
+  // Der Feed steht hier ebenfalls, weil public_fahrten an anon freigegeben
+  // ist — er fehlte in dieser Liste nur, wodurch es für Abgemeldete keinen
+  // Weg dorthin gab ausser über einen geteilten Link. Das ist genau der
+  // Teil des Produkts, der jemanden ohne Konto überzeugen kann. Die
+  // Ranglisten sind ebenso öffentlich und stehen aus demselben Grund
+  // daneben — sie sind das zweite, was man ohne Konto ansehen kann, und
+  // "wer ist hier der Schnellste" ist eine Frage, die man auch ohne Konto
+  // hat.
+  //
+  // "Erstellen", "Profil" und "Aktivität" bleiben weg: alle drei sind ohne
+  // Konto nichts als eine Umleitung auf /anmelden. Bei "Aktivität" kommt
+  // hinzu, dass es ohne eigene Fahrten und Follower gar keinen Inhalt hätte.
+  //
+  // Fünf Einträge, wie für Angemeldete — die Deckelung ist die Breite der
+  // Leiste, nicht der Anmeldezustand.
   if (!loggedIn) {
     return [
       { href: "/", label: "Strecken", icon: MapPinIcon },
       { href: "/feed", label: "Feed", icon: FeedIcon },
       fahrtStarten,
-      { href: "/leaderboards", label: "Bestenlisten", icon: RankingIcon },
+      { href: "/leaderboards", label: "Ranglisten", icon: RankingIcon },
       { href: "/anmelden", label: "Anmelden", icon: PersonIcon },
     ];
   }
@@ -78,7 +130,7 @@ export function getNavItems({
   // eng" festhält und deshalb "Erstellen" aus der Leiste nimmt, liess hier
   // eine siebte Spalte zu: bei 360 px Breite sind das 51 px pro Eintrag,
   // schmaler als die 44 px Mindestgrösse einer Tippfläche plus Abstand, und
-  // die Beschriftungen ("Bestenlisten", "Moderation") brechen oder werden
+  // die Beschriftungen ("Ranglisten", "Moderation") brechen oder werden
   // abgeschnitten.
   //
   // Die Leiste ist damit für JEDES Konto fünf Einträge breit. Der mobile Weg
@@ -93,9 +145,12 @@ export function getNavItems({
 
   return [
     { href: "/", label: "Strecken", icon: MapPinIcon },
-    { href: "/feed", label: "Feed", icon: FeedIcon },
+    // aktivAuf: /aktivitaet ist der dritte Reiter dieses Eintrags, hat aber
+    // eine eigene Adresse — ohne die Angabe stünde man dort vor einer
+    // Leiste, in der nichts hervorgehoben ist.
+    { href: "/feed", label: "Feed", icon: FeedIcon, aktivAuf: ["/aktivitaet"] },
     ...mittlereAktionen,
-    { href: "/leaderboards", label: "Bestenlisten", icon: RankingIcon },
+    { href: "/leaderboards", label: "Ranglisten", icon: RankingIcon },
     { href: "/profil", label: "Profil", icon: PersonIcon },
     ...(surface === "bottom" ? [] : rollen),
   ];

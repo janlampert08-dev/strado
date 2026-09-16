@@ -3,14 +3,14 @@ import Card from "@/components/ui/Card";
 import PageSkeleton from "@/components/ui/PageSkeleton";
 
 // Spiegelt app/profil/page.tsx: Avatar-Zeile mit Zahnrad, Name/E-Mail,
-// zwei gleich breite Buttons, die Statistik-Card (vier Kacheln plus zwei
-// aufklappbare Abschnitte), die Fahrten-Card, die Garage und zuunterst die
+// zwei gleich breite Buttons, die Kennzahlen (vier Kacheln plus zwei
+// aufklappbare Abschnitte, auf dem Telefon zu), die Fahrten-Card, die Garage und zuunterst die
 // Premium-Karte. Vorher zeichnete diese Datei ein Dreier-Kennzahlenraster
 // und eine flache Fahrtenliste — eine Form, die es auf der Seite nicht gibt.
 
 export default function Loading() {
   return (
-    <PageSkeleton maxWidth="max-w-2xl lg:max-w-4xl">
+    <PageSkeleton>
       <div className="flex flex-col gap-4">
         <div className="flex items-start justify-between gap-4">
           <Skeleton className="h-16 w-16 rounded-full" />
@@ -27,26 +27,32 @@ export default function Loading() {
         </div>
       </div>
 
-      {/* Statistiken */}
+      {/* Kennzahlen. Ohne Gruppen-Card: die Seite hat den äusseren Rahmen
+          verloren (docs/design-vereinfachung.md, Abschnitt 3.9), und ein
+          Skelett, das ihn weiter zeichnet, lässt beim Auflösen den ganzen
+          Block um seinen Innenabstand springen. */}
       <section className="flex flex-col gap-3">
         <Skeleton className="h-4 w-24 rounded-sm" />
-        <Card className="flex flex-col divide-y divide-border">
-          <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-[86px] rounded-lg" />
-            ))}
-          </div>
-          {/* Die beiden <details>-Abschnitte (Auszeichnungen, Aktivität) —
-              beide standardmässig offen, also je Kopfzeile plus Inhalt. */}
-          <div className="flex flex-col gap-4 p-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-[86px] rounded-lg" />
+          ))}
+        </div>
+        {/* Die beiden <details>-Abschnitte (Auszeichnungen, Aktivität).
+            Auf dem Telefon sind sie ZUGEKLAPPT und ab sm offen
+            (app/globals.css, `details.ab-sm-offen`) — hier stand vorher in
+            beiden Fällen der offene Zustand, was auf 390 px die halbe Seite
+            nachspringen liess. Die Inhalte deshalb erst ab sm. */}
+        <div className="flex flex-col divide-y divide-border border-t border-border">
+          <div className="flex flex-col gap-4 py-4">
             <Skeleton className="h-5 w-40 rounded-sm" />
-            <Skeleton className="h-12 rounded-md" />
+            <Skeleton className="hidden h-12 rounded-md sm:block" />
           </div>
-          <div className="flex flex-col gap-4 p-4">
+          <div className="flex flex-col gap-4 py-4">
             <Skeleton className="h-5 w-32 rounded-sm" />
-            <Skeleton className="h-20 rounded-md" />
+            <Skeleton className="hidden h-20 rounded-md sm:block" />
           </div>
-        </Card>
+        </div>
       </section>
 
       {/* Meine Fahrten */}

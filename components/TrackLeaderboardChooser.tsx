@@ -11,6 +11,9 @@ import { filterLabel } from "@/lib/motorklassen";
 import type { Klassenfilter } from "@/lib/motorklassen";
 import type { Motorklasse } from "@/types/database";
 import { cn } from "@/lib/utils/cn";
+import { RankingIcon } from "@/components/NavIcons";
+import { textAktionClassName } from "@/components/ui/Button";
+import SectionHeading from "@/components/ui/SectionHeading";
 
 const COLLAPSED_SIZE = 5;
 const EXPANDED_SIZE = 10;
@@ -64,9 +67,7 @@ export default function TrackLeaderboardChooser({
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">
-          Streckenbestzeiten
-        </h2>
+        <SectionHeading icon={RankingIcon}>Streckenbestzeiten</SectionHeading>
         {routes.length > 0 && (
           <select
             // Ohne Beschriftung meldet ein Screenreader hier nur "Auswahl" —
@@ -142,7 +143,7 @@ export default function TrackLeaderboardChooser({
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
-              className="self-start text-xs text-accent hover:underline"
+              className={textAktionClassName({ groesse: "xs", className: "self-start" })}
             >
               {expanded ? "Weniger anzeigen" : "Top 10 anzeigen"}
             </button>

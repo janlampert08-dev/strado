@@ -3,6 +3,7 @@ import Header from "@/components/Header";
 import PremiumCard from "@/components/PremiumCard";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
+import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
 // Der Abo-Zustand kommt aus der Datenbank (Webhook/Reconciliation-Cron
 // halten sie aktuell), nicht live von Stripe — dieselbe Quelle, aus der
@@ -38,10 +39,10 @@ export default async function AboVerwaltenPage() {
   return (
     <div className="flex h-dvh flex-col">
       <Header back="/profil/einstellungen" />
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 overflow-y-auto px-5 py-8 sm:px-6 sm:py-10 lg:max-w-3xl">
+      <Seitenrahmen className="flex-1 overflow-y-auto">
         <h1 className="text-display font-semibold">Abo verwalten</h1>
         <PremiumCard status={status} />
-      </main>
+      </Seitenrahmen>
     </div>
   );
 }

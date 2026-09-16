@@ -9,7 +9,7 @@ import PageSkeleton from "@/components/ui/PageSkeleton";
 
 export default function Loading() {
   return (
-    <PageSkeleton maxWidth="max-w-3xl">
+    <PageSkeleton>
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
           <Skeleton className="h-9 w-48 rounded-md" />

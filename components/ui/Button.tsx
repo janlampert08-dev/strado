@@ -7,13 +7,23 @@ export type ButtonSize = "sm" | "md" | "lg";
 const base =
   "inline-flex items-center justify-center gap-1.5 font-medium transition-[transform,opacity,border-color,background-color] duration-fast ease-standard active:scale-95 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
+// Alle fünf tragen dieselbe Silhouette. Vorher waren primary/accent/danger
+// Pillen und secondary/ghost Rechtecke — und im grid-cols-2 der Profilseite
+// standen beide nebeneinander, gleich breit und gleich hoch: das liest sich
+// nicht als Rangfolge, sondern als zwei Bausätze.
+//
+// Die Rangfolge trägt jetzt, was sie tragen soll: Fläche und Rahmen
+// (gefüllt → Umriss → ohne Rahmen). Card, Eingabefelder und Dialoge behalten
+// --radius-lg; damit wird "rund = Handlung, weich-eckig = Fläche" zur Regel
+// statt zum Zufall. Die Chips (motorklassenChipStil.ts, der Standort-Chip,
+// die Feed-Reiter) waren ohnehin schon Pillen.
 const variants: Record<ButtonVariant, string> = {
   primary:
     "rounded-full border border-foreground bg-foreground text-background hover:opacity-90",
   accent: "rounded-full border border-accent bg-accent text-background hover:opacity-90",
   secondary:
-    "rounded-lg border border-border text-foreground hover:border-border-strong",
-  ghost: "rounded-lg text-foreground hover:bg-surface",
+    "rounded-full border border-border text-foreground hover:border-border-strong",
+  ghost: "rounded-full text-foreground hover:bg-surface",
   danger: "rounded-full border border-danger bg-danger text-background hover:opacity-90",
 };
 
@@ -66,4 +76,57 @@ export default function Button({
   ...props
 }: ButtonProps) {
   return <button className={buttonVariants({ variant, size, className })} {...props} />;
+}
+
+/**
+ * Die eigenständige Text-Handlung: ein Link oder Knopf, der wie Text
+ * aussieht, aber allein steht statt in einem Satz.
+ *
+ * DIE UNTERSCHEIDUNG, und sie ist der Grund für diese Funktion:
+ *
+ *   "Hast du schon ein Konto? [Anmelden]"   — im Satz. Bleibt, wie er ist.
+ *                                             44 px hoch zu machen risse
+ *                                             den Absatz auseinander.
+ *   "[+ Fahrzeug hinzufügen]"               — steht allein. Ist eine
+ *                                             Schaltfläche, die nur nicht
+ *                                             wie eine aussieht.
+ *
+ * Acht Stellen der App gehören in die zweite Gruppe und standen trotzdem
+ * als blanker Text da: rund 20 px hoch bei text-sm, rund 16 px bei text-xs.
+ * Die App schreibt für eine Tippfläche 44 px fest (components/ui/IconButton
+ * begründet den Wert), und "+ Fahrzeug hinzufügen" steht ausgerechnet im
+ * Fazit — also am Strassenrand, im Helm.
+ *
+ * Nur die Höhe kommt dazu, nicht die Optik: kein Rahmen, keine Füllung. Der
+ * Unterschied zu buttonVariants bleibt, dass diese Handlung untergeordnet
+ * ist; sie soll nur greifbar sein, nicht laut.
+ *
+ * groesse="xs" für die Fälle, in denen die Zeile ringsum in text-xs steht
+ * (die Wegpunkt-Zeile in NeueStreckeForm). ton="gedaempft" für die, die
+ * neben einer wichtigeren Handlung stehen und ihr nicht die Aufmerksamkeit
+ * streitig machen sollen ("Passwort vergessen?" über dem Anmelden-Knopf,
+ * "Wertung entfernen" neben den Sternen).
+ *
+ * Beides Parameter und keine angehängten Klassen: lib/utils/cn.ts ist ein
+ * String-Join, kein tailwind-merge — ein angehängtes text-xs setzt sich
+ * gegen das eingebaute text-sm nicht verlässlich durch.
+ */
+export function textAktionClassName({
+  groesse = "sm",
+  ton = "akzent",
+  className,
+}: {
+  groesse?: "sm" | "xs";
+  ton?: "akzent" | "gedaempft";
+  className?: string;
+} = {}): string {
+  return cn(
+    "inline-flex min-h-11 items-center gap-1 rounded-sm font-medium",
+    groesse === "xs" ? "text-xs" : "text-sm",
+    ton === "gedaempft" ? "text-muted hover:text-foreground" : "text-accent",
+    "transition-colors duration-fast hover:underline",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+    "focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+    className,
+  );
 }

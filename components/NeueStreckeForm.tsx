@@ -11,9 +11,10 @@ import { fetchDrivingRoute, type DirectionsResult } from "@/lib/mapboxDirections
 import { deriveRouteLocations } from "@/lib/geocoding";
 import { proposeRoute, type ProposeRouteState } from "@/lib/actions/routes";
 import { Input, Textarea } from "@/components/ui/Input";
-import Button from "@/components/ui/Button";
+import Button, { textAktionClassName } from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Skeleton from "@/components/ui/Skeleton";
+import SegmentedControl from "@/components/ui/SegmentedControl";
 
 // Gleiche Begründung wie bei RouteMap (ExploreView.tsx): mapbox-gl ist eine
 // schwere Abhängigkeit (WebGL, eigenes CSS), und RoutePicker importiert sie
@@ -196,30 +197,15 @@ export default function NeueStreckeForm() {
               also nicht eingegeben werden. */}
           <div>
             <p className="mb-1.5 text-sm font-medium">Rundfahrt</p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setRundfahrt(true)}
-                className={`rounded-full border px-3 py-1.5 text-sm transition-colors duration-fast ${
-                  rundfahrt
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border text-muted hover:border-border-strong"
-                }`}
-              >
-                Ja
-              </button>
-              <button
-                type="button"
-                onClick={() => setRundfahrt(false)}
-                className={`rounded-full border px-3 py-1.5 text-sm transition-colors duration-fast ${
-                  !rundfahrt
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border text-muted hover:border-border-strong"
-                }`}
-              >
-                Nein
-              </button>
-            </div>
+            <SegmentedControl
+              label="Rundfahrt"
+              wert={rundfahrt ? "ja" : "nein"}
+              onChange={(w: "ja" | "nein") => setRundfahrt(w === "ja")}
+              segmente={[
+                { wert: "ja" as const, label: "Ja" },
+                { wert: "nein" as const, label: "Nein" },
+              ]}
+            />
             <p className="mt-1 text-xs text-muted">
               {rundfahrt
                 ? "Die Route endet automatisch wieder am Startpunkt."
@@ -227,10 +213,19 @@ export default function NeueStreckeForm() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 text-xs text-muted">
+          {/* -my-2 hebt die 44 px der beiden Knöpfe wieder auf die Höhe
+              der Textzeile zurück: die Tippfläche bleibt gross, die Zeile
+              wächst nicht um 24 px. Diese Leiste sitzt über der Karte, auf
+              der gerade Wegpunkte gesetzt werden — jeder Pixel, den sie
+              nimmt, fehlt dort. */}
+          <div className="-my-2 flex items-center gap-3 text-xs text-muted">
             <span>{waypoints.length} Wegpunkt(e) gesetzt</span>
             {waypoints.length > 0 && (
-              <button type="button" onClick={undoLast} className="font-medium text-accent hover:underline">
+              <button
+                type="button"
+                onClick={undoLast}
+                className={textAktionClassName({ groesse: "xs" })}
+              >
                 Letzten entfernen
               </button>
             )}
@@ -238,7 +233,7 @@ export default function NeueStreckeForm() {
               <button
                 type="button"
                 onClick={() => setResetConfirmOpen(true)}
-                className="font-medium text-accent hover:underline"
+                className={textAktionClassName({ groesse: "xs" })}
               >
                 Zurücksetzen
               </button>
@@ -343,33 +338,35 @@ export default function NeueStreckeForm() {
               </label>
 
               <Card surface className="flex flex-col gap-2 px-3 py-3 text-sm">
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIstPrivat(true)}
-                    className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors duration-fast ${
-                      istPrivat
-                        ? "border-foreground bg-foreground text-background"
-                        : "border-border text-muted hover:border-border-strong"
-                    }`}
-                  >
-                    <LockIcon className="h-4 w-4" />
-                    Privat
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIstPrivat(false)}
-                    className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors duration-fast ${
-                      !istPrivat
-                        ? "border-foreground bg-foreground text-background"
-                        : "border-border text-muted hover:border-border-strong"
-                    }`}
-                  >
-                    <GlobeIcon className="h-4 w-4" />
-                    Öffentlich
-                  </button>
-                </div>
-                <p className="text-xs text-muted">
+                {/* Dieselbe segmentierte Wahl wie im Fazit einer Fahrt
+                    (RideSummaryForm) — vorher zwei eigene Fassungen mit
+                    leicht verschiedenen Klassen für dieselbe Entscheidung. */}
+                <SegmentedControl
+                  label="Sichtbarkeit der Strecke"
+                  wert={istPrivat ? "privat" : "oeffentlich"}
+                  onChange={(w: "privat" | "oeffentlich") => setIstPrivat(w === "privat")}
+                  segmente={[
+                    {
+                      wert: "privat" as const,
+                      label: (
+                        <>
+                          <LockIcon className="h-4 w-4" />
+                          Privat
+                        </>
+                      ),
+                    },
+                    {
+                      wert: "oeffentlich" as const,
+                      label: (
+                        <>
+                          <GlobeIcon className="h-4 w-4" />
+                          Öffentlich
+                        </>
+                      ),
+                    },
+                  ]}
+                />
+                <p className="text-sm text-muted">
                   {istPrivat
                     ? "Nur für dich sichtbar, bis du sie selbst veröffentlichst."
                     : "Durchläuft die Moderation und wird danach öffentlich."}

@@ -3,9 +3,36 @@
 // Ansicht durch eine aus den ohnehin vorhandenen Streckendaten abgeleitete
 // Eigenschaft. Für jede Strecke wird das Merkmal gewählt, in dem sie
 // (perzentilbasiert) im Vergleich zu den anderen Strecken am meisten
-// heraussticht. Zwei Strecken mit demselben Merkmal teilen sich dieselbe
-// Farbe (Karte + Liste) — die Farbe transportiert also Bedeutung statt nur
-// Unterscheidbarkeit.
+// heraussticht.
+//
+// DIESE DATEI TRUG SCHON EINMAL FÜNF FARBEN, UND SIE TRÄGT SIE WIEDER —
+// aber als Namen von Design-Tokens, nicht als Hex-Werte.
+//
+// Der Unterschied ist der ganze Punkt. Vorher stand hier fünfmal ein
+// fertiger Wert (#E8590C, #7C3AED, #0EA5E9, #16A34A, #3D5AFE). Drei
+// Vorwürfe trafen diese Fassung, und zwei davon galten nicht der Farbe,
+// sondern ihrem Aufbewahrungsort:
+//
+// 1. Das Label steht in text-xs, die Kontrastschwelle ist also 4,5:1 —
+//    gerechnet gegen die echten Hintergrund-Tokens fielen im hellen Theme
+//    drei der fünf durch (2,66 / 3,16 / 3,43), im dunklen zwei.
+// 2. Konstanten in einer .ts-Datei wissen nichts von prefers-color-scheme.
+//    Sie wurden in KEINEM Theme je umdefiniert.
+//
+// Beides ist behoben, indem die Werte dorthin gezogen sind, wo jede andere
+// Farbe der App steht: app/globals.css. Dort sind sie für hell und dunkel
+// gesetzt und gegen alle drei Untergründe nachgerechnet, auf denen sie
+// vorkommen (Hintergrund, Fläche, Hover-Grund) — kleinster Wert 4,70:1.
+//
+// Der dritte Vorwurf bleibt gültig und bestimmt, WIE die Farbe eingesetzt
+// wird: fünf Farben mit nicht lernbarer Bedeutung sind auf einem
+// 390-px-Schirm kein Ordnungssystem. Niemand merkt sich, dass Violett
+// "Steigung" heisst. Deshalb steht die Farbe nie allein — Icon und Wort
+// bleiben, wo sie waren, und die Farbe ist die dritte Kodierung derselben
+// Aussage. Wer sie nicht sieht, verliert nichts.
+//
+// Die Perzentil-Logik hier ist davon unberührt und bleibt der eigentliche
+// Wert dieser Datei. Siehe docs/design-vereinfachung.md, Anhang A4.
 import { averageTempolimit } from "@/lib/geo";
 import { mitAnzahl } from "@/lib/format";
 import type { ExploreRoute } from "@/types/database";
@@ -15,15 +42,44 @@ export type SignatureKey = "kehren" | "steigung" | "hoehe" | "tempo" | "laenge";
 export interface RouteSignature {
   key: SignatureKey;
   label: string;
-  color: string;
 }
 
-export const SIGNATURE_COLORS: Record<SignatureKey, string> = {
-  kehren: "#E8590C",
-  steigung: "#7C3AED",
-  hoehe: "#0EA5E9",
-  tempo: "#16A34A",
-  laenge: "#3D5AFE",
+/**
+ * Der Name des Farb-Tokens je Merkmal — für Zeichenflächen, die keine
+ * Tailwind-Klasse annehmen.
+ *
+ * Genau eine Sorte Verbraucher braucht das: Mapbox-Layer, die einen
+ * aufgelösten Farbwert erwarten (components/RouteMap.tsx, über
+ * tokenFarbe() aus lib/theme.ts). Das DOM benutzt stattdessen die
+ * Utility-Klassen aus SIGNATUR_KLASSEN in components/ExploreSidebar.tsx —
+ * Tailwind liest Klassennamen statisch aus dem Quelltext und fände einen
+ * hier zusammengesetzten String nicht.
+ *
+ * Die Hex-Werte selbst stehen in app/globals.css und NUR dort.
+ */
+export const SIGNATUR_TOKEN: Record<SignatureKey, string> = {
+  kehren: "--color-signatur-kehren",
+  steigung: "--color-signatur-steigung",
+  hoehe: "--color-signatur-hoehe",
+  tempo: "--color-signatur-tempo",
+  laenge: "--color-signatur-laenge",
+};
+
+/**
+ * Rückfallwerte zu SIGNATUR_TOKEN, für den Fall, dass getComputedStyle
+ * nichts liefert (serverseitig, kein document).
+ *
+ * Handgepflegte Kopien der :root-Werte aus app/globals.css — dieselbe
+ * Bauart und dieselbe Schwäche wie der Rückfallwert in akzentFarbe(), und
+ * aus demselben Grund vertretbar: erreichbar ist er heute nicht, weil alle
+ * Aufrufer im Client laufen. Still veralten kann er trotzdem.
+ */
+export const SIGNATUR_RUECKFALL: Record<SignatureKey, string> = {
+  kehren: "#9a3412",
+  steigung: "#6d28d9",
+  hoehe: "#0f766e",
+  tempo: "#a21caf",
+  laenge: "#166534",
 };
 
 // Reihenfolge bei Gleichstand der Perzentile — seltenere/technischere
@@ -56,15 +112,6 @@ function percentileRanks(values: (number | null)[]): (number | null)[] {
   return values.map((_, i) => rankOf.get(i) ?? null);
 }
 
-// Wandelt eine Signaturfarbe (immer #rrggbb, siehe SIGNATURE_COLORS) in eine
-// transluzente rgba()-Variante um — für Hover-Hintergründe, die dieselbe
-// Farbe wie das Signatur-Merkmal tragen sollen, aber nicht deckend sein dürfen.
-export function withAlpha(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
 
 function formatSignature(key: SignatureKey, route: ExploreRoute): string {
   switch (key) {
@@ -128,7 +175,6 @@ export function computeSignatures(routes: ExploreRoute[]): Map<string, RouteSign
     result.set(route.id, {
       key: best,
       label: formatSignature(best, route),
-      color: SIGNATURE_COLORS[best],
     });
   });
 

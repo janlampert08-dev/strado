@@ -849,6 +849,7 @@ area**; each is a few hundred lines at most.
 | `.agents/deployment.md` | Applying migrations, shipping to Vercel/Stripe |
 | `docs/audit/README.md` | Completions, leaderboards, RLS views, auth — check the remediation table before reporting a "new" finding |
 | `docs/premium-plan.md` | Anything premium, Stripe, or entitlement-shaped |
+| `docs/design-vereinfachung.md` | Visual/structural UI work. **Read its "Umsetzungsstand" section first** — most of it shipped, four items are deliberately open and two of those need a product decision, not a design one. The section says which |
 | `docs/markt/schweizer-identitaet.md` | First-run copy, the info page, share/OG images, anything a non-user sees first |
 | `docs/markt/konkurrenzanalyse-schweiz.md` | Positioning, pricing, or a "why would anyone use this" question |
 | `supabase/migrations/README.md` | Whenever migration order or the applied/unapplied gap matters |

@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { Check, Sparkles } from "lucide-react";
 import EmptyState from "@/components/ui/EmptyState";
+import { CreditCard } from "lucide-react";
+import { SparklesIcon } from "@/components/NavIcons";
 import SectionHeading from "@/components/ui/SectionHeading";
 import PremiumBadge from "@/components/PremiumBadge";
 import { buttonVariants } from "@/components/ui/Button";
@@ -79,13 +81,13 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
             hergibt, verspricht eine Vertragsleistung (AGB Ziff. 3.2). */}
         <h1 className="text-display font-semibold">Strado unterstützen</h1>
         <p className="text-sm text-muted">
-          Entdecken, Aufzeichnen, Strecken erstellen, Bestenlisten und Feed bleiben gratis.
+          Entdecken, Aufzeichnen, Strecken erstellen, Ranglisten und Feed bleiben gratis.
           Premium hebt die Grenzen an — und ist die Art, wie Strado sich trägt.
         </p>
       </div>
 
       <section className="flex flex-col gap-3">
-        <SectionHeading>Was Premium dazugibt</SectionHeading>
+        <SectionHeading icon={SparklesIcon}>Was Premium dazugibt</SectionHeading>
         <ul className="flex flex-col gap-2.5 text-sm text-foreground">
           {PREMIUM_VORTEILE.map((vorteil) => (
             <li key={vorteil} className="flex items-start gap-2.5">
@@ -97,7 +99,7 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
       </section>
 
       <fieldset className="flex flex-col gap-2">
-        <SectionHeading as="legend" className="mb-3">
+        <SectionHeading as="legend" icon={CreditCard} className="mb-3">
           Plan wählen
         </SectionHeading>
         {angebot.plaene.map((p) => (

@@ -1,5 +1,9 @@
 import Link from "next/link";
+import { SparklesIcon } from "@/components/NavIcons";
+import SectionHeading from "@/components/ui/SectionHeading";
 import SubmitButton from "@/components/ui/SubmitButton";
+import { buttonVariants } from "@/components/ui/Button";
+import { premiumKurzform } from "@/lib/premiumVorteile";
 import { createPortalSession } from "@/lib/actions/billing";
 import { datumCH } from "@/lib/format";
 import { planName } from "@/lib/premiumAngebot";
@@ -30,7 +34,7 @@ import type { PremiumStatus } from "@/lib/premiumLimits";
 export default function PremiumCard({ status }: { status: PremiumStatus }) {
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-border bg-surface px-4 py-4">
-      <h2 className="text-sm font-semibold tracking-wide text-muted uppercase">Premium</h2>
+      <SectionHeading icon={SparklesIcon}>Premium</SectionHeading>
 
       {status.aktiv ? (
         <>
@@ -67,21 +71,30 @@ export default function PremiumCard({ status }: { status: PremiumStatus }) {
         </>
       ) : (
         <>
-          {/* Die Kurzform von PREMIUM_VORTEILE (lib/premiumVorteile.ts) — und
-              die dritte Stelle, an der die Vorteile stehen, obwohl der Kopf
-              dort von "eine Liste, zwei Seiten" ausgeht. Genau diese dritte
-              Kopie ist mit 0086 verrutscht: sie warb weiter mit "Eigene
-              Strecken erstellen", während das Erstellen längst wieder
-              kostenlos war. Wer die Liste ändert, ändert diese Zeile mit. */}
-          <p className="text-sm text-muted">
-            Unbegrenzt private Strecken, 12 Fotos pro Fahrt, Offline ohne Limit, GPX-Export.
-          </p>
-          <Link
-            href="/profil/premium"
-            className="self-start rounded-full border border-foreground bg-foreground px-4 py-2 text-sm font-medium text-background transition-transform duration-fast active:scale-95 hover:opacity-90"
-          >
-            Premium holen
-          </Link>
+          {/* Eine Zeile plus eine Umriss-Schaltfläche, nicht mehr eine
+              Aufzählung plus ein gefüllter Knopf.
+
+              Zwei Gründe, beide aus docs/design-vereinfachung.md Anhang C2.
+              Erstens: der gefüllte Akzent gehört den Handlungen des Nutzers
+              ("Strecke starten", "Fahrt speichern"). Ein Verkauf im selben
+              Gewicht wie die Kernhandlung ist zu laut für eine Seite, die
+              die Selbstdarstellung des Nutzers ist. Zweitens: die Vorteile
+              standen hier in einer dritten Kopie neben lib/premiumVorteile.ts
+              — und genau diese Kopie ist mit Migration 0086 verrutscht, sie
+              warb monatelang mit "Eigene Strecken erstellen", während das
+              Erstellen längst wieder kostenlos war.
+
+              Die Kurzform liest jetzt aus derselben Quelle wie die Kaufseite;
+              sie kann nicht mehr eigenständig veralten. */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="min-w-0 text-sm text-muted">{premiumKurzform()}</p>
+            <Link
+              href="/profil/premium"
+              className={buttonVariants({ variant: "secondary", size: "sm", className: "shrink-0" })}
+            >
+              Premium ansehen
+            </Link>
+          </div>
         </>
       )}
     </section>
