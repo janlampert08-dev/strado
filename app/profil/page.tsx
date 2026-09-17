@@ -139,6 +139,31 @@ export default async function ProfilPage() {
     // Streckenfahrten und zählen in "Km gefahren"/"Anzahl Fahrten" mit —
     // anders als in den globalen Bestenlisten, die streckenbasiert bleiben
     // (siehe 0044_freie_fahrten.sql).
+    //
+    // .is("parent_completion_id", null) ist der Unterschied zwischen "eine
+    // Fahrt" und "eine Fahrt plus ihre Abschnitte". Erkennt lapDetection in
+    // einer freien Fahrt drei bekannte Strecken, legt
+    // save_free_ride_with_segments (0050/0081) neben der Elternfahrt DREI
+    // weitere route_completions-Zeilen an, jede mit eigener distanz_km und
+    // eigenem hoehenmeter_aufstieg. Ohne diesen Filter trägt eine einzige
+    // physische Ausfahrt ihre Kilometer viermal bei: einmal als Ganzes und
+    // dreimal in Ausschnitten. Betroffen war alles, was an dieser Abfrage
+    // hängt — die Kacheln "Km gefahren", "Fahrten" und "Höhenmeter", der
+    // Aktivitätskalender, die Auszeichnungen und die Premium-Auswertung.
+    //
+    // Der Pässe-Zähler oben bleibt bewusst OHNE diesen Filter: dass eine
+    // unterwegs mitgenommene Strecke als befahren zählt, ist genau der Sinn
+    // der Erkennung. Doppelt gezählt wird dort nichts, weil er ohnehin pro
+    // Strecke dedupliziert.
+    //
+    // Für die Liste selbst gilt dasselbe: ein Abschnitt ist kein eigener
+    // Ausflug. Er bleibt vollständig erreichbar — die Fahrtseite der
+    // Elternfahrt zeigt ihn unter "Auf dieser Fahrt erkannt", mit eigenem
+    // Sichtbarkeits-Schalter (components/DetectedSegmentsCard.tsx).
+    //
+    // Löscht jemand die Elternfahrt, setzt "on delete set null" (0050) die
+    // Spalte auf null und der Abschnitt zählt ab dann als eigenständige
+    // Fahrt — auch das ist so gewollt und dokumentiert.
     supabase
       .from("route_completions")
       .select(
@@ -146,6 +171,7 @@ export default async function ProfilPage() {
       )
       .eq("user_id", user.id)
       .not("dauer_sekunden", "is", null)
+      .is("parent_completion_id", null)
       // Neueste zuerst — created_at als Tiebreaker, da datum nur ein Datum
       // (kein Zeitstempel) ist und mehrere Fahrten am selben Tag sonst in
       // unbestimmter Reihenfolge stünden.

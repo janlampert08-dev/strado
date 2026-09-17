@@ -36,11 +36,29 @@ export async function getUserAchievementStats(userId: string): Promise<Achieveme
     // hoehenmeter_aufstieg statt eines Joins auf routes(hoehe_m): der
     // kumulierte Anstieg hängt an der Fahrt, nicht an der Strecke, und gilt
     // deshalb auch für freie Fahrten. Siehe lib/hoehenmeter.ts.
+    //
+    // .is("parent_completion_id", null) wie in app/profil/page.tsx, und aus
+    // demselben Grund: die aus einer freien Fahrt erkannten Abschnitte
+    // (0050/0081) sind eigene Zeilen mit eigener Distanz und eigenem
+    // Anstieg. Ohne den Filter zählte eine Ausfahrt über drei erkannte
+    // Strecken als vier Fahrten, und ihre Höhenmeter viermal.
+    //
+    // Die Pässe-Abfrage darüber bleibt ohne den Filter — dort sollen die
+    // Abschnitte zählen. Die beiden Abfragen beschreiben absichtlich
+    // unterschiedliche Mengen; das ist keine Unachtsamkeit, sondern die
+    // Regel: "welche Strecken habe ich befahren" schliesst Abschnitte ein,
+    // "wie viel bin ich gefahren" nicht.
+    //
+    // Diese Funktion speist auch das Abzeichen auf dem Teilen-Bild
+    // (app/fahrten/[id]/page.tsx). Der Kopf oben verlangt, dass sie
+    // dieselbe Zahl liefert wie die Profilseite — ohne diesen Filter tat
+    // sie das zwar auch, aber beide waren gleich falsch.
     supabase
       .from("route_completions")
       .select("hoehenmeter_aufstieg", { count: "exact" })
       .eq("user_id", userId)
       .not("dauer_sekunden", "is", null)
+      .is("parent_completion_id", null)
       .returns<{ hoehenmeter_aufstieg: number | null }[]>(),
   ]);
 

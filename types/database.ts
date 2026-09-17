@@ -288,6 +288,22 @@ export interface RouteCompletion {
   // übergeordnete freie Fahrt, sonst null. Nie Teil der öffentlichen Views
   // (public_fahrten & Co.) — nur über die RLS-geschützte Basistabelle
   // sichtbar, siehe save_free_ride_with_segments.
+  //
+  // DIE REGEL FÜR JEDE NEUE AUFSUMMIERUNG, und sie hat schon einmal
+  // gefehlt: ein Abschnitt trägt eigene distanz_km und eigene
+  // hoehenmeter_aufstieg, obwohl dieselben Kilometer bereits in der
+  // Elternfahrt stecken.
+  //
+  //   Mengenfragen ("wie viel bin ich gefahren", "wie oft", "wie viele
+  //   Höhenmeter") filtern parent_completion_id is null.
+  //   Zugehörigkeitsfragen ("welche Strecken habe ich befahren") filtern
+  //   NICHT — dass eine unterwegs mitgenommene Strecke zählt, ist der
+  //   Sinn der Erkennung.
+  //
+  // Wer eine Abfrage schreibt, die Zeilen addiert oder zählt, entscheidet
+  // sich für eine der beiden Seiten. app/profil/page.tsx und
+  // lib/achievements.ts führen beide Abfragen nebeneinander und begründen
+  // dort, welche welche ist.
   parent_completion_id: string | null;
   // true, wenn diese Streckenfahrt automatisch erkannt statt explizit über
   // die Streckenseite gestartet wurde. Rein informativ (Badge).
