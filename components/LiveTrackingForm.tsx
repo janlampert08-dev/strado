@@ -24,6 +24,7 @@ import Skeleton from "@/components/ui/Skeleton";
 import FullscreenDialog from "@/components/ui/FullscreenDialog";
 import SectionHeading from "@/components/ui/SectionHeading";
 import HalteKnopf from "@/components/ui/HalteKnopf";
+import { zeigeHinweis } from "@/components/Hinweis";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
@@ -157,6 +158,13 @@ export default function LiveTrackingForm({
   function handleExit() {
     discard();
     onExit();
+  }
+
+  // Wie in FreeRideForm: eine verworfene Fahrt bekommt eine Quittung. Hier
+  // bleibt die Seite dieselbe (die Streckenseite klappt nur ein), also sofort.
+  function handleDiscard() {
+    handleExit();
+    zeigeHinweis("Fahrt verworfen.");
   }
 
   // Wie in FreeRideForm: der einmalig einlösbare Marker entsteht im Moment
@@ -532,7 +540,7 @@ export default function LiveTrackingForm({
             description="Die aufgezeichnete Fahrt wurde noch nicht gespeichert und geht dabei endgültig verloren."
             confirmLabel="Verwerfen"
             variant="danger"
-            onConfirm={handleExit}
+            onConfirm={handleDiscard}
             onCancel={() => setGastVerwerfenOffen(false)}
           />
         </>
@@ -548,7 +556,7 @@ export default function LiveTrackingForm({
             isPublic={isPublic}
             onIsPublicChange={setIsPublic}
             onSubmit={() => setSubmitted(true)}
-            onDiscard={handleExit}
+            onDiscard={handleDiscard}
             onResume={recorder.fortsetzen}
             visibility={{
               publicDisabled: belowCoverageThreshold,

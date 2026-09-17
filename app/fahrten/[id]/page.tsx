@@ -324,6 +324,78 @@ export default async function FahrtDetailPage({
             <CompletionMap route={route} track={completion.track} />
           </Card>
 
+          {/* Die Kennzahlen direkt unter der Karte. Sie standen nach
+              Fahrzeug, Abdeckung, Notiz und Fotos — auf dem Telefon also
+              zwei Bildschirmhöhen tief, obwohl sie die Frage beantworten, mit
+              der man eine Fahrt öffnet: wie weit, wie lang, wie schnell. */}
+          {/* Vier Kennzahlen, eine Betonungsstufe. Vorher trugen Distanz
+              und Zeit text-title/600 und die beiden daneben nur font-mono —
+              gleiche Rolle, zwei Grössen, und zwar an jeder der drei
+              Stellen, die dieses Raster von Hand nachbauten, leicht anders.
+              Siehe docs/design-vereinfachung.md, Anhang A2. */}
+          <Kennzahlen>
+            <Kennzahl
+              beschriftung={
+                <>
+                  <Ruler className="h-3.5 w-3.5" aria-hidden="true" />
+                  Distanz
+                </>
+              }
+              wert={`${(completion.distanzKm ?? route?.laenge_km ?? 0).toFixed(1)} km`}
+            />
+            <Kennzahl
+              beschriftung={
+                <>
+                  <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                  Zeit
+                </>
+              }
+              wert={
+                completion.dauerSekunden !== null ? formatDuration(completion.dauerSekunden) : "—"
+              }
+              zusatz={
+                zeigtBewegtzeit
+                  ? `${formatDuration(completion.bewegteZeitSekunden!)} in Bewegung`
+                  : undefined
+              }
+              // Steht bewusst in der Zeit-Kachel und nicht im Seitenkopf: die
+              // Verifikation betrifft genau diese eine Zahl und keine andere.
+              // Distanz, Höhenmeter und Abdeckung sind serverseitig
+              // abgesichert (0052/0059/0074/0078) und brauchen kein Abzeichen.
+              fuss={
+                completion.dauerSekunden !== null ? (
+                  <VerifiziertAbzeichen quelle={completion.dauerQuelle} />
+                ) : undefined
+              }
+            />
+            <Kennzahl
+              beschriftung={
+                <>
+                  <Gauge className="h-3.5 w-3.5" aria-hidden="true" />
+                  Ø Tempo
+                </>
+              }
+              wert={avgKmh !== null ? `${avgKmh.toFixed(0)} km/h` : "—"}
+            />
+            <Kennzahl
+              beschriftung={
+                <>
+                  <Mountain className="h-3.5 w-3.5" aria-hidden="true" />
+                  {istFreieFahrt ? "Aufstieg" : "Höhe"}
+                </>
+              }
+              wert={
+                istFreieFahrt
+                  ? completion.hoehenmeterAufstieg !== null
+                    ? `${completion.hoehenmeterAufstieg} m`
+                    : "—"
+                  : route!.hoehe_m !== null
+                    ? `${route!.hoehe_m} m`
+                    : "—"
+              }
+            />
+          </Kennzahlen>
+
           {detectedSegments.length > 0 && <DetectedSegmentsCard segments={detectedSegments} />}
 
           {(completion.vehicle ||
@@ -396,73 +468,6 @@ export default async function FahrtDetailPage({
             displayName={completion.displayName}
           />
 
-          {/* Vier Kennzahlen, eine Betonungsstufe. Vorher trugen Distanz
-              und Zeit text-title/600 und die beiden daneben nur font-mono —
-              gleiche Rolle, zwei Grössen, und zwar an jeder der drei
-              Stellen, die dieses Raster von Hand nachbauten, leicht anders.
-              Siehe docs/design-vereinfachung.md, Anhang A2. */}
-          <Kennzahlen>
-            <Kennzahl
-              beschriftung={
-                <>
-                  <Ruler className="h-3.5 w-3.5" aria-hidden="true" />
-                  Distanz
-                </>
-              }
-              wert={`${(completion.distanzKm ?? route?.laenge_km ?? 0).toFixed(1)} km`}
-            />
-            <Kennzahl
-              beschriftung={
-                <>
-                  <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-                  Zeit
-                </>
-              }
-              wert={
-                completion.dauerSekunden !== null ? formatDuration(completion.dauerSekunden) : "—"
-              }
-              zusatz={
-                zeigtBewegtzeit
-                  ? `${formatDuration(completion.bewegteZeitSekunden!)} in Bewegung`
-                  : undefined
-              }
-              // Steht bewusst in der Zeit-Kachel und nicht im Seitenkopf: die
-              // Verifikation betrifft genau diese eine Zahl und keine andere.
-              // Distanz, Höhenmeter und Abdeckung sind serverseitig
-              // abgesichert (0052/0059/0074/0078) und brauchen kein Abzeichen.
-              fuss={
-                completion.dauerSekunden !== null ? (
-                  <VerifiziertAbzeichen quelle={completion.dauerQuelle} />
-                ) : undefined
-              }
-            />
-            <Kennzahl
-              beschriftung={
-                <>
-                  <Gauge className="h-3.5 w-3.5" aria-hidden="true" />
-                  Ø Tempo
-                </>
-              }
-              wert={avgKmh !== null ? `${avgKmh.toFixed(0)} km/h` : "—"}
-            />
-            <Kennzahl
-              beschriftung={
-                <>
-                  <Mountain className="h-3.5 w-3.5" aria-hidden="true" />
-                  {istFreieFahrt ? "Aufstieg" : "Höhe"}
-                </>
-              }
-              wert={
-                istFreieFahrt
-                  ? completion.hoehenmeterAufstieg !== null
-                    ? `${completion.hoehenmeterAufstieg} m`
-                    : "—"
-                  : route!.hoehe_m !== null
-                    ? `${route!.hoehe_m} m`
-                    : "—"
-              }
-            />
-          </Kennzahlen>
 
           {hoehenprofil && hoehenprofil.length > 1 && <ElevationProfile punkte={hoehenprofil} />}
         </Seitenrahmen>

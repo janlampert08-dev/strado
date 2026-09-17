@@ -26,6 +26,7 @@ import Card from "@/components/ui/Card";
 import FullscreenDialog from "@/components/ui/FullscreenDialog";
 import SectionHeading from "@/components/ui/SectionHeading";
 import HalteKnopf from "@/components/ui/HalteKnopf";
+import { merkeHinweis } from "@/components/Hinweis";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
@@ -151,6 +152,14 @@ export default function FreeRideForm({
   function handleExit() {
     discard();
     router.push("/");
+  }
+
+  // Verwerfen einer aufgezeichneten Fahrt endete bisher kommentarlos auf der
+  // Startseite. Die Quittung reist über den Seitenwechsel mit (Hinweis.tsx).
+  // "Abbrechen" vor dem Start bleibt ohne: da gab es nichts zu verlieren.
+  function handleDiscard() {
+    merkeHinweis("Fahrt verworfen.");
+    handleExit();
   }
 
   // Stellt den einmalig einlösbaren Marker genau im Moment des Gate-Klicks
@@ -322,7 +331,7 @@ export default function FreeRideForm({
               description="Die aufgezeichnete Fahrt wurde noch nicht gespeichert und geht dabei endgültig verloren."
               confirmLabel="Verwerfen"
               variant="danger"
-              onConfirm={handleExit}
+              onConfirm={handleDiscard}
               onCancel={() => setGastVerwerfenOffen(false)}
             />
           </>
@@ -368,7 +377,7 @@ export default function FreeRideForm({
               isPublic={isPublic}
               onIsPublicChange={setIsPublic}
               onSubmit={() => setSubmitted(true)}
-              onDiscard={handleExit}
+              onDiscard={handleDiscard}
               onResume={recorder.fortsetzen}
             >
               {/* Dieselbe Abschnittsgeometrie wie die Abschnitte im Fazit
