@@ -85,11 +85,56 @@ const PREIS_VARIABLEN = [
   "STRIPE_PREMIUM_PRICE_ID",
 ] as const;
 
+// Die Preise, die nicht mehr verkauft werden, deren Abos aber weiterlaufen.
+//
+// Seit der Preisrunde vom 2026-09-17 (CHF 6.90 / 39.00 statt 4.90 / 49.00,
+// docs/premium-neu/preise.md) zeigen _MONAT und _JAHR auf neue Preis-IDs.
+// Bestehende Abos behalten ihren Preis — Stripe bucht sie unter der ALTEN
+// ID weiter ab. Stünde diese ID nirgends mehr, wäre jedes Ereignis dieser
+// Abos "fremd": Kündigung, Zahlungsausfall, Verlängerung liefen am
+// Datenbankzustand vorbei, und Premium bliebe nach einer Kündigung für
+// immer an. Genau der Fehler, den der Absatz über den Gründerpreis oben
+// beschreibt, nur für jeden Bestandskunden gleichzeitig.
+//
+// Kommagetrennt, weil jede künftige Preisänderung eine weitere alte ID
+// hinterlässt. Getrennt nach Plan, weil lib/premium.ts das Abo weiterhin
+// als "Monatsabo" oder "Jahresabo" benennen soll.
+export const BESTAND_VARIABLEN = {
+  monat: "STRIPE_PREMIUM_PRICE_IDS_MONAT_BESTAND",
+  jahr: "STRIPE_PREMIUM_PRICE_IDS_JAHR_BESTAND",
+} as const;
+
+/** Liest eine kommagetrennte Liste von Preis-IDs aus einer Variablen. */
+export function preisIdsAus(variable: string): string[] {
+  return (process.env[variable] ?? "")
+    .split(",")
+    .map((wert) => wert.trim())
+    .filter(Boolean);
+}
+
 export function bekanntePreisIds(): string[] {
   const ids = PREIS_VARIABLEN.map((name) => process.env[name]?.trim()).filter(
     (wert): wert is string => Boolean(wert),
   );
-  return [...new Set(ids)];
+  const bestand = Object.values(BESTAND_VARIABLEN).flatMap(preisIdsAus);
+  return [...new Set([...ids, ...bestand])];
+}
+
+// Der Saisonpass (0110) steht bewusst NICHT in bekanntePreisIds(): er ist
+// kein Abo-Preis. Ein Abo auf dieser ID wäre ein Katalogfehler, und
+// preisHerkunft() soll es als fremd überspringen statt Premium an einen
+// Zustand zu hängen, den apply_subscription_state nicht verwalten kann.
+export function saisonpassPreisId(): string | undefined {
+  return process.env.STRIPE_PREMIUM_PRICE_ID_SAISONPASS?.trim() || undefined;
+}
+
+// Ein Saisonpass wird zurückgenommen, sobald seine Zahlung VOLLSTÄNDIG
+// erstattet ist. Eine Teilerstattung (Kulanz, Rundung) lässt den Pass
+// gelten — sonst nähme eine Geste von ein paar Franken den ganzen Zugang.
+export function vollstaendigErstatteterPaymentIntent(charge: Stripe.Charge): string | null {
+  if (!charge.refunded) return null;
+  if (charge.amount_refunded < charge.amount) return null;
+  return idVon(charge.payment_intent);
 }
 
 // Drei Ergebnisse, nicht zwei — der Unterschied entscheidet, ob ein

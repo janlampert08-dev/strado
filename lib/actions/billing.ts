@@ -6,7 +6,7 @@
 import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { siteUrl } from "@/lib/siteUrl";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe";
@@ -17,7 +17,7 @@ import {
   CHECKOUT_BESTAETIGEN_FENSTER_MS,
   CHECKOUT_BESTAETIGEN_LIMIT,
 } from "@/lib/abobremse";
-import { KULANZ_TAGE, leseAboZustand } from "@/lib/stripeWebhook";
+import { KULANZ_TAGE, leseAboZustand, saisonpassPreisId } from "@/lib/stripeWebhook";
 import {
   aktivesAboAusSession,
   checkoutIdempotencyKey,
@@ -26,8 +26,20 @@ import {
   istUnbekannterCustomer,
   passendeOffeneSession,
   preisVonSession,
+  saisonpassAusSession,
+  type ZahlungsVariante,
 } from "@/lib/stripeCheckout";
-import type { AboPlan, PlanAngebot, PremiumAngebot, VergebenerPreis } from "@/lib/premiumLimits";
+import { datumCH } from "@/lib/format";
+import { saisonpassVerlaengerbar } from "@/lib/premiumAngebot";
+import {
+  SAISONPASS_MONATE,
+  SAISONPASS_VERLAENGERBAR_TAGE_VOR_ABLAUF,
+  TESTPHASE_TAGE,
+  type AboPlan,
+  type PlanAngebot,
+  type PremiumAngebot,
+  type VergebenerPreis,
+} from "@/lib/premiumLimits";
 import type Stripe from "stripe";
 
 // Bremsen für die Aufrufe, die von hier aus bei Stripe landen.
@@ -145,6 +157,23 @@ function jahresPreis(): { variable: string; preisId: string | undefined } {
   return { variable: "STRIPE_PREMIUM_PRICE_ID_JAHR", preisId: process.env.STRIPE_PREMIUM_PRICE_ID_JAHR };
 }
 
+// Seit 0110. Kein Abo-Preis, sondern ein einmaliger — und deshalb bewusst
+// nicht in bekanntePreisIds() (lib/stripeWebhook.ts).
+function passPreis(): { variable: string; preisId: string | undefined } {
+  return { variable: "STRIPE_PREMIUM_PRICE_ID_SAISONPASS", preisId: saisonpassPreisId() };
+}
+
+function preisQuelle(plan: AboPlan): { variable: string; preisId: string | undefined } {
+  switch (plan) {
+    case "monat":
+      return monatsPreis();
+    case "jahr":
+      return jahresPreis();
+    case "saisonpass":
+      return passPreis();
+  }
+}
+
 // Preis-IDs kommen ausschliesslich aus dieser serverseitigen Zuordnung. Eine
 // vom Client übergebene Price-ID würde bedeuten, dass sich jeder seinen
 // eigenen Preis aussuchen kann — auch einen fremden oder einen aus einem
@@ -156,7 +185,7 @@ function jahresPreis(): { variable: string; preisId: string | undefined } {
 // aufgerufen. Bestehende Gründer-Abos laufen bei Stripe unter ihrer alten
 // Preis-ID weiter und brauchen von hier nichts.
 function preisIdFuer(plan: AboPlan): string | undefined {
-  return plan === "monat" ? monatsPreis().preisId : jahresPreis().preisId;
+  return preisQuelle(plan).preisId;
 }
 
 // Preise kommen aus Stripe, nicht aus einer zweiten Liste im Code — eine im
@@ -192,22 +221,164 @@ async function betrag(
   }
 }
 
+// Was die Datenbank über bisherige und laufende Zugänge dieser Person weiss.
+//
+// Über den Service-Role-Client, weil subscriptions/saisonpaesse ihre
+// Stripe-Spalten für authenticated sperren (0063, 0110) — gelesen werden
+// hier aber nur Status und Zeiträume, und userId stammt ausschliesslich aus
+// der verifizierten Session der Aufrufer unten (Muster b in AGENTS.md,
+// Supabase Rules).
+async function zugangsgeschichte(userId: string): Promise<{
+  hatteAbo: boolean;
+  hatteSaisonpass: boolean;
+  passBis: Date | null;
+}> {
+  const admin = createAdminClient();
+  const jetzt = new Date().toISOString();
+  const [{ count: abos }, { data: paesse }] = await Promise.all([
+    admin.from("subscriptions").select("user_id", { count: "exact", head: true }).eq("user_id", userId),
+    admin
+      .from("saisonpaesse")
+      .select("gueltig_bis, erstattet_am")
+      .eq("user_id", userId)
+      .order("gueltig_bis", { ascending: false })
+      .limit(20),
+  ]);
+
+  const laufend = (paesse ?? []).find((p) => p.erstattet_am === null && p.gueltig_bis > jetzt);
+  return {
+    hatteAbo: (abos ?? 0) > 0,
+    hatteSaisonpass: (paesse ?? []).length > 0,
+    passBis: laufend ? new Date(laufend.gueltig_bis) : null,
+  };
+}
+
 // Nur lesend — die Kaufseite darf beliebig oft geöffnet werden, ohne dass
 // bei Stripe etwas entsteht; eine Checkout-Session entsteht erst in
 // createCheckoutSession.
+//
+// Seit 0110 hängt das Angebot an der Person: ob die Testphase angezeigt wird
+// und ob ein laufender Saisonpass das Abo erst später zahlen lässt. Beides
+// ist nur Anzeige — entschieden wird in checkoutSessionMitCustomer, und dort
+// zusätzlich gegen Stripe.
 export async function getPremiumAngebot(): Promise<PremiumAngebot> {
-  const [monat, jahr] = await Promise.all([betrag(monatsPreis()), betrag(jahresPreis())]);
+  const user = await getCurrentUser();
+  const [monat, jahr, pass, geschichte] = await Promise.all([
+    betrag(monatsPreis()),
+    betrag(jahresPreis()),
+    betrag(passPreis()),
+    user ? zugangsgeschichte(user.id) : Promise.resolve(null),
+  ]);
 
   const plaene: PlanAngebot[] = [];
   if (monat) plaene.push({ plan: "monat", betragRappen: monat.rappen, waehrung: monat.waehrung });
   if (jahr) plaene.push({ plan: "jahr", betragRappen: jahr.rappen, waehrung: jahr.waehrung });
+  if (pass) plaene.push({ plan: "saisonpass", betragRappen: pass.rappen, waehrung: pass.waehrung });
 
-  // Ein fehlender Plan ist auf der Seite unsichtbar — dort steht dann nur
-  // der andere, und das sieht aus wie Absicht. Hier steht, welcher fehlt.
+  // Ein fehlender Plan ist auf der Seite unsichtbar — dort stehen dann nur
+  // die anderen, und das sieht aus wie Absicht. Hier steht, welcher fehlt.
   if (!monat) console.warn("Premium-Angebot ohne Monatsplan");
   if (!jahr) console.warn("Premium-Angebot ohne Jahresplan");
+  if (!pass) console.warn("Premium-Angebot ohne Saisonpass");
 
-  return { plaene };
+  return {
+    plaene,
+    testphaseMoeglich:
+      geschichte !== null &&
+      !geschichte.hatteAbo &&
+      !geschichte.hatteSaisonpass &&
+      geschichte.passBis === null,
+    saisonpassBis: geschichte?.passBis?.toISOString() ?? null,
+  };
+}
+
+// Stripe verlangt für trial_end mindestens 48 Stunden Abstand. Endet ein Pass
+// früher, bekommt das Abo kein aufgeschobenes Startdatum mehr: es zahlt
+// sofort, und die paar Stunden Überlappung sind der ehrlichere Preis als eine
+// Zahlungsverschiebung, die Stripe ablehnt.
+const ANSCHLUSS_MINDESTABSTAND_MS = 48 * 60 * 60 * 1000;
+
+interface SessionPlanung {
+  variante: ZahlungsVariante;
+  /** Unix-Sekunden, nur bei "anschluss". */
+  trialEnde?: number;
+  /** Wann die erste Zahlung fällig wird, wenn nicht heute. */
+  faelligAm?: Date;
+}
+
+// Welche Art Session diese Person für diesen Plan bekommt.
+//
+// Die Testphase gibt es einmal pro Konto, und "Konto" heisst hier zweierlei:
+// die Datenbank (hatte je ein Abo oder einen Pass) UND Stripe (hatte dieser
+// Customer je ein Abo, in welchem Zustand auch immer). Die Datenbank allein
+// genügt nicht, weil eine Abo-Zeile nach einem Moduswechsel oder einer
+// Bereinigung fehlen kann; Stripe allein genügt nicht, weil ein Saisonpass
+// dort kein Abo ist.
+async function planeSession(
+  plan: AboPlan,
+  customerId: string,
+  geschichte: Awaited<ReturnType<typeof zugangsgeschichte>>,
+): Promise<SessionPlanung> {
+  if (plan === "saisonpass") return { variante: "sofort" };
+
+  const jetzt = Date.now();
+  if (geschichte.passBis && geschichte.passBis.getTime() - jetzt > ANSCHLUSS_MINDESTABSTAND_MS) {
+    return {
+      variante: "anschluss",
+      trialEnde: Math.floor(geschichte.passBis.getTime() / 1000),
+      faelligAm: geschichte.passBis,
+    };
+  }
+
+  if (plan !== "jahr" || geschichte.hatteAbo || geschichte.hatteSaisonpass) {
+    return { variante: "sofort" };
+  }
+
+  const frueher = await getStripe().subscriptions.list({
+    customer: customerId,
+    status: "all",
+    limit: 1,
+  });
+  if (frueher.data.length > 0) return { variante: "sofort" };
+
+  return {
+    variante: "testphase",
+    faelligAm: new Date(jetzt + TESTPHASE_TAGE * 24 * 60 * 60 * 1000),
+  };
+}
+
+// Der Preis, der auf der Schaltfläche steht: was heute fällig wird und —
+// falls die erste Zahlung später kommt — wie viel dann und ab wann.
+async function vergebenerPreis(
+  session: Stripe.Checkout.Session,
+  plan: AboPlan,
+  planung: SessionPlanung,
+): Promise<VergebenerPreis | null> {
+  const heute = preisVonSession(session);
+  const katalog = await betrag(preisQuelle(plan));
+
+  // Rückfall auf den Katalogpreis, falls die Session keinen Gesamtbetrag
+  // trägt. Abgebrochen wird erst, wenn auch der fehlt: lieber gar kein Kauf
+  // als ein Kauf zum falsch ausgezeichneten Preis.
+  const basis =
+    heute ?? (katalog ? { betragRappen: katalog.rappen, waehrung: katalog.waehrung } : null);
+  if (!basis) return null;
+
+  if (planung.variante === "sofort" || !planung.faelligAm) return basis;
+
+  // Bei Testphase und Anschluss ist amount_total 0; der spätere Betrag kommt
+  // deshalb aus dem Katalog. Fehlt der, gibt es keinen ehrlichen Satz für die
+  // Schaltfläche — und dann keinen Kauf.
+  if (!katalog) return null;
+  return {
+    betragRappen: basis.betragRappen,
+    waehrung: basis.waehrung,
+    spaeter: {
+      abRappen: katalog.rappen,
+      faelligAm: planung.faelligAm.toISOString(),
+      grund: planung.variante,
+    },
+  };
 }
 
 // Legt eine Checkout-Session im Modus "elements" an und gibt deren
@@ -221,6 +392,11 @@ export async function getPremiumAngebot(): Promise<PremiumAngebot> {
 // ersten Rechnung durch. Die Checkout Sessions API übernimmt genau diesen
 // Aufbau: das Abo entsteht erst, wenn die Session bezahlt ist, und Stripe
 // verwaltet Rechnung, Zahlungsarten und Wiederaufnahme selbst.
+//
+// Der Saisonpass (0110) läuft durch dieselbe Funktion, aber im Modus
+// "payment": eine Einmalzahlung, kein Abo. Was danach passiert, ist der
+// eigentliche Unterschied — es entsteht kein Abo-Objekt, das Stripe pflegt,
+// sondern eine Zeile in saisonpaesse mit Anfang und Ende.
 //
 // Ausgelagert aus createCheckoutSession, damit sich der Aufbau nach einem
 // unbekannten Customer unten einmal mit einer frischen ID wiederholen lässt,
@@ -244,94 +420,143 @@ async function checkoutSessionMitCustomer(
   // Gezielt nach Status abfragen statt status "all" mit einer Seitengrenze:
   // ein Konto mit vielen beendeten Abos hätte sonst genau das laufende aus
   // der ersten Seite verdrängt, und daneben wäre ein zweites entstanden.
-  const [aktive, testphase, offeneSessions] = await Promise.all([
+  const [aktive, testphase, offeneSessions, geschichte] = await Promise.all([
     getStripe().subscriptions.list({ customer: customerId, status: "active", limit: 1 }),
     getStripe().subscriptions.list({ customer: customerId, status: "trialing", limit: 1 }),
     getStripe().checkout.sessions.list({ customer: customerId, status: "open", limit: 20 }),
+    zugangsgeschichte(userId),
   ]);
 
   if (aktive.data.length > 0 || testphase.data.length > 0) {
     return { ok: false, error: "Du hast bereits ein aktives Premium-Abo." };
   }
 
-  // Eine noch offene Session für denselben Preis wiederverwenden, statt
-  // daneben eine zweite anzulegen — siehe passendeOffeneSession.
-  const offen = passendeOffeneSession(offeneSessions.data, preisId);
-  const offenerPreis = offen ? preisVonSession(offen) : null;
-  if (offen && offenerPreis) {
+  // Ein zweiter Pass mitten in der Saison ist fast sicher ein Versehen —
+  // angerechnet würde er (apply_saisonpass hängt ihn hinten an), aber
+  // gewollt ist er selten. Der Satz nennt, ab wann es geht, statt bloss
+  // "nicht möglich" zu sagen.
+  if (plan === "saisonpass" && geschichte.passBis && !saisonpassVerlaengerbar(geschichte.passBis)) {
     return {
-      ok: true,
-      clientSecret: offen.client_secret!,
-      sessionId: offen.id,
-      preis: offenerPreis,
+      ok: false,
+      error:
+        `Dein Saisonpass gilt noch bis ${datumCH(geschichte.passBis)}. Verlängern kannst du ihn ` +
+        `in den letzten ${SAISONPASS_VERLAENGERBAR_TAGE_VOR_ABLAUF} Tagen davor.`,
     };
   }
 
-  const session = await getStripe().checkout.sessions.create(
-    {
-      mode: "subscription",
-      // "elements" statt "hosted_page": das Payment Element sammelt die
-      // Zahlungsdaten eingebettet im eigenen UI. Für diesen Modus ist
-      // return_url Pflicht.
-      ui_mode: "elements",
-      // Managed Payments (Stripes eigene Merchant-of-Record-Lösung) ist auf
-      // neuen Live-Konten standardmässig an und lässt in diesem Zustand nur
-      // ui_mode "hosted_page"/"embedded_page" zu — ui_mode "elements" schlägt
-      // dann mit "Invalid ui_mode: elements" fehl. Das eigene, gestylte
-      // Payment Element (Appearance, Dunkelmodus, TWINT, die AGB direkt im
-      // UI) ist bewusst gebaut und keine Stripe-Merchant-of-Record-Abwicklung
-      // — deshalb hier ausdrücklich abgewählt statt im Dashboard global
-      // umzustellen.
-      managed_payments: { enabled: false },
-      customer: customerId,
-      line_items: [{ price: preisId, quantity: 1 }],
-      // Rückweg für Zahlungsarten mit Weiterleitung (TWINT, Bankverfahren).
-      // {CHECKOUT_SESSION_ID} ersetzt Stripe beim Umleiten durch die ID
-      // dieser Session — die Abschluss-Seite braucht sie, um den Zustand
-      // nachzuprüfen.
-      return_url: `${siteUrl()}/profil/premium/abschluss?sitzung={CHECKOUT_SESSION_ID}`,
-      metadata: { supabase_user_id: userId, plan, price_id: preisId },
-    },
-    {
-      // Fängt den Doppelklick ab, bei dem zwei Anfragen die Prüfung oben
-      // gleichzeitig passieren: beide bekommen dann dieselbe Session zurück.
-      // Der Schlüssel trägt Customer und Preis-ID mit, damit ein geänderter
-      // Aufruf auch einen geänderten Schlüssel bekommt — siehe
-      // checkoutIdempotencyKey.
-      idempotencyKey: checkoutIdempotencyKey({
-        userId,
-        plan,
-        customerId,
-        preisId,
-        zusatz: schluesselZusatz,
-      }),
-    },
-  );
+  const planung = await planeSession(plan, customerId, geschichte);
+  const modus = plan === "saisonpass" ? "payment" : "subscription";
+
+  // Eine noch offene Session für denselben Preis UND dieselbe Zahlungsart
+  // wiederverwenden, statt daneben eine zweite anzulegen — siehe
+  // passendeOffeneSession.
+  const offen = passendeOffeneSession(offeneSessions.data, preisId, {
+    modus,
+    variante: planung.variante,
+  });
+  if (offen) {
+    const offenerPreis = await vergebenerPreis(offen, plan, planung);
+    if (offenerPreis) {
+      return {
+        ok: true,
+        clientSecret: offen.client_secret!,
+        sessionId: offen.id,
+        preis: offenerPreis,
+      };
+    }
+  }
+
+  // Die Metadaten sind die einzige Stelle, an der später steht, was diese
+  // Session war: lib/stripeCheckout.ts liest plan und variante daraus, und
+  // beide entscheiden mit, ob eine Session ohne Zahlung als Erfolg gilt.
+  // Deshalb werden sie hier serverseitig gesetzt und nirgends aus dem
+  // Browser übernommen.
+  const metadata = {
+    supabase_user_id: userId,
+    plan,
+    price_id: preisId,
+    variante: planung.variante,
+  };
+
+  const gemeinsam = {
+    // "elements" statt "hosted_page": das Payment Element sammelt die
+    // Zahlungsdaten eingebettet im eigenen UI. Für diesen Modus ist
+    // return_url Pflicht.
+    ui_mode: "elements" as const,
+    // Managed Payments (Stripes eigene Merchant-of-Record-Lösung) ist auf
+    // neuen Live-Konten standardmässig an und lässt in diesem Zustand nur
+    // ui_mode "hosted_page"/"embedded_page" zu — ui_mode "elements" schlägt
+    // dann mit "Invalid ui_mode: elements" fehl. Das eigene, gestylte
+    // Payment Element (Appearance, Dunkelmodus, TWINT, die AGB direkt im
+    // UI) ist bewusst gebaut und keine Stripe-Merchant-of-Record-Abwicklung
+    // — deshalb hier ausdrücklich abgewählt statt im Dashboard global
+    // umzustellen.
+    managed_payments: { enabled: false },
+    customer: customerId,
+    line_items: [{ price: preisId, quantity: 1 }],
+    // Rückweg für Zahlungsarten mit Weiterleitung (TWINT, Bankverfahren).
+    // {CHECKOUT_SESSION_ID} ersetzt Stripe beim Umleiten durch die ID
+    // dieser Session — die Abschluss-Seite braucht sie, um den Zustand
+    // nachzuprüfen.
+    return_url: `${siteUrl()}/profil/premium/abschluss?sitzung={CHECKOUT_SESSION_ID}`,
+    metadata,
+  };
+
+  const parameter: Stripe.Checkout.SessionCreateParams =
+    modus === "payment"
+      ? {
+          ...gemeinsam,
+          mode: "payment",
+          // Eine Rechnung wie beim Abo. Ohne sie gäbe es zum Saisonpass nur
+          // eine Zahlungsbestätigung per E-Mail und im Kundenportal nichts
+          // zum Herunterladen — für eine Einmalzahlung von CHF 29 ist das
+          // der Unterschied zwischen Beleg und Erinnerung.
+          invoice_creation: { enabled: true, invoice_data: { metadata } },
+          payment_intent_data: { metadata },
+        }
+      : {
+          ...gemeinsam,
+          mode: "subscription",
+          subscription_data: {
+            metadata,
+            ...(planung.variante === "testphase" ? { trial_period_days: TESTPHASE_TAGE } : {}),
+            ...(planung.variante === "anschluss" && planung.trialEnde
+              ? { trial_end: planung.trialEnde }
+              : {}),
+          },
+          // Auch wenn heute nichts abgebucht wird, wird ein Zahlungsmittel
+          // verlangt. Sonst endete die Testphase in einem Abo, das nicht
+          // abbuchen kann — und die zahlende Person erführe davon zuerst
+          // durch eine Mahnung.
+          payment_method_collection: "always" as const,
+        };
+
+  const session = await getStripe().checkout.sessions.create(parameter, {
+    // Fängt den Doppelklick ab, bei dem zwei Anfragen die Prüfung oben
+    // gleichzeitig passieren: beide bekommen dann dieselbe Session zurück.
+    // Der Schlüssel trägt Customer, Preis-ID und Zahlungsart mit, damit ein
+    // geänderter Aufruf auch einen geänderten Schlüssel bekommt — siehe
+    // checkoutIdempotencyKey.
+    idempotencyKey: checkoutIdempotencyKey({
+      userId,
+      plan: `${plan}:${planung.variante}${planung.trialEnde ? `:${planung.trialEnde}` : ""}`,
+      customerId,
+      preisId,
+      zusatz: schluesselZusatz,
+    }),
+  });
 
   const clientSecret = session.client_secret;
   if (!clientSecret) {
     return { ok: false, error: "Zahlung konnte nicht vorbereitet werden." };
   }
 
-  // Rückfall auf den Katalogpreis, falls die Session keinen Gesamtbetrag
-  // trägt. Abgebrochen wird erst, wenn auch der fehlt: lieber gar kein Kauf
-  // als ein Kauf zum falsch ausgezeichneten Preis.
-  const vergeben = preisVonSession(session);
-  if (vergeben) {
-    return { ok: true, clientSecret, sessionId: session.id, preis: vergeben };
-  }
-
-  const katalog = await betrag(plan === "monat" ? monatsPreis() : jahresPreis());
-  if (!katalog) {
+  const preis = await vergebenerPreis(session, plan, planung);
+  if (!preis) {
     console.error("Checkout-Session ohne Betrag", { sessionId: session.id, plan });
     return { ok: false, error: "Dieser Plan ist zurzeit nicht verfügbar." };
   }
-  return {
-    ok: true,
-    clientSecret,
-    sessionId: session.id,
-    preis: { betragRappen: katalog.rappen, waehrung: katalog.waehrung },
-  };
+  return { ok: true, clientSecret, sessionId: session.id, preis };
 }
 
 // Legt eine Checkout-Session an (siehe checkoutSessionMitCustomer). Aufrufer
@@ -362,9 +587,9 @@ export async function createCheckoutSession(
     return { ok: false, error: "Zu viele Versuche. Bitte warte einen Moment." };
   }
 
-  // Nur die beiden bekannten Werte. Kommt etwas anderes an, ist es keine
-  // Auswahl aus der Oberfläche, sondern ein selbst gebauter Aufruf.
-  if (plan !== "monat" && plan !== "jahr") {
+  // Nur die bekannten Werte. Kommt etwas anderes an, ist es keine Auswahl
+  // aus der Oberfläche, sondern ein selbst gebauter Aufruf.
+  if (plan !== "monat" && plan !== "jahr" && plan !== "saisonpass") {
     return { ok: false, error: "Unbekannter Plan." };
   }
 
@@ -558,6 +783,41 @@ export async function confirmCheckoutSession(sessionId: string): Promise<boolean
     return false;
   }
   const abgerufenAm = new Date().toISOString();
+
+  // Der Saisonpass zuerst, weil er kein Abo ist: Modus "payment", kein
+  // Abo-Objekt, und der Zugang entsteht aus einem Zeitraum statt aus einem
+  // Stripe-Status. Die Bindung an den eigenen Customer ist dieselbe wie
+  // unten und aus demselben Grund unverzichtbar — die Session-ID kommt aus
+  // der Adresszeile.
+  const pass = saisonpassAusSession(session, profile.stripe_customer_id);
+  if (pass) {
+    const { error } = await admin.rpc("apply_saisonpass", {
+      p_stripe_customer_id: pass.customerId,
+      p_stripe_checkout_session_id: pass.sessionId,
+      p_stripe_payment_intent_id: pass.paymentIntentId,
+      p_price_id: pass.preisId,
+      p_betrag_rappen: pass.betragRappen,
+      p_waehrung: pass.waehrung,
+      p_monate: SAISONPASS_MONATE,
+    });
+
+    if (error) {
+      console.error("Saisonpass konnte nicht eingetragen werden", { sessionId: pass.sessionId }, error);
+      return false;
+    }
+
+    // Wie beim Abo: die Auffrischung ist Komfort, der Zustand steht bereits
+    // in der Datenbank. Ein falsch platzierter Aufruf (aus einem Render)
+    // darf deshalb höchstens sie kosten und nicht die Seite, auf der gerade
+    // bezahlt wurde.
+    try {
+      revalidatePath("/profil");
+      revalidatePath("/profil/einstellungen");
+    } catch (err) {
+      console.error("Saisonpass eingetragen, aber revalidatePath fehlgeschlagen", err);
+    }
+    return true;
+  }
 
   // Die Session muss dem eigenen Customer gehören und tatsächlich bezahlt
   // sein: sessionId kommt aus dem Browser bzw. aus der Adresszeile, ist also

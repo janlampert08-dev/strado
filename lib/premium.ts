@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { BESTAND_VARIABLEN, preisIdsAus } from "@/lib/stripeWebhook";
 import {
   MAX_PRIVATE_STRECKEN_GRATIS,
   type AboPlanKennung,
@@ -24,8 +25,10 @@ export * from "@/lib/premiumLimits";
 const KEIN_PREMIUM: PremiumStatus = {
   aktiv: false,
   plan: null,
+  quelle: null,
   laeuftAbAm: null,
   periodeEndetAm: null,
+  testphaseBis: null,
   inKulanzfrist: false,
   kulanzBis: null,
 };
@@ -43,6 +46,11 @@ function datum(wert: string | null): Date | null {
 function planAusPreisId(preisId: string | null): AboPlanKennung | null {
   if (!preisId) return null;
   if (preisId === process.env.STRIPE_PREMIUM_PRICE_ID_JAHR) return "jahr";
+  // Bestandsabos nach einer Preisänderung — siehe BESTAND_VARIABLEN in
+  // lib/stripeWebhook.ts. Wer zum alten Preis weiterzahlt, hat trotzdem ein
+  // Jahres- bzw. Monatsabo und soll es so benannt sehen.
+  if (preisIdsAus(BESTAND_VARIABLEN.jahr).includes(preisId)) return "jahr";
+  if (preisIdsAus(BESTAND_VARIABLEN.monat).includes(preisId)) return "monat";
   // Nur noch für Bestandsabos: der Gründerpreis wird seit 2026-09-07 nicht
   // mehr verkauft, aber wer ihn hat, behält ihn — und soll ihn im Profil
   // unter seinem Namen sehen, nicht als "Jahresabo".
@@ -84,25 +92,60 @@ export const getPremiumStatus = cache(async function getPremiumStatus(): Promise
 
   if (!user) return KEIN_PREMIUM;
 
-  const [{ data: profil }, { data: abo }] = await Promise.all([
+  const [{ data: profil }, { data: abo }, { data: pass }] = await Promise.all([
     supabase.from("profiles").select("ist_premium").eq("id", user.id).maybeSingle(),
     supabase
       .from("subscriptions")
       .select("status, price_id, current_period_end, cancel_at_period_end, kulanz_bis")
       .eq("user_id", user.id)
       .maybeSingle(),
+    // Der Pass, der am längsten gilt — bei einem Anschlusskauf (0110) ist das
+    // der spätere, und dessen Ende ist das, was die Person wissen will. Der
+    // Grant aus 0110 lässt die Stripe-Kennungen aussen vor.
+    supabase
+      .from("saisonpaesse")
+      .select("gueltig_ab, gueltig_bis")
+      .eq("user_id", user.id)
+      .is("erstattet_am", null)
+      .gt("gueltig_bis", new Date().toISOString())
+      .order("gueltig_bis", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   // profiles.ist_premium ist die massgebliche Projektion: sie wird in
-  // derselben Transaktion geschrieben wie die Abo-Zeile (0059) und deckt
-  // zusätzlich den Fall ab, dass Premium ohne Abo von Hand gesetzt wurde.
+  // derselben Transaktion geschrieben wie die Abo-Zeile (0059) bzw. der
+  // Pass (0110) und deckt zusätzlich den Fall ab, dass Premium ohne beides
+  // von Hand gesetzt wurde.
   const aktiv = profil?.ist_premium === true;
 
+  const passBis = datum(pass?.gueltig_bis ?? null);
+  const passAb = datum(pass?.gueltig_ab ?? null);
+  const passLaeuft =
+    passBis !== null && passAb !== null && passAb.getTime() <= Date.now() && passBis.getTime() > Date.now();
+
+  const aboLaeuft = abo ? statusIstLaufend(abo.status) : false;
+
+  // Ein laufender Pass benennt den Zugang, auch wenn daneben schon ein Abo
+  // steht: dieses Abo ist dann eines, das erst mit dem Passende zu zahlen
+  // beginnt ("anschluss", in Stripe als Testphase bis zum Passende). Wer
+  // "Jahresabo · Testphase" läse, würde glauben, er teste gerade gratis.
+  if (aktiv && passLaeuft && passBis) {
+    return {
+      ...KEIN_PREMIUM,
+      aktiv,
+      plan: "saisonpass",
+      quelle: "saisonpass",
+      laeuftAbAm: aboLaeuft ? null : passBis,
+      periodeEndetAm: passBis,
+    };
+  }
+
   if (!abo) {
-    // Premium ohne Abo-Zeile: von Hand gesetzt, oder die Zeile wurde bei
-    // einer Kontolöschung entfernt. Kein Plan, kein Periodenende — aber der
-    // Zugang gilt.
-    return { ...KEIN_PREMIUM, aktiv };
+    // Premium ohne Abo-Zeile und ohne Pass: von Hand gesetzt, oder die Zeile
+    // wurde bei einer Kontolöschung entfernt. Kein Plan, kein Periodenende —
+    // aber der Zugang gilt.
+    return { ...KEIN_PREMIUM, aktiv, quelle: aktiv ? "manuell" : null };
   }
 
   const kulanzBis = datum(abo.kulanz_bis);
@@ -113,8 +156,12 @@ export const getPremiumStatus = cache(async function getPremiumStatus(): Promise
   return {
     aktiv,
     plan: planAusPreisId(abo.price_id),
+    quelle: aktiv ? "abo" : null,
     laeuftAbAm: abo.cancel_at_period_end ? periodeEndetAm : null,
     periodeEndetAm,
+    // Während der Testphase ist current_period_end bei Stripe das Ende der
+    // Testphase — die erste Abbuchung.
+    testphaseBis: abo.status === "trialing" ? periodeEndetAm : null,
     inKulanzfrist,
     kulanzBis: inKulanzfrist ? kulanzBis : null,
   };

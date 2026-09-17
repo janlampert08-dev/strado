@@ -13,12 +13,25 @@
 // Währung), genau wie Stripe sie führt. Gerechnet wird ausschliesslich mit
 // dem, was getPremiumAngebot() aus Stripe gelesen hat — nie mit einer
 // zweiten Preisliste im Code.
-import type { AboPlan, AboPlanKennung, PlanAngebot } from "./premiumLimits";
+import {
+  SAISONPASS_MONATE,
+  SAISONPASS_VERLAENGERBAR_TAGE_VOR_ABLAUF,
+  type AboPlan,
+  type AboPlanKennung,
+  type PlanAngebot,
+} from "./premiumLimits";
 
 /** Anzeigename des Plans — von der Planauswahl und der Zahlungsseite geteilt,
  *  damit beide denselben Titel für denselben Plan zeigen. */
 export function planTitel(plan: AboPlan): string {
-  return plan === "monat" ? "Monatlich" : "Jährlich";
+  switch (plan) {
+    case "monat":
+      return "Monatlich";
+    case "jahr":
+      return "Jährlich";
+    case "saisonpass":
+      return "Saisonpass";
+  }
 }
 
 /**
@@ -44,13 +57,22 @@ export function planName(plan: AboPlanKennung): string {
       return "Jahresabo";
     case "gruender":
       return "Jahresabo zum Gründerpreis";
+    case "saisonpass":
+      return "Saisonpass";
   }
 }
 
 /** Zeitraum-Zusatz neben dem Betrag ("pro Monat" / "pro Jahr"), ebenfalls
  *  von Planauswahl und Zahlungsseite geteilt. */
 export function planZeitraum(plan: AboPlan): string {
-  return plan === "monat" ? "pro Monat" : "pro Jahr";
+  switch (plan) {
+    case "monat":
+      return "pro Monat";
+    case "jahr":
+      return "pro Jahr";
+    case "saisonpass":
+      return `einmalig für ${SAISONPASS_MONATE} Monate`;
+  }
 }
 
 /**
@@ -103,4 +125,26 @@ export function jahresVorteilProzent(
   const zwoelfMonate = monat.betragRappen * 12;
   if (zwoelfMonate <= 0 || jahr.betragRappen >= zwoelfMonate) return null;
   return Math.round((1 - jahr.betragRappen / zwoelfMonate) * 100);
+}
+
+/**
+ * Darf ein laufender Saisonpass jetzt verlängert werden?
+ *
+ * Ohne laufenden Pass immer. Mit Pass erst in den letzten
+ * SAISONPASS_VERLAENGERBAR_TAGE_VOR_ABLAUF Tagen: der neue Pass schliesst
+ * zwar an den alten an und verschluckt nichts (apply_saisonpass), aber wer
+ * im Juni einen zweiten kauft, hat sich fast sicher vertippt.
+ */
+export function saisonpassVerlaengerbar(bis: Date | null, jetzt: Date = new Date()): boolean {
+  if (!bis || bis.getTime() <= jetzt.getTime()) return true;
+  const grenze = SAISONPASS_VERLAENGERBAR_TAGE_VOR_ABLAUF * 24 * 60 * 60 * 1000;
+  return bis.getTime() - jetzt.getTime() <= grenze;
+}
+
+/**
+ * Der Saisonpass auf einen Monat gerechnet — nur für die Nebenzeile auf der
+ * Kaufseite, damit er neben Monats- und Jahresabo vergleichbar wird.
+ */
+export function saisonpassMonatsAequivalentRappen(betragRappen: number): number {
+  return Math.round(betragRappen / SAISONPASS_MONATE);
 }

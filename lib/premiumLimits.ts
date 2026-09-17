@@ -79,8 +79,21 @@ export function maxFotosProFahrt(istPremium: boolean): number {
 // Pläne und Zustand
 // ---------------------------------------------------------------------------
 
-/** Was gewählt werden kann. */
-export type AboPlan = "monat" | "jahr";
+/**
+ * Was gewählt werden kann.
+ *
+ * "saisonpass" ist seit 0110 dabei und kein Abo: eine Einmalzahlung für
+ * SAISONPASS_MONATE, die sich nicht verlängert. Der Typ heisst trotzdem
+ * weiter AboPlan — er steht an einem Dutzend Stellen, und ein Umbenennen
+ * nebenbei wäre genau der Umbau, den AGENTS.md ausserhalb des Auftrags
+ * verbietet. Wo der Unterschied zählt, fragt der Code istAbo().
+ */
+export type AboPlan = "monat" | "jahr" | "saisonpass";
+
+/** Die beiden Pläne, die sich verlängern. */
+export function istAbo(plan: AboPlan): plan is "monat" | "jahr" {
+  return plan === "monat" || plan === "jahr";
+}
 
 /**
  * Was tatsächlich abgeschlossen wurde. "gruender" benennt nur noch
@@ -89,18 +102,55 @@ export type AboPlan = "monat" | "jahr";
  * solange das Abo ununterbrochen läuft). Neue Abos landen auf "monat" oder
  * "jahr"; die Kennung bleibt, damit PremiumCard das Abo richtig benennt.
  */
-export type AboPlanKennung = "monat" | "jahr" | "gruender";
+export type AboPlanKennung = "monat" | "jahr" | "gruender" | "saisonpass";
+
+/**
+ * Laufzeit eines Saisonpasses. Steht so in den AGB (Ziff. 4) und auf der
+ * Kaufseite, und apply_saisonpass bekommt sie als Parameter — eine zweite
+ * Zahl in der Datenbank gibt es bewusst nicht.
+ *
+ * Sechs Monate ab Kauf statt eines festen Fensters (etwa April bis
+ * September): ein fester Zeitraum bestraft jeden, der im Juli kauft, mit
+ * einer halben Saison zum vollen Preis. Ab Kauf ist für alle gleich viel
+ * wert, und wer im April kauft, bekommt damit genau die Saison.
+ */
+export const SAISONPASS_MONATE = 6;
+
+/**
+ * Gratis-Testphase auf dem Jahresabo, einmal pro Konto. Nur das Jahresabo:
+ * der Monatsplan ist mit einem Monat Einsatz bereits der Test, und eine
+ * Testphase auf dem Pass wäre ein geschenkter halber Monat Saison.
+ */
+export const TESTPHASE_TAGE = 14;
+
+/**
+ * Wie kurz vor Ablauf ein laufender Saisonpass verlängert werden darf. Der
+ * neue Pass schliesst an den alten an (apply_saisonpass); die Grenze
+ * verhindert nur den versehentlichen Doppelkauf mitten in der Saison.
+ */
+export const SAISONPASS_VERLAENGERBAR_TAGE_VOR_ABLAUF = 30;
+
+/** Woher der Zugang kommt — die Oberfläche benennt und verwaltet ihn je
+ *  nach Quelle anders (Kundenportal nur beim Abo). */
+export type PremiumQuelle = "abo" | "saisonpass" | "manuell";
 
 export interface PremiumStatus {
   /** Darf diese Person die Premium-Funktionen nutzen? Die einzige Frage,
    *  die das Gating stellen sollte. */
   aktiv: boolean;
   plan: AboPlanKennung | null;
+  /** Was den Zugang gerade trägt. null ohne Premium. Laufen Abo und Pass
+   *  gleichzeitig (Abo abgeschlossen, das erst nach dem Pass abbucht), ist
+   *  es "saisonpass", solange der Pass gilt. */
+  quelle: PremiumQuelle | null;
   /** Gekündigt, aber noch gültig — bis zu diesem Zeitpunkt. null, wenn das
-   *  Abo normal weiterläuft. */
+   *  Abo normal weiterläuft. Beim Saisonpass immer das Passende: er
+   *  verlängert sich nie. */
   laeuftAbAm: Date | null;
   /** Ende der laufenden Abrechnungsperiode, unabhängig von einer Kündigung. */
   periodeEndetAm: Date | null;
+  /** Das Abo steckt in der Gratis-Testphase — bis zu diesem Zeitpunkt. */
+  testphaseBis: Date | null;
   /** Zahlung offen, Zugang läuft befristet weiter (AGB Ziff. 8.2). */
   inKulanzfrist: boolean;
   /** Ende der Kulanzfrist, wenn eine läuft. */
@@ -129,6 +179,12 @@ export interface PlanAngebot {
 
 export interface PremiumAngebot {
   plaene: PlanAngebot[];
+  /** Bekäme diese Person beim Jahresabo die Gratis-Testphase? Nur eine
+   *  Anzeige — entschieden wird beim Anlegen der Session, gegen Stripe. */
+  testphaseMoeglich: boolean;
+  /** Läuft ein Saisonpass, beginnt ein neu abgeschlossenes Abo erst mit
+   *  dessen Ende zu zahlen — und ein neuer Pass schliesst dort an. ISO. */
+  saisonpassBis: string | null;
 }
 
 /**
@@ -141,6 +197,12 @@ export interface PremiumAngebot {
  * eine andere.
  */
 export interface VergebenerPreis {
+  /** Was HEUTE abgebucht wird. 0 während einer Testphase oder wenn das Abo
+   *  an einen laufenden Pass anschliesst. */
   betragRappen: number;
   waehrung: string;
+  /** Gesetzt, wenn die erste Zahlung später fällig wird: ab wann (ISO) und
+   *  wie viel dann. Die Schaltfläche muss beides nennen — "CHF 0.00" allein
+   *  wäre die halbe Wahrheit über eine Zahlungspflicht. */
+  spaeter?: { abRappen: number; faelligAm: string; grund: "testphase" | "anschluss" };
 }
