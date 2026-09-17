@@ -65,6 +65,7 @@ export default function ProfileSearch() {
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => results.length > 0 && setOpen(true)}
           placeholder="Fahrer suchen…"
+          aria-label="Fahrer suchen"
           className="pl-9"
         />
       </div>

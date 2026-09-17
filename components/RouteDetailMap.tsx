@@ -116,7 +116,7 @@ export default function RouteDetailMap({
           {hasTempolimits && (
             <button
               onClick={() => setShowSpeedLimits((v) => !v)}
-              className={buttonVariants({ variant: "secondary", size: "sm", className: "bg-background" })}
+              className={buttonVariants({ variant: "secondary", size: "sm", className: "relative bg-background after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']" })}
             >
               {showSpeedLimits ? "Tempolimits ausblenden" : "Tempolimits anzeigen"}
             </button>
@@ -129,7 +129,7 @@ export default function RouteDetailMap({
           <button
             onClick={() => setShow3D((v) => !v)}
             aria-pressed={show3D}
-            className={buttonVariants({ variant: "secondary", size: "sm", className: "bg-background" })}
+            className={buttonVariants({ variant: "secondary", size: "sm", className: "relative bg-background after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']" })}
           >
             <Box className="h-3.5 w-3.5" aria-hidden="true" />
             {show3D ? "2D-Ansicht" : "3D-Ansicht"}

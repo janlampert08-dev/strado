@@ -235,7 +235,9 @@ export default function FreeRideForm({
     return (
       <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)]">
         <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-5 py-8 sm:px-6 sm:py-10">
-          <SectionHeading icon={Flag}>Fazit</SectionHeading>
+          {/* h1: der Fazit-Schirm ist ein eigener Vollbildschritt ohne Kopf,
+              und ohne h1 hatte er gar keine Seitenüberschrift. */}
+          <SectionHeading as="h1" icon={Flag}>Fazit</SectionHeading>
 
           <dl className="grid grid-cols-2 gap-4 text-sm">
             <div>
@@ -296,14 +298,14 @@ export default function FreeRideForm({
                 <button
                   type="button"
                   onClick={() => goToAuth("/registrieren")}
-                  className={buttonVariants({ variant: "accent", size: "sm" })}
+                  className={buttonVariants({ variant: "accent" })}
                 >
                   Konto erstellen
                 </button>
                 <button
                   type="button"
                   onClick={() => goToAuth("/anmelden")}
-                  className={buttonVariants({ variant: "secondary", size: "sm" })}
+                  className={buttonVariants({ variant: "secondary" })}
                 >
                   Ich habe ein Konto
                 </button>

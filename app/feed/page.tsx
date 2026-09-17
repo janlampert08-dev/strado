@@ -178,7 +178,10 @@ export default async function FeedPage({
                     <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-sm text-muted">
                       <Link
                         href={`/fahrer/${item.user_id}`}
-                        className="relative z-10 shrink-0 transition-colors duration-fast hover:text-foreground"
+                        // after: macht den Namen (24 × 20) zu einer 44 px hohen
+                        // Tippfläche. Er überlappt dabei den Avatar daneben —
+                        // beide führen auf dasselbe Profil.
+                        className="relative z-10 shrink-0 transition-colors duration-fast hover:text-foreground after:absolute after:-inset-x-2 after:-inset-y-3 after:content-['']"
                       >
                         {item.display_name ?? "Fahrer"}
                       </Link>

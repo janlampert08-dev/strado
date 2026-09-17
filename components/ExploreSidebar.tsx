@@ -147,6 +147,9 @@ export default function ExploreSidebar({
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Strecke oder Ort"
+          // Der Platzhalter verschwindet beim Tippen und ist kein Name —
+          // ohne aria-label meldete ein Screenreader nur "Suchfeld".
+          aria-label="Strecken suchen"
           className={fieldClassName("min-h-11")}
         />
         {/* Der Standort war eine eigene Zeile mit Textbeschriftung. Als

@@ -106,7 +106,9 @@ function LeaderboardSection({
                 <Avatar url={entry.avatarUrl} name={entry.name} size={24} />
                 <Link
                   href={`/fahrer/${entry.userId}`}
-                  className={`flex min-w-0 flex-1 items-center transition-colors duration-fast hover:text-accent ${
+                  // after: dehnt die Tippfläche über die ganze Zeilenhöhe
+                  // (py-3 der Zeile), die Schrift allein war 20 px hoch.
+                  className={`relative flex min-w-0 flex-1 items-center transition-colors duration-fast hover:text-accent after:absolute after:-inset-y-3 after:inset-x-0 after:content-[''] ${
                     isOwn ? "font-medium text-accent" : ""
                   }`}
                 >

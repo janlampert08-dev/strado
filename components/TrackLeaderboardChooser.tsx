@@ -128,7 +128,7 @@ export default function TrackLeaderboardChooser({
                   <span className="mr-2 text-muted tabular-nums">{i + 1}.</span>
                   <Link
                     href={`/fahrer/${entry.userId}`}
-                    className="inline-flex min-w-0 items-center align-bottom transition-colors duration-fast hover:text-accent"
+                    className="relative inline-flex min-w-0 items-center align-bottom transition-colors duration-fast hover:text-accent after:absolute after:-inset-y-3 after:inset-x-0 after:content-['']"
                   >
                     <span className="truncate">{entry.name}</span>
                   </Link>

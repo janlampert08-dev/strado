@@ -107,7 +107,7 @@ export default function RouteLeaderboardPreview({
               <Avatar url={entry.avatarUrl} name={entry.name} size={24} />
               <Link
                 href={`/fahrer/${entry.userId}`}
-                className="flex min-w-0 flex-1 items-center transition-colors duration-fast hover:text-accent"
+                className="relative flex min-w-0 flex-1 items-center transition-colors duration-fast hover:text-accent after:absolute after:-inset-y-3 after:inset-x-0 after:content-['']"
               >
                 <span className="truncate">{entry.name}</span>
               </Link>
