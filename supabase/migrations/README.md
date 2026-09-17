@@ -29,41 +29,53 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
-## Ausstehend: 0102_amtliche_tempolimits (geschrieben 2026-09-17, NICHT eingespielt)
+## Eingespielt: 0102 und 0103 (amtliche Tempolimits, 2026-09-17, Produktion)
 
-Tabellen `amtliche_tempolimit_quellen` und `amtliche_tempolimits` (LV95,
-GiST-Index), ein Reparatur-Trigger für ungültige Flächen und die Funktion
-`amtliche_tempolimits_entlang(jsonb)` für `proposeRoute()`. Rein additiv.
+| Datei | Ledger | Was |
+| --- | --- | --- |
+| `0102_amtliche_tempolimits` | `20260917163713` | Tabellen `amtliche_tempolimit_quellen` / `amtliche_tempolimits` (LV95, GiST), Reparatur-Trigger für Flächen, `amtliche_tempolimits_entlang(jsonb)` |
+| `0103_amtliche_tempolimits_entlang_schneller` | (Zeitstempel beim Einspielen) | dieselbe Funktion, Puffer per ST_Subdivide zerlegt |
 
-**0102, nicht 0101:** `0101_anonymisierung_fahrtstarts` liegt auf
-`claude/overnight-pr-review-aqoqua`.
+**0102, nicht 0101:** `0101_anonymisierung_fahrtstarts` lag beim Schreiben auf
+einem offenen Branch und ist inzwischen eingespielt.
 
-**Reihenfolge — alle drei Schritte, sonst bleibt es still wirkungslos:**
+**Eingespielt vor dem Code**, wie vorgesehen: ohne die Funktion würde
+`proposeRoute()` bei jedem Vorschlag einen Fehler loggen (und die
+Kartendaten nehmen).
 
-1. Migration einspielen. Vorher darf der Code **nicht** deployen:
-   `mitAmtlichenTempolimits()` fängt den Fehler der fehlenden Funktion zwar
-   ab und nimmt die Kartendaten, aber jeder Vorschlag schreibt dann eine
-   Fehlermeldung ins Log.
-2. Daten hochladen — die Migration legt nur leere Tabellen an:
-   `node --env-file=.env.local --no-warnings scripts/enrich-amtliche-tempolimits.mjs --hochladen`
-   (Secret Key; ~22 000 Objekte aus 19 Quellen, Stand der Recherche
-   2026-09-17). Wiederholbar: jede Quelle wird vollständig ersetzt.
-3. Bestehende Strecken nachziehen: `supabase/seed/0013_tempolimits_amtlich_schweiz.sql`
-   (8 der 9 freigegebenen Strecken gewinnen amtliche Abschnitte; Julierpass
-   liegt in keiner Quelle). Überschreibt `routes.tempolimits` per `id`; der
-   Weg zurück ist dieselbe Datei aus dem Vorgängerstand — die alten Werte
-   liefert `GET /api/strecken/<id>` vor dem Einspielen.
+**Warum 0103 am selben Tag folgte:** 0102 brauchte für den Zürichsee Run
+(65 km) 14,8 s — über dem Statement-Timeout von `authenticated`, lange
+Strecken wären still ohne amtliche Werte geblieben. Mit 0103 gemessen: alle
+26 freigegebenen Strecken zwischen 54 und 809 ms, über die echte Funktion
+plus `lib/tempolimitAbgleich.ts`, Ergebnis je Strecke identisch mit dem
+Offline-Abgleich des Skripts.
 
-**Prüfen danach:**
+**Befüllt** am 2026-09-17 mit
+`node --env-file=.env.local --no-warnings scripts/enrich-amtliche-tempolimits.mjs --hochladen`:
+19 Quellen, 22 054 Objekte, 0 ungültige Geometrien. Zwei Lehren aus dem Lauf,
+beide im Skript behoben: Genfer Flächen in Stapeln von 1000 rissen das
+Statement-Timeout (jetzt 50 Zeilen / 200 kB für Zonen), und 310 Linien aus
+Bern, Freiburg und Zürich fielen nach dem Runden auf 10 cm auf einen Punkt
+zusammen (jetzt werden doppelte Punkte entfernt).
+
+**Gemessen** gegen die Objekte, nicht gegen das Ledger:
 
 ```sql
--- Grants: anon/authenticated nur SELECT, Funktion nur authenticated
+-- anon/authenticated: nur SELECT; Funktion: authenticated ja, anon nein
 select grantee, privilege_type from information_schema.role_table_grants
  where table_name in ('amtliche_tempolimits', 'amtliche_tempolimit_quellen') order by 1, 2;
-select has_function_privilege('anon', 'public.amtliche_tempolimits_entlang(jsonb)', 'execute'); -- false
--- Befüllt?
+select has_function_privilege('anon', 'public.amtliche_tempolimits_entlang(jsonb)', 'execute');
 select id, anzahl, geladen_am from public.amtliche_tempolimit_quellen order by id;
 ```
+
+Ergebnis: SELECT für beide Rollen, sonst nichts; RLS auf beiden Tabellen an;
+`anon` darf die Funktion nicht ausführen, `authenticated` schon.
+
+**Noch offen:** `supabase/seed/0013_tempolimits_amtlich_schweiz.sql` —
+amtliche Werte für 19 der 26 bestehenden Strecken. Überschreibt
+`routes.tempolimits` per `id`. Vor dem Einspielen neu erzeugen
+(`--live`), falls sich die Streckenliste geändert hat: sie hat es am selben
+Tag schon einmal getan.
 
 ## Eingespielt: 0096–0098 (Fahrtstart serverseitig, 2026-09-15, Produktion)
 

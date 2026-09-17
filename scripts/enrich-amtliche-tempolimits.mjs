@@ -177,14 +177,20 @@ async function modusLive(ids) {
 // --- Hochladen in die Tabelle amtliche_tempolimits (0102) ------------------
 
 function wkt(f) {
-  const zahl = (n) => Math.round(n * 10) / 10;
-  const kette = (punkte) => `(${punkte.map(([x, y]) => `${zahl(x)} ${zahl(y)}`).join(",")})`;
+  // Auf 10 cm gerundet und aufeinanderfolgende gleiche Punkte entfernt: in
+  // Bern, Freiburg und Zürich fallen sonst kurze Achsstücke auf einen Punkt
+  // zusammen, und PostGIS hält die Linie für ungültig.
+  const runden = (punkte) =>
+    punkte
+      .map(([x, y]) => `${Math.round(x * 10) / 10} ${Math.round(y * 10) / 10}`)
+      .filter((p, i, alle) => i === 0 || p !== alle[i - 1]);
+  const kette = (punkte) => `(${punkte.join(",")})`;
   if (f.linien) {
-    const linien = f.linien.filter((l) => l.length >= 2);
+    const linien = f.linien.map(runden).filter((l) => l.length >= 2);
     return linien.length ? `SRID=2056;MULTILINESTRING(${linien.map(kette).join(",")})` : null;
   }
   const polygone = f.flaechen
-    .map((rings) => rings.filter((r) => r.length >= 4))
+    .map((rings) => rings.map(runden).filter((r) => r.length >= 4))
     .filter((rings) => rings.length > 0);
   return polygone.length
     ? `SRID=2056;MULTIPOLYGON(${polygone.map((rings) => `(${rings.map(kette).join(",")})`).join(",")})`
@@ -204,7 +210,6 @@ async function modusHochladen(ids) {
 
   log("Lade amtliche Quellen...");
   const geladen = (await alleQuellenLaden()).filter(({ quelle }) => !ids.length || ids.includes(quelle.id));
-  const MAX_ZEICHEN = 2_000_000;
 
   for (const { quelle, daten } of geladen) {
     const meta = {
@@ -226,6 +231,10 @@ async function modusHochladen(ids) {
     r = await db.from("amtliche_tempolimits").delete().eq("quelle", quelle.id);
     if (r.error) throw new Error(`${quelle.id}: ${r.error.message}`);
 
+    // Flächen (Genf) laufen beim Einfügen durch ST_IsValid/ST_MakeValid im
+    // Trigger; grosse Stapel davon reissen das Statement-Timeout von Supabase.
+    const MAX_ZEICHEN = quelle.art === "zone" ? 200_000 : 2_000_000;
+    const MAX_ZEILEN = quelle.art === "zone" ? 50 : 1000;
     let stapel = [];
     let zeichen = 0;
     let anzahl = 0;
@@ -242,7 +251,7 @@ async function modusHochladen(ids) {
       if (!geom) continue;
       stapel.push({ quelle: quelle.id, kmh: f.kmh, geom });
       zeichen += geom.length;
-      if (zeichen > MAX_ZEICHEN || stapel.length >= 1000) await senden();
+      if (zeichen > MAX_ZEICHEN || stapel.length >= MAX_ZEILEN) await senden();
     }
     await senden();
 
