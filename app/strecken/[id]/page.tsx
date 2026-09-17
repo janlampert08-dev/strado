@@ -350,7 +350,17 @@ export default async function StreckeDetailPage({
             // hoch"). "Höhe" allein liess offen, ob Höhenlage oder Anstieg
             // gemeint ist — auf der Fahrtseite steht daneben "Aufstieg".
             beschriftung="Höchster Punkt"
-            wert={route.hoehe_m !== null ? `${route.hoehe_m} m` : "—"}
+            // Aus dem Höhenprofil, wenn es eins gibt: die Kachel zeigte
+            // routes.hoehe_m (2283 m), das Profil darunter seinen eigenen
+            // Scheitel (2281 m) — zwei Zahlen für denselben Punkt auf einem
+            // Schirm. Das Profil ist die Quelle, die man sieht.
+            wert={
+              route.hoehenprofil && route.hoehenprofil.length > 1
+                ? `${Math.max(...route.hoehenprofil.map((p) => p.m))} m`
+                : route.hoehe_m !== null
+                  ? `${route.hoehe_m} m`
+                  : "—"
+            }
           />
           <Kennzahl beschriftung="Kehren" wert={route.kehren ?? "—"} />
           <Kennzahl

@@ -115,7 +115,14 @@ export default function RouteDetailMap({
         <div className="flex flex-wrap gap-2">
           {hasTempolimits && (
             <button
-              onClick={() => setShowSpeedLimits((v) => !v)}
+              // Tempolimits und Verkehr färben dieselbe Linie. Beide an hiess:
+              // der Verkehr übermalt die Tempofarben, und zwei Legenden
+              // stehen da, von denen eine nicht mehr zur Karte passt. Eine
+              // Ebene zur Zeit.
+              onClick={() => {
+                setShowSpeedLimits((v) => !v);
+                setShowTraffic(false);
+              }}
               className={buttonVariants({ variant: "secondary", size: "sm", className: "relative bg-background after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']" })}
             >
               {showSpeedLimits ? "Tempolimits ausblenden" : "Tempolimits anzeigen"}
@@ -124,7 +131,10 @@ export default function RouteDetailMap({
           <TrafficIndicator
             state={trafficState}
             active={showTraffic}
-            onToggle={() => setShowTraffic((v) => !v)}
+            onToggle={() => {
+              setShowTraffic((v) => !v);
+              setShowSpeedLimits(false);
+            }}
           />
           <button
             onClick={() => setShow3D((v) => !v)}

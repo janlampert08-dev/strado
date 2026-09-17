@@ -21,7 +21,7 @@ const LEGENDE: { key: SignatureKey; text: string }[] = [
   { key: "kehren", text: "Viele Kehren" },
   { key: "steigung", text: "Steile Steigung" },
   { key: "hoehe", text: "Hoch hinauf" },
-  { key: "tempo", text: "Tempolimit (Durchschnitt)" },
+  { key: "tempo", text: "Durchschnittlich erlaubtes Tempo" },
   { key: "laenge", text: "Lange Strecke" },
 ];
 
@@ -298,7 +298,7 @@ export default function ExploreSidebar({
                       //
                       // Schrumpfen soll das Signatur-Label daneben: es hat
                       // truncate und kürzt mit Auslassungspunkten, was bei
-                      // "Limit Ø 114 km/h" lesbar bleibt. Eine umbrechende
+                      // "Ø erlaubt 114 km/h" lesbar bleibt. Eine umbrechende
                       // Masszahl ist dagegen nie richtig.
                       <span className="shrink-0 text-sm tabular-nums whitespace-nowrap text-muted">
                         {formatKm(route.laenge_km)} km

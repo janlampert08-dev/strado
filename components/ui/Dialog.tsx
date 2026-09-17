@@ -53,7 +53,7 @@ export function Dialog({ open, onClose, title, ariaLabel, children, className }:
       onClose={onClose}
       aria-label={!title ? ariaLabel : undefined}
       className={cn(
-        "m-auto w-[min(28rem,calc(100vw-2rem))] rounded-lg border border-border bg-background p-5 text-foreground shadow-elevated outline-none backdrop:bg-foreground/30",
+        "m-auto w-[min(28rem,calc(100vw-2rem))] rounded-lg border border-border bg-background p-5 text-foreground shadow-elevated outline-none backdrop:bg-black/60",
         // UNTER sm EIN BLATT VON UNTEN, sobald der Dialog eine Überschrift
         // hat — Rückfragen, Listen, Formulare. Mittig schwebend lagen ihre
         // Knöpfe in der oberen Bildschirmhälfte, also dort, wo der Daumen

@@ -238,6 +238,7 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
     <div className="flex flex-col gap-8 sm:grid sm:grid-cols-2 sm:items-start sm:gap-6 xl:grid-cols-4">
       <LeaderboardSection
         title={`Meiste Fahrten${klassenZusatz}`}
+        beschreibung="Geteilte Fahrten, freie und auf Strecken."
         icon={Route}
         entries={meisteFahrten}
         unit={(n) => nomen(n, "Fahrt", "Fahrten")}
@@ -245,6 +246,7 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
       />
       <LeaderboardSection
         title={`Meiste Höhenmeter${klassenZusatz}`}
+        beschreibung="Summe des Aufstiegs aller geteilten Fahrten."
         icon={TrendingUp}
         entries={meisteHoehenmeter}
         unit="m"
@@ -253,6 +255,7 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
       />
       <LeaderboardSection
         title={`Meiste km gefahren${klassenZusatz}`}
+        beschreibung="GPS-gemessene Kilometer aller geteilten Fahrten."
         icon={Ruler}
         entries={meisteKm}
         unit="km"
@@ -262,7 +265,7 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
       <LeaderboardSection
         title={`Entdecker${klassenZusatz}`}
         // "Entdecker" allein erklärte nicht, was gezählt wird.
-        beschreibung="Die meisten unterschiedlichen Strecken gefahren."
+        beschreibung="Unterschiedliche kuratierte Strecken — freie Fahrten zählen hier nicht."
         icon={Compass}
         entries={meisteStrecken}
         unit={(n) => nomen(n, "Strecke", "Strecken")}
