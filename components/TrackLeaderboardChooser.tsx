@@ -111,8 +111,8 @@ export default function TrackLeaderboardChooser({
       ) : entries.length === 0 ? (
         <p className={`text-sm text-muted transition-opacity ${loading ? "opacity-40" : ""}`}>
           {klasse === null
-            ? "Noch keine geteilten Zeiten für diese Strecke."
-            : `Noch keine Zeit in ${filterLabel(klasse)} auf dieser Strecke — du kannst die erste sein.`}
+            ? "Noch keine geteilten Zeiten für diese Strecke. Die erste ist noch zu haben."
+            : `Noch keine Zeit in ${filterLabel(klasse)} auf dieser Strecke. Du kannst die erste sein.`}
         </p>
       ) : (
         <>

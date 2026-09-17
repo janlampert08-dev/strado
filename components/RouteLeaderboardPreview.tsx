@@ -86,8 +86,8 @@ export default function RouteLeaderboardPreview({
       {sichtbar.length === 0 ? (
         <p className={cn("text-sm text-muted transition-opacity", laedt && "opacity-40")}>
           {klasse === null
-            ? "Noch keine geteilten Bestzeiten für diese Strecke."
-            : `Noch keine Zeit in ${filterLabel(klasse)} auf dieser Strecke — du kannst die erste sein.`}
+            ? "Noch keine Bestzeit auf dieser Strecke. Zeichne sie auf und teil die Fahrt, dann steht deine hier als erste."
+            : `Noch keine Zeit in ${filterLabel(klasse)} auf dieser Strecke. Du kannst die erste sein.`}
         </p>
       ) : (
         <Card

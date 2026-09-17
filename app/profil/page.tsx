@@ -478,10 +478,16 @@ export default async function ProfilPage() {
                     <EmptyState
                       icon={RouteIcon}
                       title="Noch keine Fahrten aufgezeichnet."
+                      description="Such dir eine Strecke aus, oder zeichne ohne feste Strecke auf, wo du gerade unterwegs bist."
                       action={
-                        <Link href="/" className={buttonVariants({ variant: "secondary", size: "sm" })}>
-                          Strecken entdecken
-                        </Link>
+                        <div className="flex flex-wrap justify-center gap-2">
+                          <Link href="/" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                            Strecken entdecken
+                          </Link>
+                          <Link href="/fahrten/neu" className={buttonVariants({ variant: "ghost", size: "sm" })}>
+                            Freie Fahrt
+                          </Link>
+                        </div>
                       }
                     />
                   )}
@@ -520,6 +526,7 @@ export default async function ProfilPage() {
                     <EmptyState
                       icon={Bookmark}
                       title="Noch keine Favoriten gemerkt."
+                      description="Mit dem Lesezeichen auf einer Strecke merkst du sie dir. Hier findest du sie wieder."
                       action={
                         <Link href="/" className={buttonVariants({ variant: "secondary", size: "sm" })}>
                           Strecken entdecken

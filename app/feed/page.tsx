@@ -99,14 +99,26 @@ export default async function FeedPage({
             title={
               scope === "following"
                 ? "Von den Fahrern, denen du folgst, kam noch nichts."
-                : "Hier ist es noch ruhig. Fahr eine Runde, dann nicht mehr."
+                : "Noch keine geteilten Fahrten."
+            }
+            // Der Satz sagt, wie der Feed sich füllt, statt nur festzustellen,
+            // dass er leer ist: solange wenige teilen, ist das der Zustand,
+            // den ein Erstbesucher hier am häufigsten sieht.
+            description={
+              scope === "following"
+                ? "Über die Suche oben findest du Fahrer. Folgst du ihnen, stehen ihre Fahrten hier."
+                : "Wer eine Fahrt aufzeichnet und teilt, steht hier ganz oben. Das kannst auch du sein."
             }
             action={
               scope === "following" ? (
                 <Link href="/feed" className={buttonVariants({ variant: "secondary", size: "sm" })}>
                   Alle Fahrten ansehen
                 </Link>
-              ) : undefined
+              ) : (
+                <Link href="/" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                  Strecke aussuchen
+                </Link>
+              )
             }
           />
         ) : (

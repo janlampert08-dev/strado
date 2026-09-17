@@ -28,6 +28,8 @@ import type { Klassenfilter } from "@/lib/motorklassen";
 import type { Motorklasse, Vehicle } from "@/types/database";
 import { MEDAL_COLORS } from "@/lib/constants";
 import Card from "@/components/ui/Card";
+import EmptyState from "@/components/ui/EmptyState";
+import { buttonVariants } from "@/components/ui/Button";
 import LeaderboardListsSkeleton from "@/components/LeaderboardListsSkeleton";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
@@ -201,6 +203,29 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
 
   const currentUserId = user?.id ?? null;
   const klassenZusatz = klasse ? ` · ${filterLabel(klasse)}` : "";
+
+  // Sind alle vier Listen leer, stand hier viermal "Noch keine Einträge."
+  // unter vier Überschriften: ein Raster aus Absagen. Eine einzige Stelle
+  // sagt dasselbe einmal und dazu, was es braucht, um draufzukommen.
+  // Gezählt wird nur, wer einen Wert über null hat — ein Eintrag mit 0
+  // ist keine Platzierung.
+  const allesLeer = [meisteFahrten, meisteHoehenmeter, meisteKm, meisteStrecken].every(
+    (liste) => !liste.some((eintrag) => eintrag.value > 0),
+  );
+  if (allesLeer) {
+    return (
+      <EmptyState
+        icon={RankingIcon}
+        title={klasse ? `In ${filterLabel(klasse)} ist noch niemand gefahren.` : "Die Ranglisten sind noch leer."}
+        description="Fahrten, Kilometer, Höhenmeter und Strecken zählen ab der ersten Fahrt. Schon eine kann für Platz 1 reichen."
+        action={
+          <Link href="/" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+            Strecke aussuchen
+          </Link>
+        }
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col gap-8 sm:grid sm:grid-cols-2 sm:items-start sm:gap-6 xl:grid-cols-4">

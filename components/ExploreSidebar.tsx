@@ -11,6 +11,7 @@ import { anzahlText, type Streckenbewertung } from "@/lib/bewertungen";
 import Sternschnitt from "@/components/Sternschnitt";
 import { fieldClassName } from "@/components/ui/Input";
 import EmptyState from "@/components/ui/EmptyState";
+import Button, { buttonVariants } from "@/components/ui/Button";
 import IconButton from "@/components/ui/IconButton";
 
 // Icon je Signatur-Merkmal — spiegelt visuell wider, worin die Strecke
@@ -189,9 +190,41 @@ export default function ExploreSidebar({
             Strecken konnten nicht geladen werden. Bitte versuche es später erneut.
           </li>
         )}
+        {/* Zwei verschiedene Leeren: eine Suche ohne Treffer lässt sich mit
+            einem Tipp zurücknehmen, ein leerer Bestand nicht. Vorher sagte
+            beide "für diese Suche", auch wenn gar nichts gesucht war. Der
+            Vorschlag steht in beiden Fällen, weil die fehlende Strecke genau
+            die ist, die jemand kennt und die Karte noch nicht. */}
         {routes.length === 0 && !loadError && (
           <li>
-            <EmptyState icon={SearchX} title="Keine Strecken für diese Suche." />
+            {searchQuery.trim() ? (
+              <EmptyState
+                icon={SearchX}
+                title={`Keine Strecke zu „${searchQuery.trim()}“.`}
+                description="Versuch es mit einem Ort, einem Pass oder einer Region. Kennst du eine, die fehlt, schlag sie vor."
+                action={
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button variant="secondary" size="sm" onClick={() => onSearchChange("")}>
+                      Suche zurücksetzen
+                    </Button>
+                    <Link href="/strecken/neu" className={buttonVariants({ variant: "ghost", size: "sm" })}>
+                      Strecke vorschlagen
+                    </Link>
+                  </div>
+                }
+              />
+            ) : (
+              <EmptyState
+                icon={SearchX}
+                title="Noch keine Strecken freigegeben."
+                description="Kennst du eine Strasse, die man gefahren sein muss? Schlag sie vor."
+                action={
+                  <Link href="/strecken/neu" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                    Strecke vorschlagen
+                  </Link>
+                }
+              />
+            )}
           </li>
         )}
         {routes.map((route) => {
