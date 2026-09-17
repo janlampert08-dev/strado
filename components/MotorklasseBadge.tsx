@@ -25,7 +25,7 @@ export default function MotorklasseBadge({
     return (
       <span
         className={cn(
-          "inline-flex w-fit items-center rounded-md border border-border bg-surface px-2 py-0.5 font-mono text-xs text-muted",
+          "inline-flex w-fit items-center rounded-md border border-border bg-surface px-2 py-0.5 text-xs text-muted",
           className,
         )}
       >
@@ -40,7 +40,7 @@ export default function MotorklasseBadge({
     <span
       title={definition.regel}
       className={cn(
-        "inline-flex w-fit items-center gap-1.5 rounded-md border border-accent/30 bg-accent-subtle px-2 py-0.5 font-mono text-xs font-medium text-accent",
+        "inline-flex w-fit items-center gap-1.5 rounded-md border border-accent/30 bg-accent-subtle px-2 py-0.5 text-xs font-medium text-accent",
         className,
       )}
     >

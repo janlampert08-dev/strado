@@ -74,14 +74,19 @@ function LeaderboardSection({
   format?: (value: number) => string;
   currentUserId: string | null;
 }) {
+  // Einträge mit dem Wert 0 sind keine Platzierung. "Entdecker · Platz 1 ·
+  // Jan · 0 Strecken" las sich wie eine kaputte Liste: Platz 1 für nichts.
+  // Wer noch nichts hat, steht nicht auf dem Podest, sondern fehlt — und
+  // bleiben nur solche übrig, greift der ehrliche Leerzustand darunter.
+  const platzierte = entries.filter((entry) => entry.value > 0);
   return (
     <section className="flex flex-col gap-3">
       <SectionHeading icon={icon}>{title}</SectionHeading>
-      {entries.length === 0 ? (
+      {platzierte.length === 0 ? (
         <p className="text-sm text-muted">Noch keine Einträge.</p>
       ) : (
         <Card as="ol" className="divide-y divide-border">
-          {entries.map((entry, i) => {
+          {platzierte.map((entry, i) => {
             const isOwn = entry.userId === currentUserId;
             return (
               <li
@@ -96,7 +101,7 @@ function LeaderboardSection({
                     <span className="sr-only">Platz {i + 1}</span>
                   </span>
                 ) : (
-                  <span className="w-4 shrink-0 text-center font-mono text-xs text-muted">{i + 1}.</span>
+                  <span className="w-4 shrink-0 text-center text-xs text-muted">{i + 1}.</span>
                 )}
                 <Avatar url={entry.avatarUrl} name={entry.name} size={24} />
                 <Link
@@ -108,7 +113,7 @@ function LeaderboardSection({
                   <span className="truncate">{entry.name}</span>
                 </Link>
                 <span
-                  className={`shrink-0 font-mono tabular-nums ${isOwn ? "text-accent" : "text-muted"}`}
+                  className={`shrink-0 tabular-nums ${isOwn ? "text-accent" : "text-muted"}`}
                 >
                   {format(entry.value)} {typeof unit === "function" ? unit(entry.value) : unit}
                 </span>

@@ -10,7 +10,7 @@ import { NICHT_INDEXIEREN } from "@/lib/seo";
 // auf /anmelden um, ein Crawler sähe also ohnehin keinen Inhalt, aber das
 // hängt am Redirect und nicht an einer Aussage.
 export const metadata: Metadata = {
-  title: "Strecke vorschlagen – Strado",
+  title: "Strecke erstellen – Strado",
   robots: NICHT_INDEXIEREN,
 };
 

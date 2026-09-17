@@ -38,7 +38,10 @@ export default function FollowButton({
       ) : (
         <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
       )}
-      {following ? "Gefolgt" : "Folgen"}
+      {/* "Folgst du" statt "Gefolgt": dasselbe Wort stand eine Zeile höher
+          als Zähler ("4 Gefolgt" — wem diese Person folgt). Direkt daneben
+          meinte es auf dem Knopf das Gegenteil, nämlich dass DU folgst. */}
+      {following ? "Folgst du" : "Folgen"}
     </button>
   );
 }

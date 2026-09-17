@@ -256,9 +256,9 @@ export default function ExploreSidebar({
                       //
                       // Schrumpfen soll das Signatur-Label daneben: es hat
                       // truncate und kürzt mit Auslassungspunkten, was bei
-                      // "Ø 114 km/h" lesbar bleibt. Eine umbrechende
+                      // "Limit Ø 114 km/h" lesbar bleibt. Eine umbrechende
                       // Masszahl ist dagegen nie richtig.
-                      <span className="shrink-0 font-mono text-sm tabular-nums whitespace-nowrap text-muted">
+                      <span className="shrink-0 text-sm tabular-nums whitespace-nowrap text-muted">
                         {formatKm(route.laenge_km)} km
                       </span>
                     )}

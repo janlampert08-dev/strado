@@ -9,8 +9,12 @@ export default function EmptyState({
   title: string;
   action?: ReactNode;
 }) {
+  // Gefüllte Fläche statt gestricheltem Rahmen: die Strichellinie war die
+  // dritte Randart der App neben Haarlinie und Kartenrahmen und las sich wie
+  // ein Ablagefeld für einen Upload. Ein Leerzustand ist eine ruhige Stelle
+  // mit einem nächsten Schritt, kein Platzhalter.
   return (
-    <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border px-6 py-8 text-center">
+    <div className="flex flex-col items-center gap-3 rounded-lg bg-surface px-6 py-8 text-center">
       {/* w-auto statt w-7: die Lucide-Icons sind quadratisch, für sie ändert
           das nichts. Es lässt aber ein nicht quadratisches Zeichen durch,
           ohne es zu stauchen — das Signet (lib/marke.ts) ist rund 1.7-mal so

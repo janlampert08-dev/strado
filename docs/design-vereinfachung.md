@@ -81,7 +81,15 @@ Abnahme verlangt (§3b.4, §3.9, Anhang C5), geht diese Forderung dem Wort vor.
     Dokument steht, ist Arbeit gegen die eigene Empfehlung.
 - **Die Rückfrage beim Beenden einer Aufzeichnung** (`uiux.md` §5.3) ist eine
   Verhaltensänderung, keine Darstellung. Sie gehört abgenommen, nicht
-  nebenbei mitgenommen.
+  nebenbei mitgenommen. **Abgenommen und gebaut am 2026-09-17**, auf
+  ausdrücklichen Auftrag des Eigentümers nach einem UI/UX-Review — und zwar
+  nicht als Dialog, sondern als Geste: beenden heisst jetzt gedrückt halten
+  (`components/ui/HalteKnopf.tsx`). Im selben Zug: die freie Fahrt startet
+  erst auf "Aufzeichnung starten" statt beim Antippen des Tabs
+  (`autoStart` in `useRideRecorder.ts`), das Fazit bietet "Weiter
+  aufzeichnen", und ausserhalb des Aufzeichnungsschirms zeigt ein Streifen
+  unter dem Kopf plus ein Punkt am Tab, dass eine Fahrt offen liegt
+  (`components/OffeneAufzeichnung.tsx`).
 - **Das Formular „+ Fahrzeug hinzufügen"** im Fazit bleibt, wo es ist. Der
   Entwurf wollte es in die Garage schicken — aber es ist bereits zugeklappt
   und opt-in, und wer es am Strassenrand braucht, braucht es genau dort: die

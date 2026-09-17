@@ -131,7 +131,12 @@ function formatSignature(key: SignatureKey, route: ExploreRoute): string {
       return `${route.hoehe_m} m hoch`;
     case "tempo": {
       const avg = averageTempolimit(route.tempolimits);
-      return avg !== null ? `Ø ${avg} km/h` : "Freie Fahrt";
+      // "Limit" vor der Zahl: routes.tempolimits sind die signalisierten
+      // Höchstgeschwindigkeiten, nicht die gefahrene. Als blosses
+      // "Ø 114 km/h" in einer Liste, deren Nachbarwerte Eigenschaften der
+      // Strecke sind, las es sich als Durchschnittstempo — auf der
+      // Streckenseite steht dieselbe Zahl als "Ø Tempolimit".
+      return avg !== null ? `Limit Ø ${avg} km/h` : "Freie Fahrt";
     }
     case "laenge":
       return `${route.laenge_km} km lang`;

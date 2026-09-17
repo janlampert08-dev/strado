@@ -31,6 +31,10 @@ import { LEGAL_URLS } from "@/lib/constants";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
+// Ohne eigenen Titel hiess der Tab auf dieser Seite nur "Strado" — neben
+// anderen offenen Tabs derselben App nicht zu unterscheiden.
+export const metadata = { title: "Einstellungen – Strado" };
+
 // Ein Einstellungen-Tab statt vorher verstreuter Zugänge: Privatsphäre
 // (bisher app/profil/privatsphaere, hierher verschoben), Darstellung
 // (Hell/Dunkel — bisher nur im Header erreichbar, hier zusätzlich für
@@ -210,7 +214,9 @@ export default async function EinstellungenPage() {
           <section className="flex flex-col gap-3">
             <SectionHeading icon={LogOut}>Sitzung</SectionHeading>
             <p className="text-sm text-muted">Du bist auf diesem Gerät angemeldet.</p>
-            <Card className="p-4">
+            {/* Ohne Card: ein Rahmen um einen einzelnen Knopf grenzt nichts
+                ab, was die Überschrift nicht schon abgrenzt. */}
+            <div>
               <form action="/auth/abmelden" method="post">
                 {/* size="md" (44 px) statt "sm" (36 px): Abmelden ist die
                     einzige Handlung dieses Abschnitts und kein Knopf in
@@ -220,7 +226,7 @@ export default async function EinstellungenPage() {
                   Abmelden
                 </Button>
               </form>
-            </Card>
+            </div>
           </section>
 
           {/* Nur für Abonnenten: ohne Abo gibt es hier nichts zu verwalten,
@@ -254,14 +260,14 @@ export default async function EinstellungenPage() {
                 brach auf drei Zeilen um, und die Card wurde höher als die
                 aller Nachbarn. Jetzt läuft der Satz über die volle Breite
                 und der Knopf steht darunter, wie in "Sitzung" und "Konto". */}
-            <Card className="p-4">
+            <div>
               <Link
                 href={premiumStatus.aktiv ? "/profil/einstellungen/abo" : "/profil/premium"}
                 className={buttonVariants({ variant: "secondary" })}
               >
                 {premiumStatus.aktiv ? "Abo verwalten" : "Premium ansehen"}
               </Link>
-            </Card>
+            </div>
           </section>
 
           <section className="flex flex-col gap-3">

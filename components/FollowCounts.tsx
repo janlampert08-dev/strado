@@ -34,7 +34,7 @@ export default function FollowCounts({
         onClick={() => setOpenList("followers")}
         className="transition-colors duration-fast hover:text-accent"
       >
-        <span className="font-mono font-semibold tabular-nums">{followersCount}</span>{" "}
+        <span className="font-semibold tabular-nums">{followersCount}</span>{" "}
         <span className="text-muted">Follower</span>
       </button>
       <button
@@ -42,7 +42,7 @@ export default function FollowCounts({
         onClick={() => setOpenList("following")}
         className="transition-colors duration-fast hover:text-accent"
       >
-        <span className="font-mono font-semibold tabular-nums">{followingCount}</span>{" "}
+        <span className="font-semibold tabular-nums">{followingCount}</span>{" "}
         <span className="text-muted">Gefolgt</span>
       </button>
 

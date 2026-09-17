@@ -90,7 +90,7 @@ export default function NeuesFahrzeugForm({ nextHref }: { nextHref?: string } = 
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           Baujahr (optional)
-          <Input type="number" name="baujahr" min={1900} max={2100} className="font-mono" />
+          <Input type="number" name="baujahr" min={1900} max={2100} />
         </label>
 
         {/* Hubraum nur beim Motorrad: er trennt dort A1 von A 35 kW. Für ein
@@ -106,7 +106,6 @@ export default function NeuesFahrzeugForm({ nextHref }: { nextHref?: string } = 
               inputMode="numeric"
               value={hubraum}
               onChange={(e) => setHubraum(e.target.value)}
-              className="font-mono"
             />
           </label>
         )}
@@ -122,7 +121,6 @@ export default function NeuesFahrzeugForm({ nextHref }: { nextHref?: string } = 
             inputMode="decimal"
             value={leistung}
             onChange={(e) => setLeistung(e.target.value)}
-            className="font-mono"
           />
           <span className="text-xs font-normal text-muted">
             {einheit === "PS"

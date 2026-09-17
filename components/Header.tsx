@@ -7,6 +7,7 @@ import { getNavItems } from "@/lib/nav";
 import BackButton from "@/components/BackButton";
 import LogoLink from "@/components/LogoLink";
 import BottomNav from "@/components/BottomNav";
+import OffeneAufzeichnungStreifen from "@/components/OffeneAufzeichnung";
 import { buttonVariants } from "@/components/ui/Button";
 
 export default async function Header({ back }: { back?: string } = {}) {
@@ -69,7 +70,10 @@ export default async function Header({ back }: { back?: string } = {}) {
           Die Bottom-Nav macht dasselbe seit jeher fuer --safe-bottom; nur
           oben fehlte es. */}
       <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border bg-background/85 px-4 pt-[calc(0.75rem+var(--safe-top))] pb-3 backdrop-blur-xl sm:px-6 sm:pt-[calc(1rem+var(--safe-top))] sm:pb-4">
-        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+        {/* min-h-8: der Zurück-Knopf ist 30 px hoch, die Wortmarke 18 px. Ohne
+            Mindesthöhe war der Kopf auf /feed 55 px hoch und auf /profil 43 —
+            beim Wechseln der Tabs sprang der Inhalt darunter. */}
+        <div className="flex min-h-8 min-w-0 items-center gap-3 sm:gap-4">
           {back && <BackButton fallbackHref={back} />}
           {/* Die Wortmarke ist eine Kontur (lib/marke.ts), kein gesetzter
               Text. Klassen und Grösse stecken jetzt in LogoLink.tsx: der Link
@@ -124,7 +128,13 @@ export default async function Header({ back }: { back?: string } = {}) {
           </nav>
         </div>
       </header>
+      {/* Nicht im sticky-Kopf, sondern darunter im Fluss: der Streifen ist
+          ein Hinweis beim Ankommen auf einer Seite, kein dauerhafter Teil
+          der Navigation, und der Kopf soll auf jeder Seite gleich hoch
+          bleiben. Die Leiste unten trägt dasselbe Signal am Tab. */}
+      <OffeneAufzeichnungStreifen userId={user?.id ?? null} />
       <BottomNav
+        userId={user?.id ?? null}
         loggedIn={!!user}
         moderator={moderator}
         creator={creator}

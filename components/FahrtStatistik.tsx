@@ -86,7 +86,7 @@ export default function FahrtStatistik({
         <div className="overflow-x-auto">
           <table className="w-full min-w-[20rem] text-sm tabular-nums">
             <thead>
-              <tr className="text-left text-xs text-muted uppercase">
+              <tr className="text-left text-xs text-muted">
                 <th scope="col" className="py-1 pr-3 font-medium">Jahr</th>
                 <th scope="col" className="py-1 pr-3 text-right font-medium">Fahrten</th>
                 <th scope="col" className="py-1 pr-3 text-right font-medium">km</th>
@@ -96,11 +96,11 @@ export default function FahrtStatistik({
             <tbody className="divide-y divide-border">
               {jahre.map((zeile) => (
                 <tr key={zeile.jahr}>
-                  <th scope="row" className="py-2 pr-3 text-left font-mono font-medium">
+                  <th scope="row" className="py-2 pr-3 text-left font-medium">
                     {zeile.jahr}
                   </th>
-                  <td className="py-2 pr-3 text-right font-mono">{zahl(zeile.fahrten)}</td>
-                  <td className="py-2 pr-3 text-right font-mono">
+                  <td className="py-2 pr-3 text-right">{zahl(zeile.fahrten)}</td>
+                  <td className="py-2 pr-3 text-right">
                     {zahl(zeile.km)}
                     {/* Der Vergleich fehlt bewusst, wo das Vorjahr eine Lücke
                         ist — siehe kmGegenVorjahr in lib/fahrtstatistik.ts. */}
@@ -115,7 +115,7 @@ export default function FahrtStatistik({
                       </span>
                     )}
                   </td>
-                  <td className="py-2 text-right font-mono">{zahl(zeile.hoehenmeter)} m</td>
+                  <td className="py-2 text-right">{zahl(zeile.hoehenmeter)} m</td>
                 </tr>
               ))}
             </tbody>
@@ -171,7 +171,7 @@ export default function FahrtStatistik({
                   ? "Ohne Fahrzeug"
                   : (nameVon.get(zeile.fahrzeugId) ?? "Gelöschtes Fahrzeug")}
               </span>
-              <span className="shrink-0 font-mono text-muted tabular-nums">
+              <span className="shrink-0 text-muted tabular-nums">
                 {zahl(zeile.fahrten)} · {zahl(zeile.km)} km · {zahl(zeile.hoehenmeter)} m
               </span>
             </Card>

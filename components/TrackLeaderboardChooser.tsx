@@ -125,7 +125,7 @@ export default function TrackLeaderboardChooser({
                 className="flex items-baseline justify-between px-4 py-3 text-sm"
               >
                 <span>
-                  <span className="mr-2 font-mono text-muted tabular-nums">{i + 1}.</span>
+                  <span className="mr-2 text-muted tabular-nums">{i + 1}.</span>
                   <Link
                     href={`/fahrer/${entry.userId}`}
                     className="inline-flex min-w-0 items-center align-bottom transition-colors duration-fast hover:text-accent"
@@ -133,7 +133,7 @@ export default function TrackLeaderboardChooser({
                     <span className="truncate">{entry.name}</span>
                   </Link>
                 </span>
-                <span className="font-mono tabular-nums text-accent">
+                <span className="tabular-nums text-accent">
                   {formatDuration(entry.dauerSekunden)}
                 </span>
               </li>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import LiveTrackingForm from "@/components/LiveTrackingForm";
 import type { KartenStrecke, RouteGeoJSON, Vehicle } from "@/types/database";
 import { buttonVariants } from "@/components/ui/Button";
+import { GUEST_TRACKING_USER_ID, loadTrackingSnapshot } from "@/lib/trackingStorage";
 
 export default function GefahrenSection({
   route,
@@ -49,6 +50,25 @@ export default function GefahrenSection({
   // aufklappen und eine neue Aufzeichnung starten. history.replaceState
   // statt router.replace, weil letzteres diese Komponente samt "open"-Zustand
   // (und einer eventuell laufenden Aufzeichnung) neu rendern würde.
+  // Eine offene Aufzeichnung auf dieser Strecke klappt den Abschnitt von
+  // selbst auf. Hierher führt der Streifen "Aufzeichnung unterbrochen"
+  // (components/OffeneAufzeichnung.tsx) — ohne das stünde man nach dem Tipp
+  // darauf vor einer Streckenseite, auf der von der Fahrt nichts zu sehen
+  // ist, und erst "Strecke starten" hätte sie wiederaufgenommen. Das ist
+  // dieselbe Wiederaufnahme wie nach einem Tab-Kill, nur ohne den Umweg:
+  // LiveTrackingForm findet den Snapshot beim Mount und setzt ihn fort.
+  useEffect(() => {
+    if (open) return;
+    const snapshot = loadTrackingSnapshot(userId ?? GUEST_TRACKING_USER_ID, route.id);
+    if (!snapshot || (snapshot.phase === "tracking" && !snapshot.hasStarted)) return;
+    // In einem Callback statt synchron im Effekt — dasselbe Muster wie der
+    // Wiederherstellungs-Effekt in useRideRecorder.ts.
+    const timeout = setTimeout(() => setOpen(true), 0);
+    return () => clearTimeout(timeout);
+    // Nur beim Mount: ein späteres Einklappen über onExit ist gewollt.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (!guestContinuationToken) return;
     window.history.replaceState(null, "", `/strecken/${route.id}`);

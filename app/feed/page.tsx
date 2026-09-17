@@ -62,7 +62,7 @@ export default async function FeedPage({
 
   return (
     <div className="flex h-dvh flex-col">
-      <Header back="/" />
+      <Header />
       {/* Ziehen zum Aktualisieren (nur Touch) — siehe PullToRefreshArea.tsx */}
       <PullToRefreshArea>
       <div className="flex-1 overflow-y-auto">
@@ -180,7 +180,7 @@ export default async function FeedPage({
                       <span aria-hidden="true">·</span>
                       <span className="truncate">{item.region}</span>
                       <span aria-hidden="true">·</span>
-                      <span className="font-mono tabular-nums">
+                      <span className="tabular-nums">
                         {(item.distanz_km ?? item.laenge_km ?? 0).toFixed(1)} km
                       </span>
                       <span aria-hidden="true">·</span>
@@ -192,7 +192,7 @@ export default async function FeedPage({
                           für Hilfstechnik und Suchmaschinen erhalten bleibt. */}
                       <time
                         dateTime={item.datum}
-                        className="font-mono tabular-nums"
+                        className="tabular-nums"
                         title={new Date(item.datum).toLocaleDateString("de-CH")}
                       >
                         {new Date(item.datum).toLocaleDateString("de-CH", {

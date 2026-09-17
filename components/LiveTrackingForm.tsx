@@ -23,6 +23,7 @@ import Card from "@/components/ui/Card";
 import Skeleton from "@/components/ui/Skeleton";
 import FullscreenDialog from "@/components/ui/FullscreenDialog";
 import SectionHeading from "@/components/ui/SectionHeading";
+import HalteKnopf from "@/components/ui/HalteKnopf";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
@@ -284,27 +285,28 @@ export default function LiveTrackingForm({
               Distanz, Tempo und Höhe sind interessant, aber nicht
               handlungsleitend; sie stehen darunter in 15 px statt in eigenen
               Spalten. Siehe docs/design-vereinfachung.md, Anhang B2. */}
-          <div className="flex items-center gap-2">
-            {recorder.hasStarted && (
-              <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full bg-danger" />
-            )}
-            <SectionHeading as="p" className="font-mono">
-              {recorder.hasStarted ? "Aufzeichnung läuft" : "Unterwegs zum Start"}
-            </SectionHeading>
-          </div>
+          {/* Satzschreibung statt versal in Mono — ein Zustand, kein
+              Etikett. Dieselbe Zeile wie bei der freien Fahrt. */}
+          <p className="flex items-center gap-2 text-sm font-medium">
+            <span
+              aria-hidden="true"
+              className={`h-2.5 w-2.5 shrink-0 rounded-full ${recorder.hasStarted ? "bg-danger" : "bg-muted"}`}
+            />
+            {recorder.hasStarted ? "Aufzeichnung läuft" : "Unterwegs zum Start"}
+          </p>
           <dl className="flex flex-wrap items-end gap-x-6 gap-y-2">
             <div>
-              <dt className="text-[15px] text-muted">Zeit</dt>
-              <dd className="font-mono text-4xl leading-none font-semibold tabular-nums">
+              <dt className="text-xs text-muted">Zeit</dt>
+              <dd className="text-5xl leading-none font-semibold tracking-tight tabular-nums">
                 {formatDuration(recorder.elapsedSeconds)}
               </dd>
             </div>
             {remainingKm !== null && (
               <div>
-                <dt className="text-[15px] text-accent">noch</dt>
-                <dd className="font-mono text-4xl leading-none font-semibold tabular-nums text-accent">
+                <dt className="text-xs text-accent">noch</dt>
+                <dd className="text-5xl leading-none font-semibold tracking-tight tabular-nums text-accent">
                   {remainingKm.toFixed(1)}
-                  <span className="ml-1 text-[15px] font-normal"> km</span>
+                  <span className="ml-1.5 text-base font-medium tracking-normal"> km</span>
                 </dd>
               </div>
             )}
@@ -315,16 +317,16 @@ export default function LiveTrackingForm({
                 <div> in einem <dl> darf nur <dt> und <dd> enthalten, ein
                 <span> dazwischen ist ungültiges HTML. aria-hidden hält ihn
                 wie zuvor aus der Vorlesereihenfolge heraus. */}
-            <div className="flex w-full flex-wrap items-baseline gap-x-2 text-[15px] text-muted">
+            <div className="flex w-full flex-wrap items-baseline gap-x-2 text-base text-foreground">
               <dt className="sr-only">Distanz</dt>
-              <dd className="font-mono tabular-nums">{recorder.distanceKm.toFixed(2)} km gefahren</dd>
+              <dd className="tabular-nums">{recorder.distanceKm.toFixed(2)} km gefahren</dd>
               <dt className="sr-only">Tempo</dt>
-              <dd className="font-mono tabular-nums">
+              <dd className="tabular-nums">
                 <span aria-hidden="true" className="mr-2">·</span>
                 {recorder.speedKmh !== null ? `${recorder.speedKmh.toFixed(0)} km/h` : "—"}
               </dd>
               <dt className="sr-only">Höhe</dt>
-              <dd className="font-mono tabular-nums">
+              <dd className="tabular-nums">
                 <span aria-hidden="true" className="mr-2">·</span>
                 {currentElevationM !== null ? `${currentElevationM} m` : "—"}
               </dd>
@@ -373,19 +375,20 @@ export default function LiveTrackingForm({
               mit Symbol. Er steht vor dem Beenden und nicht daneben, damit
               er nicht mit der Handlung konkurriert.
               docs/audit/uiux.md §5.4. */}
-          <p className="flex items-start gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm leading-snug">
+          <p className="flex items-start gap-2 text-sm leading-snug text-muted">
             <Smartphone className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
             <span>Bildschirm an lassen — sonst pausiert die Aufzeichnung.</span>
           </p>
           <div className="flex flex-wrap items-center gap-3">
             {recorder.hasStarted ? (
-              <button
-                type="button"
-                onClick={recorder.stop}
-                className={buttonVariants({ variant: "accent", size: "lg", className: "flex-1" })}
-              >
-                Strecke beenden
-              </button>
+              // Halten statt Tippen, wie bei der freien Fahrt (HalteKnopf
+              // begründet es). Hier zählt es doppelt: am Ziel beendet sich
+              // die Fahrt ohnehin selbst, ein Knopfdruck von Hand ist also
+              // fast immer der Sonderfall — und ein versehentlicher kostet
+              // die Bestzeit.
+              <HalteKnopf onBestaetigt={recorder.stop} className="flex-1">
+                Zum Beenden halten
+              </HalteKnopf>
             ) : (
               <>
                 <button
@@ -431,15 +434,15 @@ export default function LiveTrackingForm({
         <dl className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <dt className="text-muted">Distanz</dt>
-            <dd className="font-mono text-lg tabular-nums">{result?.distanceKm.toFixed(2)} km</dd>
+            <dd className="text-lg tabular-nums">{result?.distanceKm.toFixed(2)} km</dd>
           </div>
           <div>
             <dt className="text-muted">Zeit</dt>
-            <dd className="font-mono text-lg tabular-nums">{formatDuration(result?.seconds ?? 0)}</dd>
+            <dd className="text-lg tabular-nums">{formatDuration(result?.seconds ?? 0)}</dd>
           </div>
           <div>
             <dt className="text-muted">Ø Tempo</dt>
-            <dd className="font-mono text-lg tabular-nums">{avgKmh?.toFixed(0)} km/h</dd>
+            <dd className="text-lg tabular-nums">{avgKmh?.toFixed(0)} km/h</dd>
           </div>
         </dl>
 
@@ -506,13 +509,22 @@ export default function LiveTrackingForm({
                 Ich habe ein Konto
               </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setGastVerwerfenOffen(true)}
-              className="self-start text-xs text-muted underline hover:text-foreground"
-            >
-              Fahrt verwerfen
-            </button>
+            <div className="flex flex-wrap gap-x-4">
+              <button
+                type="button"
+                onClick={recorder.fortsetzen}
+                className={textAktionClassName({ ton: "gedaempft" })}
+              >
+                Weiter aufzeichnen
+              </button>
+              <button
+                type="button"
+                onClick={() => setGastVerwerfenOffen(true)}
+                className={textAktionClassName({ ton: "gedaempft" })}
+              >
+                Fahrt verwerfen
+              </button>
+            </div>
           </Card>
           <ConfirmDialog
             open={gastVerwerfenOffen}
@@ -537,6 +549,7 @@ export default function LiveTrackingForm({
             onIsPublicChange={setIsPublic}
             onSubmit={() => setSubmitted(true)}
             onDiscard={handleExit}
+            onResume={recorder.fortsetzen}
             visibility={{
               publicDisabled: belowCoverageThreshold,
               // Seit 0078 ist der Deckungsgrad das Minimum aus "berührt" und

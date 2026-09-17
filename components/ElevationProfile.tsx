@@ -114,7 +114,7 @@ export default function ElevationProfile({ punkte }: { punkte: HoehenprofilPunkt
         </svg>
         {hoverPunkt && (
           <div
-            className="pointer-events-none absolute rounded-md border border-border bg-background px-2 py-1 font-mono text-xs tabular-nums shadow-elevated"
+            className="pointer-events-none absolute rounded-md border border-border bg-background px-2 py-1 text-xs tabular-nums shadow-elevated"
             style={{
               left: `${(hoverPunkt.km / kmMax) * 100}%`,
               top: 0,
@@ -125,7 +125,7 @@ export default function ElevationProfile({ punkte }: { punkte: HoehenprofilPunkt
           </div>
         )}
       </div>
-      <div className="flex justify-between font-mono text-xs tabular-nums text-muted">
+      <div className="flex justify-between text-xs tabular-nums text-muted">
         <span>{mMin} m</span>
         <span>{gipfel.m} m bei km {gipfel.km.toFixed(0)}</span>
         <span>{mMax} m</span>
