@@ -48,3 +48,8 @@ export { Star as SternIcon } from "lucide-react";
 // (components/ActivityList.tsx). Dasselbe Zeichen, das die Kopfleiste als
 // Einstieg in /aktivitaet zeigt.
 export { Flame as AktivitaetIcon } from "lucide-react";
+
+// Ebenfalls kein Nav-Icon: die Pass-Sammlung im Kennzahlen-Block der
+// Profilseite (components/PassSammlung.tsx) — der Berg als Zeichen für "Pass",
+// nicht für Höhe allgemein.
+export { Mountain as PassIcon } from "lucide-react";

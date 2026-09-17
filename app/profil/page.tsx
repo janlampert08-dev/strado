@@ -25,9 +25,11 @@ import CountUp from "@/components/CountUp";
 import FollowCounts from "@/components/FollowCounts";
 import PremiumCard from "@/components/PremiumCard";
 import FahrtStatistik from "@/components/FahrtStatistik";
-import { ChartIcon, ShieldIcon } from "@/components/NavIcons";
+import PassSammlung, { PassZaehler } from "@/components/PassSammlung";
+import { ChartIcon, PassIcon, ShieldIcon } from "@/components/NavIcons";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
+import { getPassStrecken } from "@/lib/passSammlungDaten";
 import { isModerator } from "@/lib/moderation";
 import { istCreator } from "@/lib/creatorKennzahlen";
 import { getRollenItems } from "@/lib/nav";
@@ -106,6 +108,7 @@ export default async function ProfilPage() {
     unseenKudos,
     istMod,
     istCreatorKonto,
+    passStrecken,
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -131,10 +134,12 @@ export default async function ProfilPage() {
     // lib/hoehenmeter.ts.
     supabase
       .from("route_completions")
-      .select("route_id")
+      // datum nur für die Pass-Sammlung (erste Fahrt je Pass) — eine Spalte
+      // mehr in dieser Abfrage statt einer zweiten Runde zur Datenbank.
+      .select("route_id, datum")
       .eq("user_id", user.id)
       .eq("art", "strecke")
-      .returns<{ route_id: string }[]>(),
+      .returns<{ route_id: string; datum: string }[]>(),
     // Beide Fahrtarten: freie Fahrten stehen in derselben Liste wie
     // Streckenfahrten und zählen in "Km gefahren"/"Anzahl Fahrten" mit —
     // anders als in den globalen Bestenlisten, die streckenbasiert bleiben
@@ -199,6 +204,10 @@ export default async function ProfilPage() {
     // per cache() request-weit memoisiert.
     isModerator(user.id),
     istCreator(user.id),
+    // Grundmenge der Pass-Sammlung: freigegebene öffentliche Passstrassen,
+    // ohne Geometrie. Läuft für alle Konten mit, weil auch der Zähler ohne
+    // Abo sie braucht — parallel, also ohne zusätzliche Wartezeit.
+    getPassStrecken(),
   ]);
 
   // Die mobile Leiste (BottomNav) führt Creator und Moderation nicht mehr —
@@ -378,6 +387,26 @@ export default async function ProfilPage() {
                   />
                 </div>
               </details>
+            )}
+
+            {/* Direkt nach der Auswertung: beides ist "dein Fahrjahr", und
+                der Saisonrückblick darin ist ihr teilbares Gegenstück.
+                Ohne Abo eine Zeile mit der Zahl statt der Klappe — siehe
+                components/PassSammlung.tsx. */}
+            {premiumStatus.aktiv ? (
+              <details open className="group py-4">
+                <SectionSummary icon={PassIcon} label="Pass-Sammlung" />
+                <div className="mt-4">
+                  <PassSammlung
+                    paesse={passStrecken.paesse}
+                    ladefehler={passStrecken.fehler}
+                    streckenFahrten={completions ?? []}
+                    fahrten={trackedRides ?? []}
+                  />
+                </div>
+              </details>
+            ) : (
+              <PassZaehler paesse={passStrecken.paesse} fahrten={completions ?? []} />
             )}
           </div>
         </section>
