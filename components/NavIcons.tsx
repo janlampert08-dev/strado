@@ -48,3 +48,18 @@ export { Star as SternIcon } from "lucide-react";
 // (components/ActivityList.tsx). Dasselbe Zeichen, das die Kopfleiste als
 // Einstieg in /aktivitaet zeigt.
 export { Flame as AktivitaetIcon } from "lucide-react";
+
+// Ebenfalls kein Nav-Icon: das Wetterfenster auf der Streckenseite
+// (components/Wetterfenster.tsx). Ein Symbol je Grund aus
+// lib/wetterfenster.ts, nicht je Wettercode — die Zelle soll sagen, warum
+// ein Tag gut oder schlecht ist, nicht das Wetterbild nachzeichnen. Kälte
+// und Glätte teilen sich das Thermometer; der Unterschied steht im Text.
+export {
+  Sun as WetterTrockenIcon,
+  CloudDrizzle as WetterSchauerIcon,
+  CloudRain as WetterRegenIcon,
+  CloudLightning as WetterGewitterIcon,
+  Snowflake as WetterSchneeIcon,
+  ThermometerSnowflake as WetterKaltIcon,
+  Wind as WetterWindIcon,
+} from "lucide-react";
