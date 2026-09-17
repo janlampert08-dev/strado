@@ -131,6 +131,123 @@ Die Migration löscht nichts Bestehendes; der Weg zurück steht im Kopf der
 Datei (Funktionen aus `0100` wiederherstellen, drei Tabellen und die
 Trigger droppen, Spalte entfernen). Verloren gehen dabei Passstatus,
 gesetzte Alarme und Meldungen.
+## 0111_wartungsheft — NOCH NICHT EINGESPIELT (Stand 2026-09-17)
+
+`0111_wartungsheft.sql` liegt auf `staging-premium-wartungsheft` und ist
+**nicht angewendet**. Die Nummer `0111` ist vom Koordinator dieses
+Premium-Ausbaus reserviert (0110–0112 für drei parallele Zweige); `0101`–`0109`
+gehören zu Zweigen, die dieses Verzeichnis noch nicht sieht — wer vor dem
+Einspielen prüft, prüft gegen die offenen PRs, nicht gegen diesen Baum
+(`scripts/check-migration-prefixes.mjs` sieht nur einen Zweig).
+
+**Was sie anlegt.** Zwei private Tabellen, `wartungseintraege` (Serviceheft
+pro Fahrzeug: Art, Datum, optional Kilometerstand, Kosten, Notiz) und
+`wartungserinnerungen` (höchstens eine Zeile pro Fahrzeug: MFK-Termin,
+Serviceintervall in km und/oder Monaten), dazu einen Unique-Constraint
+`vehicles_id_user_id_key` auf `public.vehicles (id, user_id)` als Ziel der
+zusammengesetzten Fremdschlüssel und eine Trigger-Funktion
+`wartungseintraege_obergrenze()` (höchstens 1000 Einträge je Fahrzeug).
+
+**Rein additiv.** Nichts Bestehendes ändert sein Verhalten; der einzige
+Eingriff an einer bestehenden Tabelle ist der zusätzliche Unique-Index auf
+`vehicles`, fachlich redundant zum Primärschlüssel. Er nimmt kurz
+`ACCESS EXCLUSIVE` — deshalb steht ein `set local lock_timeout = '5s'` am
+Anfang der Datei; scheitert sie daran, lieber gleich noch einmal, als die
+Tabelle zu stauen (dieselbe Überlegung wie bei `0095`).
+
+**Reihenfolge: Schema zuerst, Code danach.** `lib/wartungsdaten.ts` wirft bei
+einem Abfragefehler (`lib/queryError.ts`), statt ihn als leeres Wartungsheft
+auszugeben — ohne die Migration antwortet `app/profil/fahrzeuge/[id]` also mit
+einer Fehlerseite, und `/profil` ebenfalls, sobald das Konto Premium hat
+(`getWartungsHinweise`). Also nicht mergen, bevor die Migration steht.
+
+### Vor dem Einspielen prüfen
+
+```sql
+-- Sind die Namen frei? Erwartet: 0 Zeilen.
+select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public'
+  and c.relname in ('wartungseintraege', 'wartungserinnerungen', 'vehicles_id_user_id_key');
+
+-- Wie viele Fahrzeuge trägt die Tabelle, die den Index bekommt?
+select count(*) from public.vehicles;
+```
+
+### Nach dem Einspielen prüfen — an den Objekten, nicht am Ledger
+
+```sql
+-- 1. Die Grant-Falle (0047/0048/0091/0097): anon darf NICHTS.
+--    Erwartet: nur 'authenticated'-Zeilen, kein 'anon'.
+select grantee, privilege_type, table_name
+from information_schema.role_table_grants
+where table_schema = 'public'
+  and table_name in ('wartungseintraege', 'wartungserinnerungen')
+order by table_name, grantee, privilege_type;
+
+-- 2. Spalten-Grants: INSERT ohne id/created_at, UPDATE ohne
+--    fahrzeug_id/user_id.
+select table_name, column_name, privilege_type, grantee
+from information_schema.column_privileges
+where table_schema = 'public'
+  and table_name in ('wartungseintraege', 'wartungserinnerungen')
+order by table_name, privilege_type, column_name;
+
+-- 3. RLS an, acht Policies (je Tabelle: select, insert, update, delete),
+--    und die Premium-Bedingung genau in insert und update.
+select tablename, policyname, cmd, roles, qual, with_check
+from pg_policies
+where schemaname = 'public'
+  and tablename in ('wartungseintraege', 'wartungserinnerungen')
+order by tablename, cmd;
+
+select relname, relrowsecurity from pg_class
+where relname in ('wartungseintraege', 'wartungserinnerungen');
+
+-- 4. Kein anon-Recht auf die Trigger-Funktion.
+select has_function_privilege('anon', 'public.wartungseintraege_obergrenze()', 'EXECUTE') as anon,
+       has_function_privilege('authenticated', 'public.wartungseintraege_obergrenze()', 'EXECUTE') as auth;
+
+-- 5. Die Fremdschlüssel zeigen auf das PAAR, mit Kaskade.
+select conname, pg_get_constraintdef(oid)
+from pg_constraint
+where conrelid in ('public.wartungseintraege'::regclass, 'public.wartungserinnerungen'::regclass)
+order by conname;
+
+-- 6. Die Indizes stehen (der erste deckt auch den Fremdschlüssel).
+select indexname, indexdef from pg_indexes
+where schemaname = 'public'
+  and tablename in ('wartungseintraege', 'wartungserinnerungen', 'vehicles')
+order by tablename, indexname;
+```
+
+**Funktionaler Test, zurückgerollt** (`DO`-Block, Ergebnis über
+`raise exception` zurücklesen — dieselbe Form wie bei `0098`; die Ausnahme
+rollt den Block zurück, es bleibt nichts stehen). Drei Punkte sind es wert:
+
+1. Ein Eintrag mit **fremder** `fahrzeug_id` und eigener `user_id` muss am
+   Fremdschlüssel scheitern (`wartungseintraege_fahrzeug_fkey`) — das ist die
+   Eigentumsklammer, und sie soll auch dann halten, wenn eine Policy je
+   gelockert wird.
+2. Ein Konto **ohne** `ist_premium` darf nicht einfügen (Policy), aber seine
+   vorhandenen Zeilen lesen und löschen. Das ist die Zusage in der
+   Oberfläche: nach dem Abo-Ende bleiben die Daten der Person.
+3. `delete from public.vehicles where id = …` muss beide Tabellen mitnehmen
+   (Kaskade). Damit ist auch die Kontolöschung abgedeckt, denn
+   `anonymize_account()` (Rumpf in `0092`) löscht genau diese Zeilen —
+   **die Funktion wird von 0111 absichtlich nicht angefasst**.
+
+### Rückweg
+
+```sql
+drop table if exists public.wartungserinnerungen;
+drop table if exists public.wartungseintraege;
+drop function if exists public.wartungseintraege_obergrenze();
+alter table public.vehicles drop constraint if exists vehicles_id_user_id_key;
+```
+
+Verliert alle Wartungsdaten unwiderruflich. Sobald Premium-Konten Einträge
+haben, ist der Rückweg ein Datenverlust und kein Rollback — vorher
+exportieren.
 
 ## Eingespielt: 0096–0098 (Fahrtstart serverseitig, 2026-09-15, Produktion)
 

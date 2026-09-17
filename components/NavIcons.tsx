@@ -71,3 +71,15 @@ export {
 // mit Avatar stünde — und den Abschnitt "Passstatus" unter /moderation
 // (0112).
 export { Mountain as PassIcon } from "lucide-react";
+
+// Das Wartungsheft (0111): der Schraubenschlüssel für den Abschnitt und
+// seinen Leerzustand, der Kalender für die MFK. Zwei Zeichen, weil die
+// Fahrzeugseite zwei Dinge nebeneinander zeigt — das Heft (was war) und die
+// Termine (was kommt) — und ein Symbol für beide den Unterschied einzöge.
+export { Wrench as WartungIcon, CalendarClock as TerminIcon } from "lucide-react";
+
+// Auto und Motorrad. Beide Zeichen stehen schon in components/VehicleGrid.tsx
+// und app/profil/page.tsx, dort aber als direkter lucide-Import aus der Zeit
+// vor dieser Wrapper-Regel. Neuer Code (app/profil/fahrzeuge/[id]) nimmt sie
+// von hier; das Raster mitzuziehen wäre eine Änderung ohne Anlass.
+export { Car as AutoIcon, Bike as MotorradIcon } from "lucide-react";
