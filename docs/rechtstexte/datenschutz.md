@@ -156,9 +156,13 @@ lässt sich nach **24 Stunden** nicht mehr verwenden — weder nimmt der Server
 weitere Meldungen dazu an noch lässt sie sich einer Fahrt zuordnen — und wird
 danach gelöscht, in der Regel innert 48 Stunden. Wird die Fahrt gespeichert,
 bleibt die letzte Meldung als Nachweis der gemessenen Dauer bei der Fahrt; sie
-wird mit dem Konto gelöscht. Wer die Standortfreigabe verweigert oder ohne
-Verbindung fährt, kann normal aufzeichnen; die Fahrt wird dann lediglich nicht
-als „verifiziert" gekennzeichnet.
+wird mit dem Konto gelöscht. Dasselbe gilt, wenn angemeldet gespeichert wird
+und das Speichern erst nach der Zeitprüfung scheitert: Die letzte Meldung
+bleibt dann beim Konto, damit ein erneuter Versuch die gemessene Dauer behält,
+und wird mit dem Konto gelöscht. Wer ohne Verbindung fährt, kann normal
+aufzeichnen; die Fahrt wird dann lediglich nicht als „verifiziert"
+gekennzeichnet. Ohne Standortfreigabe ist keine Aufzeichnung möglich, weil sie
+auf den Positionen des Geräts beruht.
 
 **Standort ausserhalb der Aufzeichnung.** In der Streckensuche und bei der
 Streckenwahl kann der aktuelle Standort abgefragt werden, um Strecken in der
