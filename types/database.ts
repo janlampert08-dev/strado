@@ -290,9 +290,16 @@ export interface RouteCompletion {
   // sichtbar, siehe save_free_ride_with_segments.
   //
   // DIE REGEL FÜR JEDE NEUE AUFSUMMIERUNG, und sie hat schon einmal
-  // gefehlt: ein Abschnitt trägt eigene distanz_km und eigene
-  // hoehenmeter_aufstieg, obwohl dieselben Kilometer bereits in der
-  // Elternfahrt stecken.
+  // gefehlt: ein Abschnitt trägt eine eigene distanz_km, obwohl dieselben
+  // Kilometer bereits in der Elternfahrt stecken — und er ist eine eigene
+  // Zeile, zählt also auch als eigene Fahrt.
+  //
+  // hoehenmeter_aufstieg ist heute NICHT betroffen: der Segment-INSERT in
+  // 0081 setzt die Spalte nicht, Abschnitte tragen dort null, und
+  // summiereHoehenmeter überspringt null. Die Regel unten nennt den
+  // Anstieg trotzdem — sie soll auch dann noch gelten, wenn ein Abschnitt
+  // eines Tages einen bekommt, und eine Regel mit Ausnahme merkt sich
+  // niemand.
   //
   //   Mengenfragen ("wie viel bin ich gefahren", "wie oft", "wie viele
   //   Höhenmeter") filtern parent_completion_id is null.

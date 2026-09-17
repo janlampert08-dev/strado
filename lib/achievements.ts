@@ -39,9 +39,13 @@ export async function getUserAchievementStats(userId: string): Promise<Achieveme
     //
     // .is("parent_completion_id", null) wie in app/profil/page.tsx, und aus
     // demselben Grund: die aus einer freien Fahrt erkannten Abschnitte
-    // (0050/0081) sind eigene Zeilen mit eigener Distanz und eigenem
-    // Anstieg. Ohne den Filter zählte eine Ausfahrt über drei erkannte
-    // Strecken als vier Fahrten, und ihre Höhenmeter viermal.
+    // (0050/0081) sind eigene Zeilen mit eigener Distanz. Ohne den Filter
+    // zählte eine Ausfahrt über drei erkannte Strecken als vier Fahrten.
+    // Die Höhenmeter waren nie betroffen — Abschnitte tragen dort null
+    // (der INSERT in 0081 setzt die Spalte gar nicht), und
+    // summiereHoehenmeter überspringt null. Der Filter deckt sie
+    // trotzdem mit ab, damit er auch dann noch stimmt, wenn sich das
+    // einmal ändert.
     //
     // Die Pässe-Abfrage darüber bleibt ohne den Filter — dort sollen die
     // Abschnitte zählen. Die beiden Abfragen beschreiben absichtlich
