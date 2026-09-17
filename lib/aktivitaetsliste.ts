@@ -2,24 +2,29 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getRecentKudosReceived } from "@/lib/kudos";
 import { getRecentFollowersReceived } from "@/lib/follows";
+import { getRecentPassMeldungen } from "@/lib/passStatusAbfragen";
 import { mischeAktivitaet, type AktivitaetsEintrag } from "@/lib/aktivitaet";
 
 // Die Abfrageseite der Aktivität — getrennt von lib/aktivitaet.ts, weil
 // jene Datei auch in der Client-Komponente landet (siehe Kopf dort) und
 // alles hier den Server-Client braucht.
 
-// Beide Listen in einer gemischten Zeitachse — die Datenquelle für
-// /aktivitaet. Die zwei RPCs hängen nicht voneinander ab, laufen also
-// nebenläufig.
+// Alle drei Listen in einer gemischten Zeitachse — die Datenquelle für
+// /aktivitaet. Die RPCs hängen nicht voneinander ab, laufen also
+// nebenläufig. Die Passmeldungen (0112) fragt jedes Konto ab, nicht nur
+// Premium: wer ein Abo hatte, soll seine alten Meldungen weiter sehen, und
+// ohne Alarm ist die Liste schlicht leer.
 export async function getAktivitaet(): Promise<AktivitaetsEintrag[]> {
-  const [kudos, follower] = await Promise.all([
+  const [kudos, follower, passMeldungen] = await Promise.all([
     getRecentKudosReceived(),
     getRecentFollowersReceived(),
+    getRecentPassMeldungen(),
   ]);
-  return mischeAktivitaet(kudos, follower);
+  return mischeAktivitaet(kudos, follower, passMeldungen);
 }
 
-// Ungesehene Reaktionen insgesamt (Kudos + neue Follower), für das
+// Ungesehene Aktivität insgesamt (Kudos, neue Follower, seit 0112
+// Passöffnungen), für das
 // Abzeichen in der Kopfleiste. Ein RPC statt zweier, siehe
 // count_unseen_activity in 0100_folge_benachrichtigungen.sql — <Header />
 // läuft auf jeder Seite.

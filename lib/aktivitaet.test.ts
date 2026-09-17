@@ -7,6 +7,7 @@ import {
 } from "@/lib/aktivitaet";
 import type { ReceivedKudos } from "@/lib/kudos";
 import type { ReceivedFollower } from "@/lib/follows";
+import type { ReceivedPassMeldung } from "@/lib/passStatusAbfragen";
 
 function kudo(erstelltAm: string, giverId = "g1", completionId = "c1"): ReceivedKudos {
   return {
@@ -27,6 +28,10 @@ function follower(erstelltAm: string, followerId = "f1"): ReceivedFollower {
     erstelltAm,
     neu: true,
   };
+}
+
+function passMeldung(erstelltAm: string, meldungId = 1, routeName = "Klausenpass"): ReceivedPassMeldung {
+  return { meldungId, routeId: "r1", routeName, erstelltAm, neu: true };
 }
 
 describe("mischeAktivitaet", () => {
@@ -85,6 +90,25 @@ describe("mischeAktivitaet", () => {
 
   it("liefert für leere Quellen eine leere Liste", () => {
     expect(mischeAktivitaet([], [])).toEqual([]);
+    expect(mischeAktivitaet([], [], [])).toEqual([]);
+  });
+
+  it("reiht Passöffnungen (0112) in dieselbe Zeitachse ein", () => {
+    const eintraege = mischeAktivitaet(
+      [kudo("2026-09-10T10:00:00Z")],
+      [follower("2026-09-08T10:00:00Z")],
+      [passMeldung("2026-09-09T10:00:00Z")],
+    );
+
+    expect(eintraege.map((e) => e.art)).toEqual(["kudos", "pass_offen", "follower"]);
+    expect(eintraege[1]).toEqual({
+      art: "pass_offen",
+      meldungId: 1,
+      routeId: "r1",
+      routeName: "Klausenpass",
+      erstelltAm: "2026-09-09T10:00:00Z",
+      neu: true,
+    });
   });
 });
 
@@ -100,6 +124,17 @@ describe("aktivitaetsSchluessel", () => {
     const eintraege: AktivitaetsEintrag[] = mischeAktivitaet(
       [kudo("2026-09-10T10:00:00Z", "p1", "c1"), kudo("2026-09-09T10:00:00Z", "p1", "c2")],
       [],
+    );
+
+    expect(new Set(eintraege.map(aktivitaetsSchluessel)).size).toBe(2);
+  });
+
+  it("trennt zwei Öffnungen desselben Passes", () => {
+    // Offen, wieder gesperrt, wieder offen: zwei Meldungen, zwei Zeilen.
+    const eintraege = mischeAktivitaet(
+      [],
+      [],
+      [passMeldung("2026-06-01T10:00:00Z", 1), passMeldung("2026-06-05T10:00:00Z", 2)],
     );
 
     expect(new Set(eintraege.map(aktivitaetsSchluessel)).size).toBe(2);

@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isModerator } from "@/lib/moderation";
+import { isValidUuid } from "@/lib/validation";
+import { pruefePassStatusEingabe } from "@/lib/passStatus";
 
 // Zusätzlich zur RLS-Policy "Moderatoren können alle Strecken freischalten"
 // (siehe 0009_profil_erweiterungen.sql) auch hier explizit prüfen
@@ -319,5 +321,77 @@ export async function markFeedbackErledigt(feedbackId: string): Promise<Moderati
   if (count === 0) return nichtGetroffen("Das Abhaken der Rückmeldung");
 
   revalidatePath("/moderation");
+  return OK;
+}
+
+// Passstatus (0112_pass_status_und_alarm.sql). Eine Aktion für Anlegen und
+// Ändern: die Moderation "prüft einen Pass", ob er schon einen Status hatte,
+// ist für sie keine Unterscheidung.
+//
+// Dreifach geschützt wie der Rest dieser Datei: isModerator() hier, die
+// Insert-/Update-Policies in 0112 (Moderator UND freigegebene, öffentliche
+// Passstrecke), und die Spalten-Grants, die geprueft_am und
+// aktualisiert_von gar nicht erst beschreibbar machen — beides setzt der
+// Trigger pass_status_stempeln. Jede gespeicherte Eingabe zählt deshalb als
+// Prüfung von jetzt, auch wenn sich am Status nichts ändert.
+//
+// Stellt der Status auf "offen", schreibt der Trigger
+// pass_status_oeffnung_melden in derselben Transaktion die Meldungen an die
+// Premium-Abonnenten. Hier ist dafür nichts zu tun — und bewusst nichts zu
+// tun: eine zweite, anwendungsseitige Benachrichtigung liefe bei einem
+// direkten Schreibzugriff nicht mit.
+//
+// useActionState-Signatur (vorheriger Zustand, FormData), wie
+// creatorLinkAnlegen.
+export async function passStatusSetzen(
+  _vorher: ModerationResult,
+  formData: FormData,
+): Promise<ModerationResult> {
+  const kontext = await alsModerator();
+  if ("error" in kontext) return kontext;
+
+  const routeId = formData.get("route_id");
+  if (typeof routeId !== "string" || !isValidUuid(routeId)) {
+    return { error: "Unbekannte Strecke. Bitte lade die Seite neu." };
+  }
+
+  const pruefung = pruefePassStatusEingabe({
+    status: formData.get("status"),
+    voraussichtlich_offen_ab: formData.get("voraussichtlich_offen_ab"),
+    hinweis: formData.get("hinweis"),
+    quelle: formData.get("quelle"),
+  });
+  if (!pruefung.ok) return { error: pruefung.error };
+
+  // Erst ändern, dann anlegen — statt upsert(): PostgREST schreibt bei
+  // einem Upsert jede Spalte des Payloads in die DO-UPDATE-Klausel, also
+  // auch route_id, und darauf hat authenticated bewusst keinen
+  // Update-Grant.
+  const { error: aenderFehler, count } = await kontext.supabase
+    .from("pass_status")
+    .update(pruefung.werte, { count: "exact" })
+    .eq("route_id", routeId);
+
+  if (aenderFehler?.code === "42501") return NICHT_BERECHTIGT;
+  if (aenderFehler) return fehlgeschlagen("Das Speichern des Passstatus");
+
+  if (count === 0) {
+    const { error: anlegeFehler } = await kontext.supabase
+      .from("pass_status")
+      .insert({ route_id: routeId, ...pruefung.werte });
+
+    // 23505: zwei Moderatoren haben denselben Pass im selben Augenblick
+    // zum ersten Mal erfasst. Der andere war schneller; ein erneutes
+    // Speichern ändert dann dessen Zeile.
+    if (anlegeFehler?.code === "23505") return fehlgeschlagen("Das Speichern des Passstatus");
+    // RLS-Verweigerung beim Insert kommt — anders als beim Update — als
+    // Fehler (42501), nicht als null Zeilen: keine Passstrecke, nicht
+    // freigegeben, oder keine Moderatorenrolle mehr.
+    if (anlegeFehler?.code === "42501") return NICHT_BERECHTIGT;
+    if (anlegeFehler) return fehlgeschlagen("Das Speichern des Passstatus");
+  }
+
+  revalidatePath("/moderation");
+  revalidatePath(`/strecken/${routeId}`);
   return OK;
 }

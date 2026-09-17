@@ -107,6 +107,10 @@ const ABSICHTLICH_ERHALTEN: Record<string, string> = {
   // nicht mehr auf, der Wert wird also nie wieder gelesen — und er verrät
   // ohne Spalten-Grant auch niemandem etwas.
   follows_gesehen_am: "not null, kein vom Nutzer eingegebener Wert",
+  // Dritter im Bunde (0112), dieselbe Lage: ein Lesezeichen ohne
+  // Spalten-Grant. Die Meldungen selbst räumt der Trigger
+  // pass_alarme_kontoloeschung ab, siehe den eigenen Block unten.
+  pass_meldungen_gesehen_am: "not null, kein vom Nutzer eingegebener Wert",
   // Generierte Spalte (0087): (ist_premium and zeigt_premium_badge). Sie
   // lässt sich nicht zuweisen — und muss es nicht. anonymize_own_account()
   // leert beide Quellspalten, die generierte folgt im selben UPDATE von
@@ -161,6 +165,35 @@ describe("anonymize_account (Kontolöschung)", () => {
 
   it("löscht die Abo-Zeile, damit premium_abgleich sie nicht wiederherstellt", () => {
     expect(body).toMatch(/delete from public\.subscriptions where user_id = p_user_id/);
+  });
+});
+
+// Pass-Alarme (0112) hängen NICHT in anonymize_account(), sondern an einem
+// Trigger auf profiles.geloescht_am — die Begründung steht in 0112, Abschnitt
+// D (konkurrierende create-or-replace-Fassungen der Funktion auf offenen
+// Zweigen). Weil die Kaskade der Fremdschlüssel nie feuert (das Konto wird
+// anonymisiert, nicht gelöscht), ist dieser Trigger das Einzige, was die
+// Zeilen entfernt. Der Test hält fest, dass es ihn gibt und woran er hängt.
+describe("pass_alarme_kontoloeschung (Trigger, 0112)", () => {
+  const sql = migrationFiles()
+    .filter((f) => readMigration(f).includes("function public.pass_alarme_kontoloeschung()"))
+    .map(readMigration)
+    .pop();
+
+  it("existiert", () => {
+    expect(sql, "Migration mit pass_alarme_kontoloeschung()").toBeDefined();
+  });
+
+  it("löscht Alarme und Meldungen des Kontos", () => {
+    expect(sql).toMatch(/delete from public\.pass_alarme where user_id = new\.id/);
+    expect(sql).toMatch(/delete from public\.pass_alarm_meldungen where user_id = new\.id/);
+  });
+
+  it("feuert auf das Setzen von geloescht_am — dem, was anonymize_account tut", () => {
+    expect(sql).toMatch(
+      /after update of geloescht_am on public\.profiles[\s\S]*?when \(new\.geloescht_am is not null\)/,
+    );
+    expect(currentAnonymizeFunctionBody()).toMatch(/geloescht_am\s*=/);
   });
 });
 

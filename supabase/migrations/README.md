@@ -29,6 +29,109 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## 0112_pass_status_und_alarm — noch NICHT angewendet (Stand 2026-09-17)
+
+Passstatus (für alle) und Pass-Alarm (Premium), aus
+`docs/markt/schweizer-identitaet.md` §2.1. Liegt auf dem Zweig
+`staging-premium-pass-alarm` und ist **nicht eingespielt**.
+
+Was sie anlegt:
+
+| Objekt | Was |
+| --- | --- |
+| `pass_status` | eine Zeile je Passstrecke: `status` (`offen`/`gesperrt`/`wintersperre`), `voraussichtlich_offen_ab`, `hinweis`, `quelle`, `geprueft_am`, `aktualisiert_von`. Lesbar für `anon`+`authenticated` (ohne `aktualisiert_von`), schreibbar nur für Moderatoren und nur für freigegebene, nicht private Strecken der Kategorie `passstrasse` |
+| `pass_alarme` | `(user_id, route_id)`; Insert-Policy verlangt `profiles.ist_premium`, Delete-Policy nicht |
+| `pass_alarm_meldungen` | Ereignis "Pass offen", je Abonnent eine Zeile. RLS an, **keine** Policy, **keine** Grants |
+| `pass_status_stempeln` | BEFORE-Trigger: setzt `geprueft_am = now()` und `aktualisiert_von = auth.uid()` — jede gespeicherte Eingabe IST eine Prüfung |
+| `pass_status_oeffnung_melden` | AFTER-Trigger (SECURITY DEFINER): schreibt beim Übergang nach `offen` je Premium-Abonnent eine Meldung, in derselben Transaktion |
+| `pass_alarme_kontoloeschung` | Trigger auf `profiles.geloescht_am`: löscht Alarme und Meldungen des Kontos, nullt `aktualisiert_von` |
+| `profiles.pass_meldungen_gesehen_am` | dritter "gesehen"-Zeitpunkt, Muster von `0053`/`0100`, bewusst ohne Spalten-Grant |
+| `recent_pass_meldungen()` | Liste für `/aktivitaet`, `SECURITY DEFINER`, nur `auth.uid()` |
+| `count_unseen_activity()` / `mark_activity_seen()` | **ersetzt** (`create or replace`), Rümpfe aus `0100` plus je ein Zusatz |
+
+**Reihenfolge: Schema zuerst, Code danach — hier zwingend.**
+`getPassStatus()` läuft auf der Streckenseite jeder Passstrasse und
+`getRecentPassMeldungen()` auf `/aktivitaet`; beide lassen einen
+Query-Fehler nicht als "nichts da" durchgehen (`lib/queryError.ts`). Ohne
+die Migration antworten also die Passseiten **und** `/aktivitaet` mit einer
+Fehlerseite. Nicht mergen, bevor die Migration steht.
+
+**Vor dem Einspielen** die Live-Rümpfe der beiden ersetzten Funktionen
+auslesen und gegen `0100` vergleichen (die Lehre aus `0088`/`0090`):
+
+```sql
+select prosrc from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public' and p.proname in ('count_unseen_activity', 'mark_activity_seen');
+```
+
+Weicht einer ab, hat ein anderer Zweig sie inzwischen angefasst — dann
+diesen Zusatz auf den neuen Rumpf setzen, statt die Datei wie sie ist
+einzuspielen. `anonymize_account()` wird bewusst **nicht** ersetzt, weil
+`0101_anonymisierung_fahrtstarts` (PR #255) auf demselben Rumpf sitzt;
+die Kontolöschung hängt deshalb an einem Trigger auf `geloescht_am`.
+
+**Danach prüfen** — die Grant-Falle zuerst (`0047`, `0048`, `0091`, `0097`):
+
+```sql
+-- Erwartet: recent_pass_meldungen anon=false authenticated=true,
+-- die vier Trigger-/Stempelfunktionen auf beiden false.
+select p.proname,
+       has_function_privilege('anon', p.oid, 'EXECUTE') as anon,
+       has_function_privilege('authenticated', p.oid, 'EXECUTE') as authed
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname in ('recent_pass_meldungen', 'pass_status_stempeln',
+                    'pass_status_oeffnung_melden', 'pass_alarme_kontoloeschung',
+                    'count_unseen_activity', 'mark_activity_seen');
+
+-- Erwartet: pass_status SELECT true/true (nur die sechs Spalten),
+-- pass_alarme SELECT/INSERT/DELETE nur authenticated,
+-- pass_alarm_meldungen nichts für beide Rollen.
+select table_name, grantee, privilege_type, column_name
+from information_schema.column_privileges
+where table_schema = 'public'
+  and table_name in ('pass_status', 'pass_alarme', 'pass_alarm_meldungen')
+  and grantee in ('anon', 'authenticated')
+order by table_name, grantee, privilege_type, column_name;
+
+-- Erwartet: RLS an auf allen drei Tabellen.
+select relname, relrowsecurity from pg_class
+where relnamespace = 'public'::regnamespace
+  and relname in ('pass_status', 'pass_alarme', 'pass_alarm_meldungen');
+
+-- Erwartet: aktualisiert_von hat KEINEN Select-Grant (in der Abfrage oben
+-- nicht auftauchen), pass_meldungen_gesehen_am ebenfalls keinen.
+select column_name, grantee, privilege_type
+from information_schema.column_privileges
+where table_schema = 'public' and table_name = 'profiles'
+  and column_name = 'pass_meldungen_gesehen_am';
+```
+
+Und ein funktionaler Test, zurückgerollt (Muster von `0098`/`0100`: `DO`-Block,
+Ergebnis über `raise exception`, was denselben Block zurückrollt):
+
+1. Status einer Passstrecke auf `gesperrt`, dann auf `offen` — ein
+   Premium-Abonnent bekommt **eine** Zeile in `pass_alarm_meldungen`, ein
+   Abonnent ohne Premium **keine**.
+2. Erneut auf `offen` speichern — **keine** zweite Meldung, aber ein
+   frisches `geprueft_am`.
+3. `count_unseen_activity()` als der Abonnent: um genau diese eine Meldung
+   höher; `mark_activity_seen()`, dann wieder auf dem Vorwert.
+4. `insert into pass_alarme` als Konto ohne Premium → `42501`
+   (Policy), `delete` derselben Zeile als ehemaliger Abonnent → erlaubt.
+5. `anonymize_account(<konto>)` → `pass_alarme` und
+   `pass_alarm_meldungen` dieses Kontos sind leer, `pass_status` steht
+   unverändert (nur `aktualisiert_von` genullt), `geprueft_am`
+   **unverändert** — das Nullen darf nicht als Prüfung zählen.
+
+### Rückweg
+
+Die Migration löscht nichts Bestehendes; der Weg zurück steht im Kopf der
+Datei (Funktionen aus `0100` wiederherstellen, drei Tabellen und die
+Trigger droppen, Spalte entfernen). Verloren gehen dabei Passstatus,
+gesetzte Alarme und Meldungen.
+
 ## Eingespielt: 0096–0098 (Fahrtstart serverseitig, 2026-09-15, Produktion)
 
 | Datei | Was |

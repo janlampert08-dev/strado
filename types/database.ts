@@ -346,6 +346,41 @@ export interface Profile {
   created_at: string;
 }
 
+// Die drei "zuletzt gesehen"-Zeitpunkte von profiles (kudos_gesehen_am
+// 0053, follows_gesehen_am 0100, pass_meldungen_gesehen_am 0112) stehen
+// bewusst NICHT in Profile: keiner von ihnen trägt einen Spalten-Grant an
+// anon/authenticated, eine Abfrage darf sie also gar nicht auswählen. Sie
+// werden ausschliesslich über count_unseen_activity(),
+// recent_*-Funktionen und mark_activity_seen() gelesen bzw. gesetzt.
+
+// Zeilenform von public.pass_status (0112_pass_status_und_alarm.sql), wie
+// sie lesbar ist: aktualisiert_von trägt keinen Select-Grant und fehlt
+// deshalb hier. Die Typen selbst (PassStatusWert, PassStatus) stehen in
+// lib/passStatus.ts, weil Client Components sie brauchen — hier steht nur
+// der Verweis, damit diese Datei das Schema vollständig spiegelt.
+
+/** Zeilenform von public.pass_alarme (0112). Anlegen verlangt Premium
+ *  (RLS), löschen nicht. Nur die eigenen Zeilen sind lesbar. */
+export interface PassAlarm {
+  user_id: string;
+  route_id: string;
+  erstellt_am: string;
+}
+
+/** Zeilenform von public.pass_alarm_meldungen (0112) — "dieser Pass ist
+ *  offen", je Abonnent eine Zeile, geschrieben vom Trigger
+ *  pass_status_oeffnung_melden. RLS an, keine Policy, keine Grants: die App
+ *  liest die Tabelle nie direkt, sondern über recent_pass_meldungen(). Der
+ *  Typ steht hier, weil diese Datei das Schema spiegelt (siehe CreatorKlick
+ *  weiter unten für denselben Fall). */
+export interface PassAlarmMeldung {
+  // bigint; PostgREST liefert ihn als JSON-Zahl.
+  id: number;
+  user_id: string;
+  route_id: string;
+  erstellt_am: string;
+}
+
 // Zeilenform von public.public_fahrten (siehe 0015/0018/0030/0032) — stark
 // eingeschränkte, öffentliche Sicht auf gefahrene Strecken fürs öffentliche
 // Profil, den Community-Feed (app/feed/page.tsx) und die Fahrt-
