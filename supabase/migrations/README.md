@@ -29,6 +29,95 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## 0110_saisonpass — noch NICHT angewendet (Stand 2026-09-17)
+
+Der Saisonpass: Premium für sechs Monate, einmal bezahlt, ohne Verlängerung
+(`docs/premium-neu/preise.md`). Liegt auf dem Zweig `staging-premium-neu` und
+ist **nicht eingespielt**.
+
+Was sie anlegt und ändert:
+
+| Objekt | Was |
+| --- | --- |
+| `saisonpaesse` | eine Zeile je Kauf: Stripe-Kennungen, Betrag, Währung, `gueltig_ab`/`gueltig_bis`, `erstattet_am`. RLS an, `select` für die eigene Zeile und nur auf den Spalten ohne Stripe-Kennungen (Muster aus `0063`), kein Schreibrecht für `authenticated` |
+| `saisonpass_gueltig(uuid)` | die einzige Definition, wann ein Pass Premium gewährt |
+| `apply_saisonpass(...)` | trägt einen bezahlten Pass ein; idempotent je Checkout-Session, serialisiert je Nutzer über denselben Advisory-Lock wie `apply_subscription_state`, hängt einen zweiten Pass an das Ende des laufenden |
+| `saisonpass_erstatten(text)` | nimmt einen vollständig erstatteten Pass zurück und zieht die Projektion nach |
+| `apply_subscription_state` | **ersetzt** (`create or replace`), Rumpf aus `0062` mit genau einer Änderung: `profiles.ist_premium` ist ab jetzt "Abo läuft ODER Pass gültig" |
+| `premium_abgleich()` | **ersetzt**, Rumpf aus `0059`, Soll-Menge über Abos UND Pässe (ein Pass löst an seinem Ende kein Stripe-Ereignis aus), anonymisierte Profile ausgenommen |
+| `anonymize_account(uuid)` | **ersetzt**, Rumpf aus `0092` plus `delete from saisonpaesse` |
+
+**Reihenfolge: Schema zuerst, Code danach.** `getPremiumStatus()` liest
+`saisonpaesse` auf jeder Seite, die Premium kennt, und `lib/actions/billing.ts`
+ruft `apply_saisonpass` nach der Zahlung. Ohne die Migration schlägt der
+Statusabruf fehl, und — teurer — ein bezahlter Pass liesse sich nicht
+eintragen.
+
+**Vor dem Einspielen** die Live-Rümpfe der drei ersetzten Funktionen auslesen
+und gegen `0062`/`0059`/`0092` vergleichen (die Lehre aus `0088`/`0090`):
+
+```sql
+select pg_get_functiondef(p.oid)
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname in ('apply_subscription_state', 'premium_abgleich', 'anonymize_account');
+```
+
+Weicht einer ab, hat ein anderer Zweig ihn inzwischen angefasst — dann die
+Änderung auf den neuen Rumpf setzen, statt die Datei wie sie ist einzuspielen.
+**Bekannte Berührung:** `0101_anonymisierung_fahrtstarts` (PR #255) sitzt
+ebenfalls auf `anonymize_account`. Wer zuletzt einspielt, muss beide Zusätze
+im Rumpf haben — sonst dreht der zweite den ersten still zurück. Ist `0101`
+schon drin, gehört dessen `delete from fahrt_starts …` in diese Fassung
+übernommen, bevor sie läuft.
+
+**Danach prüfen** — die Grant-Falle zuerst (`0047`, `0048`, `0091`, `0097`):
+
+```sql
+-- Erwartet: alle drei neuen Funktionen anon=false, authenticated=false.
+select p.proname,
+       has_function_privilege('anon', p.oid, 'EXECUTE') as anon,
+       has_function_privilege('authenticated', p.oid, 'EXECUTE') as authed
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname in ('saisonpass_gueltig', 'apply_saisonpass', 'saisonpass_erstatten');
+
+-- Erwartet: SELECT nur für authenticated und nur auf den acht freigegebenen
+-- Spalten; kein INSERT/UPDATE/DELETE für anon oder authenticated.
+select grantee, privilege_type, column_name
+from information_schema.column_privileges
+where table_schema = 'public' and table_name = 'saisonpaesse'
+order by grantee, column_name;
+
+-- Erwartet: RLS an, genau eine Policy (select, authenticated).
+select relrowsecurity from pg_class where relname = 'saisonpaesse';
+select polname, polcmd, polroles::regrole[] from pg_policy
+where polrelid = 'public.saisonpaesse'::regclass;
+```
+
+**Funktionaler Test, zurückgerollt** (im `DO`-Block mit `raise exception` am
+Ende, wie bei `0098`):
+
+1. `apply_saisonpass` mit der Kunden-Kennung eines Testkontos aufrufen →
+   `true`, eine Zeile, `profiles.ist_premium = true`.
+2. Denselben Aufruf mit derselben Session-ID wiederholen → `true`, weiterhin
+   **eine** Zeile (Idempotenz — Webhook und Browser bestätigen beide).
+3. Zweiter Aufruf mit anderer Session-ID → `gueltig_ab` der neuen Zeile
+   gleich `gueltig_bis` der ersten (Anschluss, keine verschluckte Zeit).
+4. `apply_subscription_state` mit einem beendeten Abo (`status = 'canceled'`)
+   → `ist_premium` bleibt `true`, solange ein Pass gilt. Das ist die eine
+   Zeile, die `0110` an `0062` ändert.
+5. `gueltig_bis` einer Zeile in die Vergangenheit setzen, `premium_abgleich()`
+   → die Person kommt in der Ergebnisliste vor, `ist_premium` ist `false`.
+6. `saisonpass_erstatten` mit der PaymentIntent-Kennung → `erstattet_am`
+   gesetzt, `ist_premium` `false` (sofern kein Abo läuft).
+
+**Der Weg zurück:** die drei Funktionen auf die Rümpfe aus `0062`/`0059`/`0092`
+zurücksetzen und `saisonpass_gueltig`/`apply_saisonpass`/`saisonpass_erstatten`
+droppen. Die Tabelle bleibt stehen — solange ein verkaufter Pass läuft, ist
+sie der Beleg dafür, und ein Drop wäre der Verlust des Zugangs, den jemand
+bezahlt hat.
+
 ## 0112_pass_status_und_alarm — noch NICHT angewendet (Stand 2026-09-17)
 
 Passstatus (für alle) und Pass-Alarm (Premium), aus

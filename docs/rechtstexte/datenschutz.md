@@ -221,7 +221,7 @@ sowie eine gespiegelte Fassung des Abo-Zustands mit den folgenden Angaben:
 | Angabe | Zweck |
 | --- | --- |
 | Kennung des Abos bei Stripe | ordnet die Zeile dem Abo zu, aus dem sie stammt |
-| Kennung des gewählten Preises | unterscheidet Monats- und Jahresabo (bei älteren Abos auch den früheren Gründerpreis) |
+| Kennung des gewählten Preises | unterscheidet Monats- und Jahresabo (bei älteren Abos auch den früheren Gründerpreis und die früheren Preise) |
 | Status des Abos | entscheidet über die Premium-Berechtigung |
 | Ende der laufenden Abrechnungsperiode | Anzeige „Premium bis …" und Erkennung ausgebliebener Meldungen |
 | Kennzeichen „zum Periodenende gekündigt" | Anzeige des Kündigungsstands |
@@ -233,11 +233,34 @@ Benutzer-Kennung (als Metadatum zur Zuordnung). Stripe erhebt darüber hinaus
 selbst die Zahlungsmitteldaten, Rechnungs- und Transaktionsdaten sowie
 technische Daten des Zahlungsvorgangs.
 
+**Saisonpass.** Wer statt eines Abos einen Saisonpass kauft (AGB Ziff. 4.6),
+hat bei uns eine Zeile mit der **Kennung der Bezahlseite und der Zahlung bei
+Stripe**, der Kunden-Kennung, der Kennung des Preises, dem **bezahlten Betrag
+und der Währung**, dem **Gültigkeitszeitraum** und — falls erstattet wurde —
+dem Zeitpunkt der Erstattung. Zweck ist die Berechtigung: ohne Zeitraum liesse
+sich nicht feststellen, ob Premium noch gilt. Die Zeile wird mit dem Konto
+gelöscht (Abschnitt 8); die Zahlungsbelege selbst liegen bei Stripe und
+unterliegen dort den handelsrechtlichen Aufbewahrungsfristen.
+
 Zur Absicherung gegen doppelt zugestellte Zahlungsereignisse speichern wir zu
 jedem von Stripe gemeldeten Ereignis dessen **Kennung**, seinen **Typ**, den
 **Bearbeitungsstand** sowie den **Eingangs- und Abschlusszeitpunkt**. Diese
 Angaben enthalten keine Zahlungsdaten; sie dienen ausschliesslich dazu, ein
 mehrfach zugestelltes Ereignis nur einmal wirken zu lassen.
+
+### 3.9a Pass-Alarm (nur bei Premium)
+
+Wer einen Pass-Alarm setzt, hat bei uns zwei Listen: **welche Passstrassen das
+Konto abonniert hat** und **welche Öffnungsmeldungen es erhalten hat** (je
+Meldung die Strecke und der Zeitpunkt), dazu den Zeitpunkt, an dem die
+Meldungen zuletzt angesehen wurden. Zweck ist die Meldung selbst. Es entstehen
+dabei **keine Standortdaten**, und es wird nichts an Dritte übermittelt. Beide
+Listen werden mit dem Konto gelöscht (Abschnitt 8).
+
+Der **Passstatus** selbst (offen, gesperrt, Wintersperre, Prüfzeitpunkt) ist
+keine personenbezogene Angabe über Nutzende, sondern eine Angabe über eine
+Strasse; er wird von der Moderation von Hand gepflegt. Wer ihn zuletzt
+gesetzt hat, steht intern am Datensatz und wird nicht ausgeliefert.
 
 ### 3.10 Technische Daten
 
