@@ -381,7 +381,7 @@ export default async function FahrtDetailPage({
               beschriftung={
                 <>
                   <Mountain className="h-3.5 w-3.5" aria-hidden="true" />
-                  {istFreieFahrt ? "Aufstieg" : "Höhe"}
+                  {istFreieFahrt ? "Aufstieg" : "Höchster Punkt"}
                 </>
               }
               wert={

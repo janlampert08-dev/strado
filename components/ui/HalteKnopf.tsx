@@ -43,6 +43,13 @@ export default function HalteKnopf({
   const frameRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ausgeloestRef = useRef(false);
+  // Losgelassen, bevor die Zeit um war. Sichtbar statt nur im sr-only-Text:
+  // im Re-Review tippte ein kurzer Druck ins Leere — der Knopf setzte sich
+  // wortlos zurück, und wer im Fahren kurz hinschaut, liest daraus "die App
+  // hängt", nicht "halten". Jetzt steht für einen Moment "Länger halten" im
+  // Knopf, und Android gibt einen kurzen Doppelimpuls.
+  const [zuKurz, setZuKurz] = useState(false);
+  const zuKurzTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const abbrechen = useCallback(() => {
     if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
@@ -84,7 +91,23 @@ export default function HalteKnopf({
     frameRef.current = requestAnimationFrame(malen);
   }, [dauerMs, onBestaetigt]);
 
-  useEffect(() => abbrechen, [abbrechen]);
+  const loslassen = useCallback(() => {
+    const war = startRef.current;
+    abbrechen();
+    if (war === null || ausgeloestRef.current) return;
+    navigator.vibrate?.([20, 60, 20]);
+    setZuKurz(true);
+    if (zuKurzTimerRef.current) clearTimeout(zuKurzTimerRef.current);
+    zuKurzTimerRef.current = setTimeout(() => setZuKurz(false), 2500);
+  }, [abbrechen]);
+
+  useEffect(
+    () => () => {
+      abbrechen();
+      if (zuKurzTimerRef.current) clearTimeout(zuKurzTimerRef.current);
+    },
+    [abbrechen],
+  );
 
   function tasteRunter(event: KeyboardEvent<HTMLButtonElement>) {
     if (event.key !== "Enter" && event.key !== " ") return;
@@ -95,7 +118,7 @@ export default function HalteKnopf({
   }
 
   function tasteHoch(event: KeyboardEvent<HTMLButtonElement>) {
-    if (event.key === "Enter" || event.key === " ") abbrechen();
+    if (event.key === "Enter" || event.key === " ") loslassen();
   }
 
   const haelt = fortschritt > 0 && fortschritt < 1;
@@ -116,9 +139,10 @@ export default function HalteKnopf({
           } catch {
             // ohne Capture weiter; onPointerCancel fängt den Rest
           }
+          setZuKurz(false);
           beginnen();
         }}
-        onPointerUp={abbrechen}
+        onPointerUp={loslassen}
         onPointerCancel={abbrechen}
         onKeyDown={tasteRunter}
         onKeyUp={tasteHoch}
@@ -137,7 +161,7 @@ export default function HalteKnopf({
           className="absolute inset-y-0 left-0 bg-accent-strong"
           style={{ width: `${fortschritt * 100}%` }}
         />
-        <span className="relative">{haelt ? "Weiter halten…" : children}</span>
+        <span className="relative">{haelt ? "Weiter halten…" : zuKurz ? "Länger halten" : children}</span>
       </button>
       <span id={hinweisId} className="sr-only">
         Gedrückt halten, um auszulösen.

@@ -61,8 +61,11 @@ function LeaderboardSection({
   unit,
   format = (v) => v.toLocaleString("de-CH"),
   currentUserId,
+  beschreibung,
 }: {
   title: string;
+  /** Ein Satz, was gezählt wird — nur wo der Titel es nicht selbst sagt. */
+  beschreibung?: string;
   /** Jede Abschnittsmarke trägt eines — siehe components/ui/SectionHeading.tsx. */
   icon: ComponentType<{ className?: string }>;
   entries: LeaderboardEntry[];
@@ -81,7 +84,10 @@ function LeaderboardSection({
   const platzierte = entries.filter((entry) => entry.value > 0);
   return (
     <section className="flex flex-col gap-3">
-      <SectionHeading icon={icon}>{title}</SectionHeading>
+      <div className="flex flex-col gap-0.5">
+        <SectionHeading icon={icon}>{title}</SectionHeading>
+        {beschreibung && <p className="text-xs text-muted">{beschreibung}</p>}
+      </div>
       {platzierte.length === 0 ? (
         <p className="text-sm text-muted">Noch keine Einträge.</p>
       ) : (
@@ -207,7 +213,26 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
     await Promise.all([getGlobalLeaderboards(klasse), getCurrentUser()]);
 
   const currentUserId = user?.id ?? null;
-  const klassenZusatz = klasse ? ` · ${filterLabel(klasse)}` : "";
+  // Kein Klassen-Zusatz mehr in jedem Titel: die gewählte Klasse steht im
+  // aktiven Chip direkt darüber, und "· Motorräder" viermal wiederholt liess
+  // zwei der vier Titel auf dem Telefon umbrechen.
+  const klassenZusatz = "";
+
+  // Vier Spalten "Noch keine Einträge." nebeneinander sagen viermal dasselbe
+  // — bei einer Klasse ohne Fahrten (Motorräder, A1 …) war das der ganze
+  // Seiteninhalt. Dann eine Aussage statt vier.
+  const alleLeer = [meisteFahrten, meisteHoehenmeter, meisteKm, meisteStrecken].every((liste) =>
+    liste.every((eintrag) => eintrag.value <= 0),
+  );
+  if (alleLeer) {
+    return (
+      <p className="rounded-lg bg-surface px-4 py-6 text-center text-sm text-muted">
+        {klasse
+          ? `Noch keine Fahrten in der Klasse ${filterLabel(klasse)} — die erste zählt schon.`
+          : "Noch keine Fahrten — die erste zählt schon."}
+      </p>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-8 sm:grid sm:grid-cols-2 sm:items-start sm:gap-6 xl:grid-cols-4">
@@ -236,6 +261,8 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
       />
       <LeaderboardSection
         title={`Entdecker${klassenZusatz}`}
+        // "Entdecker" allein erklärte nicht, was gezählt wird.
+        beschreibung="Die meisten unterschiedlichen Strecken gefahren."
         icon={Compass}
         entries={meisteStrecken}
         unit={(n) => nomen(n, "Strecke", "Strecken")}

@@ -53,7 +53,9 @@ export default function Kennzahl({
       )}
     >
       <dt className="flex items-center gap-1.5 text-sm text-muted">{beschriftung}</dt>
-      <dd className="text-title font-semibold tabular-nums">{wert}</dd>
+      {/* whitespace-nowrap: "33.1 km" und "~22 min" brachen in der
+          Vierer-Reihe der Streckenseite zwischen Zahl und Einheit um. */}
+      <dd className="text-title font-semibold whitespace-nowrap tabular-nums">{wert}</dd>
       {zusatz !== undefined && zusatz !== null && (
         <dd className="text-xs tabular-nums text-muted">{zusatz}</dd>
       )}
