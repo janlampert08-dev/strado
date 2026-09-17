@@ -46,7 +46,7 @@ export default function VehicleGrid({
           editable ? (
             <Link
               href="/profil/fahrzeuge/neu"
-              className={buttonVariants({ variant: "secondary", size: "sm" })}
+              className={buttonVariants({ variant: "secondary", size: "md" })}
             >
               Fahrzeug hinzufügen
             </Link>

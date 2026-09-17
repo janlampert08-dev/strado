@@ -284,6 +284,7 @@ export default function ExploreView({
           bewertungen={bewertungen}
           loadError={loadError}
           loggedIn={loggedIn}
+          anzahlStrecken={routes.length}
           searchQuery={searchInput}
           onSearchChange={setSearchInput}
           signatures={signatures}

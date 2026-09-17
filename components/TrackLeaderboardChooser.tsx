@@ -111,8 +111,14 @@ export default function TrackLeaderboardChooser({
       ) : entries.length === 0 ? (
         <p className={`text-sm text-muted transition-opacity ${loading ? "opacity-40" : ""}`}>
           {klasse === null
-            ? "Noch keine geteilten Zeiten für diese Strecke. Die erste ist noch zu haben."
-            : `Noch keine Zeit ${filterImSatz(klasse)} auf dieser Strecke. Deine kann die erste sein.`}
+            ? "Noch keine geteilten Zeiten für diese Strecke."
+            : `Noch keine Zeit ${filterImSatz(klasse)} auf dieser Strecke. Du kannst der Erste sein.`}{" "}
+          {/* Ohne Einladung im Satz: steht diese Liste unter dem leeren
+              Ranglisten-Zustand, hat die Seite das schon einmal gesagt. Der
+              Weg zur Strecke bleibt, denn gefahren wird dort. */}
+          <Link href={`/strecken/${routeId}`} className="text-accent underline-offset-4 hover:underline">
+            Zur Strecke
+          </Link>
         </p>
       ) : (
         <>

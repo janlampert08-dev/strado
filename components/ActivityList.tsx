@@ -53,7 +53,7 @@ export default function ActivityList({
         title="Noch keine Kudos und keine Follower."
         description="Wer deinen geteilten Fahrten Kudos gibt oder dir folgt, steht hier."
         action={
-          <Link href="/" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+          <Link href="/" className={buttonVariants({ variant: "secondary", size: "md" })}>
             Strecken entdecken
           </Link>
         }

@@ -9,6 +9,7 @@ import ProfileSearch from "@/components/ProfileSearch";
 import FeedReiter from "@/components/FeedReiter";
 import { Signet } from "@/components/Wortmarke";
 import { getFeed, type FeedScope } from "@/lib/feed";
+import { getFollowedUserIds } from "@/lib/follows";
 import { freieFahrtTitel } from "@/lib/completions";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { getUnseenActivityCount } from "@/lib/aktivitaetsliste";
@@ -60,6 +61,15 @@ export default async function FeedPage({
     user ? getUnseenActivityCount() : Promise.resolve(0),
   ]);
 
+  // Ein leerer Folgen-Feed hat zwei Ursachen mit verschiedenen nächsten
+  // Schritten: niemandem folgen (Leute finden) oder Leuten folgen, die noch
+  // nichts geteilt haben (abwarten, selbst fahren). Die Abfrage läuft nur im
+  // leeren Fall, der volle Feed kostet damit nichts zusätzlich.
+  const folgtNiemandem =
+    scope === "following" && feed.length === 0 && user
+      ? (await getFollowedUserIds(user.id)).length === 0
+      : false;
+
   return (
     <div className="flex h-dvh flex-col">
       <Header back="/" />
@@ -97,26 +107,41 @@ export default async function FeedPage({
             // Feed-Icon besser als das Logo.
             icon={scope === "following" ? Rss : Signet}
             title={
-              scope === "following"
-                ? "Von den Fahrern, denen du folgst, kam noch nichts."
-                : "Noch keine geteilten Fahrten."
+              scope !== "following"
+                ? "Der Feed wartet auf die erste Fahrt."
+                : !user
+                  ? "Melde dich an, um Fahrern zu folgen."
+                  : folgtNiemandem
+                    ? "Du folgst noch niemandem."
+                    : "Von den Fahrern, denen du folgst, kam noch nichts."
             }
             // Der Satz sagt, wie der Feed sich füllt, statt nur festzustellen,
             // dass er leer ist: solange wenige teilen, ist das der Zustand,
             // den ein Erstbesucher hier am häufigsten sieht.
             description={
-              scope === "following"
-                ? "Über die Suche oben findest du Fahrer. Folgst du ihnen, stehen ihre Fahrten hier."
-                : "Wer eine Fahrt aufzeichnet und teilt, steht hier ganz oben. Das kannst auch du sein."
+              scope !== "following"
+                ? "Zeichne eine Strecke auf und teil die Fahrt, dann steht sie hier ganz oben."
+                : !user
+                  ? "Wem du folgst, dessen Fahrten stehen dann hier."
+                  : folgtNiemandem
+                    ? "Über die Suche oben findest du Fahrer. Folgst du ihnen, stehen ihre Fahrten hier."
+                    : "Sobald jemand von ihnen eine Fahrt teilt, steht sie hier."
             }
             action={
-              scope === "following" ? (
-                <Link href="/feed" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+              scope === "following" && !user ? (
+                <Link
+                  href={`/anmelden?next=${encodeURIComponent("/feed?scope=following")}`}
+                  className={buttonVariants({ variant: "secondary", size: "md" })}
+                >
+                  Anmelden
+                </Link>
+              ) : scope === "following" ? (
+                <Link href="/feed" className={buttonVariants({ variant: "secondary", size: "md" })}>
                   Alle Fahrten ansehen
                 </Link>
               ) : (
-                <Link href="/" className={buttonVariants({ variant: "secondary", size: "sm" })}>
-                  Strecke aussuchen
+                <Link href="/" className={buttonVariants({ variant: "secondary", size: "md" })}>
+                  Strecken entdecken
                 </Link>
               )
             }

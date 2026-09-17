@@ -86,8 +86,14 @@ export default function RouteLeaderboardPreview({
       {sichtbar.length === 0 ? (
         <p className={cn("text-sm text-muted transition-opacity", laedt && "opacity-40")}>
           {klasse === null
-            ? "Noch keine Bestzeit auf dieser Strecke. Zeichne sie auf und teil die Fahrt, dann kann deine die erste sein."
-            : `Noch keine Zeit ${filterImSatz(klasse)} auf dieser Strecke. Deine kann die erste sein.`}
+            ? "Noch keine Bestzeit auf dieser Strecke. Zeichne sie auf und teil die Fahrt, dann kannst du der Erste sein."
+            : `Noch keine Zeit ${filterImSatz(klasse)} auf dieser Strecke. Du kannst der Erste sein.`}{" "}
+          {/* Der Startknopf steht weiter oben auf derselben Seite (#fahren in
+              app/strecken/[id]/page.tsx); auf dem Telefon ist er bis hierher
+              meist aus dem Bild gescrollt. */}
+          <a href="#fahren" className="text-accent underline-offset-4 hover:underline">
+            Zum Start
+          </a>
         </p>
       ) : (
         <Card

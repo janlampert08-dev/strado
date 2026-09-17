@@ -50,7 +50,7 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
           icon={Sparkles}
           title="Der Abo-Abschluss ist zurzeit nicht verfügbar. Bitte versuch es später noch einmal."
           action={
-            <Link href="/profil" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+            <Link href="/profil" className={buttonVariants({ variant: "secondary", size: "md" })}>
               Zum Profil
             </Link>
           }

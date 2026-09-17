@@ -13,6 +13,10 @@ export default function EmptyState({
    *  Plattform ist leer der Normalfall, nicht die Ausnahme — dann sagt der
    *  Titel, was fehlt, und dieser Satz den nächsten Schritt. */
   description?: string;
+  /* Handlungen in einem Leerzustand nehmen size "md" (44 px), nicht "sm":
+     hier ist nie Gedränge, das den kleinen Knopf rechtfertigen würde, und
+     Button.tsx setzt 44 px als Mass für eine App, die im Fahrzeug bedient
+     wird. */
   action?: ReactNode;
   /** Für enge Flächen wie das Bottom-Sheet der Startseite. Dort bleiben
    *  eingeklappt (SHEET_PEEK_PX = 320 in ExploreView.tsx) unter Überschrift
@@ -23,7 +27,7 @@ export default function EmptyState({
 }) {
   if (kompakt) {
     return (
-      <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed border-border px-4 py-4">
+      <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed border-border px-4 py-2.5">
         <p className="flex min-w-0 items-center gap-2 text-sm font-medium [overflow-wrap:anywhere]">
           <Icon className="h-5 w-auto shrink-0 text-muted" aria-hidden="true" />
           {title}

@@ -81,7 +81,7 @@ function LeaderboardSection({
     <section className="flex flex-col gap-3">
       <SectionHeading icon={icon}>{title}</SectionHeading>
       {entries.length === 0 ? (
-        <p className="text-sm text-muted">Noch keine Einträge.</p>
+        <p className="text-sm text-muted">Noch niemand auf dieser Liste.</p>
       ) : (
         <Card as="ol" className="divide-y divide-border">
           {entries.map((entry, i) => {
@@ -223,8 +223,8 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
         // Fahrt einen Platz, den sie nie bekommt.
         description="Fahrten, Kilometer, Höhenmeter und Strecken zählen ab der ersten geteilten Fahrt. Schon eine kann für Platz 1 reichen."
         action={
-          <Link href="/" className={buttonVariants({ variant: "secondary", size: "sm" })}>
-            Strecke aussuchen
+          <Link href="/" className={buttonVariants({ variant: "secondary", size: "md" })}>
+            Strecken entdecken
           </Link>
         }
       />
