@@ -44,9 +44,31 @@ export interface TempolimitSegment {
   km_bis: number;
   kmh: number;
   bekannt: boolean;
-  // true nur für Abschnitte innerhalb Kanton Zürich, die mit dem amtlichen
-  // "Signalisierte Geschwindigkeit"-Datensatz (GDS 102) abgeglichen wurden.
+  // true für Abschnitte, deren Wert aus den amtlichen Daten eines Kantons
+  // oder einer Stadt stammt (Tabelle amtliche_tempolimits, 0102; Verzeichnis
+  // in scripts/amtliche-tempolimits/quellen.mjs). Wo keine Quelle die Strasse
+  // abdeckt, bleibt es false — eine Aussage über die Datenlage, nicht über
+  // die Strasse.
   amtlich?: boolean;
+  // Kennung der amtlichen Quelle (amtliche_tempolimit_quellen.id, z.B. "zh",
+  // "stadt-bern"), nur bei amtlich: true.
+  quelle?: string;
+}
+
+// Eine Quelle amtlicher Tempolimit-Daten (Tabelle amtliche_tempolimit_quellen, 0102).
+export interface AmtlicheTempolimitQuelle {
+  id: string;
+  name: string;
+  traeger: string;
+  gebiet: string;
+  datensatz: string;
+  lizenz: string;
+  stand: string | null;
+  art: "linie" | "zone";
+  rang: number;
+  rand_m: number;
+  anzahl: number;
+  geladen_am: string;
 }
 
 // Ein Punkt des Höhenprofil-Diagramms (kumulierte Distanz ab Start, Meter ü. M.).

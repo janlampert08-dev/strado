@@ -12,6 +12,7 @@ import {
   fetchElevationProfile,
 } from "@/lib/elevation";
 import { deriveRouteLocations } from "@/lib/geocoding";
+import { mitAmtlichenTempolimits } from "@/lib/amtlicheTempolimits";
 import { privateStreckenKontingent } from "@/lib/premium";
 import type { GeoLineString, Kategorie, TempolimitSegment } from "@/types/database";
 
@@ -117,7 +118,10 @@ function parseTempolimits(raw: string): TempolimitSegment[] | null {
   if (!Array.isArray(parsed) || parsed.length > MAX_TEMPOLIMIT_SEGMENTS) return null;
   if (!parsed.every(isValidTempolimitSegment)) return null;
 
-  return parsed;
+  // Nur die vier Felder der Kartenschätzung übernehmen. "amtlich" und
+  // "quelle" vergibt allein der Server-Abgleich — sonst könnte ein Client
+  // eine selbst erfundene Zahl als signalisierte Geschwindigkeit ausgeben.
+  return parsed.map(({ km_von, km_bis, kmh, bekannt }) => ({ km_von, km_bis, kmh, bekannt }));
 }
 
 export async function proposeRoute(
@@ -172,10 +176,13 @@ export async function proposeRoute(
   if (!geometry) {
     return { error: "Route konnte nicht verarbeitet werden." };
   }
-  const tempolimits = parseTempolimits(tempolimitsRaw);
-  if (!tempolimits) {
+  const clientTempolimits = parseTempolimits(tempolimitsRaw);
+  if (!clientTempolimits) {
     return { error: "Route konnte nicht verarbeitet werden." };
   }
+  // Wo Kanton oder Stadt die signalisierte Geschwindigkeit veröffentlichen,
+  // ersetzt der amtliche Wert die Kartenschätzung des Clients (0102).
+  const tempolimits = await mitAmtlichenTempolimits(supabase, geometry, clientTempolimits);
 
   // Start-/Zielort und Region kommen nicht mehr aus dem Formular, sondern
   // werden aus der gezeichneten Route abgeleitet (Reverse-Geocoding, inkl.

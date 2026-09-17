@@ -29,6 +29,42 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Ausstehend: 0102_amtliche_tempolimits (geschrieben 2026-09-17, NICHT eingespielt)
+
+Tabellen `amtliche_tempolimit_quellen` und `amtliche_tempolimits` (LV95,
+GiST-Index), ein Reparatur-Trigger für ungültige Flächen und die Funktion
+`amtliche_tempolimits_entlang(jsonb)` für `proposeRoute()`. Rein additiv.
+
+**0102, nicht 0101:** `0101_anonymisierung_fahrtstarts` liegt auf
+`claude/overnight-pr-review-aqoqua`.
+
+**Reihenfolge — alle drei Schritte, sonst bleibt es still wirkungslos:**
+
+1. Migration einspielen. Vorher darf der Code **nicht** deployen:
+   `mitAmtlichenTempolimits()` fängt den Fehler der fehlenden Funktion zwar
+   ab und nimmt die Kartendaten, aber jeder Vorschlag schreibt dann eine
+   Fehlermeldung ins Log.
+2. Daten hochladen — die Migration legt nur leere Tabellen an:
+   `node --env-file=.env.local --no-warnings scripts/enrich-amtliche-tempolimits.mjs --hochladen`
+   (Secret Key; ~22 000 Objekte aus 19 Quellen, Stand der Recherche
+   2026-09-17). Wiederholbar: jede Quelle wird vollständig ersetzt.
+3. Bestehende Strecken nachziehen: `supabase/seed/0013_tempolimits_amtlich_schweiz.sql`
+   (8 der 9 freigegebenen Strecken gewinnen amtliche Abschnitte; Julierpass
+   liegt in keiner Quelle). Überschreibt `routes.tempolimits` per `id`; der
+   Weg zurück ist dieselbe Datei aus dem Vorgängerstand — die alten Werte
+   liefert `GET /api/strecken/<id>` vor dem Einspielen.
+
+**Prüfen danach:**
+
+```sql
+-- Grants: anon/authenticated nur SELECT, Funktion nur authenticated
+select grantee, privilege_type from information_schema.role_table_grants
+ where table_name in ('amtliche_tempolimits', 'amtliche_tempolimit_quellen') order by 1, 2;
+select has_function_privilege('anon', 'public.amtliche_tempolimits_entlang(jsonb)', 'execute'); -- false
+-- Befüllt?
+select id, anzahl, geladen_am from public.amtliche_tempolimit_quellen order by id;
+```
+
 ## Eingespielt: 0096–0098 (Fahrtstart serverseitig, 2026-09-15, Produktion)
 
 | Datei | Was |

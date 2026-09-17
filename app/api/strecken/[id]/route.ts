@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getRoute } from "@/lib/routes";
 import { averageTempolimit, estimateRouteDurationMinutes } from "@/lib/geo";
+import { tempolimitQuelle } from "@/lib/speed";
 import { OEFFENTLICHE_API_HEADER } from "@/lib/apiCors";
 import { getClientIp, isRateLimitedByKey } from "@/lib/rateLimit";
 import { isValidUuid } from "@/lib/validation";
@@ -47,9 +48,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       charakter_text: route.charakter_text,
       geometry: route.geometry_geojson,
       tempolimits: route.tempolimits,
-      tempolimit_quelle: route.tempolimits?.length
-        ? "Kartendaten (OSM/Mapbox), nicht amtlich"
-        : null,
+      tempolimit_quelle: tempolimitQuelle(route.tempolimits),
       avg_tempolimit_kmh: averageTempolimit(route.tempolimits),
       geschaetzte_fahrzeit_min: estimateRouteDurationMinutes(
         route.laenge_km,

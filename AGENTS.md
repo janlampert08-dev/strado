@@ -666,10 +666,21 @@ is what should be corrected.
     wording is in `docs/markt/schweizer-identitaet.md`. The provider address,
     the Gerichtsstand and the impressum name Zürich as the *company's* seat
     and are not affected at all.
-  - **`amtlich` on `TempolimitSegment`.** The official signalised-speed
-    dataset is the canton of Zürich's (GDS 102). Outside it the flag is
-    simply false — that is a fact about coverage, not stale copy, and the
-    comments in `types/database.ts` and `lib/speed.ts` say so on purpose.
+  - **`amtlich` on `TempolimitSegment` — no longer Zürich-only, as of
+    2026-09-17.** There is no national speed-limit dataset; cantons and
+    cities publish their own, and only some do. The register of every one
+    found (13 sources: ZH, Stadt Zürich, Stadt Bern, Biel, UR, SZ, AG, FR,
+    GE, plus Tempo-30 zones for ZH, BS and Stadt St. Gallen) is
+    `scripts/amtliche-tempolimits/quellen.mjs`, with the gaps documented in
+    `docs/amtliche-tempolimits.md`. `0102` stores all of it in
+    `amtliche_tempolimits`, and `proposeRoute()` matches every new route
+    against it (`lib/amtlicheTempolimits.ts` → `lib/tempolimitAbgleich.ts`).
+    The table is filled by `scripts/enrich-amtliche-tempolimits.mjs
+    --hochladen`, not by the migration — an applied `0102` with an empty
+    table silently yields no official values. Where no source covers a road
+    the flag is false: a fact about coverage, not about the road.
+    `parseTempolimits()` strips `amtlich`/`quelle` from client input; only
+    the server may set them.
   - **`docs/marketing/**/daten.mjs`.** Frozen snapshots of the eight routes
     that existed when they were written. They are records of what was
     published, not live copy.
