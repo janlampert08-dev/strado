@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { Crosshair, Gauge, Mountain, Route, Ruler, SearchX, TrendingUp } from "lucide-react";
 import { routeShapePath } from "@/lib/routeShape";
-import { formatKm } from "@/lib/format";
+import { formatKmGerundet } from "@/lib/format";
 import { type RouteSignature, type SignatureKey } from "@/lib/signature";
 import type { ExploreRoute } from "@/types/database";
 import { anzahlText, type Streckenbewertung } from "@/lib/bewertungen";
@@ -259,7 +259,7 @@ export default function ExploreSidebar({
                       // "Ø 114 km/h" lesbar bleibt. Eine umbrechende
                       // Masszahl ist dagegen nie richtig.
                       <span className="shrink-0 font-mono text-sm tabular-nums whitespace-nowrap text-muted">
-                        {formatKm(route.laenge_km)} km
+                        {formatKmGerundet(route.laenge_km)} km
                       </span>
                     )}
                     {signature && (
