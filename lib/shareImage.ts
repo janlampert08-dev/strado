@@ -36,13 +36,17 @@ const WIDTH = 1080;
 const HEIGHT = 1350;
 const PAD = 72;
 
-const BG_TOP = "#111116";
-const BG_BOTTOM = "#0b0b0d";
-const INK = "#f2f2f4";
-const MUTED = "#9096a3";
-const ACCENT = "#6b83ff";
+// Exportiert für den Saisonrückblick (lib/saisonBild.ts): beide Bilder sind
+// Stücke derselben Marke und sollen nebeneinander gepostet dieselben Farben
+// tragen — eine zweite Palette daneben liefe beim nächsten Farbwechsel
+// auseinander.
+export const BG_TOP = "#111116";
+export const BG_BOTTOM = "#0b0b0d";
+export const INK = "#f2f2f4";
+export const MUTED = "#9096a3";
+export const ACCENT = "#6b83ff";
 const ACCENT_SOFT = "rgba(107, 131, 255, 0.16)";
-const BORDER = "rgba(255, 255, 255, 0.09)";
+export const BORDER = "rgba(255, 255, 255, 0.09)";
 
 // Fallbacks, falls die Seite die Variablen nicht gesetzt hat (etwa ausserhalb
 // des Root-Layouts) — dann wenigstens eine Schrift derselben Gattung.
@@ -125,7 +129,7 @@ function strokePath(ctx: CanvasRenderingContext2D, points: [number, number][]) {
 // Schnitte geladen sind. Ein Canvas löst zwar das Laden aus, malt aber mit
 // dem Fallback, wenn die Schrift beim fillText noch nicht da ist — und Plex
 // Mono 600 ist auf der Fahrtseite nicht zwingend schon in Gebrauch.
-async function loadFonts(): Promise<{ sans: string; mono: string }> {
+export async function loadFonts(): Promise<{ sans: string; mono: string }> {
   const style = getComputedStyle(document.documentElement);
   const sans = style.getPropertyValue("--font-inter").trim() || SANS_FALLBACK;
   const mono = style.getPropertyValue("--font-ibm-plex-mono").trim() || MONO_FALLBACK;

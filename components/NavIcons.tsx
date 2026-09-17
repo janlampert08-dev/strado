@@ -63,3 +63,8 @@ export {
   ThermometerSnowflake as WetterKaltIcon,
   Wind as WetterWindIcon,
 } from "lucide-react";
+
+// Ebenfalls kein Nav-Icon: die Pass-Sammlung im Kennzahlen-Block der
+// Profilseite (components/PassSammlung.tsx) — der Berg als Zeichen für "Pass",
+// nicht für Höhe allgemein.
+export { Mountain as PassIcon } from "lucide-react";
