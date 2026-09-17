@@ -1,23 +1,40 @@
 // Das Teilen-Bild einer Fahrt: 1080 × 1350 px, das 4:5-Format, das Instagram
-// im Feed unbeschnitten zeigt und in der Story ohne Rand füllt — Titel,
-// Streckenlinie, vier Kennzahlen und die Adresse der App.
+// im Feed unbeschnitten zeigt und in der Story ohne Rand füllt.
 //
-// Dunkel wie das App-Theme (app/globals.css, :root[data-theme="dark"]), weil
-// das Bild ein Stück Strado sein soll und nicht ein generischer Export eines
-// Fitness-Trackers. Bewusst ohne Kästen und Rahmen: die Linie schwebt frei auf
-// dem Verlauf, die Kennzahlen stehen in Spalten mit Haarlinien dazwischen —
-// das Bild lebt von Leerraum, nicht von Flächen.
+// DAS "PASSBLATT" (Neugestaltung 2026-09-17). Die erste Fassung war ein
+// dunkler Verlauf mit leuchtender Akzentlinie, versal gesperrten Etiketten
+// und Kennzahlen in Mono — genau die Mittel, von denen sich die App im selben
+// Durchgang verabschiedet hat (Glow als Dekoration, Mono als Kostüm, Farbe
+// als Schmuck). Und sie liess den Ortsnamen in 60 px stehen, obwohl
+// AGENTS.md ihn zur Einheit der Wiedererkennung erklärt: wer das Bild im
+// Feed sieht, soll zuerst lesen, WO gefahren wurde.
 //
-// Schriften kommen von der Seite, die das Bild zeichnet: Inter und IBM Plex
-// Mono sind über next/font (app/layout.tsx) als CSS-Variablen auf <html>
-// gesetzt, hier werden sie ausgelesen. Früher stand "system-ui" im Canvas,
-// und das Bild sah auf jedem Gerät anders aus — Roboto auf Android, SF auf
-// iOS, Segoe auf Windows. Die Wortmarke ist keine Schrift, sondern eine
-// Kontur (lib/marke.ts).
+// Die neue Fassung ist ein Blatt nach Schweizer Kartenart, ruhig und dunkel:
+//
+//   - oben eine präzise Zeile (Region · Datum) und darunter der Ortsname so
+//     gross, wie er in zwei Zeilen passt;
+//   - die Linie in Vordergrundfarbe, ohne Leuchten, mit Start als Ring und
+//     Ziel als Akzentpunkt — dem einzigen Blau auf dem Blatt ausser dem
+//     Höhenprofil;
+//   - ein Massstabsbalken und ein Nordpfeil: Präzision als echte Angabe
+//     (lib/shareLayout.ts, massstab), nicht als Verzierung;
+//   - das Höhenprofil als Silhouette, wenn es eins gibt — das Gelände ist
+//     das, was eine Passfahrt von einer Autobahnfahrt unterscheidet;
+//   - vier Kennzahlen in zwei Reihen, grosse Ziffern, leichte Einheiten,
+//     Satzschreibung;
+//   - unten die Wortmarke in Vordergrundfarbe und die Adresse.
+//
+// Keine Koordinaten auf dem Blatt: der Track einer freien Fahrt ist um die
+// Privatzone gekappt (lib/publicTrack.ts), eine Zahl daneben verriete, was
+// die Kappung verbirgt.
+//
+// Schriften kommen von der Seite (next/font, app/layout.tsx), die Wortmarke
+// ist eine Kontur (lib/marke.ts). IBM Plex Mono wird hier nicht mehr
+// gebraucht; Zahlen stehen in Inter.
 
 import { formatDuration } from "@/lib/format";
-import { SIGNET, WORTMARKE } from "@/lib/marke";
-import { projectRoute, statsColumns } from "@/lib/shareLayout";
+import { WORTMARKE } from "@/lib/marke";
+import { massstab, profilPunkte, projectRoute } from "@/lib/shareLayout";
 
 export interface ShareRideData {
   routeName: string;
@@ -28,119 +45,113 @@ export interface ShareRideData {
   elevationM: number | null;
   coordinates: [number, number][];
   // Höchster aktuell erreichter Meilenstein (siehe lib/achievements.ts),
-  // optional als Chip in der Kopfzeile. null/undefined: kein Chip.
+  // optional als Zeile über dem Titel. null/undefined: keine.
   milestoneLabel?: string | null;
+  /** Höhenprofil (km/m), wenn vorhanden — sonst entfällt die Silhouette. */
+  hoehenprofil?: { km: number; m: number }[] | null;
+  /** Beschriftung der Höhen-Kennzahl: "Höchster Punkt" (Strecke) oder "Aufstieg" (freie Fahrt). */
+  hoehenBeschriftung?: string;
 }
 
 const WIDTH = 1080;
 const HEIGHT = 1350;
-const PAD = 72;
+const PAD = 80;
 
-const BG_TOP = "#111116";
-const BG_BOTTOM = "#0b0b0d";
+const BG = "#0b0b0d";
 const INK = "#f2f2f4";
-const MUTED = "#9096a3";
+const MUTED = "#8f95a3";
 const ACCENT = "#6b83ff";
-const ACCENT_SOFT = "rgba(107, 131, 255, 0.16)";
-const BORDER = "rgba(255, 255, 255, 0.09)";
+const HAIRLINE = "rgba(242, 242, 244, 0.12)";
+const PROFIL_FLAECHE = "rgba(107, 131, 255, 0.14)";
 
-// Fallbacks, falls die Seite die Variablen nicht gesetzt hat (etwa ausserhalb
-// des Root-Layouts) — dann wenigstens eine Schrift derselben Gattung.
 const SANS_FALLBACK = "system-ui, sans-serif";
-const MONO_FALLBACK = "ui-monospace, monospace";
 
-function roundedRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number,
-) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-
-function drawPill(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  {
-    font,
-    color,
-    bg,
-    border,
-    padX = 18,
-    padY = 10,
-  }: { font: string; color: string; bg?: string; border?: string; padX?: number; padY?: number },
-): number {
-  ctx.font = font;
-  const w = ctx.measureText(text).width + padX * 2;
-  // Die Schriftgrösse steckt hinter dem Gewicht ("600 26px …"); parseInt auf
-  // den ganzen String hätte das Gewicht geliefert.
-  const size = Number(/(\d+)px/.exec(font)?.[1] ?? 0);
-  const h = size + padY * 2;
-  if (bg) {
-    roundedRect(ctx, x, y, w, h, h / 2);
-    ctx.fillStyle = bg;
-    ctx.fill();
-    if (border) {
-      ctx.strokeStyle = border;
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-    }
-  }
-  ctx.fillStyle = color;
-  ctx.textBaseline = "middle";
-  ctx.fillText(text, x + padX, y + h / 2 + 1);
-  ctx.textBaseline = "alphabetic";
-  return w;
-}
-
-// Verkleinert die Schrift, bis der Text in die Spalte passt — eine Fahrzeit
-// wie "12:34:56" ist in Plex Mono breiter als die Spalte, und abschneiden
-// wäre bei einer Kennzahl schlimmer als eine Nummer kleiner.
-function fitFont(ctx: CanvasRenderingContext2D, text: string, weight: number, size: number, family: string, maxWidth: number) {
-  let px = size;
-  ctx.font = `${weight} ${px}px ${family}`;
-  while (px > 24 && ctx.measureText(text).width > maxWidth) {
-    px -= 2;
-    ctx.font = `${weight} ${px}px ${family}`;
-  }
-}
-
-function strokePath(ctx: CanvasRenderingContext2D, points: [number, number][]) {
-  ctx.beginPath();
-  points.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
-  ctx.stroke();
-}
-
-// Liest die Schriftfamilien der Seite aus und wartet, bis die gebrauchten
-// Schnitte geladen sind. Ein Canvas löst zwar das Laden aus, malt aber mit
-// dem Fallback, wenn die Schrift beim fillText noch nicht da ist — und Plex
-// Mono 600 ist auf der Fahrtseite nicht zwingend schon in Gebrauch.
-async function loadFonts(): Promise<{ sans: string; mono: string }> {
+async function loadFont(): Promise<string> {
   const style = getComputedStyle(document.documentElement);
   const sans = style.getPropertyValue("--font-inter").trim() || SANS_FALLBACK;
-  const mono = style.getPropertyValue("--font-ibm-plex-mono").trim() || MONO_FALLBACK;
   try {
     await Promise.all([
-      document.fonts.load(`400 30px ${sans}`),
+      document.fonts.load(`400 28px ${sans}`),
       document.fonts.load(`500 28px ${sans}`),
-      document.fonts.load(`700 60px ${sans}`),
-      document.fonts.load(`600 46px ${mono}`),
+      document.fonts.load(`600 72px ${sans}`),
+      document.fonts.load(`700 104px ${sans}`),
     ]);
     await document.fonts.ready;
   } catch {
     // Kein FontFaceSet oder Laden gescheitert: dann eben mit dem, was da ist.
   }
-  return { sans, mono };
+  return sans;
+}
+
+function setzeFont(ctx: CanvasRenderingContext2D, weight: number, px: number, family: string) {
+  ctx.font = `${weight} ${px}px ${family}`;
+  // Leicht engere Laufweite für die grossen Grade, wo der Browser es kann
+  // (Chrome/Edge/Safari 17+). Ohne Unterstützung bleibt es beim Standard —
+  // kein Fehler.
+  const c = ctx as CanvasRenderingContext2D & { letterSpacing?: string };
+  if ("letterSpacing" in c) c.letterSpacing = px >= 60 ? `${-px * 0.02}px` : "0px";
+}
+
+/**
+ * Bricht den Titel in höchstens zwei Zeilen und verkleinert ihn, bis er
+ * passt. Ein langer Passname ("Col du Mollendruz – Vallée de Joux") soll
+ * kleiner werden, nicht abgeschnitten.
+ */
+function titelZeilen(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  family: string,
+  maxWidth: number,
+): { zeilen: string[]; px: number } {
+  for (let px = 104; px >= 56; px -= 4) {
+    setzeFont(ctx, 700, px, family);
+    const woerter = text.split(" ");
+    const zeilen: string[] = [];
+    let zeile = "";
+    let passt = true;
+    for (const wort of woerter) {
+      const test = zeile ? `${zeile} ${wort}` : wort;
+      if (ctx.measureText(test).width <= maxWidth) {
+        zeile = test;
+        continue;
+      }
+      if (!zeile || ctx.measureText(wort).width > maxWidth) {
+        passt = false;
+        break;
+      }
+      zeilen.push(zeile);
+      zeile = wort;
+    }
+    if (zeile) zeilen.push(zeile);
+    if (passt && zeilen.length <= 2) return { zeilen, px };
+  }
+  // Auch bei 56 px zu lang: zwei Zeilen, die zweite gekürzt.
+  setzeFont(ctx, 700, 56, family);
+  const zeilen: string[] = [];
+  let zeile = "";
+  for (const wort of text.split(" ")) {
+    const test = zeile ? `${zeile} ${wort}` : wort;
+    if (ctx.measureText(test).width <= maxWidth || !zeile) zeile = test;
+    else {
+      zeilen.push(zeile);
+      zeile = wort;
+    }
+  }
+  if (zeile) zeilen.push(zeile);
+  if (zeilen.length > 2) {
+    let zweite = zeilen.slice(1).join(" ");
+    while (zweite.length > 1 && ctx.measureText(`${zweite}…`).width > maxWidth) {
+      zweite = zweite.slice(0, -1);
+    }
+    return { zeilen: [zeilen[0], `${zweite.trimEnd()}…`], px: 56 };
+  }
+  return { zeilen, px: 56 };
+}
+
+function strich(ctx: CanvasRenderingContext2D, punkte: [number, number][]) {
+  ctx.beginPath();
+  punkte.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
+  ctx.stroke();
 }
 
 export async function renderShareImage(data: ShareRideData): Promise<Blob> {
@@ -150,173 +161,218 @@ export async function renderShareImage(data: ShareRideData): Promise<Blob> {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas wird nicht unterstützt.");
 
-  const { sans, mono } = await loadFonts();
+  const sans = await loadFont();
+  const innenBreite = WIDTH - PAD * 2;
 
-  // Ruhiger vertikaler Verlauf statt Flat-Fill — zusammen mit dem Glow der
-  // Streckenlinie gibt das dem Bild Tiefe, ohne laut zu wirken.
-  const bg = ctx.createLinearGradient(0, 0, 0, HEIGHT);
-  bg.addColorStop(0, BG_TOP);
-  bg.addColorStop(1, BG_BOTTOM);
-  ctx.fillStyle = bg;
+  ctx.fillStyle = BG;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-  // Kopfzeile: Wortmarke links, Meilenstein-Chip rechts, beide auf einer
-  // Mittellinie.
-  const HEADER_Y = 64;
-  const MARKE_HOEHE = 36;
-  ctx.save();
-  ctx.translate(PAD, HEADER_Y);
-  ctx.scale(MARKE_HOEHE / WORTMARKE.hoehe, MARKE_HOEHE / WORTMARKE.hoehe);
-  ctx.fillStyle = ACCENT;
-  ctx.fill(new Path2D(WORTMARKE.pfad));
-  ctx.restore();
-
-  if (data.milestoneLabel) {
-    const chipFont = `600 26px ${sans}`;
-    ctx.font = chipFont;
-    const chipW = ctx.measureText(data.milestoneLabel).width + 36;
-    const chipH = 26 + 20;
-    drawPill(ctx, data.milestoneLabel, WIDTH - PAD - chipW, HEADER_Y + MARKE_HOEHE / 2 - chipH / 2, {
-      font: chipFont,
-      color: ACCENT,
-      bg: ACCENT_SOFT,
-      border: "rgba(107, 131, 255, 0.35)",
-    });
-  }
-
-  // Titel, ein oder zwei Zeilen. Alles darunter hängt sich an die tatsächlich
-  // gebrauchte Zeilenzahl, sonst überlappt eine zweizeilige Bezeichnung die
-  // Unterzeile. Oberkante der Versalien bei 196 px, die Grundlinie liegt bei
-  // 60 px Inter rund 44 px tiefer.
-  const TITLE_BASELINE = 240;
-  const TITLE_LINE_HEIGHT = 68;
-  ctx.fillStyle = INK;
-  ctx.font = `700 60px ${sans}`;
-  const titleLines = wrapText(ctx, data.routeName, PAD, TITLE_BASELINE, WIDTH - PAD * 2, TITLE_LINE_HEIGHT);
-  const titleBottom = TITLE_BASELINE + (titleLines - 1) * TITLE_LINE_HEIGHT;
-
+  // ── Kopf: präzise Zeile, dann der Ortsname ───────────────────────────
   const dateLabel = new Date(data.date).toLocaleDateString("de-CH", {
     day: "numeric",
     month: "long",
     year: "numeric",
   });
-  const subY = titleBottom + 16 + 30;
+  const metaY = 132;
+  setzeFont(ctx, 500, 28, sans);
   ctx.fillStyle = MUTED;
-  ctx.font = `400 30px ${sans}`;
-  ctx.fillText(`${data.region ? `${data.region} · ` : ""}${dateLabel}`, PAD, subY);
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText([data.region, dateLabel].filter(Boolean).join("  ·  "), PAD, metaY);
 
-  // Streckenlinie, frei auf dem Verlauf, zwischen Unterzeile und Kennzahlen.
-  const statsTop = HEIGHT - 330;
-  const inset = 40;
-  const areaTop = subY + 56;
-  const areaBottom = statsTop - 48;
+  // Meilenstein rechtsbündig in derselben Zeile, Akzent als einziger Farbton.
+  if (data.milestoneLabel) {
+    setzeFont(ctx, 600, 28, sans);
+    const w = ctx.measureText(data.milestoneLabel).width;
+    ctx.fillStyle = ACCENT;
+    ctx.fillText(data.milestoneLabel, WIDTH - PAD - w, metaY);
+    ctx.beginPath();
+    ctx.arc(WIDTH - PAD - w - 20, metaY - 10, 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
-  if (data.coordinates.length > 1) {
-    const points = projectRoute(data.coordinates, {
-      x: PAD + inset,
-      y: areaTop + inset,
-      w: WIDTH - PAD * 2 - inset * 2,
-      h: areaBottom - areaTop - inset * 2,
-    });
+  const { zeilen, px: titelPx } = titelZeilen(ctx, data.routeName, sans, innenBreite);
+  setzeFont(ctx, 700, titelPx, sans);
+  ctx.fillStyle = INK;
+  const titelZeilenhoehe = Math.round(titelPx * 1.02);
+  let titelY = metaY + 28 + titelPx;
+  for (const z of zeilen) {
+    ctx.fillText(z, PAD, titelY);
+    titelY += titelZeilenhoehe;
+  }
+  const kopfUnten = titelY - titelZeilenhoehe + Math.round(titelPx * 0.28);
 
-    // Weicher Glow, dann derselbe Strich nochmal scharf darüber.
+  // ── Kennzahlen unten zuerst festlegen, damit die Karte den Rest bekommt ─
+  // Aus dem ersten Probedruck: mit 120/300 stand die zweite Kennzahlenreihe
+  // auf der Wortmarke und jede Zahl auf ihrer Haarlinie.
+  const FUSS_H = 150;
+  const KENNZAHLEN_H = 330;
+  const kennzahlenOben = HEIGHT - FUSS_H - KENNZAHLEN_H;
+  const hatProfil = (data.hoehenprofil?.length ?? 0) > 1;
+  const PROFIL_H = hatProfil ? 132 : 0;
+  const profilOben = kennzahlenOben - PROFIL_H - (hatProfil ? 28 : 0);
+
+  // ── Linie ─────────────────────────────────────────────────────────────
+  const kartenBox = {
+    x: PAD + 24,
+    y: kopfUnten + 64,
+    w: innenBreite - 48,
+    h: (hatProfil ? profilOben : kennzahlenOben) - 56 - (kopfUnten + 64),
+  };
+
+  if (data.coordinates.length > 1 && kartenBox.h > 120) {
+    const punkte = projectRoute(data.coordinates, kartenBox);
     ctx.save();
-    ctx.strokeStyle = ACCENT;
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
-    ctx.shadowColor = ACCENT;
-    ctx.shadowBlur = 32;
-    ctx.lineWidth = 12;
-    strokePath(ctx, points);
-    ctx.shadowBlur = 0;
+    ctx.strokeStyle = INK;
     ctx.lineWidth = 7;
-    strokePath(ctx, points);
+    strich(ctx, punkte);
 
-    const [start, finish] = [points[0], points[points.length - 1]];
-
-    // Start: kleiner, zurückhaltender Punkt.
+    const start = punkte[0];
+    const ziel = punkte[punkte.length - 1];
+    // Start: Ring in Vordergrundfarbe, innen Hintergrund.
     ctx.beginPath();
-    ctx.fillStyle = INK;
-    ctx.arc(start[0], start[1], 9, 0, Math.PI * 2);
+    ctx.fillStyle = BG;
+    ctx.arc(start[0], start[1], 12, 0, Math.PI * 2);
     ctx.fill();
-
-    // Ziel: grösser, mit Ring — der Blick soll hier landen.
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = INK;
+    ctx.stroke();
+    // Ziel: gefüllter Akzentpunkt mit Hintergrundring, damit er auf der
+    // Linie sitzt statt in ihr zu verschwimmen.
     ctx.beginPath();
     ctx.fillStyle = ACCENT;
-    ctx.arc(finish[0], finish[1], 15, 0, Math.PI * 2);
+    ctx.arc(ziel[0], ziel[1], 16, 0, Math.PI * 2);
     ctx.fill();
-    ctx.beginPath();
-    ctx.strokeStyle = BG_BOTTOM;
-    ctx.lineWidth = 5;
-    ctx.arc(finish[0], finish[1], 15, 0, Math.PI * 2);
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = BG;
     ctx.stroke();
+    ctx.restore();
+
+    // Massstab links unten in der Kartenfläche, Nordpfeil rechts oben.
+    const m = massstab(data.coordinates, kartenBox, 200);
+    if (m) {
+      const y = kartenBox.y + kartenBox.h + 28;
+      ctx.fillStyle = MUTED;
+      ctx.fillRect(PAD, y, m.px, 3);
+      ctx.fillRect(PAD, y - 8, 3, 11);
+      ctx.fillRect(PAD + m.px - 3, y - 8, 3, 11);
+      setzeFont(ctx, 500, 24, sans);
+      const label = m.km < 1 ? `${Math.round(m.km * 1000)} m` : `${m.km} km`;
+      ctx.fillText(label, PAD + m.px + 16, y + 8);
+    }
+    const nx = WIDTH - PAD - 12;
+    const ny = kartenBox.y + 4;
+    ctx.fillStyle = MUTED;
+    ctx.beginPath();
+    ctx.moveTo(nx, ny);
+    ctx.lineTo(nx - 10, ny + 26);
+    ctx.lineTo(nx, ny + 20);
+    ctx.lineTo(nx + 10, ny + 26);
+    ctx.closePath();
+    ctx.fill();
+    setzeFont(ctx, 600, 22, sans);
+    const nw = ctx.measureText("N").width;
+    ctx.fillText("N", nx - nw / 2, ny + 54);
+  }
+
+  // ── Höhenprofil ──────────────────────────────────────────────────────
+  if (hatProfil && data.hoehenprofil) {
+    const box = { x: PAD, y: profilOben, w: innenBreite, h: PROFIL_H };
+    const punkte = profilPunkte(data.hoehenprofil, box);
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(box.x, box.y + box.h);
+    punkte.forEach(([x, y]) => ctx.lineTo(x, y));
+    ctx.lineTo(box.x + box.w, box.y + box.h);
+    ctx.closePath();
+    ctx.fillStyle = PROFIL_FLAECHE;
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = ACCENT;
+    strich(ctx, punkte);
     ctx.restore();
   }
 
+  // ── Kennzahlen: zwei Reihen à zwei, Haarlinie dazwischen ──────────────
   const avgKmh =
     data.durationSeconds && data.durationSeconds > 0
       ? data.distanceKm / (data.durationSeconds / 3600)
       : null;
-
-  const facts: [string, string][] = [
-    ["Distanz", `${data.distanceKm.toFixed(1)} km`],
-    ["Zeit", data.durationSeconds !== null ? formatDuration(data.durationSeconds) : "—"],
-    ["Ø Tempo", avgKmh !== null ? `${avgKmh.toFixed(0)} km/h` : "—"],
-    ["Höhe", data.elevationM !== null ? `${data.elevationM} m` : "—"],
+  const fakten: { beschriftung: string; wert: string; einheit: string }[] = [
+    { beschriftung: "Distanz", wert: data.distanceKm.toFixed(1), einheit: "km" },
+    {
+      beschriftung: data.hoehenBeschriftung ?? "Höhe",
+      wert: data.elevationM !== null ? data.elevationM.toLocaleString("de-CH") : "—",
+      einheit: data.elevationM !== null ? "m" : "",
+    },
+    {
+      beschriftung: "Zeit",
+      wert: data.durationSeconds !== null ? formatDuration(data.durationSeconds) : "—",
+      einheit: "",
+    },
+    { beschriftung: "Ø Tempo", wert: avgKmh !== null ? avgKmh.toFixed(0) : "—", einheit: avgKmh !== null ? "km/h" : "" },
   ];
 
-  // Vier gleich breite Spalten, getrennt durch Haarlinien. Die erste Spalte
-  // fluchtet mit dem Titel, die weiteren rücken vom Trenner ab.
-  const LABEL_BASELINE = statsTop + 20;
-  const VALUE_BASELINE = LABEL_BASELINE + 54;
-  const DIVIDER_H = 88;
-  const COL_INSET = 28;
-  const columns = statsColumns(WIDTH, PAD, facts.length);
-  facts.forEach(([label, value], i) => {
-    const col = columns[i];
-    const x = col.x + (i === 0 ? 0 : COL_INSET);
-    const maxW = col.w - (i === 0 ? 0 : COL_INSET) - 12;
+  ctx.fillStyle = HAIRLINE;
+  ctx.fillRect(PAD, kennzahlenOben, innenBreite, 2);
+  ctx.fillRect(PAD, kennzahlenOben + KENNZAHLEN_H / 2, innenBreite, 2);
+  ctx.fillRect(PAD + innenBreite / 2, kennzahlenOben + 24, 2, KENNZAHLEN_H - 48);
 
-    if (i > 0) {
-      ctx.fillStyle = BORDER;
-      ctx.fillRect(Math.round(col.x), statsTop - 4, 1, DIVIDER_H);
-    }
-
+  fakten.forEach((f, i) => {
+    const spalte = i % 2;
+    const reihe = Math.floor(i / 2);
+    const x = PAD + spalte * (innenBreite / 2) + (spalte === 1 ? 40 : 0);
+    const oben = kennzahlenOben + reihe * (KENNZAHLEN_H / 2);
+    const REIHE_H = KENNZAHLEN_H / 2;
+    const beschriftungY = oben + 52;
+    setzeFont(ctx, 500, 26, sans);
     ctx.fillStyle = MUTED;
-    ctx.font = `600 20px ${sans}`;
-    ctx.fillText(label.toUpperCase(), x, LABEL_BASELINE);
+    ctx.fillText(f.beschriftung, x, beschriftungY);
 
+    const maxW = innenBreite / 2 - 60;
+    let wertPx = 72;
+    setzeFont(ctx, 600, wertPx, sans);
+    const einheitBreite = () => {
+      if (!f.einheit) return 0;
+      setzeFont(ctx, 500, Math.round(wertPx * 0.42), sans);
+      const w = ctx.measureText(f.einheit).width + 12;
+      setzeFont(ctx, 600, wertPx, sans);
+      return w;
+    };
+    while (wertPx > 44 && ctx.measureText(f.wert).width + einheitBreite() > maxW) {
+      wertPx -= 4;
+      setzeFont(ctx, 600, wertPx, sans);
+    }
+    // Grundlinie der Zahl mit festem Abstand zur Unterkante der Reihe statt
+    // von der Beschriftung aus gerechnet — so bleibt sie über der Haarlinie,
+    // auch wenn fitFont die Zahl verkleinert.
+    const wertY = oben + REIHE_H - 34;
     ctx.fillStyle = INK;
-    fitFont(ctx, value, 600, 46, mono, maxW);
-    ctx.fillText(value, x, VALUE_BASELINE);
+    ctx.fillText(f.wert, x, wertY);
+    if (f.einheit) {
+      const w = ctx.measureText(f.wert).width;
+      setzeFont(ctx, 500, Math.round(wertPx * 0.42), sans);
+      ctx.fillStyle = MUTED;
+      ctx.fillText(f.einheit, x + w + 12, wertY);
+    }
   });
 
-  // Fusszeile: Haarlinie, darunter Signet und die Adresse der App — der Weg
-  // vom Bild zurück zu Strado, mehr braucht es hier nicht.
-  const FOOTER_BASELINE = HEIGHT - 92;
-  ctx.fillStyle = BORDER;
-  ctx.fillRect(PAD, HEIGHT - 168, WIDTH - PAD * 2, 1);
-
-  // Das Signet ist seit September 2026 der Rundkurs und damit deutlich
-  // breiter als hoch: die Höhe ist gesetzt, die Breite folgt über das
-  // Seitenverhältnis, und der Abstand zur Adresse rechnet mit dieser Breite
-  // statt mit einer festen Zahl. 24 statt der früheren 30 Einheiten Höhe,
-  // damit das flache Zeichen neben der Adresse nicht mehr Fläche belegt als
-  // das quadratische "s" davor.
-  const SIGNET_HOEHE = 24;
-  const SIGNET_BREITE = SIGNET_HOEHE * SIGNET.seitenverhaeltnis;
+  // ── Fuss: Wortmarke und Adresse ──────────────────────────────────────
+  const fussY = HEIGHT - 70;
+  const MARKE_HOEHE = 34;
   ctx.save();
-  ctx.translate(PAD, FOOTER_BASELINE - SIGNET_HOEHE);
-  ctx.scale(SIGNET_HOEHE / SIGNET.hoehe, SIGNET_HOEHE / SIGNET.hoehe);
-  ctx.fillStyle = ACCENT;
-  // Die Aussparung des Rundkurses läuft gegen die Aussenkontur, deshalb
-  // bleibt sie unter der Standardregel "nonzero" ein Loch — siehe SIGNET.
-  ctx.fill(new Path2D(SIGNET.pfad));
+  ctx.translate(PAD, fussY - MARKE_HOEHE);
+  ctx.scale(MARKE_HOEHE / WORTMARKE.hoehe, MARKE_HOEHE / WORTMARKE.hoehe);
+  ctx.fillStyle = INK;
+  ctx.fill(new Path2D(WORTMARKE.pfad));
   ctx.restore();
 
-  ctx.fillStyle = INK;
-  ctx.font = `500 28px ${sans}`;
-  ctx.fillText("app.strado.ch", PAD + SIGNET_BREITE + 14, FOOTER_BASELINE);
+  setzeFont(ctx, 500, 28, sans);
+  ctx.fillStyle = MUTED;
+  const adresse = "app.strado.ch";
+  ctx.fillText(adresse, WIDTH - PAD - ctx.measureText(adresse).width, fussY - 4);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(
@@ -325,36 +381,4 @@ export async function renderShareImage(data: ShareRideData): Promise<Blob> {
       0.92,
     );
   });
-}
-
-// Gibt die Anzahl tatsächlich gezeichneter Zeilen zurück (max. 2), damit der
-// Aufrufer nachfolgende Elemente dynamisch darunter positionieren kann.
-function wrapText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  maxWidth: number,
-  lineHeight: number,
-): number {
-  const words = text.split(" ");
-  let line = "";
-  let lineY = y;
-  let linesDrawn = 0;
-  for (const word of words) {
-    const test = line ? `${line} ${word}` : word;
-    if (ctx.measureText(test).width > maxWidth && line) {
-      ctx.fillText(line, x, lineY);
-      linesDrawn++;
-      // Nach zwei gezeichneten Zeilen wird der Rest abgeschnitten statt eine
-      // dritte Zeile zu beginnen.
-      if (linesDrawn >= 2) return linesDrawn;
-      line = word;
-      lineY += lineHeight;
-    } else {
-      line = test;
-    }
-  }
-  ctx.fillText(line, x, lineY);
-  return linesDrawn + 1;
 }
