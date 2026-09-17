@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { useEntwurfSchutz } from "@/components/useEntwurfSchutz";
 import { addVehicle, type VehicleFormState } from "@/lib/actions/vehicles";
 import { Input, fieldClassName } from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
@@ -26,6 +27,11 @@ export default function NeuesFahrzeugForm({ nextHref }: { nextHref?: string } = 
   const [typ, setTyp] = useState<FahrzeugTyp>("auto");
   const [hubraum, setHubraum] = useState("");
   const [leistung, setLeistung] = useState("");
+  // Irgendeine Eingabe macht das Formular zum Entwurf — die meisten Felder
+  // sind unkontrolliert, deshalb über onInput am Formular statt über ihren
+  // State. Siehe components/useEntwurfSchutz.ts.
+  const [beruehrt, setBeruehrt] = useState(false);
+  useEntwurfSchutz("neues-fahrzeug", beruehrt && !pending);
 
   // Beim Auto wird in PS eingegeben, beim Motorrad in kW — Begründung in
   // lib/motorklassen.ts, Abschnitt EINHEITEN. Gespeichert wird beides als
@@ -51,7 +57,7 @@ export default function NeuesFahrzeugForm({ nextHref }: { nextHref?: string } = 
   return (
     <>
       <h1 className="text-display font-semibold">Fahrzeug hinzufügen</h1>
-      <form action={formAction} className="flex flex-col gap-4">
+      <form action={formAction} onInput={() => setBeruehrt(true)} className="flex flex-col gap-4">
         {nextHref && <input type="hidden" name="next" value={nextHref} />}
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           Typ

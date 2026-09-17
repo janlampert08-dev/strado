@@ -53,3 +53,6 @@ export { Flame as AktivitaetIcon } from "lucide-react";
 // dem Kopf (components/OffeneAufzeichnung.tsx) zeigt damit, dass er ein Weg
 // zurück ist und keine blosse Meldung.
 export { ChevronRight as WeiterIcon } from "lucide-react";
+
+// Ebenfalls kein Nav-Icon: der Schliessen-Knopf im Kopf von ui/Dialog.
+export { X as SchliessenIcon } from "lucide-react";

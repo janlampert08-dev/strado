@@ -10,7 +10,6 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { GripHorizontal } from "lucide-react";
 import {
   DRAG_DECISION_THRESHOLD_PX,
   DRAG_TAP_THRESHOLD_PX,
@@ -32,8 +31,8 @@ const CLICK_SUPPRESSION_MS = 400;
 
 // Notnagel für die Griffhöhe, bis der ResizeObserver unten den echten Wert
 // gemessen hat (und dauerhaft ab md, wo der Griff ausgeblendet ist und
-// deshalb 0 misst). Entspricht py-2 + h-5 am Griff-Element.
-const HANDLE_FALLBACK_PX = 36;
+// deshalb 0 misst). Entspricht py-5 + h-1 am Griff-Element.
+const HANDLE_FALLBACK_PX = 44;
 
 // Gemeinsame Bottom-Sheet-Mechanik (Mobile): zwischen drei Rastpunkten
 // auf-/zuziehbar — versteckt (nur der Ziehgriff steht über der Karte), Peek
@@ -436,9 +435,13 @@ export default function DragSheet({
             setSnap((current) => snapStep(current, -1));
           }
         }}
-        className="flex shrink-0 cursor-grab touch-none items-center justify-center rounded-t-lg py-2 active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-inset md:hidden"
+        // py-5 um eine 4-px-Pille: 44 px Griff statt 36. Und die Pille statt
+        // des Sechs-Punkte-Symbols: das Punkteraster las sich im Test als
+        // "weitere Aktionen", die Pille ist das Zeichen, das iOS und Android
+        // für "zieh mich" verwenden.
+        className="flex shrink-0 cursor-grab touch-none items-center justify-center rounded-t-lg py-5 active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-inset md:hidden"
       >
-        <GripHorizontal className="h-5 w-5 text-muted" aria-hidden="true" />
+        <span aria-hidden="true" className="h-1 w-9 rounded-full bg-border-strong" />
       </div>
       {/* display:contents, damit der Wrapper das Layout in keiner Breite
           verändert — weder die Flex-Spalte des Sheets noch, ab md, das
