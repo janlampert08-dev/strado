@@ -86,6 +86,18 @@ export default function HalteKnopf({
 
   useEffect(() => abbrechen, [abbrechen]);
 
+  // Wird die Seite verborgen (App gewechselt, Bildschirm gesperrt), endet
+  // das Halten. Touch-Browser liefern dabei nicht zuverlässig pointerup,
+  // pointercancel oder blur — und weil der Timer entscheidet, würde er die
+  // Fahrt sonst später im Hintergrund beenden, ohne dass jemand hält.
+  useEffect(() => {
+    function sichtbarkeit() {
+      if (document.visibilityState === "hidden") abbrechen();
+    }
+    document.addEventListener("visibilitychange", sichtbarkeit);
+    return () => document.removeEventListener("visibilitychange", sichtbarkeit);
+  }, [abbrechen]);
+
   function tasteRunter(event: KeyboardEvent<HTMLButtonElement>) {
     if (event.key !== "Enter" && event.key !== " ") return;
     // Ohne preventDefault löst Enter sofort einen click aus — und die
