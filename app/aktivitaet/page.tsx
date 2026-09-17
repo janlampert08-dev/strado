@@ -21,10 +21,11 @@ export const metadata = {
 // Reaktionen sitzt deshalb am Feed-Eintrag der Navigation und am Reiter
 // hier; die Begründung für die Zuordnung steht in lib/nav.ts.
 //
-// Zwei Arten von Reaktion, eine Zeitachse: Kudos auf eigenen Fahrten
-// (recent_kudos_received, 0057) und neue Follower (recent_follows_received,
-// 0100). Beide Funktionen sind ausschliesslich auf auth.uid() beschränkt —
-// niemand kann die Aktivität eines fremden Kontos abfragen.
+// Drei Arten, eine Zeitachse: Kudos auf eigenen Fahrten
+// (recent_kudos_received, 0057), neue Follower (recent_follows_received,
+// 0100) und geöffnete Pässe aus dem Pass-Alarm (recent_pass_meldungen,
+// 0112). Alle drei Funktionen sind ausschliesslich auf auth.uid()
+// beschränkt — niemand kann die Aktivität eines fremden Kontos abfragen.
 export default async function AktivitaetPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/anmelden");
@@ -40,8 +41,8 @@ export default async function AktivitaetPage() {
     <div className="flex h-dvh flex-col">
       <Header back="/feed" />
       {/* Markiert beim Laden alles aktuell Ungesehene als gesehen, siehe
-          MarkSeen.tsx — hier mit markActivitySeen, das BEIDE Zeitpunkte
-          setzt (0100). Auf /profil läuft dieselbe Komponente mit
+          MarkSeen.tsx — hier mit markActivitySeen, das alle drei
+          Zeitpunkte setzt (0100, 0112). Auf /profil läuft dieselbe Komponente mit
           markKudosSeen, weil dort nur die Kudos zu sehen sind.
           Das router.refresh() darin würde die "neu"-Flags dieser Liste
           sofort auf false ziehen, bevor der Nutzer sie gesehen hat —

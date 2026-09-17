@@ -48,3 +48,8 @@ export { Star as SternIcon } from "lucide-react";
 // (components/ActivityList.tsx). Dasselbe Zeichen, das die Kopfleiste als
 // Einstieg in /aktivitaet zeigt.
 export { Flame as AktivitaetIcon } from "lucide-react";
+
+// Ebenfalls kein Nav-Icon: der Passstatus (0112) — die Meldung "Pass ist
+// offen" in der Aktivitätsliste, wo eine Person mit Avatar sonst stünde,
+// und der Abschnitt "Passstatus" unter /moderation.
+export { Mountain as PassIcon } from "lucide-react";
