@@ -30,6 +30,7 @@ import Button, { buttonVariants } from "@/components/ui/Button";
 import { LEGAL_URLS } from "@/lib/constants";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
+import ProfilnameForm from "@/components/ProfilnameForm";
 
 // Ohne eigenen Titel hiess der Tab auf dieser Seite nur "Strado" — neben
 // anderen offenen Tabs derselben App nicht zu unterscheiden.
@@ -66,7 +67,7 @@ export default async function EinstellungenPage() {
     supabase
       .from("profiles")
       .select(
-        "zeigt_fahrzeuge, zeigt_avatar, zeigt_paesse, zeigt_hoehenmeter, zeigt_distanz, zeigt_follower_liste, privatzone_radius_m",
+        "display_name, zeigt_fahrzeuge, zeigt_avatar, zeigt_paesse, zeigt_hoehenmeter, zeigt_distanz, zeigt_follower_liste, privatzone_radius_m",
       )
       .eq("id", user.id)
       .single(),
@@ -299,6 +300,7 @@ export default async function EinstellungenPage() {
 
           <section id="konto" className="flex scroll-mt-20 flex-col gap-3">
             <SectionHeading icon={KeyRound}>Konto</SectionHeading>
+            <ProfilnameForm aktuellerName={profile?.display_name ?? null} />
             {/* break-all an der Adresse: eine lange E-Mail ohne Leerzeichen
                 sprengt auf 390 px sonst die Card nach rechts, statt
                 umzubrechen. */}

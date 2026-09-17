@@ -302,3 +302,59 @@ export async function uploadAvatar(
   revalidatePath(`/fahrer/${user.id}`);
   return { error: null };
 }
+
+/**
+ * Den eigenen Anzeigenamen ändern (Einstellungen → Konto).
+ *
+ * Die Regeln stehen in der Datenbank (0103_profilname_aendern.sql), nicht
+ * hier: die Funktion arbeitet ausschliesslich auf auth.uid(), prüft Länge
+ * und Eindeutigkeit wie signUp() und ist der einzige Schreibweg für
+ * display_name — die Spalte hat keinen UPDATE-Grant. Diese Action setzt
+ * davor nur eine Mengenbremse und übersetzt die Rückgabecodes in Sätze.
+ *
+ * Solange 0103 nicht eingespielt ist, scheitert der RPC-Aufruf; dann steht
+ * eine allgemeine Meldung da statt eines Absturzes.
+ */
+export async function aendereProfilnamen(
+  _prevState: ProfileActionState,
+  formData: FormData,
+): Promise<ProfileActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Bitte melde dich zuerst an." };
+
+  // Fünf Änderungen in zehn Minuten: genug für Tippfehler, zu wenig, um den
+  // Namensbestand per Ausprobieren nach vergebenen Namen abzusuchen.
+  if (isRateLimitedByKey(`profilname:${user.id}`, 5, 10 * 60_000)) {
+    return { error: "Zu viele Änderungen. Bitte warte ein paar Minuten." };
+  }
+
+  const name = String(formData.get("display_name") ?? "").slice(0, 200);
+  const { data, error } = await supabase.rpc("profilname_aendern", { p_name: name });
+  if (error) {
+    console.error("Profilname konnte nicht geändert werden:", error.message);
+    return { error: "Der Name konnte gerade nicht gespeichert werden. Bitte versuche es später erneut." };
+  }
+
+  switch (data as string) {
+    case "ok":
+      revalidatePath("/profil");
+      revalidatePath("/profil/einstellungen");
+      revalidatePath(`/fahrer/${user.id}`);
+      revalidatePath("/feed");
+      revalidatePath("/ranglisten");
+      return { error: null, success: true };
+    case "unveraendert":
+      return { error: null, success: true };
+    case "zu_kurz":
+      return { error: "Der Name braucht mindestens 2 Zeichen." };
+    case "zu_lang":
+      return { error: "Der Name darf höchstens 50 Zeichen lang sein." };
+    case "vergeben":
+      return { error: "Dieser Name ist bereits vergeben." };
+    default:
+      return { error: "Der Name konnte gerade nicht gespeichert werden." };
+  }
+}
