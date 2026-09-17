@@ -9,6 +9,9 @@ export type DauerQuelle = "trail" | "server";
 // (components/FeedbackDialog.tsx) sie als Auswahlliste braucht — hier nur
 // der davon abgeleitete Typ, damit es keine zweite Werteliste gibt.
 import type { FeedbackKategorie } from "@/lib/feedback";
+// Dieselbe Begründung für die Wartungsarten: die Liste speist das Formular
+// (components/WartungseintragForm.tsx) und steht deshalb in lib/wartung.ts.
+import type { Wartungsart } from "@/lib/wartung";
 
 export type FahrzeugTyp = "auto" | "motorrad";
 export type Getriebe = "manuell" | "automatik";
@@ -452,6 +455,46 @@ export interface Feedback {
   erstellt_am: string;
   bearbeitet_am: string | null;
   bearbeitet_von: string | null;
+}
+
+// Zeilenform von public.wartungseintraege (0111_wartungsheft.sql) — das
+// Wartungsheft eines Fahrzeugs. Privat: RLS gibt nur die eigenen Zeilen
+// frei, es gibt keine öffentliche View darauf. Anlegen und Ändern verlangen
+// Premium (Policy + Server Action), Lesen und Löschen nicht.
+//
+// Die Art ist in lib/wartung.ts als Wartungsart typisiert, weil die
+// Auswahlliste dort auch das Formular speist (Client Component) — der CHECK
+// in der Migration trägt dieselben Werte.
+export interface Wartungseintrag {
+  id: string;
+  fahrzeug_id: string;
+  // Redundant zum Fahrzeug, damit die RLS-Policy ein Spaltenvergleich
+  // bleibt; (fahrzeug_id, user_id) ist ein Fremdschlüssel auf
+  // vehicles (id, user_id), das Paar kann also nicht auseinanderfallen.
+  user_id: string;
+  art: Wartungsart;
+  /** DATE-Spalte, "YYYY-MM-DD". Nie in der Zukunft (CHECK). */
+  datum: string;
+  /** Kilometerstand beim Eintrag, freiwillig. */
+  km_stand: number | null;
+  /** numeric(8,2); PostgREST liefert es als JSON-Zahl. */
+  kosten_chf: number | null;
+  notiz: string | null;
+  created_at: string;
+}
+
+// Zeilenform von public.wartungserinnerungen (0111) — höchstens eine Zeile
+// pro Fahrzeug. Die Fälligkeit selbst steht nicht in der Datenbank: sie
+// wird in lib/wartung.ts aus diesen Werten, den Einträgen und den
+// aufgezeichneten Fahrten abgeleitet.
+export interface Wartungserinnerung {
+  fahrzeug_id: string;
+  user_id: string;
+  /** Termin aus dem Aufgebot des Strassenverkehrsamts. */
+  naechste_mfk_am: string | null;
+  service_intervall_km: number | null;
+  service_intervall_monate: number | null;
+  created_at: string;
 }
 
 // Die drei Felder, die eine Weiterleitung unter /c/<code> braucht — genau

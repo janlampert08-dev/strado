@@ -28,6 +28,7 @@ import FahrtStatistik from "@/components/FahrtStatistik";
 import { ChartIcon, ShieldIcon } from "@/components/NavIcons";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
+import { getWartungsHinweise } from "@/lib/wartungsdaten";
 import { isModerator } from "@/lib/moderation";
 import { istCreator } from "@/lib/creatorKennzahlen";
 import { getRollenItems } from "@/lib/nav";
@@ -200,6 +201,13 @@ export default async function ProfilPage() {
     isModerator(user.id),
     istCreator(user.id),
   ]);
+
+  // Eine Wartungszeile je Fahrzeugkachel, aber nur mit laufendem Abo und
+  // erst nach dem Status: die drei Abfragen dahinter (Einträge,
+  // Erinnerungen, Fahrten) sind für ein Konto ohne Wartungsheft reine
+  // Leerläufe. Bewusst NACH dem Promise.all und nicht darin — sonst liefe
+  // sie für jedes kostenlose Konto bei jedem Profilaufruf mit.
+  const wartungsHinweise = premiumStatus.aktiv ? await getWartungsHinweise(user.id) : undefined;
 
   // Die mobile Leiste (BottomNav) führt Creator und Moderation nicht mehr —
   // sie ist auf fünf Einträge gedeckelt, siehe lib/nav.ts. Unter md ist das
@@ -545,7 +553,7 @@ export default async function ProfilPage() {
                 + Hinzufügen
               </Link>
             </div>
-            <VehicleGrid vehicles={(vehicles as Vehicle[]) ?? []} />
+            <VehicleGrid vehicles={(vehicles as Vehicle[]) ?? []} hinweise={wartungsHinweise} />
           </section>
 
           {/* Zuunterst und ohne Unterbrechung der Kernschleife: ohne Abo ein
