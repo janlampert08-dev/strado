@@ -34,6 +34,11 @@ const CLICK_SUPPRESSION_MS = 400;
 // deshalb 0 misst). Entspricht py-5 + h-1 am Griff-Element.
 const HANDLE_FALLBACK_PX = 44;
 
+// Höhe der Kompaktzeile (siehe Prop `kompakt`), fest statt gemessen: sie ist
+// eine Zeile mit fester Höhe (h-14), und eine Messung verlangte, sie auch
+// ausserhalb des eingeklappten Zustands im Layout zu halten.
+const KOMPAKT_PX = 56;
+
 // Gemeinsame Bottom-Sheet-Mechanik (Mobile): zwischen drei Rastpunkten
 // auf-/zuziehbar — versteckt (nur der Ziehgriff steht über der Karte), Peek
 // und die volle Höhe des Containers. Aufgezogen liegt das Sheet damit
@@ -76,6 +81,7 @@ export default function DragSheet({
   handleLabels,
   onOccludedBottomChange,
   className = "",
+  kompakt,
   children,
 }: {
   containerRef: RefObject<HTMLElement | null>;
@@ -92,9 +98,21 @@ export default function DragSheet({
   // der Wert steht in den Abhängigkeiten des meldenden Effekts.
   onOccludedBottomChange?: (px: number) => void;
   className?: string;
+  /**
+   * Was eingeklappt unter dem Griff stehen bleibt — eine Zeile, 56 px.
+   * Ohne sie zeigte das eingeklappte Sheet nur den Griff: im Review stand man
+   * auf der Streckenseite vor einer Karte ohne jeden Hinweis, welche Strecke
+   * das ist. Mit ihr bleibt die volle Kartenansicht erhalten, und der Name
+   * steht trotzdem da. Tippen darauf holt das Sheet auf Peek zurück.
+   */
+  kompakt?: ReactNode;
   children: ReactNode;
 }) {
   const [snap, setSnap] = useState<SheetSnap>("peek");
+  // Als Boolean für die Abhängigkeitslisten: `kompakt` ist ein ReactNode und
+  // bei jedem Render ein neues Objekt — direkt als Abhängigkeit hinge jeder
+  // Render die Touch- und Resize-Listener neu an.
+  const hatKompakt = kompakt !== undefined && kompakt !== null;
   const [dragHeight, setDragHeight] = useState<number | null>(null);
   // Ob das Sheet überhaupt als Sheet läuft — ab md ist der Wrapper
   // display:contents und der Inhalt ist die normale Seitenleiste.
@@ -136,7 +154,7 @@ export default function DragSheet({
       ? "calc(100% - var(--bottom-nav-h))"
       : snap === "peek"
         ? `${peekPx}px`
-        : `${handleHeight}px`;
+        : `${handleHeight + (hatKompakt ? KOMPAKT_PX : 0)}px`;
 
   // MISST, und das kostet: getComputedStyle und clientHeight erzwingen beide
   // ein sofortiges Neuberechnen von Stil und Layout. Beim Ziehen setzt jede
@@ -150,7 +168,8 @@ export default function DragSheet({
   // änderte sie, und die bricht den Zeiger ohnehin ab.
   const messeHoehen = useCallback((): SheetHeights => {
     const el = containerRef.current;
-    if (!el) return { minPx: handleHeight, peekPx, maxPx: window.innerHeight };
+    const minPx = handleHeight + (hatKompakt ? KOMPAKT_PX : 0);
+    if (!el) return { minPx, peekPx, maxPx: window.innerHeight };
     // Das Sheet endet am unteren Rand der *Inhaltsbox* des Containers, nicht
     // an dessen Polsterkante (bottom: var(--bottom-nav-h) unten) — die
     // Vollhöhe ist deshalb die Inhaltshöhe. Mit clientHeight (Inhalt plus
@@ -160,8 +179,8 @@ export default function DragSheet({
     const stil = getComputedStyle(el);
     const polsterung =
       (parseFloat(stil.paddingTop) || 0) + (parseFloat(stil.paddingBottom) || 0);
-    return { minPx: handleHeight, peekPx, maxPx: el.clientHeight - polsterung };
-  }, [containerRef, handleHeight, peekPx]);
+    return { minPx, peekPx, maxPx: el.clientHeight - polsterung };
+  }, [containerRef, handleHeight, peekPx, hatKompakt]);
 
   // Die echte Griffhöhe. Ab md ist der Griff md:hidden und misst 0 — dann
   // bleibt der Notnagel stehen, damit die Geste nach einer Rückkehr unter md
@@ -448,6 +467,16 @@ export default function DragSheet({
           Hochrutschen des Inhalts als direktes Flex-Kind von <main>. Er
           existiert allein für `inert`: weggeschnittener Inhalt bliebe sonst
           per Tab erreichbar. */}
+      {hatKompakt && snap === "versteckt" && dragHeight === null && (
+        <button
+          type="button"
+          onClick={() => setSnap("peek")}
+          aria-label={handleLabels.expand}
+          className="flex h-14 w-full shrink-0 items-center gap-3 px-5 text-left md:hidden"
+        >
+          {kompakt}
+        </button>
+      )}
       <div className="contents" inert={istSheet && snap === "versteckt"}>
         {children}
       </div>

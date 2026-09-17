@@ -51,7 +51,7 @@ export const metadata: Metadata = {
   // Hier besonders wichtig: die Seite nimmt ?typ= und ?klasse= entgegen. Ohne
   // Canonical wäre jede Kombination eine eigene Adresse mit weitgehend
   // demselben Inhalt.
-  alternates: { canonical: "/leaderboards" },
+  alternates: { canonical: "/ranglisten" },
 };
 
 function LeaderboardSection({
@@ -143,7 +143,7 @@ const ALLE_KLASSEN: Motorklasse[] = MOTORKLASSEN.map((k) => k.id);
 const ALLE_FILTER: Klassenfilter[] = [...FAHRZEUGTYPEN.map((t) => t.id), ...ALLE_KLASSEN];
 
 function klassenHref(filter: Klassenfilter | null): string {
-  return filter ? `/leaderboards?klasse=${filter}` : "/leaderboards";
+  return filter ? `/ranglisten?klasse=${filter}` : "/ranglisten";
 }
 
 // Die Ziele aller Chips einmal vorberechnen. MotorklassenChips ist
@@ -165,7 +165,7 @@ const KLASSEN_HREFS: Partial<Record<Klassenfilter, string>> = Object.fromEntries
 // ist die Bedienung, nicht die Ordnung: Solange die Seite selbst auf
 // Sitzung, Fahrzeuge, Ranglisten und Streckenliste wartete, konnte sie erst
 // rendern, wenn alle vier da waren — und bei jedem Klick auf einen
-// Klassen-Chip ersetzte app/leaderboards/loading.tsx die *ganze* Seite
+// Klassen-Chip ersetzte app/ranglisten/loading.tsx die *ganze* Seite
 // samt Chip-Leiste durch ein Skelett. Ein Filterklick fühlte sich damit an
 // wie ein Seitenneuaufbau.
 //

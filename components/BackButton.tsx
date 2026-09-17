@@ -18,6 +18,7 @@ export default function BackButton({ fallbackHref }: { fallbackHref: string }) {
   return (
     <>
       <button
+        type="button"
         onClick={() => {
           // Ein Formular mit ungespeicherten Eingaben (useEntwurfSchutz) fragt
           // nach, statt sie wortlos zu verwerfen.

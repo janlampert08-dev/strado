@@ -149,7 +149,7 @@ export default async function FeedPage({
                     Siehe docs/design-vereinfachung.md, Anhang B5. */}
                 <div className="flex items-center gap-3 p-4">
                   <Link href={`/fahrer/${item.user_id}`} className="relative z-10 shrink-0">
-                    <Avatar url={item.avatar_url} name={item.display_name} size={40} />
+                    <Avatar url={item.avatar_url} name={item.display_name} size={44} />
                   </Link>
 
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -181,7 +181,7 @@ export default async function FeedPage({
                         // after: macht den Namen (24 × 20) zu einer 44 px hohen
                         // Tippfläche. Er überlappt dabei den Avatar daneben —
                         // beide führen auf dasselbe Profil.
-                        className="relative z-10 shrink-0 transition-colors duration-fast hover:text-foreground after:absolute after:-inset-x-2 after:-inset-y-3 after:content-['']"
+                        className="relative z-10 shrink-0 transition-colors duration-fast hover:text-foreground after:absolute after:-inset-x-3 after:-inset-y-3 after:content-['']"
                       >
                         {item.display_name ?? "Fahrer"}
                       </Link>

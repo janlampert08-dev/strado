@@ -27,7 +27,9 @@ import { cn } from "@/lib/utils/cn";
 // Formular soll aussehen wie bisher.
 export function fieldClassName(className?: string, invalid?: boolean): string {
   return cn(
-    "w-full rounded-lg border bg-transparent px-3 py-2 text-base outline-none transition-shadow duration-fast md:text-sm",
+    // min-h-11: mit py-2 und text-base waren Felder 42 px hoch, knapp unter
+    // der 44-px-Tippfläche, die der Rest der App einhält.
+    "min-h-11 w-full rounded-lg border bg-transparent px-3 py-2 text-base outline-none transition-shadow duration-fast md:text-sm",
     invalid
       ? "border-danger focus:border-danger focus:ring-2 focus:ring-danger/15"
       : "border-border-control focus:border-accent focus:ring-2 focus:ring-accent/15",

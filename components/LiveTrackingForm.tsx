@@ -298,10 +298,18 @@ export default function LiveTrackingForm({
           <p className="flex items-center gap-2 text-sm font-medium">
             <span
               aria-hidden="true"
-              className={`h-2.5 w-2.5 shrink-0 rounded-full ${recorder.hasStarted ? "bg-danger" : "bg-muted"}`}
+              className={`h-2.5 w-2.5 shrink-0 rounded-full ${recorder.hasStarted && !recorder.pausiert ? "bg-danger" : "bg-muted"}`}
             />
-            {recorder.hasStarted ? "Aufzeichnung läuft" : "Unterwegs zum Start"}
+            {recorder.pausiert ? "Pausiert" : recorder.hasStarted ? "Aufzeichnung läuft" : "Unterwegs zum Start"}
           </p>
+          {/* Ehrlich zur Wertung: die Bestzeit misst der Server von Start bis
+              Ziel als Wanduhr (0098). Eine Pause verschwindet aus der
+              angezeigten Zeit, nicht aus der gewerteten. */}
+          {recorder.pausiert && (
+            <p className="text-sm text-muted">
+              Pausen zählen für die Bestzeit auf dieser Strecke mit.
+            </p>
+          )}
           <dl className="flex flex-wrap items-end gap-x-6 gap-y-2">
             <div>
               <dt className="text-xs text-muted">Zeit</dt>
@@ -394,9 +402,22 @@ export default function LiveTrackingForm({
               // die Fahrt ohnehin selbst, ein Knopfdruck von Hand ist also
               // fast immer der Sonderfall — und ein versehentlicher kostet
               // die Bestzeit.
-              <HalteKnopf onBestaetigt={recorder.stop} className="flex-1">
-                Zum Beenden halten
-              </HalteKnopf>
+              <>
+                <button
+                  type="button"
+                  onClick={recorder.pausiert ? recorder.weiterNachPause : recorder.pausieren}
+                  className={buttonVariants({
+                    variant: recorder.pausiert ? "accent" : "secondary",
+                    size: "lg",
+                    className: "shrink-0 px-6",
+                  })}
+                >
+                  {recorder.pausiert ? "Weiter" : "Pause"}
+                </button>
+                <HalteKnopf onBestaetigt={recorder.stop} className="flex-1">
+                  Zum Beenden halten
+                </HalteKnopf>
+              </>
             ) : (
               <>
                 <button

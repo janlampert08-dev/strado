@@ -102,8 +102,35 @@ export default async function EinstellungenPage() {
       <div className="flex-1 overflow-y-auto">
         <Seitenrahmen>
           <h1 className="text-display font-semibold">Einstellungen</h1>
+          {/* Neun Abschnitte auf einer Seite, und wer "Konto" oder
+              "Rechtliches" suchte, scrollte an allen vorbei. Eine Zeile
+              Sprungmarken oben, horizontal scrollbar auf dem Telefon. Reine
+              Anker, kein Client-Code. */}
+          <nav aria-label="Abschnitte" className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
+            <ul className="flex w-max gap-2">
+              {[
+              { id: "privatsphaere", label: "Privatsphäre" },
+              { id: "darstellung", label: "Darstellung" },
+              { id: "meine-strecken", label: "Meine Strecken" },
+              { id: "sitzung", label: "Sitzung" },
+              { id: "premium", label: "Premium" },
+              { id: "konto", label: "Konto" },
+              { id: "feedback", label: "Feedback" },
+              { id: "rechtliches", label: "Rechtliches" },
+              ].map((a) => (
+                <li key={a.id}>
+                  <a
+                    href={`#${a.id}`}
+                    className="inline-flex min-h-9 items-center rounded-full border border-border-control px-3 text-sm whitespace-nowrap text-muted transition-colors duration-fast hover:border-border-strong hover:text-foreground"
+                  >
+                    {a.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
-          <section className="flex flex-col gap-3">
+          <section id="privatsphaere" className="flex scroll-mt-20 flex-col gap-3">
             <SectionHeading icon={Lock}>Privatsphäre</SectionHeading>
             <p className="text-sm text-muted">
               Legt fest, was andere auf deinem Profil sehen. Ob eine einzelne
@@ -123,7 +150,7 @@ export default async function EinstellungenPage() {
             />
           </section>
 
-          <section className="flex flex-col gap-3">
+          <section id="darstellung" className="flex scroll-mt-20 flex-col gap-3">
             <SectionHeading icon={Palette}>Darstellung</SectionHeading>
             {/* Die Erklärung steht UNTER der Marke und AUSSERHALB der Card —
                 so wie bei "Privatsphäre" darüber. Vorher hatte diese Seite
@@ -138,7 +165,7 @@ export default async function EinstellungenPage() {
             </Card>
           </section>
 
-          <section className="flex flex-col gap-3">
+          <section id="meine-strecken" className="flex scroll-mt-20 flex-col gap-3">
             <SectionHeading icon={MapPin}>Meine Strecken</SectionHeading>
             {ownRoutes && ownRoutes.length > 0 ? (
               <Card as="ul" className="divide-y divide-border">
@@ -211,7 +238,7 @@ export default async function EinstellungenPage() {
               löschen": vorher stand die alltägliche Aktion eine Zeile über
               der unumkehrbaren, in derselben Card. Wer schnell abmelden
               will, soll dabei nichts Endgültiges streifen. */}
-          <section className="flex flex-col gap-3">
+          <section id="sitzung" className="flex scroll-mt-20 flex-col gap-3">
             <SectionHeading icon={LogOut}>Sitzung</SectionHeading>
             <p className="text-sm text-muted">Du bist auf diesem Gerät angemeldet.</p>
             {/* Ohne Card: ein Rahmen um einen einzelnen Knopf grenzt nichts
@@ -249,7 +276,7 @@ export default async function EinstellungenPage() {
               kein gefüllter Knopf, dieselbe Form wie "Darstellung" und
               "Konto" daneben. Siehe docs/design-vereinfachung.md, Anhang C3,
               Moment 3. */}
-          <section className="flex flex-col gap-3">
+          <section id="premium" className="flex scroll-mt-20 flex-col gap-3">
             <SectionHeading icon={Sparkles}>Premium</SectionHeading>
             <p className="text-sm text-muted">
               {premiumStatus.aktiv ? "Abo-Status, Rechnungen, Kündigung." : premiumKurzform()}
@@ -270,7 +297,7 @@ export default async function EinstellungenPage() {
             </div>
           </section>
 
-          <section className="flex flex-col gap-3">
+          <section id="konto" className="flex scroll-mt-20 flex-col gap-3">
             <SectionHeading icon={KeyRound}>Konto</SectionHeading>
             {/* break-all an der Adresse: eine lange E-Mail ohne Leerzeichen
                 sprengt auf 390 px sonst die Card nach rechts, statt
@@ -331,7 +358,7 @@ export default async function EinstellungenPage() {
               hierhin führte der einzige davon über die im Impressum
               genannte Adresse — für jemanden, der gerade in der App auf
               einen Fehler gestossen ist, kein auffindbarer Weg. */}
-          <section className="flex flex-col gap-3">
+          <section id="feedback" className="flex scroll-mt-20 flex-col gap-3">
             <SectionHeading icon={MessageSquare}>Feedback</SectionHeading>
             <p className="text-sm text-muted">
               Fehler gefunden, etwas vermisst oder eine Idee? Schreib uns direkt aus der App.
@@ -341,7 +368,7 @@ export default async function EinstellungenPage() {
             </Card>
           </section>
 
-          <section className="flex flex-col gap-3">
+          <section id="rechtliches" className="flex scroll-mt-20 flex-col gap-3">
             <SectionHeading icon={Scale}>Rechtliches</SectionHeading>
             {/* Drei gleiche Zeilen aus einer Schleife statt dreimal
                 derselben Klassenkette: min-h-11 (die Zeilen waren 41 px und

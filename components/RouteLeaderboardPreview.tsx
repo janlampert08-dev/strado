@@ -23,12 +23,12 @@ const SICHTBAR = 5;
 // Der ungefilterte Stand kommt weiterhin serverseitig herein: Die erste
 // Ansicht ist damit sofort vollständig, ohne Ladezustand. Erst ein Klick auf
 // einen Klassen-Chip holt nach — über denselben öffentlichen Endpunkt, den
-// der Chooser auf /leaderboards schon benutzt.
+// der Chooser auf /ranglisten schon benutzt.
 //
 // Bewusst über Client-State statt über ?klasse= in der URL: Die Streckenseite
 // lädt Karte, Fotos, Bewertungen und Wetter mit, und die alle bei jedem
 // Chip-Tipp neu zu berechnen wäre teuer für einen Filter, der nur eine
-// Kartenliste betrifft. Auf /leaderboards, wo die globalen Listen die Seite
+// Kartenliste betrifft. Auf /ranglisten, wo die globalen Listen die Seite
 // ausmachen, gilt das umgekehrt.
 export default function RouteLeaderboardPreview({
   routeId,

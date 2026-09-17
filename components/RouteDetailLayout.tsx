@@ -4,6 +4,7 @@ import { useRef, useState, type ReactNode } from "react";
 import DragSheet from "@/components/ui/DragSheet";
 import RouteDetailMap from "@/components/RouteDetailMap";
 import type { RouteGeoJSON } from "@/types/database";
+import { formatKm } from "@/lib/format";
 
 // Gleiche Bottom-Sheet-Mechanik wie auf der Startseite (ExploreView.tsx):
 // Mobile zeigt die Karte vollflächig, das Detail-Panel liegt als per
@@ -51,6 +52,14 @@ export default function RouteDetailLayout({
         peekPx={SHEET_PEEK_PX}
         handleLabels={{ expand: "Details ausklappen", collapse: "Details einklappen" }}
         onOccludedBottomChange={setVerdecktUnten}
+        kompakt={
+          <>
+            <span className="min-w-0 flex-1 truncate text-base font-semibold">{route.name}</span>
+            <span className="shrink-0 text-sm text-muted tabular-nums">
+              {formatKm(route.laenge_km)} km
+            </span>
+          </>
+        }
       >
         {/* Kein Sonderpolster mehr für die BottomNav — das Sheet endet
             inzwischen über der Leiste (bottom: var(--bottom-nav-h), siehe

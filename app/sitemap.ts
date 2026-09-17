@@ -12,7 +12,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     { url: origin, changeFrequency: "weekly", priority: 1 },
-    { url: `${origin}/leaderboards`, changeFrequency: "daily", priority: 0.6 },
+    { url: `${origin}/ranglisten`, changeFrequency: "daily", priority: 0.6 },
     ...routes.map((route) => ({
       url: `${origin}/strecken/${route.id}`,
       lastModified: route.created_at,
