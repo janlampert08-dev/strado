@@ -16,6 +16,7 @@ import {
   planTitel,
   planZeitraum,
   saisonpassMonatsAequivalentRappen,
+  saisonpassVerlaengerbar,
 } from "@/lib/premiumAngebot";
 import { datumCH } from "@/lib/format";
 import { PREMIUM_VORTEILE } from "@/lib/premiumVorteile";
@@ -49,9 +50,17 @@ import {
 const REIHENFOLGE: AboPlan[] = ["jahr", "saisonpass", "monat"];
 
 export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngebot }) {
-  const plaene = REIHENFOLGE.map((plan) => angebot.plaene.find((p) => p.plan === plan)).filter(
-    (p): p is PlanAngebot => Boolean(p),
-  );
+  const passBisWert = angebot.saisonpassBis ? new Date(angebot.saisonpassBis) : null;
+
+  // Ein zweiter Saisonpass mitten in der Saison wird von
+  // createCheckoutSession abgewiesen (er wäre fast immer ein Versehen). Dann
+  // gehört er auch nicht in die Auswahl: ein Plan, den man wählen kann und
+  // der auf der nächsten Seite mit einer Fehlermeldung endet, ist schlechter
+  // als einer, der dort nicht steht. Das Abo bleibt wählbar — es zahlt erst
+  // ab dem Passende.
+  const plaene = REIHENFOLGE.map((plan) => angebot.plaene.find((p) => p.plan === plan))
+    .filter((p): p is PlanAngebot => Boolean(p))
+    .filter((p) => p.plan !== "saisonpass" || saisonpassVerlaengerbar(passBisWert));
 
   const [gewaehlt, setGewaehlt] = useState<AboPlan>(plaene[0]?.plan ?? "jahr");
 
@@ -79,7 +88,7 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
   const monatsplan = plaene.find((p) => p.plan === "monat");
   const jahresplan = plaene.find((p) => p.plan === "jahr");
   const vorteilProzent = jahresVorteilProzent(monatsplan, jahresplan);
-  const passBis = angebot.saisonpassBis ? new Date(angebot.saisonpassBis) : null;
+  const passBis = passBisWert;
 
   return (
     <div className="flex flex-col gap-8">
