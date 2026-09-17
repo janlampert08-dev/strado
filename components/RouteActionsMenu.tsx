@@ -12,13 +12,12 @@ import Card from "@/components/ui/Card";
 import IconButton from "@/components/ui/IconButton";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import ReportDialog from "@/components/ReportDialog";
+import { TCS_PASS_PORTAL_URL } from "@/lib/constants";
 
-// Siehe components/PassStatusButton.tsx (Vorgänger dieser Komponente) für
-// die Begründung: TCS pflegt eigene Seiten pro Pass, aber die genauen
-// URL-Muster sind nicht für jeden Pass zuverlässig bekannt — ein falsch
-// geratener Link wäre schlechter als der eine Klick über die (garantiert
-// korrekte) Übersichtsseite.
-const TCS_PORTAL_URL = "https://www.tcs.ch/de/tools/verkehrsinfo-verkehrslage/paesse-in-der-schweiz.php";
+// Die Adresse steht in lib/constants.ts, weil die Moderation dieselbe Seite
+// verlinkt (components/PassStatusForm.tsx) — die Begründung für die
+// Übersichtsseite statt eines Links pro Pass steht dort im Kommentar.
+const TCS_PORTAL_URL = TCS_PASS_PORTAL_URL;
 
 const ITEM_CLASS =
   "border-t border-border px-3 py-2 text-left text-sm text-foreground transition-colors duration-fast hover:bg-surface first:border-t-0";

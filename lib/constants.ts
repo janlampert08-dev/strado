@@ -142,6 +142,28 @@ function legaleBasisUrl(): string {
   return konfiguriert.replace(/\/+$/, "");
 }
 
+// Die amtliche Auskunft darüber, welche Schweizer Pässe gerade offen sind:
+// TCS führt dort 77 Pässe mit Status, Temperatur, dem Zeitraum der
+// Wintersperre und einem Prüfzeitpunkt (vom Auftraggeber am 2026-09-17 als
+// die offizielle Quelle benannt).
+//
+// Von zwei Stellen gebraucht und deshalb hier: das Aktionsmenü einer
+// saisonalen Strecke verlinkt sie für alle (components/RouteActionsMenu.tsx),
+// und die Moderation schlägt vor der Statuspflege dort nach
+// (components/PassStatusForm.tsx). Der Passstatus in Strado bleibt bis
+// auf Weiteres von Hand gepflegt — ein automatischer Abgleich ist als
+// Folgearbeit beschrieben (docs/premium-neu/features.md), weil die Seite
+// ihre Daten über ein eingebettetes Widget nachlädt und keine
+// Nutzungsbedingungen für die Weiterverwendung nennt. Was ungeprüft nicht
+// weiterverwendet werden darf, wird auch nicht abgeschrieben.
+//
+// Kein Link pro Pass: TCS pflegt eigene Seiten je Pass, aber die URL-Muster
+// sind nicht für jeden zuverlässig bekannt — ein falsch geratener Link wäre
+// schlechter als der eine Klick über die (garantiert korrekte)
+// Übersichtsseite.
+export const TCS_PASS_PORTAL_URL =
+  "https://www.tcs.ch/de/tools/verkehrsinfo-verkehrslage/paesse-in-der-schweiz.php";
+
 const LEGAL_BASE_URL = legaleBasisUrl();
 
 export const LEGAL_URLS = {

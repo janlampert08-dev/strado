@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { passStatusSetzen, type ModerationResult } from "@/lib/actions/moderation";
 import { Input, fieldClassName } from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
+import { TCS_PASS_PORTAL_URL } from "@/lib/constants";
 import {
   PASS_HINWEIS_MAX,
   PASS_QUELLE_MAX,
@@ -24,6 +25,13 @@ const initialState: ModerationResult = { error: null };
 //
 // <select> mit fieldClassName statt einer eigenen Komponente — dasselbe
 // Muster wie FeedbackDialog und NeuesFahrzeugForm.
+//
+// Der Link auf das TCS-Passportal steht im Formular und nicht bloss in der
+// Anleitung: ein falsch als "offen" gemeldeter Pass ist schlimmer als gar
+// keine Angabe (docs/markt/schweizer-identitaet.md §2.1), und die Angabe
+// entsteht hier. Deshalb liegt die Quelle einen Klick entfernt neben dem
+// Feld, das nach ihr fragt, und "TCS" steht als Vorgabe drin — was jemand
+// gerade nachgesehen hat, soll er nicht abtippen müssen.
 export default function PassStatusForm({
   routeId,
   status,
@@ -87,11 +95,21 @@ export default function PassStatusForm({
             type="text"
             name="quelle"
             maxLength={PASS_QUELLE_MAX}
-            defaultValue={status?.quelle ?? ""}
+            defaultValue={status?.quelle ?? "TCS"}
             placeholder="TCS"
             autoComplete="off"
           />
-          <span className="text-xs font-normal text-muted">Steht auf der Streckenseite.</span>
+          <span className="text-xs font-normal text-muted">
+            Steht auf der Streckenseite.{" "}
+            <a
+              href={TCS_PASS_PORTAL_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              Bei TCS nachsehen ↗
+            </a>
+          </span>
         </label>
       </div>
 

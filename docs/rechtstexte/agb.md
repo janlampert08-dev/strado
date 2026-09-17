@@ -41,6 +41,28 @@
 > **14. September 2026**. Der Text unten enthält eine Änderung, die diesen
 > Stand noch nicht hat:
 >
+> **Was geändert wurde (Entwurf vom 17. September 2026) — Premium-Ausbau
+> und neue Preise:**
+> - **Ziff. 3.2** nennt vier neue Premium-Leistungen, die im selben Release
+>   ausgeliefert werden: Wetterfenster, Pass-Alarm, Pass-Sammlung mit
+>   Saisonrückblick und Wartungsheft. Rein additiv — keine bisher kostenlose
+>   Funktion wird entzogen (Kernregel 16, `docs/premium-plan.md` Abschnitt 4).
+> - **Ziff. 4.1** führt neue Preise (Monatsabo CHF 6.90, Jahresabo CHF 39.00)
+>   und mit dem **Saisonpass CHF 29.00 für sechs Monate** ein Produkt, das
+>   sich nicht verlängert. Begründung und Marktvergleich:
+>   `docs/premium-neu/preise.md`.
+> - **Ziff. 4.3** stellt die Preisbindung der Abos zu CHF 4.90/49.00 klar
+>   (dieselbe Regel wie beim Gründerpreis), **Ziff. 4.5** ersetzt "kein
+>   Testzeitraum" durch **14 Tage gratis auf dem Jahresabo, einmal pro
+>   Konto**, und **Ziff. 4.6** beschreibt den Saisonpass.
+> - **Ziff. 6.2/6.3/6.7** und **Ziff. 7.1** ziehen nach: der Saisonpass hat
+>   keine Verlängerung und braucht keine Kündigung, und die
+>   Geld-zurück-Regel gilt auch für ihn.
+>
+> Bis zum Inkrafttreten gelten die alten Preise, und **die Anwendung darf
+> keine neuen verkaufen**: die Preis-IDs in Stripe werden erst mit dieser
+> Fassung umgestellt (`docs/premium-neu/rollout.md`).
+>
 > **Was geändert wurde (Entwurf vom 15. September 2026):**
 > - **Ziff. 11.3** hält „kein Wettbewerb um Geschwindigkeit" als Grundsatz
 >   fest und trennt neu zwei Dinge, die vorher vermengt waren: die
@@ -202,7 +224,22 @@ Nutzung. Es umfasst:
   sichtbar sind (kostenlos: eine),
 - bis zu zwölf Fotos pro Fahrt (kostenlos: sechs),
 - unbegrenzt viele offline gespeicherte Strecken (kostenlos: drei),
-- GPX-Export auch für kuratierte Strecken (kostenlos: nur eigene Fahrten).
+- GPX-Export auch für kuratierte Strecken (kostenlos: nur eigene Fahrten),
+- das **Wetterfenster**: eine Einschätzung der nächsten sieben Tage je
+  Strecke, wie sie für eine Fahrt taugen (aus einer fremden Wetterquelle
+  abgeleitet — Ziff. 12 gilt, es ist eine Prognose und keine Zusage),
+- den **Pass-Alarm**: eine Meldung in der App, sobald eine abonnierte
+  Passstrasse im Passstatus auf "offen" gesetzt wird. Der Passstatus selbst
+  ist für alle kostenlos sichtbar, wird von Hand gepflegt und ist eine
+  Momentaufnahme; verbindlich sind die Signalisation vor Ort und die
+  Auskünfte der zuständigen Stellen (Ziff. 11, Ziff. 12),
+- die **Pass-Sammlung**: die Übersicht der selbst gefahrenen Passstrassen mit
+  dem Datum der ersten Fahrt, und den **Saisonrückblick** als Bild zum
+  Teilen,
+- das **Wartungsheft** je Fahrzeug mit Erinnerungen an Service und
+  Motorfahrzeugkontrolle (MFK). Die Erinnerung ist eine Rechenhilfe auf den
+  selbst eingetragenen Angaben und den aufgezeichneten Fahrten; für Fristen
+  und Termine bleiben die Nutzenden verantwortlich.
 
 **Kein Bestandteil des Abos** sind die Kernfunktionen aus Ziff. 3.1 — sie
 bleiben dauerhaft kostenlos. Das gilt ausdrücklich auch für das **Erstellen
@@ -255,10 +292,11 @@ von Strado.**
 
 **4.1** Für das Premium-Abo gelten die folgenden Preise:
 
-| Plan | Preis | Laufzeit |
-| --- | --- | --- |
-| Monatsabo | **CHF 4.90** | 1 Monat |
-| Jahresabo | **CHF 49.00** | 12 Monate |
+| Plan | Preis | Laufzeit | Verlängerung |
+| --- | --- | --- | --- |
+| Monatsabo | **CHF 6.90** | 1 Monat | automatisch (Ziff. 6.3) |
+| Jahresabo | **CHF 39.00** | 12 Monate | automatisch (Ziff. 6.3) |
+| Saisonpass | **CHF 29.00** | 6 Monate | **keine** (Ziff. 4.6) |
 
 **4.2** Alle Preise sind Endpreise in Schweizer Franken **inklusive allfälliger
 Mehrwertsteuer** und allfälliger weiterer Abgaben. Es kommen keine weiteren
@@ -267,18 +305,37 @@ Zahlungsdienstleisters der Nutzenden (z. B. Fremdwährungs- oder
 Auslandszuschläge bei einer nicht auf CHF lautenden Karte) gehen zulasten der
 Nutzenden.
 
-**4.3 Frühere Gründerpreis-Abos.** Der Gründerpreis von CHF 39.00 pro Jahr
-wird nicht mehr angeboten. Abos, die vor dem 7. September 2026 zum
-Gründerpreis abgeschlossen wurden, behalten diesen Preis, solange das Abo
+**4.3 Frühere Preise.** Nicht mehr angeboten werden der Gründerpreis von
+CHF 39.00 pro Jahr (bis 7. September 2026) sowie das Monatsabo zu CHF 4.90 und
+das Jahresabo zu CHF 49.00 (bis zum Inkrafttreten dieser Fassung). Abos, die
+zu einem dieser Preise abgeschlossen wurden, behalten ihn, solange das Abo
 ununterbrochen läuft; wird es gekündigt oder wegen Zahlungsverzugs beendet,
 erlischt die Preisbindung, und ein späterer Neuabschluss erfolgt zum dann
-gültigen Normalpreis.
+gültigen Normalpreis. Der Gründerpreis liegt betragsmässig gleich hoch wie das
+heutige Jahresabo, bleibt aber ein eigener Plan, weil er anders benannt wird
+und eine eigene Preisbindung trägt.
 
 **4.4** Preisänderungen gelten grundsätzlich nur für **neu abgeschlossene
 Abos**. Bestehende Abos behalten ihren Preis; Ziff. 14.2 bleibt vorbehalten.
 
-**4.5** Ein kostenloser Testzeitraum wird nicht angeboten. Stattdessen gilt die
-Geld-zurück-Regel nach Ziff. 7.
+**4.5 Gratis-Testphase auf dem Jahresabo.** Beim **erstmaligen** Abschluss
+eines Jahresabos sind die **ersten 14 Tage kostenlos**. Wird das Abo
+innerhalb dieser Frist gekündigt (Ziff. 6.4), wird nichts belastet; andernfalls
+wird am Ende der Testphase das Jahresentgelt fällig und automatisch eingezogen.
+Ein Zahlungsmittel ist bereits beim Abschluss zu hinterlegen. Die Testphase
+wird **einmal pro Konto** gewährt und entfällt, wenn für das Konto zuvor
+bereits ein Abo oder ein Saisonpass bestand. Für Monatsabo und Saisonpass gibt
+es keine Testphase. Unabhängig davon gilt die Geld-zurück-Regel nach Ziff. 7.
+
+**4.6 Saisonpass.** Der Saisonpass ist eine **einmalige Zahlung** und schaltet
+die Premium-Leistungen nach Ziff. 3.2 für **sechs Monate ab dem Kauf** frei.
+Er **verlängert sich nicht**, wird nicht automatisch belastet und muss nicht
+gekündigt werden; nach Ablauf endet der Zugang, und das Konto nutzt Strado
+kostenlos weiter (Ziff. 9 gilt für bereits gespeicherte Inhalte). Wird
+während eines laufenden Saisonpasses ein weiterer gekauft, **schliesst dessen
+Laufzeit an das Ende des laufenden an**; es geht keine bezahlte Zeit verloren.
+Wird während eines laufenden Saisonpasses ein Abo abgeschlossen, beginnt die
+Zahlungspflicht dafür erst mit dem Ende des Passes.
 
 ## 5. Zahlungsmittel und Zahlungsabwicklung
 
@@ -306,8 +363,9 @@ erfolgt selbständig über das Kundenportal.
 ## 6. Vertragslaufzeit, automatische Verlängerung und Kündigung
 
 **6.1 Beginn.** Das Premium-Abo beginnt mit der erfolgreichen Bestätigung der
-ersten Zahlung. Die Premium-Funktionen stehen ab diesem Zeitpunkt zur
-Verfügung.
+ersten Zahlung; bei einem Abo mit Testphase (Ziff. 4.5) mit deren Beginn. Die
+Premium-Funktionen stehen ab diesem Zeitpunkt zur Verfügung. Der Saisonpass
+beginnt mit der Bestätigung der Zahlung (Ziff. 4.6).
 
 **6.2 Laufzeit.** Die Mindestlaufzeit beträgt beim Monatsabo einen Monat, beim
 Jahresabo (auch bei einem früheren Gründerpreis-Abo nach Ziff. 4.3) zwölf
@@ -317,7 +375,8 @@ Monate, gerechnet ab dem Tag des Abschlusses.
 jeweils dieselbe Laufzeit** (ein Monat bzw. zwölf Monate) zum jeweils für
 dieses Abo geltenden Preis, **sofern es nicht vorher gekündigt wird**. Mit
 jeder Verlängerung wird das Entgelt für die neue Periode fällig und
-automatisch eingezogen.
+automatisch eingezogen. **Der Saisonpass verlängert sich nicht** (Ziff. 4.6);
+dieser Absatz und Ziff. 6.4 gelten für ihn nicht.
 
 **6.4 Kündigung durch die Nutzenden — Frist und Weg.** Das Abo kann
 **jederzeit und ohne Einhaltung einer Kündigungsfrist** gekündigt werden. Die
@@ -342,21 +401,27 @@ insbesondere bei schwerwiegenden oder wiederholten Verstössen gegen diese AGB
 Bei einer fristlosen Kündigung ohne von den Nutzenden zu vertretenden Grund
 wird das Entgelt für die nicht genutzte Restlaufzeit anteilig zurückerstattet.
 
-**6.6 Kontolöschung.** Wird das Konto gelöscht, während ein Abo läuft, wird
-das Abo mit der Löschung beendet. Bereits bezahlte Entgelte für die laufende
+**6.6 Kontolöschung.** Wird das Konto gelöscht, während ein Abo oder ein
+Saisonpass läuft, wird es mit der Löschung beendet. Bereits bezahlte Entgelte für die laufende
 Periode werden nicht zurückerstattet; Ziff. 7 bleibt vorbehalten. **Die
 Kündigung des Abos erfolgt nicht automatisch dadurch, dass ein Zahlungsmittel
 ungültig wird** — sie muss über Ziff. 6.4 erklärt werden.
+
+**6.7 Saisonpass.** Ein Saisonpass endet mit Ablauf seiner sechs Monate, ohne
+Kündigung und ohne weitere Zahlung. Eine vorzeitige Beendigung ist nicht
+vorgesehen; Ziff. 7 bleibt vorbehalten.
 
 ## 7. 14 Tage Geld zurück
 
 **7.1** Die Anbieterin gewährt **freiwillig** eine Geld-zurück-Regel: Wer
 innerhalb von **14 Tagen** nach dem erstmaligen Abschluss eines Premium-Abos
-nicht zufrieden ist, erhält auf formlose Anfrage an contact@strado.ch das bezahlte
-Entgelt vollständig zurück. Eine Begründung ist nicht nötig.
+oder eines Saisonpasses nicht zufrieden ist, erhält auf formlose Anfrage an
+contact@strado.ch das bezahlte Entgelt vollständig zurück. Eine Begründung ist
+nicht nötig. Bei einem Abo mit Testphase (Ziff. 4.5) läuft die Frist ab der
+ersten Belastung — vorher ist nichts bezahlt, was zurückzuerstatten wäre.
 
-**7.2** Mit der Rückerstattung wird das Abo beendet und der Zugang zu den
-Premium-Funktionen endet. Rückerstattung und Kündigung werden dabei als zwei
+**7.2** Mit der Rückerstattung wird das Abo bzw. der Saisonpass beendet und
+der Zugang zu den Premium-Funktionen endet. Rückerstattung und Kündigung werden dabei als zwei
 getrennte Vorgänge ausgeführt; die Beendigung des Abos ist Teil der Zusage.
 
 **7.3** Die Regel gilt einmal pro Person und Konto und nur beim erstmaligen
