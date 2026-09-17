@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { ComponentType } from "react";
@@ -25,6 +26,7 @@ import CountUp from "@/components/CountUp";
 import FollowCounts from "@/components/FollowCounts";
 import PremiumCard from "@/components/PremiumCard";
 import FahrtStatistik from "@/components/FahrtStatistik";
+import { WetterfensterFavoriten, WetterfensterFavoritenPlatzhalter } from "@/components/Wetterfenster";
 import { ChartIcon, ShieldIcon } from "@/components/NavIcons";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
@@ -38,6 +40,7 @@ import { formatDuration, formatKm } from "@/lib/format";
 import { freieFahrtTitel } from "@/lib/completions";
 import { publicationBlockReason } from "@/lib/track";
 import { summiereHoehenmeter } from "@/lib/hoehenmeter";
+import { wetterMassstab } from "@/lib/wetterfenster";
 import type { FahrtArt, Vehicle } from "@/types/database";
 import Card from "@/components/ui/Card";
 import Kennzahl, { Kennzahlen } from "@/components/ui/Kennzahl";
@@ -496,6 +499,20 @@ export default async function ProfilPage() {
               <details className="group py-4">
                 <SectionSummary icon={Bookmark} label="Favoriten" count={favorites?.length ?? 0} />
                 <div className="mt-4">
+                  {/* Wetterfenster (Premium): über der Liste, nicht in jeder
+                      Zeile — die Übersicht ist auf fünf Strecken gedeckelt
+                      (siehe WetterfensterFavoriten), und eine Wetterangabe in
+                      nur fünf von zwölf Zeilen läse sich wie fehlende Daten.
+                      Ohne Abo steht hier nichts; den Hinweis trägt die
+                      Streckenseite. Das Gate verhindert auch den Abruf. */}
+                  {premiumStatus.aktiv && favorites && favorites.length > 0 && (
+                    <Suspense fallback={<WetterfensterFavoritenPlatzhalter />}>
+                      <WetterfensterFavoriten
+                        routeIds={favorites.filter((f) => f.routes).map((f) => f.route_id)}
+                        fahrzeug={wetterMassstab(((vehicles as Vehicle[]) ?? []).map((v) => v.typ))}
+                      />
+                    </Suspense>
+                  )}
                   {favorites && favorites.length > 0 ? (
                     <Card as="ul" className="divide-y divide-border">
                       {favorites.map((f) =>
