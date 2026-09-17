@@ -34,10 +34,14 @@ ob die Namen zusammenpassen.
 | Datei | Ledger | Was |
 | --- | --- | --- |
 | `0102_amtliche_tempolimits` | `20260917163713` | Tabellen `amtliche_tempolimit_quellen` / `amtliche_tempolimits` (LV95, GiST), Reparatur-Trigger für Flächen, `amtliche_tempolimits_entlang(jsonb)` |
-| `0103_amtliche_tempolimits_entlang_schneller` | (Zeitstempel beim Einspielen) | dieselbe Funktion, Puffer per ST_Subdivide zerlegt |
+| `0103_amtliche_tempolimits_entlang_schneller` | `20260917165008` | dieselbe Funktion, Puffer per ST_Subdivide zerlegt |
 
 **0102, nicht 0101:** `0101_anonymisierung_fahrtstarts` lag beim Schreiben auf
 einem offenen Branch und ist inzwischen eingespielt.
+
+**Nummernkollision 0103:** `staging-profilname-aendern` (PR #281) trägt ebenfalls
+`0103_profilname_aendern.sql`, noch nicht eingespielt. Die eingespielte Nummer
+gilt; jene Datei muss vor dem Einspielen auf `0104` umbenannt werden.
 
 **Eingespielt vor dem Code**, wie vorgesehen: ohne die Funktion würde
 `proposeRoute()` bei jedem Vorschlag einen Fehler loggen (und die
