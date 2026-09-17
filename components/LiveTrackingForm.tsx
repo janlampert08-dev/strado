@@ -106,7 +106,17 @@ export default function LiveTrackingForm({
   });
   const { phase, result, finishedTrail, clearSnapshot, discard } = recorder;
 
-  const [isPublic, setIsPublic] = useState(false);
+  // VOREINGESTELLT ÖFFENTLICH, Entscheid des Inhabers vom 2026-09-17. Bis
+  // dahin stand hier false, und die Datenschutzerklärung sowie AGB
+  // Ziff. 10.1.1 sagten "Fahrten sind standardmässig privat". Beide Texte
+  // sind im selben PR als Entwurf geändert (docs/rechtstexte/) — dieser
+  // Code darf erst ausgeliefert werden, wenn die geänderten Fassungen in
+  // Kraft sind (AGB Ziff. 14.1: 30 Tage Vorankündigung).
+  //
+  // Eine Fahrt, die die Veröffentlichung nicht erfüllt, bleibt trotzdem
+  // privat: der Wert unten wird mit der Sperre verrechnet, und der Server
+  // kann ist_oeffentlich ohnehin nur verengen (0052).
+  const [isPublic, setIsPublic] = useState(true);
   // Dieselbe Rückfrage wie im angemeldeten Pfad (RideSummaryForm).
   // Vorher verwarf ein einzelner Tap hier eine bereits FERTIGE
   // Aufzeichnung sofort und endgültig — ausgerechnet im Gast-Fall,
@@ -553,7 +563,7 @@ export default function LiveTrackingForm({
             vehicles={vehicles}
             trailJson={recorder.trailJson}
               ticketJson={recorder.ticketJson}
-            isPublic={isPublic}
+            isPublic={isPublic && !belowCoverageThreshold}
             onIsPublicChange={setIsPublic}
             onSubmit={() => setSubmitted(true)}
             onDiscard={handleDiscard}
