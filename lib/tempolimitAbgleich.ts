@@ -231,8 +231,12 @@ export function tempolimitsAbgleichen(
     if (letztes && gleich(letztes, p)) letztes.km_bis = kmR;
     else roh.push(segment(letztes ? letztes.km_bis : kmR, kmR, p));
   }
+  // Auch das erste Segment fällt weg, wenn es keine Länge hat: der erste
+  // Streckenpunkt liegt auf km 0, und wenn schon der zweite anders bewertet
+  // ist, entstünde sonst ein Segment von 0 bis 0. Das nächste beginnt
+  // ohnehin bei 0, die Strecke bleibt also lückenlos.
   const segmente: TempolimitSegment[] = [];
-  for (const s of roh.filter((x, i) => i === 0 || x.km_bis > x.km_von)) {
+  for (const s of roh.filter((x) => x.km_bis > x.km_von)) {
     const letztes = segmente[segmente.length - 1];
     if (letztes && gleich(letztes, s)) letztes.km_bis = s.km_bis;
     else segmente.push({ ...s, km_von: letztes ? letztes.km_bis : s.km_von });

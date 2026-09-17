@@ -75,11 +75,20 @@ select id, anzahl, geladen_am from public.amtliche_tempolimit_quellen order by i
 Ergebnis: SELECT für beide Rollen, sonst nichts; RLS auf beiden Tabellen an;
 `anon` darf die Funktion nicht ausführen, `authenticated` schon.
 
-**Noch offen:** `supabase/seed/0013_tempolimits_amtlich_schweiz.sql` —
-amtliche Werte für 19 der 26 bestehenden Strecken. Überschreibt
-`routes.tempolimits` per `id`. Vor dem Einspielen neu erzeugen
-(`--live`), falls sich die Streckenliste geändert hat: sie hat es am selben
-Tag schon einmal getan.
+**Eingespielt am 2026-09-17:** `supabase/seed/0013_tempolimits_amtlich_schweiz.sql`,
+19 UPDATEs in einer Transaktion. Danach gemessen: 19 von 28 Strecken tragen
+amtliche Abschnitte, Anteil je Strecke identisch mit dem Abgleich vorher
+(Albis Loop, Albulapass, Greifensee, Hirzel 100 %; Ibergeregg, Oberalp, Ofen,
+San Bernardino 99 %; Flüela 96 %; Zürichsee Run 93 %; Bernina 89 %; Klausen
+78 %; Zürichberg 71 %; Furka 54 %; Lukmanier 50 %; Susten 38 %; Jaun 26 %;
+Glaubenbielen 14 %; Gotthard 1 %). Ohne amtliche Daten bleiben Julier,
+Grimsel, Nufenen, Simplon, Grosser St. Bernhard, Col des Mosses und
+Col de la Croix — dort veröffentlicht der Kanton nichts.
+
+**Der Weg zurück** ist eine Sicherung der vorherigen Werte; sie lagen vor dem
+Einspielen alle auf Kartendaten (kein einziges `amtlich: true`). Die Datei
+lässt sich jederzeit neu erzeugen (`--live`) — die Streckenliste wächst
+gerade schnell, also vor einem erneuten Einspielen neu erzeugen.
 
 ## Eingespielt: 0096–0098 (Fahrtstart serverseitig, 2026-09-15, Produktion)
 

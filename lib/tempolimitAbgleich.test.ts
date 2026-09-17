@@ -118,6 +118,14 @@ describe("tempolimitsAbgleichen", () => {
     expect(abgleichen([zone(0, 5)])[0]).toMatchObject({ kmh: 30, amtlich: true });
   });
 
+  it("beginnt bei km 0, auch wenn der erste Punkt allein steht", () => {
+    // Amtlich erst ab dem zweiten Stützpunkt: das erste Segment hätte
+    // km_von = km_bis = 0 und wäre nur Ballast.
+    const segmente = abgleichen([linie("zh", 2, 60, versetzt(0, 1))]);
+    expect(segmente[0].km_von).toBe(0);
+    expect(segmente.every((x) => x.km_bis > x.km_von)).toBe(true);
+  });
+
   it("verwirft unplausible Werte wie Fussgängerzonen", () => {
     const segmente = abgleichen([linie("biel", 1, 15, versetzt(0))]);
     expect(segmente.every((s) => !s.amtlich)).toBe(true);
