@@ -20,6 +20,7 @@ import { chipClassName } from "@/components/motorklassenChipStil";
 import {
   FAHRZEUGTYPEN,
   MOTORKLASSEN,
+  filterImSatz,
   filterLabel,
   istKlassenfilter,
   motorklasseFor,
@@ -216,8 +217,11 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
     return (
       <EmptyState
         icon={RankingIcon}
-        title={klasse ? `In ${filterLabel(klasse)} ist noch niemand gefahren.` : "Die Ranglisten sind noch leer."}
-        description="Fahrten, Kilometer, Höhenmeter und Strecken zählen ab der ersten Fahrt. Schon eine kann für Platz 1 reichen."
+        title={klasse ? `Noch keine geteilte Fahrt ${filterImSatz(klasse)}.` : "Die Ranglisten sind noch leer."}
+        // "geteilte": leaderboard_completions (0080) zählt nur Fahrten mit
+        // ist_oeffentlich. Ohne das Wort versprach der Satz einer privaten
+        // Fahrt einen Platz, den sie nie bekommt.
+        description="Fahrten, Kilometer, Höhenmeter und Strecken zählen ab der ersten geteilten Fahrt. Schon eine kann für Platz 1 reichen."
         action={
           <Link href="/" className={buttonVariants({ variant: "secondary", size: "sm" })}>
             Strecke aussuchen

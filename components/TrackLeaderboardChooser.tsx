@@ -7,7 +7,7 @@ import type { RouteTimeEntry } from "@/lib/leaderboard";
 import { fieldClassName } from "@/components/ui/Input";
 import Card from "@/components/ui/Card";
 import MotorklassenChips from "@/components/MotorklassenChips";
-import { filterLabel } from "@/lib/motorklassen";
+import { filterImSatz } from "@/lib/motorklassen";
 import type { Klassenfilter } from "@/lib/motorklassen";
 import type { Motorklasse } from "@/types/database";
 import { cn } from "@/lib/utils/cn";
@@ -112,7 +112,7 @@ export default function TrackLeaderboardChooser({
         <p className={`text-sm text-muted transition-opacity ${loading ? "opacity-40" : ""}`}>
           {klasse === null
             ? "Noch keine geteilten Zeiten für diese Strecke. Die erste ist noch zu haben."
-            : `Noch keine Zeit in ${filterLabel(klasse)} auf dieser Strecke. Du kannst die erste sein.`}
+            : `Noch keine Zeit ${filterImSatz(klasse)} auf dieser Strecke. Deine kann die erste sein.`}
         </p>
       ) : (
         <>

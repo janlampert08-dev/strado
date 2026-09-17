@@ -5,6 +5,7 @@ export default function EmptyState({
   title,
   description,
   action,
+  kompakt = false,
 }: {
   icon: ComponentType<{ className?: string }>;
   title: string;
@@ -13,7 +14,26 @@ export default function EmptyState({
    *  Titel, was fehlt, und dieser Satz den nächsten Schritt. */
   description?: string;
   action?: ReactNode;
+  /** Für enge Flächen wie das Bottom-Sheet der Startseite. Dort bleiben
+   *  eingeklappt (SHEET_PEEK_PX = 320 in ExploreView.tsx) unter Überschrift
+   *  und Suchfeld rund 130 px — die volle Form braucht etwa 250, und die
+   *  Knöpfe lagen unter der Kante, genau wenn man sie braucht. Kompakt steht
+   *  das Icon neben dem Titel, und die Handlung kommt VOR dem Erklärsatz. */
+  kompakt?: boolean;
 }) {
+  if (kompakt) {
+    return (
+      <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed border-border px-4 py-4">
+        <p className="flex min-w-0 items-center gap-2 text-sm font-medium [overflow-wrap:anywhere]">
+          <Icon className="h-5 w-auto shrink-0 text-muted" aria-hidden="true" />
+          {title}
+        </p>
+        {action}
+        {description && <p className="text-sm text-pretty text-muted">{description}</p>}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border px-6 py-8 text-center">
       {/* w-auto statt w-7: die Lucide-Icons sind quadratisch, für sie ändert

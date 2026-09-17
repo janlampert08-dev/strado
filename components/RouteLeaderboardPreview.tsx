@@ -9,7 +9,7 @@ import Avatar from "@/components/Avatar";
 import { RankingIcon } from "@/components/NavIcons";
 import Card from "@/components/ui/Card";
 import MotorklassenChips from "@/components/MotorklassenChips";
-import { filterLabel, istFahrzeugTyp, motorklassendefinition } from "@/lib/motorklassen";
+import { filterImSatz, istFahrzeugTyp, motorklassendefinition } from "@/lib/motorklassen";
 import type { Klassenfilter } from "@/lib/motorklassen";
 import type { Motorklasse } from "@/types/database";
 import { cn } from "@/lib/utils/cn";
@@ -86,8 +86,8 @@ export default function RouteLeaderboardPreview({
       {sichtbar.length === 0 ? (
         <p className={cn("text-sm text-muted transition-opacity", laedt && "opacity-40")}>
           {klasse === null
-            ? "Noch keine Bestzeit auf dieser Strecke. Zeichne sie auf und teil die Fahrt, dann steht deine hier als erste."
-            : `Noch keine Zeit in ${filterLabel(klasse)} auf dieser Strecke. Du kannst die erste sein.`}
+            ? "Noch keine Bestzeit auf dieser Strecke. Zeichne sie auf und teil die Fahrt, dann kann deine die erste sein."
+            : `Noch keine Zeit ${filterImSatz(klasse)} auf dieser Strecke. Deine kann die erste sein.`}
         </p>
       ) : (
         <Card

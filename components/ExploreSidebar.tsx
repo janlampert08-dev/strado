@@ -43,6 +43,10 @@ const SIGNATUR_KLASSEN: Record<SignatureKey, { rand: string; text: string }> = {
   laenge: { rand: "border-l-signatur-laenge", text: "text-signatur-laenge" },
 };
 
+function kuerzen(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
+}
+
 export default function ExploreSidebar({
   routes,
   bewertungen,
@@ -200,10 +204,13 @@ export default function ExploreSidebar({
             {searchQuery.trim() ? (
               <EmptyState
                 icon={SearchX}
-                title={`Keine Strecke zu „${searchQuery.trim()}“.`}
+                kompakt
+                // Gekürzt, damit ein eingefügter Link oder Roman den Titel
+                // nicht über mehrere Zeilen des knappen Sheets zieht.
+                title={`Keine Strecke zu „${kuerzen(searchQuery.trim(), 40)}“.`}
                 description="Versuch es mit einem Ort, einem Pass oder einer Region. Kennst du eine, die fehlt, schlag sie vor."
                 action={
-                  <div className="flex flex-wrap justify-center gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button variant="secondary" size="sm" onClick={() => onSearchChange("")}>
                       Suche zurücksetzen
                     </Button>
@@ -215,6 +222,7 @@ export default function ExploreSidebar({
               />
             ) : (
               <EmptyState
+                kompakt
                 icon={SearchX}
                 title="Noch keine Strecken freigegeben."
                 description="Kennst du eine Strasse, die man gefahren sein muss? Schlag sie vor."
