@@ -259,7 +259,14 @@ export default async function EinstellungenPage() {
                 href={premiumStatus.aktiv ? "/profil/einstellungen/abo" : "/profil/premium"}
                 className={buttonVariants({ variant: "secondary" })}
               >
-                {premiumStatus.aktiv ? "Abo verwalten" : "Premium ansehen"}
+                {/* Mit einem Saisonpass gibt es kein Abo zu verwalten —
+                    dort führt der Weg zur Übersicht mit Gültigkeit und
+                    Rechnung (0110). */}
+                {premiumStatus.aktiv
+                  ? premiumStatus.quelle === "saisonpass"
+                    ? "Premium verwalten"
+                    : "Abo verwalten"
+                  : "Premium ansehen"}
               </Link>
             </Card>
           </section>

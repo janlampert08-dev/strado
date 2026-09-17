@@ -28,7 +28,17 @@ export default async function PremiumPage() {
   // über das Kundenportal auf der Profilseite. Ein zweiter Abschluss würde
   // in createCheckoutSession ohnehin abgewiesen, aber eine Kaufseite, die
   // gar nicht erst erscheint, ist die klarere Antwort.
-  if (status.aktiv) redirect("/profil");
+  // Wer schon Premium hat, hat hier nichts zu suchen — das Abo verwaltet er
+  // über das Kundenportal auf der Profilseite. Ein zweiter Abschluss würde
+  // in createCheckoutSession ohnehin abgewiesen, aber eine Kaufseite, die
+  // gar nicht erst erscheint, ist die klarere Antwort.
+  //
+  // Seit 0110 mit einer Ausnahme: ein Saisonpass läuft aus, ohne dass
+  // irgendetwas daran erinnert. Wer einen hat, darf hier ein Abo
+  // abschliessen (es zahlt erst ab dem Passende) oder den Pass kurz vor
+  // Ablauf verlängern. Ihn wegzuschicken hiesse, den einzigen Weg zurück zu
+  // schliessen.
+  if (status.aktiv && status.quelle !== "saisonpass") redirect("/profil");
 
   return (
     <div className="flex h-dvh flex-col">

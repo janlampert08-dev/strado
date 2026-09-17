@@ -22,6 +22,7 @@ import {
 import { fehlerMeldung } from "@/lib/checkoutFehler";
 import { isDarkTheme, subscribeToThemeChange } from "@/lib/theme";
 import { betragText } from "@/lib/premiumAngebot";
+import { datumCH } from "@/lib/format";
 import type { AboPlan, VergebenerPreis } from "@/lib/premiumLimits";
 
 type ElementsOptionen = NonNullable<StripeCheckoutElementsSdkOptions["elementsOptions"]>;
@@ -333,12 +334,36 @@ function preisText(preis: VergebenerPreis): string {
   return betragText(preis.betragRappen, preis.waehrung);
 }
 
+// Was auf der Schaltfläche steht, die die Zahlungspflicht auslöst.
+//
+// Drei Fälle, seit 0110. "Zahlungspflichtig abonnieren — CHF 39.00" ist
+// richtig, solange heute abgebucht wird. Bei einer Testphase oder einem
+// Anschluss an einen laufenden Saisonpass steht dort sonst "CHF 0.00", und
+// das wäre die halbe Wahrheit über eine Verpflichtung, die später Geld
+// kostet: der Betrag und das Datum gehören auf denselben Knopf.
+//
+// Der Saisonpass heisst nicht "abonnieren" — er ist keines.
+function knopfText(preis: VergebenerPreis, plan: AboPlan): string {
+  if (preis.spaeter) {
+    const ab = betragText(preis.spaeter.abRappen, preis.waehrung);
+    const am = datumCH(new Date(preis.spaeter.faelligAm));
+    return preis.spaeter.grund === "testphase"
+      ? `Gratis testen — ab ${am} ${ab}`
+      : `Abo starten — erste Zahlung am ${am}: ${ab}`;
+  }
+  return plan === "saisonpass"
+    ? `Zahlungspflichtig kaufen — ${preisText(preis)}`
+    : `Zahlungspflichtig abonnieren — ${preisText(preis)}`;
+}
+
 function CheckoutInner({
   sessionId,
+  plan,
   preis,
   onSuccess,
 }: {
   sessionId: string;
+  plan: AboPlan;
   preis: VergebenerPreis;
   onSuccess: () => void;
 }) {
@@ -515,7 +540,7 @@ function CheckoutInner({
               und der Betrag darf dafür nicht weiter oben auf der Seite
               stehen bleiben. */}
           <Button type="submit" disabled={submitting} aria-busy={submitting}>
-            {submitting ? "Wird verarbeitet…" : `Zahlungspflichtig abonnieren — ${preisText(preis)}`}
+            {submitting ? "Wird verarbeitet…" : knopfText(preis, plan)}
           </Button>
           {/* Ohne Schloss-Icon davor: der Satz bricht auf 390px Breite —
               der Breite, für die diese App gebaut ist — auf zwei Zeilen, und
@@ -666,13 +691,19 @@ export default function PremiumCheckoutForm({
   // bestätigt: eine Seite, die den einen Betrag auszeichnet, während ein
   // anderer abgebucht wird, ist ein falsch ausgezeichneter Preis und kein
   // Anzeigefehler.
-  const preisWeichtAb = state.preis.betragRappen !== beworbenerPreis;
+  // Bei einer Testphase oder einem Anschluss ist heute nichts fällig; was
+  // die Kaufseite ausgezeichnet hat, ist dann der SPÄTERE Betrag. Verglichen
+  // wird deshalb der, der tatsächlich einmal abgebucht wird — sonst meldete
+  // die Seite bei jeder Testphase eine Preisänderung, die es nicht gibt.
+  const tatsaechlich = state.preis.spaeter?.abRappen ?? state.preis.betragRappen;
+  const preisWeichtAb = tatsaechlich !== beworbenerPreis;
 
   return (
     <div className="flex flex-col gap-3">
       {preisWeichtAb && (
         <p role="alert" className="rounded-lg border border-danger/40 px-4 py-3 text-sm text-danger">
-          Hinweis: Für dieses Abo gilt {preisText(state.preis)} statt des zuvor angezeigten
+          Hinweis: Für dieses Abo gilt{" "}
+          {betragText(tatsaechlich, state.preis.waehrung)} statt des zuvor angezeigten
           Betrags — der Preis wurde inzwischen angepasst. Der Betrag auf dem Button ist der, der
           abgebucht wird.
         </p>
@@ -698,6 +729,7 @@ export default function PremiumCheckoutForm({
             Gruss zu zeigen, der nicht stimmt. */}
         <CheckoutInner
           sessionId={state.sessionId}
+          plan={plan}
           preis={state.preis}
           onSuccess={() =>
             router.push(
