@@ -50,6 +50,6 @@ describe("computeSignatures", () => {
   it("fällt ohne jedes Merkmal auf die Länge zurück", () => {
     const sig = computeSignatures([strecke({ id: "nackt", laenge_km: 7.5 })]);
     expect(sig.get("nackt")?.key).toBe("laenge");
-    expect(sig.get("nackt")?.label).toBe("7.5 km lang");
+    expect(sig.get("nackt")?.label).toBe("8 km lang");
   });
 });

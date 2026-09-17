@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { datumCH, formatDuration, mitAnzahl, nomen, todayInZurich } from "@/lib/format";
+import { datumCH, formatDuration, formatKmGerundet, mitAnzahl, nomen, todayInZurich } from "@/lib/format";
 
 describe("formatDuration", () => {
   it("formats sub-hour durations as mm:ss", () => {
@@ -78,5 +78,13 @@ describe("mitAnzahl", () => {
 
   it("schreibt grosse Zahlen in Schweizer Schreibweise", () => {
     expect(mitAnzahl(1380, "Fahrt", "Fahrten")).toBe("1'380 Fahrten");
+  });
+});
+
+describe("formatKmGerundet", () => {
+  it("rundet die ungerundete DB-Länge auf ganze Kilometer", () => {
+    expect(formatKmGerundet(24.371829)).toBe("24");
+    expect(formatKmGerundet(7.5)).toBe("8");
+    expect(formatKmGerundet(33.49)).toBe("33");
   });
 });
