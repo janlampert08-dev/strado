@@ -41,11 +41,14 @@ export default function HalteKnopf({
   const [fortschritt, setFortschritt] = useState(0);
   const startRef = useRef<number | null>(null);
   const frameRef = useRef<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ausgeloestRef = useRef(false);
 
   const abbrechen = useCallback(() => {
     if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+    if (timerRef.current !== null) clearTimeout(timerRef.current);
     frameRef.current = null;
+    timerRef.current = null;
     startRef.current = null;
     if (!ausgeloestRef.current) setFortschritt(0);
   }, []);
@@ -54,22 +57,31 @@ export default function HalteKnopf({
     if (startRef.current !== null || ausgeloestRef.current) return;
     const beginn = performance.now();
     startRef.current = beginn;
-    // Eine lokale Schleife statt eines tick-Callbacks, der sich selbst
-    // erneut einplant: so hängt sie an genau diesem einen Druck.
-    function schritt(jetzt: number) {
+
+    // AUSGELÖST WIRD ÜBER EINEN TIMER, NICHT ÜBER DIE ANIMATION. Der erste
+    // Stand hing beides an requestAnimationFrame — und rAF läuft nicht, wenn
+    // der Browser die Seite als verborgen führt oder Frames drosselt
+    // (Energiesparmodus, eingebettete Ansicht). Dann blieb der Knopf beim
+    // Halten einfach stehen: auf dem Schirm, auf dem die Fahrt beendet wird,
+    // der teuerste Ort für einen stummen Ausfall. Im Test auf der Vorschau
+    // war genau das zu sehen. Der Timer entscheidet, rAF malt nur.
+    timerRef.current = setTimeout(() => {
       if (startRef.current !== beginn) return;
-      const anteil = Math.min((jetzt - beginn) / dauerMs, 1);
-      setFortschritt(anteil);
-      if (anteil >= 1) {
-        ausgeloestRef.current = true;
-        frameRef.current = null;
-        startRef.current = null;
-        onBestaetigt();
-        return;
-      }
-      frameRef.current = requestAnimationFrame(schritt);
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+      timerRef.current = null;
+      startRef.current = null;
+      ausgeloestRef.current = true;
+      setFortschritt(1);
+      onBestaetigt();
+    }, dauerMs);
+
+    function malen(jetzt: number) {
+      if (startRef.current !== beginn) return;
+      setFortschritt(Math.min((jetzt - beginn) / dauerMs, 0.999));
+      frameRef.current = requestAnimationFrame(malen);
     }
-    frameRef.current = requestAnimationFrame(schritt);
+    frameRef.current = requestAnimationFrame(malen);
   }, [dauerMs, onBestaetigt]);
 
   useEffect(() => abbrechen, [abbrechen]);
@@ -97,7 +109,13 @@ export default function HalteKnopf({
           // Den Zeiger festhalten, damit ein leichtes Verrutschen des
           // Daumens das Halten nicht abbricht — abgebrochen wird erst beim
           // Loslassen oder wenn der Browser die Geste übernimmt.
-          event.currentTarget.setPointerCapture(event.pointerId);
+          // setPointerCapture wirft, wenn der Zeiger schon wieder weg ist
+          // (sehr kurzer Tipp) — das darf das Halten nicht verhindern.
+          try {
+            event.currentTarget.setPointerCapture(event.pointerId);
+          } catch {
+            // ohne Capture weiter; onPointerCancel fängt den Rest
+          }
           beginnen();
         }}
         onPointerUp={abbrechen}
