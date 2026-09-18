@@ -92,6 +92,23 @@ export function wfsGml({ url, typename, attribut, kmh = Number, version = "1.1.0
       SRSNAME: "EPSG:2056",
     })) q.searchParams.set(k, v);
     const xml = await holen(q.toString(), "text");
+
+    // Ein Dienstfehler kommt hier mit HTTP 200 herein, nicht als Ausnahme.
+    //
+    // MapServer - und genau den sprechen die ms:-Typenames an - beantwortet
+    // eine GetFeature-Anfrage mit unbekanntem TYPENAME mit Status 200 und
+    // einem ServiceExceptionReport. holen() wirft nur bei !res.ok, greift
+    // also nicht; der Regex unten findet dann kein featureMember, und die
+    // Funktion gaebe eine leere Liste zurueck, die wie ein gueltiges
+    // "dieser Kanton hat keine Daten" aussieht. Der Aufrufer
+    // (scripts/enrich-amtliche-tempolimits.mjs --hochladen) loescht darauf
+    // den Bestand dieser Quelle. Der wahrscheinlichste Ausloeser ist genau
+    // der Fall, den niemand ankuendigt: eine Quelle benennt ihren Layer um.
+    if (/<(?:[\w.-]+:)?(?:ServiceExceptionReport|ExceptionReport)\b/i.test(xml)) {
+      const grund = xml.match(/<(?:[\w.-]+:)?(?:ServiceException|Exception)[^>]*>([\s\S]*?)</i)?.[1];
+      throw new Error(`WFS-Dienstfehler fuer ${typename}: ${(grund ?? "ohne Text").trim().slice(0, 200)}`);
+    }
+
     const out = [];
     // WFS 1.1 verpackt jedes Objekt in gml:featureMember, WFS 2.0 in wfs:member.
     for (const [block] of xml.matchAll(/<(?:gml:featureMember|wfs:member)>[\s\S]*?<\/(?:gml:featureMember|wfs:member)>/g)) {

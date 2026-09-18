@@ -71,6 +71,19 @@ export type FeedErgebnis =
  * Holt die Verkehrsmeldungen. `seit` schaltet auf Delta: der Feed liefert dann
  * nur Situationen, die sich seither geändert haben.
  */
+// Das Wurzelelement einer DATEX-Lieferung. Namensraum offen, weil er
+// zwischen Lieferungen wechselt — dieselbe Begründung wie in
+// lib/passMeldungen.ts.
+const DATEX_HUELLE = /<(?:[\w.-]+:)?(?:d2LogicalModel|payloadPublication)\b/i;
+
+// Als eigene Funktion, damit die Regel geprüft werden kann, ohne einen
+// Netzaufruf nachzustellen: ein leerer Rumpf ist in Ordnung (ein Delta ohne
+// Änderung), ein gefüllter muss die DATEX-Hülle tragen.
+export function rumpfIstBrauchbar(xml: string): boolean {
+  if (xml.trim().length === 0) return true;
+  return DATEX_HUELLE.test(xml);
+}
+
 export async function holeVerkehrsmeldungen(seit: Date | null): Promise<FeedErgebnis> {
   const schluessel = process.env.ASTRA_API_KEY;
   if (!schluessel) return { ok: false, fehler: "ASTRA_API_KEY fehlt" };
@@ -113,6 +126,31 @@ export async function holeVerkehrsmeldungen(seit: Date | null): Promise<FeedErge
     // gespeicherte Sperrung aufgehoben ist.
     if (!seit && xml.trim().length === 0) {
       return { ok: false, fehler: "Leerer Rumpf auf Vollabruf" };
+    }
+
+    // Ein nicht leerer Rumpf muss wie DATEX aussehen — und zwar beim DELTA
+    // genauso wie beim Vollabruf.
+    //
+    // Die drei Schutzregeln darüber hängen alle an `!seit`, greifen also nur
+    // beim Vollabruf. Für ein Delta blieb eine Lücke: ein Dienst, der im
+    // Störfall mit HTTP 200 und einem SOAP-Fault, einer HTML-Fehlerseite des
+    // API-Managers oder einem umgestellten Namensraum antwortet, ergibt in
+    // parseVerkehrsmeldungen() null Situationen — und das ist von dem
+    // vollkommen legitimen "seit dem letzten Abruf hat sich nichts geändert"
+    // nicht zu unterscheiden. Der Cron stempelt darauf `erfolg_am`, und weil
+    // genau daran istFeedGesund() hängt (lib/passStatus.ts), zeigt jede
+    // Passseite weiter "Offen · ASTRA-Verkehrsmeldungen · vor 4 Minuten".
+    // Ein frisches `erfolg_am` verhindert zusätzlich, dass DELTA_MAX_ALTER_MS
+    // einen Vollabruf erzwingt — die tote Quelle könnte bis zum nächsten
+    // VOLL_ABSTAND_MS (20 Stunden) als aktueller Stand durchgehen. Das ist
+    // die Richtung, vor der AGENTS.md ausdrücklich warnt: "kein Stand" ist
+    // die ehrliche Auskunft, nicht "offen".
+    //
+    // Geprüft wird nur die Hülle, nicht der Inhalt: ein Delta ohne jede
+    // Situation ist weiterhin ein gültiges Delta. Der Namensraum bleibt
+    // offen, weil er zwischen Lieferungen wechselt (lib/passMeldungen.ts).
+    if (!rumpfIstBrauchbar(xml)) {
+      return { ok: false, fehler: "Rumpf ohne DATEX-Hülle" };
     }
 
     return { ok: true, xml, voll: !seit };
