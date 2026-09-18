@@ -375,6 +375,29 @@ is what should be corrected.
     leaderboard of its **3 existing rows on 1 route** — #249's description
     claimed the list was already empty; it was not. The rides themselves are
     untouched and carry `dauer_quelle = 'trail'`.
+  - **`0101_anonymisierung_fahrtstarts` went in on 2026-09-16**, and unlike
+    the set above it went in *behind* its text rather than ahead of its
+    code: it makes a sentence in the privacy policy true that was not
+    (`strado`#255, `stradoinfo`#19, both still open). `anonymize_account`
+    never touched `fahrt_starts` — the table is two days younger than
+    `0092` — so a "deleted" account kept `letzter_puls_punkt`, a GPS
+    position from the same ride whose `route_completions.track` the very
+    same function nulls two statements earlier. **The `on delete cascade`
+    from `0096` is not a substitute and never fires**: `deleteAccount()`
+    does not delete the `auth.users` row, it anonymises the account and
+    invalidates the credentials with `updateUserById()`. `0090` and `0092`
+    both say so in their own headers; `0096` did not read them. Write the
+    delete out, and write **both** columns — a guest records with
+    `user_id` NULL and signs in only at save time, so the person is then
+    in `eingeloest_von` alone. Verified against the catalog (body, grants
+    unchanged at `service_role` only) and by a rolled-back functional test
+    that exercised the real function for both cases; the queries and the
+    way back are in `supabase/migrations/README.md`. **Still open and
+    deliberately so:** guest rows belonging to no account are cleaned up
+    only by the opportunistic `random() < 0.02` sweep inside
+    `fahrt_start_anlegen`, which guarantees no deadline — hence the
+    privacy text's "in der Regel innert 48 Stunden" over the hard 24-hour
+    gate that `fahrt_start_puls` and `fahrt_start_einloesen` both enforce.
   - **There is no separate staging database — confirmed, and staying that
     way.** The linked Supabase account holds exactly one project, and it is
     production; the owner confirmed on 2026-09-14 that `staging` points at

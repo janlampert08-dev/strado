@@ -136,10 +136,33 @@ nach dem Zuschnitt zu wenig übrig, wird gar keine Karte veröffentlicht.
 der Zwischenstand (bisheriger Trail, Distanz, Startzeit) **lokal im Browser**
 gespeichert, damit eine unterbrochene Aufzeichnung — geschlossener Tab,
 Absturz, Bildschirmsperre — fortgesetzt werden kann. Dieser Zwischenspeicher
-liegt auf dem Gerät und wird nicht an uns übermittelt, solange die Fahrt nicht
-gespeichert wird. Auch **nicht angemeldete Besuchende** können eine freie Fahrt
-aufzeichnen; die Aufzeichnung bleibt dann bis zu einer allfälligen Anmeldung
-ausschliesslich lokal.
+liegt auf dem Gerät. Der **Trail selbst** wird nicht an uns übermittelt,
+solange die Fahrt nicht gespeichert wird. Auch **nicht angemeldete Besuchende**
+können eine freie Fahrt aufzeichnen; der Trail bleibt dann bis zu einer
+allfälligen Anmeldung auf dem Gerät. Unabhängig davon melden wir während der
+Aufzeichnung einzelne Positionen an den Server — siehe den nächsten Absatz.
+
+**Positionsmeldungen während der Aufzeichnung.** Besteht eine Verbindung,
+meldet die Anwendung während einer laufenden Aufzeichnung etwa **alle 20
+Sekunden** die aktuelle Position an unseren Server, der sie mit seiner eigenen
+Uhr stempelt. Das gilt **auch für nicht angemeldete Besuchende**. Zweck ist
+allein, die Dauer einer Fahrt gegen eine Uhr zu prüfen, die nicht auf dem Gerät
+läuft; ohne das liesse sich eine Bestzeit durch Verändern der Gerätezeit
+fälschen (berechtigtes Interesse an manipulationsfreien Bestenlisten). Wir
+speichern dazu **nur die jeweils letzte Meldung** — Zeitpunkt und Position —
+sowie deren Anzahl; jede neue Meldung überschreibt die vorherige, es entsteht
+also **keine Spur des Wegs**. Eine Aufzeichnung, die nie gespeichert wird,
+lässt sich nach **24 Stunden** nicht mehr verwenden — weder nimmt der Server
+weitere Meldungen dazu an noch lässt sie sich einer Fahrt zuordnen — und wird
+danach gelöscht, in der Regel innert 48 Stunden. Wird die Fahrt gespeichert,
+bleibt die letzte Meldung als Nachweis der gemessenen Dauer bei der Fahrt; sie
+wird mit dem Konto gelöscht. Dasselbe gilt, wenn angemeldet gespeichert wird
+und das Speichern erst nach der Zeitprüfung scheitert: Die letzte Meldung
+bleibt dann beim Konto, damit ein erneuter Versuch die gemessene Dauer behält,
+und wird mit dem Konto gelöscht. Wer ohne Verbindung fährt, kann normal
+aufzeichnen; die Fahrt wird dann lediglich nicht als „verifiziert"
+gekennzeichnet. Ohne Standortfreigabe ist keine Aufzeichnung möglich, weil sie
+auf den Positionen des Geräts beruht.
 
 **Standort ausserhalb der Aufzeichnung.** In der Streckensuche und bei der
 Streckenwahl kann der aktuelle Standort abgefragt werden, um Strecken in der
