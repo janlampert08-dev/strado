@@ -4,7 +4,7 @@ import { useActionState, useEffect, useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Flag, Route as RouteIcon, Smartphone } from "lucide-react";
+import { Route as RouteIcon, Smartphone } from "lucide-react";
 import { logFreeRide, type FreeRideFormState } from "@/lib/actions/completions";
 import { useRideRecorder } from "@/components/useRideRecorder";
 import { useLiveLapHint } from "@/components/useLiveLapHint";
@@ -26,6 +26,8 @@ import Card from "@/components/ui/Card";
 import FullscreenDialog from "@/components/ui/FullscreenDialog";
 import SectionHeading from "@/components/ui/SectionHeading";
 import HalteKnopf from "@/components/ui/HalteKnopf";
+import FazitKopf from "@/components/FazitKopf";
+import { merkeHinweis } from "@/components/Hinweis";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
@@ -153,6 +155,14 @@ export default function FreeRideForm({
     router.push("/");
   }
 
+  // Verwerfen einer aufgezeichneten Fahrt endete bisher kommentarlos auf der
+  // Startseite. Die Quittung reist über den Seitenwechsel mit (Hinweis.tsx).
+  // "Abbrechen" vor dem Start bleibt ohne: da gab es nichts zu verlieren.
+  function handleDiscard() {
+    merkeHinweis("Fahrt verworfen.");
+    handleExit();
+  }
+
   // Stellt den einmalig einlösbaren Marker genau im Moment des Gate-Klicks
   // aus (statt beim Rendern) und hängt ihn ans Rücksprungziel: nur wer hier
   // durchgegangen ist, kann die Gastfahrt nach der Anmeldung übernehmen.
@@ -213,8 +223,6 @@ export default function FreeRideForm({
   }
 
   if (phase === "finished") {
-    const avgKmh =
-      result && result.seconds > 0 ? result.distanceKm / (result.seconds / 3600) : null;
 
     // Ohne pb-[var(--safe-bottom)], anders als die Ansichten davor:
     // diese hier endet auf dem klebenden Speichern-Streifen aus
@@ -226,26 +234,12 @@ export default function FreeRideForm({
     return (
       <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)]">
         <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-5 py-8 sm:px-6 sm:py-10">
-          <SectionHeading icon={Flag}>Fazit</SectionHeading>
-
-          <dl className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <dt className="text-muted">Distanz</dt>
-              <dd className="text-lg tabular-nums">{result?.distanceKm.toFixed(2)} km</dd>
-            </div>
-            <div>
-              <dt className="text-muted">Zeit</dt>
-              <dd className="text-lg tabular-nums">
-                {formatDuration(result?.seconds ?? 0)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted">Ø Tempo</dt>
-              <dd className="text-lg tabular-nums">
-                {avgKmh !== null ? `${avgKmh.toFixed(0)} km/h` : "—"}
-              </dd>
-            </div>
-          </dl>
+          <FazitKopf
+            titel={"Fahrt beendet"}
+            trail={recorder.liveTrail}
+            distanzKm={result?.distanceKm ?? 0}
+            sekunden={result?.seconds ?? 0}
+          />
 
           {/* Zwei Fälle in einer Karte: was der Server ohnehin ablehnt
               (Flug), steht hier schon mit Begründung, damit nicht nur "ging
@@ -275,31 +269,31 @@ export default function FreeRideForm({
               ohne Session unabhängig davon ab. */}
           {istGast ? (
           <>
-            <Card surface className="flex flex-col gap-3 p-4 text-sm">
-              <p className="font-medium text-foreground">Fahrt aufgezeichnet.</p>
-              <p className="text-muted">
-                Zum Speichern brauchst du ein Konto — damit landet die Fahrt in deinem Profil,
-                zählt für die Ranglisten und kann im Feed geteilt werden. Die Aufzeichnung
-                bleibt so lange in diesem Browser (bis zu 24 Stunden) und wird nach der
-                Anmeldung übernommen.
+            <div className="flex flex-col gap-3">
+              {/* Vorher fünf Zeilen grauer Text in einer Karte und "Konto erstellen"
+                  als 36-px-Knopf — kleiner als die beiden Textlinks darunter. Die
+                  Handlung, um die es hier geht, stand optisch an dritter Stelle.
+                  Jetzt ein Satz, der eine Knopf in voller Breite und Grösse, und die
+                  Nebenwege leise darunter. Der Hinweis auf die 24 Stunden bleibt: er
+                  ist der Grund, sich nicht zu beeilen. */}
+              <p className="text-sm text-muted">
+                Speichern mit Konto: dann landet die Fahrt in deinem Profil, zählt für die Ranglisten und lässt sich teilen. Sie wartet bis zu 24 Stunden in diesem Browser.
               </p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => goToAuth("/registrieren")}
-                  className={buttonVariants({ variant: "accent", size: "sm" })}
-                >
-                  Konto erstellen
-                </button>
-                <button
-                  type="button"
-                  onClick={() => goToAuth("/anmelden")}
-                  className={buttonVariants({ variant: "secondary", size: "sm" })}
-                >
-                  Ich habe ein Konto
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-x-4">
+              <button
+                type="button"
+                onClick={() => goToAuth("/registrieren")}
+                className={buttonVariants({ variant: "accent", size: "lg", className: "w-full" })}
+              >
+                Konto erstellen und speichern
+              </button>
+              <button
+                type="button"
+                onClick={() => goToAuth("/anmelden")}
+                className={buttonVariants({ variant: "secondary", className: "w-full" })}
+              >
+                Ich habe ein Konto
+              </button>
+              <div className="flex justify-center gap-x-4">
                 <button
                   type="button"
                   onClick={recorder.fortsetzen}
@@ -315,14 +309,14 @@ export default function FreeRideForm({
                   Fahrt verwerfen
                 </button>
               </div>
-            </Card>
+            </div>
             <ConfirmDialog
               open={gastVerwerfenOffen}
               title="Fahrt verwerfen?"
               description="Die aufgezeichnete Fahrt wurde noch nicht gespeichert und geht dabei endgültig verloren."
               confirmLabel="Verwerfen"
               variant="danger"
-              onConfirm={handleExit}
+              onConfirm={handleDiscard}
               onCancel={() => setGastVerwerfenOffen(false)}
             />
           </>
@@ -368,7 +362,7 @@ export default function FreeRideForm({
               isPublic={isPublic}
               onIsPublicChange={setIsPublic}
               onSubmit={() => setSubmitted(true)}
-              onDiscard={handleExit}
+              onDiscard={handleDiscard}
               onResume={recorder.fortsetzen}
             >
               {/* Dieselbe Abschnittsgeometrie wie die Abschnitte im Fazit
@@ -411,7 +405,7 @@ export default function FreeRideForm({
         <div className="min-h-0 flex-1">
           <RouteMap routes={routes} fitRoutes={false} routesClickable={false} />
         </div>
-        <div className="flex flex-col gap-4 border-t border-border bg-background px-5 pt-5 pb-[calc(1.25rem+var(--safe-bottom))]">
+        <div className="md:mx-auto md:w-full md:max-w-lg md:rounded-t-lg md:border-x flex flex-col gap-4 border-t border-border bg-background px-5 pt-5 pb-[calc(1.25rem+var(--safe-bottom))]">
           <div className="flex flex-col gap-1">
             <h1 className="text-title font-semibold tracking-tight">Freie Fahrt</h1>
             <p className="text-sm text-muted">
@@ -468,7 +462,7 @@ export default function FreeRideForm({
           userHeadingDeg={recorder.headingDeg}
         />
       </div>
-      <div className="flex flex-col gap-4 border-t border-border bg-background px-5 pt-4 pb-[calc(1rem+var(--safe-bottom))]">
+      <div className="md:mx-auto md:w-full md:max-w-lg md:rounded-t-lg md:border-x flex flex-col gap-4 border-t border-border bg-background px-5 pt-4 pb-[calc(1rem+var(--safe-bottom))]">
         {/* Statuszeile in Satzschreibung statt versal in Mono: sie ist ein
             Zustand, kein Etikett. Der rote Punkt bleibt das Signal, dass
             wirklich aufgezeichnet wird. */}

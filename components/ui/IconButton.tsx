@@ -33,7 +33,7 @@ const basis =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 " +
   "focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
-export type IconButtonTon = "neutral" | "aktiv" | "gefahr";
+export type IconButtonTon = "neutral" | "aktiv" | "gefahr" | "leise";
 
 const toene: Record<IconButtonTon, string> = {
   neutral: "border border-border text-muted hover:border-border-strong hover:text-foreground",
@@ -41,6 +41,11 @@ const toene: Record<IconButtonTon, string> = {
   // Erst bei Hover rot: eine Melden-Schaltfläche, die dauerhaft rot
   // leuchtet, behauptet einen Missstand, den es noch gar nicht gibt.
   gefahr: "border border-border text-muted hover:border-danger hover:text-danger",
+  // Ohne Rahmen, für eine Handlung, die da sein muss, aber nicht neben den
+  // eigentlichen stehen soll — "Fahrt melden" stand mit demselben Rahmen und
+  // derselben Grösse neben "Teilen" und las sich als gleichrangig. Rot erst
+  // beim Hovern, wie bei "gefahr".
+  leise: "text-muted hover:bg-surface hover:text-danger",
 };
 
 export function iconButtonVariants({

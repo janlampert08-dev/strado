@@ -55,7 +55,17 @@ export const getPublicProfile = cache(async function getPublicProfile(
     profile.zeigt_fahrzeuge
       ? supabase.from("vehicles").select("*").eq("user_id", userId)
       : Promise.resolve({ data: [] as Vehicle[], error: null }),
-    supabase.from("public_fahrten").select("*").eq("user_id", userId),
+    // Neueste zuerst, wie im Feed. Ohne order kam die Liste in der
+    // Reihenfolge der Datenbank und stand auf dem öffentlichen Profil
+    // älteste zuerst — dieselben Fahrten, zwei Sortierungen. completion_id
+    // als zweites Kriterium aus demselben Grund wie in lib/feed.ts: datum
+    // hat keine Uhrzeit.
+    supabase
+      .from("public_fahrten")
+      .select("*")
+      .eq("user_id", userId)
+      .order("datum", { ascending: false })
+      .order("completion_id", { ascending: false }),
   ]);
 
   // Hier wiegt das besonders schwer: eine gescheiterte Fahrtenabfrage würde

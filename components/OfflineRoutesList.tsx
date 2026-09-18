@@ -80,7 +80,7 @@ export default function OfflineRoutesList() {
             <dd className="text-sm tabular-nums">{selected.laengeKm} km</dd>
           </Card>
           <Card surface className="flex flex-col gap-1 p-3">
-            <dt className="text-xs text-muted">Höhe</dt>
+            <dt className="text-xs text-muted">Höchster Punkt</dt>
             <dd className="text-sm tabular-nums">{selected.hoeheM ?? "—"} m</dd>
           </Card>
           <Card surface className="flex flex-col gap-1 p-3">

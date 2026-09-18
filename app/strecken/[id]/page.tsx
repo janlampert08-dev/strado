@@ -346,7 +346,10 @@ export default async function StreckeDetailPage({
         <Kennzahlen>
           <Kennzahl beschriftung="Länge" wert={`${formatKm(route.laenge_km)} km`} />
           <Kennzahl
-            beschriftung="Höhe"
+            // routes.hoehe_m ist die Scheitelhöhe (lib/signature.ts: "m
+            // hoch"). "Höhe" allein liess offen, ob Höhenlage oder Anstieg
+            // gemeint ist — auf der Fahrtseite steht daneben "Aufstieg".
+            beschriftung="Höchster Punkt"
             wert={route.hoehe_m !== null ? `${route.hoehe_m} m` : "—"}
           />
           <Kennzahl beschriftung="Kehren" wert={route.kehren ?? "—"} />

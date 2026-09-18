@@ -122,16 +122,22 @@ export function ConfirmDialog({
   return (
     <Dialog open={open} onClose={onCancel} title={title}>
       {description && <p className="mb-4 text-sm text-muted">{description}</p>}
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="secondary" size="sm" onClick={onCancel}>
+      {/* Auf dem Telefon, wo die Rückfrage als Blatt von unten kommt, stehen
+          die beiden Knöpfe untereinander in voller Breite und 44 px hoch —
+          die bestätigende Handlung zuunterst, dort, wo der Daumen ist. Ab sm
+          wie bisher nebeneinander rechts. Vorher waren es 36-px-Knöpfe
+          ("sm") auch auf dem Telefon, ausgerechnet vor "Verwerfen" und
+          "Löschen". */}
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <Button type="button" variant="secondary" onClick={onCancel} className="max-sm:w-full">
           {cancelLabel}
         </Button>
         <Button
           type="button"
           variant={variant}
-          size="sm"
           onClick={onConfirm}
           disabled={pending}
+          className="max-sm:w-full"
         >
           {confirmLabel}
         </Button>

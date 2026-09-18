@@ -125,10 +125,16 @@ export default function ElevationProfile({ punkte }: { punkte: HoehenprofilPunkt
           </div>
         )}
       </div>
-      <div className="flex justify-between text-xs tabular-nums text-muted">
-        <span>{mMin} m</span>
-        <span>{gipfel.m} m bei km {gipfel.km.toFixed(0)}</span>
-        <span>{mMax} m</span>
+      {/* Start · höchster Punkt · Ziel, statt Minimum · Gipfel · Maximum.
+          Der Gipfel IST das Maximum — rechts stand also zweimal dieselbe
+          Zahl, und an der Stelle, an der man das Streckenende erwartet,
+          las sie sich als Zielhöhe, während die Linie darüber abfiel. */}
+      <div className="flex justify-between gap-2 text-xs tabular-nums text-muted">
+        <span>Start {punkte[0].m} m</span>
+        <span className="text-center">
+          Höchster Punkt {gipfel.m} m · km {gipfel.km.toFixed(0)}
+        </span>
+        <span className="text-right">Ziel {punkte[punkte.length - 1].m} m</span>
       </div>
     </div>
   );

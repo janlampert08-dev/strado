@@ -17,13 +17,14 @@ import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
 import { formatDuration } from "@/lib/format";
 import RideSummaryForm from "@/components/RideSummaryForm";
 import type { KartenStrecke, RouteGeoJSON, Vehicle } from "@/types/database";
-import { Flag, Smartphone } from "lucide-react";
+import { Smartphone } from "lucide-react";
 import { buttonVariants, textAktionClassName } from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Skeleton from "@/components/ui/Skeleton";
 import FullscreenDialog from "@/components/ui/FullscreenDialog";
-import SectionHeading from "@/components/ui/SectionHeading";
 import HalteKnopf from "@/components/ui/HalteKnopf";
+import FazitKopf from "@/components/FazitKopf";
+import { zeigeHinweis } from "@/components/Hinweis";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
@@ -159,6 +160,13 @@ export default function LiveTrackingForm({
     onExit();
   }
 
+  // Wie in FreeRideForm: eine verworfene Fahrt bekommt eine Quittung. Hier
+  // bleibt die Seite dieselbe (die Streckenseite klappt nur ein), also sofort.
+  function handleDiscard() {
+    handleExit();
+    zeigeHinweis("Fahrt verworfen.");
+  }
+
   // Wie in FreeRideForm: der einmalig einlösbare Marker entsteht im Moment
   // des Gate-Klicks, nicht beim Rendern. Rücksprungziel ist diese
   // Streckenseite — GefahrenSection klappt dort anhand des Markers von
@@ -271,7 +279,7 @@ export default function LiveTrackingForm({
             followLocation={recorder.hasStarted}
           />
         </div>
-        <div className="flex flex-col gap-3 border-t border-border-strong bg-background p-4 pb-[calc(1rem+var(--safe-bottom))]">
+        <div className="md:mx-auto md:w-full md:max-w-lg md:rounded-t-lg md:border-x flex flex-col gap-3 border-t border-border-strong bg-background p-4 pb-[calc(1rem+var(--safe-bottom))]">
           {/* DER EINZIGE SCHIRM DER APP, DER IN BEWEGUNG GELESEN WIRD —
               und bis hierher beschriftete er seine Zahlen in text-xs, also
               12 px, und zeigte fünf Werte in grid-cols-3, davon zwei in
@@ -415,7 +423,6 @@ export default function LiveTrackingForm({
 
   // phase === "finished" — Fazit als eigener Vollbild-Screen, keine
   // Streckendetails/Karte mehr im Blick.
-  const avgKmh = result && result.seconds > 0 ? result.distanceKm / (result.seconds / 3600) : null;
   const isNewBest =
     result !== null && (personalBestSeconds === null || result.seconds < personalBestSeconds);
 
@@ -429,22 +436,12 @@ export default function LiveTrackingForm({
   return (
     <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)]">
       <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-5 py-8 sm:px-6 sm:py-10">
-        <SectionHeading icon={Flag}>Fazit</SectionHeading>
-
-        <dl className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <dt className="text-muted">Distanz</dt>
-            <dd className="text-lg tabular-nums">{result?.distanceKm.toFixed(2)} km</dd>
-          </div>
-          <div>
-            <dt className="text-muted">Zeit</dt>
-            <dd className="text-lg tabular-nums">{formatDuration(result?.seconds ?? 0)}</dd>
-          </div>
-          <div>
-            <dt className="text-muted">Ø Tempo</dt>
-            <dd className="text-lg tabular-nums">{avgKmh?.toFixed(0)} km/h</dd>
-          </div>
-        </dl>
+        <FazitKopf
+            titel={"Strecke gefahren"}
+            trail={recorder.liveTrail}
+            distanzKm={result?.distanceKm ?? 0}
+            sekunden={result?.seconds ?? 0}
+          />
 
         {/* Ohne Konto gibt es keine Historie, gegen die sich eine Bestzeit
             vergleichen liesse — "Erste erfasste Zeit für diese Strecke"
@@ -486,30 +483,31 @@ export default function LiveTrackingForm({
             Fahrt ohne Session unabhängig davon ab. */}
         {istGast ? (
         <>
-          <Card surface className="flex flex-col gap-3 p-4 text-sm">
-            <p className="font-medium text-foreground">Strecke gefahren.</p>
-            <p className="text-muted">
-              Zum Speichern brauchst du ein Konto — damit zählt die Fahrt für deine Bestzeit auf
-              dieser Strecke, für die Ranglisten und dein Profil. Die Aufzeichnung bleibt so
-              lange in diesem Browser (bis zu 24 Stunden) und wird nach der Anmeldung übernommen.
+          <div className="flex flex-col gap-3">
+            {/* Vorher fünf Zeilen grauer Text in einer Karte und "Konto erstellen"
+                als 36-px-Knopf — kleiner als die beiden Textlinks darunter. Die
+                Handlung, um die es hier geht, stand optisch an dritter Stelle.
+                Jetzt ein Satz, der eine Knopf in voller Breite und Grösse, und die
+                Nebenwege leise darunter. Der Hinweis auf die 24 Stunden bleibt: er
+                ist der Grund, sich nicht zu beeilen. */}
+            <p className="text-sm text-muted">
+              Speichern mit Konto: dann zählt die Fahrt für deine Bestzeit auf dieser Strecke, die Ranglisten und dein Profil. Sie wartet bis zu 24 Stunden in diesem Browser.
             </p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => goToAuth("/registrieren")}
-                className={buttonVariants({ variant: "accent", size: "sm" })}
-              >
-                Konto erstellen
-              </button>
-              <button
-                type="button"
-                onClick={() => goToAuth("/anmelden")}
-                className={buttonVariants({ variant: "secondary", size: "sm" })}
-              >
-                Ich habe ein Konto
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-x-4">
+            <button
+              type="button"
+              onClick={() => goToAuth("/registrieren")}
+              className={buttonVariants({ variant: "accent", size: "lg", className: "w-full" })}
+            >
+              Konto erstellen und speichern
+            </button>
+            <button
+              type="button"
+              onClick={() => goToAuth("/anmelden")}
+              className={buttonVariants({ variant: "secondary", className: "w-full" })}
+            >
+              Ich habe ein Konto
+            </button>
+            <div className="flex justify-center gap-x-4">
               <button
                 type="button"
                 onClick={recorder.fortsetzen}
@@ -525,14 +523,14 @@ export default function LiveTrackingForm({
                 Fahrt verwerfen
               </button>
             </div>
-          </Card>
+          </div>
           <ConfirmDialog
             open={gastVerwerfenOffen}
             title="Fahrt verwerfen?"
             description="Die aufgezeichnete Fahrt wurde noch nicht gespeichert und geht dabei endgültig verloren."
             confirmLabel="Verwerfen"
             variant="danger"
-            onConfirm={handleExit}
+            onConfirm={handleDiscard}
             onCancel={() => setGastVerwerfenOffen(false)}
           />
         </>
@@ -548,7 +546,7 @@ export default function LiveTrackingForm({
             isPublic={isPublic}
             onIsPublicChange={setIsPublic}
             onSubmit={() => setSubmitted(true)}
-            onDiscard={handleExit}
+            onDiscard={handleDiscard}
             onResume={recorder.fortsetzen}
             visibility={{
               publicDisabled: belowCoverageThreshold,

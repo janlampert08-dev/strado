@@ -197,6 +197,9 @@ export function useRideRecorder({
   // Dauer erzeugen. Siehe lib/livetempo.ts.
   const lastPointMeasuredAtRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
+  // Wann stop() lief — damit fortsetzen() die Zeit auf dem Fazit-Schirm aus
+  // der angezeigten Fahrzeit herausrechnen kann (siehe dort).
+  const gestopptAmRef = useRef<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const trailRef = useRef<TrailPoint[]>([]);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
@@ -425,6 +428,7 @@ export function useRideRecorder({
   // am Ziel) nicht auf veraltete Werte aus dem ersten Render zugreift.
   const stop = useCallback(() => {
     releaseTracking();
+    gestopptAmRef.current = Date.now();
     // Gegenstück zum Impuls beim Start (siehe beginActualTracking): die
     // Aufzeichnung endet auch automatisch am Ziel, also ohne Tastendruck.
     navigator.vibrate?.(10);
@@ -703,6 +707,22 @@ export function useRideRecorder({
 
   const fortsetzen = useCallback(() => {
     if (watchIdRef.current !== null) return;
+    // DIE ZEIT AUF DEM FAZIT-SCHIRM IST KEINE FAHRZEIT. Ohne diese Zeilen lief
+    // die Uhr ab dem ursprünglichen Start weiter: wer eine Minute im Fazit
+    // stand und dann "Weiter aufzeichnen" wählte, bekam diese Minute als
+    // gefahren angerechnet, und das Ø-Tempo im nächsten Fazit fiel (im Test
+    // von 57 auf 38 km/h bei konstantem Tempo). Der Startzeitpunkt wird
+    // deshalb um die Pause nach vorn geschoben.
+    //
+    // Das betrifft die Anzeige und die clientseitig gemessene Dauer. Die
+    // serverseitig gewertete Dauer (letzter Puls − Start, 0098) sieht die
+    // Pause weiterhin — sie ist bewusst eine Wanduhr, siehe AGENTS.md A1.
+    // Nach dem Tab-Kill-Weg (Fazit aus dem Snapshot) fehlt der Stoppzeitpunkt;
+    // dann bleibt es beim bisherigen Verhalten statt zu raten.
+    if (gestopptAmRef.current !== null && startTimeRef.current !== null) {
+      startTimeRef.current += Date.now() - gestopptAmRef.current;
+    }
+    gestopptAmRef.current = null;
     // Derselbe Weg wie nach einem Tab-Kill: start() mit einem Snapshot
     // übernimmt Trail, Distanz, Startzeit und Ticket aus diesem Stand und
     // fragt nur die Watch neu an. Die Refs sind hier in jedem Fall gesetzt —

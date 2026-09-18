@@ -43,10 +43,12 @@ export default function TrafficIndicator({
       onClick={onToggle}
       aria-pressed={active}
       title={active ? "Verkehr auf der Karte ausblenden" : "Verkehr auf der Karte anzeigen"}
+      // Gleiche Höhe und Tippfläche wie die Nachbarknöpfe auf der Karte
+      // (RouteDetailMap): 36 px sichtbar, 44 px greifbar.
       className={
         active
-          ? "flex items-center gap-2 rounded-full border border-foreground bg-foreground px-3 py-1.5 text-sm font-medium text-background transition-transform duration-fast active:scale-95"
-          : "flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors duration-fast hover:border-border-strong"
+          ? "flex items-center gap-2 rounded-full border border-foreground bg-foreground px-3 py-1.5 text-sm font-medium text-background transition-transform duration-fast active:scale-95 relative min-h-9 after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']"
+          : "flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors duration-fast hover:border-border-strong relative min-h-9 after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']"
       }
     >
       <span className="h-2 w-2 shrink-0" style={{ backgroundColor: meta.color }} />

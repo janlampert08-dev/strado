@@ -72,8 +72,6 @@ export default async function FeedPage({
           <p className="mt-1 text-sm text-muted">Geteilte Fahrten aus der Community.</p>
         </div>
 
-        <ProfileSearch />
-
         {/* Die Reiter stehen in einer eigenen Komponente, weil /aktivitaet
             sie mitbenutzt: die eigene Aktivität ist der dritte Blick auf
             dieselbe Frage und deshalb ein Reiter hier statt eines eigenen
@@ -87,6 +85,13 @@ export default async function FeedPage({
           angemeldet={!!user}
           ungeseheneAktivitaet={ungeseheneAktivitaet}
         />
+
+        {/* Die Suche steht UNTER den Reitern, nicht darüber. /aktivitaet
+            teilt die Reiterleiste, hat aber keine Suche — stand sie oben,
+            sprang die Leiste beim Wechsel zwischen "Folge ich" und
+            "Aktivität" um die Höhe des Suchfelds nach oben, genau unter dem
+            Finger, der gerade getippt hatte. */}
+        <ProfileSearch />
 
         {feed.length === 0 ? (
           <EmptyState
@@ -173,7 +178,10 @@ export default async function FeedPage({
                     <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-sm text-muted">
                       <Link
                         href={`/fahrer/${item.user_id}`}
-                        className="relative z-10 shrink-0 transition-colors duration-fast hover:text-foreground"
+                        // after: macht den Namen (24 × 20) zu einer 44 px hohen
+                        // Tippfläche. Er überlappt dabei den Avatar daneben —
+                        // beide führen auf dasselbe Profil.
+                        className="relative z-10 shrink-0 transition-colors duration-fast hover:text-foreground after:absolute after:-inset-x-2 after:-inset-y-3 after:content-['']"
                       >
                         {item.display_name ?? "Fahrer"}
                       </Link>
