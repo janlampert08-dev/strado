@@ -47,9 +47,21 @@
 --
 -- premium_abgleich: zuletzt 0059, search_path aus 0073.
 --
--- anonymize_account: zuletzt 0092. Ergänzt um das Löschen der Pässe, sonst
--- bliebe nach einer Kontolöschung eine Zeile mit Stripe-Kennungen stehen,
--- und die Projektion würde für ein gelöschtes Konto Premium zurückholen.
+-- anonymize_account: Der Rumpf unten ist NICHT der aus 0092, sondern der am
+-- 2026-09-18 aus der Produktionsdatenbank gelesene — und das ist der ganze
+-- Punkt. Seit 0092 haben zwei weitere Migrationen ihn erweitert:
+-- 0101_anonymisierung_fahrtstarts (PR #255) löscht die Fahrtstarts, und die
+-- Pässe-Migration vom 2026-09-17 (Ledger `20260917212131`, Tabelle
+-- `pass_folgen`) löscht die gefolgten Pässe. Ein `create or replace` auf dem
+-- 0092-Rumpf hätte beide still zurückgedreht: die Kontolöschung hätte
+-- Fahrtstarts und Pass-Abos stehen lassen, ohne dass irgendetwas rot wird.
+--
+-- Genau davor warnt AGENTS.md ("A `create or replace` on a live function
+-- needs the live body read first"), und genau deshalb steht im Kopf von
+-- supabase/migrations/README.md die Abfrage dazu. Wer diese Datei erneut
+-- anfasst, liest den Live-Rumpf wieder aus, statt dieser Datei zu glauben:
+--     select prosrc from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+--     where n.nspname = 'public' and p.proname = 'anonymize_account';
 --
 -- DER WEG ZURÜCK
 --
@@ -434,7 +446,8 @@ as $$
 $$;
 
 -- ---------------------------------------------------------------------------
--- anonymize_account: Körper aus 0092, um die Pässe ergänzt
+-- anonymize_account: Live-Körper (0092 + 0101 + Pässe), um die Saisonpässe
+-- ergänzt — siehe die Begründung im Kopf dieser Datei
 -- ---------------------------------------------------------------------------
 
 create or replace function public.anonymize_account(p_user_id uuid)
@@ -491,11 +504,19 @@ begin
   update public.creator_links
   set creator_user_id = null
   where creator_user_id = p_user_id;
+
+  -- Aus 0101_anonymisierung_fahrtstarts — unverändert übernommen.
+  delete from public.fahrt_starts
+   where user_id = p_user_id
+      or eingeloest_von = p_user_id;
+
+  -- Aus der Pässe-Migration vom 2026-09-17 — unverändert übernommen.
+  delete from public.pass_folgen where user_id = p_user_id;
 end;
 $$;
 
 comment on function public.anonymize_account(uuid) is
-  'Anonymisiert ein Konto anhand der uebergebenen ID. Nur fuer service_role — der Aufrufer muss die Identitaet bereits festgestellt haben (deleteAccount() in lib/actions/auth.ts: Passwort-Neueingabe, dann Stripe-Kuendigung, dann diese Funktion mit der getUser()-ID). Loescht seit 0076 die subscriptions-Zeile, seit 0090 die Creator-Herkunft (in creator_konversionen wird nur der Personenbezug genullt), gibt seit 0092 zugewiesene Creator-Codes wieder frei und loescht seit 0110 die Saisonpaesse.';
+  'Anonymisiert ein Konto anhand der uebergebenen ID. Nur fuer service_role — der Aufrufer muss die Identitaet bereits festgestellt haben (deleteAccount() in lib/actions/auth.ts: Passwort-Neueingabe, dann Stripe-Kuendigung, dann diese Funktion mit der getUser()-ID). Loescht seit 0076 die subscriptions-Zeile, seit 0090 die Creator-Herkunft (in creator_konversionen wird nur der Personenbezug genullt), gibt seit 0092 zugewiesene Creator-Codes wieder frei, loescht seit 0101 die Fahrtstarts, seit der Paesse-Migration die gefolgten Paesse und seit 0110 die Saisonpaesse.';
 
 -- ---------------------------------------------------------------------------
 -- Rechte

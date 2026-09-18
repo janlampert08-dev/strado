@@ -29,7 +29,43 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
-## 0110_saisonpass — noch NICHT angewendet (Stand 2026-09-17)
+## 0110_saisonpass — ZUR HÄLFTE angewendet (Stand 2026-09-18)
+
+> **Erst lesen, dann handeln.** Eingespielt sind am 2026-09-18 die Tabelle
+> und die neuen Funktionen (Ledger-Einträge `0110_saisonpass_tabelle`,
+> `0110_saisonpass_funktionen`, `0110_saisonpass_rechte_entziehen`).
+> **Nicht** eingespielt sind die drei `create or replace` — die
+> Berechtigungsprüfung der Sitzung hat das Ersetzen bestehender
+> Produktionsfunktionen abgewiesen. Sie liegen unverändert in
+> `supabase/migrations/ausstehend/0110_projektion_nachziehen.sql`, mit der
+> Begründung, den Prüfabfragen und dem Weg zurück im Kopf.
+>
+> **Folge, solange das offen ist:** ein Saisonpass würde Premium freischalten
+> und nie wieder ablaufen, und ein Abo-Ereignis eines Pass-Inhabers würde ihm
+> Premium wegnehmen. Deshalb darf `STRIPE_PREMIUM_PRICE_ID_SAISONPASS` bis
+> dahin **nicht gesetzt** werden — ohne die Variable lässt
+> `getPremiumAngebot()` den Plan weg, und es gibt nichts zu kaufen. Abo,
+> Testphase und Bestandspreise sind unabhängig davon vollständig.
+>
+> Zwei Dinge, die beim Einspielen aufgefallen sind und die jede künftige
+> Migration angehen:
+>
+> 1. **Der Live-Körper von `anonymize_account` war nicht der aus `0092`.**
+>    Er trug bereits die Ergänzungen aus `0101` (`fahrt_starts`) und aus der
+>    Pässe-Migration (`pass_folgen`). Die Datei wurde vor dem Einspielen auf
+>    den Live-Stand gehoben; ein `create or replace` auf dem `0092`-Körper
+>    hätte beide still zurückgedreht.
+> 2. **Neue Funktionen bekommen von Supabase automatisch `EXECUTE` für
+>    `anon` und `authenticated`.** Weil die `revoke`-Zeilen im abgewiesenen
+>    Teil standen, waren `apply_saisonpass` und `saisonpass_erstatten` einige
+>    Minuten lang über den anonymen Schlüssel aufrufbar — die Falle aus
+>    `0047`, `0048`, `0091`, `0097`, diesmal durch eine halb eingespielte
+>    Datei. Geschlossen mit `0110_saisonpass_rechte_entziehen`, gemessen:
+>    `anon=false`, `authenticated=false`, `service_role=true`. **Wer eine
+>    Migration in Teilen einspielt, spielt die Rechte zuerst ein oder prüft
+>    sie unmittelbar danach.**
+
+### Ursprüngliche Beschreibung
 
 Der Saisonpass: Premium für sechs Monate, einmal bezahlt, ohne Verlängerung
 (`docs/premium-neu/preise.md`). Liegt auf dem Zweig `staging-premium-neu` und
@@ -118,7 +154,43 @@ droppen. Die Tabelle bleibt stehen — solange ein verkaufter Pass läuft, ist
 sie der Beleg dafür, und ein Drop wäre der Verlust des Zugangs, den jemand
 bezahlt hat.
 
-## 0112_pass_status_und_alarm — noch NICHT angewendet (Stand 2026-09-17)
+## 0112_pass_status_und_alarm — NICHT einspielen, Konflikt (Stand 2026-09-18)
+
+> **Diese Migration kollidiert mit einem System, das bereits produktiv ist.**
+> Am 2026-09-17 (Ledger `20260917212131`, `paesse`) hat ein paralleler Zweig
+> ein vollständiges Pass-System eingespielt:
+>
+> | Live | Was |
+> | --- | --- |
+> | `paesse` | Pass als eigenes Objekt: `id` (text), Name, Höhe, Kantone, Scheitelpunkt, Monate der Wintersperre |
+> | `pass_status` | **derselbe Tabellenname wie hier**, aber auf `pass_id` (text) statt `route_id`, mit `zustand`/`meldung`/`seit`/`manuell_bis` |
+> | `pass_ereignisse`, `pass_sperrtage` | Verlauf und Sperrtage je Pass |
+> | `pass_folgen` | die Abos — dieselbe Idee wie `pass_alarme` hier |
+> | `strecken_paesse` | Zuordnung Strecke ↔ Pass |
+> | `profiles.paesse_gesehen_am` | gesehen-Zeitpunkt, wie `pass_meldungen_gesehen_am` hier |
+> | `count_unseen_activity`, `mark_activity_seen`, `anonymize_account`, `recent_pass_meldungen` | bereits um die Pässe erweitert |
+>
+> `create table public.pass_status` würde also fehlschlagen, und die
+> `create or replace` auf `count_unseen_activity`/`mark_activity_seen` würden
+> den Pass-Summanden des anderen Zweigs **entfernen** — eine sichtbare
+> Regression im Aktivitäts-Abzeichen.
+>
+> Das Live-System ist ausserdem das reichere: es kennt den Pass als Objekt,
+> nicht nur als Strecke, und trägt Wintersperre und Verlauf.
+>
+> **Offen ist eine Produktentscheidung**, nicht eine technische: entweder
+> diese Migration samt dem zugehörigen Code (`lib/passStatus*`,
+> `lib/actions/passAlarm.ts`, `components/PassStatusForm.tsx`,
+> `components/PassAlarmSchalter.tsx`, `components/PassStatusZeile.tsx`,
+> die Änderungen an `lib/aktivitaet*`) aus dem Zweig nehmen und die
+> Oberfläche an das Live-System hängen — oder sie bewusst nebeneinander
+> führen, was zwei Wahrheiten über "offen" bedeutet und nicht empfohlen ist.
+> **Bis das entschieden ist, darf der Zweig nicht nach `staging` gemergt
+> werden:** `lib/passStatusAbfragen.ts` fragt `pass_status` über `route_id`
+> ab, und diese Spalte gibt es live nicht — jede Passstrecken-Seite und
+> `/aktivitaet` liefen in eine Fehlerseite.
+
+### Ursprüngliche Beschreibung
 
 Passstatus (für alle) und Pass-Alarm (Premium), aus
 `docs/markt/schweizer-identitaet.md` §2.1. Liegt auf dem Zweig
@@ -220,7 +292,17 @@ Die Migration löscht nichts Bestehendes; der Weg zurück steht im Kopf der
 Datei (Funktionen aus `0100` wiederherstellen, drei Tabellen und die
 Trigger droppen, Spalte entfernen). Verloren gehen dabei Passstatus,
 gesetzte Alarme und Meldungen.
-## 0111_wartungsheft — NOCH NICHT EINGESPIELT (Stand 2026-09-17)
+## 0111_wartungsheft — angewendet am 2026-09-18
+
+> Vollständig eingespielt (Ledger `0111_wartungsheft_eintraege`,
+> `0111_wartungsheft_erinnerungen`). Gemessen danach: beide Tabellen mit RLS
+> und je vier Policies, Tabellenrechte für `authenticated` nur `SELECT` und
+> `DELETE` (Schreiben läuft über die Spalten-Grants), `anon` hat nichts, und
+> `wartungseintraege_obergrenze()` ist für `anon` wie `authenticated` nicht
+> ausführbar. Der zusätzliche Unique-Index auf `vehicles (id, user_id)` ist
+> da; `vehicles` hatte ihn vorher nicht.
+
+### Ursprüngliche Beschreibung
 
 `0111_wartungsheft.sql` liegt auf `staging-premium-wartungsheft` und ist
 **nicht angewendet**. Die Nummer `0111` ist vom Koordinator dieses
