@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { mitAnzahl } from "@/lib/format";
+import { useEntwurfSchutz } from "@/components/useEntwurfSchutz";
 import dynamic from "next/dynamic";
 import { Check } from "lucide-react";
 import DragSheet from "@/components/ui/DragSheet";
@@ -83,6 +84,10 @@ export default function NeueStreckeForm() {
     null,
   );
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  // Gesetzte Wegpunkte oder ein Name sind Arbeit, die ein Tipp auf "Zurück"
+  // bisher wortlos verwarf. Während des Absendens nicht: dann ist der
+  // Weg von der Seite der gewollte.
+  useEntwurfSchutz("neue-strecke", !pending && (waypoints.length > 0 || name.trim().length > 0));
 
   const effectiveWaypoints: [number, number][] =
     rundfahrt && waypoints.length >= 2 ? [...waypoints, waypoints[0]] : waypoints;

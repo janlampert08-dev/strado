@@ -6,6 +6,7 @@ import { Search } from "lucide-react";
 import Avatar from "@/components/Avatar";
 import { Input } from "@/components/ui/Input";
 import { searchProfiles, type ProfileSearchResult } from "@/lib/actions/profile";
+import { mitAnzahl } from "@/lib/format";
 
 const DEBOUNCE_MS = 250;
 
@@ -81,10 +82,24 @@ export default function ProfileSearch() {
               key={profile.id}
               href={`/fahrer/${profile.id}`}
               onClick={() => setOpen(false)}
-              className="flex items-center gap-3 px-3 py-2.5 text-sm transition-colors duration-fast hover:bg-surface"
+              className="flex min-h-14 items-center gap-3 px-3 py-2 text-sm transition-colors duration-fast hover:bg-surface"
             >
-              <Avatar url={profile.avatarUrl} name={profile.displayName} size={28} />
-              <span className="truncate font-medium">{profile.displayName ?? "Fahrer"}</span>
+              <Avatar url={profile.avatarUrl} name={profile.displayName} size={36} />
+              {/* Zweite Zeile, damit zwei gleichnamige Fahrer unterscheidbar
+                  sind: Region, Fahrten, Follower — alles öffentlich, siehe
+                  searchProfiles in lib/actions/profile.ts. */}
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate font-medium">{profile.displayName ?? "Fahrer"}</span>
+                <span className="truncate text-xs text-muted">
+                  {[
+                    profile.region,
+                    mitAnzahl(profile.fahrten, "Fahrt", "Fahrten"),
+                    `${profile.follower} Follower`,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
+              </span>
             </Link>
           ))}
         </div>

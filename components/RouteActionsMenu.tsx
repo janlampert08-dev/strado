@@ -20,8 +20,10 @@ import ReportDialog from "@/components/ReportDialog";
 // korrekte) Übersichtsseite.
 const TCS_PORTAL_URL = "https://www.tcs.ch/de/tools/verkehrsinfo-verkehrslage/paesse-in-der-schweiz.php";
 
+// min-h-11: jeder Eintrag ist eine Tippfläche (44 px, siehe ui/IconButton).
+// Mit py-2 allein waren es rund 36 px.
 const ITEM_CLASS =
-  "border-t border-border px-3 py-2 text-left text-sm text-foreground transition-colors duration-fast hover:bg-surface first:border-t-0";
+  "flex min-h-11 items-center border-t border-border px-3 py-2 text-left text-sm text-foreground transition-colors duration-fast hover:bg-surface first:border-t-0";
 
 export default function RouteActionsMenu({
   route,
@@ -57,6 +59,15 @@ export default function RouteActionsMenu({
   istPremium?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  // Wo das Menü aufgeht, in Bildschirmkoordinaten (position: fixed).
+  //
+  // Vorher hing es absolut unter dem Auslöser. Auf der Streckenseite liegt
+  // der Auslöser aber im DragSheet, und das Sheet schneidet mit
+  // overflow-hidden alles ab, was über seinen Rand ragt — in halber Höhe war
+  // vom Menü nur der erste Eintrag zu sehen. fixed entkommt dem Zuschnitt
+  // (das Sheet trägt kein transform, das einen neuen Bezugsrahmen bilden
+  // würde), und ist unten zu wenig Platz, geht es nach oben auf.
+  const [lage, setLage] = useState<{ left: number; top?: number; bottom?: number } | null>(null);
   const [copied, setCopied] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
@@ -172,6 +183,16 @@ export default function RouteActionsMenu({
       <IconButton
         ref={ausloeserRef}
         onClick={() => {
+          const rect = ausloeserRef.current?.getBoundingClientRect();
+          if (rect) {
+            const menuHoehe = 5 * 44 + 16;
+            const left = Math.max(8, Math.min(rect.left, window.innerWidth - 224 - 8));
+            setLage(
+              window.innerHeight - rect.bottom < menuHoehe
+                ? { left, bottom: window.innerHeight - rect.top + 4 }
+                : { left, top: rect.bottom + 4 },
+            );
+          }
           setOpen((v) => !v);
           setGpxHinweis(false);
         }}
@@ -181,7 +202,12 @@ export default function RouteActionsMenu({
         <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
       </IconButton>
       {open && (
-        <Card elevated as="div" className="absolute top-full left-0 z-10 mt-1 flex w-56 flex-col overflow-hidden">
+        <Card
+          elevated
+          as="div"
+          className="fixed z-50 flex w-56 flex-col overflow-hidden"
+          style={lage ?? undefined}
+        >
           <button type="button" onClick={handleShare} className={ITEM_CLASS}>
             {copied ? "Link kopiert ✓" : "Teilen"}
           </button>

@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import Skeleton from "@/components/ui/Skeleton";
+import Wortmarke from "@/components/Wortmarke";
+import { getNavItems } from "@/lib/nav";
 import Seitenrahmen, { type Seitenbreite } from "@/components/ui/Seitenrahmen";
 
 // Gemeinsames Grundgerüst für alle Segment-Skelette (app/**/loading.tsx).
@@ -30,8 +32,12 @@ import Seitenrahmen, { type Seitenbreite } from "@/components/ui/Seitenrahmen";
 export function HeaderSkeleton() {
   return (
     <div className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border bg-background/85 px-4 pt-[calc(0.75rem+var(--safe-top))] pb-3 backdrop-blur-xl sm:px-6 sm:pt-[calc(1rem+var(--safe-top))] sm:pb-4">
-      <div className="flex min-h-8 items-center">
-        <Skeleton className="h-[18px] w-[71px] rounded-sm" />
+      {/* Die echte Wortmarke statt eines grauen Blocks. Sie hängt an nichts,
+          was erst geladen werden müsste — und ein pulsierender Block an der
+          Stelle des Namens liess jeden Tab-Wechsel wie ein Neustart der App
+          aussehen. */}
+      <div className="flex min-h-8 items-center text-foreground">
+        <Wortmarke className="h-[18px] w-auto" />
       </div>
       <div className="flex shrink-0 items-center gap-3 sm:gap-4">
         {/* Hier stand bis zur Review von PR #254 ein rundes Flammen-Icon —
@@ -57,6 +63,15 @@ export function HeaderSkeleton() {
  * (fünf Spalten, Icon über Beschriftung, safe-area-Padding unten).
  */
 export function BottomNavSkeleton() {
+  // DIE ECHTEN EINTRÄGE STATT FÜNF GRAUER BLÖCKE. Bei jedem Tab-Wechsel
+  // blitzte die Leiste als Skelett auf — genau die Fläche, auf die der Finger
+  // gerade getippt hatte, verschwand für einen Moment. Die ersten vier
+  // Einträge sind angemeldet wie abgemeldet dieselben (lib/nav.ts), also
+  // stehen sie hier fertig da. Nur der fünfte hängt an der Sitzung ("Profil"
+  // oder "Anmelden"): beide tragen dasselbe Symbol, nur seine Beschriftung
+  // bleibt ein Platzhalter. Ohne Hervorhebung, weil das Skelett nicht weiss,
+  // auf welcher Seite es steht.
+  const eintraege = getNavItems({ loggedIn: true, moderator: false, surface: "bottom" });
   return (
     <div
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/85 backdrop-blur-xl md:hidden"
@@ -64,12 +79,23 @@ export function BottomNavSkeleton() {
       aria-hidden="true"
     >
       <div className="mx-auto flex max-w-lg items-stretch justify-around">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="flex flex-1 flex-col items-center gap-1 py-2.5">
-            <Skeleton className="h-6 w-6 rounded-md" />
-            <Skeleton className="h-2.5 w-10 rounded-sm" />
-          </div>
-        ))}
+        {eintraege.map((eintrag, i) => {
+          const Icon = eintrag.icon;
+          const letzter = i === eintraege.length - 1;
+          return (
+            <div
+              key={eintrag.href}
+              className="flex flex-1 flex-col items-center gap-0.5 py-2.5 text-xs font-medium text-muted"
+            >
+              <Icon className="h-6 w-6" />
+              {letzter ? (
+                <Skeleton className="my-0.5 h-3 w-10 rounded-sm" />
+              ) : (
+                <span>{eintrag.label}</span>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

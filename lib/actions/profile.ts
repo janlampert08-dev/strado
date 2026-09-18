@@ -19,6 +19,11 @@ export interface ProfileSearchResult {
   id: string;
   displayName: string | null;
   avatarUrl: string | null;
+  /** Region der jüngsten öffentlichen Fahrt, null ohne öffentliche Fahrt. */
+  region: string | null;
+  /** Anzahl öffentlicher Fahrten. */
+  fahrten: number;
+  follower: number;
 }
 
 // Namenssuche für die Profilsuche im Feed (components/ProfileSearch.tsx).
@@ -53,10 +58,62 @@ export async function searchProfiles(query: string): Promise<ProfileSearchResult
     .order("display_name")
     .limit(8);
 
-  return (data ?? []).map((p) => ({
+  const profile = data ?? [];
+  if (profile.length === 0) return [];
+
+  // UNTERSCHEIDBARKEIT. Bis hierher kam nur Name und Bild zurück — zwei
+  // "Jan" in der Liste waren nicht auseinanderzuhalten, und wer sein Bild
+  // nicht zeigt, stand als leerer Kreis mit Vornamen da. Dazu kommen jetzt
+  // Region, Anzahl Fahrten und Follower, und zwar ausschliesslich aus
+  // Quellen, die für jeden ohnehin lesbar sind:
+  //
+  // - Region und Fahrtenzahl aus public_fahrten — dieselbe Sicht, die den
+  //   öffentlichen Feed und das öffentliche Profil speist. Sie enthält nur
+  //   Fahrten mit ist_oeffentlich = true; eine private Fahrt verrät hier
+  //   also weder ihre Region noch ihre Existenz.
+  // - Follower über get_follow_counts, die SECURITY-DEFINER-Funktion, die
+  //   auch das Profil nutzt (0040). Die Zahl ist laut Einstellungen "für
+  //   andere immer sichtbar", unabhängig von zeigt_follower_liste — die
+  //   Liste bleibt geschützt, die Zahl war nie geschützt.
+  //
+  // Beides läuft mit der Sitzung des Aufrufers (createClient), nicht mit dem
+  // Admin-Client: keine RLS-Umgehung, nichts, was nicht schon per PostgREST
+  // abrufbar wäre. Die Last bleibt durch das IP-Limit oben und limit(8)
+  // begrenzt — höchstens neun zusätzliche Abfragen je Suche.
+  const ids = profile.map((p) => p.id);
+  const [{ data: fahrtenDaten }, followerZahlen] = await Promise.all([
+    supabase
+      .from("public_fahrten")
+      .select("user_id, region")
+      .in("user_id", ids)
+      .order("datum", { ascending: false })
+      .limit(500),
+    Promise.all(
+      ids.map(async (id) => {
+        const { data: zeile } = await supabase
+          .rpc("get_follow_counts", { p_user_id: id })
+          .single();
+        return [id, (zeile as { followers?: number } | null)?.followers ?? 0] as const;
+      }),
+    ),
+  ]);
+
+  const fahrtenJeNutzer = new Map<string, { region: string | null; anzahl: number }>();
+  for (const f of (fahrtenDaten ?? []) as { user_id: string; region: string | null }[]) {
+    const bisher = fahrtenJeNutzer.get(f.user_id);
+    // Sortiert nach Datum absteigend: der erste Treffer ist die jüngste Fahrt.
+    if (bisher) bisher.anzahl += 1;
+    else fahrtenJeNutzer.set(f.user_id, { region: f.region, anzahl: 1 });
+  }
+  const followerJeNutzer = new Map(followerZahlen);
+
+  return profile.map((p) => ({
     id: p.id,
     displayName: p.display_name,
     avatarUrl: p.zeigt_avatar ? p.avatar_url : null,
+    region: fahrtenJeNutzer.get(p.id)?.region ?? null,
+    fahrten: fahrtenJeNutzer.get(p.id)?.anzahl ?? 0,
+    follower: followerJeNutzer.get(p.id) ?? 0,
   }));
 }
 
