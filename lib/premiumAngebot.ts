@@ -148,3 +148,44 @@ export function saisonpassVerlaengerbar(bis: Date | null, jetzt: Date = new Date
 export function saisonpassMonatsAequivalentRappen(betragRappen: number): number {
   return Math.round(betragRappen / SAISONPASS_MONATE);
 }
+
+/**
+ * Was eine Reihe von Saisonpässen über den Zugang aussagt.
+ *
+ * Erwartet die Zeilen, die weder erstattet noch abgelaufen sind (so fragt
+ * lib/premium.ts sie ab), und beantwortet zwei Fragen getrennt:
+ *
+ * - `laeuft`: Deckt einer davon den jetzigen Moment? Nur dann trägt der Pass
+ *   den Zugang gerade.
+ * - `deckungBis`: Bis wann reicht die Kette? Nach einer Verlängerung ist das
+ *   das Ende des SPÄTEREN Passes, auch wenn der erst später beginnt — denn
+ *   genau bis dahin ist bezahlt.
+ *
+ * Beides auseinanderzuhalten ist der Punkt: ein verlängerter Pass beginnt in
+ * der Zukunft (apply_saisonpass hängt ihn an das Ende des laufenden), und wer
+ * "läuft gerade" an ihm prüft, bekommt false für jemanden, der bezahlt hat.
+ *
+ * Verglichen wird über Date.parse statt als Zeichenkette: ein Zeitstempel aus
+ * PostgREST kann "+00:00" oder einen lokalen Versatz tragen, einer aus
+ * toISOString() trägt ".000Z" — lexikografisch liegen solche Vergleiche um
+ * Stunden daneben.
+ */
+export function passZeitraum(
+  paesse: { gueltig_ab: string; gueltig_bis: string }[],
+  jetzt: Date = new Date(),
+): { laeuft: boolean; deckungBis: Date | null } {
+  const ms = jetzt.getTime();
+  let laeuft = false;
+  let deckungBis: number | null = null;
+
+  for (const pass of paesse) {
+    const ab = Date.parse(pass.gueltig_ab);
+    const bis = Date.parse(pass.gueltig_bis);
+    if (Number.isNaN(ab) || Number.isNaN(bis)) continue;
+    if (bis <= ms) continue;
+    if (ab <= ms) laeuft = true;
+    if (deckungBis === null || bis > deckungBis) deckungBis = bis;
+  }
+
+  return { laeuft, deckungBis: laeuft && deckungBis !== null ? new Date(deckungBis) : null };
+}

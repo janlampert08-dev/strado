@@ -127,14 +127,33 @@ export const BALD_KM = 500;
 /** Ab so vielen (höchstens verbleibenden) Kilometern heisst es "fällig". */
 export const FAELLIG_KM = 100;
 /**
- * Eine MFK, die höchstens so viele Tage vor dem eingetragenen Termin
- * gemacht wurde, gilt als die zu diesem Termin. Ohne das bliebe der Termin
- * nach bestandener Prüfung stehen und würde eine Woche später als
- * "überfällig" gemeldet, obwohl alles erledigt ist. Ein halbes Jahr, weil
- * das Aufgebot des Strassenverkehrsamts meist ein paar Monate vorher kommt
- * und man früher vorführen darf.
+ * Wann eine eingetragene MFK den gespeicherten Termin hinfällig macht — und
+ * warum das Fenster vorher und nachher verschieden gross ist.
+ *
+ * Ohne ein solches Fenster bliebe der Termin nach bestandener Prüfung stehen
+ * und würde eine Woche später als "überfällig" gemeldet, obwohl alles
+ * erledigt ist.
+ *
+ * NACH dem Termin ist die Sache eindeutig: der Termin ist verstrichen, die
+ * Prüfung hat stattgefunden. Ein halbes Jahr Spielraum, danach ist der
+ * Termin ohnehin so alt, dass er nichts mehr über den nächsten sagt.
+ *
+ * VOR dem Termin ist sie es nicht, und hier lag ein Fehler: mit demselben
+ * halben Jahr verschluckte die Regel die **Nachkontrolle**. Wer an einem
+ * Detail scheitert, bekommt vom Strassenverkehrsamt einen zweiten Termin in
+ * Wochen bis Monaten — trägt er die MFK vom 1. Juni ein und den
+ * Nachkontrolltermin auf den 15. November, lagen 167 Tage dazwischen, und
+ * die Erinnerung galt als erledigt. Ausgerechnet der Termin, den man nicht
+ * verpassen darf, meldete sich nie wieder.
+ *
+ * Vier Wochen sind der Kompromiss: wer sein Aufgebot in der Hand hat und
+ * kurz vorher vorführt, bekommt keine falsche Mahnung; wer Monate vorher
+ * vorführt, sieht den Termin weiter stehen, bis er ihn selbst nachträgt. Im
+ * Zweifel erinnert Strado einmal zu viel — die Richtung, in der ein Fehler
+ * nichts kostet.
  */
-export const MFK_ERLEDIGT_FENSTER_TAGE = 183;
+export const MFK_ERLEDIGT_NACH_TERMIN_TAGE = 183;
+export const MFK_ERLEDIGT_VOR_TERMIN_TAGE = 31;
 
 export type WartungsStatus = "ok" | "bald" | "faellig" | "ueberfaellig";
 
@@ -355,9 +374,29 @@ export function mfkErinnerung(
   const termin = einstellungen?.naechste_mfk_am ?? null;
   if (!termin || tagNummer(termin) === null) return { zustand: "kein_termin" };
 
+  // "Erledigt" heisst: die eingetragene MFK gehört zu DIESEM Termin, und der
+  // gespeicherte Termin ist bloss noch nicht nachgeführt.
+  //
+  // Das Fenster war 183 Tage und hat damit die Nachkontrolle verschluckt:
+  // Wer bei der Prüfung an einem Detail scheitert, bekommt vom
+  // Strassenverkehrsamt einen zweiten Termin in wenigen Wochen oder Monaten.
+  // Trägt er die MFK vom 1. Juni ein und den Nachkontrolltermin auf den
+  // 15. November, lagen 167 Tage dazwischen — die Erinnerung galt als
+  // erledigt und meldete sich nie wieder. Ausgerechnet der Termin, den man
+  // nicht verpassen darf.
+  //
+  // Deshalb jetzt eng: nur eine MFK, die am Termin selbst oder in den Tagen
+  // unmittelbar davor stattfand, macht ihn hinfällig. Alles andere bleibt
+  // offen — im Zweifel erinnert Strado einmal zu viel, und das ist die
+  // Richtung, in der ein Fehler nichts kostet.
+  // Positiv = die MFK liegt vor dem Termin, negativ = danach. Die beiden
+  // Fenster sind verschieden gross; die Begründung steht bei den Konstanten.
   const letzteMfk = juengsterEintrag(eintraege, "mfk");
-  if (letzteMfk && tageZwischen(letzteMfk.datum, termin) <= MFK_ERLEDIGT_FENSTER_TAGE) {
-    return { zustand: "erledigt", termin, erledigtAm: letzteMfk.datum };
+  if (letzteMfk) {
+    const abstand = tageZwischen(letzteMfk.datum, termin);
+    if (abstand >= -MFK_ERLEDIGT_NACH_TERMIN_TAGE && abstand <= MFK_ERLEDIGT_VOR_TERMIN_TAGE) {
+      return { zustand: "erledigt", termin, erledigtAm: letzteMfk.datum };
+    }
   }
 
   const tage = tageZwischen(heute, termin);

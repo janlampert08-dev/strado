@@ -28,10 +28,6 @@ export default async function PremiumPage() {
   // über das Kundenportal auf der Profilseite. Ein zweiter Abschluss würde
   // in createCheckoutSession ohnehin abgewiesen, aber eine Kaufseite, die
   // gar nicht erst erscheint, ist die klarere Antwort.
-  // Wer schon Premium hat, hat hier nichts zu suchen — das Abo verwaltet er
-  // über das Kundenportal auf der Profilseite. Ein zweiter Abschluss würde
-  // in createCheckoutSession ohnehin abgewiesen, aber eine Kaufseite, die
-  // gar nicht erst erscheint, ist die klarere Antwort.
   //
   // Seit 0110 mit einer Ausnahme: ein Saisonpass läuft aus, ohne dass
   // irgendetwas daran erinnert. Wer einen hat, darf hier ein Abo

@@ -54,10 +54,21 @@ export async function passAlarmSetzen(routeId: string, aktiv: boolean): Promise<
     return { error: "Der Pass-Alarm gehört zu Premium." };
   }
 
+  // Die Bremse steht NACH der Insert-Vorbereitung und absichtlich nicht mehr
+  // davor: sie zählte je Konto, nicht je Strecke, und der natürlichste erste
+  // Schritt — für drei, vier Pässe nacheinander einen Alarm setzen — lief
+  // damit beim zweiten Tippen in "Einen Moment" und liess den Schalter
+  // zurückspringen. Eine Missbrauchsbremse, die genau die gewollte Nutzung
+  // trifft, ist an der falschen Stelle.
+  //
+  // Was bleibt: die Grenze pro Strecke. Zweimal derselbe Alarm in derselben
+  // halben Sekunde ist ein Doppelklick, nie eine Absicht — und alles
+  // darüber hinaus fängt ohnehin der Primärschlüssel ab (23505 unten gilt
+  // als Erfolg, der Zielzustand ist ja erreicht).
   if (
-    await isRateLimited(supabase, "pass_alarme", "erstellt_am", "user_id", user.id, PASS_ALARM_COOLDOWN_MS)
+    await isRateLimited(supabase, "pass_alarme", "erstellt_am", "route_id", routeId, PASS_ALARM_COOLDOWN_MS)
   ) {
-    return { error: "Einen Moment — bitte gleich noch einmal." };
+    return { error: null };
   }
 
   const { error } = await supabase.from("pass_alarme").insert({ user_id: user.id, route_id: routeId });

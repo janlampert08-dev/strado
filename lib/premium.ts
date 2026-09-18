@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { BESTAND_VARIABLEN, preisIdsAus } from "@/lib/stripeWebhook";
+import { passZeitraum } from "@/lib/premiumAngebot";
 import {
   MAX_PRIVATE_STRECKEN_GRATIS,
   type AboPlanKennung,
@@ -99,9 +100,23 @@ export const getPremiumStatus = cache(async function getPremiumStatus(): Promise
       .select("status, price_id, current_period_end, cancel_at_period_end, kulanz_bis")
       .eq("user_id", user.id)
       .maybeSingle(),
-    // Der Pass, der am längsten gilt — bei einem Anschlusskauf (0110) ist das
-    // der spätere, und dessen Ende ist das, was die Person wissen will. Der
-    // Grant aus 0110 lässt die Stripe-Kennungen aussen vor.
+    // ALLE noch nicht abgelaufenen Pässe, nicht nur der längste. Nach einer
+    // Verlängerung sind es zwei, und sie beantworten zwei verschiedene
+    // Fragen: einer deckt HEUTE ab, der andere — mit einem gueltig_ab in der
+    // Zukunft, weil apply_saisonpass ihn hinten anhängt — sagt, bis WANN
+    // insgesamt bezahlt ist.
+    //
+    // Der frühere Zuschnitt nahm nur den spätesten und prüfte an ihm, ob er
+    // gerade läuft. Genau nach einer Verlängerung war das falsch: der
+    // späteste beginnt erst später, "läuft gerade" war damit false, und der
+    // Zugang galt als von Hand gesetzt — ohne Datum, ohne Rechnung, und ohne
+    // den Weg zurück auf die Kaufseite, deren Ausnahme an
+    // quelle === "saisonpass" hängt. Wer verlängert hatte, war bis zum
+    // Ablauf des ERSTEN Passes ausgesperrt.
+    //
+    // Fünf Zeilen reichen: mehr gleichzeitig gültige Pässe kann niemand
+    // kaufen, solange die Kaufseite erst in den letzten 30 Tagen verlängern
+    // lässt. Der Grant aus 0110 lässt die Stripe-Kennungen aussen vor.
     supabase
       .from("saisonpaesse")
       .select("gueltig_ab, gueltig_bis")
@@ -109,8 +124,7 @@ export const getPremiumStatus = cache(async function getPremiumStatus(): Promise
       .is("erstattet_am", null)
       .gt("gueltig_bis", new Date().toISOString())
       .order("gueltig_bis", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+      .limit(5),
   ]);
 
   // profiles.ist_premium ist die massgebliche Projektion: sie wird in
@@ -119,10 +133,10 @@ export const getPremiumStatus = cache(async function getPremiumStatus(): Promise
   // von Hand gesetzt wurde.
   const aktiv = profil?.ist_premium === true;
 
-  const passBis = datum(pass?.gueltig_bis ?? null);
-  const passAb = datum(pass?.gueltig_ab ?? null);
-  const passLaeuft =
-    passBis !== null && passAb !== null && passAb.getTime() <= Date.now() && passBis.getTime() > Date.now();
+  // Läuft gerade einer, und bis wann reicht die Kette? Die Auswertung steht
+  // in lib/premiumAngebot.ts, damit sie geprüft werden kann (Vitest kennt
+  // nur lib/).
+  const { laeuft: passLaeuft, deckungBis: passBis } = passZeitraum(pass ?? []);
 
   const aboLaeuft = abo ? statusIstLaufend(abo.status) : false;
 

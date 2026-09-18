@@ -210,8 +210,6 @@ export async function speichereWartungserinnerungen(
   const fahrzeugId = feld(formData, "fahrzeug_id");
   if (!(await eigenesFahrzeug(supabase, user.id, fahrzeugId))) return { error: FAHRZEUG_FEHLT };
 
-  if (!(await istPremium())) return { error: KEIN_PREMIUM };
-
   const geprueft = pruefeErinnerungen(
     {
       naechste_mfk_am: feld(formData, "naechste_mfk_am"),
@@ -222,9 +220,18 @@ export async function speichereWartungserinnerungen(
   );
   if (!geprueft.ok) return { error: geprueft.fehler };
 
+  // Die Premium-Prüfung steht NACH der Leer-Prüfung, nicht davor: Erinnern
+  // ist die bezahlte Leistung, Aufräumen nicht. Der Dateikopf sagt das
+  // ("Löschen verlangt es NICHT"), und 0111 lässt die Löschpolicy bewusst
+  // ohne Premium-Bedingung — nur diese Stelle hielt sich nicht daran und
+  // sperrte ausgerechnet das Wegräumen eines veralteten MFK-Termins, also
+  // der einzigen Erinnerung, die sonst weiter meldet.
+  const leer = erinnerungenLeer(geprueft.wert);
+  if (!leer && !(await istPremium())) return { error: KEIN_PREMIUM };
+
   // Alles leer heisst "keine Erinnerungen mehr": die Zeile geht weg, statt
   // als Zeile mit drei NULL-Werten stehen zu bleiben.
-  if (erinnerungenLeer(geprueft.wert)) {
+  if (leer) {
     const { error } = await supabase
       .from("wartungserinnerungen")
       .delete()

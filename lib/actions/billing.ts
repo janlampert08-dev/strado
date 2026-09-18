@@ -30,7 +30,7 @@ import {
   type ZahlungsVariante,
 } from "@/lib/stripeCheckout";
 import { datumCH } from "@/lib/format";
-import { saisonpassVerlaengerbar } from "@/lib/premiumAngebot";
+import { passZeitraum, saisonpassVerlaengerbar } from "@/lib/premiumAngebot";
 import {
   SAISONPASS_MONATE,
   SAISONPASS_VERLAENGERBAR_TAGE_VOR_ABLAUF,
@@ -234,22 +234,27 @@ async function zugangsgeschichte(userId: string): Promise<{
   passBis: Date | null;
 }> {
   const admin = createAdminClient();
-  const jetzt = new Date().toISOString();
   const [{ count: abos }, { data: paesse }] = await Promise.all([
     admin.from("subscriptions").select("user_id", { count: "exact", head: true }).eq("user_id", userId),
     admin
       .from("saisonpaesse")
-      .select("gueltig_bis, erstattet_am")
+      .select("gueltig_ab, gueltig_bis, erstattet_am")
       .eq("user_id", userId)
       .order("gueltig_bis", { ascending: false })
       .limit(20),
   ]);
 
-  const laufend = (paesse ?? []).find((p) => p.erstattet_am === null && p.gueltig_bis > jetzt);
+  // Dieselbe Auswertung wie in lib/premium.ts, damit Kaufseite und Profil
+  // nicht verschieden rechnen — einschliesslich des Zeitvergleichs, der
+  // hier vorher eine Zeichenkette gegen eine Zeichenkette hielt.
+  const offen = (paesse ?? [])
+    .filter((p) => p.erstattet_am === null)
+    .map((p) => ({ gueltig_ab: p.gueltig_ab, gueltig_bis: p.gueltig_bis }));
+
   return {
     hatteAbo: (abos ?? 0) > 0,
     hatteSaisonpass: (paesse ?? []).length > 0,
-    passBis: laufend ? new Date(laufend.gueltig_bis) : null,
+    passBis: passZeitraum(offen).deckungBis,
   };
 }
 

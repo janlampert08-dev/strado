@@ -380,10 +380,16 @@ export async function passStatusSetzen(
       .from("pass_status")
       .insert({ route_id: routeId, ...pruefung.werte });
 
-    // 23505: zwei Moderatoren haben denselben Pass im selben Augenblick
-    // zum ersten Mal erfasst. Der andere war schneller; ein erneutes
-    // Speichern ändert dann dessen Zeile.
-    if (anlegeFehler?.code === "23505") return fehlgeschlagen("Das Speichern des Passstatus");
+    // 23505 heisst: es GIBT bereits eine Zeile zu dieser Strecke — das
+    // Update oben hat sie also nicht deshalb verfehlt, weil keine da war,
+    // sondern weil die Policy sie nicht freigab. Der häufigste Grund ist
+    // nicht Gleichzeitigkeit, sondern eine Strecke, die inzwischen ihre
+    // Freigabe oder die Kategorie "passstrasse" verloren hat; dann ist
+    // "nicht berechtigt" die Auskunft, die stimmt, statt eines allgemeinen
+    // Fehlschlags. (Zwei Moderatoren im selben Augenblick landen ebenfalls
+    // hier und sollen es genauso lesen: ein erneutes Speichern ändert dann
+    // die Zeile des anderen.)
+    if (anlegeFehler?.code === "23505") return NICHT_BERECHTIGT;
     // RLS-Verweigerung beim Insert kommt — anders als beim Update — als
     // Fehler (42501), nicht als null Zeilen: keine Passstrecke, nicht
     // freigegeben, oder keine Moderatorenrolle mehr.

@@ -6,7 +6,7 @@ import {
   FAELLIG_TAGE,
   MAX_KM_STAND,
   MAX_NOTIZ_LAENGE,
-  MFK_ERLEDIGT_FENSTER_TAGE,
+  MFK_ERLEDIGT_VOR_TERMIN_TAGE,
   artenFuer,
   datumText,
   erinnerungenLeer,
@@ -209,6 +209,20 @@ describe("mfkErinnerung", () => {
       termin: "2026-10-01",
       erledigtAm: "2026-09-10",
     });
+    // Die Nachkontrolle: MFK nicht bestanden, neuer Termin in ein paar
+    // Monaten. Sie darf den Termin NICHT als erledigt gelten lassen — sonst
+    // meldet sich ausgerechnet dieser Termin nie wieder.
+    const nachkontrolle = {
+      naechste_mfk_am: "2026-11-15",
+      service_intervall_km: null,
+      service_intervall_monate: null,
+    };
+    expect(mfkErinnerung(nachkontrolle, [eintrag("mfk", "2026-06-01")], HEUTE).zustand).toBe("offen");
+    // Eine MFK, die ein Jahr NACH dem Termin liegt, erledigt ihn ebenfalls
+    // nicht — dann ist der gespeicherte Termin schlicht veraltet.
+    expect(
+      mfkErinnerung(einst, [eintrag("mfk", "2027-10-05")], "2027-10-06").zustand,
+    ).toBe("offen");
     // Nach dem Termin vorgeführt: ebenfalls erledigt, nicht überfällig.
     expect(mfkErinnerung(einst, [eintrag("mfk", "2026-10-05")], "2026-10-06")).toMatchObject({
       zustand: "erledigt",
@@ -218,10 +232,10 @@ describe("mfkErinnerung", () => {
   it("eine alte MFK erledigt den neuen Termin nicht", () => {
     const einst = { naechste_mfk_am: "2026-10-01", service_intervall_km: null, service_intervall_monate: null };
     // Genau an der Fenstergrenze noch erledigt, einen Tag davor nicht mehr.
-    const amRand = new Date(Date.UTC(2026, 9, 1) - MFK_ERLEDIGT_FENSTER_TAGE * 86_400_000)
+    const amRand = new Date(Date.UTC(2026, 9, 1) - MFK_ERLEDIGT_VOR_TERMIN_TAGE * 86_400_000)
       .toISOString()
       .slice(0, 10);
-    const davor = new Date(Date.UTC(2026, 9, 1) - (MFK_ERLEDIGT_FENSTER_TAGE + 1) * 86_400_000)
+    const davor = new Date(Date.UTC(2026, 9, 1) - (MFK_ERLEDIGT_VOR_TERMIN_TAGE + 1) * 86_400_000)
       .toISOString()
       .slice(0, 10);
     expect(mfkErinnerung(einst, [eintrag("mfk", amRand)], HEUTE).zustand).toBe("erledigt");

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Button from "@/components/ui/Button";
 import SegmentedControl from "@/components/ui/SegmentedControl";
-import { saisonDateiname, type SaisonFormat } from "@/lib/saisonLayout";
+import { saisonDateiname, zahlCH, type SaisonFormat } from "@/lib/saisonLayout";
 import { istSaisonLeer, type Saison } from "@/lib/saisonrueckblick";
 import { mitAnzahl } from "@/lib/format";
 
@@ -94,7 +94,7 @@ export default function SaisonrueckblickTeilen({ saison }: { saison: Saison | nu
         <p className="font-mono text-xs text-muted tabular-nums">
           {mitAnzahl(s.fahrten, "Fahrt", "Fahrten")}
           {s.paesse > 0 && ` · ${mitAnzahl(s.paesse, "Pass", "Pässe")}`}
-          {` · ${s.km.toLocaleString("de-CH")} km`}
+          {` · ${zahlCH(s.km)} km`}
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">

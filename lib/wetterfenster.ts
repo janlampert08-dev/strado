@@ -255,8 +255,14 @@ export function kombiniereTage(
   return start.map((s) => {
     const h = oben.get(s.datum);
     if (!h || h.stufe === null) return s;
+    // Fehlt am START das Urteil, bleibt der Tag ohne Urteil — auch wenn es
+    // oben gut aussieht. Vorher übernahm er in diesem Fall die Stufe des
+    // höchsten Punkts, und damit stand eine als "trocken, 18°" gelesene
+    // Zelle über einer Temperatur, die "—" zeigt: ein gutes Urteil aus
+    // Daten, die es nicht gibt. Genau das verhindert beurteileTag() eine
+    // Ebene tiefer ("lieber kein Urteil als ein erfundenes gutes").
+    if (s.stufe === null) return s;
     const obenSchlechter =
-      s.stufe === null ||
       STUFENRANG[h.stufe] > STUFENRANG[s.stufe] ||
       (h.stufe === s.stufe && h.stufe !== "gut" && GRUNDRANG[h.grund] > GRUNDRANG[s.grund]);
     if (!obenSchlechter) return s;
