@@ -148,13 +148,16 @@ export default async function FahrerPage({
 
         {zeigtStatistiken && (
           <Card as="dl" className="grid grid-cols-2 gap-x-4 gap-y-4 p-4 text-sm sm:grid-cols-3">
-            {profile.zeigtPaesse && (
+            {/* Null-Werte weglassen: "Pässe befahren 0" neben 1'380
+                Höhenmetern las sich im Review wie ein Fehler, nicht wie eine
+                Auskunft. */}
+            {profile.zeigtPaesse && profile.passCount > 0 && (
               <div>
                 <dt className="text-muted">Pässe befahren</dt>
                 <dd className="text-lg tabular-nums">{profile.passCount}</dd>
               </div>
             )}
-            {profile.zeigtHoehenmeter && (
+            {profile.zeigtHoehenmeter && profile.hoehenmeter > 0 && (
               <div>
                 <dt className="text-muted">Höhenmeter gesammelt</dt>
                 <dd className="text-lg tabular-nums">
@@ -162,7 +165,7 @@ export default async function FahrerPage({
                 </dd>
               </div>
             )}
-            {profile.zeigtDistanz && (
+            {profile.zeigtDistanz && profile.distanzKm > 0 && (
               <div>
                 <dt className="text-muted">GPS-getrackte Distanz</dt>
                 <dd className="text-lg tabular-nums">

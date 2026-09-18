@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import Avatar from "@/components/Avatar";
 import { Input } from "@/components/ui/Input";
@@ -21,6 +22,14 @@ export default function ProfileSearch() {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const containerRef = useRef<HTMLDivElement>(null);
+  // Tastatur und Screenreader. Vorher war die Liste nur mit der Maus
+  // bedienbar: Pfeil nach unten tat nichts, und dass und wie viele Treffer
+  // erschienen, sagte niemand an. Jetzt das Combobox-Muster der WAI-ARIA
+  // Authoring Practices: Fokus bleibt im Feld, aria-activedescendant zeigt
+  // auf den markierten Treffer, Enter öffnet ihn, Escape schliesst.
+  const router = useRouter();
+  const listId = useId();
+  const [aktiv, setAktiv] = useState(-1);
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -33,6 +42,7 @@ export default function ProfileSearch() {
       startTransition(async () => {
         const found = await searchProfiles(trimmed);
         setResults(found);
+        setAktiv(-1);
         setOpen(true);
       });
     }, DEBOUNCE_MS);
@@ -64,26 +74,71 @@ export default function ProfileSearch() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => results.length > 0 && setOpen(true)}
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={open && aktiv >= 0 ? `${listId}-${aktiv}` : undefined}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              setOpen(false);
+              setAktiv(-1);
+              return;
+            }
+            if (!open || results.length === 0) return;
+            if (event.key === "ArrowDown") {
+              event.preventDefault();
+              setAktiv((i) => (i + 1) % results.length);
+            } else if (event.key === "ArrowUp") {
+              event.preventDefault();
+              setAktiv((i) => (i <= 0 ? results.length - 1 : i - 1));
+            } else if (event.key === "Enter" && aktiv >= 0) {
+              event.preventDefault();
+              setOpen(false);
+              router.push(`/fahrer/${results[aktiv].id}`);
+            }
+          }}
           placeholder="Fahrer suchen…"
           aria-label="Fahrer suchen"
           className="pl-9"
         />
       </div>
 
+      {/* Ansage der Trefferzahl — immer im DOM, siehe components/Hinweis.tsx. */}
+      <p role="status" className="sr-only">
+        {open && !isPending
+          ? results.length === 0
+            ? "Keine Fahrer gefunden."
+            : mitAnzahl(results.length, "Treffer", "Treffer")
+          : ""}
+      </p>
       {open && (
-        <div className="absolute top-full right-0 left-0 z-10 mt-1 max-h-80 overflow-y-auto rounded-lg border border-border bg-background shadow-elevated">
+        // z-30 statt z-10: der Avatar der ersten Feed-Karte (relative z-10)
+        // lag sonst über der Trefferliste.
+        <div
+          id={listId}
+          role="listbox"
+          aria-label="Gefundene Fahrer"
+          className="absolute top-full right-0 left-0 z-30 mt-1 max-h-80 overflow-y-auto rounded-lg border border-border bg-background shadow-elevated"
+        >
           {isPending && results.length === 0 && (
             <p className="px-3 py-2.5 text-sm text-muted">Suche…</p>
           )}
           {!isPending && results.length === 0 && (
             <p className="px-3 py-2.5 text-sm text-muted">Keine Fahrer gefunden.</p>
           )}
-          {results.map((profile) => (
+          {results.map((profile, index) => (
             <Link
               key={profile.id}
+              id={`${listId}-${index}`}
+              role="option"
+              aria-selected={index === aktiv}
               href={`/fahrer/${profile.id}`}
               onClick={() => setOpen(false)}
-              className="flex min-h-14 items-center gap-3 px-3 py-2 text-sm transition-colors duration-fast hover:bg-surface"
+              onMouseEnter={() => setAktiv(index)}
+              className={`flex min-h-14 items-center gap-3 px-3 py-2 text-sm transition-colors duration-fast hover:bg-surface ${
+                index === aktiv ? "bg-surface" : ""
+              }`}
             >
               <Avatar url={profile.avatarUrl} name={profile.displayName} size={36} />
               {/* Zweite Zeile, damit zwei gleichnamige Fahrer unterscheidbar

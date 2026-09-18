@@ -313,7 +313,9 @@ export default async function ProfilPage() {
           </div>
           <div className="flex flex-col gap-1.5">
             <h1 className="text-display font-semibold">{profile?.display_name ?? user.email}</h1>
-            <p className="text-sm text-muted">{user.email}</p>
+            {/* Die E-Mail-Adresse stand hier unter dem Namen — auf der Seite, die
+                man anderen am ehesten über die Schulter zeigt, und doppelt:
+                Einstellungen → Konto nennt sie ohnehin. */}
             <FollowCounts
               followersCount={followCounts.followers}
               followingCount={followCounts.following}
@@ -559,15 +561,16 @@ export default async function ProfilPage() {
                       })}
                     </ul>
                   ) : (
-                    <EmptyState
-                      icon={RouteIcon}
-                      title="Noch keine Fahrten aufgezeichnet."
-                      action={
-                        <Link href="/" className={buttonVariants({ variant: "secondary", size: "sm" })}>
-                          Strecken entdecken
-                        </Link>
-                      }
-                    />
+                    // Eine Zeile statt eines zweiten Leerzustands: ohne jede
+                    // Fahrt steht der Aufruf "Erste Fahrt aufzeichnen" schon
+                    // oben bei den Kennzahlen. Zwei Kästen mit zwei Knöpfen
+                    // für dieselbe Lücke lasen sich im Review als Wiederholung.
+                    <p className="py-2 text-sm text-muted">
+                      Noch keine Fahrten aufgezeichnet.{" "}
+                      <Link href="/" className="text-accent hover:underline">
+                        Strecken entdecken
+                      </Link>
+                    </p>
                   )}
                 </div>
               </details>

@@ -6,6 +6,7 @@ import { getUnseenActivityCount } from "@/lib/aktivitaetsliste";
 import { getNavItems } from "@/lib/nav";
 import BackButton from "@/components/BackButton";
 import LogoLink from "@/components/LogoLink";
+import HeaderNavLink from "@/components/HeaderNavLink";
 import BottomNav from "@/components/BottomNav";
 import OffeneAufzeichnungStreifen from "@/components/OffeneAufzeichnung";
 import { buttonVariants } from "@/components/ui/Button";
@@ -100,18 +101,18 @@ export default async function Header({ back }: { back?: string } = {}) {
                   {item.label}
                 </Link>
               ) : (
-                <Link
+                <HeaderNavLink
                   key={item.href}
                   href={item.href}
+                  aktivAuf={item.aktivAuf}
                   // Der Zähler hängt am Feed: dort liegt die Aktivität als
                   // Reiter (components/FeedReiter.tsx), und die Zahl gehört
                   // an den Eintrag, der dorthin führt.
-                  aria-label={
+                  ariaLabel={
                     item.href === "/feed" && ungeseheneAktivitaet > 0
                       ? `${item.label}, ${ungeseheneAktivitaet} ${ungeseheneAktivitaet === 1 ? "neue Reaktion" : "neue Reaktionen"}`
                       : undefined
                   }
-                  className="flex items-center gap-1.5 whitespace-nowrap text-foreground transition-colors duration-fast hover:text-accent"
                 >
                   {item.label}
                   {item.href === "/feed" && ungeseheneAktivitaet > 0 && (
@@ -122,7 +123,7 @@ export default async function Header({ back }: { back?: string } = {}) {
                       {ungeseheneAktivitaet > 9 ? "9+" : ungeseheneAktivitaet}
                     </span>
                   )}
-                </Link>
+                </HeaderNavLink>
               ),
             )}
           </nav>

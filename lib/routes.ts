@@ -257,7 +257,7 @@ export async function listRoutesForApi(mitHoehenprofil = false): Promise<RouteAp
   return (data as RouteApiZeile[]) ?? [];
 }
 
-// Für die Streckenauswahl in TrackLeaderboardChooser (app/leaderboards) —
+// Für die Streckenauswahl in TrackLeaderboardChooser (app/ranglisten) —
 // die dortige Karte braucht nur id+name, kein select("*") mit voller
 // Geometrie/Höhenprofil/Tempolimits wie getRoutes() oben.
 export interface RouteChoice {
@@ -278,7 +278,20 @@ export async function listRouteChoices(): Promise<RouteChoice[]> {
     return [];
   }
 
-  return (data as RouteChoice[]) ?? [];
+  // Strecken mit Bestzeiten zuerst, innerhalb beider Gruppen alphabetisch.
+  // Die Auswahl startet auf dem ersten Eintrag — alphabetisch war das eine
+  // Strecke ohne jede Zeit, und die Seite zeigte beim Öffnen einen
+  // Leerzustand, obwohl es anderswo Zeiten gab. Scheitert die Abfrage, bleibt
+  // es bei der alphabetischen Reihenfolge: das ist eine Sortierhilfe, kein
+  // Inhalt.
+  const strecken = (data as RouteChoice[]) ?? [];
+  const { data: zeiten } = await supabase.from("route_leaderboard").select("route_id").limit(2000);
+  const mitZeiten = new Set(((zeiten as { route_id: string }[] | null) ?? []).map((z) => z.route_id));
+  if (mitZeiten.size === 0) return strecken;
+  return [
+    ...strecken.filter((r) => mitZeiten.has(r.id)),
+    ...strecken.filter((r) => !mitZeiten.has(r.id)),
+  ];
 }
 
 // Kandidaten für die automatische Streckenerkennung innerhalb einer freien

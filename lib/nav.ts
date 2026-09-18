@@ -104,7 +104,7 @@ export function getNavItems({
       { href: "/", label: "Strecken", icon: MapPinIcon },
       { href: "/feed", label: "Feed", icon: FeedIcon },
       fahrtStarten,
-      { href: "/leaderboards", label: "Ranglisten", icon: RankingIcon },
+      { href: "/ranglisten", label: "Ranglisten", icon: RankingIcon },
       { href: "/anmelden", label: "Anmelden", icon: PersonIcon },
     ];
   }
@@ -150,7 +150,7 @@ export function getNavItems({
     // Leiste, in der nichts hervorgehoben ist.
     { href: "/feed", label: "Feed", icon: FeedIcon, aktivAuf: ["/aktivitaet"] },
     ...mittlereAktionen,
-    { href: "/leaderboards", label: "Ranglisten", icon: RankingIcon },
+    { href: "/ranglisten", label: "Ranglisten", icon: RankingIcon },
     { href: "/profil", label: "Profil", icon: PersonIcon },
     ...(surface === "bottom" ? [] : rollen),
   ];

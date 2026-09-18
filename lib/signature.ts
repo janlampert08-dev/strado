@@ -136,7 +136,7 @@ function formatSignature(key: SignatureKey, route: ExploreRoute): string {
       // "Ø 114 km/h" in einer Liste, deren Nachbarwerte Eigenschaften der
       // Strecke sind, las es sich als Durchschnittstempo — auf der
       // Streckenseite steht dieselbe Zahl als "Ø Tempolimit".
-      return avg !== null ? `Limit Ø ${avg} km/h` : "Freie Fahrt";
+      return avg !== null ? `Ø erlaubt ${avg} km/h` : "Freie Fahrt";
     }
     case "laenge":
       return `${formatKmGerundet(route.laenge_km)} km lang`;

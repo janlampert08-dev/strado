@@ -22,6 +22,13 @@ export interface TrackingSnapshot {
   // Optional, damit ein vor dieser Änderung geschriebener Snapshot weiter
   // gelesen werden kann.
   ticket?: FahrtStartTicket | null;
+  // Seit 2026-09-17: die Aufzeichnung war beim Schreiben pausiert
+  // (useRideRecorder.pausieren). Wird der Snapshot so wiederaufgenommen,
+  // bleibt sie pausiert, statt ungefragt wieder GPS anzufordern. pausiertAm
+  // ist der Zeitpunkt der Pause, damit die angezeigte Fahrzeit sie beim
+  // Fortsetzen herausrechnen kann. Optional wie ticket.
+  pausiert?: boolean;
+  pausiertAm?: number | null;
 }
 
 // Schlüssel je Aufzeichnung: bei einer Streckenfahrt die Strecken-ID, bei

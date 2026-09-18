@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { Crosshair, Gauge, Mountain, Route, Ruler, SearchX, TrendingUp } from "lucide-react";
+import { ChevronDown, Crosshair, Gauge, Mountain, Route, Ruler, SearchX, TrendingUp } from "lucide-react";
 import { routeShapePath } from "@/lib/routeShape";
 import { formatKmGerundet } from "@/lib/format";
 import { type RouteSignature, type SignatureKey } from "@/lib/signature";
@@ -16,6 +16,15 @@ import IconButton from "@/components/ui/IconButton";
 // Icon je Signatur-Merkmal — spiegelt visuell wider, worin die Strecke
 // heraussticht (Kehren -> kurvige Straße, Tempo -> Tacho, etc.), statt für
 // alle Merkmale dasselbe Mountain-Symbol zu zeigen.
+// Wortlaut der Farblegende, in der Reihenfolge der Tokens in globals.css.
+const LEGENDE: { key: SignatureKey; text: string }[] = [
+  { key: "kehren", text: "Viele Kehren" },
+  { key: "steigung", text: "Steile Steigung" },
+  { key: "hoehe", text: "Hoch hinauf" },
+  { key: "tempo", text: "Durchschnittlich erlaubtes Tempo" },
+  { key: "laenge", text: "Lange Strecke" },
+];
+
 const SIGNATURE_ICONS: Record<SignatureKey, typeof Mountain> = {
   kehren: Route,
   steigung: TrendingUp,
@@ -186,6 +195,36 @@ export default function ExploreSidebar({
 
       <div className="border-b border-border" />
 
+      {/* Die Legende zu den fünf Signaturtönen. Die Farbe ist nie die
+          einzige Kodierung (Icon und Wort stehen an jeder Zeile, siehe
+          lib/signature.ts), aber sie ist die erste, die man sieht — und im
+          Review blieb offen, warum eine Strecke violett und die nächste
+          orange ist. Zugeklappt, damit sie die Liste nicht nach unten
+          schiebt; wer fragt, findet die Antwort an der Stelle der Frage. */}
+      <details className="group text-sm">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-muted transition-colors duration-fast hover:text-foreground [&::-webkit-details-marker]:hidden">
+          Was die Farben bedeuten
+          <ChevronDown
+            className="h-4 w-4 transition-transform duration-fast group-open:rotate-180"
+            aria-hidden="true"
+          />
+        </summary>
+        <p className="pb-2 text-xs text-muted">
+          Jede Strecke zeigt, worin sie unter allen Strecken am meisten heraussticht:
+        </p>
+        <ul className="grid grid-cols-1 gap-1.5 pb-2 sm:grid-cols-2">
+          {LEGENDE.map(({ key, text }) => {
+            const Icon = SIGNATURE_ICONS[key];
+            return (
+              <li key={key} className={`flex items-center gap-2 text-xs ${SIGNATUR_KLASSEN[key].text}`}>
+                <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                {text}
+              </li>
+            );
+          })}
+        </ul>
+      </details>
+
       <ul className="flex flex-col gap-1">
         {routes.length === 0 && loadError && (
           <li role="alert" className="text-sm text-danger">
@@ -259,7 +298,7 @@ export default function ExploreSidebar({
                       //
                       // Schrumpfen soll das Signatur-Label daneben: es hat
                       // truncate und kürzt mit Auslassungspunkten, was bei
-                      // "Limit Ø 114 km/h" lesbar bleibt. Eine umbrechende
+                      // "Ø erlaubt 114 km/h" lesbar bleibt. Eine umbrechende
                       // Masszahl ist dagegen nie richtig.
                       <span className="shrink-0 text-sm tabular-nums whitespace-nowrap text-muted">
                         {formatKmGerundet(route.laenge_km)} km

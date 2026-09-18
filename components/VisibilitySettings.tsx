@@ -1,8 +1,7 @@
 "use client";
 
-import { useActionState, useRef } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { updateVisibilitySettings, type ProfileActionState } from "@/lib/actions/profile";
-import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Switch from "@/components/ui/Switch";
 import { fieldClassName } from "@/components/ui/Input";
@@ -71,8 +70,28 @@ export default function VisibilitySettings({
   const formRef = useRef<HTMLFormElement>(null);
   useEingabenBewahren(formRef);
 
+  // SOFORT SPEICHERN statt "Einstellungen speichern". Ein Schalter, der erst
+  // nach einem zweiten Knopf weiter unten wirkt, widerspricht dem, was ein
+  // Schalter verspricht — und auf derselben Seite wirkt "Darstellung"
+  // (Hell/Dunkel) sofort. Wer umlegte und die Seite verliess, verlor die
+  // Änderung wortlos.
+  //
+  // Die Server Action bleibt dieselbe (lib/actions/profile.ts, unverändert):
+  // jede Änderung schickt das ganze Formular, also gewinnt immer der letzte
+  // Stand. Kurz entprellt, weil die Privatzone beim Speichern alle geteilten
+  // Fahrten neu zuschneidet und schnelles Umlegen mehrerer Schalter sonst je
+  // einen Durchlauf auslöste.
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function aenderung() {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => formRef.current?.requestSubmit(), 400);
+  }
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  }, []);
+
   return (
-    <form ref={formRef} action={formAction} className="flex flex-col gap-4">
+    <form ref={formRef} action={formAction} onChange={aenderung} className="flex flex-col gap-4">
       <Card className="flex flex-col divide-y divide-border px-4">
         {FIELDS.map((field) => (
           <Switch
@@ -120,14 +139,11 @@ export default function VisibilitySettings({
           {state.error}
         </p>
       )}
-      {!state.error && state.success && !pending && (
-        <p role="status" className="text-sm text-success">
-          Gespeichert.
-        </p>
-      )}
-      <Button type="submit" disabled={pending} className="self-start">
-        {pending ? "Speichern…" : "Einstellungen speichern"}
-      </Button>
+      {/* Die Statuszeile steht immer im DOM (Live-Bereich, siehe
+          components/Hinweis.tsx), damit Screenreader die Speicherung ansagen. */}
+      <p role="status" className="min-h-5 text-sm text-muted">
+        {pending ? "Wird gespeichert…" : !state.error && state.success ? "Gespeichert." : ""}
+      </p>
     </form>
   );
 }

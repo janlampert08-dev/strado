@@ -192,7 +192,7 @@ export async function updateVisibilitySettings(
   revalidatePath("/profil/einstellungen");
   revalidatePath(`/fahrer/${user.id}`);
   revalidatePath("/feed");
-  revalidatePath("/leaderboards");
+  revalidatePath("/ranglisten");
   return { error: null, success: true };
 }
 

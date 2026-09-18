@@ -466,7 +466,7 @@ export async function logTrackedCompletion(
 
   revalidatePath(`/strecken/${routeId}`);
   revalidatePath("/profil");
-  revalidatePath("/leaderboards");
+  revalidatePath("/ranglisten");
   return { error: null, completionId: inserted.id };
 }
 
@@ -906,7 +906,7 @@ export async function deleteCompletion(completionId: string): Promise<DeleteComp
   revalidatePath(`/fahrer/${user.id}`);
   revalidatePath("/feed");
   if (existing.route_id) revalidatePath(`/strecken/${existing.route_id}`);
-  revalidatePath("/leaderboards");
+  revalidatePath("/ranglisten");
   return { error: null };
 }
 
@@ -998,7 +998,7 @@ export async function toggleCompletionVisibility(
   revalidatePath(`/fahrten/${completionId}`);
   revalidatePath(`/fahrer/${user.id}`);
   if (existing.route_id) revalidatePath(`/strecken/${existing.route_id}`);
-  revalidatePath("/leaderboards");
+  revalidatePath("/ranglisten");
   return { error: null };
 }
 

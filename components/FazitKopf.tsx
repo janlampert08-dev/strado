@@ -48,7 +48,13 @@ export default function FazitKopf({
       <h1 className="text-display font-semibold tracking-tight">{titel}</h1>
       {trail.length > 1 && (
         <div className="h-48 overflow-hidden rounded-lg bg-surface sm:h-56">
-          <RouteMap routes={KEINE_STRECKEN} trail={trail} fitTrail routesClickable={false} />
+          <RouteMap
+            routes={KEINE_STRECKEN}
+            trail={trail}
+            fitTrail
+            routesClickable={false}
+            ohneBedienelemente
+          />
         </div>
       )}
       <dl className="grid grid-cols-3 gap-3">

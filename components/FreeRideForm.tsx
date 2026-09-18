@@ -470,9 +470,9 @@ export default function FreeRideForm({
           <p className="flex items-center gap-2 text-sm font-medium">
             <span
               aria-hidden="true"
-              className={`h-2.5 w-2.5 shrink-0 rounded-full ${recorder.hasStarted ? "bg-danger" : "bg-muted"}`}
+              className={`h-2.5 w-2.5 shrink-0 rounded-full ${recorder.hasStarted && !recorder.pausiert ? "bg-danger" : "bg-muted"}`}
             />
-            {recorder.hasStarted ? "Aufzeichnung läuft" : "Warte auf GPS…"}
+            {recorder.pausiert ? "Pausiert" : recorder.hasStarted ? "Aufzeichnung läuft" : "Warte auf GPS…"}
           </p>
           <p className="text-sm text-muted tabular-nums">
             <span className="sr-only">Zeit </span>
@@ -538,9 +538,25 @@ export default function FreeRideForm({
           <span>Bildschirm an lassen — sonst pausiert die Aufzeichnung.</span>
         </p>
         {recorder.hasStarted ? (
-          <HalteKnopf onBestaetigt={recorder.stop} className="w-full">
-            Zum Beenden halten
-          </HalteKnopf>
+          // Pause neben dem Beenden: ein Tankstopp oder ein Aussichtspunkt
+          // ist keine neue Fahrt. Pause ist harmlos und umkehrbar, deshalb
+          // ein gewöhnlicher Knopf; Beenden bleibt die Halte-Geste.
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={recorder.pausiert ? recorder.weiterNachPause : recorder.pausieren}
+              className={buttonVariants({
+                variant: recorder.pausiert ? "accent" : "secondary",
+                size: "lg",
+                className: "shrink-0 px-6",
+              })}
+            >
+              {recorder.pausiert ? "Weiter" : "Pause"}
+            </button>
+            <HalteKnopf onBestaetigt={recorder.stop} className="flex-1">
+              Zum Beenden halten
+            </HalteKnopf>
+          </div>
         ) : (
           <button
             type="button"

@@ -2,7 +2,7 @@ import Skeleton from "@/components/ui/Skeleton";
 import PageSkeleton from "@/components/ui/PageSkeleton";
 import LeaderboardListsSkeleton from "@/components/LeaderboardListsSkeleton";
 
-// Spiegelt app/leaderboards/page.tsx: Überschrift im text-display-Grad mit
+// Spiegelt app/ranglisten/page.tsx: Überschrift im text-display-Grad mit
 // Unterzeile, darunter die Chip-Leiste, darunter die Ranglisten.
 //
 // Die Reiterleiste ist entfallen, hier wie dort: die Ranglisten sind wieder

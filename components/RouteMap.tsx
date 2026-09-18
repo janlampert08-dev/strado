@@ -464,6 +464,7 @@ export default function RouteMap({
   routesClickable = true,
   centerOnFirstLocation = false,
   followLocation = false,
+  ohneBedienelemente = false,
 }: {
   // Alle Strecken, die gezeichnet werden. Die Reihenfolge ist gleichgültig,
   // sie landen gemeinsam in einer Feature-Sammlung. Genau eine Strecke ist
@@ -562,6 +563,8 @@ export default function RouteMap({
   // positioniert hat, und pausiert, solange die Nutzerin die Karte selbst
   // verschiebt.
   followLocation?: boolean;
+  /** Zoom- und Kompass-Knöpfe weglassen (Vorschaukarten, z. B. im Fazit). */
+  ohneBedienelemente?: boolean;
   // Pixel am unteren Rand der Karte, die von etwas anderem verdeckt werden —
   // auf Mobile das Bottom-Sheet plus die BottomNav darunter (gemeldet von
   // DragSheet.tsx, siehe ExploreView/RouteDetailLayout). Die Leinwand füllt
@@ -585,6 +588,8 @@ export default function RouteMap({
   // ExploreView) — ohne das wäre die Karte für ein bis zwei Sekunden leer.
   const [isReady, setIsReady] = useState(false);
   const routesRef = useRef(routes);
+  // Nur der Wert beim Aufbau zählt: die Knöpfe werden einmal angehängt.
+  const ohneBedienelementeRef = useRef(ohneBedienelemente);
   const trailRef = useRef(trail);
   const routesClickableRef = useRef(routesClickable);
   const fitRoutesRef = useRef(fitRoutes);
@@ -702,7 +707,13 @@ export default function RouteMap({
     });
 
     map.addControl(new mapboxgl.AttributionControl({ compact: true }));
-    map.addControl(new mapboxgl.NavigationControl(), "top-right");
+    // Zoom und Kompass nur, wo die Karte zum Erkunden da ist. Auf einer
+    // Vorschau (Fazit) sind drei 32-px-Knöpfe Lärm auf einer Fläche, die
+    // nur eine Linie zeigen soll. Die Attribution bleibt immer — sie ist
+    // Pflicht (globals.css, Mapbox-Abschnitt).
+    if (!ohneBedienelementeRef.current) {
+      map.addControl(new mapboxgl.NavigationControl(), "top-right");
+    }
     mapRef.current = map;
 
     let hasFitBounds = false;
