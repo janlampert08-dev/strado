@@ -355,6 +355,276 @@ Meldungstexten zu Pässen ist gegen erfundene DATEX-Lieferungen getestet
 (`lib/passMeldungen.test.ts`), **nicht** gegen echte — das geht erst mit
 Schlüssel.
 
+## 0110_saisonpass — vollständig angewendet am 2026-09-18
+
+> Eingespielt in vier Schritten (Ledger `0110_saisonpass_tabelle`,
+> `0110_saisonpass_funktionen`, `0110_saisonpass_rechte_entziehen`,
+> `0110_saisonpass_projektion`). Danach gemessen:
+>
+> - `apply_subscription_state` und `premium_abgleich` rechnen über
+>   `saisonpass_gueltig()`; `anonymize_account` löscht die Pässe **und** trägt
+>   weiterhin die Ergänzungen aus `0101` (`fahrt_starts`) und der
+>   Pässe-Migration (`pass_folgen`).
+> - Alle sechs Funktionen: `anon` = false, `authenticated` = false,
+>   `service_role` = true.
+> - `saisonpaesse`: RLS an, eine Select-Policy, Spalten-Grants ohne die
+>   Stripe-Kennungen.
+>
+> **Funktionaler Test, zurückgerollt** (`DO`-Block mit `raise exception` am
+> Ende, Muster aus `0098`): erster Kauf legt an und setzt `ist_premium`;
+> **dieselbe Checkout-Session ein zweites Mal ändert nichts** (eine Zeile —
+> Webhook und Browser bestätigen beide); Laufzeit sechs Monate; ein zweiter
+> Pass beginnt exakt am `gueltig_bis` des ersten (Anschluss, keine
+> verschluckte Zeit); nach künstlichem Ablauf nimmt `premium_abgleich()` die
+> Person in die Ergebnisliste und `ist_premium` fällt auf false. Danach
+> geprüft: `saisonpaesse` leer, kein Testkunde am Profil, Zahl der
+> Premium-Konten unverändert.
+>
+> Zwei Lehren, die jede künftige Migration angehen:
+>
+> 1. **Der Live-Körper von `anonymize_account` war nicht der aus `0092`.** Er
+>    trug bereits `0101` und die Pässe-Migration. Die Datei wurde vor dem
+>    Einspielen auf den Live-Stand gehoben; ein `create or replace` auf dem
+>    `0092`-Körper hätte beide still zurückgedreht. Genau dafür steht die
+>    `prosrc`-Abfrage im Kopf dieser Datei.
+> 2. **Neue Funktionen bekommen von Supabase automatisch `EXECUTE` für
+>    `anon` und `authenticated`.** Weil die Datei in Teilen eingespielt wurde
+>    und die `revoke`-Zeilen im letzten Teil standen, waren
+>    `apply_saisonpass` und `saisonpass_erstatten` einige Minuten lang über
+>    den anonymen Schlüssel aufrufbar — die Falle aus `0047`, `0048`, `0091`,
+>    `0097`, diesmal durch die Stückelung. **Wer eine Migration in Teilen
+>    einspielt, nimmt die Rechte in denselben Teil wie die Funktion oder
+>    misst sie unmittelbar danach nach.**
+
+### Ursprüngliche Beschreibung
+
+Der Saisonpass: Premium für sechs Monate, einmal bezahlt, ohne Verlängerung
+(`docs/premium-neu/preise.md`). Liegt auf dem Zweig `staging-premium-neu` und
+ist **nicht eingespielt**.
+
+Was sie anlegt und ändert:
+
+| Objekt | Was |
+| --- | --- |
+| `saisonpaesse` | eine Zeile je Kauf: Stripe-Kennungen, Betrag, Währung, `gueltig_ab`/`gueltig_bis`, `erstattet_am`. RLS an, `select` für die eigene Zeile und nur auf den Spalten ohne Stripe-Kennungen (Muster aus `0063`), kein Schreibrecht für `authenticated` |
+| `saisonpass_gueltig(uuid)` | die einzige Definition, wann ein Pass Premium gewährt |
+| `apply_saisonpass(...)` | trägt einen bezahlten Pass ein; idempotent je Checkout-Session, serialisiert je Nutzer über denselben Advisory-Lock wie `apply_subscription_state`, hängt einen zweiten Pass an das Ende des laufenden |
+| `saisonpass_erstatten(text)` | nimmt einen vollständig erstatteten Pass zurück und zieht die Projektion nach |
+| `apply_subscription_state` | **ersetzt** (`create or replace`), Rumpf aus `0062` mit genau einer Änderung: `profiles.ist_premium` ist ab jetzt "Abo läuft ODER Pass gültig" |
+| `premium_abgleich()` | **ersetzt**, Rumpf aus `0059`, Soll-Menge über Abos UND Pässe (ein Pass löst an seinem Ende kein Stripe-Ereignis aus), anonymisierte Profile ausgenommen |
+| `anonymize_account(uuid)` | **ersetzt**, Rumpf aus `0092` plus `delete from saisonpaesse` |
+
+**Reihenfolge: Schema zuerst, Code danach.** `getPremiumStatus()` liest
+`saisonpaesse` auf jeder Seite, die Premium kennt, und `lib/actions/billing.ts`
+ruft `apply_saisonpass` nach der Zahlung. Ohne die Migration schlägt der
+Statusabruf fehl, und — teurer — ein bezahlter Pass liesse sich nicht
+eintragen.
+
+**Vor dem Einspielen** die Live-Rümpfe der drei ersetzten Funktionen auslesen
+und gegen `0062`/`0059`/`0092` vergleichen (die Lehre aus `0088`/`0090`):
+
+```sql
+select pg_get_functiondef(p.oid)
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname in ('apply_subscription_state', 'premium_abgleich', 'anonymize_account');
+```
+
+Weicht einer ab, hat ein anderer Zweig ihn inzwischen angefasst — dann die
+Änderung auf den neuen Rumpf setzen, statt die Datei wie sie ist einzuspielen.
+**Bekannte Berührung:** `0101_anonymisierung_fahrtstarts` (PR #255) sitzt
+ebenfalls auf `anonymize_account`. Wer zuletzt einspielt, muss beide Zusätze
+im Rumpf haben — sonst dreht der zweite den ersten still zurück. Ist `0101`
+schon drin, gehört dessen `delete from fahrt_starts …` in diese Fassung
+übernommen, bevor sie läuft.
+
+**Danach prüfen** — die Grant-Falle zuerst (`0047`, `0048`, `0091`, `0097`):
+
+```sql
+-- Erwartet: alle drei neuen Funktionen anon=false, authenticated=false.
+select p.proname,
+       has_function_privilege('anon', p.oid, 'EXECUTE') as anon,
+       has_function_privilege('authenticated', p.oid, 'EXECUTE') as authed
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname in ('saisonpass_gueltig', 'apply_saisonpass', 'saisonpass_erstatten');
+
+-- Erwartet: SELECT nur für authenticated und nur auf den acht freigegebenen
+-- Spalten; kein INSERT/UPDATE/DELETE für anon oder authenticated.
+select grantee, privilege_type, column_name
+from information_schema.column_privileges
+where table_schema = 'public' and table_name = 'saisonpaesse'
+order by grantee, column_name;
+
+-- Erwartet: RLS an, genau eine Policy (select, authenticated).
+select relrowsecurity from pg_class where relname = 'saisonpaesse';
+select polname, polcmd, polroles::regrole[] from pg_policy
+where polrelid = 'public.saisonpaesse'::regclass;
+```
+
+**Funktionaler Test, zurückgerollt** (im `DO`-Block mit `raise exception` am
+Ende, wie bei `0098`):
+
+1. `apply_saisonpass` mit der Kunden-Kennung eines Testkontos aufrufen →
+   `true`, eine Zeile, `profiles.ist_premium = true`.
+2. Denselben Aufruf mit derselben Session-ID wiederholen → `true`, weiterhin
+   **eine** Zeile (Idempotenz — Webhook und Browser bestätigen beide).
+3. Zweiter Aufruf mit anderer Session-ID → `gueltig_ab` der neuen Zeile
+   gleich `gueltig_bis` der ersten (Anschluss, keine verschluckte Zeit).
+4. `apply_subscription_state` mit einem beendeten Abo (`status = 'canceled'`)
+   → `ist_premium` bleibt `true`, solange ein Pass gilt. Das ist die eine
+   Zeile, die `0110` an `0062` ändert.
+5. `gueltig_bis` einer Zeile in die Vergangenheit setzen, `premium_abgleich()`
+   → die Person kommt in der Ergebnisliste vor, `ist_premium` ist `false`.
+6. `saisonpass_erstatten` mit der PaymentIntent-Kennung → `erstattet_am`
+   gesetzt, `ist_premium` `false` (sofern kein Abo läuft).
+
+**Der Weg zurück:** die drei Funktionen auf die Rümpfe aus `0062`/`0059`/`0092`
+zurücksetzen und `saisonpass_gueltig`/`apply_saisonpass`/`saisonpass_erstatten`
+droppen. Die Tabelle bleibt stehen — solange ein verkaufter Pass läuft, ist
+sie der Beleg dafür, und ein Drop wäre der Verlust des Zugangs, den jemand
+bezahlt hat.
+
+## 0112_pass_status_und_alarm — zurückgezogen, nie eingespielt
+
+> **Die Datei ist aus dem Zweig entfernt (2026-09-18), und das ist kein
+> Versehen.** Sie hätte `public.pass_status` angelegt — eine Tabelle, die seit
+> dem 2026-09-17 in der Produktion steht, aus einem parallelen Zweig, mit
+> einem anderen Schlüssel (`pass_id` text statt `route_id`) und in einem
+> grösseren System: `paesse` führt den Pass als eigenes Objekt mit Höhe,
+> Kantonen, Scheitelpunkt und Wintersperre, dazu `pass_ereignisse`,
+> `pass_sperrtage`, `pass_folgen` (die Abos) und `strecken_paesse` (die
+> Zuordnung zur Strecke). `count_unseen_activity`, `mark_activity_seen` und
+> `anonymize_account` sind dort bereits erweitert.
+>
+> Eingespielt hätte `0112` also erstens auf dem Tabellennamen abgebrochen und
+> zweitens — über `create or replace` — den Pass-Summanden des anderen Zweigs
+> aus dem Aktivitäts-Abzeichen entfernt. Zwei Systeme für dieselbe Frage
+> ("ist der Pass offen?") wären ausserdem zwei Wahrheiten.
+>
+> Entscheid des Eigentümers am 2026-09-18: **das Live-System gilt**, unsere
+> Fassung wird zurückgezogen. Mit ihr ging der zugehörige Code
+> (`lib/passStatus*`, `lib/actions/passAlarm.ts`, die drei
+> `PassStatus*`/`PassAlarm*`-Komponenten, die Erweiterung von
+> `lib/actions/moderation.ts` und der Aktivitätsliste). Was bleibt: die
+> TCS-Adresse in `lib/constants.ts` und die Pass-Sammlung, die ohne eigenes
+> Schema auskommt.
+
+## 0111_wartungsheft — angewendet am 2026-09-18
+
+> Vollständig eingespielt (Ledger `0111_wartungsheft_eintraege`,
+> `0111_wartungsheft_erinnerungen`). Gemessen danach: beide Tabellen mit RLS
+> und je vier Policies, Tabellenrechte für `authenticated` nur `SELECT` und
+> `DELETE` (Schreiben läuft über die Spalten-Grants), `anon` hat nichts, und
+> `wartungseintraege_obergrenze()` ist für `anon` wie `authenticated` nicht
+> ausführbar. Der zusätzliche Unique-Index auf `vehicles (id, user_id)` ist
+> da; `vehicles` hatte ihn vorher nicht.
+
+### Ursprüngliche Beschreibung
+
+`0111_wartungsheft.sql` liegt auf `staging-premium-wartungsheft` und ist
+**nicht angewendet**. Die Nummer `0111` ist vom Koordinator dieses
+Premium-Ausbaus reserviert (0110–0112 für drei parallele Zweige); `0101`–`0109`
+gehören zu Zweigen, die dieses Verzeichnis noch nicht sieht — wer vor dem
+Einspielen prüft, prüft gegen die offenen PRs, nicht gegen diesen Baum
+(`scripts/check-migration-prefixes.mjs` sieht nur einen Zweig).
+
+**Was sie anlegt.** Zwei private Tabellen, `wartungseintraege` (Serviceheft
+pro Fahrzeug: Art, Datum, optional Kilometerstand, Kosten, Notiz) und
+`wartungserinnerungen` (höchstens eine Zeile pro Fahrzeug: MFK-Termin,
+Serviceintervall in km und/oder Monaten), dazu einen Unique-Constraint
+`vehicles_id_user_id_key` auf `public.vehicles (id, user_id)` als Ziel der
+zusammengesetzten Fremdschlüssel und eine Trigger-Funktion
+`wartungseintraege_obergrenze()` (höchstens 1000 Einträge je Fahrzeug).
+
+**Rein additiv.** Nichts Bestehendes ändert sein Verhalten; der einzige
+Eingriff an einer bestehenden Tabelle ist der zusätzliche Unique-Index auf
+`vehicles`, fachlich redundant zum Primärschlüssel. Er nimmt kurz
+`ACCESS EXCLUSIVE` — deshalb steht ein `set local lock_timeout = '5s'` am
+Anfang der Datei; scheitert sie daran, lieber gleich noch einmal, als die
+Tabelle zu stauen (dieselbe Überlegung wie bei `0095`).
+
+**Reihenfolge: Schema zuerst, Code danach.** `lib/wartungsdaten.ts` wirft bei
+einem Abfragefehler (`lib/queryError.ts`), statt ihn als leeres Wartungsheft
+auszugeben — ohne die Migration antwortet `app/profil/fahrzeuge/[id]` also mit
+einer Fehlerseite, und `/profil` ebenfalls, sobald das Konto Premium hat
+(`getWartungsHinweise`). Also nicht mergen, bevor die Migration steht.
+
+### Vor dem Einspielen prüfen
+
+```sql
+-- Sind die Namen frei? Erwartet: 0 Zeilen.
+select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public'
+  and c.relname in ('wartungseintraege', 'wartungserinnerungen', 'vehicles_id_user_id_key');
+
+-- Wie viele Fahrzeuge trägt die Tabelle, die den Index bekommt?
+select count(*) from public.vehicles;
+```
+
+### Nach dem Einspielen prüfen — an den Objekten, nicht am Ledger
+
+```sql
+-- 1. Die Grant-Falle (0047/0048/0091/0097): anon darf NICHTS.
+--    Erwartet: nur 'authenticated'-Zeilen, kein 'anon'.
+select grantee, privilege_type, table_name
+from information_schema.role_table_grants
+where table_schema = 'public'
+  and table_name in ('wartungseintraege', 'wartungserinnerungen')
+order by table_name, grantee, privilege_type;
+
+-- 2. Spalten-Grants: INSERT ohne id/created_at, UPDATE ohne
+--    fahrzeug_id/user_id.
+select table_name, column_name, privilege_type, grantee
+from information_schema.column_privileges
+where table_schema = 'public'
+  and table_name in ('wartungseintraege', 'wartungserinnerungen')
+order by table_name, privilege_type, column_name;
+
+-- 3. RLS an, acht Policies (je Tabelle: select, insert, update, delete),
+--    und die Premium-Bedingung genau in insert und update.
+select tablename, policyname, cmd, roles, qual, with_check
+from pg_policies
+where schemaname = 'public'
+  and tablename in ('wartungseintraege', 'wartungserinnerungen')
+order by tablename, cmd;
+
+select relname, relrowsecurity from pg_class
+where relname in ('wartungseintraege', 'wartungserinnerungen');
+
+-- 4. Kein anon-Recht auf die Trigger-Funktion.
+select has_function_privilege('anon', 'public.wartungseintraege_obergrenze()', 'EXECUTE') as anon,
+       has_function_privilege('authenticated', 'public.wartungseintraege_obergrenze()', 'EXECUTE') as auth;
+
+-- 5. Die Fremdschlüssel zeigen auf das PAAR, mit Kaskade.
+select conname, pg_get_constraintdef(oid)
+from pg_constraint
+where conrelid in ('public.wartungseintraege'::regclass, 'public.wartungserinnerungen'::regclass)
+order by conname;
+
+-- 6. Die Indizes stehen (der erste deckt auch den Fremdschlüssel).
+select indexname, indexdef from pg_indexes
+where schemaname = 'public'
+  and tablename in ('wartungseintraege', 'wartungserinnerungen', 'vehicles')
+order by tablename, indexname;
+```
+
+**Funktionaler Test, zurückgerollt** (`DO`-Block, Ergebnis über
+`raise exception` zurücklesen — dieselbe Form wie bei `0098`; die Ausnahme
+rollt den Block zurück, es bleibt nichts stehen). Drei Punkte sind es wert:
+
+1. Ein Eintrag mit **fremder** `fahrzeug_id` und eigener `user_id` muss am
+   Fremdschlüssel scheitern (`wartungseintraege_fahrzeug_fkey`) — das ist die
+   Eigentumsklammer, und sie soll auch dann halten, wenn eine Policy je
+   gelockert wird.
+2. Ein Konto **ohne** `ist_premium` darf nicht einfügen (Policy), aber seine
+   vorhandenen Zeilen lesen und löschen. Das ist die Zusage in der
+   Oberfläche: nach dem Abo-Ende bleiben die Daten der Person.
+3. `delete from public.vehicles where id = …` muss beide Tabellen mitnehmen
+   (Kaskade). Damit ist auch die Kontolöschung abgedeckt, denn
+   `anonymize_account()` (Rumpf in `0092`) löscht genau diese Zeilen —
+   **die Funktion wird von 0111 absichtlich nicht angefasst**.
+
 ### Rückweg
 
 ```sql
@@ -379,6 +649,16 @@ müssen danach **auf die Rümpfe vor 0104 zurückgesetzt** werden (aus `0100`
 bzw. `0101`), sonst greifen sie auf gelöschte Tabellen und Spalten zu. Der
 Rückweg ist damit nicht „drop und fertig": diese drei zuerst zurückschreiben,
 dann die Drops.
+
+drop table if exists public.wartungserinnerungen;
+drop table if exists public.wartungseintraege;
+drop function if exists public.wartungseintraege_obergrenze();
+alter table public.vehicles drop constraint if exists vehicles_id_user_id_key;
+```
+
+Verliert alle Wartungsdaten unwiderruflich. Sobald Premium-Konten Einträge
+haben, ist der Rückweg ein Datenverlust und kein Rollback — vorher
+exportieren.
 
 ## Eingespielt: 0096–0098 (Fahrtstart serverseitig, 2026-09-15, Produktion)
 

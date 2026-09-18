@@ -64,7 +64,17 @@ const ACCENT = "#6b83ff";
 const HAIRLINE = "rgba(242, 242, 244, 0.12)";
 const PROFIL_FLAECHE = "rgba(107, 131, 255, 0.14)";
 
+// Exportiert für den Saisonrückblick (lib/saisonBild.ts): beide Bilder sind
+// Stücke derselben Marke und sollen nebeneinander gepostet dieselben Farben
+// tragen — eine zweite Palette daneben liefe beim nächsten Farbwechsel
+// auseinander. Das Passblatt ist flach, deshalb sind oben und unten gleich.
+export { INK, MUTED, ACCENT };
+export const BG_TOP = BG;
+export const BG_BOTTOM = BG;
+export const BORDER = HAIRLINE;
+
 const SANS_FALLBACK = "system-ui, sans-serif";
+const MONO_FALLBACK = "ui-monospace, monospace";
 
 async function loadFont(): Promise<string> {
   const style = getComputedStyle(document.documentElement);
@@ -152,6 +162,28 @@ function strich(ctx: CanvasRenderingContext2D, punkte: [number, number][]) {
   ctx.beginPath();
   punkte.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
   ctx.stroke();
+}
+
+// Liest die Schriftfamilien der Seite aus und wartet, bis die gebrauchten
+// Schnitte geladen sind. Ein Canvas löst zwar das Laden aus, malt aber mit
+// dem Fallback, wenn die Schrift beim fillText noch nicht da ist — und Plex
+// Mono 600 ist auf der Fahrtseite nicht zwingend schon in Gebrauch.
+export async function loadFonts(): Promise<{ sans: string; mono: string }> {
+  const style = getComputedStyle(document.documentElement);
+  const sans = style.getPropertyValue("--font-inter").trim() || SANS_FALLBACK;
+  const mono = style.getPropertyValue("--font-ibm-plex-mono").trim() || MONO_FALLBACK;
+  try {
+    await Promise.all([
+      document.fonts.load(`400 30px ${sans}`),
+      document.fonts.load(`500 28px ${sans}`),
+      document.fonts.load(`700 60px ${sans}`),
+      document.fonts.load(`600 46px ${mono}`),
+    ]);
+    await document.fonts.ready;
+  } catch {
+    // Kein FontFaceSet oder Laden gescheitert: dann eben mit dem, was da ist.
+  }
+  return { sans, mono };
 }
 
 export async function renderShareImage(data: ShareRideData): Promise<Blob> {

@@ -67,3 +67,35 @@ export {
   Check as HakenIcon,
   CalendarDays as KalenderIcon,
 } from "lucide-react";
+
+// Ebenfalls kein Nav-Icon: das Wetterfenster auf der Streckenseite
+// (components/Wetterfenster.tsx). Ein Symbol je Grund aus
+// lib/wetterfenster.ts, nicht je Wettercode — die Zelle soll sagen, warum
+// ein Tag gut oder schlecht ist, nicht das Wetterbild nachzeichnen. Kälte
+// und Glätte teilen sich das Thermometer; der Unterschied steht im Text.
+export {
+  Sun as WetterTrockenIcon,
+  CloudDrizzle as WetterSchauerIcon,
+  CloudRain as WetterRegenIcon,
+  CloudLightning as WetterGewitterIcon,
+  Snowflake as WetterSchneeIcon,
+  ThermometerSnowflake as WetterKaltIcon,
+  Wind as WetterWindIcon,
+} from "lucide-react";
+
+// Ebenfalls kein Nav-Icon: die Pass-Sammlung im Kennzahlen-Block der
+// Profilseite (components/PassSammlung.tsx) — der Berg als Zeichen für "Pass",
+// nicht für Höhe allgemein.
+export { Mountain as PassIcon } from "lucide-react";
+
+// Das Wartungsheft (0111): der Schraubenschlüssel für den Abschnitt und
+// seinen Leerzustand, der Kalender für die MFK. Zwei Zeichen, weil die
+// Fahrzeugseite zwei Dinge nebeneinander zeigt — das Heft (was war) und die
+// Termine (was kommt) — und ein Symbol für beide den Unterschied einzöge.
+export { Wrench as WartungIcon, CalendarClock as TerminIcon } from "lucide-react";
+
+// Auto und Motorrad. Beide Zeichen stehen schon in components/VehicleGrid.tsx
+// und app/profil/page.tsx, dort aber als direkter lucide-Import aus der Zeit
+// vor dieser Wrapper-Regel. Neuer Code (app/profil/fahrzeuge/[id]) nimmt sie
+// von hier; das Raster mitzuziehen wäre eine Änderung ohne Anlass.
+export { Car as AutoIcon, Bike as MotorradIcon } from "lucide-react";

@@ -39,6 +39,19 @@ export default function PremiumWillkommen({
   const plan = status?.plan ? planName(status.plan) : null;
   const verlaengertAm = status?.laeuftAbAm ? null : (status?.periodeEndetAm ?? null);
 
+  // Drei Abschlüsse, drei verschiedene Wahrheiten über den nächsten Termin,
+  // seit 0110. "verlängert sich am" ist für einen Saisonpass falsch (er tut
+  // es nicht) und für eine Testphase gefährlich: dort ist das Datum der Tag,
+  // an dem erstmals Geld abgebucht wird, und genau das muss dastehen.
+  const zeile =
+    status?.quelle === "saisonpass" && status.periodeEndetAm
+      ? `gültig bis ${datumCH(status.periodeEndetAm)}`
+      : status?.testphaseBis
+        ? `gratis bis ${datumCH(status.testphaseBis)}, danach wird abgebucht`
+        : verlaengertAm
+          ? `verlängert sich am ${datumCH(verlaengertAm)}`
+          : null;
+
   return (
     <div className="flex flex-col items-center gap-6 text-center">
       <div className="relative flex h-20 w-20 items-center justify-center">
@@ -68,11 +81,11 @@ export default function PremiumWillkommen({
         </p>
       </div>
 
-      {(plan || verlaengertAm) && (
+      {(plan || zeile) && (
         <p className="text-sm text-muted">
           {plan}
-          {plan && verlaengertAm && " · "}
-          {verlaengertAm && <>verlängert sich am {datumCH(verlaengertAm)}</>}
+          {plan && zeile && " · "}
+          {zeile}
         </p>
       )}
 

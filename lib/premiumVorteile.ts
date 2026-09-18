@@ -11,6 +11,19 @@
 // Deshalb gilt weiter, was in PremiumPurchaseView stand: hier steht nur,
 // was es tatsächlich gibt. Ein geplantes Feature gehört nicht in diese
 // Liste.
+// Mit dem Premium-Ausbau vom 2026-09-17 sind drei Zeilen dazugekommen
+// (Wetterfenster, Pass-Sammlung mit Saisonrückblick, Wartungsheft). Jede
+// davon steht hier erst, weil sie im selben PR ausgeliefert wird — und AGB
+// Ziff. 3.2 zieht im selben Schritt mit, weil diese Liste die dort zugesagte
+// Leistung ist.
+//
+// Eine vierte war geplant und ist wieder herausgefallen: der Pass-Alarm.
+// Während dieser Ausbau lief, ist aus einem anderen Zweig ein vollständiges
+// Pass-System live gegangen (Pässe als eigene Objekte, mit Status, Sperrtagen
+// und Abos). Zwei Systeme für dieselbe Frage wären zwei Wahrheiten gewesen;
+// unsere Fassung wurde zurückgezogen, bevor irgendjemand sie als Zusage
+// lesen konnte. Details in supabase/migrations/README.md unter 0112.
+//
 // Der erste Punkt hiess bis 0086 "Eigene Strecken erstellen — privat für
 // dich oder öffentlich nach Review". Das Erstellen selbst ist seither wieder
 // kostenlos (siehe 0086_strecken_anlegen_wieder_offen.sql); Premium hebt nur
@@ -21,12 +34,23 @@
 // wird: nach zwei Saisons gibt es einen Vergleich, den es vorher nicht gab.
 // Sie zeigt bewusst keine Zeiten und kein Tempo — die Begründung steht im
 // Kopf von lib/fahrtstatistik.ts (Audit-Befund A1, AGB Ziff. 11.3).
+// Reihenfolge: vorne steht, was am ersten Tag einen Grund gibt, und hinten
+// die Obergrenzen, die man erst im zweiten Sommer spürt. Das ist die
+// Korrektur an der alten Liste — sie begann mit der Auswertung, und ein
+// neues Konto hat noch keine Saison, die sich auswerten liesse
+// (docs/premium-neu/features.md).
+//
+// Die drei ersten Zeilen haben zusätzlich eine Aufgabe: premiumKurzform()
+// unten baut daraus die Zeile, die Konten OHNE Abo sehen.
 export const PREMIUM_VORTEILE = [
+  "Wetterfenster: die trockenen Tage der Woche",
+  "Pass-Sammlung und Saisonrückblick als Bild",
+  "Wartungsheft mit MFK- und Service-Erinnerung",
+  "GPX-Export kuratierter Strecken — fürs Navi",
   "Auswertung nach Jahr und Fahrzeug",
+  "Unbegrenzt Strecken offline speichern",
   "Unbegrenzt private Strecken (ohne Abo: eine)",
   "12 statt 6 Fotos pro Fahrt",
-  "Unbegrenzt Strecken offline speichern",
-  "GPX-Export kuratierter Strecken",
 ] as const;
 
 // Die Kurzform für Stellen, an denen kein Platz für fünf Zeilen ist: die

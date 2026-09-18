@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ogMitBild } from "@/lib/openGraph";
@@ -16,6 +17,8 @@ import OfflineRouteButton from "@/components/OfflineRouteButton";
 import { getKontextStrecken, getRoute, getSignaturbestand } from "@/lib/routes";
 import { computeSignatures } from "@/lib/signature";
 import { SIGNATURE_ICONS, SIGNATUR_KLASSEN } from "@/components/signaturStil";
+import PremiumHinweis from "@/components/PremiumHinweis";
+import { WetterfensterStreifen, WetterfensterStreifenPlatzhalter } from "@/components/Wetterfenster";
 import { formatKm } from "@/lib/format";
 import { getRatings, getOwnRating } from "@/lib/ratings";
 import { bewertungAusSternen } from "@/lib/bewertungen";
@@ -30,6 +33,7 @@ import PassSektion from "@/components/PassSektion";
 import RuhigeZeiten from "@/components/RuhigeZeiten";
 import { getFeedStand, getPassKontextFuerStrecke } from "@/lib/paesse";
 import { getRuhigeZeiten } from "@/lib/ruhigeZeitenAbfrage";
+import { wetterMassstab } from "@/lib/wetterfenster";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { KATEGORIEN } from "@/lib/constants";
 import { averageTempolimit, estimateRouteDurationMinutes, formatMinutes } from "@/lib/geo";
@@ -443,6 +447,31 @@ export default async function StreckeDetailPage({
           startzeiten={ruhigeZeiten.startzeiten}
           berechnetAm={ruhigeZeiten.berechnetAm}
         />
+
+        {/* Wetterfenster (Premium): die Woche direkt unter dem Wetter von
+            jetzt, an derselben Stelle statt als eigener Abschnitt
+            (docs/premium-ausbau-plan.md, Abschnitt 1). Das Gate steht hier:
+            ohne Abo wird keine Vorhersage abgefragt, nicht nur keine
+            gezeigt. Suspense, weil Open-Meteo bis zu einer Sekunde braucht
+            und der Rest der Seite darauf nicht warten soll.
+
+            Ohne Abo ein einziger Hinweis — und nur angemeldet: wer über
+            einen geteilten Link ohne Konto hier landet, entscheidet gerade
+            über die Strecke, nicht über ein Abo. */}
+        {premiumStatus.aktiv ? (
+          <Suspense fallback={<WetterfensterStreifenPlatzhalter />}>
+            <WetterfensterStreifen
+              strecke={route}
+              fahrzeug={wetterMassstab(vehicles.map((v) => v.typ))}
+            />
+          </Suspense>
+        ) : (
+          user && (
+            <PremiumHinweis>
+              Mit Premium siehst du, an welchen Tagen diese Woche die Strecke trocken ist
+            </PremiumHinweis>
+          )
+        )}
 
         <RouteLeaderboardPreview
           routeId={id}

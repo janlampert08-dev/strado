@@ -97,6 +97,14 @@ erscheinen deshalb Typ, Marke und Modell neben veröffentlichten Fahrten und die
 **vollständige Fahrzeugliste** — inklusive Getriebeart und Baujahr — auf dem
 öffentlichen Profil.
 
+**Wartungsheft (Premium).** Wer ein Premium-Abo oder einen Saisonpass hat,
+kann je Fahrzeug Wartungseinträge führen (Art der Arbeit, Datum, optional
+Kilometerstand, Kosten und eine Notiz) und Erinnerungen für Service und
+Motorfahrzeugkontrolle hinterlegen. Diese Angaben sind **immer privat**: sie
+erscheinen nicht auf dem öffentlichen Profil, in keiner Bestenliste und in
+keiner Fahrt. Der Schalter „Fahrzeuge zeigen" ändert daran nichts. Sie werden
+mit dem Fahrzeug und mit dem Konto gelöscht (Abschnitt 8).
+
 ### 3.4 Fahrten und GPS-Standortdaten
 
 Dies ist die **datenschutzrechtlich heikelste Kategorie**, weil aus
@@ -236,7 +244,7 @@ sowie eine gespiegelte Fassung des Abo-Zustands mit den folgenden Angaben:
 | Angabe | Zweck |
 | --- | --- |
 | Kennung des Abos bei Stripe | ordnet die Zeile dem Abo zu, aus dem sie stammt |
-| Kennung des gewählten Preises | unterscheidet Monats- und Jahresabo (bei älteren Abos auch den früheren Gründerpreis) |
+| Kennung des gewählten Preises | unterscheidet Monats- und Jahresabo (bei älteren Abos auch den früheren Gründerpreis und die früheren Preise) |
 | Status des Abos | entscheidet über die Premium-Berechtigung |
 | Ende der laufenden Abrechnungsperiode | Anzeige „Premium bis …" und Erkennung ausgebliebener Meldungen |
 | Kennzeichen „zum Periodenende gekündigt" | Anzeige des Kündigungsstands |
@@ -247,6 +255,15 @@ An Stripe übermitteln wir die **E-Mail-Adresse** und die interne
 Benutzer-Kennung (als Metadatum zur Zuordnung). Stripe erhebt darüber hinaus
 selbst die Zahlungsmitteldaten, Rechnungs- und Transaktionsdaten sowie
 technische Daten des Zahlungsvorgangs.
+
+**Saisonpass.** Wer statt eines Abos einen Saisonpass kauft (AGB Ziff. 4.6),
+hat bei uns eine Zeile mit der **Kennung der Bezahlseite und der Zahlung bei
+Stripe**, der Kunden-Kennung, der Kennung des Preises, dem **bezahlten Betrag
+und der Währung**, dem **Gültigkeitszeitraum** und — falls erstattet wurde —
+dem Zeitpunkt der Erstattung. Zweck ist die Berechtigung: ohne Zeitraum liesse
+sich nicht feststellen, ob Premium noch gilt. Die Zeile wird mit dem Konto
+gelöscht (Abschnitt 8); die Zahlungsbelege selbst liegen bei Stripe und
+unterliegen dort den handelsrechtlichen Aufbewahrungsfristen.
 
 Zur Absicherung gegen doppelt zugestellte Zahlungsereignisse speichern wir zu
 jedem von Stripe gemeldeten Ereignis dessen **Kennung**, seinen **Typ**, den
@@ -444,7 +461,7 @@ weisungsgemäss und mit angemessenen Sicherheitsmassnahmen zu bearbeiten.
 | **Vercel** (Vercel Inc., USA) | Hosting der Anwendung, Reichweitenmessung | technische Verbindungsdaten inkl. IP-Adresse, alle über die Anwendung laufenden Inhalte, aggregierte Nutzungszahlen |
 | **Stripe** (Stripe Payments Europe Ltd., Irland, sowie verbundene Gesellschaften) | Zahlungsabwicklung, Abo-Verwaltung, Kundenportal | E-Mail-Adresse, interne Benutzer-Kennung, Zahlungsmittel- und Rechnungsdaten (direkt bei Stripe erhoben) |
 | **Mapbox** (Mapbox Inc., USA) | Kartendarstellung, Routenberechnung, Ortsnamen (Geocoding), Verkehrslage | IP-Adresse und technische Daten des Browsers beim Laden von Karten; Koordinaten der angezeigten bzw. geplanten Strecke |
-| **Open-Meteo** (`api.open-meteo.com`) | aktuelles Wetter am Streckenstart | Koordinaten des Streckenstartpunkts. Die Abfrage erfolgt von unserem Server aus; die IP-Adresse der Nutzenden wird dabei nicht übermittelt |
+| **Open-Meteo** (`api.open-meteo.com`) | aktuelles Wetter am Streckenstart; Sieben-Tage-Vorhersage für das Wetterfenster (Premium) | Koordinaten und Höhe des Streckenstartpunkts und — sofern deutlich höher gelegen — des höchsten Punkts der Strecke. Die Abfrage erfolgt von unserem Server aus; die IP-Adresse der Nutzenden wird dabei nicht übermittelt |
 | **swisstopo / geo.admin.ch** (Bundesamt für Landestopografie, Schweiz) | Höhenprofile entlang von Strecken und Fahrten | Geometrie der jeweiligen Strecke bzw. Fahrt. Die Abfrage erfolgt von unserem Server aus; die IP-Adresse der Nutzenden wird dabei nicht übermittelt |
 
 **Karten und Verkehrsdaten laufen direkt aus dem Browser** zu Mapbox — dabei

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { ComponentType } from "react";
@@ -26,9 +27,13 @@ import CountUp from "@/components/CountUp";
 import FollowCounts from "@/components/FollowCounts";
 import PremiumCard from "@/components/PremiumCard";
 import FahrtStatistik from "@/components/FahrtStatistik";
-import { ChartIcon, RecordIcon, ShieldIcon } from "@/components/NavIcons";
+import { WetterfensterFavoriten, WetterfensterFavoritenPlatzhalter } from "@/components/Wetterfenster";
+import PassSammlung, { PassZaehler } from "@/components/PassSammlung";
+import { ChartIcon, PassIcon, RecordIcon, ShieldIcon } from "@/components/NavIcons";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
+import { getPassStrecken } from "@/lib/passSammlungDaten";
+import { getWartungsHinweise } from "@/lib/wartungsdaten";
 import { isModerator } from "@/lib/moderation";
 import { istCreator } from "@/lib/creatorKennzahlen";
 import { getRollenItems } from "@/lib/nav";
@@ -39,6 +44,7 @@ import { formatDuration, formatKm, datumCH } from "@/lib/format";
 import { freieFahrtTitel } from "@/lib/completions";
 import { publicationBlockReason } from "@/lib/track";
 import { summiereHoehenmeter } from "@/lib/hoehenmeter";
+import { wetterMassstab } from "@/lib/wetterfenster";
 import type { FahrtArt, Vehicle } from "@/types/database";
 import Card from "@/components/ui/Card";
 import Kennzahl, { Kennzahlen } from "@/components/ui/Kennzahl";
@@ -112,6 +118,7 @@ export default async function ProfilPage() {
     istMod,
     istCreatorKonto,
     sammlung,
+    passStrecken,
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -137,10 +144,12 @@ export default async function ProfilPage() {
     // lib/hoehenmeter.ts.
     supabase
       .from("route_completions")
-      .select("route_id")
+      // datum nur für die Pass-Sammlung (erste Fahrt je Pass) — eine Spalte
+      // mehr in dieser Abfrage statt einer zweiten Runde zur Datenbank.
+      .select("route_id, datum")
       .eq("user_id", user.id)
       .eq("art", "strecke")
-      .returns<{ route_id: string }[]>(),
+      .returns<{ route_id: string; datum: string }[]>(),
     // Beide Fahrtarten: freie Fahrten stehen in derselben Liste wie
     // Streckenfahrten und zählen in "Km gefahren"/"Anzahl Fahrten" mit —
     // anders als in den globalen Bestenlisten, die streckenbasiert bleiben
@@ -258,7 +267,18 @@ export default async function ProfilPage() {
     istCreator(user.id),
     // Die Passsammlung — eine RPC, die nur eigene Fahrten sieht (0104).
     getSammlungsStand(),
+    // Grundmenge der Pass-Sammlung: freigegebene öffentliche Passstrassen,
+    // ohne Geometrie. Läuft für alle Konten mit, weil auch der Zähler ohne
+    // Abo sie braucht — parallel, also ohne zusätzliche Wartezeit.
+    getPassStrecken(),
   ]);
+
+  // Eine Wartungszeile je Fahrzeugkachel, aber nur mit laufendem Abo und
+  // erst nach dem Status: die drei Abfragen dahinter (Einträge,
+  // Erinnerungen, Fahrten) sind für ein Konto ohne Wartungsheft reine
+  // Leerläufe. Bewusst NACH dem Promise.all und nicht darin — sonst liefe
+  // sie für jedes kostenlose Konto bei jedem Profilaufruf mit.
+  const wartungsHinweise = premiumStatus.aktiv ? await getWartungsHinweise(user.id) : undefined;
 
   // Die mobile Leiste (BottomNav) führt Creator und Moderation nicht mehr —
   // sie ist auf fünf Einträge gedeckelt, siehe lib/nav.ts. Unter md ist das
@@ -488,6 +508,26 @@ export default async function ProfilPage() {
                 </div>
               </details>
             )}
+
+            {/* Direkt nach der Auswertung: beides ist "dein Fahrjahr", und
+                der Saisonrückblick darin ist ihr teilbares Gegenstück.
+                Ohne Abo eine Zeile mit der Zahl statt der Klappe — siehe
+                components/PassSammlung.tsx. */}
+            {premiumStatus.aktiv ? (
+              <details open className="group py-4">
+                <SectionSummary icon={PassIcon} label="Pass-Sammlung" />
+                <div className="mt-4">
+                  <PassSammlung
+                    paesse={passStrecken.paesse}
+                    ladefehler={passStrecken.fehler}
+                    streckenFahrten={completions ?? []}
+                    fahrten={trackedRides ?? []}
+                  />
+                </div>
+              </details>
+            ) : (
+              <PassZaehler paesse={passStrecken.paesse} fahrten={completions ?? []} />
+            )}
           </div>
         </section>
 
@@ -606,6 +646,20 @@ export default async function ProfilPage() {
               <details className="group py-4">
                 <SectionSummary icon={Bookmark} label="Favoriten" count={favorites?.length ?? 0} />
                 <div className="mt-4">
+                  {/* Wetterfenster (Premium): über der Liste, nicht in jeder
+                      Zeile — die Übersicht ist auf fünf Strecken gedeckelt
+                      (siehe WetterfensterFavoriten), und eine Wetterangabe in
+                      nur fünf von zwölf Zeilen läse sich wie fehlende Daten.
+                      Ohne Abo steht hier nichts; den Hinweis trägt die
+                      Streckenseite. Das Gate verhindert auch den Abruf. */}
+                  {premiumStatus.aktiv && favorites && favorites.length > 0 && (
+                    <Suspense fallback={<WetterfensterFavoritenPlatzhalter />}>
+                      <WetterfensterFavoriten
+                        routeIds={favorites.filter((f) => f.routes).map((f) => f.route_id)}
+                        fahrzeug={wetterMassstab(((vehicles as Vehicle[]) ?? []).map((v) => v.typ))}
+                      />
+                    </Suspense>
+                  )}
                   {favorites && favorites.length > 0 ? (
                     <Card as="ul" className="divide-y divide-border">
                       {favorites.map((f) =>
@@ -656,7 +710,7 @@ export default async function ProfilPage() {
                 + Hinzufügen
               </Link>
             </div>
-            <VehicleGrid vehicles={(vehicles as Vehicle[]) ?? []} />
+            <VehicleGrid vehicles={(vehicles as Vehicle[]) ?? []} hinweise={wartungsHinweise} />
           </section>
 
           {/* Zuunterst und ohne Unterbrechung der Kernschleife: ohne Abo ein

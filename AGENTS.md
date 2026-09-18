@@ -83,7 +83,44 @@ Facts that are true right now and are expensive to rediscover. Anything
 here is a snapshot — if the code disagrees, the code wins, and this section
 is what should be corrected.
 
-- **Premium is live.** The purchase page, Payment Element, customer portal,
+- **Premium is live, and a rebuilt offer is on `staging-premium-neu` but not
+  rolled out.** That branch (2026-09-17) adds three Premium features
+  (Wetterfenster, Pass-Sammlung with Saisonrückblick, Wartungsheft), a
+  **Saisonpass** — six months of Premium as a one-time
+  payment that never renews, migration `0110` — a 14-day trial on the yearly
+  plan, and new prices (CHF 6.90/39.00 instead of 4.90/49.00). Read
+  `docs/premium-neu/` before touching anything priced. Four things about it
+  are expensive to rediscover:
+  - **Nothing is live until two dashboard steps happen.** The Stripe prices
+    do not exist yet and the Vercel price-ID variables still point at the old
+    ones, so the app keeps selling CHF 4.90/49.00 and simply omits the
+    Saisonpass (an unset price variable drops that plan from the purchase
+    page). `docs/premium-neu/rollout.md` has the order.
+  - **`profiles.ist_premium` is no longer a projection of `subscriptions`
+    alone.** With `0110` it is "subscription active OR a valid Saisonpass",
+    and three functions write it: `apply_subscription_state`,
+    `premium_abgleich` and the new `apply_saisonpass`. A fourth writer has to
+    know both halves.
+  - **Old price IDs must stay configured.** `STRIPE_PREMIUM_PRICE_IDS_MONAT_BESTAND`
+    / `…_JAHR_BESTAND` exist because `preisHerkunft()` treats an unknown
+    price as somebody else's product: drop the old IDs and every cancellation
+    of a grandfathered subscription stops reaching the database.
+  - **`0110` and `0111` were applied on 2026-09-18** and verified, including a
+    rolled-back functional test of purchase, idempotency, chaining and expiry.
+    `supabase/migrations/README.md` carries what that turned up: the live body
+    of `anonymize_account` was **not** the one `0092` left behind (it already
+    carried `0101` and the Pässe migration), and applying a migration in
+    pieces left two new functions executable by `anon` for a few minutes —
+    Supabase grants that by default, and the `revoke` lines sat in a later
+    piece.
+  - **A fourth feature was built and withdrawn.** Our Pass-Alarm (`0112`)
+    collided with the pass system another branch put live on 2026-09-17
+    (`paesse`, `pass_status`, `pass_ereignisse`, `pass_folgen`,
+    `pass_sperrtage`, `strecken_paesse`, plus extensions to
+    `count_unseen_activity` / `mark_activity_seen` / `anonymize_account`).
+    That system is the richer one and it wins; the owner decided so on
+    2026-09-18. Anything pass-shaped builds on it, not on a second table.
+  The purchase page, Payment Element, customer portal,
   the `subscriptions` table and the nightly reconciliation cron all ship.
   Founder seats (Gründerpreis) were sold until 2026-09-07 and are no longer
   offered: the DB functions from `0065`–`0069` remain but are no longer
@@ -915,6 +952,7 @@ area**; each is a few hundred lines at most.
 | `.agents/security.md` | Any Protected Area; use as a pre-merge checklist |
 | `.agents/deployment.md` | Applying migrations, shipping to Vercel/Stripe |
 | `docs/audit/README.md` | Completions, leaderboards, RLS views, auth — check the remediation table before reporting a "new" finding |
+| `docs/premium-neu/` | Anything priced: the 2026-09-17 offer (prices, the four new features, the copy, the rollout order). Where it disagrees with `docs/premium-plan.md` on price, this one wins |
 | `docs/premium-plan.md` | Anything premium, Stripe, or entitlement-shaped |
 | `docs/design-vereinfachung.md` | Visual/structural UI work. **Read its "Umsetzungsstand" section first** — most of it shipped, four items are deliberately open and two of those need a product decision, not a design one. The section says which |
 | `docs/markt/schweizer-identitaet.md` | First-run copy, the info page, share/OG images, anything a non-user sees first |
