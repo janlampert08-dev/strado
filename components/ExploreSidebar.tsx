@@ -11,6 +11,7 @@ import { anzahlText, type Streckenbewertung } from "@/lib/bewertungen";
 import Sternschnitt from "@/components/Sternschnitt";
 import { fieldClassName } from "@/components/ui/Input";
 import EmptyState from "@/components/ui/EmptyState";
+import { buttonVariants } from "@/components/ui/Button";
 import IconButton from "@/components/ui/IconButton";
 
 // Icon je Signatur-Merkmal — spiegelt visuell wider, worin die Strecke
@@ -233,7 +234,30 @@ export default function ExploreSidebar({
         )}
         {routes.length === 0 && !loadError && (
           <li>
-            <EmptyState icon={SearchX} title="Keine Strecken für diese Suche." />
+            {/* Mit Ausweg statt nur mit Befund: der Leerzustand sagte, dass
+                nichts passt, und liess die Suche stehen — zurück kam man nur,
+                indem man das Feld selbst leerte. Ohne Suchbegriff ist die
+                leere Liste dagegen eine Tatsache über die Daten, kein
+                Sackgassenzustand; dann steht auch kein Knopf da. */}
+            <EmptyState
+              icon={SearchX}
+              title={
+                searchQuery.trim()
+                  ? `Keine Strecke passt zu „${searchQuery.trim()}“.`
+                  : "Noch keine Strecken in diesem Ausschnitt."
+              }
+              action={
+                searchQuery.trim() ? (
+                  <button
+                    type="button"
+                    onClick={() => onSearchChange("")}
+                    className={buttonVariants({ variant: "secondary", size: "sm" })}
+                  >
+                    Suche zurücksetzen
+                  </button>
+                ) : undefined
+              }
+            />
           </li>
         )}
         {routes.map((route) => {

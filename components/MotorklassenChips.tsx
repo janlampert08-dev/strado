@@ -7,6 +7,7 @@ import {
   MOTORKLASSEN,
   fahrzeugtypdefinition,
   filterTyp,
+  istMotorklasse,
   motorklassendefinition,
 } from "@/lib/motorklassen";
 import type { Klassenfilter } from "@/lib/motorklassen";
@@ -169,6 +170,16 @@ export default function MotorklassenChips({
             </Chip>
           ))}
         </div>
+      )}
+
+      {/* Die Regel sichtbar, sobald eine Klasse gewählt ist. Sie stand nur
+          im title-Attribut der Chips — auf einem Telefon gibt es kein
+          Schweben, also war "A 35 kW" dort eine Abkürzung ohne Auflösung,
+          und genau zwischen A1 und A 35 kW muss man wissen, wo man steht. */}
+      {aktiv !== null && istMotorklasse(aktiv) && (
+        <p className="px-1 text-xs text-muted">
+          {motorklassendefinition(aktiv).label}: {motorklassendefinition(aktiv).regel}
+        </p>
       )}
     </div>
   );

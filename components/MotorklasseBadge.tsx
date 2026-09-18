@@ -24,6 +24,7 @@ export default function MotorklasseBadge({
   if (klasse === null) {
     return (
       <span
+        title="Diese Fahrt trägt keine Leistungsangabe und zählt deshalb in keiner Klassenwertung."
         className={cn(
           "inline-flex w-fit items-center rounded-md border border-border bg-surface px-2 py-0.5 text-xs text-muted",
           className,
