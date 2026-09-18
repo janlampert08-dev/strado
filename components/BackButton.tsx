@@ -36,19 +36,25 @@ export default function BackButton({ fallbackHref }: { fallbackHref: string }) {
         <ChevronLeft className="h-4 w-4" aria-hidden="true" />
         <span className="whitespace-nowrap">Zurück</span>
       </button>
-      <ConfirmDialog
-        open={rueckfrageOffen}
-        title="Entwurf verwerfen?"
-        description="Deine Eingaben auf dieser Seite sind noch nicht gespeichert und gehen beim Verlassen verloren."
-        confirmLabel="Verwerfen"
-        cancelLabel="Weiter bearbeiten"
-        variant="danger"
-        onConfirm={() => {
-          setRueckfrageOffen(false);
-          zurueck();
-        }}
-        onCancel={() => setRueckfrageOffen(false)}
-      />
+      {/* Nur im offenen Zustand im DOM: ein geschlossenes <dialog> hängt
+          sonst auf jeder Seite mit Zurück-Knopf im Baum, und ein Screenreader
+          im Lesemodus stösst dort auf "Verwerfen", wo es nichts zu verwerfen
+          gibt. */}
+      {rueckfrageOffen && (
+        <ConfirmDialog
+          open={rueckfrageOffen}
+          title="Entwurf verwerfen?"
+          description="Deine Eingaben auf dieser Seite sind noch nicht gespeichert und gehen beim Verlassen verloren."
+          confirmLabel="Verwerfen"
+          cancelLabel="Weiter bearbeiten"
+          variant="danger"
+          onConfirm={() => {
+            setRueckfrageOffen(false);
+            zurueck();
+          }}
+          onCancel={() => setRueckfrageOffen(false)}
+        />
+      )}
     </>
   );
 }

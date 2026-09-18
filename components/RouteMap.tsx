@@ -688,6 +688,21 @@ export default function RouteMap({
       // `attributionControl: false` samt der AttributionControl-Zeile unten
       // (dann greift wieder das responsive Standardverhalten).
       attributionControl: false,
+      // Ohne locale melden sich die Bedienelemente englisch ("Zoom in",
+      // "Reset bearing to north") in einem lang="de"-Dokument.
+      locale: {
+        "AttributionControl.ToggleAttribution": "Quellenangabe ein-/ausblenden",
+        "GeolocateControl.FindMyLocation": "Meinen Standort finden",
+        "GeolocateControl.LocationNotAvailable": "Standort nicht verfügbar",
+        "LogoControl.Title": "Mapbox-Logo",
+        "Map.Title": "Karte",
+        "NavigationControl.ResetBearing": "Nach Norden ausrichten",
+        "NavigationControl.ZoomIn": "Hineinzoomen",
+        "NavigationControl.ZoomOut": "Herauszoomen",
+        "ScrollZoomBlocker.CtrlMessage": "Zum Zoomen Strg gedrückt halten",
+        "ScrollZoomBlocker.CmdMessage": "Zum Zoomen ⌘ gedrückt halten",
+        "TouchPanBlocker.Message": "Zum Bewegen der Karte zwei Finger benutzen",
+      },
     });
 
     map.addControl(new mapboxgl.AttributionControl({ compact: true }));

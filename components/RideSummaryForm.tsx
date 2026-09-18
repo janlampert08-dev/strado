@@ -549,27 +549,28 @@ export default function RideSummaryForm({
         >
           {pending ? "Speichern…" : "Fahrt speichern"}
         </button>
-        {/* Zwei gleichrangige Nebenwege nebeneinander statt untereinander:
-            der Streifen klebt am unteren Rand und soll dort nicht höher
-            werden, als er ohnehin ist. */}
-        <div className="flex">
-          {onResume && (
-            <button
-              type="button"
-              onClick={onResume}
-              className="min-h-11 flex-1 text-sm font-medium text-foreground transition-colors duration-fast hover:text-accent"
-            >
-              Weiter aufzeichnen
-            </button>
-          )}
+        {/* FORTSETZEN UND VERWERFEN SEHEN NICHT MEHR GLEICH AUS. Beide
+            standen als gleich grosse graue Textknöpfe nebeneinander — der
+            eine führt die Fahrt weiter, der andere löscht sie endgültig, und
+            auf dem Telefon lagen sie einen Daumen auseinander. Fortsetzen ist
+            jetzt ein umrandeter Knopf, Verwerfen eine einzelne leise Zeile in
+            der Gefahrenfarbe, mit Abstand darunter. */}
+        {onResume && (
           <button
             type="button"
-            onClick={() => setDiscardConfirmOpen(true)}
-            className="min-h-11 flex-1 text-sm text-muted transition-colors duration-fast hover:text-foreground"
+            onClick={onResume}
+            className={buttonVariants({ variant: "secondary", className: "w-full" })}
           >
-            Verwerfen
+            Weiter aufzeichnen
           </button>
-        </div>
+        )}
+        <button
+          type="button"
+          onClick={() => setDiscardConfirmOpen(true)}
+          className="mt-1 min-h-11 self-center text-sm text-muted transition-colors duration-fast hover:text-danger"
+        >
+          Fahrt verwerfen
+        </button>
       </div>
 
       <ConfirmDialog

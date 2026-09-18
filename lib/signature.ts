@@ -34,7 +34,7 @@
 // Die Perzentil-Logik hier ist davon unberührt und bleibt der eigentliche
 // Wert dieser Datei. Siehe docs/design-vereinfachung.md, Anhang A4.
 import { averageTempolimit } from "@/lib/geo";
-import { mitAnzahl } from "@/lib/format";
+import { formatKm, mitAnzahl } from "@/lib/format";
 import type { ExploreRoute } from "@/types/database";
 
 export type SignatureKey = "kehren" | "steigung" | "hoehe" | "tempo" | "laenge";
@@ -139,7 +139,10 @@ function formatSignature(key: SignatureKey, route: ExploreRoute): string {
       return avg !== null ? `Ø erlaubt ${avg} km/h` : "Freie Fahrt";
     }
     case "laenge":
-      return `${route.laenge_km} km lang`;
+      // formatKm statt der rohen Zahl: die Länge kommt als float aus der
+      // Datenbank, und auf der Startseite stand "33.9219284971474 km lang"
+      // neben lauter einstellig gerundeten Geschwistern.
+      return `${formatKm(route.laenge_km)} km lang`;
   }
 }
 

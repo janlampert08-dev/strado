@@ -20,7 +20,7 @@ import { movingSeconds, publicationBlockReason } from "@/lib/track";
 import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
 import type { ExploreRoute, Vehicle } from "@/types/database";
 import { fieldClassName } from "@/components/ui/Input";
-import { buttonVariants, textAktionClassName } from "@/components/ui/Button";
+import { buttonVariants } from "@/components/ui/Button";
 import Skeleton from "@/components/ui/Skeleton";
 import Card from "@/components/ui/Card";
 import FullscreenDialog from "@/components/ui/FullscreenDialog";
@@ -293,22 +293,22 @@ export default function FreeRideForm({
               >
                 Ich habe ein Konto
               </button>
-              <div className="flex justify-center gap-x-4">
-                <button
-                  type="button"
-                  onClick={recorder.fortsetzen}
-                  className={textAktionClassName({ ton: "gedaempft" })}
-                >
-                  Weiter aufzeichnen
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGastVerwerfenOffen(true)}
-                  className={textAktionClassName({ ton: "gedaempft" })}
-                >
-                  Fahrt verwerfen
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={recorder.fortsetzen}
+                className={buttonVariants({ variant: "secondary", className: "w-full" })}
+              >
+                Weiter aufzeichnen
+              </button>
+              {/* Verwerfen leise und allein, in der Gefahrenfarbe beim Berühren —
+                  nicht in einer Reihe mit dem Weg zurück in die Fahrt. */}
+              <button
+                type="button"
+                onClick={() => setGastVerwerfenOffen(true)}
+                className="mt-1 min-h-11 self-center text-sm text-muted transition-colors duration-fast hover:text-danger"
+              >
+                Fahrt verwerfen
+              </button>
             </div>
             <ConfirmDialog
               open={gastVerwerfenOffen}

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { Box } from "lucide-react";
-import TrafficIndicator, { type TrafficChipState } from "@/components/TrafficIndicator";
+import { type TrafficChipState } from "@/components/TrafficIndicator";
 import { SPEED_LEGEND } from "@/lib/speed";
 import {
   CONGESTION_META,
@@ -15,6 +15,7 @@ import {
 import type { RouteGeoJSON } from "@/types/database";
 import { buttonVariants } from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import { segmentClassName, segmentHuelleClassName } from "@/components/ui/SegmentedControl";
 import Skeleton from "@/components/ui/Skeleton";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
@@ -112,30 +113,73 @@ export default function RouteDetailMap({
         />
       </div>
       <div className="absolute top-4 left-4 flex flex-col items-start gap-2">
-        <div className="flex flex-wrap gap-2">
-          {hasTempolimits && (
+        {/* EINE EBENE ZUR ZEIT, UND SICHTBAR SO. Vorher waren Tempolimits und
+            Verkehr zwei unabhängig aussehende Umschalter, die einander still
+            ausgeschaltet haben: wer den zweiten einschaltete, sah den ersten
+            zurückspringen und las das als Fehler. Beide zugleich geht nicht —
+            sie färben dieselbe Linie —, also steht die Ausschliesslichkeit
+            jetzt als Auswahl da statt als Überraschung.
+
+            Der Verkehrszustand (Frei/Mässig/Stau) bleibt am Eintrag, solange
+            es Daten gibt; ohne Daten ist er gesperrt statt weg — eine Ebene,
+            die verschwindet, sobald der Dienst schweigt, ist schwerer zu
+            verstehen als eine, die "keine Daten" sagt. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div role="radiogroup" aria-label="Kartenebene" className={segmentHuelleClassName("bg-background")}>
             <button
-              // Tempolimits und Verkehr färben dieselbe Linie. Beide an hiess:
-              // der Verkehr übermalt die Tempofarben, und zwei Legenden
-              // stehen da, von denen eine nicht mehr zur Karte passt. Eine
-              // Ebene zur Zeit.
+              type="button"
+              role="radio"
+              aria-checked={!showSpeedLimits && !showTraffic}
               onClick={() => {
-                setShowSpeedLimits((v) => !v);
+                setShowSpeedLimits(false);
                 setShowTraffic(false);
               }}
-              className={buttonVariants({ variant: "secondary", size: "sm", className: "relative bg-background after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']" })}
+              className={segmentClassName(!showSpeedLimits && !showTraffic)}
             >
-              {showSpeedLimits ? "Tempolimits ausblenden" : "Tempolimits anzeigen"}
+              Keine
             </button>
-          )}
-          <TrafficIndicator
-            state={trafficState}
-            active={showTraffic}
-            onToggle={() => {
-              setShowTraffic((v) => !v);
-              setShowSpeedLimits(false);
-            }}
-          />
+            {hasTempolimits && (
+              <button
+                type="button"
+                role="radio"
+                aria-checked={showSpeedLimits}
+                onClick={() => {
+                  setShowSpeedLimits(true);
+                  setShowTraffic(false);
+                }}
+                className={segmentClassName(showSpeedLimits)}
+              >
+                Tempolimits
+              </button>
+            )}
+            <button
+              type="button"
+              role="radio"
+              aria-checked={showTraffic}
+              disabled={trafficState === "loading" || trafficState === "none"}
+              title={
+                trafficState === "loading"
+                  ? "Verkehr wird geladen…"
+                  : trafficState === "none"
+                    ? "Keine Live-Verkehrsdaten für diese Strecke"
+                    : undefined
+              }
+              onClick={() => {
+                setShowTraffic(true);
+                setShowSpeedLimits(false);
+              }}
+              className={segmentClassName(showTraffic, "disabled:opacity-40")}
+            >
+              {trafficState !== "loading" && trafficState !== "none" && (
+                <span
+                  aria-hidden="true"
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: CONGESTION_META[trafficState].color }}
+                />
+              )}
+              Verkehr
+            </button>
+          </div>
           <button
             onClick={() => setShow3D((v) => !v)}
             aria-pressed={show3D}
