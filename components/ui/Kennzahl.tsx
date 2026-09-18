@@ -55,7 +55,11 @@ export default function Kennzahl({
       <dt className="flex items-center gap-1.5 text-sm text-muted">{beschriftung}</dt>
       {/* whitespace-nowrap: "33.1 km" und "~22 min" brachen in der
           Vierer-Reihe der Streckenseite zwischen Zahl und Einheit um. */}
-      <dd className="text-title font-semibold whitespace-nowrap tabular-nums">{wert}</dd>
+      {/* mt-auto: in einer Reihe von Kacheln bricht eine längere
+          Beschriftung ("Höchster Punkt") auf zwei Zeilen um, und die Werte
+          standen danach auf verschiedenen Grundlinien. Jetzt sitzen sie alle
+          an der Unterkante ihrer Kachel. */}
+      <dd className="mt-auto text-title font-semibold whitespace-nowrap tabular-nums">{wert}</dd>
       {zusatz !== undefined && zusatz !== null && (
         <dd className="text-xs tabular-nums text-muted">{zusatz}</dd>
       )}

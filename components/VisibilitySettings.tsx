@@ -4,9 +4,9 @@ import { useActionState, useEffect, useRef } from "react";
 import { updateVisibilitySettings, type ProfileActionState } from "@/lib/actions/profile";
 import Card from "@/components/ui/Card";
 import Switch from "@/components/ui/Switch";
-import { fieldClassName } from "@/components/ui/Input";
 import { PRIVACY_RADIUS_OPTIONS } from "@/lib/track";
 import useEingabenBewahren from "@/components/useEingabenBewahren";
+import Select from "@/components/ui/Select";
 
 const initialState: ProfileActionState = { error: null };
 
@@ -114,18 +114,17 @@ export default function VisibilitySettings({
         <label htmlFor="privatzone" className="text-sm font-medium">
           Privatzone auf geteilten Karten
         </label>
-        <select
+        <Select
           id="privatzone"
           name="privatzone_radius_m"
           defaultValue={String(privatzoneRadiusM)}
-          className={fieldClassName()}
         >
           {PRIVACY_RADIUS_OPTIONS.map((radius) => (
             <option key={radius} value={radius}>
               {PRIVACY_RADIUS_LABELS[radius]}
             </option>
           ))}
-        </select>
+        </Select>
         <p className="text-xs text-muted">
           Der Anfang und das Ende jeder geteilten Fahrt werden in diesem Umkreis von der
           öffentlichen Karte entfernt — sonst beginnt und endet die Spur vor deiner Haustür. Eine

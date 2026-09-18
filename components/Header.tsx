@@ -8,6 +8,7 @@ import BackButton from "@/components/BackButton";
 import LogoLink from "@/components/LogoLink";
 import HeaderNavLink from "@/components/HeaderNavLink";
 import BottomNav from "@/components/BottomNav";
+import SprungZumInhalt from "@/components/SprungZumInhalt";
 import OffeneAufzeichnungStreifen from "@/components/OffeneAufzeichnung";
 import { buttonVariants } from "@/components/ui/Button";
 
@@ -50,6 +51,9 @@ export default async function Header({ back }: { back?: string } = {}) {
 
   return (
     <>
+      {/* Erstes fokussierbares Element jeder Seite — siehe
+          components/SprungZumInhalt.tsx. */}
+      <SprungZumInhalt />
       {/* sticky + Transluzenz/Blur statt eines deckenden Balkens — das
           "durchscheinende", beim Scrollen fixierte Nav-Bar-Verhalten ist ein
           der auffälligsten iOS-Systemmuster (Safari, Mail, Einstellungen). */}

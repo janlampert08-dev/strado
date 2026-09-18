@@ -8,6 +8,7 @@ import Button from "@/components/ui/Button";
 import MotorklasseBadge from "@/components/MotorklasseBadge";
 import { fahrzeugtypdefinition, motorklasseFor, psInKw } from "@/lib/motorklassen";
 import type { FahrzeugTyp } from "@/types/database";
+import Select from "@/components/ui/Select";
 
 const initialState: VehicleFormState = { error: null };
 
@@ -93,7 +94,7 @@ export default function NeuesFahrzeugForm({ nextHref }: { nextHref?: string } = 
         {nextHref && <input type="hidden" name="next" value={nextHref} />}
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           Typ
-          <select
+          <Select
             name="typ"
             required
             value={typ}
@@ -109,7 +110,7 @@ export default function NeuesFahrzeugForm({ nextHref }: { nextHref?: string } = 
           >
             <option value="auto">Auto</option>
             <option value="motorrad">Motorrad</option>
-          </select>
+          </Select>
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           Marke
@@ -143,10 +144,10 @@ export default function NeuesFahrzeugForm({ nextHref }: { nextHref?: string } = 
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           Getriebe
-          <select name="getriebe" required defaultValue="manuell" className={fieldClassName()}>
+          <Select name="getriebe" required defaultValue="manuell">
             <option value="manuell">Manuell</option>
             <option value="automatik">Automatik</option>
-          </select>
+          </Select>
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           Baujahr (optional)

@@ -704,6 +704,21 @@ export default function RouteMap({
       // `attributionControl: false` samt der AttributionControl-Zeile unten
       // (dann greift wieder das responsive Standardverhalten).
       attributionControl: false,
+      // Ohne locale melden sich die Bedienelemente englisch ("Zoom in",
+      // "Reset bearing to north") in einem lang="de"-Dokument.
+      locale: {
+        "AttributionControl.ToggleAttribution": "Quellenangabe ein-/ausblenden",
+        "GeolocateControl.FindMyLocation": "Meinen Standort finden",
+        "GeolocateControl.LocationNotAvailable": "Standort nicht verfügbar",
+        "LogoControl.Title": "Mapbox-Logo",
+        "Map.Title": "Karte",
+        "NavigationControl.ResetBearing": "Nach Norden ausrichten",
+        "NavigationControl.ZoomIn": "Hineinzoomen",
+        "NavigationControl.ZoomOut": "Herauszoomen",
+        "ScrollZoomBlocker.CtrlMessage": "Zum Zoomen Strg gedrückt halten",
+        "ScrollZoomBlocker.CmdMessage": "Zum Zoomen ⌘ gedrückt halten",
+        "TouchPanBlocker.Message": "Zum Bewegen der Karte zwei Finger benutzen",
+      },
     });
 
     map.addControl(new mapboxgl.AttributionControl({ compact: true }));
@@ -1002,7 +1017,14 @@ export default function RouteMap({
 
       styleLoadedRef.current = true;
       setStilGeneration((n) => n + 1);
-      setIsReady(true);
+      // Erst wenn die Karte einmal fertig gezeichnet hat, nicht schon beim
+      // geladenen Stil: dazwischen liegen die Kacheln, und genau die Sekunden
+      // sah man im Review als schwarze Fläche, wo eine Karte sein sollte.
+      // Der Notnagel darunter hebt das Skelett auch dann, wenn "idle" nie
+      // kommt (kein Netz, blockierte Kacheln) — dann steht wenigstens der
+      // leere Kartenhintergrund statt eines ewigen Skeletts.
+      map.once("idle", () => setIsReady(true));
+      window.setTimeout(() => setIsReady(true), 6000);
     });
 
     // Delegierte Layer-Listener bleiben auch über einen Style-Wechsel hinweg

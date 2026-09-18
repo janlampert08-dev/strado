@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatDuration } from "@/lib/format";
 import type { RouteTimeEntry } from "@/lib/leaderboard";
-import { fieldClassName } from "@/components/ui/Input";
 import Card from "@/components/ui/Card";
 import MotorklassenChips from "@/components/MotorklassenChips";
 import { filterLabel } from "@/lib/motorklassen";
@@ -14,6 +13,7 @@ import { cn } from "@/lib/utils/cn";
 import { RankingIcon } from "@/components/NavIcons";
 import { textAktionClassName } from "@/components/ui/Button";
 import SectionHeading from "@/components/ui/SectionHeading";
+import Select from "@/components/ui/Select";
 
 const COLLAPSED_SIZE = 5;
 const EXPANDED_SIZE = 10;
@@ -69,7 +69,7 @@ export default function TrackLeaderboardChooser({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <SectionHeading icon={RankingIcon}>Streckenbestzeiten</SectionHeading>
         {routes.length > 0 && (
-          <select
+          <Select
             // Ohne Beschriftung meldet ein Screenreader hier nur "Auswahl" —
             // die Überschrift daneben ist nicht mit dem Feld verknüpft. Die
             // Chips darunter tragen ihre Beschriftung bereits (label-Prop),
@@ -85,14 +85,14 @@ export default function TrackLeaderboardChooser({
               setKlassen([]);
               setExpanded(false);
             }}
-            className={fieldClassName("w-full sm:w-auto sm:max-w-[60%]")}
+            huelleClassName="w-full sm:w-auto sm:max-w-[60%]"
           >
             {routes.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.name}
               </option>
             ))}
-          </select>
+          </Select>
         )}
       </div>
 

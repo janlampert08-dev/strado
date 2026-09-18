@@ -769,6 +769,10 @@ export function useRideRecorder({
     const jetzt = Date.now();
     pausiertAmRef.current = jetzt;
     setPausiert(true);
+    // Die letzte gemessene Geschwindigkeit stehen zu lassen, war die einzige
+    // Zahl auf dem Schirm, die während der Pause log: Uhr und Distanz stehen,
+    // "59 km/h" blieb. Genau in dem Moment prüft jemand, ob die Pause wirkt.
+    setSpeedKmh(null);
     // Ein letzter Puls mit der aktuellen Position, erzwungen — damit die
     // Serverzeit nicht hinter dem Trail zurückbleibt, falls die Pause lang
     // wird und die Fahrt danach direkt beendet wird.
@@ -925,6 +929,7 @@ export function useRideRecorder({
           snapshot.startTimeMs ? Math.round((pausiertAm - snapshot.startTimeMs) / 1000) : 0,
         );
         setPausiert(true);
+        setSpeedKmh(null);
         setPhase("tracking");
         return;
       }

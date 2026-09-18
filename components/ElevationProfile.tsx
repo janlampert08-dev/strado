@@ -115,10 +115,13 @@ export default function ElevationProfile({ punkte }: { punkte: HoehenprofilPunkt
         {hoverPunkt && (
           <div
             className="pointer-events-none absolute rounded-md border border-border bg-background px-2 py-1 text-xs tabular-nums shadow-elevated"
+            // Unter der Kurve statt darüber: oben lag die Blase über
+            // "Strecke starten" — der Hinweis verdeckte die Handlung, für die
+            // die Seite da ist.
             style={{
               left: `${(hoverPunkt.km / kmMax) * 100}%`,
-              top: 0,
-              transform: "translate(-50%, calc(-100% - 6px))",
+              bottom: 0,
+              transform: "translate(-50%, calc(100% + 6px))",
             }}
           >
             {hoverPunkt.m} m · km {hoverPunkt.km.toFixed(1)}

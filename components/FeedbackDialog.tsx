@@ -2,11 +2,12 @@
 
 import { useActionState, useState } from "react";
 import { Dialog } from "@/components/ui/Dialog";
-import { Textarea, fieldClassName } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import { sendFeedback, type FeedbackState } from "@/lib/actions/feedback";
 import { FEEDBACK_KATEGORIEN } from "@/lib/constants";
 import { FEEDBACK_MAX_LENGTH } from "@/lib/feedback";
+import Select from "@/components/ui/Select";
 
 const initialState: FeedbackState = { error: null };
 
@@ -74,7 +75,7 @@ function FeedbackFormular({ onClose }: { onClose: () => void }) {
     <form action={formAction} className="flex flex-col gap-3">
       <label className="flex flex-col gap-1.5 text-sm font-medium">
         Worum geht es?
-        <select name="kategorie" required defaultValue="" className={fieldClassName()}>
+        <Select name="kategorie" required defaultValue="">
           <option value="" disabled>
             Bitte auswählen
           </option>
@@ -83,7 +84,7 @@ function FeedbackFormular({ onClose }: { onClose: () => void }) {
               {k.label}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium">
         Deine Nachricht

@@ -174,6 +174,17 @@ export type ExploreRoute = Pick<
   | "ist_rundfahrt"
 >;
 
+/**
+ * Das Minimum, aus dem sich ein Signatur-Merkmal berechnen lässt
+ * (lib/signature.ts). ExploreRoute erfüllt ihn, aber nicht nur: die
+ * Streckenseite braucht denselben Vergleich über den ganzen Bestand und
+ * darf dafür nicht dreissig Geometrien laden.
+ */
+export type SignaturStrecke = Pick<
+  RouteGeoJSON,
+  "id" | "hoehe_m" | "laenge_km" | "max_steigung_prozent" | "kehren" | "tempolimits"
+>;
+
 export interface RouteRating {
   id: string;
   route_id: string;

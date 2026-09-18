@@ -528,22 +528,22 @@ export default function LiveTrackingForm({
             >
               Ich habe ein Konto
             </button>
-            <div className="flex justify-center gap-x-4">
-              <button
-                type="button"
-                onClick={recorder.fortsetzen}
-                className={textAktionClassName({ ton: "gedaempft" })}
-              >
-                Weiter aufzeichnen
-              </button>
-              <button
-                type="button"
-                onClick={() => setGastVerwerfenOffen(true)}
-                className={textAktionClassName({ ton: "gedaempft" })}
-              >
-                Fahrt verwerfen
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={recorder.fortsetzen}
+              className={buttonVariants({ variant: "secondary", className: "w-full" })}
+            >
+              Weiter aufzeichnen
+            </button>
+            {/* Verwerfen leise und allein, in der Gefahrenfarbe beim Berühren —
+                nicht in einer Reihe mit dem Weg zurück in die Fahrt. */}
+            <button
+              type="button"
+              onClick={() => setGastVerwerfenOffen(true)}
+              className="mt-1 min-h-11 self-center text-sm text-muted transition-colors duration-fast hover:text-danger"
+            >
+              Fahrt verwerfen
+            </button>
           </div>
           <ConfirmDialog
             open={gastVerwerfenOffen}

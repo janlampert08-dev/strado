@@ -19,6 +19,7 @@ import { chipClassName } from "@/components/motorklassenChipStil";
 import { buttonVariants, textAktionClassName } from "@/components/ui/Button";
 import SectionHeading from "@/components/ui/SectionHeading";
 import { ConfirmDialog } from "@/components/ui/Dialog";
+import Select from "@/components/ui/Select";
 
 export const MAX_NOTIZ_LENGTH = 280;
 
@@ -305,7 +306,7 @@ export default function RideSummaryForm({
           // die FormData manuell und ruft die Server Action direkt auf.
           <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
             <div className="grid grid-cols-2 gap-2">
-              <select
+              <Select
                 value={newVehicleTyp}
                 onChange={(e) => {
                   setNewVehicleTyp(e.target.value as FahrzeugTyp);
@@ -318,15 +319,14 @@ export default function RideSummaryForm({
               >
                 <option value="auto">Auto</option>
                 <option value="motorrad">Motorrad</option>
-              </select>
-              <select
+              </Select>
+              <Select
                 value={newVehicleGetriebe}
                 onChange={(e) => setNewVehicleGetriebe(e.target.value)}
-                className={fieldClassName()}
               >
                 <option value="manuell">Manuell</option>
                 <option value="automatik">Automatik</option>
-              </select>
+              </Select>
             </div>
             <input
               type="text"
@@ -549,27 +549,28 @@ export default function RideSummaryForm({
         >
           {pending ? "Speichern…" : "Fahrt speichern"}
         </button>
-        {/* Zwei gleichrangige Nebenwege nebeneinander statt untereinander:
-            der Streifen klebt am unteren Rand und soll dort nicht höher
-            werden, als er ohnehin ist. */}
-        <div className="flex">
-          {onResume && (
-            <button
-              type="button"
-              onClick={onResume}
-              className="min-h-11 flex-1 text-sm font-medium text-foreground transition-colors duration-fast hover:text-accent"
-            >
-              Weiter aufzeichnen
-            </button>
-          )}
+        {/* FORTSETZEN UND VERWERFEN SEHEN NICHT MEHR GLEICH AUS. Beide
+            standen als gleich grosse graue Textknöpfe nebeneinander — der
+            eine führt die Fahrt weiter, der andere löscht sie endgültig, und
+            auf dem Telefon lagen sie einen Daumen auseinander. Fortsetzen ist
+            jetzt ein umrandeter Knopf, Verwerfen eine einzelne leise Zeile in
+            der Gefahrenfarbe, mit Abstand darunter. */}
+        {onResume && (
           <button
             type="button"
-            onClick={() => setDiscardConfirmOpen(true)}
-            className="min-h-11 flex-1 text-sm text-muted transition-colors duration-fast hover:text-foreground"
+            onClick={onResume}
+            className={buttonVariants({ variant: "secondary", className: "w-full" })}
           >
-            Verwerfen
+            Weiter aufzeichnen
           </button>
-        </div>
+        )}
+        <button
+          type="button"
+          onClick={() => setDiscardConfirmOpen(true)}
+          className="mt-1 min-h-11 self-center text-sm text-muted transition-colors duration-fast hover:text-danger"
+        >
+          Fahrt verwerfen
+        </button>
       </div>
 
       <ConfirmDialog

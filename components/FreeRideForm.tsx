@@ -20,7 +20,7 @@ import { movingSeconds, publicationBlockReason } from "@/lib/track";
 import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
 import type { ExploreRoute, Vehicle } from "@/types/database";
 import { fieldClassName } from "@/components/ui/Input";
-import { buttonVariants, textAktionClassName } from "@/components/ui/Button";
+import { buttonVariants } from "@/components/ui/Button";
 import Skeleton from "@/components/ui/Skeleton";
 import Card from "@/components/ui/Card";
 import FullscreenDialog from "@/components/ui/FullscreenDialog";
@@ -36,6 +36,9 @@ const RouteMap = dynamic(() => import("@/components/RouteMap"), {
 });
 
 const initialState: FreeRideFormState = { error: null };
+// Stabile leere Liste für den Startschirm — ein Literal je Render würde den
+// Kartenausschnitt bei jedem Zustandswechsel neu einpassen.
+const KEINE_STRECKEN: never[] = [];
 const MAX_TITEL_LENGTH = 80;
 
 
@@ -293,22 +296,22 @@ export default function FreeRideForm({
               >
                 Ich habe ein Konto
               </button>
-              <div className="flex justify-center gap-x-4">
-                <button
-                  type="button"
-                  onClick={recorder.fortsetzen}
-                  className={textAktionClassName({ ton: "gedaempft" })}
-                >
-                  Weiter aufzeichnen
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGastVerwerfenOffen(true)}
-                  className={textAktionClassName({ ton: "gedaempft" })}
-                >
-                  Fahrt verwerfen
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={recorder.fortsetzen}
+                className={buttonVariants({ variant: "secondary", className: "w-full" })}
+              >
+                Weiter aufzeichnen
+              </button>
+              {/* Verwerfen leise und allein, in der Gefahrenfarbe beim Berühren —
+                  nicht in einer Reihe mit dem Weg zurück in die Fahrt. */}
+              <button
+                type="button"
+                onClick={() => setGastVerwerfenOffen(true)}
+                className="mt-1 min-h-11 self-center text-sm text-muted transition-colors duration-fast hover:text-danger"
+              >
+                Fahrt verwerfen
+              </button>
             </div>
             <ConfirmDialog
               open={gastVerwerfenOffen}
@@ -403,7 +406,11 @@ export default function FreeRideForm({
     return (
       <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col bg-background">
         <div className="min-h-0 flex-1">
-          <RouteMap routes={routes} fitRoutes={false} routesClickable={false} />
+          {/* Ohne die kuratierten Strecken: auf dem Startschirm einer FREIEN
+              Fahrt sind sie Beiwerk, und mit ihnen sprang der Ausschnitt auf
+              die halbe Schweiz statt in die Umgebung. Die Orientierungshilfe
+              beginnt mit der Aufzeichnung, wo die Karte dem Standort folgt. */}
+          <RouteMap routes={KEINE_STRECKEN} fitRoutes={false} routesClickable={false} />
         </div>
         <div className="md:mx-auto md:w-full md:max-w-lg md:rounded-t-lg md:border-x flex flex-col gap-4 border-t border-border bg-background px-5 pt-5 pb-[calc(1.25rem+var(--safe-bottom))]">
           <div className="flex flex-col gap-1">
@@ -424,7 +431,11 @@ export default function FreeRideForm({
               </li>
             )}
           </ul>
-          <div className="flex flex-col gap-1">
+          {/* gap-2 statt gap-1: zwischen dem Start- und dem Abbrechen-Knopf
+              lagen 4 px. Das ist das einzige Knopfpaar der App, bei dem ein
+              Fehlgriff etwas kostet — wer starten will und abbricht, steht
+              wieder am Anfang, mit Helm und Handschuhen. */}
+          <div className="flex flex-col gap-2">
             <button
               type="button"
               onClick={recorder.starten}

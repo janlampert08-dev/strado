@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import Button, { type ButtonVariant } from "./Button";
 import { SchliessenIcon } from "@/components/NavIcons";
 import { cn } from "@/lib/utils/cn";
@@ -24,6 +24,7 @@ interface DialogProps {
 // kostenlos vom Browser (Baseline-unterstützt), siehe Plan §3.
 export function Dialog({ open, onClose, title, ariaLabel, children, className }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titelId = useId();
 
   useEffect(() => {
     const el = ref.current;
@@ -52,6 +53,10 @@ export function Dialog({ open, onClose, title, ariaLabel, children, className }:
       ref={ref}
       onClose={onClose}
       aria-label={!title ? ariaLabel : undefined}
+      // Mit Überschrift: die Überschrift IST der Name. Ohne aria-labelledby
+      // trug der Dialog gar keinen — die Follower-Liste meldete sich beim
+      // Öffnen nur als "Dialog", obwohl "Follower" darin steht.
+      aria-labelledby={title ? titelId : undefined}
       className={cn(
         "m-auto w-[min(28rem,calc(100vw-2rem))] rounded-lg border border-border bg-background p-5 text-foreground shadow-elevated outline-none backdrop:bg-black/60",
         // UNTER sm EIN BLATT VON UNTEN, sobald der Dialog eine Überschrift
@@ -74,7 +79,9 @@ export function Dialog({ open, onClose, title, ariaLabel, children, className }:
           anderen Ausweg. */}
       {title && (
         <div className="mb-3 flex items-start justify-between gap-3">
-          <h2 className="pt-2 text-title font-semibold">{title}</h2>
+          <h2 id={titelId} className="pt-2 text-title font-semibold">
+            {title}
+          </h2>
           {/* Ohne Rahmen, anders als ui/IconButton: im Kopf eines Blatts
               ist der Knopf Ausstattung, keine Handlung neben anderen — und
               cn ist kein tailwind-merge, ein angehängtes border-transparent
