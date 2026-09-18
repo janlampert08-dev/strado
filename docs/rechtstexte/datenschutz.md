@@ -19,6 +19,18 @@
 >
 > Es gibt **keine Platzhalter** mehr in diesem Dokument (Stand 2026-09-07).
 
+> ### ⚠️ Entwurf vom 17. September 2026 — noch nicht veröffentlicht
+>
+> Abschnitte 3 („Sichtbarkeit"), 5.1, 5.2 und offener Punkt 12 beschreiben
+> **voreingestellt öffentliche Fahrten** (Entscheid des Inhabers vom
+> 2026-09-17). Die veröffentlichte Fassung
+> (`janlampert08-dev/stradoinfo`, `legal/datenschutz.html`) sagt noch
+> „standardmässig privat" und muss **vor** der Auslieferung des Codes aus
+> `staging-fahrten-standardmaessig-oeffentlich` nachgezogen werden —
+> zusammen mit der AGB-Mitteilung nach deren Ziff. 14.1. Die geänderte
+> Rechtsgrundlage (keine Einwilligung mehr, siehe 5.1) ist anwaltlich zu
+> prüfen; siehe offener Punkt 12.
+
 ---
 
 **Stand: 16. September 2026**
@@ -125,9 +137,12 @@ Dazu kommen: Datum, gewähltes Fahrzeug, eine optionale private **Notiz** (max.
 280 Zeichen), bei freien Fahrten ein selbst gewählter **Titel** sowie ein
 per Reverse-Geocoding ermittelter **Ortsbezug** (Startort und Region).
 
-**Sichtbarkeit.** Fahrten sind **standardmässig privat**. Eine Fahrt wird erst
-öffentlich, wenn dies pro Fahrt aktiv gewählt wird; die Einstellung ist
-jederzeit umkehrbar. Der **vollständige GPS-Track ist ausschliesslich für die
+**Sichtbarkeit.** Neu aufgezeichnete Fahrten sind **voreingestellt
+öffentlich**: Vor dem Speichern steht die Wahl sichtbar auf „Öffentlich" und
+lässt sich mit einem Tipp auf „Privat" umstellen; die Einstellung ist pro
+Fahrt jederzeit umkehrbar. Eine Fahrt, die die Voraussetzungen für eine
+Veröffentlichung nicht erfüllt, bleibt privat. Bereits gespeicherte Fahrten
+behalten ihre Einstellung. Der **vollständige GPS-Track ist ausschliesslich für die
 eigene Person sichtbar** — die Zugriffsregeln der Datenbank
 (Row Level Security) lassen keinen anderen Zugriff zu.
 
@@ -391,13 +406,13 @@ bearbeiten, solange die Persönlichkeit der betroffenen Personen nicht
 widerrechtlich verletzt wird. Wo eine Rechtfertigung nötig ist, stützen wir uns
 auf Art. 31 DSG: **Vertragserfüllung** (Konto, Fahrten, Abo),
 **überwiegendes privates Interesse** (Sicherheit, Missbrauchsabwehr,
-Reichweitenmessung, Weiterentwicklung), **Einwilligung** (Standortzugriff,
-Veröffentlichen einzelner Fahrten) und **gesetzliche Pflicht**
+Reichweitenmessung, Weiterentwicklung), **Einwilligung** (Standortzugriff) und **gesetzliche Pflicht**
 (Aufbewahrung).
 
 Die sechs voreingestellt eingeschalteten Profil-Schalter (Abschnitt 3.2)
-lassen sich **nicht** auf eine Einwilligung stützen, weil ihnen keine aktive
-Wahl vorausgeht. Wir stützen sie auf die Vertragserfüllung — ein öffentliches
+und die **voreingestellt öffentliche Sichtbarkeit neuer Fahrten**
+(Abschnitt 3, „Sichtbarkeit") lassen sich **nicht** auf eine Einwilligung
+stützen, weil ihnen keine aktive Wahl vorausgeht. Wir stützen sie auf die Vertragserfüllung — ein öffentliches
 Fahrerprofil ist Teil der Plattformfunktion — und auf unser überwiegendes
 Interesse am Betrieb einer öffentlichen Community; jeder Schalter lässt sich
 jederzeit abschalten. Ob diese Voreinstellung mit dem Grundsatz „Datenschutz
@@ -410,7 +425,8 @@ ist, gilt zusätzlich:
 | Bearbeitung | Rechtsgrundlage DSGVO |
 | --- | --- |
 | Konto, Fahrten, Abo, Zahlungsabwicklung | Art. 6 Abs. 1 lit. b (Vertrag) |
-| Standortzugriff, Veröffentlichen einzelner Fahrten | Art. 6 Abs. 1 lit. a (Einwilligung) |
+| Standortzugriff | Art. 6 Abs. 1 lit. a (Einwilligung) |
+| Voreingestellt öffentliche Fahrten | Art. 6 Abs. 1 lit. b und f (Vertrag, berechtigtes Interesse) — anwaltlich zu prüfen, siehe offener Punkt 12 |
 | Voreingestellt sichtbare Profilangaben (Abschnitt 6) | Art. 6 Abs. 1 lit. b und f — siehe offenen Punkt 12 |
 | Sicherheit, Missbrauchsabwehr, Reichweitenmessung, Moderation | Art. 6 Abs. 1 lit. f (berechtigtes Interesse) |
 | Aufbewahrung von Rechnungsunterlagen | Art. 6 Abs. 1 lit. c (rechtliche Verpflichtung) |
@@ -728,7 +744,12 @@ Dokument muss leer bleiben und ist Teil der Prüfung vor jeder weiteren
     aufgenommene Fotos nicht gedreht erscheinen. Sie enthält keine
     personenbezogene Information; der Hinweis im Text sollte trotzdem
     bestätigt werden.
-12. **Voreinstellung der Sichtbarkeits-Schalter** (Abschnitte 3.2, 5 und 6) —
+12. **Voreinstellung der Sichtbarkeits-Schalter und der Fahrten** (Abschnitte 3, 3.2, 5 und 6) —
+    **Ergänzung 2026-09-17:** auch neue Fahrten sind jetzt voreingestellt
+    öffentlich. Das verschärft Punkt a) unten: ein GPS-Track verrät mehr als
+    eine Profilangabe, und die Kappung um die Privatzone ist die einzige
+    technische Schranke. Vor der Veröffentlichung dieser Fassung prüfen.
+    Ursprünglicher Text:
     dieser Text beschreibt den Zustand, den der Quellcode vorgibt: die sechs
     Profil-Schalter stehen auf **an** (`0054_sichtbarkeit_standardmaessig_aktiv.sql`,
     Fallback `?? true` in `app/profil/einstellungen/page.tsx`). Offen ist

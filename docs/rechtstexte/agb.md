@@ -97,6 +97,16 @@
 > - **Ziff. 12.6** ist neu und definiert, was eine **verifizierte Fahrt** ist,
 >   was sie ausdrücklich **nicht** garantiert, und dass eine fehlende
 >   Verbindung die Fahrt nicht entwertet.
+> - **Ziff. 10.1.1 (Ergänzung vom 17. September 2026):** Neu aufgezeichnete
+>   Fahrten sind **voreingestellt öffentlich** statt standardmässig privat —
+>   Entscheid des Inhabers nach einem UI/UX-Review. Die Wahl steht vor dem
+>   Speichern sichtbar auf „Öffentlich" und ist mit einem Tipp umstellbar;
+>   gespeicherte Fahrten bleiben, wie sie sind. Code: PR
+>   `staging-fahrten-standardmaessig-oeffentlich` — er darf **nicht vor**
+>   dem Inkrafttreten dieser Fassung ausgeliefert werden. Diese Ergänzung
+>   gehört in **dieselbe** Mitteilung nach Ziff. 14.1 wie die Änderungen
+>   oben, nicht in eine zweite; wird die Mitteilung erst jetzt verschickt,
+>   verschiebt sich das früheste Inkrafttreten entsprechend.
 > - Die Premium-Aufzählung in Ziff. 3.2 beschreibt das Fehlen von Zeiten jetzt
 >   als Funktionsumfang statt als Verbot. **Am Funktionsumfang selbst ändert
 >   sich nichts** — `lib/fahrtstatistik.ts` liefert weiterhin keine Zeiten.
@@ -501,9 +511,15 @@ GPS-Tracks, Fotos, Bewertungstexte, Fahrt-Titel und -Notizen sowie
 Profilangaben („Nutzerinhalte"). Die Rechte an diesen Inhalten verbleiben bei
 den Nutzenden.
 
-**10.1.1 Voreingestellte Sichtbarkeit von Profilangaben.** Einzelne Fahrten
-sind **standardmässig privat** und werden nur öffentlich, wenn dies pro Fahrt
-aktiv gewählt wird. Die Profilangaben Profilbild, Fahrzeuge, Anzahl Pässe,
+**10.1.1 Voreingestellte Sichtbarkeit von Fahrten und Profilangaben.** Neu
+aufgezeichnete Fahrten sind **voreingestellt öffentlich**: Vor dem Speichern
+ist die Sichtbarkeit sichtbar auf „Öffentlich" gesetzt und lässt sich mit
+einem Tipp auf „Privat" umstellen; nachträglich ist die Einstellung pro Fahrt
+jederzeit umkehrbar. Fahrten, die die Voraussetzungen für eine
+Veröffentlichung nicht erfüllen (etwa eine zu kurze Fahrt oder eine zu
+geringe Abdeckung der Strecke), bleiben privat. Veröffentlicht wird nie der
+vollständige GPS-Track, sondern eine um die Privatzone gekappte Fassung.
+Bereits gespeicherte Fahrten bleiben unverändert. Die Profilangaben Profilbild, Fahrzeuge, Anzahl Pässe,
 Höhenmeter, Distanz und Follower-Liste sind demgegenüber bei **neu angelegten
 Konten** auf dem öffentlichen Profil **voreingestellt sichtbar** und lassen
 sich in den Profileinstellungen jederzeit einzeln abschalten. Bei bestehenden

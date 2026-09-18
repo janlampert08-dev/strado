@@ -113,7 +113,17 @@ export default function FreeRideForm({
   // wo serverseitig noch nichts liegt und der lokale Snapshot die
   // einzige Kopie der Fahrt ist.
   const [gastVerwerfenOffen, setGastVerwerfenOffen] = useState(false);
-  const [isPublic, setIsPublic] = useState(false);
+  // VOREINGESTELLT ÖFFENTLICH, Entscheid des Inhabers vom 2026-09-17. Bis
+  // dahin stand hier false, und die Datenschutzerklärung sowie AGB
+  // Ziff. 10.1.1 sagten "Fahrten sind standardmässig privat". Beide Texte
+  // sind im selben PR als Entwurf geändert (docs/rechtstexte/) — dieser
+  // Code darf erst ausgeliefert werden, wenn die geänderten Fassungen in
+  // Kraft sind (AGB Ziff. 14.1: 30 Tage Vorankündigung).
+  //
+  // Eine Fahrt, die die Veröffentlichung nicht erfüllt, bleibt trotzdem
+  // privat: der Wert unten wird mit der Sperre verrechnet, und der Server
+  // kann ist_oeffentlich ohnehin nur verengen (0052).
+  const [isPublic, setIsPublic] = useState(true);
   const [submitted, setSubmitted] = useState(false);
   // Hält die automatische Weiterleitung an, solange es noch etwas
   // Informatives zu zeigen gibt (siehe partialAttempts unten) — im
@@ -362,7 +372,7 @@ export default function FreeRideForm({
                 privateHint:
                   "Privat: nur du siehst diese Fahrt in deinem Profil, für andere bleibt sie unsichtbar. Später jederzeit umschaltbar.",
               }}
-              isPublic={isPublic}
+              isPublic={isPublic && publicationBlocked === null}
               onIsPublicChange={setIsPublic}
               onSubmit={() => setSubmitted(true)}
               onDiscard={handleDiscard}
