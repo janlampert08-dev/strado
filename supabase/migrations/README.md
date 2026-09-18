@@ -105,6 +105,30 @@ und `fahrt_start_einloesen` die Zeile beide nicht mehr annehmen. Wer daraus
 eine echte Frist machen will, braucht einen Cron wie `premium_abgleich()`
 (`0059`) — eigene Entscheidung, keine Nacharbeit zu dieser.
 
+## Ausstehend: 0103_profilname_aendern (2026-09-17, NICHT eingespielt)
+
+Neue Funktion `profilname_aendern(p_name text)`, `SECURITY DEFINER`, nur für
+`authenticated` (EXECUTE ausdrücklich von `public` und `anon` entzogen).
+Ändert ausschliesslich `display_name` der Zeile von `auth.uid()`, nach den
+Regeln von `signUp()` (2–50 Zeichen, case-insensitiv eindeutig). Rein
+additiv, kein Eingriff in Tabellen, Policies oder Grants — der Rückweg ist
+`drop function public.profilname_aendern(text);`.
+
+Nummer 0103, weil `0101_anonymisierung_fahrtstarts` und
+`0102_amtliche_tempolimits` auf offenen Branches bereits vergeben sind
+(`git ls-tree` über alle Remote-Branches, 2026-09-17).
+
+**Reihenfolge:** Migration zuerst, dann der Code (`staging-profilname-aendern`).
+Ohne die Funktion zeigt das Formular in den Einstellungen eine allgemeine
+Fehlermeldung, stürzt aber nicht ab.
+
+**Nach dem Einspielen prüfen:**
+
+```sql
+select has_function_privilege('anon', 'public.profilname_aendern(text)', 'execute');          -- false
+select has_function_privilege('authenticated', 'public.profilname_aendern(text)', 'execute'); -- true
+```
+
 ## Eingespielt: 0096–0098 (Fahrtstart serverseitig, 2026-09-15, Produktion)
 
 | Datei | Was |
