@@ -105,7 +105,13 @@ und `fahrt_start_einloesen` die Zeile beide nicht mehr annehmen. Wer daraus
 eine echte Frist machen will, braucht einen Cron wie `premium_abgleich()`
 (`0059`) — eigene Entscheidung, keine Nacharbeit zu dieser.
 
-## Ausstehend: 0113_passsammlung_je_fahrt (2026-09-18, NICHT eingespielt)
+## Eingespielt: 0113_passsammlung_je_fahrt (2026-09-18, Produktion)
+
+**Eingespielt am 2026-09-18** nach dem Merge von #291, vor der Promotion
+nach `main`. Geprüft am Katalog: `meine_passfahrten()` für `anon` nicht
+ausführbar, für `authenticated` schon; `meine_paesse()` trägt den Filter
+`parent_completion_id`, `anon` weiterhin ohne Recht. Funktional im
+zurückgerollten Test als echtes Konto aufgerufen (Aufruf ohne Fehler).
 
 Die Premium-Pass-Sammlung liest seit dem Entscheid des Inhabers vom
 2026-09-18 denselben Katalog wie die freie Passsammlung aus `0104`. Dafür
@@ -134,7 +140,15 @@ select has_function_privilege('authenticated', 'public.meine_passfahrten()', 'ex
 select position('parent_completion_id' in pg_get_functiondef('public.meine_paesse()'::regprocedure)) > 0; -- true
 ```
 
-## Ausstehend: 0109_profilname_aendern (geschrieben 2026-09-17 als 0103, NICHT eingespielt)
+## Eingespielt: 0109_profilname_aendern (geschrieben 2026-09-17 als 0103, Produktion 2026-09-18)
+
+**Eingespielt am 2026-09-18** nach dem Merge von #291. Geprüft am Katalog:
+`anon = false`, `authenticated = true`, `prosecdef = true`, Index
+`profiles_display_name_lower_eindeutig` vorhanden. Funktional in einem
+zurückgerollten `DO`-Block als echtes Konto: Name eines anderen Kontos plus
+Nullbreite-Leerzeichen → `ungueltig`, plus NBSP → `vergeben`,
+Vollbreiten-Buchstaben → normalisiert `ok`, ein Zeichen → `zu_kurz`;
+danach keine Testzeile übrig.
 
 Neue Funktion `profilname_aendern(p_name text)`, `SECURITY DEFINER`, nur für
 `authenticated` (EXECUTE ausdrücklich von `public` und `anon` entzogen).
