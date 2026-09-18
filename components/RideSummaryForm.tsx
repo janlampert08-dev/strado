@@ -19,6 +19,7 @@ import { chipClassName } from "@/components/motorklassenChipStil";
 import { buttonVariants, textAktionClassName } from "@/components/ui/Button";
 import SectionHeading from "@/components/ui/SectionHeading";
 import { ConfirmDialog } from "@/components/ui/Dialog";
+import Select from "@/components/ui/Select";
 
 export const MAX_NOTIZ_LENGTH = 280;
 
@@ -305,7 +306,7 @@ export default function RideSummaryForm({
           // die FormData manuell und ruft die Server Action direkt auf.
           <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
             <div className="grid grid-cols-2 gap-2">
-              <select
+              <Select
                 value={newVehicleTyp}
                 onChange={(e) => {
                   setNewVehicleTyp(e.target.value as FahrzeugTyp);
@@ -318,15 +319,14 @@ export default function RideSummaryForm({
               >
                 <option value="auto">Auto</option>
                 <option value="motorrad">Motorrad</option>
-              </select>
-              <select
+              </Select>
+              <Select
                 value={newVehicleGetriebe}
                 onChange={(e) => setNewVehicleGetriebe(e.target.value)}
-                className={fieldClassName()}
               >
                 <option value="manuell">Manuell</option>
                 <option value="automatik">Automatik</option>
-              </select>
+              </Select>
             </div>
             <input
               type="text"

@@ -2,10 +2,11 @@
 
 import { useActionState } from "react";
 import { Dialog } from "@/components/ui/Dialog";
-import { Textarea, fieldClassName } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import type { ReportState } from "@/lib/actions/reports";
 import { REPORT_REASONS } from "@/lib/constants";
+import Select from "@/components/ui/Select";
 
 const initialState: ReportState = { error: null };
 
@@ -34,7 +35,7 @@ export default function ReportDialog({
         <form action={formAction} className="flex flex-col gap-3">
           <label className="flex flex-col gap-1.5 text-sm font-medium">
             Grund
-            <select name="grund" required defaultValue="" className={fieldClassName()}>
+            <Select name="grund" required defaultValue="">
               <option value="" disabled>
                 Bitte auswählen
               </option>
@@ -43,7 +44,7 @@ export default function ReportDialog({
                   {r.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <label className="flex flex-col gap-1.5 text-sm font-medium">
             Kommentar (optional)
