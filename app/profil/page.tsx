@@ -185,7 +185,13 @@ export default async function ProfilPage() {
     supabase
       .from("route_completions")
       .select(
-        "id, art, route_id, fahrzeug_id, datum, dauer_sekunden, distanz_km, ist_oeffentlich, abdeckung_prozent, notiz, titel, start_ort, bewegte_zeit_sekunden, hoehenmeter_aufstieg, routes(name)",
+        // region (0044) und routes(region) kommen nur für die
+        // Premium-Auswertung mit: zwei Spalten mehr in einer Abfrage, die
+        // ohnehin läuft, statt einer zweiten Runde zur Datenbank. Bei einer
+        // Streckenfahrt trägt route_completions.region nichts, bei einer
+        // freien Fahrt gibt es keine Strecke — deshalb weiter unten das
+        // coalesce der beiden, wie es public_fahrten seit 0045 auch macht.
+        "id, art, route_id, fahrzeug_id, datum, dauer_sekunden, distanz_km, ist_oeffentlich, abdeckung_prozent, notiz, titel, start_ort, region, bewegte_zeit_sekunden, hoehenmeter_aufstieg, routes(name, region)",
       )
       .eq("user_id", user.id)
       .not("dauer_sekunden", "is", null)
@@ -212,9 +218,10 @@ export default async function ProfilPage() {
           notiz: string | null;
           titel: string | null;
           start_ort: string | null;
+          region: string | null;
           bewegte_zeit_sekunden: number | null;
           hoehenmeter_aufstieg: number | null;
-          routes: { name: string } | null;
+          routes: { name: string; region: string | null } | null;
         }[]
       >(),
     supabase
@@ -413,6 +420,18 @@ export default async function ProfilPage() {
                       distanz_km: r.distanz_km,
                       hoehenmeter_aufstieg: r.hoehenmeter_aufstieg,
                       fahrzeug_id: r.fahrzeug_id,
+                      route_id: r.route_id,
+                      // Streckenfahrt: die Region der Strecke. Freie Fahrt:
+                      // die beim Speichern ermittelte Region der Fahrt
+                      // selbst. Dieselbe REIHENFOLGE wie das coalesce in
+                      // public_fahrten (0045) — nicht dieselbe Quelle: der
+                      // Embed hier läuft unter der RLS des Aufrufers, jene
+                      // View mit Eigentümerrechten. Eine Fahrt auf einer
+                      // Strecke, die inzwischen privat oder zurückgezogen
+                      // ist, fällt hier auf "Ohne Region", während der Feed
+                      // sie weiter zeigt. Gilt für routes(name) genauso und
+                      // ist dort Bestand.
+                      region: r.routes?.region ?? r.region,
                     }))}
                     fahrzeuge={(vehicles ?? []).map((v) => ({
                       id: v.id,

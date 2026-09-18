@@ -1,4 +1,5 @@
-import { balkenHoehe, type VerlaufReihe } from "@/lib/creatorKennzahlen";
+import { balkenHoehe } from "@/lib/balken";
+import { type VerlaufReihe } from "@/lib/creatorKennzahlen";
 import { mitAnzahl } from "@/lib/format";
 
 // Tagesdatum für die Beschriftung. de-CH, weil die Oberfläche
