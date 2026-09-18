@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { amtlicherAnteilProzent, sliceRouteBySpeed, speedColor } from "@/lib/speed";
+import { amtlicherAnteilProzent, sliceRouteBySpeed, speedColor, tempolimitQuelle } from "@/lib/speed";
 import type { TempolimitSegment } from "@/types/database";
 
 describe("speedColor", () => {
@@ -26,6 +26,21 @@ describe("amtlicherAnteilProzent", () => {
       { km_von: 8, km_bis: 10, kmh: 80, bekannt: true, amtlich: false },
     ];
     expect(amtlicherAnteilProzent(segments)).toBe(80);
+  });
+});
+
+describe("tempolimitQuelle", () => {
+  it("says nothing without segments", () => {
+    expect(tempolimitQuelle(null)).toBeNull();
+    expect(tempolimitQuelle([])).toBeNull();
+  });
+
+  it("distinguishes map estimates, official data and a mix", () => {
+    const karte: TempolimitSegment = { km_von: 0, km_bis: 5, kmh: 80, bekannt: true };
+    const amtlich: TempolimitSegment = { km_von: 5, km_bis: 10, kmh: 50, bekannt: true, amtlich: true, quelle: "zh" };
+    expect(tempolimitQuelle([karte])).toBe("Kartendaten (OSM/Mapbox), nicht amtlich");
+    expect(tempolimitQuelle([{ ...amtlich, km_von: 0 }])).toBe("Amtliche Daten (Kanton/Stadt)");
+    expect(tempolimitQuelle([karte, amtlich])).toBe("Amtliche Daten (Kanton/Stadt) für 50 %, sonst Kartendaten (OSM/Mapbox)");
   });
 });
 

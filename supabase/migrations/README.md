@@ -129,6 +129,90 @@ select has_function_privilege('anon', 'public.profilname_aendern(text)', 'execut
 select has_function_privilege('authenticated', 'public.profilname_aendern(text)', 'execute'); -- true
 ```
 
+## Eingespielt: 0105_tempolimits_quellen_amtlich (2026-09-18, Produktion)
+
+Spalte `amtlich` an `amtliche_tempolimit_quellen` (Vorgabe true) und
+`amtliche_tempolimits_entlang()` gibt sie mit zurück. Nötig, weil seither
+zwei Quellen dabei sind, die keine amtliche Signalisationsangabe sind:
+OpenStreetMap (deckt als einzige Wallis, Tessin, Waadt und das Berner
+Oberland ab) und der Bündner Lärmkataster (Feld heisst nur `speed_2019`).
+
+Der Rückgabetyp ändert sich, deshalb `drop` + `create` statt
+`create or replace`; die Rechte werden danach neu gesetzt, weil ein Drop sie
+mitnimmt. Gemessen danach: `anon` darf nicht ausführen, `authenticated` schon.
+
+**0105, nicht 0104:** 0104 bleibt für PR #281 frei, die wegen der Kollision
+mit dem eingespielten 0103 umnummerieren muss.
+
+**Daten am 2026-09-18 nachgeladen:** acht weitere amtliche Quellen, vor allem
+Lärmkataster, die die signalisierte Geschwindigkeit als Modelleingang führen
+und oft auch Gemeindestrassen abdecken — SG (18 842, inkl. Gemeindestrassen
+und Stadt St. Gallen), GR-Lärmkataster (15 719, nicht als amtlich
+ausgewiesen), TG (4 969), LU (4 115), UR (501), dazu Emmen (1 069),
+Winterthur (154) und BL (289) als Zonen. Bestand danach: 27 Quellen,
+67 712 Objekte, 0 ungültige Geometrien.
+
+## Eingespielt: 0102 und 0103 (amtliche Tempolimits, 2026-09-17, Produktion)
+
+| Datei | Ledger | Was |
+| --- | --- | --- |
+| `0102_amtliche_tempolimits` | `20260917163713` | Tabellen `amtliche_tempolimit_quellen` / `amtliche_tempolimits` (LV95, GiST), Reparatur-Trigger für Flächen, `amtliche_tempolimits_entlang(jsonb)` |
+| `0103_amtliche_tempolimits_entlang_schneller` | `20260917165008` | dieselbe Funktion, Puffer per ST_Subdivide zerlegt |
+
+**0102, nicht 0101:** `0101_anonymisierung_fahrtstarts` lag beim Schreiben auf
+einem offenen Branch und ist inzwischen eingespielt.
+
+**Nummernkollision 0103:** `staging-profilname-aendern` (PR #281) trägt ebenfalls
+`0103_profilname_aendern.sql`, noch nicht eingespielt. Die eingespielte Nummer
+gilt; jene Datei muss vor dem Einspielen auf `0104` umbenannt werden.
+
+**Eingespielt vor dem Code**, wie vorgesehen: ohne die Funktion würde
+`proposeRoute()` bei jedem Vorschlag einen Fehler loggen (und die
+Kartendaten nehmen).
+
+**Warum 0103 am selben Tag folgte:** 0102 brauchte für den Zürichsee Run
+(65 km) 14,8 s — über dem Statement-Timeout von `authenticated`, lange
+Strecken wären still ohne amtliche Werte geblieben. Mit 0103 gemessen: alle
+26 freigegebenen Strecken zwischen 54 und 809 ms, über die echte Funktion
+plus `lib/tempolimitAbgleich.ts`, Ergebnis je Strecke identisch mit dem
+Offline-Abgleich des Skripts.
+
+**Befüllt** am 2026-09-17 mit
+`node --env-file=.env.local --no-warnings scripts/enrich-amtliche-tempolimits.mjs --hochladen`:
+19 Quellen, 22 054 Objekte, 0 ungültige Geometrien. Zwei Lehren aus dem Lauf,
+beide im Skript behoben: Genfer Flächen in Stapeln von 1000 rissen das
+Statement-Timeout (jetzt 50 Zeilen / 200 kB für Zonen), und 310 Linien aus
+Bern, Freiburg und Zürich fielen nach dem Runden auf 10 cm auf einen Punkt
+zusammen (jetzt werden doppelte Punkte entfernt).
+
+**Gemessen** gegen die Objekte, nicht gegen das Ledger:
+
+```sql
+-- anon/authenticated: nur SELECT; Funktion: authenticated ja, anon nein
+select grantee, privilege_type from information_schema.role_table_grants
+ where table_name in ('amtliche_tempolimits', 'amtliche_tempolimit_quellen') order by 1, 2;
+select has_function_privilege('anon', 'public.amtliche_tempolimits_entlang(jsonb)', 'execute');
+select id, anzahl, geladen_am from public.amtliche_tempolimit_quellen order by id;
+```
+
+Ergebnis: SELECT für beide Rollen, sonst nichts; RLS auf beiden Tabellen an;
+`anon` darf die Funktion nicht ausführen, `authenticated` schon.
+
+**Eingespielt am 2026-09-17:** `supabase/seed/0013_tempolimits_amtlich_schweiz.sql`,
+19 UPDATEs in einer Transaktion. Danach gemessen: 19 von 28 Strecken tragen
+amtliche Abschnitte, Anteil je Strecke identisch mit dem Abgleich vorher
+(Albis Loop, Albulapass, Greifensee, Hirzel 100 %; Ibergeregg, Oberalp, Ofen,
+San Bernardino 99 %; Flüela 96 %; Zürichsee Run 93 %; Bernina 89 %; Klausen
+78 %; Zürichberg 71 %; Furka 54 %; Lukmanier 50 %; Susten 38 %; Jaun 26 %;
+Glaubenbielen 14 %; Gotthard 1 %). Ohne amtliche Daten bleiben Julier,
+Grimsel, Nufenen, Simplon, Grosser St. Bernhard, Col des Mosses und
+Col de la Croix — dort veröffentlicht der Kanton nichts.
+
+**Der Weg zurück** ist eine Sicherung der vorherigen Werte; sie lagen vor dem
+Einspielen alle auf Kartendaten (kein einziges `amtlich: true`). Die Datei
+lässt sich jederzeit neu erzeugen (`--live`) — die Streckenliste wächst
+gerade schnell, also vor einem erneuten Einspielen neu erzeugen.
+
 ## Eingespielt: 0096–0098 (Fahrtstart serverseitig, 2026-09-15, Produktion)
 
 | Datei | Was |

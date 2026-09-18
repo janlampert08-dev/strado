@@ -58,3 +58,6 @@ next-env.d.ts
 
 # OS
 Thumbs.db
+
+# amtliche Tempolimit-Daten, von scripts/enrich-amtliche-tempolimits.mjs gecacht
+/scripts/output/_amtlich/

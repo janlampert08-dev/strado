@@ -57,3 +57,13 @@ export function sliceRouteBySpeed(
     })
     .filter((s) => s.coords.length >= 2);
 }
+
+// Herkunftsangabe für die öffentliche API (/api/strecken): sagt ehrlich, ob
+// die Zahlen amtlich, geschätzt oder gemischt sind.
+export function tempolimitQuelle(segments: TempolimitSegment[] | null | undefined): string | null {
+  if (!segments?.length) return null;
+  const anteil = amtlicherAnteilProzent(segments);
+  if (anteil === 0) return "Kartendaten (OSM/Mapbox), nicht amtlich";
+  if (anteil === 100) return "Amtliche Daten (Kanton/Stadt)";
+  return `Amtliche Daten (Kanton/Stadt) für ${anteil} %, sonst Kartendaten (OSM/Mapbox)`;
+}
