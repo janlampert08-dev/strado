@@ -26,8 +26,6 @@ const LEGENDE: { key: SignatureKey; text: string }[] = [
   { key: "laenge", text: "Lange Strecke" },
 ];
 
-
-
 function kuerzen(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
 }

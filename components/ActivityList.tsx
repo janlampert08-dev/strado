@@ -50,8 +50,8 @@ export default function ActivityList({
     return (
       <EmptyState
         icon={AktivitaetIcon}
-        title="Noch keine Kudos und keine Follower."
-        description="Wer deinen geteilten Fahrten Kudos gibt oder dir folgt, steht hier."
+        title="Noch keine Neuigkeiten."
+        description="Wer deinen geteilten Fahrten Kudos gibt oder dir folgt, steht hier — und wenn ein Pass, dem du folgst, öffnet oder schliesst."
         action={
           <Link href="/" className={buttonVariants({ variant: "secondary", size: "md" })}>
             Strecken entdecken
