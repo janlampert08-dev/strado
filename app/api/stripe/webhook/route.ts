@@ -234,6 +234,28 @@ export async function POST(req: Request) {
         if (data === true) {
           console.info("Saisonpass nach Erstattung zurückgenommen", { paymentIntentId });
         }
+
+        // Ein Anschluss-Abo (während des Passes abgeschlossen, in Stripe als
+        // Testphase bis zum Passende) verlöre mit dem Pass seinen Grund,
+        // gratis zu laufen: ohne diesen Schritt blieb Premium nach der
+        // Erstattung bis zum alten Passende kostenlos an. Die Testphase
+        // endet deshalb jetzt, und das Abo zahlt ab heute. Unabhängig von
+        // `data`, damit eine wiederholte Zustellung nachholt, was beim
+        // ersten Mal nach dem RPC gescheitert ist — ein bereits beendetes
+        // Probeabo steht nicht mehr auf "trialing" und fällt heraus.
+        const customerId = typeof charge.customer === "string" ? charge.customer : charge.customer?.id;
+        if (customerId) {
+          const anschluss = await getStripe().subscriptions.list({
+            customer: customerId,
+            status: "trialing",
+            limit: 10,
+          });
+          for (const abo of anschluss.data) {
+            if (abo.metadata?.variante !== "anschluss") continue;
+            await getStripe().subscriptions.update(abo.id, { trial_end: "now" });
+            console.info("Anschluss-Abo nach Passerstattung sofort fällig", { subscriptionId: abo.id });
+          }
+        }
       }
     } else {
       const kulanzAktion = kulanzAktionFuer(event.type);
