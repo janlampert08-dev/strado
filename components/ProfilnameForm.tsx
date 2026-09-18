@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef } from "react";
 import { aendereProfilnamen, type ProfileActionState } from "@/lib/actions/profile";
+import useEingabenBewahren from "@/components/useEingabenBewahren";
 import { Input } from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 
@@ -14,9 +15,15 @@ const initialState: ProfileActionState = { error: null };
  */
 export default function ProfilnameForm({ aktuellerName }: { aktuellerName: string | null }) {
   const [state, formAction, pending] = useActionState(aendereProfilnamen, initialState);
+  const formRef = useRef<HTMLFormElement>(null);
+  // Ohne den Haken leert React 19 das Feld bei jedem Fehlschlag und stellt
+  // defaultValue wieder her — hier also ausgerechnet den ALTEN Namen,
+  // waehrend daneben "Dieser Name ist bereits vergeben." steht
+  // (siehe components/useEingabenBewahren.ts).
+  useEingabenBewahren(formRef);
 
   return (
-    <form action={formAction} className="flex flex-col gap-2">
+    <form ref={formRef} action={formAction} className="flex flex-col gap-2">
       <label htmlFor="display_name" className="text-sm font-medium">
         Anzeigename
       </label>

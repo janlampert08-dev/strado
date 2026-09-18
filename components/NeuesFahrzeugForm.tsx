@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { useEntwurfSchutz } from "@/components/useEntwurfSchutz";
+import useEingabenBewahren from "@/components/useEingabenBewahren";
 import { addVehicle, type VehicleFormState } from "@/lib/actions/vehicles";
 import { Input, fieldClassName } from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
@@ -25,6 +26,11 @@ function zahl(wert: string): number | null {
 
 export default function NeuesFahrzeugForm({ nextHref }: { nextHref?: string } = {}) {
   const [state, formAction, pending] = useActionState(addVehicle, initialState);
+  // addVehicle hat unter anderem einen Cooldown von zwei Sekunden: ein
+  // Doppeltipp leerte damit Marke, Modell, Baujahr und Getriebe.
+  // Siehe components/useEingabenBewahren.ts.
+  const formRef = useRef<HTMLFormElement>(null);
+  useEingabenBewahren(formRef);
   const [typ, setTyp] = useState<FahrzeugTyp>("auto");
   const [hubraum, setHubraum] = useState("");
   const [leistung, setLeistung] = useState("");
@@ -69,6 +75,7 @@ export default function NeuesFahrzeugForm({ nextHref }: { nextHref?: string } = 
     <>
       <h1 className="text-display font-semibold">Fahrzeug hinzufügen</h1>
       <form
+        ref={formRef}
         action={formAction}
         onInput={(event) => {
           setBeruehrt(true);
