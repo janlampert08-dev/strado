@@ -275,7 +275,12 @@ export default function FahrtStatistik({
             volle Jahre — siehe Kopf von lib/fahrtstatistik.ts. */}
         <p className="text-xs text-muted">
           {saison.vorjahr === null
-            ? `Deine erste Saison. Ab ${saison.jahr + 1} steht hier der Vergleich zum Vorjahr.`
+            ? // "Erste Saison" nur, wenn es wirklich die erste ist: eine Lücke
+              // im Vorjahr (2024 gefahren, 2025 nicht) ist keine, und die
+              // Tabelle darunter zeigt die älteren Jahre.
+              jahre.length === 1
+              ? `Deine erste Saison. Ab ${saison.jahr + 1} steht hier der Vergleich zum Vorjahr.`
+              : `${saison.jahr - 1} ohne Fahrt — kein Vergleich zum Vorjahr möglich.`
             : saison.laufend
               ? `Verglichen wird derselbe Zeitraum: 1. Januar bis ${datumKurz(heute)}, in beiden Jahren.`
               : `${saison.jahr} ist abgeschlossen — verglichen werden die vollen Jahre.`}

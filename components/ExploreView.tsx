@@ -250,6 +250,7 @@ export default function ExploreView({
         aria-label="Kartenansicht der Strecken — die vollständige Liste steht in der Seitenleiste."
       >
         <RouteMap
+          umlandSchleier
           routes={visibleRoutes}
           signaturen={kartenSignaturen}
           userLocation={userLocation}

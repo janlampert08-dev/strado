@@ -465,6 +465,7 @@ export default function RouteMap({
   centerOnFirstLocation = false,
   followLocation = false,
   ohneBedienelemente = false,
+  umlandSchleier = false,
 }: {
   // Alle Strecken, die gezeichnet werden. Die Reihenfolge ist gleichgültig,
   // sie landen gemeinsam in einer Feature-Sammlung. Genau eine Strecke ist
@@ -565,6 +566,11 @@ export default function RouteMap({
   followLocation?: boolean;
   /** Zoom- und Kompass-Knöpfe weglassen (Vorschaukarten, z. B. im Fazit). */
   ohneBedienelemente?: boolean;
+  /** Das Ausland unter einen Schleier legen, damit die Schweiz heraussticht.
+   *  Nur für die Entdecken-Karte: beim Aufzeichnen und auf der eigenen Fahrt
+   *  sind die Strassen jenseits der Grenze (Splügen, Vorarlberg, FL) die,
+   *  auf denen man gerade fährt, und dürfen nicht verblassen. */
+  umlandSchleier?: boolean;
   // Pixel am unteren Rand der Karte, die von etwas anderem verdeckt werden —
   // auf Mobile das Bottom-Sheet plus die BottomNav darunter (gemeldet von
   // DragSheet.tsx, siehe ExploreView/RouteDetailLayout). Die Leinwand füllt
@@ -590,6 +596,9 @@ export default function RouteMap({
   const routesRef = useRef(routes);
   // Nur der Wert beim Aufbau zählt: die Knöpfe werden einmal angehängt.
   const ohneBedienelementeRef = useRef(ohneBedienelemente);
+  // Ebenso nur beim Aufbau: der Schleier wird bei jedem style.load neu
+  // angelegt, und welche Karte ihn trägt, ändert sich nicht.
+  const umlandSchleierRef = useRef(umlandSchleier);
   const trailRef = useRef(trail);
   const routesClickableRef = useRef(routesClickable);
   const fitRoutesRef = useRef(fitRoutes);
@@ -761,30 +770,32 @@ export default function RouteMap({
       // unter ihnen liegt: eine Strecke, die die Grenze kreuzt (ein Pass nach
       // Italien, eine Jurarunde über Frankreich), bleibt auch im Umland voll
       // sichtbar. Ortsnamen liegen darüber und bleiben lesbar.
-      map.addSource(UMLAND_SOURCE, {
-        type: "vector",
-        url: "mapbox://mapbox.country-boundaries-v1",
-      });
-      map.addLayer(
-        {
-          id: UMLAND_LAYER,
-          type: "fill",
-          source: UMLAND_SOURCE,
-          "source-layer": "country_boundaries",
-          filter: [
-            "all",
-            ["!=", ["get", "iso_3166_1"], "CH"],
-            ["==", ["get", "disputed"], "false"],
-            ["any", ["==", "all", ["get", "worldview"]], ["in", "US", ["get", "worldview"]]],
-          ],
-          paint: {
-            "fill-color": tokenFarbe("--color-background", isDarkTheme() ? "#0b0b0d" : "#fafafa"),
-            "fill-opacity": isDarkTheme() ? UMLAND_DECKKRAFT_DUNKEL : UMLAND_DECKKRAFT_HELL,
-            "fill-antialias": false,
+      if (umlandSchleierRef.current) {
+        map.addSource(UMLAND_SOURCE, {
+          type: "vector",
+          url: "mapbox://mapbox.country-boundaries-v1",
+        });
+        map.addLayer(
+          {
+            id: UMLAND_LAYER,
+            type: "fill",
+            source: UMLAND_SOURCE,
+            "source-layer": "country_boundaries",
+            filter: [
+              "all",
+              ["!=", ["get", "iso_3166_1"], "CH"],
+              ["==", ["get", "disputed"], "false"],
+              ["any", ["==", "all", ["get", "worldview"]], ["in", "US", ["get", "worldview"]]],
+            ],
+            paint: {
+              "fill-color": tokenFarbe("--color-background", isDarkTheme() ? "#0b0b0d" : "#fafafa"),
+              "fill-opacity": isDarkTheme() ? UMLAND_DECKKRAFT_DUNKEL : UMLAND_DECKKRAFT_HELL,
+              "fill-antialias": false,
+            },
           },
-        },
-        firstSymbolId,
-      );
+          firstSymbolId,
+        );
+      }
 
       map.addSource(ROUTES_SOURCE, {
         type: "geojson",

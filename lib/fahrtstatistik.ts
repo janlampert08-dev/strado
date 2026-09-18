@@ -447,10 +447,15 @@ export function rekorde(fahrten: readonly FahrtFuerStatistik[]): Rekorde {
     kmProMonat.set(schluessel, eintrag);
   }
 
+  // Verglichen wird roh, gerundet erst bei der Ausgabe — wie laengsteRoh
+  // oben: sonst schlägt ein Monat mit 120.02 km einen mit 120.04 km, weil
+  // dieser schon auf 120.0 abgerundet dasteht.
+  let staerksterRoh = 0;
   let staerksterMonat: { jahr: number; monat: number; km: number } | null = null;
   for (const eintrag of kmProMonat.values()) {
     if (eintrag.km <= 0) continue;
-    if (staerksterMonat === null || eintrag.km > staerksterMonat.km) {
+    if (staerksterMonat === null || eintrag.km > staerksterRoh) {
+      staerksterRoh = eintrag.km;
       staerksterMonat = { ...eintrag, km: Math.round(eintrag.km * 10) / 10 };
     }
   }
