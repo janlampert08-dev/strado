@@ -42,6 +42,7 @@ export default function PassSektion({
                 meldung: kontext.status.meldung,
                 quelle: kontext.status.quelle,
                 aktualisiertAm: kontext.status.aktualisiertAm,
+                manuellBis: kontext.status.manuellBis,
               }
             : null,
           feedStand,

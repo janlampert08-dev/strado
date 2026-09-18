@@ -333,7 +333,14 @@ export function statusAusMeldungen(
     return { zustand: schlimmste.zustand, meldung: schlimmste.text.slice(0, 500) };
   }
 
-  const monat = optionen.jetzt.getMonth() + 1;
+  // Der Monat in Schweizer Ortszeit, nicht in der des Servers: auf Vercel
+  // läuft der in UTC, und an einem Monatsende entschiede sonst eine bis zu
+  // zwei Stunden alte Zeitzone darüber, ob ein Pass im Kernwinter steht.
+  const monat = Number(
+    new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zurich", month: "numeric" }).format(
+      optionen.jetzt,
+    ),
+  );
   if (istKernWintermonat(monat, optionen.wintersperreAbMonat, optionen.wintersperreBisMonat)) {
     return { zustand: "unbekannt", meldung: null };
   }

@@ -29,6 +29,31 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Eingespielt: 0106_startzeiten_schwelle_je_fach (2026-09-18, Produktion)
+
+Nacharbeit zu `0105` und `0104`, aus der Review desselben Zweigs. Beide
+Befunde betreffen bereits eingespielte Objekte, deshalb eine eigene Datei.
+
+- **Die Schwelle in `strecken_startzeiten` zählte die falsche Menge.** `0105`
+  gibt erst ab 20 Starts etwas heraus und begründet das damit, dass "33 %
+  Sonntagmorgen" bei drei Starts ein Satz über eine Person wäre. Geprüft wurde
+  aber die Gesamtzahl, und die Ausgabe hat 7 × 4 = 28 Fächer: bei n = 20 wurde
+  ein Fach mit **einem** Start als "5 %" ausgeliefert, und weil jeder Wert ein
+  Vielfaches von 5 ist, ist der Nenner ablesbar. `fahrt_starts` enthält auch
+  Starts ohne veröffentlichte Fahrt, und die Funktion ist an `anon` vergeben —
+  derselbe Mechanismus wie in `0094`. Jetzt gilt zusätzlich `having count(*) >= 5`
+  je Fach; Fächer darunter fallen weg, statt gerundet zu werden.
+- **`pg_temp` fehlte im `search_path` von `count_unseen_activity` und
+  `mark_activity_seen`.** Aus `0100` geerbt und in `0104` mitgenommen. Beide
+  Rümpfe sind unverändert, nur der `search_path` ist ergänzt.
+
+Am Katalog geprüft: alle drei Funktionen tragen `search_path=public, pg_temp`,
+`strecken_startzeiten` enthält `having count(*) >= 5`, die Grants sind
+unverändert (`anon` nur auf `strecken_startzeiten`).
+
+**Rückweg:** die drei Funktionen aus `0104`/`0105` erneut anlegen — sie sind
+dort vollständig ausgeschrieben.
+
 ## Eingespielt: 0104_paesse und 0105_strecken_verkehr (2026-09-18, Produktion)
 
 Beide am 2026-09-18 über `apply_migration` eingespielt, **vor** dem Merge des

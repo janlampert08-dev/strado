@@ -105,6 +105,10 @@ export function anzeigeFuerStatus(
     meldung: string | null;
     quelle: "feed" | "moderation";
     aktualisiertAm: string | null;
+    /** Bis wann eine Setzung von Hand gilt (0104). Fehlt sie, altert die
+     *  Setzung nie — genau das war der Fehler, den der Kommentar unten
+     *  beschreibt. */
+    manuellBis?: string | null;
   } | null,
   feedErfolgAm: string | null,
   jetzt: Date = new Date(),
@@ -121,9 +125,22 @@ export function anzeigeFuerStatus(
     };
   }
 
-  // Ein Feed-Status altert mit dem Feed; ein von Hand gesetzter nicht — er
-  // gilt, bis ihn jemand zurücknimmt oder seine Frist abläuft.
-  const veraltet = status.quelle === "feed" && !istFeedGesund(feedErfolgAm, jetzt);
+  // Ein Feed-Status altert mit dem Feed; ein von Hand gesetzter mit seiner
+  // Frist.
+  //
+  // Die Frist war zuerst nur ein Satz in diesem Kommentar: geprüft wurde
+  // allein die Quelle, `manuell_bis` kam gar nicht bis hierher. Eine
+  // Übersteuerung galt damit ewig — und das trifft ausgerechnet den
+  // Betriebszustand ohne ASTRA-Schlüssel, in dem nie ein Feed-Lauf
+  // dazwischenschreibt: ein vor 240 Tagen gesetztes "gesperrt" stünde heute
+  // noch als aktuelle Auskunft da.
+  const fristAbgelaufen =
+    status.quelle === "moderation" &&
+    Boolean(status.manuellBis) &&
+    new Date(status.manuellBis!).getTime() <= jetzt.getTime();
+
+  const veraltet =
+    (status.quelle === "feed" || fristAbgelaufen) && !istFeedGesund(feedErfolgAm, jetzt);
   const zustand: PassZustand = veraltet ? "unbekannt" : status.zustand;
 
   const alter = seitWann(status.aktualisiertAm, jetzt);
@@ -134,7 +151,9 @@ export function anzeigeFuerStatus(
     label: ZUSTAND_LABEL[zustand],
     ton: ZUSTAND_TON[zustand],
     text: veraltet
-      ? "Der Abgleich mit den Verkehrsmeldungen hängt gerade — der letzte Stand ist zu alt, um ihn zu zeigen."
+      ? fristAbgelaufen
+        ? "Die Setzung von Hand ist abgelaufen, und der Abgleich mit den Verkehrsmeldungen liefert gerade nichts."
+        : "Der Abgleich mit den Verkehrsmeldungen hängt gerade — der letzte Stand ist zu alt, um ihn zu zeigen."
       : (status.meldung ?? ZUSTAND_ERKLAERUNG[zustand]),
     herkunft: alter ? `${quelle} · ${alter}` : quelle,
   };

@@ -107,8 +107,19 @@ export default function PassModeration({
               <PassStatusMarke anzeige={anzeige} />
               {pass.status?.quelle === "moderation" && (
                 <>
+                  {/* Bis wann die Setzung gilt — ohne diese Angabe sieht ein
+                      Moderator nicht, ob sie noch in Kraft ist oder der Feed
+                      längst wieder schreibt. */}
                   <span className="font-mono text-[11px] uppercase tracking-wide text-muted">
-                    von Hand
+                    {pass.status.manuellBis
+                      ? new Date(pass.status.manuellBis) > new Date()
+                        ? `von Hand bis ${new Intl.DateTimeFormat("de-CH", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            timeZone: "Europe/Zurich",
+                          }).format(new Date(pass.status.manuellBis))}`
+                        : "von Hand, abgelaufen"
+                      : "von Hand"}
                   </span>
                   <Button
                     variant="ghost"

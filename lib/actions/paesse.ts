@@ -89,7 +89,7 @@ export async function setzePassStatus(
   if (typeof zustand !== "string" || !ZUSTAENDE.includes(zustand as (typeof ZUSTAENDE)[number])) {
     return { error: "Bitte einen Zustand wählen." };
   }
-  if (!Number.isFinite(tage) || tage < 1 || tage > 240) {
+  if (!Number.isInteger(tage) || tage < 1 || tage > 240) {
     return { error: "Die Gültigkeit muss zwischen 1 und 240 Tagen liegen." };
   }
   if (meldung.length > 500) return { error: "Die Meldung ist zu lang (höchstens 500 Zeichen)." };
@@ -140,6 +140,21 @@ export interface SperrtagState {
 const ARTEN = ["autofrei", "veranstaltung", "bauarbeiten", "sonstiges"] as const;
 const ISO_DATUM = /^\d{4}-\d{2}-\d{2}$/;
 
+/** "2026-13-45" passt auf das Muster und ist trotzdem kein Tag. Ohne diese
+ *  Prüfung landet der Wert in der date-Spalte, die ihn ablehnt, und die
+ *  Person liest die allgemeine "Das hat nicht geklappt"-Meldung statt zu
+ *  erfahren, was falsch ist. */
+function istEchtesDatum(wert: string): boolean {
+  if (!ISO_DATUM.test(wert)) return false;
+  const [jahr, monat, tag] = wert.split("-").map(Number);
+  const datum = new Date(Date.UTC(jahr, monat - 1, tag));
+  return (
+    datum.getUTCFullYear() === jahr &&
+    datum.getUTCMonth() === monat - 1 &&
+    datum.getUTCDate() === tag
+  );
+}
+
 /** Eine geplante Sperrung in den Kalender legen (Moderation). */
 export async function legeSperrtagAn(
   _prevState: SperrtagState,
@@ -162,7 +177,7 @@ export async function legeSperrtagAn(
   const quelleUrl = String(formData.get("quelle_url") ?? "").trim();
 
   if (!istPassId(passId)) return { error: "Unbekannter Pass." };
-  if (!ISO_DATUM.test(von) || !ISO_DATUM.test(bis)) return { error: "Bitte ein Datum wählen." };
+  if (!istEchtesDatum(von) || !istEchtesDatum(bis)) return { error: "Bitte ein gültiges Datum wählen." };
   if (bis < von) return { error: "Das Ende liegt vor dem Anfang." };
   if (typeof art !== "string" || !ARTEN.includes(art as (typeof ARTEN)[number])) {
     return { error: "Bitte eine Art wählen." };

@@ -7,8 +7,8 @@ import { cache } from "react";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { FEED_QUELLE } from "@/lib/astraFeed";
 import type { PassZustand } from "@/lib/passMeldungen";
-import { schwerwiegendster } from "@/lib/passStatus";
-import type { PassEreignis, Sperrtag, SperrtagArt } from "@/lib/passKalender";
+import { istFeedGesund, schwerwiegendster } from "@/lib/passStatus";
+import { heuteCH, type PassEreignis, type Sperrtag, type SperrtagArt } from "@/lib/passKalender";
 
 export interface Pass {
   id: string;
@@ -190,12 +190,19 @@ export const getPassKontextFuerStrecke = cache(async function getPassKontextFuer
   const [katalog, status, ereignisse, sperrtage, folgen] = await Promise.all([
     supabase.from("paesse").select(PASS_SPALTEN).in("id", passIds),
     supabase.from("pass_status").select("*").in("pass_id", passIds),
-    supabase
-      .from("pass_ereignisse")
-      .select("pass_id, zustand, vorher, erfasst_am")
-      .in("pass_id", passIds)
-      .order("erfasst_am", { ascending: false })
-      .limit(60),
+    // Je Pass eine eigene Abfrage: eine gemeinsame Obergrenze über alle Pässe
+    // der Strecke liesse einen meldungsfreudigen Pass den anderen seine
+    // Öffnungsdaten wegnehmen.
+    Promise.all(
+      passIds.map((passId) =>
+        supabase
+          .from("pass_ereignisse")
+          .select("pass_id, zustand, vorher, erfasst_am")
+          .eq("pass_id", passId)
+          .order("erfasst_am", { ascending: false })
+          .limit(30),
+      ),
+    ).then((antworten) => ({ data: antworten.flatMap((a) => a.data ?? []) })),
     supabase
       .from("pass_sperrtage")
       .select("id, pass_id, von, bis, art, titel, zeitfenster, quelle_url")
@@ -248,6 +255,12 @@ export async function getPassZustaendeJeStrecke(
 ): Promise<Map<string, PassZustand>> {
   if (routeIds.length === 0) return new Map();
   const supabase = await createClient();
+  // Auch das Abzeichen in der Liste altert. Ohne diese Zeile las die
+  // Startseite den Zustand roh aus der Tabelle, während jede andere Fläche
+  // ihn bei stillem Feed auf "kein Stand" zurücknimmt — die Liste hätte als
+  // einzige weiter "Gesperrt" behauptet.
+  const feedStand = await getFeedStand();
+  const feedGesund = istFeedGesund(feedStand);
 
   const { data: verknuepfungen } = await supabase
     .from("strecken_paesse")
@@ -259,11 +272,21 @@ export async function getPassZustaendeJeStrecke(
 
   const { data: status } = await supabase
     .from("pass_status")
-    .select("pass_id, zustand")
+    .select("pass_id, zustand, quelle, manuell_bis")
     .in("pass_id", [...new Set(verknuepfungen.map((v) => v.pass_id))])
-    .returns<{ pass_id: string; zustand: PassZustand }[]>();
+    .returns<
+      { pass_id: string; zustand: PassZustand; quelle: "feed" | "moderation"; manuell_bis: string | null }[]
+    >();
 
-  const zustandJePass = new Map((status ?? []).map((s) => [s.pass_id, s.zustand]));
+  const jetzt = new Date();
+  const zustandJePass = new Map(
+    (status ?? []).map((s) => {
+      const fristAbgelaufen =
+        s.quelle === "moderation" && s.manuell_bis !== null && new Date(s.manuell_bis) <= jetzt;
+      const veraltet = (s.quelle === "feed" || fristAbgelaufen) && !feedGesund;
+      return [s.pass_id, veraltet ? ("unbekannt" as PassZustand) : s.zustand];
+    }),
+  );
   const jeStrecke = new Map<string, PassZustand[]>();
   for (const verknuepfung of verknuepfungen) {
     const zustand = zustandJePass.get(verknuepfung.pass_id);
@@ -323,7 +346,10 @@ export interface ModerationsDaten {
  */
 export async function getPassModerationsDaten(): Promise<ModerationsDaten> {
   const supabase = await createClient();
-  const heute = new Date().toISOString().slice(0, 10);
+  // heuteCH(), nicht toISOString(): zwischen Mitternacht und 02:00 Ortszeit
+  // ist der UTC-Tag noch der gestrige, und eine gestern beendete Sperrung
+  // stünde dem Moderator als "kommend" in der Liste.
+  const heute = heuteCH();
 
   const [katalog, status, sperrtage, feedStand] = await Promise.all([
     supabase.from("paesse").select(PASS_SPALTEN).order("name"),

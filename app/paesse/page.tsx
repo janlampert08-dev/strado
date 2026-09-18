@@ -41,6 +41,7 @@ export default async function PaessePage() {
           meldung: status.meldung,
           quelle: status.quelle,
           aktualisiertAm: status.aktualisiertAm,
+          manuellBis: status.manuellBis,
         }
       : null,
     strecke,

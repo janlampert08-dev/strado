@@ -16,12 +16,18 @@ const SOAP_ACTION = "http://opentransportdata.swiss/TDP/Soap_Datex2/Pull/v1/pull
 const ZEITLIMIT_MS = 20_000;
 
 /**
- * Der Feed verlangt einen Vollabruf höchstens täglich und dazwischen Deltas,
- * deren If-Modified-Since nicht älter als fünf Minuten ist. Der Cron läuft
- * deshalb alle fünf Minuten (vercel.json); ist der letzte Erfolg länger her,
- * ist ein Delta wertlos und es muss wieder voll abgeholt werden.
+ * Ab welchem Alter des letzten Erfolgs ein Delta nichts mehr taugt und wieder
+ * voll abgeholt werden muss.
+ *
+ * **Nicht identisch mit dem Cron-Takt, und das ist der Punkt.** Stand hier die
+ * Taktlänge selbst (fünf Minuten), dann war der Abstand zweier Läufe —
+ * Taktlänge plus Verzögerung des Schedulers — praktisch immer grösser als die
+ * Schwelle: jeder einzelne Lauf hätte voll abgeholt, rund 288-mal am Tag, bei
+ * einem Feed, der einen Vollabruf pro Tag vorsieht. Der Dreifache des Takts
+ * lässt Verspätungen und einen ausgefallenen Lauf durch und greift erst, wenn
+ * wirklich eine Lücke entstanden ist.
  */
-export const DELTA_MAX_ALTER_MS = 5 * 60 * 1000;
+export const DELTA_MAX_ALTER_MS = 15 * 60 * 1000;
 export const VOLL_ABSTAND_MS = 20 * 60 * 60 * 1000;
 
 /** Der Rumpf nach der Vorlage der Plattform (VM_request_body.xml). Die
@@ -85,15 +91,31 @@ export async function holeVerkehrsmeldungen(seit: Date | null): Promise<FeedErge
       cache: "no-store",
     });
 
-    // 304: seit dem letzten Abruf hat sich nichts geändert — ein Erfolg ohne
-    // Inhalt, kein Fehler.
-    if (antwort.status === 304) return { ok: true, xml: "", voll: !seit };
+    // 304: seit dem letzten Abruf hat sich nichts geändert — beim DELTA ein
+    // Erfolg ohne Inhalt. Auf einen Vollabruf ist dieselbe Antwort keine
+    // Auskunft, sondern eine unbrauchbare: ein Vollabruf fragt ohne
+    // If-Modified-Since, "nicht geändert" kann darauf keine Antwort sein.
+    // Als Erfolg durchgelassen hiesse sie "es gibt keine Meldung mehr".
+    if (antwort.status === 304) {
+      if (!seit) return { ok: false, fehler: "304 auf Vollabruf" };
+      return { ok: true, xml: "", voll: false };
+    }
 
     if (!antwort.ok) {
       return { ok: false, fehler: `HTTP ${antwort.status}` };
     }
 
-    return { ok: true, xml: await antwort.text(), voll: !seit };
+    const xml = await antwort.text();
+
+    // Ein leerer Rumpf auf einen Vollabruf ist aus demselben Grund ein Fehler
+    // und kein "in der Schweiz ist nichts los": eine abgebrochene Übertragung
+    // sieht genau so aus, und der Abgleich würde daraus schliessen, dass jede
+    // gespeicherte Sperrung aufgehoben ist.
+    if (!seit && xml.trim().length === 0) {
+      return { ok: false, fehler: "Leerer Rumpf auf Vollabruf" };
+    }
+
+    return { ok: true, xml, voll: !seit };
   } catch (fehler) {
     const grund = fehler instanceof Error ? fehler.message : "unbekannt";
     return { ok: false, fehler: grund.slice(0, 200) };

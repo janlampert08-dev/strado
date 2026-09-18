@@ -23,6 +23,7 @@ export interface PassEintrag {
     meldung: string | null;
     quelle: "feed" | "moderation";
     aktualisiertAm: string;
+    manuellBis: string | null;
   } | null;
   strecke: { id: string; name: string } | null;
   gefahren: { erstmals: string; fahrten: number } | null;
