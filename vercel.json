@@ -3,7 +3,7 @@
   "crons": [
     {
       "path": "/api/cron/premium-abgleich",
-      "schedule": "17 3 * * *"
+      "schedule": "17 * * * *"
     },
     {
       "path": "/api/cron/passstatus",

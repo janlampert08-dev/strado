@@ -72,6 +72,9 @@ export async function fetchTagesvorhersage(punkte: VorhersagePunkt[]): Promise<u
 
   try {
     const res = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, {
+      // Ohne Zeitlimit hielte ein langsamer Open-Meteo den Suspense-Strom
+      // der Streckenseite offen.
+      signal: AbortSignal.timeout(5000),
       next: { revalidate: 3600 },
     });
     if (!res.ok) return null;

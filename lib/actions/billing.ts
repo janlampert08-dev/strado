@@ -234,7 +234,7 @@ async function zugangsgeschichte(userId: string): Promise<{
   passBis: Date | null;
 }> {
   const admin = createAdminClient();
-  const [{ count: abos }, { data: paesse }] = await Promise.all([
+  const [{ count: abos, error: abofehler }, { data: paesse, error: passfehler }] = await Promise.all([
     admin.from("subscriptions").select("user_id", { count: "exact", head: true }).eq("user_id", userId),
     admin
       .from("saisonpaesse")
@@ -243,6 +243,14 @@ async function zugangsgeschichte(userId: string): Promise<{
       .order("gueltig_bis", { ascending: false })
       .limit(20),
   ]);
+
+  // Ein Lesefehler ist kein "nichts da". Als leere Geschichte gelesen, hebelte
+  // er die Sperre gegen einen zweiten Pass mitten in der Saison aus, liess
+  // ein Abo neben einem laufenden Pass sofort abbuchen (doppelt bezahlt) und
+  // zeigte die Testphase an. Also werfen: der Kauf scheitert dann mit der
+  // allgemeinen Meldung, statt falsch zu buchen.
+  if (abofehler) throw new Error(`Abo-Geschichte nicht lesbar: ${abofehler.message}`);
+  if (passfehler) throw new Error(`Saisonpass-Geschichte nicht lesbar: ${passfehler.message}`);
 
   // Dieselbe Auswertung wie in lib/premium.ts, damit Kaufseite und Profil
   // nicht verschieden rechnen — einschliesslich des Zeitvergleichs, der
@@ -272,7 +280,14 @@ export async function getPremiumAngebot(): Promise<PremiumAngebot> {
     betrag(monatsPreis()),
     betrag(jahresPreis()),
     betrag(passPreis()),
-    user ? zugangsgeschichte(user.id) : Promise.resolve(null),
+    user
+      ? zugangsgeschichte(user.id).catch((err) => {
+          // Nur Anzeige: ohne Geschichte keine Testphase und kein
+          // Anschlussdatum. Der Kauf selbst prüft noch einmal und bricht ab.
+          console.error("Zugangsgeschichte für die Kaufseite nicht lesbar", err);
+          return null;
+        })
+      : Promise.resolve(null),
   ]);
 
   const plaene: PlanAngebot[] = [];
@@ -289,12 +304,24 @@ export async function getPremiumAngebot(): Promise<PremiumAngebot> {
   return {
     plaene,
     testphaseMoeglich:
+      testphaseFreigeschaltet() &&
       geschichte !== null &&
       !geschichte.hatteAbo &&
       !geschichte.hatteSaisonpass &&
       geschichte.passBis === null,
     saisonpassBis: geschichte?.passBis?.toISOString() ?? null,
   };
+}
+
+// Die 14-tägige Testphase ist ein eigener Schalter, nicht Teil der neuen
+// Preise. Die geltenden AGB (Ziff. 4.5) sagen "Ein kostenloser Testzeitraum
+// wird nicht angeboten"; die Testphase steht nur im noch nicht in Kraft
+// gesetzten Entwurf. Ohne den Schalter bekäme ab dem Deploy jeder neue
+// Jahreskunde 14 Tage gratis auf den alten CHF 49 — gegen den Vertragstext.
+// Gesetzt wird PREMIUM_TESTPHASE=1 am Tag, an dem die neuen AGB gelten
+// (docs/premium-neu/rollout.md, Schritt 2 und 5).
+function testphaseFreigeschaltet(): boolean {
+  return process.env.PREMIUM_TESTPHASE === "1";
 }
 
 // Stripe verlangt für trial_end mindestens 48 Stunden Abstand. Endet ein Pass
@@ -335,7 +362,12 @@ async function planeSession(
     };
   }
 
-  if (plan !== "jahr" || geschichte.hatteAbo || geschichte.hatteSaisonpass) {
+  if (
+    !testphaseFreigeschaltet() ||
+    plan !== "jahr" ||
+    geschichte.hatteAbo ||
+    geschichte.hatteSaisonpass
+  ) {
     return { variante: "sofort" };
   }
 

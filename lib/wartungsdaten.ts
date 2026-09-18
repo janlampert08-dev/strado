@@ -106,11 +106,37 @@ export async function getWartungsheft(userId: string, fahrzeugId: string): Promi
  * Drei Abfragen für alle Fahrzeuge zusammen statt drei pro Fahrzeug —
  * die Profilseite lädt ohnehin schon sechs Abfragen parallel.
  */
+// Alle Fahrten mit Fahrzeug, seitenweise. PostgREST liefert je Anfrage
+// höchstens rund 1000 Zeilen; ohne Blättern zählte eine Vielfahrerin zu
+// wenige Kilometer, und die Service-Erinnerung käme zu spät.
+const SEITE = 1000;
+type FahrtMitFahrzeug = { fahrzeug_id: string; datum: string; distanz_km: number | null };
+async function alleFahrtenMitFahrzeug(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<FahrtMitFahrzeug[]> {
+  const alle: FahrtMitFahrzeug[] = [];
+  for (let von = 0; ; von += SEITE) {
+    const { data, error } = await supabase
+      .from("route_completions")
+      .select("id, fahrzeug_id, datum, distanz_km")
+      .eq("user_id", userId)
+      .not("fahrzeug_id", "is", null)
+      .is("parent_completion_id", null)
+      .order("id")
+      .range(von, von + SEITE - 1)
+      .returns<(FahrtMitFahrzeug & { id: string })[]>();
+    throwOnQueryError(error, "Fahrten für das Wartungsheft");
+    for (const { fahrzeug_id, datum, distanz_km } of data ?? []) alle.push({ fahrzeug_id, datum, distanz_km });
+    if ((data ?? []).length < SEITE) return alle;
+  }
+}
+
 export async function getWartungsHinweise(
   userId: string,
 ): Promise<Record<string, { text: string; status: WartungsStatus }>> {
   const supabase = await createClient();
-  const [eintraegeResult, erinnerungenResult, fahrtenResult] = await Promise.all([
+  const [eintraegeResult, erinnerungenResult, alleFahrten] = await Promise.all([
     supabase
       .from("wartungseintraege")
       .select("fahrzeug_id, art, datum, km_stand, created_at")
@@ -123,18 +149,11 @@ export async function getWartungsHinweise(
       .select("fahrzeug_id, user_id, naechste_mfk_am, service_intervall_km, service_intervall_monate, created_at")
       .eq("user_id", userId)
       .returns<Wartungserinnerung[]>(),
-    supabase
-      .from("route_completions")
-      .select("fahrzeug_id, datum, distanz_km")
-      .eq("user_id", userId)
-      .not("fahrzeug_id", "is", null)
-      .is("parent_completion_id", null)
-      .returns<{ fahrzeug_id: string; datum: string; distanz_km: number | null }[]>(),
+    alleFahrtenMitFahrzeug(supabase, userId),
   ]);
 
   throwOnQueryError(eintraegeResult.error, "Wartungsheft");
   throwOnQueryError(erinnerungenResult.error, "Wartungserinnerungen");
-  throwOnQueryError(fahrtenResult.error, "Fahrten für das Wartungsheft");
 
   const heute = todayInZurich();
   const hinweise: Record<string, { text: string; status: WartungsStatus }> = {};
@@ -143,7 +162,7 @@ export async function getWartungsHinweise(
   // Termin und ohne Intervall gibt es keine Fälligkeit.
   for (const erinnerung of erinnerungenResult.data ?? []) {
     const eintraege = (eintraegeResult.data ?? []).filter((e) => e.fahrzeug_id === erinnerung.fahrzeug_id);
-    const fahrten = (fahrtenResult.data ?? []).filter((f) => f.fahrzeug_id === erinnerung.fahrzeug_id);
+    const fahrten = alleFahrten.filter((f) => f.fahrzeug_id === erinnerung.fahrzeug_id);
     const hinweis = kurzhinweis(
       mfkErinnerung(erinnerung, eintraege, heute),
       serviceErinnerung(erinnerung, eintraege, fahrten, heute),

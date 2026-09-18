@@ -278,7 +278,14 @@ export default async function ProfilPage() {
   // Erinnerungen, Fahrten) sind für ein Konto ohne Wartungsheft reine
   // Leerläufe. Bewusst NACH dem Promise.all und nicht darin — sonst liefe
   // sie für jedes kostenlose Konto bei jedem Profilaufruf mit.
-  const wartungsHinweise = premiumStatus.aktiv ? await getWartungsHinweise(user.id) : undefined;
+  // Eine Zusatzzeile, kein tragender Teil der Seite: scheitert sie, fehlen
+  // die Hinweise, nicht das ganze Profil.
+  const wartungsHinweise = premiumStatus.aktiv
+    ? await getWartungsHinweise(user.id).catch((err) => {
+        console.error("Wartungshinweise nicht ladbar", err);
+        return undefined;
+      })
+    : undefined;
 
   // Die mobile Leiste (BottomNav) führt Creator und Moderation nicht mehr —
   // sie ist auf fünf Einträge gedeckelt, siehe lib/nav.ts. Unter md ist das

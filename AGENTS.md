@@ -121,7 +121,10 @@ is what should be corrected.
     That system is the richer one and it wins; the owner decided so on
     2026-09-18. Anything pass-shaped builds on it, not on a second table.
   The purchase page, Payment Element, customer portal,
-  the `subscriptions` table and the nightly reconciliation cron all ship.
+  the `subscriptions` table and the reconciliation cron all ship. The cron
+  runs hourly since 2026-09-18 (it was nightly): an expired Saisonpass is
+  only switched off there, and a day of free Premium plus a purchase page
+  that redirects away was too long a lag.
   Founder seats (Gründerpreis) were sold until 2026-09-07 and are no longer
   offered: the DB functions from `0065`–`0069` remain but are no longer
   called, and `STRIPE_PREMIUM_PRICE_ID_GRUENDER` only names existing
@@ -748,7 +751,8 @@ is what should be corrected.
   `lib/constants.ts`, the home title (`app/page.tsx`), the visible `<h1>` in
   `components/ExploreSidebar.tsx`, the `/feed` and `/leaderboards`
   descriptions, the free-ride placeholder, and `ZURICH_CENTER` →
-  `SCHWEIZ_ZENTRUM` (Älggialp) with `DEFAULT_ZOOM` 10.5 → 6.9. The three
+  `SCHWEIZ_ZENTRUM` (Älggialp) with `DEFAULT_ZOOM` 10.5 → 6.9, corrected to
+5.9 by #268 (Mapbox counts zoom on 512-px tiles). The three
   that stay, each for its own reason:
   - **The legal texts.** AGB Ziff. 1.3 still reads "mit Schwerpunkt Schweiz,
     vorerst Raum Zürich", and the published HTML in

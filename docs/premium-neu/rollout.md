@@ -63,6 +63,22 @@ Sandbox-IDs).
 | `STRIPE_PREMIUM_PRICE_ID_SAISONPASS` | neue Pass-ID (CHF 29.00) |
 | `STRIPE_PREMIUM_PRICE_IDS_MONAT_BESTAND` | `price_1UD8K10XojvMPC10RR4tXbBd` |
 | `STRIPE_PREMIUM_PRICE_IDS_JAHR_BESTAND` | `price_1UD8K30XojvMPC10gHNGUkin` |
+| `PREMIUM_TESTPHASE` | `1` — **erst am Tag, an dem die neuen AGB gelten** (Schritt 5) |
+
+`PREMIUM_TESTPHASE` ist seit dem Review vom 2026-09-18 ein eigener Schalter.
+Vorher hing die Testphase an nichts: ab dem Deploy hätte jeder neue
+Jahreskunde 14 Tage gratis bekommen, auf den alten CHF 49 und gegen AGB
+Ziff. 4.5 in Kraft ("Ein kostenloser Testzeitraum wird nicht angeboten").
+
+**Stripe-Webhook vor dem Saisonpass.** Der Saisonpass wird ohne Webhook nur
+über die Bestätigung im Browser gebucht; wer den Tab nach der Zahlung
+schliesst, hat bezahlt und keinen Pass, und eine Erstattung
+(`charge.refunded`) käme nie an. Der Live-Endpunkt muss auf
+`https://app.strado.ch/api/stripe/webhook` zeigen, aktiv sein und
+zusätzlich `checkout.session.completed`,
+`checkout.session.async_payment_succeeded` und `charge.refunded` abonnieren
+(am 2026-09-18 vom Eigentümer nachgezogen). Dasselbe im Sandbox-Konto für
+`staging`.
 
 Die beiden BESTAND-Variablen sind **nicht optional**. Ohne sie gilt jedes
 Ereignis der Abos zu CHF 4.90/49.00 als fremdes Produkt: Kündigung,
