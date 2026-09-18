@@ -24,6 +24,10 @@ import { isModerator } from "@/lib/moderation";
 import { getPremiumStatus, maxFotosProFahrt } from "@/lib/premium";
 import { getRouteLeaderboard, getRouteLeaderboardKlassen } from "@/lib/leaderboard";
 import { fetchCurrentWeather } from "@/lib/weather";
+import PassSektion from "@/components/PassSektion";
+import RuhigeZeiten from "@/components/RuhigeZeiten";
+import { getFeedStand, getPassKontextFuerStrecke } from "@/lib/paesse";
+import { getRuhigeZeiten } from "@/lib/ruhigeZeitenAbfrage";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { KATEGORIEN } from "@/lib/constants";
 import { averageTempolimit, estimateRouteDurationMinutes, formatMinutes } from "@/lib/geo";
@@ -140,7 +144,7 @@ export default async function StreckeDetailPage({
   // hier serverseitig mitgeladen, weil GefahrenSection eine Client-Komponente
   // ist und selbst nicht abfragen kann — im selben Promise.all wie alles
   // andere, also ohne die Antwortzeit zu verlängern.
-  const [ratings, ownRating, favorite, vehicles, personalBestSeconds, photos, leaderboard, leaderboardKlassen, weather, moderator, premiumStatus, kontextStrecken] =
+  const [ratings, ownRating, favorite, vehicles, personalBestSeconds, photos, leaderboard, leaderboardKlassen, weather, moderator, premiumStatus, kontextStrecken, passKontexte, feedStand, ruhigeZeiten] =
     await Promise.all([
       getRatings(id),
       user ? getOwnRating(id, user.id) : Promise.resolve(null),
@@ -160,6 +164,13 @@ export default async function StreckeDetailPage({
       user ? isModerator(user.id) : Promise.resolve(false),
       getPremiumStatus(),
       getKontextStrecken(route),
+      // Pässe, Status und Verkehrsprofil hängen nicht voneinander ab und
+      // laufen deshalb im selben Promise.all wie alles andere. Führt die
+      // Strecke über keinen Pass, sind die beiden ersten leer und die
+      // Abschnitte fallen weg.
+      getPassKontextFuerStrecke(id),
+      getFeedStand(),
+      getRuhigeZeiten(id),
     ]);
 
   // Strukturierte Daten für die Streckenseite — der einzige öffentlich
@@ -314,6 +325,10 @@ export default async function StreckeDetailPage({
             wo ein Besucher ohne Konto zuerst ankommt. Der Kommentar-Teil des
             alten Hinweises lebt jetzt in RatingSection weiter, wo er
             hingehört. */}
+        {/* Vor dem Losfahren steht die Frage, ob der Pass überhaupt offen
+            ist — also vor Aufzeichnung, Höhenprofil und Kennzahlen. */}
+        <PassSektion kontexte={passKontexte} angemeldet={!!user} feedStand={feedStand} />
+
         <GefahrenSection
           route={route}
           kontextStrecken={kontextStrecken}
@@ -376,6 +391,12 @@ export default async function StreckeDetailPage({
               wert: weather ? `${weather.tempC} °C, ${weather.label}` : "—",
             },
           ]}
+        />
+
+        <RuhigeZeiten
+          punkte={ruhigeZeiten.punkte}
+          startzeiten={ruhigeZeiten.startzeiten}
+          berechnetAm={ruhigeZeiten.berechnetAm}
         />
 
         <RouteLeaderboardPreview

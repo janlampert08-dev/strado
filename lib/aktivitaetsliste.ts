@@ -2,7 +2,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getRecentKudosReceived } from "@/lib/kudos";
 import { getRecentFollowersReceived } from "@/lib/follows";
-import { mischeAktivitaet, type AktivitaetsEintrag } from "@/lib/aktivitaet";
+import { mischeAktivitaet, type AktivitaetsEintrag, type PassEintrag } from "@/lib/aktivitaet";
 
 // Die Abfrageseite der Aktivität — getrennt von lib/aktivitaet.ts, weil
 // jene Datei auch in der Client-Komponente landet (siehe Kopf dort) und
@@ -12,11 +12,48 @@ import { mischeAktivitaet, type AktivitaetsEintrag } from "@/lib/aktivitaet";
 // /aktivitaet. Die zwei RPCs hängen nicht voneinander ab, laufen also
 // nebenläufig.
 export async function getAktivitaet(): Promise<AktivitaetsEintrag[]> {
-  const [kudos, follower] = await Promise.all([
+  const [kudos, follower, paesse] = await Promise.all([
     getRecentKudosReceived(),
     getRecentFollowersReceived(),
+    getPassMeldungen(),
   ]);
-  return mischeAktivitaet(kudos, follower);
+  return mischeAktivitaet(kudos, follower, paesse);
+}
+
+/**
+ * Statuswechsel der Pässe, denen das angemeldete Konto folgt.
+ *
+ * Die Funktion in der Datenbank (0104) liefert nur Wechsel NACH dem Folgen
+ * und nur die, die eine Fahrt entscheiden — auf und zu, nicht jede
+ * Kettenpflicht. Ohne Konto gibt sie nichts zurück.
+ */
+async function getPassMeldungen(): Promise<PassEintrag[]> {
+  const supabase = await createClient();
+  interface MeldungsZeile {
+    pass_id: string;
+    pass_name: string;
+    zustand: PassEintrag["zustand"];
+    vorher: PassEintrag["vorher"];
+    erfasst_am: string;
+    neu: boolean;
+  }
+
+  const { data, error } = await supabase.rpc("recent_pass_meldungen");
+
+  if (error) {
+    console.error("Passmeldungen konnten nicht geladen werden", error);
+    return [];
+  }
+
+  return ((data as MeldungsZeile[] | null) ?? []).map((zeile) => ({
+    art: "pass" as const,
+    passId: zeile.pass_id,
+    passName: zeile.pass_name,
+    zustand: zeile.zustand,
+    vorher: zeile.vorher,
+    erstelltAm: zeile.erfasst_am,
+    neu: zeile.neu,
+  }));
 }
 
 // Ungesehene Reaktionen insgesamt (Kudos + neue Follower), für das

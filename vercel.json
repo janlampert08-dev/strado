@@ -4,6 +4,14 @@
     {
       "path": "/api/cron/premium-abgleich",
       "schedule": "17 3 * * *"
+    },
+    {
+      "path": "/api/cron/passstatus",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/verkehrsprofil",
+      "schedule": "41 4 * * *"
     }
   ]
 }

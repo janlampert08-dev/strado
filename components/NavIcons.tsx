@@ -48,3 +48,14 @@ export { Star as SternIcon } from "lucide-react";
 // (components/ActivityList.tsx). Dasselbe Zeichen, das die Kopfleiste als
 // Einstieg in /aktivitaet zeigt.
 export { Flame as AktivitaetIcon } from "lucide-react";
+
+// Die Pässe: der Berg als Abschnittsmarke (/paesse, Profil), der Haken als
+// Stempel einer befahrenen Passhöhe, der Kalender für den Sperrkalender.
+// Aus demselben Grund hier wie alles Übrige — AGENTS.md nennt diese Datei
+// als den Ort für lucide-Wrapper, und drei Symbole verdienen keine vierte
+// Datei.
+export {
+  Mountain as BergIcon,
+  Check as HakenIcon,
+  CalendarDays as KalenderIcon,
+} from "lucide-react";

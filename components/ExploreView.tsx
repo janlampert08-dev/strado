@@ -13,6 +13,7 @@ import { matchesSearch } from "@/lib/search";
 import { computeSignatures } from "@/lib/signature";
 import type { ExploreRoute } from "@/types/database";
 import type { Streckenbewertung } from "@/lib/bewertungen";
+import type { PassZustand } from "@/lib/passStatus";
 
 // URL-Sync für den Suchtext wird debounced (siehe searchInput-Effekt unten),
 // damit nicht jeder Tastendruck einen router.replace() (und damit einen
@@ -84,12 +85,15 @@ const ZUFALLSVORSCHLAG_MS = 5000;
 export default function ExploreView({
   routes,
   bewertungen,
+  passZustaende,
   loadError = false,
   loggedIn,
 }: {
   routes: ExploreRoute[];
   /** Sternenschnitt je Strecken-ID; Strecken ohne Wertung fehlen. */
   bewertungen: Record<string, Streckenbewertung>;
+  /** Schwerwiegendster Passzustand je Strecke; Strecken ohne Pass fehlen. */
+  passZustaende: Record<string, PassZustand>;
   loadError?: boolean;
   loggedIn: boolean;
 }) {
@@ -282,6 +286,7 @@ export default function ExploreView({
         <ExploreSidebar
           routes={visibleRoutes}
           bewertungen={bewertungen}
+          passZustaende={passZustaende}
           loadError={loadError}
           loggedIn={loggedIn}
           searchQuery={searchInput}

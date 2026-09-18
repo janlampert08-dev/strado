@@ -19,6 +19,9 @@ import { formatKm, datumCH } from "@/lib/format";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import SectionHeading from "@/components/ui/SectionHeading";
+import PassModeration from "@/components/PassModeration";
+import { getPassModerationsDaten } from "@/lib/paesse";
+import { BergIcon } from "@/components/NavIcons";
 import { buttonVariants } from "@/components/ui/Button";
 import { MapPinIcon, ShieldIcon, LinkIcon, FeedbackIcon, MailIcon } from "@/components/NavIcons";
 import { POSTFACH_URL } from "@/lib/constants";
@@ -127,12 +130,13 @@ export default async function ModerationPage() {
   if (!user) redirect("/anmelden");
   if (!(await isModerator(user.id))) redirect("/");
 
-  const [routes, routeReports, ratingReports, completionReports, feedback] = await Promise.all([
+  const [routes, routeReports, ratingReports, completionReports, feedback, passDaten] = await Promise.all([
     getPendingRoutes(),
     getOpenRouteReports(),
     getOpenRatingReports(),
     getOpenCompletionReports(),
     getOpenFeedback(),
+    getPassModerationsDaten(),
   ]);
 
   // Die drei Meldungsarten in eine Liste, chronologisch. Vorher standen sie
@@ -349,6 +353,39 @@ export default async function ModerationPage() {
                 </Card>
               ))
             )}
+          </section>
+
+          {/* Zuletzt und ohne Sprungmarke: die Pässe sind keine
+              Warteschlange, die abgearbeitet wird, sondern ein Werkzeug für
+              den Fall, dass der Abgleich danebenliegt. Eine vierte Zählkachel
+              oben würde eine Zahl behaupten, die nichts fordert. */}
+          <section id="paesse" className="flex scroll-mt-4 flex-col gap-3">
+            <SectionHeading icon={BergIcon}>Pässe</SectionHeading>
+            <PassModeration
+              paesse={passDaten.paesse.map((p) => ({
+                id: p.id,
+                name: p.name,
+                status: p.status
+                  ? {
+                      zustand: p.status.zustand,
+                      meldung: p.status.meldung,
+                      quelle: p.status.quelle,
+                      aktualisiertAm: p.status.aktualisiertAm,
+                      manuellBis: p.status.manuellBis,
+                    }
+                  : null,
+              }))}
+              sperrtage={passDaten.sperrtage.map((s) => ({
+                id: s.id,
+                passId: s.passId,
+                passName: s.passName,
+                von: s.von,
+                bis: s.bis,
+                art: s.art,
+                titel: s.titel,
+              }))}
+              feedStand={passDaten.feedStand}
+            />
           </section>
         </Seitenrahmen>
       </div>
