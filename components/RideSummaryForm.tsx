@@ -559,6 +559,11 @@ export default function RideSummaryForm({
           <button
             type="button"
             onClick={onResume}
+            // Während des Speicherns gesperrt: wer jetzt weiterzeichnete,
+            // bekäme nach der Antwort Snapshot-Löschung und Weiterleitung
+            // mitten in die neue Aufzeichnung — auf ein Ticket, das der
+            // Server gerade eingelöst hat.
+            disabled={pending}
             className={buttonVariants({ variant: "secondary", className: "w-full" })}
           >
             Weiter aufzeichnen
@@ -567,7 +572,8 @@ export default function RideSummaryForm({
         <button
           type="button"
           onClick={() => setDiscardConfirmOpen(true)}
-          className="mt-1 min-h-11 self-center text-sm text-muted transition-colors duration-fast hover:text-danger"
+          disabled={pending}
+          className="mt-1 min-h-11 self-center text-sm text-muted transition-colors duration-fast hover:text-danger disabled:opacity-50"
         >
           Fahrt verwerfen
         </button>

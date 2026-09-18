@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { liveTempoKmh } from "@/lib/livetempo";
 import { haversineKm, type TrailPoint } from "@/lib/geo";
-import { evaluateProximity } from "@/lib/tracking";
+import { END_PROXIMITY_KM, evaluateProximity } from "@/lib/tracking";
+import { MAX_JUMP_KM } from "@/lib/track";
 import type { FahrtStartTicket } from "@/lib/fahrtstart";
 import { fahrtStartAnlegen, fahrtStartPuls } from "@/lib/actions/fahrtstart";
 import { sollPulsen } from "@/lib/fahrtstart";
@@ -235,6 +236,17 @@ export function useRideRecorder({
   // Verhindert, dass die Zielnähe-Prüfung bei Rundfahrten (Start = Ziel)
   // sofort nach dem Start greift.
   const hasLeftStartRef = useRef(false);
+  // Nach "Weiter aufzeichnen" oder "Weiter" nach einer Pause: die
+  // Zielnähe-Prüfung erst wieder scharf schalten, wenn der Zielradius
+  // verlassen wurde. Sonst stoppt eine am Ziel automatisch beendete Fahrt,
+  // die jemand bewusst fortsetzt, beim ersten Fix gleich wieder.
+  const zielErstVerlassenRef = useRef(false);
+  // Der erste Fix nach dem Fortsetzen wird gegen den letzten Punkt vor der
+  // Unterbrechung geprüft (siehe dort).
+  const nachUnterbrechungRef = useRef(false);
+  // stop()/pausieren() sind in der watchPosition-Closure nicht in der
+  // aktuellen Fassung sichtbar; der Sprungschutz ruft pausieren über die Ref.
+  const pausierenRef = useRef<() => void>(() => {});
   // gate/storageKey werden beim Mount in die Watch-Closure eingeschlossen —
   // über Refs bleibt der Zugriff aktuell, ohne die Aufzeichnung bei einem
   // Render neu aufzusetzen. Die Zuweisung läuft (wie in RouteMap.tsx) über
@@ -345,6 +357,9 @@ export function useRideRecorder({
     if (phase !== "tracking") return;
     function handleVisibilityChange() {
       if (document.visibilityState !== "visible") return;
+      // Pausiert ist keine Lücke: keine GPS-Warnung und kein Wake Lock, der
+      // den Bildschirm während eines Passhalts wach hält.
+      if (pausiertAmRef.current !== null) return;
       // Der Browser markiert das Sentinel bei der automatischen Freigabe als
       // "released", setzt die Ref aber nicht selbst auf null zurück — ein
       // reiner `=== null`-Check würde die Neuanfrage nach jedem
@@ -551,6 +566,8 @@ export function useRideRecorder({
         startTimeRef.current = null;
         distanceKmRef.current = 0;
         hasLeftStartRef.current = false;
+        zielErstVerlassenRef.current = false;
+        nachUnterbrechungRef.current = false;
         setLiveTrail([]);
         setLiveTrailPoints([]);
       }
@@ -623,6 +640,23 @@ export function useRideRecorder({
           // Deckungsgrad (siehe lib/actions/completions.ts) — nur ausreichend
           // genaue Punkte, damit Ungenauigkeit nicht fälschlich als "war
           // dort" zählt.
+          // Sprungschutz nach einer Unterbrechung. Der Server lehnt eine Fahrt
+          // mit mehr als MAX_JUMP_KM zwischen zwei Punkten als Ganzes ab
+          // (lib/track.ts) — wer in der Pause weiterfährt, verlöre beim
+          // Speichern alles, auch den Teil davor. Deshalb wird ein solcher
+          // Fix nicht angehängt; die Aufzeichnung geht wieder in die Pause
+          // und sagt, warum. Beenden speichert dann die Fahrt bis zur Pause.
+          if (nachUnterbrechungRef.current) {
+            nachUnterbrechungRef.current = false;
+            const letzter = trailRef.current.at(-1);
+            if (letzter && haversineKm([letzter.lng, letzter.lat], point) > MAX_JUMP_KM * 0.75) {
+              pausierenRef.current();
+              setLocationError(
+                "Seit der Unterbrechung liegt über 1,5 km ohne Aufzeichnung dazwischen. Eine solche Lücke kann Strado nicht speichern — beende die Fahrt hier (gespeichert wird bis zur Unterbrechung) und starte für den Rest eine neue.",
+              );
+              return;
+            }
+          }
           trailRef.current.push({ lng: point[0], lat: point[1], t: now });
 
           // Denselben Punkt an den Server melden (0098_fahrtstart_puls.sql).
@@ -691,6 +725,12 @@ export function useRideRecorder({
             { hasStarted: true, hasLeftStart: hasLeftStartRef.current },
           );
           hasLeftStartRef.current = proximity.hasLeftStart;
+          if (zielErstVerlassenRef.current) {
+            if (haversineKm(point, currentGate.endPoint) > END_PROXIMITY_KM) {
+              zielErstVerlassenRef.current = false;
+            }
+            return;
+          }
           if (proximity.shouldAutoStop) stop();
         },
         (error) => {
@@ -742,6 +782,8 @@ export function useRideRecorder({
       startTimeRef.current += Date.now() - gestopptAmRef.current;
     }
     gestopptAmRef.current = null;
+    zielErstVerlassenRef.current = true;
+    nachUnterbrechungRef.current = true;
     // Derselbe Weg wie nach einem Tab-Kill: start() mit einem Snapshot
     // übernimmt Trail, Distanz, Startzeit und Ticket aus diesem Stand und
     // fragt nur die Watch neu an. Die Refs sind hier in jedem Fall gesetzt —
@@ -794,6 +836,9 @@ export function useRideRecorder({
       true,
     );
   }, [releaseTracking, writeSnapshot, pulsen]);
+  useEffect(() => {
+    pausierenRef.current = pausieren;
+  }, [pausieren]);
 
   const weiterNachPause = useCallback(() => {
     if (watchIdRef.current !== null) return;
@@ -802,6 +847,9 @@ export function useRideRecorder({
     }
     pausiertAmRef.current = null;
     setPausiert(false);
+    setLocationError(null);
+    zielErstVerlassenRef.current = true;
+    nachUnterbrechungRef.current = true;
     const stand: TrackingSnapshot = {
       phase: "tracking",
       trail: trailRef.current,

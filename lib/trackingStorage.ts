@@ -234,6 +234,8 @@ export interface OffeneAufzeichnung {
   /** "tracking": mitten in der Fahrt verlassen. "finished": beendet, aber
    *  noch nicht gespeichert. */
   phase: TrackingSnapshot["phase"];
+  /** Bewusst pausiert — dann ist das Aussetzen gewollt, keine Warnung. */
+  pausiert: boolean;
   /** Wohin der Hinweis führt — dorthin, wo der Recorder wieder mountet. */
   href: string;
 }
@@ -282,6 +284,7 @@ export function offeneAufzeichnungenAus(
     gefunden.push({
       storageKey,
       phase: snapshot.phase,
+      pausiert: snapshot.phase === "tracking" && snapshot.pausiert === true,
       href:
         storageKey === FREE_RIDE_STORAGE_KEY
           ? "/fahrten/neu"

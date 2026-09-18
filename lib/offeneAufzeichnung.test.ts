@@ -28,7 +28,7 @@ describe("offeneAufzeichnungenAus", () => {
       JETZT,
     );
     expect(offen).toEqual([
-      { storageKey: FREE_RIDE_STORAGE_KEY, phase: "tracking", href: "/fahrten/neu" },
+      { storageKey: FREE_RIDE_STORAGE_KEY, phase: "tracking", pausiert: false, href: "/fahrten/neu" },
     ]);
   });
 
@@ -38,7 +38,18 @@ describe("offeneAufzeichnungenAus", () => {
       NUTZER,
       JETZT,
     );
-    expect(offen).toEqual([{ storageKey: "abc-123", phase: "finished", href: "/strecken/abc-123" }]);
+    expect(offen).toEqual([{ storageKey: "abc-123", phase: "finished", pausiert: false, href: "/strecken/abc-123" }]);
+  });
+
+  // Eine bewusst pausierte Fahrt ist kein Aussetzer: der Streifen sagt
+  // "pausiert" statt "unterbrochen" mit rot pulsierendem Punkt.
+  it("meldet eine pausierte Fahrt als pausiert", () => {
+    const offen = offeneAufzeichnungenAus(
+      [[`cornice:tracking:${NUTZER}:${FREE_RIDE_STORAGE_KEY}`, snapshot({ pausiert: true, pausiertAm: JETZT - 10_000 })]],
+      NUTZER,
+      JETZT,
+    );
+    expect(offen[0]?.pausiert).toBe(true);
   });
 
   // Die Nutzertrennung aus dem Schlüssel gilt auch für die Anzeige: ein

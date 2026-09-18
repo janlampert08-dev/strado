@@ -445,6 +445,14 @@ export default function FreeRideForm({
               lagen 4 px. Das ist das einzige Knopfpaar der App, bei dem ein
               Fehlgriff etwas kostet — wer starten will und abbricht, steht
               wieder am Anfang, mit Helm und Handschuhen. */}
+          {/* Scheitert der Start (kein Geolocation im Browser, Standort
+              verweigert), blieb dieser Schirm bisher stumm: der Knopf tat
+              nichts und sagte nichts. */}
+          {recorder.locationError && (
+            <p role="alert" className="text-sm text-danger">
+              {recorder.locationError}
+            </p>
+          )}
           <div className="flex flex-col gap-2">
             <button
               type="button"

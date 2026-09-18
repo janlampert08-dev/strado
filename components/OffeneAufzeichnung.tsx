@@ -52,7 +52,17 @@ export default function OffeneAufzeichnungStreifen({ userId }: { userId: string 
   const offen = useOffeneAufzeichnung(userId);
   if (!offen) return null;
 
-  const laeuft = offen.phase === "tracking";
+  const laeuft = offen.phase === "tracking" && !offen.pausiert;
+  const titel = laeuft
+    ? "Aufzeichnung unterbrochen"
+    : offen.pausiert
+      ? "Fahrt pausiert"
+      : "Fahrt noch nicht gespeichert";
+  const zusatz = laeuft
+    ? " — aufgezeichnet wird nur auf dem Fahrtschirm."
+    : offen.pausiert
+      ? " — weiter geht es auf dem Fahrtschirm."
+      : " — zum Speichern oder Verwerfen.";
   return (
     <Link
       href={offen.href}
@@ -64,10 +74,10 @@ export default function OffeneAufzeichnungStreifen({ userId }: { userId: string 
       />
       <span className="min-w-0 flex-1">
         <span className="font-medium">
-          {laeuft ? "Aufzeichnung unterbrochen" : "Fahrt noch nicht gespeichert"}
+          {titel}
         </span>
         <span className="hidden text-muted sm:inline">
-          {laeuft ? " — aufgezeichnet wird nur auf dem Fahrtschirm." : " — zum Speichern oder Verwerfen."}
+          {zusatz}
         </span>
       </span>
       <span className="flex shrink-0 items-center gap-0.5 font-medium text-accent">

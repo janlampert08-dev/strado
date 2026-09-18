@@ -454,8 +454,21 @@ export default function LiveTrackingForm({
 
   // phase === "finished" — Fazit als eigener Vollbild-Screen, keine
   // Streckendetails/Karte mehr im Blick.
+  //
+  // Die angezeigte Zeit ist ohne Pausen gerechnet, gewertet wird aber die
+  // Wanduhr samt Pausen (0098). Die Bestzeit-Aussage muss sich an die
+  // gewertete Zahl halten, sonst verkündet eine Fahrt mit zehn Minuten
+  // Passhalt eine Bestzeit, die Fahrtseite und Rangliste danach nicht
+  // zeigen. Die Wanduhr steht in den Zeitstempeln des Trails — die
+  // überleben auch einen Tab-Kill, anders als jeder eigene Pausenzähler.
+  const wanduhrSekunden =
+    finishedTrail.length >= 2
+      ? Math.round((finishedTrail[finishedTrail.length - 1].t - finishedTrail[0].t) / 1000)
+      : 0;
+  const gewerteteSekunden = result !== null ? Math.max(result.seconds, wanduhrSekunden) : 0;
+  const mitPausen = result !== null && wanduhrSekunden - result.seconds >= 60;
   const isNewBest =
-    result !== null && (personalBestSeconds === null || result.seconds < personalBestSeconds);
+    result !== null && (personalBestSeconds === null || gewerteteSekunden < personalBestSeconds);
 
   // Ohne pb-[var(--safe-bottom)], anders als die Ansichten davor:
   // diese hier endet auf dem klebenden Speichern-Streifen aus
@@ -490,6 +503,12 @@ export default function LiveTrackingForm({
               Bisherige Bestzeit: {formatDuration(personalBestSeconds ?? 0)}
             </p>
           ))}
+        {mitPausen && (
+          <p className="text-sm text-muted">
+            Zeit oben ohne Pausen. Für Bestzeit und Rangliste zählt die Zeit samt Pausen:{" "}
+            {formatDuration(gewerteteSekunden)}.
+          </p>
+        )}
 
         {/* Was der Server beim Speichern ohnehin ablehnt, steht hier schon —
             mit Begründung, damit nicht nur "ging nicht" übrig bleibt. Das
