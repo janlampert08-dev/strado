@@ -7,6 +7,8 @@ import { routeShapePath } from "@/lib/routeShape";
 import { formatKmGerundet, mitAnzahl } from "@/lib/format";
 import { type RouteSignature, type SignatureKey } from "@/lib/signature";
 import type { ExploreRoute } from "@/types/database";
+import { PassStatusMarke } from "@/components/PassStatusZeile";
+import { ZUSTAND_LABEL, ZUSTAND_TON, zeigeInListe, type PassZustand } from "@/lib/passStatus";
 import { anzahlText, type Streckenbewertung } from "@/lib/bewertungen";
 import Sternschnitt from "@/components/Sternschnitt";
 import { fieldClassName } from "@/components/ui/Input";
@@ -33,6 +35,7 @@ function kuerzen(text: string, max: number): string {
 export default function ExploreSidebar({
   routes,
   bewertungen,
+  passZustaende,
   loadError = false,
   loggedIn,
   anzahlStrecken,
@@ -48,6 +51,8 @@ export default function ExploreSidebar({
   routes: ExploreRoute[];
   /** Sternenschnitt je Strecken-ID; Strecken ohne Wertung fehlen darin. */
   bewertungen: Record<string, Streckenbewertung>;
+  /** Schwerwiegendster Passzustand je Strecke; Strecken ohne Pass fehlen. */
+  passZustaende: Record<string, PassZustand>;
   loadError?: boolean;
   loggedIn: boolean;
   /** Der ganze Bestand, ungefiltert — routes ist schon die Trefferliste. */
@@ -372,6 +377,22 @@ export default function ExploreSidebar({
                       >
                         <span className="sr-only">{anzahlText(bewertung.anzahl)}</span>
                       </Sternschnitt>
+                    )}
+                    {/* Der Passzustand steht nur hier, wenn er die Planung
+                        ändert: gesperrt, Wintersperre, eingeschränkt. "Offen"
+                        ist die Erwartung und bekäme sonst in jeder Zeile ein
+                        Abzeichen, das nichts sagt (lib/passStatus.ts). */}
+                    {zeigeInListe(passZustaende[route.id] ?? null) && (
+                      <PassStatusMarke
+                        className="shrink-0"
+                        anzeige={{
+                          zustand: passZustaende[route.id],
+                          label: ZUSTAND_LABEL[passZustaende[route.id]],
+                          ton: ZUSTAND_TON[passZustaende[route.id]],
+                          text: "",
+                          herkunft: "",
+                        }}
+                      />
                     )}
                   </div>
                 </div>

@@ -213,6 +213,173 @@ Einspielen alle auf Kartendaten (kein einziges `amtlich: true`). Die Datei
 lässt sich jederzeit neu erzeugen (`--live`) — die Streckenliste wächst
 gerade schnell, also vor einem erneuten Einspielen neu erzeugen.
 
+## Eingespielt: 0106_startzeiten_schwelle_je_fach (2026-09-18, Produktion)
+
+Nacharbeit zu `0105` und `0104`, aus der Review desselben Zweigs. Beide
+Befunde betreffen bereits eingespielte Objekte, deshalb eine eigene Datei.
+
+- **Die Schwelle in `strecken_startzeiten` zählte die falsche Menge.** `0105`
+  gibt erst ab 20 Starts etwas heraus und begründet das damit, dass "33 %
+  Sonntagmorgen" bei drei Starts ein Satz über eine Person wäre. Geprüft wurde
+  aber die Gesamtzahl, und die Ausgabe hat 7 × 4 = 28 Fächer: bei n = 20 wurde
+  ein Fach mit **einem** Start als "5 %" ausgeliefert, und weil jeder Wert ein
+  Vielfaches von 5 ist, ist der Nenner ablesbar. `fahrt_starts` enthält auch
+  Starts ohne veröffentlichte Fahrt, und die Funktion ist an `anon` vergeben —
+  derselbe Mechanismus wie in `0094`. Jetzt gilt zusätzlich `having count(*) >= 5`
+  je Fach; Fächer darunter fallen weg, statt gerundet zu werden.
+- **`pg_temp` fehlte im `search_path` von `count_unseen_activity` und
+  `mark_activity_seen`.** Aus `0100` geerbt und in `0104` mitgenommen. Beide
+  Rümpfe sind unverändert, nur der `search_path` ist ergänzt.
+
+Am Katalog geprüft: alle drei Funktionen tragen `search_path=public, pg_temp`,
+`strecken_startzeiten` enthält `having count(*) >= 5`, die Grants sind
+unverändert (`anon` nur auf `strecken_startzeiten`).
+
+**Rückweg:** die drei Funktionen aus `0104`/`0105` erneut anlegen — sie sind
+dort vollständig ausgeschrieben.
+
+## Eingespielt: 0107 und 0108 (Suchbegriffe, 2026-09-18, Produktion)
+
+Beides Datenänderungen am Passkatalog, ausgelöst vom **ersten Probelauf gegen
+den echten Feed** (13.7 MB, 890 Situationen, mit dem Schlüssel des Eigentümers).
+
+`0104` hatte die Suchbegriffe geschätzt. Der Feed schreibt Pässe aber anders,
+nämlich mit Gattungswort und Bindestrich — "zwischen Pass Gotthard-Pass und
+Ortschaft Motto Bartola", französisch "Col Col du St-Gothard". Die Form
+"Gotthardpass" kommt in der ganzen Lieferung nicht vor.
+
+Umgekehrt haben die kurzen Formen **drei falsche Treffer** erzeugt, weil
+Passnamen in der Schweiz auch Dörfer und Strassen sind:
+
+| Meldung | Fälschlich erkannt als |
+| --- | --- |
+| "A9 Sion ↔ Brig zwischen Anschluss **Leuk/Susten**-Ost …" | Sustenpass |
+| "Route de la Lienne ↔ **Route Du Simplon** …" | Simplonpass |
+| "A9 Brig ↔ Domodossola … Ortschaft **Simplon-Dorf** …" | Simplonpass |
+
+`0107` ersetzt deshalb alle Begriffslisten durch die Schreibweisen des Feeds
+(Bindestrichform, französische und italienische Fassung) und nimmt die blossen
+Ortsnamen heraus. `0108` nimmt zusätzlich "Panoramastrasse" beim Glaubenbielen
+weg: die Baustellenmeldung am Jaunpass heisst wörtlich "Instandsetzung
+Panoramastrasse Jaunpass", und der 80 km entfernte Glaubenbielen stand damit
+auf "eingeschränkt".
+
+Dazu kommt die Kontextregel in `lib/passMeldungen.ts` (kein Schemateil): ein
+Begriff ohne eigenes Gattungswort zählt nur, wenn unmittelbar davor
+"Pass"/"Col"/"Passo" steht.
+
+### Gegen die echte Lieferung gemessen
+
+| | vorher | nachher |
+| --- | --- | --- |
+| Treffer insgesamt | 4 | 5 |
+| davon falsch | 3 | **0** |
+| Situationen, deren erster Text ein Aufzählungswert war | 523 | **0** |
+
+Die fünf verbliebenen Treffer sind vier Baustellenmeldungen an der
+Gotthard-Passstrasse und eine am Jaunpass, alle als "eingeschränkt" gedeutet —
+was sie auch sind. Die Gegenprobe mit erfundenen, aber echt geformten
+Meldungen trifft weiterhin: "Pass Gotthard-Pass … gesperrt",
+"Sustenpass: Wintersperre", "Col du Grimsel … route fermée".
+
+**Rückweg:** `0104` enthält die ursprünglichen Begriffslisten im Wortlaut.
+
+## Eingespielt: 0104_paesse und 0105_strecken_verkehr (2026-09-18, Produktion)
+
+Beide am 2026-09-18 über `apply_migration` eingespielt, **vor** dem Merge des
+Codes — die Reihenfolge, die AGENTS.md verlangt (Schema zuerst).
+
+| Datei | Was |
+| --- | --- |
+| `0104_paesse` | `paesse` (Katalog, 34 Zeilen), View `strecken_paesse` (security_invoker), `pass_status`, `pass_ereignisse`, `verkehrsmeldungen`, `feed_abgleich`, `pass_sperrtage` (4 Zeilen), `pass_folgen`, Spalte `profiles.paesse_gesehen_am`, Funktionen `pass_status_anwenden/-setzen/-freigeben`, `pass_ereignis_meldenswert`, `recent_pass_meldungen`, `meine_paesse`; Ersatz von `count_unseen_activity`, `mark_activity_seen` und `anonymize_account` auf den **live gelesenen** Rümpfen |
+| `0105_strecken_verkehr` | `strecken_verkehr`, `strecken_verkehr_stand`, `strecken_startzeiten(uuid)` |
+
+### Beim ersten Versuch gescheitert, und woran
+
+`quelle_url text check (quelle_url ~ '^https://[^[:space:]]{4,500}$')` bricht
+schon beim Anlegen der Tabelle ab: **PostgreSQL lässt in einem regulären
+Ausdruck höchstens 255 Wiederholungen zu** (`invalid repetition count(s)`).
+Die ganze Migration lief in einer Transaktion, es blieb also nichts halb
+angelegt. Die Längengrenze steht jetzt als eigene Bedingung neben dem
+Ausdruck. Wer hier eine Obergrenze braucht: `char_length(...) <= n`, nie
+`{m,n}` mit n über 255.
+
+### Nachher am Katalog geprüft (nicht am Ledger)
+
+- **Die Grant-Falle hat nicht zugeschlagen** (sie hat `0047`, `0048`, `0091`
+  und `0097` erwischt): `has_function_privilege('anon', …, 'execute')` ist bei
+  `pass_status_anwenden`, `pass_status_setzen`, `pass_status_freigeben`,
+  `recent_pass_meldungen` und `meine_paesse` **false**. Bewusst `true` ist es
+  bei `pass_ereignis_meldenswert` (reines Prädikat ohne Datenzugriff) und bei
+  `strecken_startzeiten` (die öffentliche Seite fragt sie; sie gibt erst ab
+  20 Starts etwas heraus, und dann nur Prozente über grobe Fächer).
+- `pass_status_anwenden` ist nur an `service_role` vergeben — der Cron.
+- RLS ist auf allen neun neuen Tabellen an. `verkehrsmeldungen` hat bewusst
+  **keine** Policy und keine Grants (nur `service_role`), wie `fahrt_starts`
+  und `stripe_webhook_events`; der Advisor meldet das als INFO.
+- `strecken_paesse` taucht **nicht** unter `security_definer_view` auf —
+  `security_invoker = true` ist angekommen. Private und noch nicht
+  freigegebene Strecken bleiben damit hinter der RLS von `routes`.
+- `feed_abgleich`: Grants nur auf `(quelle, erfolg_am)`; Fehlertexte sind für
+  `anon`/`authenticated` nicht lesbar.
+- **Die Zuordnung Strecke ↔ Pass stimmt an den Objekten**: 21 der 34 Pässe
+  haben genau eine Strecke, jede die richtige (Susten → „Sustenpass",
+  Gotthard → „Gotthardpass (Tremola)"), und keine der Zürcher Runden hat
+  fälschlich einen Pass gefunden. 400 m Toleranz, gemessen an echten Daten.
+- `add column paesse_gesehen_am … default now()` ist wie in `0100` billig
+  (`now()` ist stabil → `attmissingval`, keine Tabellenumschreibung); alle
+  14 Profile teilen sich denselben Zeitstempel, genau die Absicht.
+
+### Funktionstest (zurückgerollte Transaktion, Produktion)
+
+Ein `DO`-Block, dessen Ergebnis über `raise exception` zurückkam und damit
+denselben Block zurückrollte (Muster aus `0098`). Geprüft am Susten:
+
+| Schritt | Erwartet | Gemessen |
+| --- | --- | --- |
+| Feed meldet Wintersperre | Status entsteht, Ereignis wird geschrieben | `true` |
+| Derselbe Zustand nochmals | kein zweites Ereignis, `seit` bleibt stehen | `false`, `seit` unverändert |
+| Pass geht auf | Ereignis mit `vorher = 'wintersperre'`, meldenswert | `true`, `vorher = wintersperre`, meldenswert `true` |
+| Moderation übersteuert, dann schreibt der Feed | Feed prallt ab | `false`, Zustand blieb `gesperrt`/`moderation` |
+
+Danach gemessen: `pass_status`, `pass_ereignisse`, `pass_folgen`,
+`verkehrsmeldungen` und `strecken_verkehr` sind leer, `paesse` hat 34 Zeilen,
+`pass_sperrtage` die vier gesetzten — der Rollback hat gegriffen.
+
+### Was das noch nicht misst
+
+Der Feed selbst. Ohne `ASTRA_API_KEY` in der Umgebung meldet
+`app/api/cron/passstatus` „übersprungen" und schreibt nichts; jeder Pass
+bleibt auf „kein Stand", bis ihn ein Moderator setzt. Die Zuordnung von
+Meldungstexten zu Pässen ist gegen erfundene DATEX-Lieferungen getestet
+(`lib/passMeldungen.test.ts`), **nicht** gegen echte — das geht erst mit
+Schlüssel.
+
+### Rückweg
+
+```sql
+-- Code zuerst zurücknehmen, dann:
+drop function if exists public.meine_paesse();
+drop function if exists public.recent_pass_meldungen();
+drop function if exists public.pass_status_freigeben(text);
+drop function if exists public.pass_status_setzen(text, text, text, timestamptz);
+drop function if exists public.pass_status_anwenden(text, text, text, text, timestamptz);
+drop function if exists public.strecken_startzeiten(uuid);
+drop table if exists public.strecken_verkehr, public.strecken_verkehr_stand;
+drop table if exists public.pass_folgen, public.pass_sperrtage, public.verkehrsmeldungen,
+                     public.feed_abgleich, public.pass_ereignisse, public.pass_status;
+drop view if exists public.strecken_paesse;
+drop table if exists public.paesse;
+drop function if exists public.pass_ereignis_meldenswert(text, text);
+alter table public.profiles drop column if exists paesse_gesehen_am;
+```
+
+`count_unseen_activity()`, `mark_activity_seen()` und `anonymize_account()`
+müssen danach **auf die Rümpfe vor 0104 zurückgesetzt** werden (aus `0100`
+bzw. `0101`), sonst greifen sie auf gelöschte Tabellen und Spalten zu. Der
+Rückweg ist damit nicht „drop und fertig": diese drei zuerst zurückschreiben,
+dann die Drops.
+
 ## Eingespielt: 0096–0098 (Fahrtstart serverseitig, 2026-09-15, Produktion)
 
 | Datei | Was |

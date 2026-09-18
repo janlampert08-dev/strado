@@ -56,3 +56,14 @@ export { ChevronRight as WeiterIcon } from "lucide-react";
 
 // Ebenfalls kein Nav-Icon: der Schliessen-Knopf im Kopf von ui/Dialog.
 export { X as SchliessenIcon } from "lucide-react";
+
+// Die Pässe: der Berg als Abschnittsmarke (/paesse, Profil), der Haken als
+// Stempel einer befahrenen Passhöhe, der Kalender für den Sperrkalender.
+// Aus demselben Grund hier wie alles Übrige — AGENTS.md nennt diese Datei
+// als den Ort für lucide-Wrapper, und drei Symbole verdienen keine vierte
+// Datei.
+export {
+  Mountain as BergIcon,
+  Check as HakenIcon,
+  CalendarDays as KalenderIcon,
+} from "lucide-react";

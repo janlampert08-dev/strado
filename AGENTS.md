@@ -229,6 +229,39 @@ is what should be corrected.
   `@vercel/analytics`). `script-src` trägt weiterhin `'unsafe-inline'` und
   `'unsafe-eval'`; der Ersatz durch Nonces verlangt die CSP pro Anfrage in
   `proxy.ts` und macht jede Seite dynamisch — offen, bewusst.
+- **Pässe sind seit 2026-09-18 eigene Objekte, und der Passstatus ist frei.**
+  `0104_paesse` und `0105_strecken_verkehr` sind eingespielt (Rollout, Prüfung
+  und Rückweg: `supabase/migrations/README.md`; das Produkt dahinter:
+  `docs/paesse-plan.md`). Vier Dinge, die man vorher wissen muss:
+  - **Ein Pass ist kein Streckenattribut.** `paesse` ist ein Katalog von 34
+    Passhöhen mit Scheitelpunkt; welche Strecke über welchen Pass führt,
+    steht nirgends gepflegt, sondern wird gerechnet (View `strecken_paesse`,
+    `ST_DWithin` 400 m, `security_invoker`). Eine neue Strecke hängt damit
+    ohne Handgriff am richtigen Pass. Die Sammlung (`meine_paesse`) zählt
+    über den **Track** (150 m), nicht über die Streckenliste — eine freie
+    Fahrt über den Klausen zählt.
+  - **Der Status ist nicht Premium und soll es nicht werden.** Wer vor einer
+    gesperrten Strasse steht, hat nichts davon, dass die Information hinter
+    einer Schranke korrekt war. Zwei Quellen, eine Schreibstelle
+    (`pass_status_anwenden`): der ASTRA-Feed (Cron alle fünf Minuten) und die
+    Übersteuerung durch Moderatoren, die für eine Frist gilt und den Feed
+    solange sperrt.
+  - **„Offen" heisst „keine Sperrung gemeldet".** Die Zuordnung läuft über
+    den Meldungstext, weil die TMC-Ortstabelle nicht im offenen Datensatz
+    liegt — sie kann danebenliegen. Im Kernwinter eines saisonalen Passes und
+    bei einem über 30 Minuten stillen Feed sagt die App „kein Stand" statt
+    „offen". Wer diese Regeln lockert, verkauft eine Vermutung als Auskunft.
+  - **Die Kachel „Pässe befahren" im Profil zählt weiterhin Strecken**, nicht
+    Passhöhen, und `lib/achievements.ts` ebenso. Die Sammlung steht als
+    eigene Zeile daneben. Das ist bewusst offen gelassen: die Zusammenführung
+    ist eine Produktentscheidung (und betrifft das Teilen-Bild), kein
+    Aufräumen nebenbei.
+  - **Zwei ältere Zweige bauen dasselbe anders**, beide nicht eingespielt und
+    nicht gemerged: `staging-premium-pass-alarm` (Status je *Strecke*, Alarm
+    hinter Premium, Migration `0112`) und `staging-premium-pass-sammlung`
+    (Sammlung aus Passstrassen-Strecken, Premium). Wer einen davon weiterführt,
+    muss zuerst entscheiden, welche der beiden Welten gilt — nebeneinander
+    ergeben sie zwei Wahrheiten über denselben Pass.
 - **Migrations are applied by hand.** Green CI means nothing about the live
   schema — nothing applies a migration for you. As of 2026-09-14 the repo and
   the production database do match: `0083_feedback` went in on 2026-09-13, and

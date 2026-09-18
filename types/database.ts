@@ -23,6 +23,74 @@ export type Motorklasse =
   | "auto_bis220"
   | "auto_ueber220";
 export type Kategorie = "kurvig" | "scenic" | "passstrasse" | "freie_fahrt";
+
+// Pässe (0104). Ein Pass ist ein eigenes Objekt, keine Streckeneigenschaft:
+// sein Zustand gilt für jede Strecke, die über ihn führt, und die Sammlung
+// zählt Passhöhen statt Strecken. Die Zuordnung Strecke ↔ Pass wird über die
+// Geometrie gerechnet (View strecken_paesse), nicht gepflegt.
+export type PassZustandDb =
+  | "offen"
+  | "eingeschraenkt"
+  | "gesperrt"
+  | "wintersperre"
+  | "unbekannt";
+export type PassStatusQuelle = "feed" | "moderation";
+export type PassSperrtagArt = "autofrei" | "veranstaltung" | "bauarbeiten" | "sonstiges";
+
+export interface Pass {
+  id: string;
+  name: string;
+  hoehe_m: number;
+  kantone: string[];
+  /** Übliche Wintersperre als Monatsspanne; beide null = ganzjährig. */
+  wintersperre_ab_monat: number | null;
+  wintersperre_bis_monat: number | null;
+  /** Schreibweisen für die Zuordnung von Verkehrsmeldungen (lib/passMeldungen.ts). */
+  suchbegriffe: string[];
+  created_at: string;
+}
+
+export interface PassStatusRow {
+  pass_id: string;
+  zustand: PassZustandDb;
+  meldung: string | null;
+  quelle: PassStatusQuelle;
+  seit: string;
+  /** Bis dahin schreibt der Feed nicht über eine Moderator-Setzung. */
+  manuell_bis: string | null;
+  aktualisiert_am: string;
+}
+
+export interface PassEreignisRow {
+  id: number;
+  pass_id: string;
+  zustand: Exclude<PassZustandDb, "unbekannt">;
+  vorher: Exclude<PassZustandDb, "unbekannt"> | null;
+  quelle: PassStatusQuelle;
+  meldung: string | null;
+  erfasst_am: string;
+}
+
+export interface PassSperrtag {
+  id: string;
+  pass_id: string;
+  von: string;
+  bis: string;
+  art: PassSperrtagArt;
+  titel: string;
+  zeitfenster: string | null;
+  quelle_url: string | null;
+  erstellt_von: string | null;
+  erstellt_am: string;
+}
+
+/** Verkehrsprofil einer Strecke (0105): 1.00 ist die ruhigste Stunde. */
+export interface StreckenVerkehr {
+  route_id: string;
+  wochentag: number;
+  stunde: number;
+  faktor: number;
+}
 export type SaisonStatus = "ganzjaehrig" | "saisonal";
 
 export interface GeoPoint {

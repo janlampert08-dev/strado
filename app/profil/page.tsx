@@ -20,6 +20,7 @@ import VehicleGrid from "@/components/VehicleGrid";
 import AvatarUpload from "@/components/AvatarUpload";
 import RideVisibilityToggle from "@/components/RideVisibilityToggle";
 import AchievementBadges from "@/components/AchievementBadges";
+import { getSammlungsStand } from "@/lib/paesse";
 import ActivityHeatmap from "@/components/ActivityHeatmap";
 import CountUp from "@/components/CountUp";
 import FollowCounts from "@/components/FollowCounts";
@@ -110,6 +111,7 @@ export default async function ProfilPage() {
     unseenKudos,
     istMod,
     istCreatorKonto,
+    sammlung,
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -254,6 +256,8 @@ export default async function ProfilPage() {
     // per cache() request-weit memoisiert.
     isModerator(user.id),
     istCreator(user.id),
+    // Die Passsammlung — eine RPC, die nur eigene Fahrten sieht (0104).
+    getSammlungsStand(),
   ]);
 
   // Die mobile Leiste (BottomNav) führt Creator und Moderation nicht mehr —
@@ -398,6 +402,25 @@ export default async function ProfilPage() {
               />
               <Kennzahl beschriftung="Fahrten" wert={<CountUp value={trackedRides?.length ?? 0} />} />
             </Kennzahlen>
+          )}
+
+          {/* Die Passsammlung steht als eigene Zeile neben den Kacheln, nicht
+              als fünfte Kachel: sie zählt etwas anderes als die Kachel
+              "Pässe befahren" darüber, die weiterhin BEFAHRENE STRECKEN zählt
+              (jede Strecke einmal, auch eine Runde ums Dorf). Die Sammlung
+              zählt Passhöhen aus dem Katalog (0104). Zwei Zahlen mit
+              derselben Überschrift nebeneinander wären die schlechtere
+              Hälfte beider Aussagen. */}
+          {sammlung && sammlung.gesamt > 0 && (
+            <Link
+              href="/paesse"
+              className="flex items-center justify-between gap-3 rounded-lg border border-border px-4 py-3 transition-colors duration-fast hover:border-border-strong"
+            >
+              <span className="text-sm">Passsammlung</span>
+              <span className="font-mono text-sm tabular-nums text-muted">
+                {sammlung.befahren} von {sammlung.gesamt}
+              </span>
+            </Link>
           )}
 
           <div className="flex flex-col divide-y divide-border border-t border-border">
