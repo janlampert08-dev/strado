@@ -311,9 +311,18 @@ export async function bestaetigeRegistrierung(
 
   // Der Code hat (bei acht Ziffern) 10^8 Möglichkeiten und gilt 60 Minuten
   // — ohne Bremse wäre er in dieser Zeit trotzdem durchprobierbar. Mit zehn
-  // Versuchen je zehn Minuten sind es über die Gültigkeitsdauer höchstens 60
+  // Versuchen je zehn Minuten sind es über die Gültigkeitsdauer 60
   // Versuche; für eine Nutzerin, die sich zweimal vertippt, ist es
   // weiterhin unmerklich.
+  //
+  // "60" ist dabei die Zahl PRO SERVERLESS-INSTANZ, nicht global:
+  // isRateLimitedByKey hält seinen Zähler in einer Map auf Modulebene
+  // (lib/rateLimit.ts sagt das ausdrücklich), ein verteilter Angreifer
+  // bekommt das Budget also mal Anzahl warmer Instanzen. Selbst bei
+  // unrealistisch vielen bleibt die Latte hoch (60/10^8 je Instanz), aber
+  // die Aussage "höchstens 60" stand hier zu Unrecht — sie ist eine
+  // Obergrenze je Instanz, keine über das System. Dieselbe Einschränkung
+  // steht am Callback (app/auth/callback/route.ts).
   //
   // Zwei Schlüssel wie in signIn: einer pro Adresse (bremst das Erraten
   // eines bestimmten Codes über wechselnde IPs) und einer pro IP (bremst
@@ -753,6 +762,18 @@ export async function deleteAccount(
   );
   if (!password)
     return { error: "Bitte gib dein Passwort zur Bestätigung ein." };
+
+  // Dieselbe Bremse wie in updatePassword, aus demselben Grund: die Prüfung
+  // unten ist ein Passwortversuch wie jeder andere. Ohne sie ist diese
+  // Aktion ein Orakel zum Durchprobieren, das die Limits in signIn()
+  // umgeht — wer eine Sitzung hat (geteiltes Gerät, ausgelesene Cookies),
+  // kann hier beliebig oft raten, und jeder Fehlversuch kostet nichts.
+  // Hier wiegt das schwerer als beim Passwortwechsel: ein Treffer löscht
+  // das Konto, und die Anonymisierung ist nicht rückholbar.
+  // Pro Konto, weil an dieser Stelle immer schon eine Session existiert.
+  if (isRateLimitedByKey(`konto-loeschen:${user.id}`, 5, 5 * 60_000)) {
+    return { error: TOO_MANY_ATTEMPTS_ERROR };
+  }
 
   const { error: reauthError } = await supabase.auth.signInWithPassword({
     email: user.email,

@@ -2,13 +2,25 @@ import { describe, expect, it } from "vitest";
 import {
   FEHLER_BESTAETIGUNG,
   FEHLER_LINK,
+  FEHLER_ZU_VIELE,
   authFehlerText,
 } from "@/lib/authFehler";
 
 describe("authFehlerText", () => {
+  it("sagt bei der Bremse nicht, der Link sei kaputt", () => {
+    // Die Bremse trifft auch, wer nichts falsch gemacht hat (geteilte
+    // Adresse, Mailscanner, der den Link vorab abruft). Die beiden anderen
+    // Meldungen wären hier schlicht unwahr.
+    const text = authFehlerText(FEHLER_ZU_VIELE) ?? "";
+    expect(text).toContain("weiterhin gültig");
+    expect(text).not.toContain("abgelaufen");
+    expect(text).not.toContain("schon verwendet");
+  });
+
   it("kennt die beiden Werte, die der Callback setzt", () => {
     expect(authFehlerText(FEHLER_BESTAETIGUNG)).toBeTruthy();
     expect(authFehlerText(FEHLER_LINK)).toBeTruthy();
+    expect(authFehlerText(FEHLER_ZU_VIELE)).toBeTruthy();
   });
 
   it("nennt beim Zurücksetzen-Link den Browser als möglichen Grund", () => {

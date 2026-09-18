@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { safeInternalPath } from "@/lib/utils/url";
 import { getClientIp, isRateLimitedByKey } from "@/lib/rateLimit";
-import { FEHLER_BESTAETIGUNG, FEHLER_LINK } from "@/lib/authFehler";
+import { FEHLER_BESTAETIGUNG, FEHLER_LINK, FEHLER_ZU_VIELE } from "@/lib/authFehler";
 import { OTP_RECOVERY, istErlaubterOtpTyp } from "@/lib/otpTyp";
 import {
   PASSWORT_AENDERN_PFAD,
@@ -70,14 +70,29 @@ export async function GET(request: Request) {
   // Zaehler je Serverless-Instanz (lib/rateLimit.ts), ein verteilter
   // Angreifer bekommt also das Budget mal Anzahl warmer Instanzen. Sie hebt
   // die Latte, sie schliesst die Tuer nicht.
-  if (isRateLimitedByKey(`authcallback:ip:${getClientIp(request.headers)}`, 20, 10 * 60_000)) {
-    return new NextResponse(null, { status: 429 });
-  }
-
+  //
+  // Die Parameter werden vor der Bremse gelesen, damit ihr Treffer auf
+  // derselben Seite landet wie ein toter Link: ein leerer 429 ist beim
+  // Zurücksetzen der schlechtestmögliche Ausgang — die Person kennt ihr
+  // Passwort nicht, und ein weisses Fenster sagt ihr nichts. Das Lesen
+  // kostet nichts (nur searchParams), es findet weiterhin keine Einlösung
+  // statt, bevor die Bremse entschieden hat.
   const code = searchParams.get("code");
   const tokenHash = searchParams.get("token_hash");
   const typ = searchParams.get("type");
   const next = safeInternalPath(searchParams.get("next")) ?? "/";
+  const zumZuruecksetzen = typ === OTP_RECOVERY || next === PASSWORT_AENDERN_PFAD;
+
+  if (isRateLimitedByKey(`authcallback:ip:${getClientIp(request.headers)}`, 20, 10 * 60_000)) {
+    const ziel = zumZuruecksetzen
+      ? `/anmelden/passwort-vergessen?fehler=${FEHLER_ZU_VIELE}`
+      : `/anmelden?fehler=${FEHLER_ZU_VIELE}`;
+    const antwort = NextResponse.redirect(`${origin}${ziel}`);
+    // Für Maschinen die eigentliche Auskunft; der Mensch bekommt die
+    // Meldung aus lib/authFehler.ts auf der Zielseite.
+    antwort.headers.set("Retry-After", "600");
+    return antwort;
+  }
 
   // Der Typ steuert unten das Wiederherstellungs-Merkmal und geht an
   // verifyOtp(). Er kommt aus der Adresszeile, deshalb die Allow-List:
@@ -143,7 +158,7 @@ export async function GET(request: Request) {
   // weiterhilft — das Passwort ist ja unbekannt. Der Typ zählt hier
   // gleichberechtigt zum Pfad: ein token_hash-Link trägt "recovery", auch
   // wenn sein next-Wert einmal fehlen sollte.
-  const zumZuruecksetzen = typ === OTP_RECOVERY || next === PASSWORT_AENDERN_PFAD;
+  // Oben schon berechnet, damit die Bremse dasselbe Ziel trifft.
   const fehlerZiel = zumZuruecksetzen
     ? `/anmelden/passwort-vergessen?fehler=${FEHLER_LINK}`
     : `/anmelden?fehler=${FEHLER_BESTAETIGUNG}`;
