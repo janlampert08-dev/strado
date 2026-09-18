@@ -1,4 +1,4 @@
-# Amtliche Tempolimits in der Schweiz
+# Tempolimit-Daten der Schweiz
 
 Stand der Recherche: 2026-09-17. Quellen: opendata.swiss (CKAN-API, Suche
 nach «Geschwindigkeit», «Tempo», «vitesse», «velocità»), geocat.ch und die
@@ -16,7 +16,7 @@ einzelne kantonale und städtische Veröffentlichungen in je eigenem Format
 und Umfang. Die App führt sie in `amtliche_tempolimits` (Migration `0102`)
 zusammen.
 
-## Eingebunden
+## Eingebunden: amtliche Quellen
 
 | Quelle (`id`) | Träger | Umfang | Art | Dienst | Hinweis |
 | --- | --- | --- | --- | --- | --- |
@@ -32,6 +32,9 @@ zusammen.
 | `bs-zonen` | Kanton Basel-Stadt | Tempo-30- und Begegnungszonen | Zone | WFS | keine Linien für Hauptstrassen |
 | `stadt-st-gallen-zonen` | Stadt St. Gallen | Tempo-30-Zonen | Zone | Opendatasoft | nur WGS84 |
 | `lu` | Kanton Luzern | Kantonsstrassen | Linie | GeoPackage im ZIP (STAC) | |
+| `emmen` | Gemeinde Emmen LU | alle Strassen | Linie | WFS | der WMS beantwortet auch WFS-Anfragen |
+| `winterthur-zonen` | Stadt Winterthur | verkehrsberuhigte Zonen | Zone | WFS (GML) | nur der `/wms/`-Pfad antwortet, `/wfs/` gibt 401 |
+| `bl-zonen` | Kanton Basel-Landschaft | Tempo-30- und Begegnungszonen, 38 Gemeinden | Zone | WFS (GML) | |
 | `zg` | Kanton Zug, Amt für Umwelt | Kantons- und Gemeindestrassen | Linie | WFS (Lärmkataster) | nur Abschnitte mit `signaled_speed = true` |
 | `so` | Kanton Solothurn | Kantonsstrassen | Linie | Data-API (GeoJSON) | nicht im WFS |
 | `gr` | Kanton Graubünden, Tiefbauamt | Haupt- und Verbindungsstrassen, nur signalisierte Abschnitte | Linie | WFS über Geoportal-Proxy (GML) | kein dokumentierter Dienst, **keine Lizenz angegeben** |
@@ -40,7 +43,37 @@ zusammen.
 | `fr` | Canton de Fribourg | routes cantonales | Linie | ArcGIS REST | |
 | `ge` | Canton de Genève | alle Strassen des Kantons | Zone | ArcGIS REST | Flächen je Tempo-Regime, flächendeckend — daher Rang 2 und kein Randabstand |
 
-19 Quellen, zusammen rund 22 000 Objekte.
+### Lärmkataster als Tempolimit-Quelle
+
+Die Kantone rechnen den Strassenlärm aus der signalisierten Geschwindigkeit
+und veröffentlichen sie als Eingangsgrösse mit. Das ist oft die **einzige**
+Quelle, die auch Gemeindestrassen abdeckt — und in TG, SG und SH die einzige
+überhaupt.
+
+| Quelle (`id`) | Träger | Umfang | Attribut | Hinweis |
+| --- | --- | --- | --- | --- |
+| `sg-laerm` | Kanton St. Gallen | Kantons- **und Gemeindestrassen**, inkl. Stadt St. Gallen | `Signalisierte_Geschwindigkeit_Tag__km_h_` | zweite Seite nur mit kleinem `COUNT` erreichbar |
+| `tg-laerm` | Kanton Thurgau | Staatsstrassen | `day_street_signaled_speed` | einzige TG-Quelle |
+| `lu-laerm` | Kanton Luzern | Kantons- und Gemeindestrassen, inkl. Stadt Luzern | `VT_STR`, gefiltert auf `ART_ERH_GES = 1` | Stand 2018; 26 Abschnitte mit 35 km/h verworfen |
+| `ur-laerm` | Kanton Uri | Kantons- und Hauptstrassen | `vsig` | |
+| `zg` | Kanton Zug | Kantons- und Gemeindestrassen | `day_street_signaled_speed`, nur `signaled_speed = true` | |
+| `sh` | Kanton Schaffhausen | Haupt- und übrige Strassen | `signalisierte_geschwindigkeit_am_tag_kmh` | |
+
+## Eingebunden: nicht amtlich
+
+Beide füllen Lücken, zählen aber nicht in den amtlichen Anteil
+(`amtlich: false`, Spalte an der Quelle seit `0105`):
+
+| Quelle | Warum nicht amtlich | Umfang |
+| --- | --- | --- |
+| `gr-laerm` | Das Feld heisst nur `speed_2019`; keine Beschreibung sagt, dass es die Signalisation ist. Dafür spricht, dass Kanton und Gemeinden ausschliesslich zulässige Signalwerte tragen — die Ausreisser (90, 110) stehen alle auf der A13 des Bundes und sind ausgeschlossen. | 15 719 Abschnitte, inkl. Gemeindestrassen und Chur |
+| `osm` | OpenStreetMap ist keine Behörde. | alle Strassen der Schweiz mit `maxspeed`-Tag |
+
+OpenStreetMap ist die einzige Quelle für Wallis, Tessin, Waadt und das
+Berner Oberland. Die Kürzel `CH:motorway`/`CH:trunk`/`CH:rural`/`CH:urban`
+werden zu 120/100/80/50 aufgelöst, `none`, `walk`, `signals` und
+mph-Angaben fallen weg. Lizenz ODbL — **die Namensnennung «© OpenStreetMap-Mitwirkende»
+gehört an jede Stelle, die solche Werte anzeigt.**
 
 ## Wie abgeglichen wird
 

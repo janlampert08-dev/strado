@@ -46,6 +46,9 @@ export default function RouteDetailMap({
   const [showTraffic, setShowTraffic] = useState(false);
   const [show3D, setShow3D] = useState(false);
   const hasTempolimits = !!route.tempolimits?.length;
+  // Die ODbL verlangt die Namensnennung überall, wo Werte aus
+  // OpenStreetMap stehen — also nur, wenn diese Strecke welche trägt.
+  const zeigtOsmTempolimits = !!route.tempolimits?.some((s) => s.quelle === "osm");
 
   const coordinates = route.geometry_geojson.coordinates as [number, number][];
   const unavailable = !MAPBOX_TOKEN || coordinates.length < 2;
@@ -143,6 +146,11 @@ export default function RouteDetailMap({
                 {l.label}
               </div>
             ))}
+            {zeigtOsmTempolimits && (
+              <p className="mt-1 max-w-40 text-[0.6875rem] leading-tight text-muted-foreground">
+                Teils © OpenStreetMap-Mitwirkende (ODbL)
+              </p>
+            )}
           </Card>
         )}
         {showTraffic && trafficSegments.length > 0 && (

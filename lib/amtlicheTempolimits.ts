@@ -30,6 +30,8 @@ export interface AmtlicheZeile {
   rang: number;
   rand_m: number;
   kmh: number;
+  // false für OpenStreetMap; fehlt, solange 0104 nicht eingespielt ist.
+  amtlich?: boolean;
   geom_geojson: { type: string; coordinates: unknown } | null;
 }
 
@@ -56,7 +58,7 @@ export async function mitAmtlichenTempolimits(
 export function zuObjekt(z: AmtlicheZeile): AmtlichesObjekt | null {
   const g = z.geom_geojson;
   if (!g) return null;
-  const basis = { quelle: z.quelle, rang: z.rang, randM: z.rand_m, kmh: z.kmh };
+  const basis = { quelle: z.quelle, rang: z.rang, randM: z.rand_m, kmh: z.kmh, amtlich: z.amtlich !== false };
   switch (g.type) {
     case "LineString":
       return { ...basis, linien: [g.coordinates as Lv95[]] };

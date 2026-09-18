@@ -29,6 +29,29 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Eingespielt: 0105_tempolimits_quellen_amtlich (2026-09-18, Produktion)
+
+Spalte `amtlich` an `amtliche_tempolimit_quellen` (Vorgabe true) und
+`amtliche_tempolimits_entlang()` gibt sie mit zurück. Nötig, weil seither
+zwei Quellen dabei sind, die keine amtliche Signalisationsangabe sind:
+OpenStreetMap (deckt als einzige Wallis, Tessin, Waadt und das Berner
+Oberland ab) und der Bündner Lärmkataster (Feld heisst nur `speed_2019`).
+
+Der Rückgabetyp ändert sich, deshalb `drop` + `create` statt
+`create or replace`; die Rechte werden danach neu gesetzt, weil ein Drop sie
+mitnimmt. Gemessen danach: `anon` darf nicht ausführen, `authenticated` schon.
+
+**0105, nicht 0104:** 0104 bleibt für PR #281 frei, die wegen der Kollision
+mit dem eingespielten 0103 umnummerieren muss.
+
+**Daten am 2026-09-18 nachgeladen:** acht weitere amtliche Quellen, vor allem
+Lärmkataster, die die signalisierte Geschwindigkeit als Modelleingang führen
+und oft auch Gemeindestrassen abdecken — SG (18 842, inkl. Gemeindestrassen
+und Stadt St. Gallen), GR-Lärmkataster (15 719, nicht als amtlich
+ausgewiesen), TG (4 969), LU (4 115), UR (501), dazu Emmen (1 069),
+Winterthur (154) und BL (289) als Zonen. Bestand danach: 27 Quellen,
+67 712 Objekte, 0 ungültige Geometrien.
+
 ## Eingespielt: 0102 und 0103 (amtliche Tempolimits, 2026-09-17, Produktion)
 
 | Datei | Ledger | Was |

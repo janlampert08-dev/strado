@@ -9,20 +9,54 @@
 // maschinenlesbaren, frei zugänglichen Datensatz — siehe
 // docs/amtliche-tempolimits.md für die Lücken und die Begründung.
 //
-// rang: bei Überschneidungen gewinnt der kleinere Rang. Kommunale
-// Liniendaten (1) sind am genauesten, kantonale Linien (2) decken meist nur
-// Kantonsstrassen ab, Zonen-Flächen (3) sagen nichts über eine Strasse, die
-// nur am Rand vorbeiführt.
+// rang: bei Überschneidungen gewinnt der kleinere Rang.
+//   1  kommunale Liniendaten — am genauesten
+//   2  kantonale Liniendaten (meist nur Kantonsstrassen) und Genf
+//   3  Lärmkataster, die die signalisierte Geschwindigkeit ausdrücklich
+//      führen — dieselbe Zahl, aber als Modelleingang erhoben
+//   4  Zonen-Flächen — sagen nichts über eine Strasse, die nur am Rand
+//      vorbeiführt
+//   5  Lärmkataster, deren Geschwindigkeit nicht als signalisiert deklariert
+//      ist (GR) — die Werte sehen danach aus, belegt ist es nicht
+//   9  OpenStreetMap
 //
 // art: "linie" wird über den Abstand zur Achse abgeglichen, "zone" darüber,
 // ob der Streckenpunkt deutlich innerhalb der Fläche liegt.
+//
+// amtlich: false nur für OpenStreetMap — die einzige Quelle, die das ganze
+// Land abdeckt, aber eben keine Behörde ist. Ihre Werte füllen die Lücken
+// (Wallis, Tessin, Waadt, Berner Oberland), zählen aber nicht in den
+// amtlichen Anteil und stehen im Rang hinter jeder Behördenquelle.
 
-import { arcgis, geojsonDownload, geopackageZip, opendatasoft, wfsGeoJson, wfsGeoJsonWgs84, wfsGml } from "./laden.mjs";
+import {
+  arcgis,
+  geojsonDownload,
+  geopackageZip,
+  opendatasoft,
+  overpassMaxspeed,
+  wfsGeoJson,
+  wfsGeoJsonWgs84,
+  wfsGml,
+} from "./laden.mjs";
 
 const OPEN = "opendata.swiss, Nutzungsbedingung «Open use»";
 const OPEN_BY = "opendata.swiss, Nutzungsbedingung «Open use. Must provide the source»";
 
 export const QUELLEN = [
+  // --- Schweiz, nicht amtlich ----------------------------------------------
+  {
+    id: "osm",
+    name: "OpenStreetMap maxspeed",
+    traeger: "OpenStreetMap-Mitwirkende",
+    gebiet: "ganze Schweiz, Strassen mit maxspeed-Tag",
+    datensatz: "https://www.openstreetmap.org",
+    lizenz: "ODbL 1.0 — Namensnennung «© OpenStreetMap-Mitwirkende» nötig",
+    amtlich: false,
+    art: "linie",
+    rang: 9,
+    laden: overpassMaxspeed(),
+  },
+
   // --- Kanton Zürich -------------------------------------------------------
   {
     id: "zh",
@@ -47,7 +81,7 @@ export const QUELLEN = [
     datensatz: "https://opendata.swiss/de/dataset/tempo30-und-begegnungszonen-verfugt",
     lizenz: OPEN,
     art: "zone",
-    rang: 3,
+    rang: 4,
     randM: 15,
     laden: wfsGeoJson({
       url: "https://maps.zh.ch/wfs/OGDZHWFS",
@@ -184,7 +218,7 @@ export const QUELLEN = [
     datensatz: "https://services.geo.zg.ch/ows/strassenlaermkataster",
     lizenz: "Kanton Zug, Geodienste (Nutzungsbedingungen zg.ch)",
     art: "linie",
-    rang: 2,
+    rang: 3,
     laden: wfsGeoJsonWgs84({
       url: "https://services.geo.zg.ch/ows/strassenlaermkataster",
       typename: "zg_emissionen_alle_linien",
@@ -235,7 +269,7 @@ export const QUELLEN = [
     datensatz: "https://opendata.swiss/de/dataset/tempo-30-zone",
     lizenz: OPEN,
     art: "zone",
-    rang: 3,
+    rang: 4,
     randM: 15,
     laden: async () => [
       ...(await wfsGeoJson({ url: "https://wfs.geo.bs.ch/", typename: "ms:VR_Tempo30Zone", format: "geojson", kmh: () => 30 })()),
@@ -252,7 +286,7 @@ export const QUELLEN = [
     datensatz: "https://opendata.swiss/de/dataset/tempo-30-zonen2",
     lizenz: "CC BY 4.0",
     art: "zone",
-    rang: 3,
+    rang: 4,
     randM: 15,
     laden: opendatasoft({
       url: "https://daten.stadt.sg.ch/api/explore/v2.1/catalog/datasets/tempo-30-zonen/exports/geojson",
@@ -286,13 +320,171 @@ export const QUELLEN = [
     datensatz: "https://wfs.geo.sh.ch/wfs",
     lizenz: "Kanton Schaffhausen, OGD",
     art: "linie",
-    rang: 2,
+    rang: 3,
     laden: wfsGeoJsonWgs84({
       url: "https://wfs.geo.sh.ch/wfs",
       typename: "sh.verkehr.laermbelastung.haupt_uebrigestrassen.linie.strassenachse",
       format: "application/json",
       kmh: (p) => Number(p.signalisierte_geschwindigkeit_am_tag_kmh) || null,
     }),
+  },
+
+
+  // --- Lärmkataster: dieselbe signalisierte Geschwindigkeit, als Eingang
+  // der Lärmberechnung erhoben. Oft die einzige Quelle, die auch
+  // Gemeindestrassen abdeckt.
+  {
+    id: "sg-laerm",
+    name: "Strassenlärmbelastungskataster: Lärmemission",
+    traeger: "Kanton St. Gallen",
+    gebiet: "Kantons- und Gemeindestrassen SG (inkl. Stadt St. Gallen)",
+    datensatz: "https://services.geo.sg.ch/wss/service/SG00164_WFS/guest",
+    lizenz: OPEN,
+    art: "linie",
+    rang: 3,
+    // Zwei Seiten, und die zweite braucht eine Eigenheit des Servers: er
+    // deckelt die erste Anfrage bei 10 000 und liefert ab STARTINDEX=10000
+    // nur dann den Rest (10 944), wenn COUNT klein ist — mit COUNT=10000
+    // oder ganz ohne COUNT kommen null Objekte zurück.
+    laden: async () => {
+      const seiten = [0, 10000].map((start) =>
+        wfsGeoJsonWgs84({
+          url: "https://services.geo.sg.ch/wss/service/SG00164_WFS/guest",
+          typename: "SG00164:Laermemission",
+          format: "GEOJSON",
+          version: "2.0.0",
+          zusatz: { STARTINDEX: String(start), COUNT: start === 0 ? "10000" : "5" },
+          kmh: (p) => p.Signalisierte_Geschwindigkeit_Tag__km_h_,
+        })(),
+      );
+      return (await Promise.all(seiten)).flat();
+    },
+  },
+  {
+    id: "tg-laerm",
+    name: "Strassen-Lärm-Emissions-Kataster (SLEK)",
+    traeger: "Kanton Thurgau",
+    gebiet: "Staatsstrassen TG",
+    datensatz: "https://ows.geo.tg.ch/geofy_access_proxy/laermemissionskataster",
+    lizenz: OPEN,
+    art: "linie",
+    rang: 3,
+    laden: wfsGeoJson({
+      url: "https://ows.geo.tg.ch/geofy_access_proxy/laermemissionskataster",
+      typename: "ms:Strassenlaermemission_Achse",
+      format: "geojson",
+      seite: 10000,
+      kmh: (p) => Number(p.day_street_signaled_speed) || null,
+    }),
+  },
+  {
+    id: "lu-laerm",
+    name: "Strassenlärmkataster 2018: Emissionsstrecken",
+    traeger: "Kanton Luzern",
+    // ART_ERH_GES = 1 heisst "signalisierte Geschwindigkeit"; alles andere
+    // ist ein Mittelwert und fällt weg. 35 km/h gibt es nicht — Datenfehler.
+    gebiet: "Kantons- und Gemeindestrassen LU (inkl. Stadt Luzern), Stand 2018",
+    stand: "2018-01-01",
+    datensatz: "https://public.geo.lu.ch/ogd/rest/services/managed/SLKAT18X_COL_V2_MP/MapServer/5",
+    lizenz: "Open-BY (geoportal.lu.ch/Nutzungsbedingungen)",
+    art: "linie",
+    rang: 3,
+    laden: arcgis({
+      layerUrl: "https://public.geo.lu.ch/ogd/rest/services/managed/SLKAT18X_COL_V2_MP/MapServer/5",
+      feld: "VT_STR",
+      felder: "VT_STR,ART_ERH_GES",
+      seite: 2000,
+      kmh: (wert, attr) => (attr.ART_ERH_GES === 1 && wert !== 35 ? Number(wert) : null),
+    }),
+  },
+  {
+    id: "ur-laerm",
+    name: "Strassenverkehrslärm: Emissionen IST (Tag)",
+    traeger: "Kanton Uri (LISAG)",
+    gebiet: "Kantons- und Hauptstrassen UR",
+    datensatz: "https://opendata.swiss/de/dataset/larmbelastungskataster-strassen-tag-ur",
+    lizenz: OPEN,
+    art: "linie",
+    rang: 3,
+    laden: wfsGeoJson({
+      url: "https://geo.ur.ch/wfs",
+      typename: "umwelt:strassenlaerm_emissionen_tag_ist",
+      kmh: (p) => p.vsig,
+    }),
+  },
+  {
+    id: "gr-laerm",
+    name: "Strassenlärmkataster: Strasseneigentümer 2019",
+    traeger: "Kanton Graubünden",
+    // Das Feld heisst nur "speed_2019"; dass es die Signalisation ist, sagt
+    // keine Beschreibung. Dafür spricht, dass Kanton und Gemeinden
+    // ausschliesslich zulässige Signalwerte tragen — die Ausreisser (90,
+    // 110) stehen alle auf der A13 des Bundes und fallen hier weg. Bis das
+    // der Kanton bestätigt: nicht als amtlich ausgewiesen.
+    gebiet: "Kantons- und Gemeindestrassen GR (inkl. Chur), Stand 2019",
+    stand: "2019-01-01",
+    datensatz: "https://map.geo.gr.ch",
+    lizenz: "nicht angegeben (öffentlich abrufbar über map.geo.gr.ch)",
+    amtlich: false,
+    art: "linie",
+    rang: 5,
+    laden: wfsGml({
+      url: "https://map.geo.gr.ch/mapserv_proxy?ogcserver=Kanton%20Graub%C3%BCnden%2C%20L%C3%A4rmbelastungskataster%20Strassen",
+      typename: "ms:Strasseneigentuemer_2019",
+      attribut: "speed_2019",
+      ausschluss: (block) => /<ms:ktst_eig>Bund</.test(block),
+    }),
+  },
+
+  // --- Weitere Gemeinden ----------------------------------------------------
+  {
+    id: "emmen",
+    name: "Signalisierte Höchstgeschwindigkeiten Emmen",
+    traeger: "Gemeinde Emmen",
+    gebiet: "Gemeinde Emmen (LU), alle Strassen",
+    datensatz: "https://opendata.swiss/de/dataset/signalisierte-geschwindigkeiten-emmen",
+    lizenz: OPEN,
+    art: "linie",
+    rang: 1,
+    laden: wfsGeoJsonWgs84({
+      url: "https://gis.gict.ch/ows/emmen_admin/WMS_Emmen_all_pub",
+      typename: "Signalisierte_Höchstgeschwindigkeiten",
+      format: "GeoJSON",
+      kmh: (p) => p.tempo,
+    }),
+  },
+  {
+    id: "winterthur-zonen",
+    name: "Verkehrsberuhigte Zonen Winterthur",
+    traeger: "Stadt Winterthur",
+    gebiet: "Stadt Winterthur",
+    datensatz: "https://stadtplan.winterthur.ch",
+    lizenz: "nicht angegeben",
+    art: "zone",
+    rang: 4,
+    randM: 15,
+    laden: wfsGml({
+      url: "https://stadtplan.winterthur.ch/wms/VerkehrsberuhigteZonen",
+      typename: "ms:VerkehrsberuhigteZone",
+      attribut: "Tempozone",
+      flaeche: true,
+      kmh: (t) => (/begegnung/i.test(t) ? 20 : /30/.test(t) ? 30 : null),
+    }),
+  },
+  {
+    id: "bl-zonen",
+    name: "Tempo-30- und Begegnungszonen Basel-Landschaft",
+    traeger: "Kanton Basel-Landschaft",
+    gebiet: "Gemeinden BL",
+    datensatz: "https://geowms.bl.ch",
+    lizenz: "nicht angegeben",
+    art: "zone",
+    rang: 4,
+    randM: 15,
+    laden: async () => [
+      ...(await wfsGml({ url: "https://geowms.bl.ch/", typename: "ms:verkehr_tempo30_zonen", flaeche: true, kmh: () => 30 })()),
+      ...(await wfsGml({ url: "https://geowms.bl.ch/", typename: "ms:verkehr_begegnungszonen", flaeche: true, kmh: () => 20 })()),
+    ],
   },
 
   // --- Westschweiz --------------------------------------------------------

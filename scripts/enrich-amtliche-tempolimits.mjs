@@ -65,9 +65,11 @@ async function quelleLaden(quelle) {
   return daten;
 }
 
-async function alleQuellenLaden() {
+// ids grenzt ein, welche Quellen überhaupt geladen werden — sonst zieht ein
+// Hochladen einzelner Quellen jedes Mal auch alle übrigen nach.
+async function alleQuellenLaden(ids = []) {
   const geladen = [];
-  for (const quelle of QUELLEN) {
+  for (const quelle of QUELLEN.filter((q) => !ids.length || ids.includes(q.id))) {
     try {
       const daten = await quelleLaden(quelle);
       geladen.push({ quelle, daten });
@@ -209,7 +211,7 @@ async function modusHochladen(ids) {
   const db = createClient(url, key, { auth: { persistSession: false } });
 
   log("Lade amtliche Quellen...");
-  const geladen = (await alleQuellenLaden()).filter(({ quelle }) => !ids.length || ids.includes(quelle.id));
+  const geladen = await alleQuellenLaden(ids);
 
   for (const { quelle, daten } of geladen) {
     const meta = {
@@ -223,6 +225,7 @@ async function modusHochladen(ids) {
       art: quelle.art,
       rang: quelle.rang,
       rand_m: quelle.randM ?? 0,
+      amtlich: quelle.amtlich !== false,
       anzahl: 0,
       geladen_am: daten.geladen,
     };

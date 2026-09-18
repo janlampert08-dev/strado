@@ -18,9 +18,13 @@ import type { TempolimitSegment } from "@/types/database";
 
 export type Lv95 = [number, number];
 
+// amtlich: false für OpenStreetMap — der Wert gilt trotzdem als bekannt,
+// aber nicht als amtlich (siehe scripts/amtliche-tempolimits/quellen.mjs).
+type Gemeinsam = { quelle: string; rang: number; randM: number; kmh: number; amtlich?: boolean };
+
 export type AmtlichesObjekt =
-  | { quelle: string; rang: number; randM: number; kmh: number; linien: Lv95[][] }
-  | { quelle: string; rang: number; randM: number; kmh: number; flaechen: Lv95[][][] };
+  | (Gemeinsam & { linien: Lv95[][] })
+  | (Gemeinsam & { flaechen: Lv95[][][] });
 
 // GPS-/Digitalisierungsabstand, bis zu dem eine amtliche Achse als dieselbe
 // Strasse gilt — derselbe Wert wie im früheren Zürcher Skript.
@@ -211,7 +215,7 @@ export function tempolimitsAbgleichen(
   const proPunkt: Punkt[] = coords.map((c, i) => {
     if (i > 0) km += haversineM(coords[i - 1], c) / 1000;
     const t = index.treffer(punkte, i);
-    if (t) return { km, kmh: t.objekt.kmh, bekannt: true, amtlich: true, quelle: t.objekt.quelle };
+    if (t) return { km, kmh: t.objekt.kmh, bekannt: true, amtlich: t.objekt.amtlich !== false, quelle: t.objekt.quelle };
     const alt =
       basis.find((s) => km >= s.km_von - 1e-6 && km <= s.km_bis + 1e-6) ??
       basis[basis.length - 1] ?? { kmh: 80, bekannt: false };
