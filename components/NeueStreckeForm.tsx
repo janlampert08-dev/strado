@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import { mitAnzahl } from "@/lib/format";
 import dynamic from "next/dynamic";
 import { Check } from "lucide-react";
 import DragSheet from "@/components/ui/DragSheet";
@@ -219,7 +220,7 @@ export default function NeueStreckeForm() {
               der gerade Wegpunkte gesetzt werden — jeder Pixel, den sie
               nimmt, fehlt dort. */}
           <div className="-my-2 flex items-center gap-3 text-xs text-muted">
-            <span>{waypoints.length} Wegpunkt(e) gesetzt</span>
+            <span>{mitAnzahl(waypoints.length, "Wegpunkt", "Wegpunkte")} gesetzt</span>
             {waypoints.length > 0 && (
               <button
                 type="button"

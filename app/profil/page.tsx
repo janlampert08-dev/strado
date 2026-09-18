@@ -25,7 +25,7 @@ import CountUp from "@/components/CountUp";
 import FollowCounts from "@/components/FollowCounts";
 import PremiumCard from "@/components/PremiumCard";
 import FahrtStatistik from "@/components/FahrtStatistik";
-import { ChartIcon, ShieldIcon } from "@/components/NavIcons";
+import { ChartIcon, RecordIcon, ShieldIcon } from "@/components/NavIcons";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
 import { isModerator } from "@/lib/moderation";
@@ -34,7 +34,7 @@ import { getRollenItems } from "@/lib/nav";
 import { getUnseenKudosCount } from "@/lib/kudos";
 import { markKudosSeen } from "@/lib/actions/kudos";
 import { getFollowCounts, getFollowerProfiles, getFollowingProfiles } from "@/lib/follows";
-import { formatDuration, formatKm } from "@/lib/format";
+import { formatDuration, formatKm, datumCH } from "@/lib/format";
 import { freieFahrtTitel } from "@/lib/completions";
 import { publicationBlockReason } from "@/lib/track";
 import { summiereHoehenmeter } from "@/lib/hoehenmeter";
@@ -46,6 +46,10 @@ import EmptyState from "@/components/ui/EmptyState";
 import { buttonVariants, textAktionClassName } from "@/components/ui/Button";
 import { iconButtonVariants } from "@/components/ui/IconButton";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
+
+// Ohne eigenen Titel hiess der Tab auf dieser Seite nur "Strado" — neben
+// anderen offenen Tabs derselben App nicht zu unterscheiden.
+export const metadata = { title: "Profil – Strado" };
 
 // Gemeinsamer Stil für die aufklappbaren Unterabschnitte innerhalb einer
 // Gruppen-Card (siehe AdvancedFiltersPanel.tsx für dasselbe native
@@ -364,18 +368,35 @@ export default async function ProfilPage() {
             Siehe docs/design-vereinfachung.md, Abschnitt 3.9. */}
         <section className="flex flex-col gap-3">
           <SectionHeading icon={Gauge}>Kennzahlen</SectionHeading>
-          <Kennzahlen>
-            <Kennzahl beschriftung="Pässe befahren" wert={<CountUp value={passCount} />} />
-            <Kennzahl
-              beschriftung="Höhenmeter gesammelt"
-              wert={<CountUp value={hoehenmeter} unit="m" />}
+          {/* Vier Kacheln mit einer Null darin sind für ein neues Konto die
+              erste Aussage der eigenen Profilseite — und sie sagt nur, was
+              fehlt. Solange es keine einzige Fahrt gibt, steht an ihrer
+              Stelle der eine nächste Schritt; die Kacheln erscheinen mit der
+              ersten Fahrt, dann tragen sie auch etwas. */}
+          {(trackedRides?.length ?? 0) === 0 && passCount === 0 ? (
+            <EmptyState
+              icon={RecordIcon}
+              title="Noch keine Fahrt aufgezeichnet — deine Kennzahlen entstehen mit der ersten."
+              action={
+                <Link href="/fahrten/neu" className={buttonVariants({ variant: "accent", size: "sm" })}>
+                  Erste Fahrt aufzeichnen
+                </Link>
+              }
             />
-            <Kennzahl
-              beschriftung="Km gefahren"
-              wert={<CountUp value={getrackteDistanzGesamt} unit="km" />}
-            />
-            <Kennzahl beschriftung="Fahrten" wert={<CountUp value={trackedRides?.length ?? 0} />} />
-          </Kennzahlen>
+          ) : (
+            <Kennzahlen>
+              <Kennzahl beschriftung="Pässe befahren" wert={<CountUp value={passCount} />} />
+              <Kennzahl
+                beschriftung="Höhenmeter gesammelt"
+                wert={<CountUp value={hoehenmeter} unit="m" />}
+              />
+              <Kennzahl
+                beschriftung="Km gefahren"
+                wert={<CountUp value={getrackteDistanzGesamt} unit="km" />}
+              />
+              <Kennzahl beschriftung="Fahrten" wert={<CountUp value={trackedRides?.length ?? 0} />} />
+            </Kennzahlen>
+          )}
 
           <div className="flex flex-col divide-y divide-border border-t border-border">
             {/* Auf dem Telefon zugeklappt, ab sm offen. Der
@@ -501,8 +522,8 @@ export default async function ProfilPage() {
                                 {/* Datum jetzt Teil derselben mono/tabular-nums-Zeile wie
                                     Dauer/Tempo statt separat rechts neben dem Titel — gleiche
                                     Schrift, Grösse und Punkt-Trennung wie die übrigen Werte. */}
-                                <div className="flex items-center gap-2 font-mono text-xs tabular-nums text-muted">
-                                  <span>{new Date(ride.datum).toLocaleDateString("de-CH")}</span>
+                                <div className="flex items-center gap-2 text-xs tabular-nums text-muted">
+                                  <span>{datumCH(new Date(ride.datum))}</span>
                                   <span aria-hidden="true">·</span>
                                   {/* Stoppuhr-Icon davor, damit "06:26" nicht als Uhrzeit
                                       gelesen wird — es ist die gestoppte Fahrtdauer. Gleiche
@@ -571,7 +592,7 @@ export default async function ProfilPage() {
                               <span className="transition-colors duration-fast group-hover:text-accent">
                                 {f.routes.name}
                               </span>
-                              <span className="font-mono text-sm tabular-nums text-muted">
+                              <span className="text-sm tabular-nums text-muted">
                                 {formatKm(f.routes.laenge_km)} km
                               </span>
                             </Link>

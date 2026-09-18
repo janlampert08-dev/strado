@@ -48,3 +48,8 @@ export { Star as SternIcon } from "lucide-react";
 // (components/ActivityList.tsx). Dasselbe Zeichen, das die Kopfleiste als
 // Einstieg in /aktivitaet zeigt.
 export { Flame as AktivitaetIcon } from "lucide-react";
+
+// Ebenfalls kein Nav-Icon: der Streifen "Aufzeichnung unterbrochen" unter
+// dem Kopf (components/OffeneAufzeichnung.tsx) zeigt damit, dass er ein Weg
+// zurück ist und keine blosse Meldung.
+export { ChevronRight as WeiterIcon } from "lucide-react";

@@ -40,9 +40,14 @@ export function chipClassName(aktiv: boolean, gross = false): string {
   return cn(
     "inline-flex shrink-0 items-center rounded-full border px-3 text-sm font-medium whitespace-nowrap transition-colors duration-fast",
     gross ? "min-h-11" : "min-h-9",
+    // Gewählt = gefüllt in der Vordergrundfarbe, wie ein Segment in
+    // ui/SegmentedControl. Vorher blau gefüllt: dieselbe Rolle ("das ist
+    // ausgewählt") sah in den Ranglisten anders aus als im Feed-Reiter und in
+    // der Sichtbarkeitswahl, und Blau heisst in dieser App "tippen löst etwas
+    // aus", nicht "ist gewählt".
     aktiv
-      ? "border-accent bg-accent text-background"
-      : "border-border text-muted hover:border-border-strong hover:text-foreground",
+      ? "border-foreground bg-foreground text-background"
+      : "border-border-control text-muted hover:border-border-strong hover:text-foreground",
   );
 }
 
@@ -53,7 +58,7 @@ export function unterChipClassName(aktiv: boolean): string {
   return cn(
     "inline-flex min-h-8 shrink-0 items-center rounded-full border px-2.5 text-xs font-medium whitespace-nowrap transition-colors duration-fast",
     aktiv
-      ? "border-accent bg-accent-subtle text-accent"
-      : "border-border text-muted hover:border-border-strong hover:text-foreground",
+      ? "border-foreground bg-surface text-foreground"
+      : "border-border-control text-muted hover:border-border-strong hover:text-foreground",
   );
 }

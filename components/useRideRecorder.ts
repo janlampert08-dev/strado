@@ -97,7 +97,22 @@ export interface RideRecorder {
   // Manueller Start ("Bin schon am Start"), falls die GPS-Genauigkeit am
   // Startpunkt nicht für den automatischen Start reicht.
   beginNow: () => void;
+  /**
+   * Startet die GPS-Watch von Hand. Nur nötig, wenn der Hook mit
+   * `autoStart: false` aufgesetzt ist (freie Fahrt): dort beginnt eine
+   * Aufzeichnung erst mit einem ausdrücklichen Tippen, nicht schon beim
+   * Öffnen des Schirms.
+   */
+  starten: () => void;
   stop: () => void;
+  /**
+   * Eine beendete, noch nicht gespeicherte Fahrt wieder aufnehmen — für den
+   * Fall, dass "beenden" ein Versehen war. Trail, Distanz, Startzeit und
+   * Ticket bleiben, nur die GPS-Watch läuft wieder an. Die Zeit im Fazit
+   * zählt mit: gemessen wird Wanduhr ab dem Start, genau wie die
+   * serverseitige Dauer (letzter Puls − Start, 0098) es ohnehin tut.
+   */
+  fortsetzen: () => void;
   // Aufzeichnung abbrechen/verwerfen: GPS-Watch beenden, Wake Lock
   // freigeben und den lokalen Snapshot löschen.
   discard: () => void;
@@ -116,6 +131,7 @@ export function useRideRecorder({
   storageKey,
   gate = null,
   guestContinuationToken = null,
+  autoStart = true,
 }: {
   // Teil des localStorage-Schlüssels: eine abgebrochene Aufzeichnung darf
   // auf einem geteilten Gerät nicht dem nächsten angemeldeten Nutzer
@@ -129,6 +145,20 @@ export function useRideRecorder({
   // gültigen Marker passiert nichts — eine fremde Gastaufzeichnung auf einem
   // geteilten Gerät darf dem nächsten Konto nicht angeboten werden.
   guestContinuationToken?: string | null;
+  /**
+   * true (Vorgabe): die GPS-Watch startet beim Mount. Richtig für die
+   * Streckenfahrt — dort IST das Öffnen schon die bewusste Handlung
+   * ("Strecke starten" auf der Streckenseite), und die Zeitmessung beginnt
+   * ohnehin erst am Startpunkt.
+   *
+   * false: der Recorder wartet auf starten(). Für die freie Fahrt, deren
+   * Einstieg ein Eintrag der Navigationsleiste ist. Dort begann die Messung
+   * mit dem ersten GPS-Fix nach dem Antippen des Tabs — ein Fehlgriff auf
+   * die mittlere, am leichtesten erreichbare Stelle der Leiste startete also
+   * eine Fahrt. Eine unterbrochene Aufzeichnung wird unabhängig davon immer
+   * wiederaufgenommen: die hat jemand bereits bewusst begonnen.
+   */
+  autoStart?: boolean;
 }): RideRecorder {
   const [phase, setPhase] = useState<RecorderPhase>("idle");
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -196,6 +226,7 @@ export function useRideRecorder({
   const gateRef = useRef(gate);
   const storageKeyRef = useRef(storageKey);
   const userIdRef = useRef(userId);
+  const autoStartRef = useRef(autoStart);
   // Nur der Wert beim Mount zählt — die Übernahme passiert einmalig im
   // Wiederherstellungs-Effekt unten, ein späteres Umschalten der Prop hätte
   // dort keine Wirkung mehr.
@@ -665,6 +696,34 @@ export function useRideRecorder({
     [beginActualTracking, requestWakeLock, stop, writeSnapshot, publishLiveTrail, pulsen],
   );
 
+  const starten = useCallback(() => {
+    if (watchIdRef.current !== null) return;
+    start();
+  }, [start]);
+
+  const fortsetzen = useCallback(() => {
+    if (watchIdRef.current !== null) return;
+    // Derselbe Weg wie nach einem Tab-Kill: start() mit einem Snapshot
+    // übernimmt Trail, Distanz, Startzeit und Ticket aus diesem Stand und
+    // fragt nur die Watch neu an. Die Refs sind hier in jedem Fall gesetzt —
+    // entweder vom stop() eben oder vom Wiederherstellungszweig "finished"
+    // beim Mount, der sie aus dem Snapshot befüllt.
+    const stand: TrackingSnapshot = {
+      phase: "tracking",
+      trail: trailRef.current,
+      distanceKm: distanceKmRef.current,
+      hasStarted: true,
+      hasLeftStart: hasLeftStartRef.current,
+      startTimeMs: startTimeRef.current,
+      savedAt: Date.now(),
+      seconds: null,
+      ticket: ticketRef.current,
+    };
+    setResult(null);
+    start(stand);
+    writeSnapshot(stand, true);
+  }, [start, writeSnapshot]);
+
   const discard = useCallback(() => {
     releaseTracking();
     clearTrackingSnapshot(userIdRef.current, storageKeyRef.current);
@@ -753,7 +812,11 @@ export function useRideRecorder({
         setPhase("finished");
         return;
       }
-      start(snapshot?.phase === "tracking" ? snapshot : undefined);
+      if (snapshot?.phase === "tracking") {
+        start(snapshot);
+        return;
+      }
+      if (autoStartRef.current) start();
     }, 0);
 
     return () => clearTimeout(timeout);
@@ -780,7 +843,9 @@ export function useRideRecorder({
     trailJson,
     ticketJson,
     beginNow: beginActualTracking,
+    starten,
     stop,
+    fortsetzen,
     discard,
     clearSnapshot,
   };

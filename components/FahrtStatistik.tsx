@@ -142,7 +142,7 @@ function AnteilZeile({
     <li className="flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between gap-3 text-sm">
         <span className="min-w-0 truncate">{name}</span>
-        <span className="shrink-0 font-mono tabular-nums text-muted">{anteil} %</span>
+        <span className="shrink-0 tabular-nums text-muted">{anteil} %</span>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-border" aria-hidden="true">
         <div
@@ -155,7 +155,7 @@ function AnteilZeile({
           style={{ width: `${anteil}%`, minWidth: zeile.km > 0 ? "2px" : "0" }}
         />
       </div>
-      <p className="font-mono text-xs tabular-nums text-muted">
+      <p className="text-xs tabular-nums text-muted">
         {zahl(zeile.km)} km · {mitAnzahl(zeile.fahrten, "Fahrt", "Fahrten")} ·{" "}
         {zahl(zeile.hoehenmeter)} m
       </p>
@@ -297,7 +297,7 @@ export default function FahrtStatistik({
             <ul className="flex flex-col gap-3">
               {kurve.map((reihe) => (
                 <li key={reihe.jahr} className="flex flex-col gap-1">
-                  <div className="flex items-baseline justify-between gap-3 font-mono text-xs tabular-nums">
+                  <div className="flex items-baseline justify-between gap-3 text-xs tabular-nums">
                     <span className="font-medium">{reihe.jahr}</span>
                     <span className="text-muted">
                       {zahl(reihe.summe.km)} km ·{" "}
@@ -387,7 +387,7 @@ export default function FahrtStatistik({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[20rem] text-sm tabular-nums">
               <thead>
-                <tr className="text-left text-xs text-muted uppercase">
+                <tr className="text-left text-xs text-muted">
                   <th scope="col" className="py-1 pr-3 font-medium">
                     Jahr
                   </th>
@@ -405,16 +405,16 @@ export default function FahrtStatistik({
               <tbody className="divide-y divide-border">
                 {jahre.map((zeile) => (
                   <tr key={zeile.jahr}>
-                    <th scope="row" className="py-2 pr-3 text-left font-mono font-medium">
+                    <th scope="row" className="py-2 pr-3 text-left font-medium">
                       {zeile.jahr}
                     </th>
-                    <td className="py-2 pr-3 text-right font-mono">{zahl(zeile.fahrten)}</td>
+                    <td className="py-2 pr-3 text-right">{zahl(zeile.fahrten)}</td>
                     {/* Der Vorjahresvergleich stand bis hierher in dieser
                         Spalte und verglich ein angefangenes Jahr mit einem
                         vollen. Er sitzt jetzt oben in den Saison-Kacheln,
                         auf demselben Zeitfenster gerechnet. */}
-                    <td className="py-2 pr-3 text-right font-mono">{zahl(zeile.km)}</td>
-                    <td className="py-2 text-right font-mono">{zahl(zeile.hoehenmeter)} m</td>
+                    <td className="py-2 pr-3 text-right">{zahl(zeile.km)}</td>
+                    <td className="py-2 text-right">{zahl(zeile.hoehenmeter)} m</td>
                   </tr>
                 ))}
               </tbody>
@@ -495,7 +495,7 @@ export default function FahrtStatistik({
             {bestwerte.laengsteFahrt && (
               <div className="flex items-baseline justify-between gap-3 px-3 py-2 text-sm">
                 <dt className="min-w-0 truncate text-muted">Längste Fahrt</dt>
-                <dd className="shrink-0 font-mono tabular-nums">
+                <dd className="shrink-0 tabular-nums">
                   {zahl(bestwerte.laengsteFahrt.wert)} km
                   <span className="ml-1.5 text-muted">
                     {datumKurz(bestwerte.laengsteFahrt.datum)}
@@ -506,7 +506,7 @@ export default function FahrtStatistik({
             {bestwerte.hoechsterAnstieg && (
               <div className="flex items-baseline justify-between gap-3 px-3 py-2 text-sm">
                 <dt className="min-w-0 truncate text-muted">Grösster Anstieg</dt>
-                <dd className="shrink-0 font-mono tabular-nums">
+                <dd className="shrink-0 tabular-nums">
                   {zahl(bestwerte.hoechsterAnstieg.wert)} m
                   <span className="ml-1.5 text-muted">
                     {datumKurz(bestwerte.hoechsterAnstieg.datum)}
@@ -517,7 +517,7 @@ export default function FahrtStatistik({
             {bestwerte.staerksterMonat && (
               <div className="flex items-baseline justify-between gap-3 px-3 py-2 text-sm">
                 <dt className="min-w-0 truncate text-muted">Stärkster Monat</dt>
-                <dd className="shrink-0 font-mono tabular-nums">
+                <dd className="shrink-0 tabular-nums">
                   {zahl(bestwerte.staerksterMonat.km)} km
                   <span className="ml-1.5 text-muted">
                     {MONATE_LANG[bestwerte.staerksterMonat.monat - 1]}{" "}

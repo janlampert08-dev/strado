@@ -30,7 +30,9 @@ import Seitenrahmen, { type Seitenbreite } from "@/components/ui/Seitenrahmen";
 export function HeaderSkeleton() {
   return (
     <div className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border bg-background/85 px-4 pt-[calc(0.75rem+var(--safe-top))] pb-3 backdrop-blur-xl sm:px-6 sm:pt-[calc(1rem+var(--safe-top))] sm:pb-4">
-      <Skeleton className="h-[18px] w-[71px] rounded-sm" />
+      <div className="flex min-h-8 items-center">
+        <Skeleton className="h-[18px] w-[71px] rounded-sm" />
+      </div>
       <div className="flex shrink-0 items-center gap-3 sm:gap-4">
         {/* Hier stand bis zur Review von PR #254 ein rundes Flammen-Icon —
             der eigene Aktivitäts-Knopf, den der Kopf damals rechts aussen

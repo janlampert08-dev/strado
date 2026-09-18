@@ -90,7 +90,7 @@ function AbschnittKopf({
   return (
     <div className="flex items-center gap-2">
       <SectionHeading icon={icon}>{title}</SectionHeading>
-      <span className="rounded-full border border-border px-1.5 py-0.5 font-mono text-xs tabular-nums text-muted">
+      <span className="rounded-full border border-border px-1.5 py-0.5 text-xs tabular-nums text-muted">
         {count}
       </span>
     </div>
@@ -111,7 +111,7 @@ function Sprungmarke({ href, label, count }: { href: string; label: string; coun
     >
       <span className="text-xs text-muted">{label}</span>
       <span
-        className={`font-mono text-title font-semibold tabular-nums ${
+        className={`text-title font-semibold tabular-nums ${
           count === 0 ? "text-muted" : "text-foreground"
         }`}
       >
@@ -272,13 +272,13 @@ export default async function ModerationPage() {
                     {/* Das Einreichungsdatum stand bisher nirgends. In einer
                         Warteschlange ist das Alter aber die Angabe, nach der
                         entschieden wird, was als Nächstes drankommt. */}
-                    <span className="font-mono text-xs tabular-nums text-muted">
+                    <span className="text-xs tabular-nums text-muted">
                       {datumCH(new Date(route.created_at))}
                     </span>
                   </div>
                   <p className="text-sm text-muted">
                     {route.region} · {route.start_ort} → {route.ziel_ort} ·{" "}
-                    <span className="font-mono tabular-nums">{formatKm(route.laenge_km)} km</span>
+                    <span className="tabular-nums">{formatKm(route.laenge_km)} km</span>
                   </p>
                   {route.charakter_text && <Zitat>{route.charakter_text}</Zitat>}
                   <ModerationActions routeId={route.id} />
@@ -300,7 +300,7 @@ export default async function ModerationPage() {
                     <span className="text-xs text-muted">
                       {REPORT_REASON_LABEL[meldung.grund] ?? meldung.grund}
                     </span>
-                    <span className="ml-auto font-mono text-xs tabular-nums text-muted">
+                    <span className="ml-auto text-xs tabular-nums text-muted">
                       {datumCH(new Date(meldung.erstelltAm))}
                     </span>
                   </div>
@@ -340,7 +340,7 @@ export default async function ModerationPage() {
                     {eintrag.absender && (
                       <span className="text-xs text-muted">von {eintrag.absender}</span>
                     )}
-                    <span className="ml-auto font-mono text-xs tabular-nums text-muted">
+                    <span className="ml-auto text-xs tabular-nums text-muted">
                       {datumCH(new Date(eintrag.erstelltAm))}
                     </span>
                   </div>

@@ -372,7 +372,7 @@ export default async function FahrtDetailPage({
                       <RouteIcon className="h-3.5 w-3.5" aria-hidden="true" />
                       Streckenabdeckung
                     </span>
-                    <span className="font-mono tabular-nums text-foreground">
+                    <span className="tabular-nums text-foreground">
                       {completion.abdeckungProzent}%
                     </span>
                   </div>

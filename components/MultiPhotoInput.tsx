@@ -131,7 +131,7 @@ export default function MultiPhotoInput({
       <div className="flex items-baseline justify-between">
         <span>Fotos (optional)</span>
         {entries.length > 0 && (
-          <span className="font-mono text-xs tabular-nums text-muted">
+          <span className="text-xs tabular-nums text-muted">
             {entries.length}/{maxPhotos}
           </span>
         )}

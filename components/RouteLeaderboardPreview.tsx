@@ -102,7 +102,7 @@ export default function RouteLeaderboardPreview({
                   <span className="sr-only">Platz {i + 1}</span>
                 </span>
               ) : (
-                <span className="w-4 shrink-0 text-center font-mono text-xs text-muted">{i + 1}.</span>
+                <span className="w-4 shrink-0 text-center text-xs text-muted">{i + 1}.</span>
               )}
               <Avatar url={entry.avatarUrl} name={entry.name} size={24} />
               <Link
@@ -117,11 +117,11 @@ export default function RouteLeaderboardPreview({
                   welches eine Zeit gefahren hat, ist dort die Auskunft, auf
                   die es ankommt. */}
               {(klasse === null || istFahrzeugTyp(klasse)) && entry.klasse && (
-                <span className="shrink-0 font-mono text-xs text-muted">
+                <span className="shrink-0 text-xs text-muted">
                   {motorklassendefinition(entry.klasse).label}
                 </span>
               )}
-              <span className="shrink-0 font-mono tabular-nums text-muted">
+              <span className="shrink-0 tabular-nums text-muted">
                 {formatDuration(entry.dauerSekunden)}
               </span>
             </li>

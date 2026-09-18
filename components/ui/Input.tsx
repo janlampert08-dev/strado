@@ -30,7 +30,7 @@ export function fieldClassName(className?: string, invalid?: boolean): string {
     "w-full rounded-lg border bg-transparent px-3 py-2 text-base outline-none transition-shadow duration-fast md:text-sm",
     invalid
       ? "border-danger focus:border-danger focus:ring-2 focus:ring-danger/15"
-      : "border-border focus:border-accent focus:ring-2 focus:ring-accent/15",
+      : "border-border-control focus:border-accent focus:ring-2 focus:ring-accent/15",
     className,
   );
 }

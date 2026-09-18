@@ -69,6 +69,7 @@ export default function RideSummaryForm({
   onIsPublicChange,
   onSubmit,
   onDiscard,
+  onResume,
   maxPhotos,
   children,
 }: {
@@ -89,6 +90,10 @@ export default function RideSummaryForm({
   onIsPublicChange: (next: boolean) => void;
   onSubmit: () => void;
   onDiscard: () => void;
+  /** "Weiter aufzeichnen": die Fahrt war nicht zu Ende, nur der Knopf wurde
+   *  gedrückt. Ohne diesen Weg blieb nach einem Fehlgriff nur Speichern
+   *  oder Verwerfen — und beides beendet die Fahrt endgültig. */
+  onResume?: () => void;
   // Zusätzliche Felder oberhalb der Fahrzeugwahl (z.B. der Titel einer
   // freien Fahrt).
   children?: ReactNode;
@@ -344,7 +349,7 @@ export default function RideSummaryForm({
               max={2100}
               value={newVehicleBaujahr}
               onChange={(e) => setNewVehicleBaujahr(e.target.value)}
-              className={fieldClassName("font-mono")}
+              className={fieldClassName()}
             />
             {newVehicleTyp === "motorrad" && (
               <input
@@ -355,7 +360,7 @@ export default function RideSummaryForm({
                 inputMode="numeric"
                 value={newVehicleHubraum}
                 onChange={(e) => setNewVehicleHubraum(e.target.value)}
-                className={fieldClassName("font-mono")}
+                className={fieldClassName()}
               />
             )}
             <input
@@ -364,7 +369,7 @@ export default function RideSummaryForm({
               inputMode="decimal"
               value={newVehicleLeistung}
               onChange={(e) => setNewVehicleLeistung(e.target.value)}
-              className={fieldClassName("font-mono")}
+              className={fieldClassName()}
             />
             <MotorklasseBadge klasse={neueFahrzeugKlasse} regelAnzeigen />
             {addVehicleError && (
@@ -489,7 +494,7 @@ export default function RideSummaryForm({
             <SectionHeading as="label" groesse="xs" htmlFor="tracking-notiz">
               Notiz (optional)
             </SectionHeading>
-            <span className="font-mono text-xs tabular-nums text-muted">
+            <span className="text-xs tabular-nums text-muted">
               {notiz.length}/{MAX_NOTIZ_LENGTH}
             </span>
           </div>
@@ -544,13 +549,27 @@ export default function RideSummaryForm({
         >
           {pending ? "Speichern…" : "Fahrt speichern"}
         </button>
-        <button
-          type="button"
-          onClick={() => setDiscardConfirmOpen(true)}
-          className="min-h-11 text-sm text-muted transition-colors duration-fast hover:text-foreground"
-        >
-          Verwerfen
-        </button>
+        {/* Zwei gleichrangige Nebenwege nebeneinander statt untereinander:
+            der Streifen klebt am unteren Rand und soll dort nicht höher
+            werden, als er ohnehin ist. */}
+        <div className="flex">
+          {onResume && (
+            <button
+              type="button"
+              onClick={onResume}
+              className="min-h-11 flex-1 text-sm font-medium text-foreground transition-colors duration-fast hover:text-accent"
+            >
+              Weiter aufzeichnen
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setDiscardConfirmOpen(true)}
+            className="min-h-11 flex-1 text-sm text-muted transition-colors duration-fast hover:text-foreground"
+          >
+            Verwerfen
+          </button>
+        </div>
       </div>
 
       <ConfirmDialog

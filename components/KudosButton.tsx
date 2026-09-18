@@ -69,7 +69,7 @@ export default function KudosButton({
         fill={given ? "currentColor" : "none"}
         onAnimationEnd={() => setPuls(false)}
       />
-      <span className="font-mono tabular-nums">{count}</span>
+      <span className="tabular-nums">{count}</span>
     </button>
   );
 }

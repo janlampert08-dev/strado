@@ -17,12 +17,21 @@ const base =
 // --radius-lg; damit wird "rund = Handlung, weich-eckig = Fläche" zur Regel
 // statt zum Zufall. Die Chips (motorklassenChipStil.ts, der Standort-Chip,
 // die Feed-Reiter) waren ohnehin schon Pillen.
+//
+// EINE FARBE FÜR DIE HAUPTHANDLUNG. "primary" war eine weiss (bzw. im
+// hellen Theme schwarz) gefüllte Pille, "accent" eine blaue — und welche von
+// beiden eine Seite als Haupthandlung trug, war Zufall: "Fahrt speichern",
+// "Strecke starten" und "Folgen" blau, "Speichern" im Fahrzeugformular und
+// "+ Strecke erstellen" weiss, "Zur Prüfung einreichen" im gesperrten
+// Zustand hellgrau. Wer "was ist hier die Handlung?" beantworten will,
+// musste es pro Schirm neu lernen. Jetzt trägt jede Haupthandlung den
+// Akzent. Der Schlüssel "primary" bleibt, damit nicht jeder Aufrufer
+// wandern muss; er ist nur kein zweiter Look mehr.
 const variants: Record<ButtonVariant, string> = {
-  primary:
-    "rounded-full border border-foreground bg-foreground text-background hover:opacity-90",
+  primary: "rounded-full border border-accent bg-accent text-background hover:opacity-90",
   accent: "rounded-full border border-accent bg-accent text-background hover:opacity-90",
   secondary:
-    "rounded-full border border-border text-foreground hover:border-border-strong",
+    "rounded-full border border-border-control text-foreground hover:border-border-strong",
   ghost: "rounded-full text-foreground hover:bg-surface",
   danger: "rounded-full border border-danger bg-danger text-background hover:opacity-90",
 };

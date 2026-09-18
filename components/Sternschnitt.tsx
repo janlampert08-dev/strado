@@ -62,7 +62,7 @@ export default function Sternschnitt({
 }) {
   return (
     <span className={cn("inline-flex shrink-0 items-center gap-1", className)}>
-      <span className={cn("font-mono tabular-nums", zahlClassName)}>
+      <span className={cn("tabular-nums", zahlClassName)}>
         {schnittText(schnitt)}
       </span>
       <SternIcon

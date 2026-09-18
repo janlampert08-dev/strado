@@ -20,11 +20,12 @@ import { movingSeconds, publicationBlockReason } from "@/lib/track";
 import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
 import type { ExploreRoute, Vehicle } from "@/types/database";
 import { fieldClassName } from "@/components/ui/Input";
-import { buttonVariants } from "@/components/ui/Button";
+import { buttonVariants, textAktionClassName } from "@/components/ui/Button";
 import Skeleton from "@/components/ui/Skeleton";
 import Card from "@/components/ui/Card";
 import FullscreenDialog from "@/components/ui/FullscreenDialog";
 import SectionHeading from "@/components/ui/SectionHeading";
+import HalteKnopf from "@/components/ui/HalteKnopf";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
@@ -76,6 +77,9 @@ export default function FreeRideForm({
     userId: userId ?? GUEST_TRACKING_USER_ID,
     storageKey: FREE_RIDE_STORAGE_KEY,
     guestContinuationToken,
+    // Der Einstieg ist die Mitte der Navigationsleiste — ein Fehlgriff dort
+    // darf keine Fahrt beginnen. Siehe autoStart in useRideRecorder.ts.
+    autoStart: false,
   });
   const { phase, result, clearSnapshot, discard } = recorder;
 
@@ -227,17 +231,17 @@ export default function FreeRideForm({
           <dl className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <dt className="text-muted">Distanz</dt>
-              <dd className="font-mono text-lg tabular-nums">{result?.distanceKm.toFixed(2)} km</dd>
+              <dd className="text-lg tabular-nums">{result?.distanceKm.toFixed(2)} km</dd>
             </div>
             <div>
               <dt className="text-muted">Zeit</dt>
-              <dd className="font-mono text-lg tabular-nums">
+              <dd className="text-lg tabular-nums">
                 {formatDuration(result?.seconds ?? 0)}
               </dd>
             </div>
             <div>
               <dt className="text-muted">Ø Tempo</dt>
-              <dd className="font-mono text-lg tabular-nums">
+              <dd className="text-lg tabular-nums">
                 {avgKmh !== null ? `${avgKmh.toFixed(0)} km/h` : "—"}
               </dd>
             </div>
@@ -295,13 +299,22 @@ export default function FreeRideForm({
                   Ich habe ein Konto
                 </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setGastVerwerfenOffen(true)}
-                className="self-start text-xs text-muted underline hover:text-foreground"
-              >
-                Fahrt verwerfen
-              </button>
+              <div className="flex flex-wrap gap-x-4">
+                <button
+                  type="button"
+                  onClick={recorder.fortsetzen}
+                  className={textAktionClassName({ ton: "gedaempft" })}
+                >
+                  Weiter aufzeichnen
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGastVerwerfenOffen(true)}
+                  className={textAktionClassName({ ton: "gedaempft" })}
+                >
+                  Fahrt verwerfen
+                </button>
+              </div>
             </Card>
             <ConfirmDialog
               open={gastVerwerfenOffen}
@@ -356,6 +369,7 @@ export default function FreeRideForm({
               onIsPublicChange={setIsPublic}
               onSubmit={() => setSubmitted(true)}
               onDiscard={handleExit}
+              onResume={recorder.fortsetzen}
             >
               {/* Dieselbe Abschnittsgeometrie wie die Abschnitte im Fazit
                   selbst — dieser hier wird nur von aussen eingehängt, ist
@@ -365,7 +379,7 @@ export default function FreeRideForm({
                   <SectionHeading as="label" groesse="xs" htmlFor="freie-fahrt-titel">
                     Titel (optional)
                   </SectionHeading>
-                  <span className="font-mono text-xs tabular-nums text-muted">
+                  <span className="text-xs tabular-nums text-muted">
                     {titel.length}/{MAX_TITEL_LENGTH}
                   </span>
                 </div>
@@ -387,8 +401,58 @@ export default function FreeRideForm({
     );
   }
 
-  // phase "idle" und "tracking" teilen sich denselben Vollbild-Screen: die
-  // Aufzeichnung läuft ab dem ersten Fix, bis dahin steht nur die Karte da.
+  // Vor dem Start: der Recorder wartet auf ein ausdrückliches Tippen
+  // (autoStart: false). Dieselbe Karte wie während der Fahrt, damit der
+  // Wechsel in die Aufzeichnung kein Sprung ist — nur das Panel darunter
+  // sagt, was gleich passiert, und trägt die eine Handlung.
+  if (phase === "idle") {
+    return (
+      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col bg-background">
+        <div className="min-h-0 flex-1">
+          <RouteMap routes={routes} fitRoutes={false} routesClickable={false} />
+        </div>
+        <div className="flex flex-col gap-4 border-t border-border bg-background px-5 pt-5 pb-[calc(1.25rem+var(--safe-bottom))]">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-title font-semibold tracking-tight">Freie Fahrt</h1>
+            <p className="text-sm text-muted">
+              Ohne Strecke, einfach losfahren. Gemessen wird ab dem ersten GPS-Signal nach dem
+              Start — beendet wird die Fahrt von dir.
+            </p>
+          </div>
+          <ul className="flex flex-col gap-2 text-sm">
+            <li className="flex items-start gap-2">
+              <Smartphone className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+              <span>Bildschirm an lassen — sonst pausiert die Aufzeichnung.</span>
+            </li>
+            {istGast && (
+              <li className="text-muted">
+                Ohne Konto: aufzeichnen geht, zum Speichern brauchst du am Ende eine Anmeldung.
+              </li>
+            )}
+          </ul>
+          <div className="flex flex-col gap-1">
+            <button
+              type="button"
+              onClick={recorder.starten}
+              className={buttonVariants({ variant: "accent", size: "lg", className: "w-full" })}
+            >
+              Aufzeichnung starten
+            </button>
+            <button
+              type="button"
+              onClick={handleExit}
+              className="min-h-11 text-sm text-muted transition-colors duration-fast hover:text-foreground"
+            >
+              Abbrechen
+            </button>
+          </div>
+        </div>
+      </FullscreenDialog>
+    );
+  }
+
+  // Während der Fahrt. Die Watch läuft, die Messung beginnt mit dem ersten
+  // brauchbaren Fix (hasStarted).
   return (
     <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col bg-background">
       <div className="min-h-0 flex-1">
@@ -404,51 +468,46 @@ export default function FreeRideForm({
           userHeadingDeg={recorder.headingDeg}
         />
       </div>
-      <div className="flex flex-col gap-3 border-t border-border-strong bg-background p-4 pb-[calc(1rem+var(--safe-bottom))]">
-        {/* Wie LiveTrackingForm: ein Punkt zeigt, dass wirklich
-            aufgezeichnet wird, und die Beschriftung steht in 14 statt 12 px.
-            Die beiden Aufzeichnungsschirme sollen sich nicht unterscheiden —
-            es ist dieselbe Handlung. */}
-        <div className="flex items-center gap-2">
-          {recorder.hasStarted && (
-            <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full bg-danger" />
-          )}
-          <SectionHeading as="p" className="font-mono">
-            {recorder.hasStarted ? "Aufzeichnung läuft" : "Warte auf GPS"}
-          </SectionHeading>
-        </div>
-        {/* Vorwarnung statt einer Überraschung am Ende: das Konto wird erst
-            beim Speichern verlangt, aber wer ohne eines losfährt, soll das
-            vor der Fahrt wissen und nicht erst im Fazit. */}
-        {istGast && (
-          <p className="text-sm text-muted">
-            Ohne Konto: aufzeichnen geht, zum Speichern der Fahrt brauchst du am Ende eine
-            Anmeldung.
+      <div className="flex flex-col gap-4 border-t border-border bg-background px-5 pt-4 pb-[calc(1rem+var(--safe-bottom))]">
+        {/* Statuszeile in Satzschreibung statt versal in Mono: sie ist ein
+            Zustand, kein Etikett. Der rote Punkt bleibt das Signal, dass
+            wirklich aufgezeichnet wird. */}
+        <div className="flex items-center justify-between gap-3">
+          <p className="flex items-center gap-2 text-sm font-medium">
+            <span
+              aria-hidden="true"
+              className={`h-2.5 w-2.5 shrink-0 rounded-full ${recorder.hasStarted ? "bg-danger" : "bg-muted"}`}
+            />
+            {recorder.hasStarted ? "Aufzeichnung läuft" : "Warte auf GPS…"}
           </p>
-        )}
-        {/* Eine Zahl gross statt dreier mittlerer. Bei der freien Fahrt
-            gibt es kein "noch … km" — es gibt keine Strecke, die zu Ende
-            geht —, also trägt die Zeit allein. Distanz und Tempo stehen
-            darunter in 15 px. Dieselbe Begründung wie in
-            LiveTrackingForm.tsx, siehe dort. */}
-        <dl className="flex flex-wrap items-end gap-x-6 gap-y-2">
-          <div>
-            <dt className="text-[15px] text-muted">Zeit</dt>
-            <dd className="font-mono text-4xl leading-none font-semibold tabular-nums">
-              {formatDuration(recorder.elapsedSeconds)}
+          <p className="text-sm text-muted tabular-nums">
+            <span className="sr-only">Zeit </span>
+            {formatDuration(recorder.elapsedSeconds)}
+          </p>
+        </div>
+        {/* DER SCHIRM, DER IN BEWEGUNG GELESEN WIRD — und bis hierher war
+            seine grösste Zahl die Uhr (36 px), während Tempo und Distanz als
+            eine 15-px-Zeile in Grau darunter standen. Bei einer freien Fahrt
+            gibt es keine Bestenliste, gegen die die Zeit zählt: der Blick
+            aufs Telefon in der Halterung sucht das Tempo und wie weit man
+            ist. Also tragen diese beiden die Fläche, in voller
+            Vordergrundfarbe, und die Uhr rückt in die Statuszeile.
+
+            Inter mit tabellarischen Ziffern statt Mono: die Ziffern springen
+            nicht, und die Zahl liest sich als Zahl, nicht als Code. */}
+        <dl className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col gap-1">
+            <dt className="text-xs text-muted">Tempo</dt>
+            <dd className="text-5xl leading-none font-semibold tracking-tight tabular-nums">
+              {recorder.speedKmh !== null ? recorder.speedKmh.toFixed(0) : "—"}
+              <span className="ml-1.5 text-base font-medium tracking-normal text-muted">km/h</span>
             </dd>
           </div>
-          {/* Der Mittelpunkt steht IM folgenden <dd>, nicht daneben: ein
-              <div> in einem <dl> darf nur <dt> und <dd> enthalten, ein
-              <span> dazwischen ist ungültiges HTML. aria-hidden hält ihn
-              wie zuvor aus der Vorlesereihenfolge heraus. */}
-          <div className="flex w-full flex-wrap items-baseline gap-x-2 text-[15px] text-muted">
-            <dt className="sr-only">Distanz</dt>
-            <dd className="font-mono tabular-nums">{recorder.distanceKm.toFixed(2)} km gefahren</dd>
-            <dt className="sr-only">Tempo</dt>
-            <dd className="font-mono tabular-nums">
-              <span aria-hidden="true" className="mr-2">·</span>
-              {recorder.speedKmh !== null ? `${recorder.speedKmh.toFixed(0)} km/h` : "—"}
+          <div className="flex flex-col gap-1">
+            <dt className="text-xs text-muted">Distanz</dt>
+            <dd className="text-5xl leading-none font-semibold tracking-tight tabular-nums">
+              {recorder.distanceKm.toFixed(1)}
+              <span className="ml-1.5 text-base font-medium tracking-normal text-muted">km</span>
             </dd>
           </div>
         </dl>
@@ -477,30 +536,26 @@ export default function FreeRideForm({
         )}
         {recorder.locationError && <p role="alert" className="text-sm text-danger">{recorder.locationError}</p>}
         {/* Der Wachhinweis vor der Handlung statt als Fussnote daneben —
-            siehe LiveTrackingForm.tsx und docs/audit/uiux.md §5.4. */}
-        <p className="flex items-start gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm leading-snug">
+            siehe LiveTrackingForm.tsx und docs/audit/uiux.md §5.4. Ohne
+            Kasten: eine Zeile mit Symbol reicht, der Rahmen darum war eine
+            weitere Fläche auf einem Schirm, der zwei Zahlen tragen soll. */}
+        <p className="flex items-start gap-2 text-sm leading-snug text-muted">
           <Smartphone className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
           <span>Bildschirm an lassen — sonst pausiert die Aufzeichnung.</span>
         </p>
-        <div className="flex flex-wrap items-center gap-3">
-          {recorder.hasStarted ? (
-            <button
-              type="button"
-              onClick={recorder.stop}
-              className={buttonVariants({ variant: "accent", size: "lg", className: "flex-1" })}
-            >
-              Fahrt beenden
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleExit}
-              className={buttonVariants({ variant: "secondary", size: "lg", className: "flex-1" })}
-            >
-              Abbrechen
-            </button>
-          )}
-        </div>
+        {recorder.hasStarted ? (
+          <HalteKnopf onBestaetigt={recorder.stop} className="w-full">
+            Zum Beenden halten
+          </HalteKnopf>
+        ) : (
+          <button
+            type="button"
+            onClick={handleExit}
+            className={buttonVariants({ variant: "secondary", size: "lg", className: "w-full" })}
+          >
+            Abbrechen
+          </button>
+        )}
       </div>
     </FullscreenDialog>
   );

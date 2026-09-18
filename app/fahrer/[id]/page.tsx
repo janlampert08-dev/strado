@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { datumCH } from "@/lib/format";
 import type { Metadata } from "next";
 import { OG_GEERBT } from "@/lib/openGraph";
 import Link from "next/link";
@@ -150,13 +151,13 @@ export default async function FahrerPage({
             {profile.zeigtPaesse && (
               <div>
                 <dt className="text-muted">Pässe befahren</dt>
-                <dd className="font-mono text-lg tabular-nums">{profile.passCount}</dd>
+                <dd className="text-lg tabular-nums">{profile.passCount}</dd>
               </div>
             )}
             {profile.zeigtHoehenmeter && (
               <div>
                 <dt className="text-muted">Höhenmeter gesammelt</dt>
-                <dd className="font-mono text-lg tabular-nums">
+                <dd className="text-lg tabular-nums">
                   {profile.hoehenmeter.toLocaleString("de-CH")} m
                 </dd>
               </div>
@@ -164,7 +165,7 @@ export default async function FahrerPage({
             {profile.zeigtDistanz && (
               <div>
                 <dt className="text-muted">GPS-getrackte Distanz</dt>
-                <dd className="font-mono text-lg tabular-nums">
+                <dd className="text-lg tabular-nums">
                   {profile.distanzKm.toFixed(0)} km
                 </dd>
               </div>
@@ -206,8 +207,8 @@ export default async function FahrerPage({
                             ? freieFahrtTitel(f.titel, f.start_ort)
                             : f.route_name}
                         </span>
-                        <span className="ml-2 shrink-0 font-mono text-xs tabular-nums text-muted">
-                          {new Date(f.datum).toLocaleDateString("de-CH")}
+                        <span className="ml-2 shrink-0 text-xs tabular-nums text-muted">
+                          {datumCH(new Date(f.datum))}
                         </span>
                       </Link>
                       {viewer && (
