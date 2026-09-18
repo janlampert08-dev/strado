@@ -10,7 +10,7 @@ const initialState: ProfileActionState = { error: null };
 /**
  * Anzeigename ändern. Bisher gab es keinen Weg dazu — der Name aus der
  * Registrierung blieb für immer (Review 2026-09-17). Die Regeln prüft die
- * Datenbank (0103), hier steht nur das Feld und die Rückmeldung.
+ * Datenbank (0109), hier steht nur das Feld und die Rückmeldung.
  */
 export default function ProfilnameForm({ aktuellerName }: { aktuellerName: string | null }) {
   const [state, formAction, pending] = useActionState(aendereProfilnamen, initialState);

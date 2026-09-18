@@ -306,13 +306,13 @@ export async function uploadAvatar(
 /**
  * Den eigenen Anzeigenamen ändern (Einstellungen → Konto).
  *
- * Die Regeln stehen in der Datenbank (0103_profilname_aendern.sql), nicht
+ * Die Regeln stehen in der Datenbank (0109_profilname_aendern.sql), nicht
  * hier: die Funktion arbeitet ausschliesslich auf auth.uid(), prüft Länge
  * und Eindeutigkeit wie signUp() und ist der einzige Schreibweg für
  * display_name — die Spalte hat keinen UPDATE-Grant. Diese Action setzt
  * davor nur eine Mengenbremse und übersetzt die Rückgabecodes in Sätze.
  *
- * Solange 0103 nicht eingespielt ist, scheitert der RPC-Aufruf; dann steht
+ * Solange 0109 nicht eingespielt ist, scheitert der RPC-Aufruf; dann steht
  * eine allgemeine Meldung da statt eines Absturzes.
  */
 export async function aendereProfilnamen(
@@ -354,6 +354,8 @@ export async function aendereProfilnamen(
       return { error: "Der Name darf höchstens 50 Zeichen lang sein." };
     case "vergeben":
       return { error: "Dieser Name ist bereits vergeben." };
+    case "ungueltig":
+      return { error: "Der Name enthält unsichtbare oder Steuerzeichen." };
     default:
       return { error: "Der Name konnte gerade nicht gespeichert werden." };
   }

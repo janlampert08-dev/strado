@@ -177,7 +177,8 @@ sowie deren Anzahl; jede neue Meldung überschreibt die vorherige, es entsteht
 also **keine Spur des Wegs**. Eine Aufzeichnung, die nie gespeichert wird,
 lässt sich nach **24 Stunden** nicht mehr verwenden — weder nimmt der Server
 weitere Meldungen dazu an noch lässt sie sich einer Fahrt zuordnen — und wird
-danach gelöscht, in der Regel innert 48 Stunden. Wird die Fahrt gespeichert,
+danach gelöscht: frühestens nach 48 Stunden, bei der nächsten Gelegenheit, die
+der Betrieb dafür bietet — eine feste Frist sichern wir nicht zu. Wird die Fahrt gespeichert,
 bleibt die letzte Meldung als Nachweis der gemessenen Dauer bei der Fahrt; sie
 wird mit dem Konto gelöscht. Dasselbe gilt, wenn angemeldet gespeichert wird
 und das Speichern erst nach der Zeitprüfung scheitert: Die letzte Meldung

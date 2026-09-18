@@ -105,18 +105,29 @@ und `fahrt_start_einloesen` die Zeile beide nicht mehr annehmen. Wer daraus
 eine echte Frist machen will, braucht einen Cron wie `premium_abgleich()`
 (`0059`) — eigene Entscheidung, keine Nacharbeit zu dieser.
 
-## Ausstehend: 0103_profilname_aendern (2026-09-17, NICHT eingespielt)
+## Ausstehend: 0109_profilname_aendern (geschrieben 2026-09-17 als 0103, NICHT eingespielt)
 
 Neue Funktion `profilname_aendern(p_name text)`, `SECURITY DEFINER`, nur für
 `authenticated` (EXECUTE ausdrücklich von `public` und `anon` entzogen).
 Ändert ausschliesslich `display_name` der Zeile von `auth.uid()`, nach den
 Regeln von `signUp()` (2–50 Zeichen, case-insensitiv eindeutig). Rein
 additiv, kein Eingriff in Tabellen, Policies oder Grants — der Rückweg ist
-`drop function public.profilname_aendern(text);`.
+`drop function public.profilname_aendern(text);` plus
+`drop index public.profiles_display_name_lower_eindeutig;`.
 
-Nummer 0103, weil `0101_anonymisierung_fahrtstarts` und
-`0102_amtliche_tempolimits` auf offenen Branches bereits vergeben sind
-(`git ls-tree` über alle Remote-Branches, 2026-09-17).
+**Nummer 0109, nicht 0103.** Geschrieben als 0103; beim Zusammenführen am
+2026-09-18 waren 0103 (`amtliche_tempolimits_entlang_schneller`) und 0104
+(`paesse`) in Produktion vergeben, 0105 doppelt. 0109 war auf keinem
+Remote-Branch belegt (`git ls-tree` über alle, 2026-09-18).
+
+**Nach dem Review gehärtet (2026-09-18):** NFKC-Normalisierung und
+Leerraum-Zusammenfassung vor jeder Prüfung, Steuer- und unsichtbare
+Formatzeichen werden mit `ungueltig` abgewiesen (vorher galt "Jan" +
+Nullbreite-Leerzeichen als freier Name), und ein partieller Unique-Index
+`profiles_display_name_lower_eindeutig` auf `lower(display_name)` macht
+die Eindeutigkeit gegen gleichzeitige Umbenennungen und gegen
+`handle_new_user` verbindlich. Vorher gemessen: 15 Profile, keine
+Dublette; gelöschte Konten tragen `display_name = null` und fallen heraus.
 
 **Reihenfolge:** Migration zuerst, dann der Code (`staging-profilname-aendern`).
 Ohne die Funktion zeigt das Formular in den Einstellungen eine allgemeine
@@ -141,8 +152,10 @@ Der Rückgabetyp ändert sich, deshalb `drop` + `create` statt
 `create or replace`; die Rechte werden danach neu gesetzt, weil ein Drop sie
 mitnimmt. Gemessen danach: `anon` darf nicht ausführen, `authenticated` schon.
 
-**0105, nicht 0104:** 0104 bleibt für PR #281 frei, die wegen der Kollision
-mit dem eingespielten 0103 umnummerieren muss.
+**0105, nicht 0104** — und damit doppelt: 0104 war für PR #281 gedacht,
+wurde aber am selben Tag von `0104_paesse` belegt, und `0105_strecken_verkehr`
+ging ebenfalls am 2026-09-18 ein. Beide 0105er sind eingespielt; siehe
+"Doppelte Nummernpräfixe". PR #281 ist auf `0109` ausgewichen.
 
 **Daten am 2026-09-18 nachgeladen:** acht weitere amtliche Quellen, vor allem
 Lärmkataster, die die signalisierte Geschwindigkeit als Modelleingang führen
@@ -164,7 +177,8 @@ einem offenen Branch und ist inzwischen eingespielt.
 
 **Nummernkollision 0103:** `staging-profilname-aendern` (PR #281) trägt ebenfalls
 `0103_profilname_aendern.sql`, noch nicht eingespielt. Die eingespielte Nummer
-gilt; jene Datei muss vor dem Einspielen auf `0104` umbenannt werden.
+gilt; jene Datei heisst inzwischen `0109_profilname_aendern.sql` (0104 war
+bis dahin von `0104_paesse` belegt).
 
 **Eingespielt vor dem Code**, wie vorgesehen: ohne die Funktion würde
 `proposeRoute()` bei jedem Vorschlag einen Fehler loggen (und die
@@ -1772,7 +1786,7 @@ eingespielte Migration nicht nachträglich umbenannt wird.
 
 ## Doppelte Nummernpräfixe
 
-Der `0041`-Fall ist kein Einzelfall geblieben. Aktuell gibt es **sechs**
+Der `0041`-Fall ist kein Einzelfall geblieben. Aktuell gibt es **sieben**
 doppelt vergebene Präfixe, jeweils aus parallelen Branches, die unabhängig
 voneinander dieselbe nächste Nummer gezogen haben:
 
@@ -1784,6 +1798,7 @@ voneinander dieselbe nächste Nummer gezogen haben:
 | `0054` | `0054_leaderboard_user_totals.sql`, `0054_sichtbarkeit_standardmaessig_aktiv.sql` |
 | `0059` | `0059_fahrtstatistiken_serverseitig_erzwingen.sql`, `0059_premium_abo_zustand.sql` |
 | `0060` | `0060_premium_funktionen_execute_entziehen.sql`, `0060_private_strecken_aus_oeffentlichen_views.sql` |
+| `0105` | `0105_strecken_verkehr.sql` (Ledger `20260918121129`), `0105_tempolimits_quellen_amtlich.sql` (Ledger `20260918122212`) — beide eingespielt |
 
 Die beiden letzten Paare sind der unangenehmste Fall dieser Liste: Bei
 `0059` wie bei `0060` liegt jeweils die **Sicherheitsmigration** auf der
@@ -1792,7 +1807,9 @@ Audit-Befund A1, `0060_private_strecken…` der zu A3. Beide sind nach `main`
 gemergt und warten seither.
 
 Seit `scripts/check-migration-prefixes.mjs` (in CI vor Lint/Test/Build)
-kann kein siebtes Paar mehr unbemerkt dazukommen. Die sechs bestehenden
+kann kein neues Paar mehr unbemerkt dazukommen — *innerhalb eines Branches*.
+Das siebte (`0105`) entstand trotzdem: zwei Branches, beide für sich grün,
+beide Hälften vor dem Zusammenführen eingespielt. Die sieben bestehenden
 stehen dort als Altbestand und sind vom Fehlschlag ausgenommen; die Liste
 darf nur kürzer werden.
 
