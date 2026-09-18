@@ -179,6 +179,11 @@ export async function legeSperrtagAn(
   if (!istPassId(passId)) return { error: "Unbekannter Pass." };
   if (!istEchtesDatum(von) || !istEchtesDatum(bis)) return { error: "Bitte ein gültiges Datum wählen." };
   if (bis < von) return { error: "Das Ende liegt vor dem Anfang." };
+  // Dieselbe Grenze wie der Check in 0104 (bis - von <= 366): ohne sie
+  // endete ein zu langer Zeitraum in der allgemeinen Fehlermeldung.
+  if ((Date.parse(bis) - Date.parse(von)) / 86_400_000 > 366) {
+    return { error: "Ein Eintrag umfasst höchstens ein Jahr." };
+  }
   if (typeof art !== "string" || !ARTEN.includes(art as (typeof ARTEN)[number])) {
     return { error: "Bitte eine Art wählen." };
   }
@@ -186,7 +191,9 @@ export async function legeSperrtagAn(
     return { error: "Der Titel muss zwischen 3 und 120 Zeichen lang sein." };
   }
   if (zeitfenster.length > 60) return { error: "Das Zeitfenster ist zu lang." };
-  if (quelleUrl && !/^https:\/\/\S{4,500}$/.test(quelleUrl)) {
+  // Wie der Check in 0104: https, keine Leerzeichen, höchstens 500 Zeichen
+  // insgesamt (die alte Regel liess 508 durch).
+  if (quelleUrl && (quelleUrl.length > 500 || !/^https:\/\/\S{4,}$/.test(quelleUrl))) {
     return { error: "Die Quelle muss eine https-Adresse sein." };
   }
 

@@ -194,7 +194,7 @@ const WINTERSPERRE =
   /wintersperr|winterschliessung|fermeture hivernale|ferm[ée]e? pour l'hiver|chiusura invernale|chiuso per l'inverno|chiusura stagionale/i;
 
 const GESPERRT =
-  /\bgesperrt\b|\bsperrung\b|\bstrassensperrung\b|\bgeschlossen\b|\bferm[ée]e?\b|\bfermeture\b|\bchius[ao]\b|\bchiusura\b|road closed/i;
+  /\bgesperrt\b|\bsperrung\b|\bstrassensperrung\b|\bgeschlossen\b|(?<!\p{L})ferm[ée]e?(?!\p{L})|\bfermeture\b|\bchius[ao]\b|\bchiusura\b|road closed/iu;
 
 const NUR_TEILWEISE =
   /nachtsperr|nachts gesperrt|zeitweise|einspurig|kolonnenverkehr|wechselseitig|lichtsignal|circulation altern|senso unico|schneeketten|winterausr[üu]stung|ketten|cha[îi]nes|catene|pneus? neige|einschr[äa]nk/i;

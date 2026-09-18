@@ -179,6 +179,12 @@ describe("deuteMeldung", () => {
     expect(deuteMeldung(["Klausenpass"], ["roadClosed"])).toBe("gesperrt");
   });
 
+  it("erkennt das männliche „fermé“ am Wortende", () => {
+    //  greift hinter einem é nicht: "Col du Grimsel fermé" blieb ohne Treffer.
+    expect(deuteMeldung(["Col du Grimsel fermé"], [])).toBe("gesperrt");
+    expect(deuteMeldung(["Col du Klausen: route fermée"], [])).toBe("gesperrt");
+  });
+
   it("wertet eine Sperrung für andere Fahrzeugarten nicht als Sperrung", () => {
     expect(deuteMeldung(["Sustenpass: für Lastwagen gesperrt"], [])).toBe("eingeschraenkt");
     expect(deuteMeldung(["Sustenpass: gesperrt für Gespanne und Anhänger"], [])).toBe("eingeschraenkt");
