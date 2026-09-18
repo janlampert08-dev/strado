@@ -545,6 +545,16 @@ export function useRideRecorder({
         startTimeRef.current = resume.startTimeMs;
         distanceKmRef.current = resume.distanceKm;
         hasLeftStartRef.current = resume.hasLeftStart;
+        // Jede Wiederaufnahme ist eine Lücke: zwischen dem letzten Punkt im
+        // Snapshot und dem ersten neuen Fix lief keine Aufzeichnung, und wer
+        // in dieser Zeit weitergefahren ist, bringt einen Sprung mit, den der
+        // Server dauerhaft ablehnt (MAX_JUMP_KM, lib/actions/completions.ts).
+        // Die Wache gehört deshalb hierher und nicht an die Aufrufer: über
+        // start(snapshot) kommen alle drei Wege herein — "Weiter aufzeichnen"
+        // am Ziel, "Weiter" nach der Pause und die Wiederaufnahme nach einem
+        // Tab-Kill. Am letzten fehlte sie, und das ist ausgerechnet der Weg,
+        // den diese Datei oben selbst als Normalfall beschreibt.
+        nachUnterbrechungRef.current = true;
         publishLiveTrail(Date.now(), true);
         if (resume.hasStarted && resume.startTimeMs) {
           intervalRef.current = setInterval(() => {
@@ -783,7 +793,6 @@ export function useRideRecorder({
     }
     gestopptAmRef.current = null;
     zielErstVerlassenRef.current = true;
-    nachUnterbrechungRef.current = true;
     // Derselbe Weg wie nach einem Tab-Kill: start() mit einem Snapshot
     // übernimmt Trail, Distanz, Startzeit und Ticket aus diesem Stand und
     // fragt nur die Watch neu an. Die Refs sind hier in jedem Fall gesetzt —
@@ -849,7 +858,6 @@ export function useRideRecorder({
     setPausiert(false);
     setLocationError(null);
     zielErstVerlassenRef.current = true;
-    nachUnterbrechungRef.current = true;
     const stand: TrackingSnapshot = {
       phase: "tracking",
       trail: trailRef.current,
