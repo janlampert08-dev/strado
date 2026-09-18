@@ -52,6 +52,12 @@ describe("matchesSearch", () => {
   it("returns false when nothing matches", () => {
     expect(matchesSearch(route, "Zürich")).toBe(false);
   });
+
+  it("ignores diacritics in query and route", () => {
+    expect(matchesSearch(route, "graubunden")).toBe(true);
+    expect(matchesSearch(makeRoute({ start_ort: "Neuchâtel" }), "neuchatel")).toBe(true);
+    expect(matchesSearch(makeRoute({ region: "Zurich" }), "Zürich")).toBe(true);
+  });
 });
 
 describe("istFremderSuchtext", () => {

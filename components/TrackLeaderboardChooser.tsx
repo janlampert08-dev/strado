@@ -6,7 +6,7 @@ import { formatDuration } from "@/lib/format";
 import type { RouteTimeEntry } from "@/lib/leaderboard";
 import Card from "@/components/ui/Card";
 import MotorklassenChips from "@/components/MotorklassenChips";
-import { filterLabel } from "@/lib/motorklassen";
+import { filterImSatz } from "@/lib/motorklassen";
 import type { Klassenfilter } from "@/lib/motorklassen";
 import type { Motorklasse } from "@/types/database";
 import { cn } from "@/lib/utils/cn";
@@ -112,7 +112,13 @@ export default function TrackLeaderboardChooser({
         <p className={`text-sm text-muted transition-opacity ${loading ? "opacity-40" : ""}`}>
           {klasse === null
             ? "Noch keine geteilten Zeiten für diese Strecke."
-            : `Noch keine Zeit in ${filterLabel(klasse)} auf dieser Strecke — du kannst die erste sein.`}
+            : `Noch keine Zeit ${filterImSatz(klasse)} auf dieser Strecke. Du kannst der Erste sein.`}{" "}
+          {/* Ohne Einladung im Satz: steht diese Liste unter dem leeren
+              Ranglisten-Zustand, hat die Seite das schon einmal gesagt. Der
+              Weg zur Strecke bleibt, denn gefahren wird dort. */}
+          <Link href={`/strecken/${routeId}`} className="text-accent underline-offset-4 hover:underline">
+            Zur Strecke
+          </Link>
         </p>
       ) : (
         <>

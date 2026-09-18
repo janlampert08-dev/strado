@@ -9,7 +9,7 @@ import Avatar from "@/components/Avatar";
 import { RankingIcon } from "@/components/NavIcons";
 import Card from "@/components/ui/Card";
 import MotorklassenChips from "@/components/MotorklassenChips";
-import { filterLabel, istFahrzeugTyp, motorklassendefinition } from "@/lib/motorklassen";
+import { filterImSatz, istFahrzeugTyp, motorklassendefinition } from "@/lib/motorklassen";
 import type { Klassenfilter } from "@/lib/motorklassen";
 import type { Motorklasse } from "@/types/database";
 import { cn } from "@/lib/utils/cn";
@@ -86,8 +86,14 @@ export default function RouteLeaderboardPreview({
       {sichtbar.length === 0 ? (
         <p className={cn("text-sm text-muted transition-opacity", laedt && "opacity-40")}>
           {klasse === null
-            ? "Noch keine geteilten Bestzeiten für diese Strecke."
-            : `Noch keine Zeit in ${filterLabel(klasse)} auf dieser Strecke — du kannst die erste sein.`}
+            ? "Noch keine Bestzeit auf dieser Strecke. Zeichne sie auf und teil die Fahrt, dann kannst du der Erste sein."
+            : `Noch keine Zeit ${filterImSatz(klasse)} auf dieser Strecke. Du kannst der Erste sein.`}{" "}
+          {/* Der Startknopf steht weiter oben auf derselben Seite (#fahren in
+              app/strecken/[id]/page.tsx); auf dem Telefon ist er bis hierher
+              meist aus dem Bild gescrollt. */}
+          <a href="#fahren" className="text-accent underline-offset-4 hover:underline">
+            Zum Start
+          </a>
         </p>
       ) : (
         <Card

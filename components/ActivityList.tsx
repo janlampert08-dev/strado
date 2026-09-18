@@ -5,6 +5,7 @@ import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
+import { buttonVariants } from "@/components/ui/Button";
 import { AktivitaetIcon } from "@/components/NavIcons";
 import { aktivitaetsSchluessel, type AktivitaetsEintrag } from "@/lib/aktivitaet";
 
@@ -49,7 +50,13 @@ export default function ActivityList({
     return (
       <EmptyState
         icon={AktivitaetIcon}
-        title="Noch nichts passiert — teile eine Fahrt, dann kommen Kudos und Follower."
+        title="Noch keine Kudos und keine Follower."
+        description="Wer deinen geteilten Fahrten Kudos gibt oder dir folgt, steht hier."
+        action={
+          <Link href="/" className={buttonVariants({ variant: "secondary", size: "md" })}>
+            Strecken entdecken
+          </Link>
+        }
       />
     );
   }

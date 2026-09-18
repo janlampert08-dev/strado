@@ -2,16 +2,16 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { ChevronDown, Crosshair, SearchX } from "lucide-react";
+import { ChevronDown, Crosshair, Route, SearchX } from "lucide-react";
 import { routeShapePath } from "@/lib/routeShape";
-import { formatKmGerundet } from "@/lib/format";
+import { formatKmGerundet, mitAnzahl } from "@/lib/format";
 import { type RouteSignature, type SignatureKey } from "@/lib/signature";
 import type { ExploreRoute } from "@/types/database";
 import { anzahlText, type Streckenbewertung } from "@/lib/bewertungen";
 import Sternschnitt from "@/components/Sternschnitt";
 import { fieldClassName } from "@/components/ui/Input";
 import EmptyState from "@/components/ui/EmptyState";
-import { buttonVariants } from "@/components/ui/Button";
+import Button, { buttonVariants } from "@/components/ui/Button";
 import IconButton from "@/components/ui/IconButton";
 import { SIGNATURE_ICONS, SIGNATUR_KLASSEN } from "@/components/signaturStil";
 
@@ -26,11 +26,16 @@ const LEGENDE: { key: SignatureKey; text: string }[] = [
 
 
 
+function kuerzen(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
+}
+
 export default function ExploreSidebar({
   routes,
   bewertungen,
   loadError = false,
   loggedIn,
+  anzahlStrecken,
   searchQuery,
   onSearchChange,
   signatures,
@@ -45,6 +50,8 @@ export default function ExploreSidebar({
   bewertungen: Record<string, Streckenbewertung>;
   loadError?: boolean;
   loggedIn: boolean;
+  /** Der ganze Bestand, ungefiltert — routes ist schon die Trefferliste. */
+  anzahlStrecken: number;
   searchQuery: string;
   onSearchChange: (value: string) => void;
   signatures: Map<string, RouteSignature>;
@@ -200,38 +207,61 @@ export default function ExploreSidebar({
         </ul>
       </details>
 
+      {/* Zwei verschiedene Leeren: eine Suche ohne Treffer lässt sich mit
+          einem Tipp zurücknehmen, ein leerer Bestand nicht. Vorher sagte
+          beide "für diese Suche", auch wenn gar nichts gesucht war. Der
+          Vorschlag steht in beiden Fällen, weil die fehlende Strecke genau
+          die ist, die jemand kennt und die Karte noch nicht.
+
+          Ausserhalb der <ul> und in einer Live-Region, die immer im DOM
+          steht: vorher war der Leerzustand das einzige <li> der Liste
+          ("Liste, 1 Element"), und dass das Tippen die Treffer auf null
+          brachte, sagte ein Screenreader gar nicht an. */}
+      <div role="status">
+        {routes.length === 0 && !loadError && (
+          searchQuery.trim() ? (
+            <EmptyState
+              icon={SearchX}
+              kompakt
+              // Auf 24 Zeichen gekürzt: der Titel muss auf 390 px einzeilig bleiben,
+              // sonst rutscht "Suche zurücksetzen" abgemeldet unter die Peek-Kante (nachgemessen: 283 px Inhaltsfläche).
+              // «» statt „“: das Schweizer Anführungszeichen.
+              title={`Keine Strecke zu «${kuerzen(searchQuery.trim(), 24)}».`}
+              // Die Zahl statt eines allgemeinen Tipps: wer "Klausen"
+              // getippt hat, weiss schon, dass man nach Pässen suchen kann.
+              // Was er nicht weiss, ist, wie klein der Bestand noch ist.
+              description={`Gesucht in Namen, Regionen, Start- und Zielorten von ${mitAnzahl(anzahlStrecken, "Strecke", "Strecken")}. Kennst du eine, die fehlt, schlag sie vor.`}
+              action={
+                <div className="flex flex-wrap gap-3">
+                  <Button variant="secondary" size="md" onClick={() => onSearchChange("")}>
+                    Suche zurücksetzen
+                  </Button>
+                  <Link href="/strecken/neu" className={buttonVariants({ variant: "ghost", size: "md" })}>
+                    Strecke vorschlagen
+                  </Link>
+                </div>
+              }
+            />
+          ) : (
+            <EmptyState
+              kompakt
+              icon={Route}
+              title="Noch keine Strecken freigegeben."
+              description="Kennst du eine Strasse, die man gefahren sein muss? Schlag sie vor."
+              action={
+                <Link href="/strecken/neu" className={buttonVariants({ variant: "secondary", size: "md" })}>
+                  Strecke vorschlagen
+                </Link>
+              }
+            />
+          )
+        )}
+      </div>
+
       <ul className="flex flex-col gap-1">
         {routes.length === 0 && loadError && (
           <li role="alert" className="text-sm text-danger">
             Strecken konnten nicht geladen werden. Bitte versuche es später erneut.
-          </li>
-        )}
-        {routes.length === 0 && !loadError && (
-          <li>
-            {/* Mit Ausweg statt nur mit Befund: der Leerzustand sagte, dass
-                nichts passt, und liess die Suche stehen — zurück kam man nur,
-                indem man das Feld selbst leerte. Ohne Suchbegriff ist die
-                leere Liste dagegen eine Tatsache über die Daten, kein
-                Sackgassenzustand; dann steht auch kein Knopf da. */}
-            <EmptyState
-              icon={SearchX}
-              title={
-                searchQuery.trim()
-                  ? `Keine Strecke passt zu „${searchQuery.trim()}“.`
-                  : "Noch keine Strecken in diesem Ausschnitt."
-              }
-              action={
-                searchQuery.trim() ? (
-                  <button
-                    type="button"
-                    onClick={() => onSearchChange("")}
-                    className={buttonVariants({ variant: "secondary", size: "sm" })}
-                  >
-                    Suche zurücksetzen
-                  </button>
-                ) : undefined
-              }
-            />
           </li>
         )}
         {routes.map((route) => {

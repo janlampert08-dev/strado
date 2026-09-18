@@ -20,6 +20,7 @@ import { chipClassName } from "@/components/motorklassenChipStil";
 import {
   FAHRZEUGTYPEN,
   MOTORKLASSEN,
+  filterImSatz,
   filterLabel,
   istKlassenfilter,
   motorklasseFor,
@@ -28,6 +29,8 @@ import type { Klassenfilter } from "@/lib/motorklassen";
 import type { Motorklasse, Vehicle } from "@/types/database";
 import { MEDAL_COLORS } from "@/lib/constants";
 import Card from "@/components/ui/Card";
+import EmptyState from "@/components/ui/EmptyState";
+import { buttonVariants } from "@/components/ui/Button";
 import LeaderboardListsSkeleton from "@/components/LeaderboardListsSkeleton";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
@@ -243,19 +246,29 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
   // zwei der vier Titel auf dem Telefon umbrechen.
   const klassenZusatz = "";
 
-  // Vier Spalten "Noch keine Einträge." nebeneinander sagen viermal dasselbe
-  // — bei einer Klasse ohne Fahrten (Motorräder, A1 …) war das der ganze
-  // Seiteninhalt. Dann eine Aussage statt vier.
-  const alleLeer = [meisteFahrten, meisteHoehenmeter, meisteKm, meisteStrecken].every((liste) =>
-    liste.every((eintrag) => eintrag.value <= 0),
+  // Sind alle vier Listen leer, stand hier viermal "Noch keine Einträge."
+  // unter vier Überschriften: ein Raster aus Absagen. Eine einzige Stelle
+  // sagt dasselbe einmal und dazu, was es braucht, um draufzukommen.
+  // Gezählt wird nur, wer einen Wert über null hat — ein Eintrag mit 0
+  // ist keine Platzierung.
+  const allesLeer = [meisteFahrten, meisteHoehenmeter, meisteKm, meisteStrecken].every(
+    (liste) => !liste.some((eintrag) => eintrag.value > 0),
   );
-  if (alleLeer) {
+  if (allesLeer) {
     return (
-      <p className="rounded-lg bg-surface px-4 py-6 text-center text-sm text-muted">
-        {klasse
-          ? `Noch keine Fahrten in der Klasse ${filterLabel(klasse)} — die erste zählt schon.`
-          : "Noch keine Fahrten — die erste zählt schon."}
-      </p>
+      <EmptyState
+        icon={RankingIcon}
+        title={klasse ? `Noch keine geteilte Fahrt ${filterImSatz(klasse)}.` : "Die Ranglisten sind noch leer."}
+        // "geteilte": leaderboard_completions (0080) zählt nur Fahrten mit
+        // ist_oeffentlich. Ohne das Wort versprach der Satz einer privaten
+        // Fahrt einen Platz, den sie nie bekommt.
+        description="Fahrten, Kilometer, Höhenmeter und Strecken zählen ab der ersten geteilten Fahrt. Schon eine kann für Platz 1 reichen."
+        action={
+          <Link href="/" className={buttonVariants({ variant: "secondary", size: "md" })}>
+            Strecken entdecken
+          </Link>
+        }
+      />
     );
   }
 

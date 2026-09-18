@@ -342,6 +342,9 @@ export default async function StreckeDetailPage({
             wo ein Besucher ohne Konto zuerst ankommt. Der Kommentar-Teil des
             alten Hinweises lebt jetzt in RatingSection weiter, wo er
             hingehört. */}
+        {/* Sprungziel für "Zum Start" in der leeren Bestenliste. scroll-mt:
+            sonst endet der Sprung mit dem Knopf an der oberen Kante. */}
+        <div id="fahren" className="scroll-mt-6">
         <GefahrenSection
           route={route}
           kontextStrecken={kontextStrecken}
@@ -351,6 +354,7 @@ export default async function StreckeDetailPage({
           guestContinuationToken={fortsetzen ?? null}
           maxPhotos={maxFotosProFahrt(premiumStatus.aktiv)}
         />
+        </div>
 
         {route.hoehenprofil && route.hoehenprofil.length > 1 && (
           <ElevationProfile punkte={route.hoehenprofil} />

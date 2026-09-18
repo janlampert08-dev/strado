@@ -607,8 +607,9 @@ export default async function ProfilPage() {
                     <EmptyState
                       icon={Bookmark}
                       title="Noch keine Favoriten gemerkt."
+                      description="Mit dem Lesezeichen auf einer Strecke merkst du sie dir. Hier findest du sie wieder."
                       action={
-                        <Link href="/" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                        <Link href="/" className={buttonVariants({ variant: "secondary", size: "md" })}>
                           Strecken entdecken
                         </Link>
                       }

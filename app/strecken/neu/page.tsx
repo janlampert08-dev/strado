@@ -17,7 +17,9 @@ export const metadata: Metadata = {
 export default async function NeueStreckePage() {
   const user = await getCurrentUser();
 
-  if (!user) redirect("/anmelden");
+  // next: wer über "Strecke vorschlagen" abgemeldet hier landet, soll nach
+  // der Anmeldung im Formular ankommen und nicht auf der Startseite.
+  if (!user) redirect("/anmelden?next=/strecken/neu");
 
   // Bis 0086 stand hier eine Premium-Weiche: wer kein Abo hatte, sah statt
   // des Formulars eine Werbekarte (components/PremiumGate.tsx, mit dieser

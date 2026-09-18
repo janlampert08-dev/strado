@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Bike, Car } from "lucide-react";
 import type { Vehicle } from "@/types/database";
 import DeleteVehicleButton from "@/components/DeleteVehicleButton";
@@ -5,6 +6,7 @@ import MotorklasseBadge from "@/components/MotorklasseBadge";
 import { motorklasseFor } from "@/lib/motorklassen";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
+import { buttonVariants } from "@/components/ui/Button";
 
 const TYP_ICON: Record<Vehicle["typ"], typeof Car> = {
   auto: Car,
@@ -32,7 +34,26 @@ export default function VehicleGrid({
   editable?: boolean;
 }) {
   if (vehicles.length === 0) {
-    return <EmptyState icon={Car} title="Noch keine Fahrzeuge hinterlegt." />;
+    // Auf der eigenen Profilseite führt der Leerzustand direkt zum Anlegen;
+    // die "+ Hinzufügen"-Aktion in der Abschnittszeile ist klein und steht
+    // rechts oben, weit weg von der Stelle, auf die der Blick hier fällt.
+    // Auf fremden Profilen bleibt es bei der Feststellung.
+    return (
+      <EmptyState
+        icon={Car}
+        title="Noch keine Fahrzeuge hinterlegt."
+        action={
+          editable ? (
+            <Link
+              href="/profil/fahrzeuge/neu"
+              className={buttonVariants({ variant: "secondary", size: "md" })}
+            >
+              Fahrzeug hinzufügen
+            </Link>
+          ) : undefined
+        }
+      />
+    );
   }
 
   return (

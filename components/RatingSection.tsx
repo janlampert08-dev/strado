@@ -118,7 +118,11 @@ export default function RatingSection({
       )}
 
       {ratings.length === 0 ? (
-        <p className="text-sm text-muted">Noch keine Bewertungen.</p>
+        <p className="text-sm text-muted">
+          {/* Nur wer das Formular darüber sieht, bekommt die Einladung —
+              Abgemeldete lesen direkt darüber schon den Anmelde-Hinweis. */}
+          {canRate ? "Noch keine Bewertungen. Deine wäre die erste." : "Noch keine Bewertungen."}
+        </p>
       ) : (
         <ul className="flex flex-col gap-3">
           {ratings.map((r) => (
