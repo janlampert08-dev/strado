@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   FAHRZEUGTYPEN,
   MOTORKLASSEN,
+  filterImSatz,
   filterLabel,
   filterTyp,
   hoehereKlasse,
@@ -233,5 +234,19 @@ describe("Fahrzeugtypen und Klassenfilter", () => {
     }
     expect(filterLabel("auto")).toBe("Autos");
     expect(filterLabel("moto_a1")).toBe("A1");
+  });
+});
+
+describe("filterImSatz", () => {
+  // Die Leerzustände setzen das Ergebnis mitten in einen Satz. Vorher stand
+  // dort filterLabel(), und daraus wurde "in bis 150 PS" oder "in Motorräder".
+  it("setzt eine Klasse hinter 'in der Klasse'", () => {
+    expect(filterImSatz("auto_bis110")).toBe("in der Klasse bis 150 PS");
+    expect(filterImSatz("moto_a")).toBe("in der Klasse A offen");
+  });
+
+  it("nennt einen Fahrzeugtyp im Singular", () => {
+    expect(filterImSatz("auto")).toBe("mit dem Auto");
+    expect(filterImSatz("motorrad")).toBe("mit dem Motorrad");
   });
 });

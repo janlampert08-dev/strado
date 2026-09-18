@@ -14,6 +14,12 @@ export function formatKm(laengeKm: number): string {
   return laengeKm.toFixed(1);
 }
 
+// Ganze Kilometer für die Startseite (Streckenliste, Signatur-Label): dort
+// ist die Länge eine Grössenordnung zum Überfliegen, keine Messung.
+export function formatKmGerundet(laengeKm: number): string {
+  return String(Math.round(laengeKm));
+}
+
 // Datum, wie es in der Oberfläche steht: 08.09.2026. Bisher stand dieselbe
 // Formatierung wortgleich in zwei Komponenten (PremiumCard, dann auch
 // PremiumWillkommen) — beide zeigen Abo-Daten, und ein Abo-Datum, das an

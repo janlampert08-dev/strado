@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Star } from "lucide-react";
+import { Bookmark } from "lucide-react";
 import { toggleFavorite } from "@/lib/actions/favorites";
 import IconButton from "@/components/ui/IconButton";
 
@@ -40,7 +40,11 @@ export default function FavoriteButton({
       aria-label={favorite ? "Aus den Favoriten entfernen" : "Zu den Favoriten hinzufügen"}
       aria-pressed={favorite}
     >
-      <Star
+      {/* Lesezeichen statt Stern: seit 0095 bedeutet der Stern auf derselben
+          Seite eine Bewertung, und zwei Sterne mit zwei Bedeutungen in einer
+          Ansicht sind einer zu viel. Das Profil führt die Favoriten ohnehin
+          schon unter einem Lesezeichen. */}
+      <Bookmark
         className={`h-5 w-5 ${favorite ? "fill-current" : ""}`}
         aria-hidden="true"
       />

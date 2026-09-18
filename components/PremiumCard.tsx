@@ -56,7 +56,16 @@ export default function PremiumCard({ status }: { status: PremiumStatus }) {
             <p className="min-w-0 text-sm text-foreground">
               Premium
               {status.plan && <> · {planName(status.plan)}</>}
-              {status.laeuftAbAm ? (
+              {/* Der Saisonpass verlängert sich nicht — "verlängert sich am"
+                  wäre dort die eine Angabe, die niemand nachprüft und die
+                  trotzdem jeder glaubt. Und während der Testphase ist das
+                  Datum der Tag der ersten Abbuchung, nicht einer
+                  Verlängerung (0110). */}
+              {status.quelle === "saisonpass" && status.periodeEndetAm ? (
+                <> · <span className="text-muted">gültig bis {datumCH(status.periodeEndetAm)}</span></>
+              ) : status.testphaseBis ? (
+                <> · <span className="text-muted">gratis bis {datumCH(status.testphaseBis)}</span></>
+              ) : status.laeuftAbAm ? (
                 <> · <span className="text-muted">Gekündigt — gültig bis {datumCH(status.laeuftAbAm)}.</span></>
               ) : (
                 status.periodeEndetAm && (
@@ -64,10 +73,26 @@ export default function PremiumCard({ status }: { status: PremiumStatus }) {
                 )
               )}
             </p>
+            {/* Mit einem Saisonpass gibt es kein Abo zu verwalten: das
+                Kundenportal führt dort nur die Rechnung des Kaufs
+                (invoice_creation in lib/actions/billing.ts). Der Knopf sagt
+                deshalb, was dahinter steht. */}
             <SubmitButton pendingLabel="Wird geöffnet…" className="shrink-0">
-              Abo verwalten
+              {status.quelle === "saisonpass" ? "Rechnung ansehen" : "Abo verwalten"}
             </SubmitButton>
           </form>
+          {/* Der Pass läuft aus und niemand erinnert daran — kein Stripe-
+              Ereignis, keine Mahnung, keine Kündigung. Der Weg zurück
+              gehört deshalb sichtbar hierhin, und zwar leise: ein Abo, das
+              jetzt abgeschlossen wird, zahlt erst ab dem Passende. */}
+          {status.quelle === "saisonpass" && (
+            <Link
+              href="/profil/premium"
+              className={buttonVariants({ variant: "secondary", size: "sm", className: "self-start" })}
+            >
+              Premium verlängern
+            </Link>
+          )}
         </>
       ) : (
         <>

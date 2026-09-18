@@ -16,6 +16,15 @@ import {
   istWiederherstellung,
   verbraucheWiederherstellung,
 } from "@/lib/passwortWiederherstellung";
+import { OTP_SIGNUP } from "@/lib/otpTyp";
+import {
+  BESTAETIGUNG_PFAD,
+  CODE_LAENGE,
+  codeNormalisieren,
+  leseBestaetigung,
+  merkeBestaetigung,
+  verbraucheBestaetigung,
+} from "@/lib/bestaetigung";
 
 export interface AuthFormState {
   error: string | null;
@@ -61,28 +70,51 @@ export async function signIn(
     return { error: TOO_MANY_ATTEMPTS_ERROR };
   }
 
+  // Vor dem Anmeldeversuch gelesen, weil beide Ausgänge unten den Wert
+  // brauchen: der Erfolg als Rücksprungziel, die unbestätigte Adresse als
+  // Ziel NACH der Bestätigung.
+  const next = safeInternalPath(formData.get("next"));
+
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
+    // Richtiges Passwort, fehlende Bestätigung. GoTrue prüft in dieser
+    // Reihenfolge — email_not_confirmed kommt erst nach erfolgreicher
+    // Passwortprüfung, ein falsches Passwort führt vorher zu
+    // invalid_grant. Wer hier landet, kommt also nachweislich an das Konto
+    // und hat bloss den Code aus der Registrierungsmail nie eingegeben.
+    //
+    // Bisher stand hier eine Meldung, die auf „den Link in der E-Mail"
+    // verwies — und liess die Person damit allein: der Link ist unter
+    // Umständen Wochen alt, und ein Formular, in dem sie einen neuen Code
+    // anfordern könnte, gab es nicht. Jetzt geht es direkt dorthin. Das
+    // Cookie trägt die Adresse, ohne die verifyOtp nichts anfangen kann
+    // (lib/bestaetigung.ts).
+    //
+    // Ausdrücklich OHNE neuen Versand von hier aus: sonst löste jeder
+    // Anmeldeversuch eine E-Mail aus, auch der versehentliche. Den Knopf
+    // dafür hat die Seite.
+    //
+    // Über die Kontoexistenz verrät das nichts, was die vorherige Fassung
+    // nicht auch verraten hat: dieselbe Unterscheidung, nur ein anderer
+    // Ausgang.
     if (error.code === "email_not_confirmed") {
-      return {
-        error:
-          "Bitte bestätige zuerst deine E-Mail-Adresse (Link in der E-Mail).",
-      };
+      await merkeBestaetigung(email, next);
+      redirect(BESTAETIGUNG_PFAD);
     }
     return { error: "E-Mail oder Passwort ist falsch." };
   }
 
   // Optionales verstecktes Feld "next" (siehe AnmeldenForm.tsx) bringt
   // Nutzer nach der Anmeldung dorthin, wofür sie sich angemeldet haben —
-  // etwa /fahrten/neu nach einem Klick auf "Fahrt starten". FormData ist
-  // vollständig client-kontrolliert, der Wert läuft deshalb durch
+  // etwa /fahrten/neu nach einem Klick auf "Fahrt starten". Der Wert ist
+  // vollständig client-kontrolliert und läuft deshalb weiter oben durch
   // safeInternalPath: ohne diese Prüfung liesse sich die Anmeldung als
   // Open-Redirect auf eine fremde Domain missbrauchen (Phishing-Seite, die
   // nach einer echten Anmeldung erscheint). Ohne/ungültiges Feld bleibt
   // /profil das unveränderte Standardziel.
-  redirect(safeInternalPath(formData.get("next")) ?? "/profil");
+  redirect(next ?? "/profil");
 }
 
 // PostgREST reicht ilike als SQL LIKE durch — % und _ (und \ selbst) haben
@@ -145,6 +177,13 @@ export async function signUp(
   // sonst würde daraus ein Open-Redirect, hier sogar einer, der als Link in
   // einer echten Bestätigungsmail landet. Der Callback prüft den Wert
   // unabhängig davon ein zweites Mal (app/auth/callback/route.ts).
+  //
+  // Der Wert reist ausserdem im Cookie mit (merkeBestaetigung unten), denn
+  // die Bestätigungsmail trägt seit der Umstellung auf den Code keinen Link
+  // mehr, über den er zurückkäme — siehe
+  // supabase/email-vorlagen/README.md. emailRedirectTo bleibt trotzdem
+  // gesetzt: es kostet nichts, und es hält den Weg über den Link offen,
+  // falls die Vorlage im Dashboard je wieder {{ .ConfirmationURL }} zeigt.
   const origin = await getOrigin();
   const next = safeInternalPath(formData.get("next"));
   const emailRedirectTo = next
@@ -223,7 +262,206 @@ export async function signUp(
     redirect(next ?? "/");
   }
 
-  redirect("/registrieren/bestaetigen");
+  // Adresse und Rücksprungziel für das Einlösen des Codes merken. MUSS vor
+  // dem redirect() stehen — das wirft, und ohne das Cookie stünde die
+  // Bestätigungsseite ohne die Adresse da, die verifyOtp verlangt: Konto
+  // angelegt, Code verschickt, niemand kann ihn eingeben. Begründung, warum
+  // die Adresse aus einem Cookie und nicht aus dem Formular kommt, steht in
+  // lib/bestaetigung.ts.
+  await merkeBestaetigung(email, next);
+
+  redirect(BESTAETIGUNG_PFAD);
+}
+
+export interface BestaetigungState {
+  error: string | null;
+}
+
+// Löst den Code aus der Registrierungsmail ein (Länge: CODE_LAENGE).
+//
+// Das Gegenstück zum Link-Weg in app/auth/callback/route.ts, und aus dem
+// Grund gebaut, der dort im Fehlerfall steht: der Link wird per PKCE
+// eingelöst, und der Prüfwert dafür liegt als Cookie in genau dem Browser,
+// aus dem die Registrierung kam. Wer die E-Mail auf dem Handy öffnet,
+// nachdem er sich am Rechner registriert hat, kommt damit nicht durch — und
+// das ist der Normalfall, nicht der Ausnahmefall. Ein abgetippter Code hat
+// diese Bindung nicht.
+//
+// Die Adresse kommt AUSSCHLIESSLICH aus dem Cookie, nie aus dem Formular
+// (lib/bestaetigung.ts erklärt, warum). Der Code selbst ist die einzige
+// Eingabe.
+export async function bestaetigeRegistrierung(
+  _prevState: BestaetigungState,
+  formData: FormData,
+): Promise<BestaetigungState> {
+  const offen = await leseBestaetigung();
+  if (!offen) {
+    return {
+      error:
+        "Wir wissen nicht mehr, für welche Adresse der Code gilt. Bitte melde dich an oder registriere dich erneut.",
+    };
+  }
+
+  const code = codeNormalisieren(formData.get("code"));
+  if (!code) {
+    return {
+      error: `Bitte gib den ${CODE_LAENGE}-stelligen Code aus der E-Mail ein.`,
+    };
+  }
+
+  // Der Code hat (bei acht Ziffern) 10^8 Möglichkeiten und gilt 60 Minuten
+  // — ohne Bremse wäre er in dieser Zeit trotzdem durchprobierbar. Mit zehn
+  // Versuchen je zehn Minuten sind es über die Gültigkeitsdauer höchstens 60
+  // Versuche; für eine Nutzerin, die sich zweimal vertippt, ist es
+  // weiterhin unmerklich.
+  //
+  // Zwei Schlüssel wie in signIn: einer pro Adresse (bremst das Erraten
+  // eines bestimmten Codes über wechselnde IPs) und einer pro IP (bremst
+  // das Durchprobieren vieler Adressen von derselben Quelle). Der
+  // Adress-Schlüssel ist der wichtigere — die Adresse aus dem Cookie ist
+  // zwar von Hand setzbar, aber genau dann greift er.
+  const ip = await currentIp();
+  if (
+    isRateLimitedByKey(`bestaetigen:ip:${ip}`, 30, 10 * 60_000) ||
+    isRateLimitedByKey(
+      `bestaetigen:email:${offen.email.toLowerCase()}`,
+      10,
+      10 * 60_000,
+    )
+  ) {
+    return { error: TOO_MANY_ATTEMPTS_ERROR };
+  }
+
+  const supabase = await createClient();
+  // OTP_SIGNUP ist der Code aus der Registrierungsmail — dieselbe
+  // Einmal-Nummer, die im token_hash-Weg des Callbacks steckt, nur
+  // abgetippt statt angeklickt (lib/otpTyp.ts). Bei Erfolg legt der
+  // Server-Client die Session in die Cookies der Antwort — ab hier ist die
+  // Person angemeldet, ein zusätzliches signInWithPassword braucht es nicht.
+  const { error } = await supabase.auth.verifyOtp({
+    email: offen.email,
+    token: code,
+    type: OTP_SIGNUP,
+  });
+
+  if (error) {
+    // Bewusst eine Meldung für alle Fehlschläge: falsche Ziffern,
+    // abgelaufener Code und schon eingelöster Code sollen sich nicht
+    // unterscheiden lassen. Sonst wäre die Antwort ein Orakel darüber, ob zu
+    // einer von Hand ins Cookie geschriebenen Adresse überhaupt eine offene
+    // Bestätigung existiert.
+    return {
+      error:
+        "Der Code stimmt nicht oder ist abgelaufen. Prüfe die Ziffern oder fordere einen neuen an.",
+    };
+  }
+
+  // Verbraucht, nicht ablaufen lassen: es gibt nichts mehr zu bestätigen,
+  // und ein stehengebliebenes Cookie würde die Seite weiter anbieten. Vor
+  // dem redirect(), das wirft.
+  await verbraucheBestaetigung();
+
+  redirect(offen.next ?? "/");
+}
+
+export interface ErneutSendenState {
+  error: string | null;
+  gesendet: boolean;
+}
+
+// Schickt einen neuen Code an dieselbe Adresse.
+//
+// Nötig, weil der Code 60 Minuten gilt und eine Registrierungsmail, die im
+// Spam-Ordner gelandet oder in einem geschlossenen Tab vergessen worden ist,
+// sonst in eine Sackgasse führt: Konto existiert, Anmeldung verweigert,
+// nichts nachzubestellen. Genau dort kommt auch signIn() heraus.
+//
+// Ohne Parameter, obwohl useActionState die Action mit (Zustand, FormData)
+// aufruft: hier wird beides nicht gebraucht — die Adresse steht im Cookie,
+// und das Formular hat kein Feld. Ein ungenutztes `_prevState` stünde als
+// letztes Argument da und wäre genau das, was no-unused-vars meldet (anders
+// als in den Actions darüber, wo ein benutztes formData dahinter folgt).
+export async function sendeBestaetigungErneut(): Promise<ErneutSendenState> {
+  const offen = await leseBestaetigung();
+  if (!offen) {
+    return {
+      error:
+        "Wir wissen nicht mehr, an welche Adresse der Code gehen soll. Bitte melde dich an oder registriere dich erneut.",
+      gesendet: false,
+    };
+  }
+
+  // Strenger als die Bremse beim Einlösen, weil hier jeder Aufruf eine
+  // E-Mail auslöst: an eine fremde Adresse liessen sich sonst von diesem
+  // Formular aus beliebig viele schicken. Drei je zehn Minuten reichen für
+  // „nichts angekommen, nochmal" und nicht für mehr.
+  const ip = await currentIp();
+  if (
+    isRateLimitedByKey(`bestaetigen:erneut:ip:${ip}`, 5, 10 * 60_000) ||
+    isRateLimitedByKey(
+      `bestaetigen:erneut:email:${offen.email.toLowerCase()}`,
+      3,
+      10 * 60_000,
+    )
+  ) {
+    return { error: TOO_MANY_ATTEMPTS_ERROR, gesendet: false };
+  }
+
+  const supabase = await createClient();
+  const origin = await getOrigin();
+
+  // NICHT ABGEWARTET — dieselbe Vorsichtsmassnahme wie in
+  // requestPasswordReset() darunter, und aus demselben gemessenen Grund: das
+  // Supabase-Gateway bricht den Versand-Endpunkt nach 10 s ab und wiederholt
+  // ihn dreimal, der Client bekommt nach rund 36 s einen 504, während die
+  // E-Mail längst unterwegs ist. Ein so lange offener POST wird von einem
+  // Browser im Mobilfunk abgebrochen, die Action wirft, und app/error.tsx
+  // zeigt einen Fehlerschirm — für einen Versand, der geglückt ist.
+  //
+  // Anders als beim Zurücksetzen muss die Antwort hier auf GAR NICHTS
+  // warten: es gibt kein PKCE-Prüfwert-Cookie, das sie tragen müsste (der
+  // Code wird abgetippt, nicht angeklickt), also entfällt auch
+  // warteAufPruefwert().
+  const versand = supabase.auth
+    .resend({
+      type: OTP_SIGNUP,
+      email: offen.email,
+      options: { emailRedirectTo: `${origin}/auth/callback` },
+    })
+    // Die Behandlung hängt hier und nicht erst im after()-Callback: sonst
+    // läge zwischen dem Start des Versands und dem Anhängen des Handlers ein
+    // Fenster, in dem eine Rejection unbehandelt wäre — und eine
+    // unbehandelte Rejection beendet den Node-Prozess.
+    //
+    // NUR INS SERVERLOG, NIE IN DIE ANTWORT: ein Fehler hier unterschiede
+    // die Antwort danach, ob zu der Adresse überhaupt eine unbestätigte
+    // Registrierung existiert.
+    .then(({ error }) => {
+      if (error) {
+        console.error("Bestätigungscode: Versand fehlgeschlagen", {
+          status: error.status,
+          code: error.code,
+          message: error.message,
+        });
+      }
+    })
+    .catch((fehler) => {
+      console.error("Bestätigungscode: Versand geworfen", fehler);
+    });
+
+  // Hält die Funktion über die Antwort hinaus am Leben, damit der Versand zu
+  // Ende läuft und sein Ergebnis im Log landet — dasselbe Muster wie beim
+  // Klickzähler in app/c/[code]/route.ts. Reicht die Max-Duration der Route
+  // nicht, geht die LOG-ZEILE verloren, nicht die E-Mail: sobald die Anfrage
+  // bei GoTrue liegt, verschickt der unabhängig von uns weiter.
+  after(() => versand);
+
+  // Das Cookie bleibt stehen und wird nur verlängert: die Adresse gilt
+  // weiter, und der neue Code soll seine 60 Minuten nicht mit dem Rest der
+  // alten Cookie-Laufzeit teilen müssen.
+  await merkeBestaetigung(offen.email, offen.next);
+
+  return { error: null, gesendet: true };
 }
 
 export interface RequestPasswordResetState {

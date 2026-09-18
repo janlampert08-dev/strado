@@ -34,6 +34,28 @@ export function preisVonSession(session: Stripe.Checkout.Session): VergebenerPre
 }
 
 /**
+ * Wie eine Session zahlt — vom Server beim Anlegen in die Metadaten
+ * geschrieben, nie vom Browser.
+ *
+ * - "sofort": die erste Zahlung fällt mit dem Abschluss an (Monat, Jahr,
+ *   Saisonpass). Das ist auch die Lesart für Sessions, die vor 0110
+ *   angelegt wurden und das Feld nicht kennen.
+ * - "testphase": Jahresabo mit Gratis-Testphase (TESTPHASE_TAGE).
+ * - "anschluss": Abo, das erst mit dem Ende eines laufenden Saisonpasses
+ *   zu zahlen beginnt.
+ *
+ * In den beiden letzten Fällen ist die Session mit "no_payment_required"
+ * abgeschlossen. Dass das dann ein Erfolg ist, darf nur gelten, wenn der
+ * Server es beim Anlegen so bestimmt hat — deshalb das Feld.
+ */
+export type ZahlungsVariante = "sofort" | "testphase" | "anschluss";
+
+export function varianteVonSession(session: Stripe.Checkout.Session): ZahlungsVariante {
+  const wert = session.metadata?.variante;
+  return wert === "testphase" || wert === "anschluss" ? wert : "sofort";
+}
+
+/**
  * Eine noch offene Session für denselben Preis, die wiederverwendet werden
  * kann — statt daneben eine zweite anzulegen.
  *
@@ -46,17 +68,27 @@ export function preisVonSession(session: Stripe.Checkout.Session): VergebenerPre
  * Metadaten sind ohnehin der Weg, eine Session im Dashboard einem Plan
  * zuzuordnen. Eine Session ohne Betrag zählt nicht als brauchbar — siehe
  * preisVonSession.
+ *
+ * Seit 0110 zählen Modus und Zahlungsvariante mit: eine offene Session ohne
+ * Testphase darf nicht wiederverwendet werden, wenn inzwischen eine
+ * zustünde (oder umgekehrt), und ein Saisonpass läuft als Einmalzahlung
+ * ("payment"), nicht als Abo.
  */
 export function passendeOffeneSession(
   sessions: Stripe.Checkout.Session[],
   preisId: string,
+  erwartet: { modus: "subscription" | "payment"; variante: ZahlungsVariante } = {
+    modus: "subscription",
+    variante: "sofort",
+  },
 ): Stripe.Checkout.Session | null {
   return (
     sessions.find(
       (session) =>
-        session.mode === "subscription" &&
+        session.mode === erwartet.modus &&
         session.ui_mode === "elements" &&
         session.metadata?.price_id === preisId &&
+        varianteVonSession(session) === erwartet.variante &&
         Boolean(session.client_secret) &&
         preisVonSession(session) !== null,
     ) ?? null
@@ -68,9 +100,14 @@ export function passendeOffeneSession(
  *
  * Der Session-Status allein reicht nicht: "complete" sagt, dass der Ablauf
  * durch ist, nicht dass Geld geflossen ist. payment_status ist die Zusage
- * darüber. "no_payment_required" wird bewusst NICHT akzeptiert — Strado
- * konfiguriert keinen Gratis-Zeitraum, ein solcher Fall wäre hier
- * unerwartet.
+ * darüber.
+ *
+ * "no_payment_required" gilt nur, wenn der Server die Session beim Anlegen
+ * ausdrücklich so gebaut hat (Testphase oder Anschluss an einen Pass, siehe
+ * ZahlungsVariante). Bis 0110 wurde es ohne Ausnahme abgewiesen, weil es
+ * keinen Gratis-Zeitraum gab; eine Session ohne diese Markierung, die
+ * trotzdem nichts kostet, ist weiterhin unerwartet und kein Kauf.
+ * aktivesAboAusSession prüft dazu das Abo selbst.
  */
 export function istEigeneBezahlteSession(
   session: Stripe.Checkout.Session,
@@ -79,7 +116,54 @@ export function istEigeneBezahlteSession(
   if (idVon(session.customer) !== eigenerCustomerId) return false;
   if (session.mode !== "subscription") return false;
   if (session.status !== "complete") return false;
-  return session.payment_status === "paid";
+  if (session.payment_status === "paid") return true;
+  return session.payment_status === "no_payment_required" && varianteVonSession(session) !== "sofort";
+}
+
+/**
+ * Der Saisonpass aus einer bezahlten Session des eigenen Kontos — oder null.
+ *
+ * Getrennt von istEigeneBezahlteSession, weil ein Pass kein Abo ist: Modus
+ * "payment", kein Abo-Objekt, und ein Gratis-Fall existiert nicht (ein Pass
+ * für CHF 0 wäre ein Fehler im Katalog, kein Kauf).
+ *
+ * `eigenerCustomerId` null heisst "Zuordnung übernimmt der Aufrufer" — der
+ * Webhook kennt kein angemeldetes Konto und ordnet in apply_saisonpass über
+ * den Customer zu. Aus dem Browser (confirmCheckoutSession) wird immer die
+ * eigene ID übergeben.
+ */
+export interface GekaufterSaisonpass {
+  sessionId: string;
+  customerId: string;
+  paymentIntentId: string | null;
+  preisId: string;
+  betragRappen: number;
+  waehrung: string;
+}
+
+export function saisonpassAusSession(
+  session: Stripe.Checkout.Session,
+  eigenerCustomerId: string | null,
+): GekaufterSaisonpass | null {
+  const customerId = idVon(session.customer);
+  if (!customerId) return null;
+  if (eigenerCustomerId !== null && customerId !== eigenerCustomerId) return null;
+  if (session.mode !== "payment") return null;
+  if (session.status !== "complete") return null;
+  if (session.payment_status !== "paid") return null;
+  if (session.metadata?.plan !== "saisonpass") return null;
+  const preisId = session.metadata?.price_id;
+  if (!preisId) return null;
+  if (typeof session.amount_total !== "number" || session.amount_total <= 0) return null;
+  if (!session.currency) return null;
+  return {
+    sessionId: session.id,
+    customerId,
+    paymentIntentId: idVon(session.payment_intent),
+    preisId,
+    betragRappen: session.amount_total,
+    waehrung: session.currency,
+  };
 }
 
 /**
@@ -153,16 +237,21 @@ export function checkoutIdempotencyKey(teile: {
 }
 
 /**
- * Das Abo einer Session, sofern es ausgeklappt vorliegt und aktiv ist.
+ * Das Abo einer Session, sofern es ausgeklappt vorliegt und läuft.
  *
- * Kein Gratis-Testzeitraum konfiguriert — "trialing" hier bewusst NICHT
- * akzeptiert, im Gegensatz zum Webhook-Handler, der auch künftige
- * Trial-Konfigurationen abdecken soll.
+ * "trialing" zählt nur, wenn die Session selbst nichts zu zahlen hatte —
+ * also eine Testphase oder ein Anschluss an einen Pass war. Ein Abo, das
+ * nach einer echten Zahlung in "trialing" stünde, ist unerwartet und wird
+ * dem Webhook überlassen statt hier bestätigt.
  */
 export function aktivesAboAusSession(
   session: Stripe.Checkout.Session,
 ): Stripe.Subscription | null {
   const subscription = session.subscription;
   if (!subscription || typeof subscription !== "object") return null;
-  return subscription.status === "active" ? subscription : null;
+  if (subscription.status === "active") return subscription;
+  if (subscription.status === "trialing" && session.payment_status === "no_payment_required") {
+    return subscription;
+  }
+  return null;
 }

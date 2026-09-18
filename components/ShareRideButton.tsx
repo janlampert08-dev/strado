@@ -60,17 +60,19 @@ export default function ShareRideButton({
       let name = title;
       let regionLabel = region ?? "";
       let elevation = elevationM;
+      let hoehenprofil: { km: number; m: number }[] | null = null;
 
       if (routeId) {
         const { data: route } = await supabase
           .from("routes_geojson")
-          .select("name, region, hoehe_m, geometry_geojson")
+          .select("name, region, hoehe_m, geometry_geojson, hoehenprofil")
           .eq("id", routeId)
           .maybeSingle<{
             name: string;
             region: string;
             hoehe_m: number | null;
             geometry_geojson: GeoLineString;
+            hoehenprofil: { km: number; m: number }[] | null;
           }>();
 
         // Ohne Geometrie gibt es kein Bild — der Knopf wird über finally
@@ -82,7 +84,14 @@ export default function ShareRideButton({
         coordinates = route.geometry_geojson.coordinates;
         name = route.name;
         regionLabel = route.region;
-        elevation = route.hoehe_m;
+        hoehenprofil = route.hoehenprofil;
+        // Wie auf der Streckenseite: der höchste Punkt aus dem Profil, wenn
+        // es eins gibt — sonst stünden auf dem Bild zwei Zahlen für denselben
+        // Punkt (Kachel und Silhouette).
+        elevation =
+          hoehenprofil && hoehenprofil.length > 1
+            ? Math.max(...hoehenprofil.map((p) => p.m))
+            : route.hoehe_m;
       } else {
         const { data: track } = await supabase
           .from("public_fahrt_tracks")
@@ -95,6 +104,15 @@ export default function ShareRideButton({
           return;
         }
         coordinates = track.track_geojson.coordinates;
+        // Das Profil einer freien Fahrt steht in public_fahrten — derselben
+        // öffentlichen Sicht, die auch die Fahrtseite liest. Fehlt es, bleibt
+        // das Bild ohne Silhouette.
+        const { data: fahrt } = await supabase
+          .from("public_fahrten")
+          .select("hoehenprofil")
+          .eq("completion_id", completionId)
+          .maybeSingle<{ hoehenprofil: { km: number; m: number }[] | null }>();
+        hoehenprofil = fahrt?.hoehenprofil ?? null;
       }
 
       const blob = await renderShareImage({
@@ -106,6 +124,8 @@ export default function ShareRideButton({
         elevationM: elevation,
         coordinates,
         milestoneLabel,
+        hoehenprofil,
+        hoehenBeschriftung: routeId ? "Höchster Punkt" : "Aufstieg",
       });
 
       const filename = `${slugify(name)}-${date}.jpg`;

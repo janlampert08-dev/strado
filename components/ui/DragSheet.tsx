@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useId,
   useRef,
   useState,
   type CSSProperties,
@@ -10,7 +11,6 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { GripHorizontal } from "lucide-react";
 import {
   DRAG_DECISION_THRESHOLD_PX,
   DRAG_TAP_THRESHOLD_PX,
@@ -32,8 +32,13 @@ const CLICK_SUPPRESSION_MS = 400;
 
 // Notnagel für die Griffhöhe, bis der ResizeObserver unten den echten Wert
 // gemessen hat (und dauerhaft ab md, wo der Griff ausgeblendet ist und
-// deshalb 0 misst). Entspricht py-2 + h-5 am Griff-Element.
-const HANDLE_FALLBACK_PX = 36;
+// deshalb 0 misst). Entspricht py-5 + h-1 am Griff-Element.
+const HANDLE_FALLBACK_PX = 44;
+
+// Höhe der Kompaktzeile (siehe Prop `kompakt`), fest statt gemessen: sie ist
+// eine Zeile mit fester Höhe (h-14), und eine Messung verlangte, sie auch
+// ausserhalb des eingeklappten Zustands im Layout zu halten.
+const KOMPAKT_PX = 56;
 
 // Gemeinsame Bottom-Sheet-Mechanik (Mobile): zwischen drei Rastpunkten
 // auf-/zuziehbar — versteckt (nur der Ziehgriff steht über der Karte), Peek
@@ -77,6 +82,7 @@ export default function DragSheet({
   handleLabels,
   onOccludedBottomChange,
   className = "",
+  kompakt,
   children,
 }: {
   containerRef: RefObject<HTMLElement | null>;
@@ -93,9 +99,22 @@ export default function DragSheet({
   // der Wert steht in den Abhängigkeiten des meldenden Effekts.
   onOccludedBottomChange?: (px: number) => void;
   className?: string;
+  /**
+   * Was eingeklappt unter dem Griff stehen bleibt — eine Zeile, 56 px.
+   * Ohne sie zeigte das eingeklappte Sheet nur den Griff: im Review stand man
+   * auf der Streckenseite vor einer Karte ohne jeden Hinweis, welche Strecke
+   * das ist. Mit ihr bleibt die volle Kartenansicht erhalten, und der Name
+   * steht trotzdem da. Tippen darauf holt das Sheet auf Peek zurück.
+   */
+  kompakt?: ReactNode;
   children: ReactNode;
 }) {
+  const inhaltId = useId();
   const [snap, setSnap] = useState<SheetSnap>("peek");
+  // Als Boolean für die Abhängigkeitslisten: `kompakt` ist ein ReactNode und
+  // bei jedem Render ein neues Objekt — direkt als Abhängigkeit hinge jeder
+  // Render die Touch- und Resize-Listener neu an.
+  const hatKompakt = kompakt !== undefined && kompakt !== null;
   const [dragHeight, setDragHeight] = useState<number | null>(null);
   // Ob das Sheet überhaupt als Sheet läuft — ab md ist der Wrapper
   // display:contents und der Inhalt ist die normale Seitenleiste.
@@ -137,7 +156,7 @@ export default function DragSheet({
       ? "calc(100% - var(--bottom-nav-h))"
       : snap === "peek"
         ? `${peekPx}px`
-        : `${handleHeight}px`;
+        : `${handleHeight + (hatKompakt ? KOMPAKT_PX : 0)}px`;
 
   // MISST, und das kostet: getComputedStyle und clientHeight erzwingen beide
   // ein sofortiges Neuberechnen von Stil und Layout. Beim Ziehen setzt jede
@@ -151,7 +170,8 @@ export default function DragSheet({
   // änderte sie, und die bricht den Zeiger ohnehin ab.
   const messeHoehen = useCallback((): SheetHeights => {
     const el = containerRef.current;
-    if (!el) return { minPx: handleHeight, peekPx, maxPx: window.innerHeight };
+    const minPx = handleHeight + (hatKompakt ? KOMPAKT_PX : 0);
+    if (!el) return { minPx, peekPx, maxPx: window.innerHeight };
     // Das Sheet endet am unteren Rand der *Inhaltsbox* des Containers, nicht
     // an dessen Polsterkante (bottom: var(--bottom-nav-h) unten) — die
     // Vollhöhe ist deshalb die Inhaltshöhe. Mit clientHeight (Inhalt plus
@@ -161,8 +181,8 @@ export default function DragSheet({
     const stil = getComputedStyle(el);
     const polsterung =
       (parseFloat(stil.paddingTop) || 0) + (parseFloat(stil.paddingBottom) || 0);
-    return { minPx: handleHeight, peekPx, maxPx: el.clientHeight - polsterung };
-  }, [containerRef, handleHeight, peekPx]);
+    return { minPx, peekPx, maxPx: el.clientHeight - polsterung };
+  }, [containerRef, handleHeight, peekPx, hatKompakt]);
 
   // Die echte Griffhöhe. Ab md ist der Griff md:hidden und misst 0 — dann
   // bleibt der Notnagel stehen, damit die Geste nach einer Rückkehr unter md
@@ -392,7 +412,19 @@ export default function DragSheet({
   // Der Griff beschreibt, was seine Aktivierung tut — und die führt nie nach
   // unten aus dem Blickfeld (siehe nextSnapOnTap): aus "versteckt" und "peek"
   // geht es hinauf, nur aus "voll" wieder zurück auf Peek.
-  const handleLabel = snap === "voll" ? handleLabels.collapse : handleLabels.expand;
+  // DREI RASTPUNKTE, DREI NAMEN. Vorher hiess der Griff in "versteckt" und
+  // in "peek" gleich ("Details ausklappen") und meldete beide Male
+  // aria-expanded="false" — der Unterschied zwischen einem eingeklappten
+  // Sheet und einer halb offenen Vorschau war für Hilfstechnik also gar
+  // nicht vorhanden, und der Zustandswechsel per Pfeiltaste blieb stumm.
+  // Jetzt benennt jeder Zustand seine eigene Handlung: aus "versteckt"
+  // holt der Griff das Sheet zurück, aus "peek" zieht er es ganz auf.
+  const handleLabel =
+    snap === "voll"
+      ? handleLabels.collapse
+      : snap === "peek"
+        ? `${handleLabels.expand} (ganz)`
+        : handleLabels.expand;
 
   return (
     <div
@@ -418,6 +450,9 @@ export default function DragSheet({
         tabIndex={0}
         aria-label={handleLabel}
         aria-expanded={snap === "voll"}
+        // Nennt den Bereich, den der Griff auf- und zuzieht — ohne ihn ist
+        // "Details ausklappen" eine Handlung ohne Gegenstand.
+        aria-controls={inhaltId}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
@@ -436,16 +471,30 @@ export default function DragSheet({
             setSnap((current) => snapStep(current, -1));
           }
         }}
-        className="flex shrink-0 cursor-grab touch-none items-center justify-center rounded-t-lg py-2 active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-inset md:hidden"
+        // py-5 um eine 4-px-Pille: 44 px Griff statt 36. Und die Pille statt
+        // des Sechs-Punkte-Symbols: das Punkteraster las sich im Test als
+        // "weitere Aktionen", die Pille ist das Zeichen, das iOS und Android
+        // für "zieh mich" verwenden.
+        className="flex shrink-0 cursor-grab touch-none items-center justify-center rounded-t-lg py-5 active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-inset md:hidden"
       >
-        <GripHorizontal className="h-5 w-5 text-muted" aria-hidden="true" />
+        <span aria-hidden="true" className="h-1 w-9 rounded-full bg-border-strong" />
       </div>
       {/* display:contents, damit der Wrapper das Layout in keiner Breite
           verändert — weder die Flex-Spalte des Sheets noch, ab md, das
           Hochrutschen des Inhalts als direktes Flex-Kind von <main>. Er
           existiert allein für `inert`: weggeschnittener Inhalt bliebe sonst
           per Tab erreichbar. */}
-      <div className="contents" inert={istSheet && snap === "versteckt"}>
+      {hatKompakt && snap === "versteckt" && dragHeight === null && (
+        <button
+          type="button"
+          onClick={() => setSnap("peek")}
+          aria-label={handleLabels.expand}
+          className="flex h-14 w-full shrink-0 items-center gap-3 px-5 text-left md:hidden"
+        >
+          {kompakt}
+        </button>
+      )}
+      <div id={inhaltId} className="contents" inert={istSheet && snap === "versteckt"}>
         {children}
       </div>
     </div>

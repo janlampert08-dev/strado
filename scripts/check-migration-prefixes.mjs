@@ -47,6 +47,12 @@ const ALTBESTAND = new Map([
       "0060_private_strecken_aus_oeffentlichen_views.sql",
     ],
   ],
+  // Das siebte Paar, am 2026-09-18 entstanden und erst in der Vereinigung
+  // der Branches sichtbar: beide Hälften waren schon in Produktion, bevor
+  // sie einander im selben Baum begegneten. Umbenennen verbietet Regel 9
+  // (eingespielte Migrationen bleiben, wie sie sind); siehe README,
+  // "Doppelte Nummernpräfixe".
+  ["0105", ["0105_strecken_verkehr.sql", "0105_tempolimits_quellen_amtlich.sql"]],
 ]);
 
 const nachPraefix = new Map();

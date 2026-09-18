@@ -12,7 +12,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     { url: origin, changeFrequency: "weekly", priority: 1 },
-    { url: `${origin}/leaderboards`, changeFrequency: "daily", priority: 0.6 },
+    { url: `${origin}/ranglisten`, changeFrequency: "daily", priority: 0.6 },
+    // Die Passliste ist nach den Streckenseiten der zweite Evergreen-Inhalt
+    // und beantwortet eine Frage, die saisonal gestellt wird ("welche Pässe
+    // sind offen?"). Täglich, weil der Status täglich anders sein kann.
+    { url: `${origin}/paesse`, changeFrequency: "daily", priority: 0.7 },
     ...routes.map((route) => ({
       url: `${origin}/strecken/${route.id}`,
       lastModified: route.created_at,

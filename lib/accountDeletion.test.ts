@@ -107,6 +107,11 @@ const ABSICHTLICH_ERHALTEN: Record<string, string> = {
   // nicht mehr auf, der Wert wird also nie wieder gelesen — und er verrät
   // ohne Spalten-Grant auch niemandem etwas.
   follows_gesehen_am: "not null, kein vom Nutzer eingegebener Wert",
+  // Dritter derselben Art (0104), aus demselben Grund: ein Lesezeichen auf
+  // die Passmeldungen, nicht null, nichts Eingegebenes. Was am Konto hing
+  // und tatsächlich Personenbezug hatte, sind die Pass-Abos selbst — und die
+  // löscht anonymize_account seit 0104 (delete from public.pass_folgen).
+  paesse_gesehen_am: "not null, kein vom Nutzer eingegebener Wert",
   // Generierte Spalte (0087): (ist_premium and zeigt_premium_badge). Sie
   // lässt sich nicht zuweisen — und muss es nicht. anonymize_own_account()
   // leert beide Quellspalten, die generierte folgt im selben UPDATE von

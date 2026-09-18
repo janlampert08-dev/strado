@@ -19,7 +19,7 @@ describe("getNavItems", () => {
         "/",
         "/feed",
         "/fahrten/neu",
-        "/leaderboards",
+        "/ranglisten",
         "/anmelden",
       ]);
     }
@@ -32,7 +32,7 @@ describe("getNavItems", () => {
   it("trägt die Ranglisten und nicht die Aktivität", () => {
     for (const surface of ["header", "bottom"] as const) {
       const items = hrefs(getNavItems({ loggedIn: true, moderator: false, surface }));
-      expect(items).toContain("/leaderboards");
+      expect(items).toContain("/ranglisten");
       expect(items).not.toContain("/aktivitaet");
     }
   });
@@ -57,18 +57,18 @@ describe("getNavItems", () => {
 
   // Die Ranglisten brauchen umgekehrt KEIN aktivAuf: sie sind wieder ein
   // eigener Eintrag, also deckt sie ihr eigenes Präfix ab. Ein zusätzlicher
-  // Eintrag, der /leaderboards mitmarkiert, würde auf der Ranglisten-Seite
+  // Eintrag, der /ranglisten mitmarkiert, würde auf der Ranglisten-Seite
   // zwei Tabs gleichzeitig hervorheben.
-  it("markiert /leaderboards über genau einen Eintrag", () => {
+  it("markiert /ranglisten über genau einen Eintrag", () => {
     for (const loggedIn of [false, true]) {
       for (const surface of ["header", "bottom"] as const) {
         const items = getNavItems({ loggedIn, moderator: false, surface });
         const zustaendig = items.filter(
           (i) =>
-            (i.href !== "/" && "/leaderboards".startsWith(i.href)) ||
-            (i.aktivAuf ?? []).some((p) => "/leaderboards".startsWith(p)),
+            (i.href !== "/" && "/ranglisten".startsWith(i.href)) ||
+            (i.aktivAuf ?? []).some((p) => "/ranglisten".startsWith(p)),
         );
-        expect(zustaendig.map((i) => i.href)).toEqual(["/leaderboards"]);
+        expect(zustaendig.map((i) => i.href)).toEqual(["/ranglisten"]);
       }
     }
   });
@@ -117,7 +117,7 @@ describe("getNavItems", () => {
   // steht dort stattdessen prominent auf /profil.
   it("lässt in der mobilen Leiste Vorschlagen weg und zeigt nur Fahrt starten", () => {
     const items = hrefs(getNavItems({ loggedIn: true, moderator: false, surface: "bottom" }));
-    expect(items).toEqual(["/", "/feed", "/fahrten/neu", "/leaderboards", "/profil"]);
+    expect(items).toEqual(["/", "/feed", "/fahrten/neu", "/ranglisten", "/profil"]);
   });
 
   it("hängt Moderation im Header nur für Moderatoren an", () => {
@@ -140,7 +140,7 @@ describe("getNavItems", () => {
       { moderator: true, creator: true },
     ]) {
       const items = getNavItems({ loggedIn: true, ...rollen, surface: "bottom" });
-      expect(hrefs(items)).toEqual(["/", "/feed", "/fahrten/neu", "/leaderboards", "/profil"]);
+      expect(hrefs(items)).toEqual(["/", "/feed", "/fahrten/neu", "/ranglisten", "/profil"]);
     }
   });
 

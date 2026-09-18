@@ -8,6 +8,8 @@ import {
   istUnbekannterCustomer,
   passendeOffeneSession,
   preisVonSession,
+  saisonpassAusSession,
+  varianteVonSession,
 } from "@/lib/stripeCheckout";
 
 // Nur die Felder, die die geprüften Funktionen anfassen. Der Cast hält den
@@ -84,6 +86,51 @@ describe("passendeOffeneSession", () => {
   it("liefert null für eine leere Liste", () => {
     expect(passendeOffeneSession([], "price_monat")).toBeNull();
   });
+
+  // Eine offene Session ohne Testphase darf nicht weiterverwendet werden,
+  // wenn inzwischen eine zustünde — sonst zahlt jemand sofort, dem heute
+  // nichts abgebucht werden sollte. Und umgekehrt.
+  it("unterscheidet die Zahlungsvariante", () => {
+    const test = session({ metadata: { price_id: "price_jahr", variante: "testphase" } });
+    const sofort = session({ metadata: { price_id: "price_jahr" } });
+    expect(
+      passendeOffeneSession([sofort], "price_jahr", { modus: "subscription", variante: "testphase" }),
+    ).toBeNull();
+    expect(
+      passendeOffeneSession([test], "price_jahr", { modus: "subscription", variante: "testphase" })?.id,
+    ).toBe("cs_1");
+    expect(passendeOffeneSession([test], "price_jahr")).toBeNull();
+  });
+
+  it("findet die offene Saisonpass-Session nur im Modus payment", () => {
+    const pass = session({ mode: "payment", metadata: { price_id: "price_pass", plan: "saisonpass" } });
+    expect(passendeOffeneSession([pass], "price_pass")).toBeNull();
+    expect(
+      passendeOffeneSession([pass], "price_pass", { modus: "payment", variante: "sofort" })?.id,
+    ).toBe("cs_1");
+  });
+
+  // Die Testphase kostet heute nichts — amount_total 0 ist dann ein
+  // brauchbarer Betrag und kein fehlender.
+  it("nimmt eine Testphase-Session mit Betrag 0", () => {
+    const test = session({ amount_total: 0, metadata: { price_id: "price_jahr", variante: "testphase" } });
+    expect(
+      passendeOffeneSession([test], "price_jahr", { modus: "subscription", variante: "testphase" }),
+    ).not.toBeNull();
+  });
+});
+
+describe("varianteVonSession", () => {
+  it("liest die beiden markierten Varianten", () => {
+    expect(varianteVonSession(session({ metadata: { variante: "testphase" } }))).toBe("testphase");
+    expect(varianteVonSession(session({ metadata: { variante: "anschluss" } }))).toBe("anschluss");
+  });
+
+  it("liest alles andere als sofort — auch Sessions von vor 0110", () => {
+    expect(varianteVonSession(session({ metadata: {} }))).toBe("sofort");
+    expect(varianteVonSession(session({ metadata: { variante: "gratis" } }))).toBe("sofort");
+    expect(varianteVonSession(session({ metadata: null }))).toBe("sofort");
+  });
 });
 
 describe("istEigeneBezahlteSession", () => {
@@ -120,6 +167,81 @@ describe("istEigeneBezahlteSession", () => {
 
   it("weist eine Einmalzahlung ab", () => {
     expect(istEigeneBezahlteSession(session({ mode: "payment" }), "cus_ich")).toBe(false);
+  });
+
+  it("akzeptiert eine Testphase oder einen Anschluss ohne Zahlung", () => {
+    for (const variante of ["testphase", "anschluss"]) {
+      expect(
+        istEigeneBezahlteSession(
+          session({ payment_status: "no_payment_required", metadata: { variante } }),
+          "cus_ich",
+        ),
+      ).toBe(true);
+    }
+  });
+
+  // Die Markierung schützt nur zusammen mit der Customer-Bindung: eine
+  // fremde Testphase-Session bleibt fremd.
+  it("weist eine fremde Testphase-Session ab", () => {
+    expect(
+      istEigeneBezahlteSession(
+        session({
+          customer: "cus_fremd",
+          payment_status: "no_payment_required",
+          metadata: { variante: "testphase" },
+        }),
+        "cus_ich",
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("saisonpassAusSession", () => {
+  const pass = (overrides: Partial<Stripe.Checkout.Session> = {}) =>
+    session({
+      mode: "payment",
+      amount_total: 2900,
+      payment_intent: "pi_1",
+      metadata: { plan: "saisonpass", price_id: "price_pass" },
+      ...overrides,
+    });
+
+  it("liest den bezahlten Pass des eigenen Kontos", () => {
+    expect(saisonpassAusSession(pass(), "cus_ich")).toEqual({
+      sessionId: "cs_1",
+      customerId: "cus_ich",
+      paymentIntentId: "pi_1",
+      preisId: "price_pass",
+      betragRappen: 2900,
+      waehrung: "chf",
+    });
+  });
+
+  it("überlässt dem Webhook die Zuordnung, wenn kein Konto übergeben wird", () => {
+    expect(saisonpassAusSession(pass({ customer: "cus_irgendwer" }), null)?.customerId).toBe(
+      "cus_irgendwer",
+    );
+  });
+
+  it("weist den Pass eines fremden Kontos ab", () => {
+    expect(saisonpassAusSession(pass({ customer: "cus_fremd" }), "cus_ich")).toBeNull();
+  });
+
+  it("weist eine unbezahlte oder offene Session ab", () => {
+    expect(saisonpassAusSession(pass({ payment_status: "unpaid" }), "cus_ich")).toBeNull();
+    expect(saisonpassAusSession(pass({ status: "open" }), "cus_ich")).toBeNull();
+  });
+
+  it("weist ein Abo und eine fremde Einmalzahlung ab", () => {
+    expect(saisonpassAusSession(pass({ mode: "subscription" }), "cus_ich")).toBeNull();
+    expect(
+      saisonpassAusSession(pass({ metadata: { price_id: "price_pass" } }), "cus_ich"),
+    ).toBeNull();
+  });
+
+  it("weist einen Pass ohne Betrag oder zu CHF 0 ab", () => {
+    expect(saisonpassAusSession(pass({ amount_total: 0 }), "cus_ich")).toBeNull();
+    expect(saisonpassAusSession(pass({ amount_total: null }), "cus_ich")).toBeNull();
   });
 });
 
@@ -245,8 +367,16 @@ describe("aktivesAboAusSession", () => {
 
   it("liefert null für ein Abo, das nicht aktiv ist", () => {
     expect(aktivesAboAusSession(session({ subscription: abo({ status: "incomplete" }) }))).toBeNull();
-    // trialing ist hier bewusst kein Erfolg — anders als im Webhook-Handler.
+    // trialing nach einer echten Zahlung ist unerwartet und kein Erfolg.
     expect(aktivesAboAusSession(session({ subscription: abo({ status: "trialing" }) }))).toBeNull();
+  });
+
+  it("liefert das Abo in der Testphase, wenn die Session nichts zu zahlen hatte", () => {
+    expect(
+      aktivesAboAusSession(
+        session({ payment_status: "no_payment_required", subscription: abo({ status: "trialing" }) }),
+      )?.id,
+    ).toBe("sub_1");
   });
 
   it("liefert null, wenn nur die Abo-ID dasteht", () => {

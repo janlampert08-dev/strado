@@ -4,16 +4,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatDuration } from "@/lib/format";
 import type { RouteTimeEntry } from "@/lib/leaderboard";
-import { fieldClassName } from "@/components/ui/Input";
 import Card from "@/components/ui/Card";
 import MotorklassenChips from "@/components/MotorklassenChips";
-import { filterLabel } from "@/lib/motorklassen";
+import { filterImSatz } from "@/lib/motorklassen";
 import type { Klassenfilter } from "@/lib/motorklassen";
 import type { Motorklasse } from "@/types/database";
 import { cn } from "@/lib/utils/cn";
 import { RankingIcon } from "@/components/NavIcons";
 import { textAktionClassName } from "@/components/ui/Button";
 import SectionHeading from "@/components/ui/SectionHeading";
+import Select from "@/components/ui/Select";
 
 const COLLAPSED_SIZE = 5;
 const EXPANDED_SIZE = 10;
@@ -69,7 +69,7 @@ export default function TrackLeaderboardChooser({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <SectionHeading icon={RankingIcon}>Streckenbestzeiten</SectionHeading>
         {routes.length > 0 && (
-          <select
+          <Select
             // Ohne Beschriftung meldet ein Screenreader hier nur "Auswahl" —
             // die Überschrift daneben ist nicht mit dem Feld verknüpft. Die
             // Chips darunter tragen ihre Beschriftung bereits (label-Prop),
@@ -85,14 +85,14 @@ export default function TrackLeaderboardChooser({
               setKlassen([]);
               setExpanded(false);
             }}
-            className={fieldClassName("w-full sm:w-auto sm:max-w-[60%]")}
+            huelleClassName="w-full sm:w-auto sm:max-w-[60%]"
           >
             {routes.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.name}
               </option>
             ))}
-          </select>
+          </Select>
         )}
       </div>
 
@@ -112,7 +112,13 @@ export default function TrackLeaderboardChooser({
         <p className={`text-sm text-muted transition-opacity ${loading ? "opacity-40" : ""}`}>
           {klasse === null
             ? "Noch keine geteilten Zeiten für diese Strecke."
-            : `Noch keine Zeit in ${filterLabel(klasse)} auf dieser Strecke — du kannst die erste sein.`}
+            : `Noch keine Zeit ${filterImSatz(klasse)} auf dieser Strecke. Du kannst der Erste sein.`}{" "}
+          {/* Ohne Einladung im Satz: steht diese Liste unter dem leeren
+              Ranglisten-Zustand, hat die Seite das schon einmal gesagt. Der
+              Weg zur Strecke bleibt, denn gefahren wird dort. */}
+          <Link href={`/strecken/${routeId}`} className="text-accent underline-offset-4 hover:underline">
+            Zur Strecke
+          </Link>
         </p>
       ) : (
         <>
@@ -125,15 +131,15 @@ export default function TrackLeaderboardChooser({
                 className="flex items-baseline justify-between px-4 py-3 text-sm"
               >
                 <span>
-                  <span className="mr-2 font-mono text-muted tabular-nums">{i + 1}.</span>
+                  <span className="mr-2 text-muted tabular-nums">{i + 1}.</span>
                   <Link
                     href={`/fahrer/${entry.userId}`}
-                    className="inline-flex min-w-0 items-center align-bottom transition-colors duration-fast hover:text-accent"
+                    className="relative inline-flex min-w-0 items-center align-bottom transition-colors duration-fast hover:text-accent after:absolute after:-inset-y-3 after:inset-x-0 after:content-['']"
                   >
                     <span className="truncate">{entry.name}</span>
                   </Link>
                 </span>
-                <span className="font-mono tabular-nums text-accent">
+                <span className="tabular-nums text-accent">
                   {formatDuration(entry.dauerSekunden)}
                 </span>
               </li>

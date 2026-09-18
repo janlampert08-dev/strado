@@ -22,6 +22,13 @@ export interface TrackingSnapshot {
   // Optional, damit ein vor dieser Änderung geschriebener Snapshot weiter
   // gelesen werden kann.
   ticket?: FahrtStartTicket | null;
+  // Seit 2026-09-17: die Aufzeichnung war beim Schreiben pausiert
+  // (useRideRecorder.pausieren). Wird der Snapshot so wiederaufgenommen,
+  // bleibt sie pausiert, statt ungefragt wieder GPS anzufordern. pausiertAm
+  // ist der Zeitpunkt der Pause, damit die angezeigte Fahrzeit sie beim
+  // Fortsetzen herausrechnen kann. Optional wie ticket.
+  pausiert?: boolean;
+  pausiertAm?: number | null;
 }
 
 // Schlüssel je Aufzeichnung: bei einer Streckenfahrt die Strecken-ID, bei
@@ -217,6 +224,88 @@ export function adoptGuestTrackingSnapshot(
   if (!saveTrackingSnapshot(userId, storageKey, guestSnapshot)) return false;
   clearTrackingSnapshot(GUEST_TRACKING_USER_ID, storageKey);
   return true;
+}
+
+/** Eine im Browser liegengebliebene Aufzeichnung, wie sie ausserhalb des
+ *  Aufzeichnungsschirms angezeigt wird (components/OffeneAufzeichnung.tsx). */
+export interface OffeneAufzeichnung {
+  /** FREE_RIDE_STORAGE_KEY oder die Strecken-ID. */
+  storageKey: string;
+  /** "tracking": mitten in der Fahrt verlassen. "finished": beendet, aber
+   *  noch nicht gespeichert. */
+  phase: TrackingSnapshot["phase"];
+  /** Bewusst pausiert — dann ist das Aussetzen gewollt, keine Warnung. */
+  pausiert: boolean;
+  /** Wohin der Hinweis führt — dorthin, wo der Recorder wieder mountet. */
+  href: string;
+}
+
+/**
+ * Welche Aufzeichnungen dieses Kontos noch offen sind — die reine Hälfte,
+ * ohne localStorage, damit sie einen Test haben kann.
+ *
+ * WARUM ES DAS BRAUCHT: Der Recorder läuft nur, solange sein Schirm
+ * gemountet ist. Wer mitten in der Fahrt zurück navigiert, hängt ihn aus —
+ * die GPS-Watch endet, der Snapshot bleibt liegen, und nichts ausserhalb des
+ * Schirms sagte das. Im Test lief die Uhr beim Zurückkehren scheinbar weiter
+ * (sie rechnet ab startTimeMs), während in Wahrheit kein Punkt mehr
+ * aufgezeichnet worden war.
+ *
+ * Nur Schlüssel DIESES Kontos (bzw. des Gast-Schlüssels, wenn niemand
+ * angemeldet ist): eine fremde Aufzeichnung auf einem geteilten Gerät
+ * anzukündigen wäre dieselbe Lücke, die die Nutzertrennung im Schlüssel
+ * schliesst. Dieselbe Altersgrenze wie loadTrackingSnapshot, damit der
+ * Hinweis nie auf etwas zeigt, das der Recorder dann verwirft.
+ */
+export function offeneAufzeichnungenAus(
+  eintraege: Iterable<[string, string | null]>,
+  userId: string,
+  jetzt: number,
+): OffeneAufzeichnung[] {
+  const prefix = `cornice:tracking:${userId}:`;
+  const gefunden: OffeneAufzeichnung[] = [];
+  for (const [storedKey, raw] of eintraege) {
+    if (!storedKey.startsWith(prefix) || !raw) continue;
+    const storageKey = storedKey.slice(prefix.length);
+    if (!storageKey || storageKey.includes(":")) continue;
+    let snapshot: Partial<TrackingSnapshot>;
+    try {
+      snapshot = JSON.parse(raw) as Partial<TrackingSnapshot>;
+    } catch {
+      continue;
+    }
+    if (snapshot.phase !== "tracking" && snapshot.phase !== "finished") continue;
+    if (typeof snapshot.savedAt !== "number" || jetzt - snapshot.savedAt > SNAPSHOT_MAX_AGE_MS) {
+      continue;
+    }
+    // Eine Streckenfahrt, deren Zeitmessung nie begonnen hat, ist nur die
+    // Anfahrt zum Startpunkt — nichts, was verloren gehen könnte.
+    if (snapshot.phase === "tracking" && !snapshot.hasStarted) continue;
+    gefunden.push({
+      storageKey,
+      phase: snapshot.phase,
+      pausiert: snapshot.phase === "tracking" && snapshot.pausiert === true,
+      href:
+        storageKey === FREE_RIDE_STORAGE_KEY
+          ? "/fahrten/neu"
+          : `/strecken/${encodeURIComponent(storageKey)}`,
+    });
+  }
+  return gefunden;
+}
+
+/** offeneAufzeichnungenAus gegen den echten localStorage. Wirft nie. */
+export function findeOffeneAufzeichnungen(userId: string): OffeneAufzeichnung[] {
+  try {
+    const eintraege: [string, string | null][] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const storedKey = localStorage.key(i);
+      if (storedKey) eintraege.push([storedKey, localStorage.getItem(storedKey)]);
+    }
+    return offeneAufzeichnungenAus(eintraege, userId, Date.now());
+  } catch {
+    return [];
+  }
 }
 
 export function clearTrackingSnapshot(userId: string, storageKey: string): void {

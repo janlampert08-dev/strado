@@ -3,7 +3,7 @@ import Card from "@/components/ui/Card";
 
 // Platzhalter für die vier globalen Ranglisten.
 //
-// Eine Datei, zwei Verwender: app/leaderboards/loading.tsx zeichnet damit den
+// Eine Datei, zwei Verwender: app/ranglisten/loading.tsx zeichnet damit den
 // Erstaufbau der Seite, und die Suspense-Grenze in page.tsx denselben
 // Zustand beim Wechsel der Motorklasse. Lägen die beiden doppelt vor, liefen
 // sie auseinander — und ein Skelett, das nicht mehr zur echten Liste passt,

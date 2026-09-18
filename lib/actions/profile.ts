@@ -19,6 +19,11 @@ export interface ProfileSearchResult {
   id: string;
   displayName: string | null;
   avatarUrl: string | null;
+  /** Region der jüngsten öffentlichen Fahrt, null ohne öffentliche Fahrt. */
+  region: string | null;
+  /** Anzahl öffentlicher Fahrten. */
+  fahrten: number;
+  follower: number;
 }
 
 // Namenssuche für die Profilsuche im Feed (components/ProfileSearch.tsx).
@@ -53,10 +58,62 @@ export async function searchProfiles(query: string): Promise<ProfileSearchResult
     .order("display_name")
     .limit(8);
 
-  return (data ?? []).map((p) => ({
+  const profile = data ?? [];
+  if (profile.length === 0) return [];
+
+  // UNTERSCHEIDBARKEIT. Bis hierher kam nur Name und Bild zurück — zwei
+  // "Jan" in der Liste waren nicht auseinanderzuhalten, und wer sein Bild
+  // nicht zeigt, stand als leerer Kreis mit Vornamen da. Dazu kommen jetzt
+  // Region, Anzahl Fahrten und Follower, und zwar ausschliesslich aus
+  // Quellen, die für jeden ohnehin lesbar sind:
+  //
+  // - Region und Fahrtenzahl aus public_fahrten — dieselbe Sicht, die den
+  //   öffentlichen Feed und das öffentliche Profil speist. Sie enthält nur
+  //   Fahrten mit ist_oeffentlich = true; eine private Fahrt verrät hier
+  //   also weder ihre Region noch ihre Existenz.
+  // - Follower über get_follow_counts, die SECURITY-DEFINER-Funktion, die
+  //   auch das Profil nutzt (0040). Die Zahl ist laut Einstellungen "für
+  //   andere immer sichtbar", unabhängig von zeigt_follower_liste — die
+  //   Liste bleibt geschützt, die Zahl war nie geschützt.
+  //
+  // Beides läuft mit der Sitzung des Aufrufers (createClient), nicht mit dem
+  // Admin-Client: keine RLS-Umgehung, nichts, was nicht schon per PostgREST
+  // abrufbar wäre. Die Last bleibt durch das IP-Limit oben und limit(8)
+  // begrenzt — höchstens neun zusätzliche Abfragen je Suche.
+  const ids = profile.map((p) => p.id);
+  const [{ data: fahrtenDaten }, followerZahlen] = await Promise.all([
+    supabase
+      .from("public_fahrten")
+      .select("user_id, region")
+      .in("user_id", ids)
+      .order("datum", { ascending: false })
+      .limit(500),
+    Promise.all(
+      ids.map(async (id) => {
+        const { data: zeile } = await supabase
+          .rpc("get_follow_counts", { p_user_id: id })
+          .single();
+        return [id, (zeile as { followers?: number } | null)?.followers ?? 0] as const;
+      }),
+    ),
+  ]);
+
+  const fahrtenJeNutzer = new Map<string, { region: string | null; anzahl: number }>();
+  for (const f of (fahrtenDaten ?? []) as { user_id: string; region: string | null }[]) {
+    const bisher = fahrtenJeNutzer.get(f.user_id);
+    // Sortiert nach Datum absteigend: der erste Treffer ist die jüngste Fahrt.
+    if (bisher) bisher.anzahl += 1;
+    else fahrtenJeNutzer.set(f.user_id, { region: f.region, anzahl: 1 });
+  }
+  const followerJeNutzer = new Map(followerZahlen);
+
+  return profile.map((p) => ({
     id: p.id,
     displayName: p.display_name,
     avatarUrl: p.zeigt_avatar ? p.avatar_url : null,
+    region: fahrtenJeNutzer.get(p.id)?.region ?? null,
+    fahrten: fahrtenJeNutzer.get(p.id)?.anzahl ?? 0,
+    follower: followerJeNutzer.get(p.id) ?? 0,
   }));
 }
 
@@ -135,7 +192,7 @@ export async function updateVisibilitySettings(
   revalidatePath("/profil/einstellungen");
   revalidatePath(`/fahrer/${user.id}`);
   revalidatePath("/feed");
-  revalidatePath("/leaderboards");
+  revalidatePath("/ranglisten");
   return { error: null, success: true };
 }
 
@@ -244,4 +301,62 @@ export async function uploadAvatar(
   revalidatePath("/profil");
   revalidatePath(`/fahrer/${user.id}`);
   return { error: null };
+}
+
+/**
+ * Den eigenen Anzeigenamen ändern (Einstellungen → Konto).
+ *
+ * Die Regeln stehen in der Datenbank (0109_profilname_aendern.sql), nicht
+ * hier: die Funktion arbeitet ausschliesslich auf auth.uid(), prüft Länge
+ * und Eindeutigkeit wie signUp() und ist der einzige Schreibweg für
+ * display_name — die Spalte hat keinen UPDATE-Grant. Diese Action setzt
+ * davor nur eine Mengenbremse und übersetzt die Rückgabecodes in Sätze.
+ *
+ * Solange 0109 nicht eingespielt ist, scheitert der RPC-Aufruf; dann steht
+ * eine allgemeine Meldung da statt eines Absturzes.
+ */
+export async function aendereProfilnamen(
+  _prevState: ProfileActionState,
+  formData: FormData,
+): Promise<ProfileActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Bitte melde dich zuerst an." };
+
+  // Fünf Änderungen in zehn Minuten: genug für Tippfehler, zu wenig, um den
+  // Namensbestand per Ausprobieren nach vergebenen Namen abzusuchen.
+  if (isRateLimitedByKey(`profilname:${user.id}`, 5, 10 * 60_000)) {
+    return { error: "Zu viele Änderungen. Bitte warte ein paar Minuten." };
+  }
+
+  const name = String(formData.get("display_name") ?? "").slice(0, 200);
+  const { data, error } = await supabase.rpc("profilname_aendern", { p_name: name });
+  if (error) {
+    console.error("Profilname konnte nicht geändert werden:", error.message);
+    return { error: "Der Name konnte gerade nicht gespeichert werden. Bitte versuche es später erneut." };
+  }
+
+  switch (data as string) {
+    case "ok":
+      revalidatePath("/profil");
+      revalidatePath("/profil/einstellungen");
+      revalidatePath(`/fahrer/${user.id}`);
+      revalidatePath("/feed");
+      revalidatePath("/ranglisten");
+      return { error: null, success: true };
+    case "unveraendert":
+      return { error: null, success: true };
+    case "zu_kurz":
+      return { error: "Der Name braucht mindestens 2 Zeichen." };
+    case "zu_lang":
+      return { error: "Der Name darf höchstens 50 Zeichen lang sein." };
+    case "vergeben":
+      return { error: "Dieser Name ist bereits vergeben." };
+    case "ungueltig":
+      return { error: "Der Name enthält unsichtbare oder Steuerzeichen." };
+    default:
+      return { error: "Der Name konnte gerade nicht gespeichert werden." };
+  }
 }

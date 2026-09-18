@@ -18,11 +18,11 @@ export default function CompletionReportButton({ completionId }: { completionId:
     <>
       <IconButton
         onClick={() => setOpen(true)}
-        ton="gefahr"
+        ton="leise"
         title="Fahrt melden"
         aria-label="Fahrt melden"
       >
-        <Flag className="h-5 w-5" aria-hidden="true" />
+        <Flag className="h-4 w-4" aria-hidden="true" />
       </IconButton>
       <ReportDialog
         open={open}

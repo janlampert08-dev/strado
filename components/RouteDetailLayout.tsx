@@ -4,6 +4,7 @@ import { useRef, useState, type ReactNode } from "react";
 import DragSheet from "@/components/ui/DragSheet";
 import RouteDetailMap from "@/components/RouteDetailMap";
 import type { RouteGeoJSON } from "@/types/database";
+import { formatKm } from "@/lib/format";
 
 // Gleiche Bottom-Sheet-Mechanik wie auf der Startseite (ExploreView.tsx):
 // Mobile zeigt die Karte vollflächig, das Detail-Panel liegt als per
@@ -32,6 +33,16 @@ export default function RouteDetailLayout({
 
   return (
     <main ref={containerRef} className="relative flex flex-1 flex-col overflow-hidden md:flex-row">
+      {/* Sprunglink für die Tastatur: die Karte steht im DOM vor dem Sheet,
+          und Tab lief erst durch alle Mapbox-Bedienelemente und die drei
+          Ebenen-Knöpfe, bevor "Strecke starten" kam. Unsichtbar, bis er den
+          Fokus hat. */}
+      <a
+        href="#streckeninfo"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-full focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-overlay"
+      >
+        Zur Streckeninfo
+      </a>
       <div
         className="absolute inset-0 md:static md:order-2 md:h-auto md:flex-1"
         role="img"
@@ -51,12 +62,20 @@ export default function RouteDetailLayout({
         peekPx={SHEET_PEEK_PX}
         handleLabels={{ expand: "Details ausklappen", collapse: "Details einklappen" }}
         onOccludedBottomChange={setVerdecktUnten}
+        kompakt={
+          <>
+            <span className="min-w-0 flex-1 truncate text-base font-semibold">{route.name}</span>
+            <span className="shrink-0 text-sm text-muted tabular-nums">
+              {formatKm(route.laenge_km)} km
+            </span>
+          </>
+        }
       >
         {/* Kein Sonderpolster mehr für die BottomNav — das Sheet endet
             inzwischen über der Leiste (bottom: var(--bottom-nav-h), siehe
             DragSheet.tsx). pb-8 ist der Wert, der vorher ab md galt, wo es
             die Leiste nie gab. */}
-        <div className="flex w-full flex-col gap-5 overflow-y-auto overscroll-y-contain border-border px-5 pt-6 pb-8 sm:px-6 sm:pt-8 md:max-w-md md:border-r lg:max-w-lg xl:max-w-xl">
+        <div id="streckeninfo" tabIndex={-1} className="flex w-full flex-col gap-5 overflow-y-auto outline-none overscroll-y-contain border-border px-5 pt-6 pb-8 sm:px-6 sm:pt-8 md:max-w-md md:border-r lg:max-w-lg xl:max-w-xl">
           {children}
         </div>
       </DragSheet>

@@ -19,6 +19,9 @@ import { formatKm, datumCH } from "@/lib/format";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import SectionHeading from "@/components/ui/SectionHeading";
+import PassModeration from "@/components/PassModeration";
+import { getPassModerationsDaten } from "@/lib/paesse";
+import { BergIcon } from "@/components/NavIcons";
 import { buttonVariants } from "@/components/ui/Button";
 import { MapPinIcon, ShieldIcon, LinkIcon, FeedbackIcon, MailIcon } from "@/components/NavIcons";
 import { POSTFACH_URL } from "@/lib/constants";
@@ -90,7 +93,7 @@ function AbschnittKopf({
   return (
     <div className="flex items-center gap-2">
       <SectionHeading icon={icon}>{title}</SectionHeading>
-      <span className="rounded-full border border-border px-1.5 py-0.5 font-mono text-xs tabular-nums text-muted">
+      <span className="rounded-full border border-border px-1.5 py-0.5 text-xs tabular-nums text-muted">
         {count}
       </span>
     </div>
@@ -111,7 +114,7 @@ function Sprungmarke({ href, label, count }: { href: string; label: string; coun
     >
       <span className="text-xs text-muted">{label}</span>
       <span
-        className={`font-mono text-title font-semibold tabular-nums ${
+        className={`text-title font-semibold tabular-nums ${
           count === 0 ? "text-muted" : "text-foreground"
         }`}
       >
@@ -127,12 +130,13 @@ export default async function ModerationPage() {
   if (!user) redirect("/anmelden");
   if (!(await isModerator(user.id))) redirect("/");
 
-  const [routes, routeReports, ratingReports, completionReports, feedback] = await Promise.all([
+  const [routes, routeReports, ratingReports, completionReports, feedback, passDaten] = await Promise.all([
     getPendingRoutes(),
     getOpenRouteReports(),
     getOpenRatingReports(),
     getOpenCompletionReports(),
     getOpenFeedback(),
+    getPassModerationsDaten(),
   ]);
 
   // Die drei Meldungsarten in eine Liste, chronologisch. Vorher standen sie
@@ -272,13 +276,13 @@ export default async function ModerationPage() {
                     {/* Das Einreichungsdatum stand bisher nirgends. In einer
                         Warteschlange ist das Alter aber die Angabe, nach der
                         entschieden wird, was als Nächstes drankommt. */}
-                    <span className="font-mono text-xs tabular-nums text-muted">
+                    <span className="text-xs tabular-nums text-muted">
                       {datumCH(new Date(route.created_at))}
                     </span>
                   </div>
                   <p className="text-sm text-muted">
                     {route.region} · {route.start_ort} → {route.ziel_ort} ·{" "}
-                    <span className="font-mono tabular-nums">{formatKm(route.laenge_km)} km</span>
+                    <span className="tabular-nums">{formatKm(route.laenge_km)} km</span>
                   </p>
                   {route.charakter_text && <Zitat>{route.charakter_text}</Zitat>}
                   <ModerationActions routeId={route.id} />
@@ -300,7 +304,7 @@ export default async function ModerationPage() {
                     <span className="text-xs text-muted">
                       {REPORT_REASON_LABEL[meldung.grund] ?? meldung.grund}
                     </span>
-                    <span className="ml-auto font-mono text-xs tabular-nums text-muted">
+                    <span className="ml-auto text-xs tabular-nums text-muted">
                       {datumCH(new Date(meldung.erstelltAm))}
                     </span>
                   </div>
@@ -340,7 +344,7 @@ export default async function ModerationPage() {
                     {eintrag.absender && (
                       <span className="text-xs text-muted">von {eintrag.absender}</span>
                     )}
-                    <span className="ml-auto font-mono text-xs tabular-nums text-muted">
+                    <span className="ml-auto text-xs tabular-nums text-muted">
                       {datumCH(new Date(eintrag.erstelltAm))}
                     </span>
                   </div>
@@ -349,6 +353,39 @@ export default async function ModerationPage() {
                 </Card>
               ))
             )}
+          </section>
+
+          {/* Zuletzt und ohne Sprungmarke: die Pässe sind keine
+              Warteschlange, die abgearbeitet wird, sondern ein Werkzeug für
+              den Fall, dass der Abgleich danebenliegt. Eine vierte Zählkachel
+              oben würde eine Zahl behaupten, die nichts fordert. */}
+          <section id="paesse" className="flex scroll-mt-4 flex-col gap-3">
+            <SectionHeading icon={BergIcon}>Pässe</SectionHeading>
+            <PassModeration
+              paesse={passDaten.paesse.map((p) => ({
+                id: p.id,
+                name: p.name,
+                status: p.status
+                  ? {
+                      zustand: p.status.zustand,
+                      meldung: p.status.meldung,
+                      quelle: p.status.quelle,
+                      aktualisiertAm: p.status.aktualisiertAm,
+                      manuellBis: p.status.manuellBis,
+                    }
+                  : null,
+              }))}
+              sperrtage={passDaten.sperrtage.map((s) => ({
+                id: s.id,
+                passId: s.passId,
+                passName: s.passName,
+                von: s.von,
+                bis: s.bis,
+                art: s.art,
+                titel: s.titel,
+              }))}
+              feedStand={passDaten.feedStand}
+            />
           </section>
         </Seitenrahmen>
       </div>

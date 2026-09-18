@@ -118,7 +118,11 @@ export default function RatingSection({
       )}
 
       {ratings.length === 0 ? (
-        <p className="text-sm text-muted">Noch keine Bewertungen.</p>
+        <p className="text-sm text-muted">
+          {/* Nur wer das Formular darüber sieht, bekommt die Einladung —
+              Abgemeldete lesen direkt darüber schon den Anmelde-Hinweis. */}
+          {canRate ? "Noch keine Bewertungen. Deine wäre die erste." : "Noch keine Bewertungen."}
+        </p>
       ) : (
         <ul className="flex flex-col gap-3">
           {ratings.map((r) => (
@@ -135,7 +139,7 @@ export default function RatingSection({
                     // 24. Am Preview auf 390 px gemessen waren es 24 × 20.
                     // Die 12 px Polsterung heben das auf 32 und das
                     // negative Aussenmass nimmt sie optisch wieder weg.
-                    className="-my-1.5 py-1.5 font-medium transition-colors duration-fast hover:text-accent"
+                    className="relative -my-1.5 py-1.5 font-medium transition-colors duration-fast after:absolute after:-inset-x-3 after:-inset-y-1.5 after:content-[''] hover:text-accent"
                   >
                     {r.display_name ?? "Anonym"}
                   </Link>

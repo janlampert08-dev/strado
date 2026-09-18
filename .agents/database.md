@@ -45,6 +45,26 @@ and the "Supabase Rules" section in particular.
 - PostGIS geometry columns: keep SRID consistent with existing route
   geometry columns, and check spatial indexes exist for columns queried by
   proximity/bounding box.
+- **A row is not always a ride: `route_completions` holds parent rides and
+  detected segments in one table.** `save_free_ride_with_segments`
+  (`0050`, rewritten in `0081`) writes one extra row per route recognised
+  inside a free ride, each carrying its own `distanz_km` — the same
+  kilometres that are already in the parent row. Any new aggregate has to
+  pick a side, and the two sides are not interchangeable:
+  - **Quantity** ("how far did I ride", "how often", "how much ascent")
+    filters `parent_completion_id is null`. Without it one physical ride
+    counts as 1 + N rides and its distance 1 + N times.
+  - **Membership** ("which routes have I ridden") does *not* filter —
+    getting credit for a route picked up mid-ride is the point of
+    detection, and such counters dedupe per route anyway.
+
+  `app/profil/page.tsx` and `lib/achievements.ts` run both queries side by
+  side and say which is which. Ascent happens to be unaffected today
+  (segments carry `null` there), but filter it with the rest rather than
+  carving out an exception nobody will remember. `public_fahrten` and
+  `leaderboard_completions` deliberately do **not** carry the column
+  (`0050`), so the same split cannot be made there without a migration —
+  see PR #274.
 - Update `types/database.ts` in the same change as any schema migration
   that adds/removes/renames a column or table so the two never drift.
 - Add or update tests for any new query logic in `lib/` that depends on

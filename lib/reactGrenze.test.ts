@@ -16,7 +16,7 @@ import { join, dirname, resolve } from "node:path";
 // ausschliesslich beim Rendern einer echten Anfrage auf. Auch `next build`
 // sieht ihn nicht. Deshalb wird hier der Quelltext geprüft, nicht Verhalten.
 //
-// WAS ES GEKOSTET HAT: In app/leaderboards/page.tsx standen beide Varianten
+// WAS ES GEKOSTET HAT: In app/ranglisten/page.tsx standen beide Varianten
 // gleichzeitig. CHIP_ALLE als Objektschlüssel wurde per String() zum
 // Quelltext des Stubs, wodurch der "Alle"-Chip zu einem Knopf ohne Wirkung
 // wurde; und chipClassName() wäre beim ersten Nutzer mit eindeutiger

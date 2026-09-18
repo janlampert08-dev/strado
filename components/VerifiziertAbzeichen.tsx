@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ShieldIcon } from "@/components/NavIcons";
+import { ShieldIcon, WeiterIcon } from "@/components/NavIcons";
 import type { DauerQuelle } from "@/types/database";
 
 // Macht sichtbar, was 0096–0098 in der Datenbank angelegt haben: ob die Dauer
@@ -67,6 +67,10 @@ export default function VerifiziertAbzeichen({
     );
   }
 
+  // Ein Chevron hinter dem Text: die Pille ist ein Link auf die Erklärung,
+  // sah aber aus wie ein reines Etikett — im Review blieb "Zeit nicht
+  // verifiziert" deshalb unerklärt, obwohl die Erklärung einen Tipp entfernt
+  // lag.
   return (
     <Link
       href="/verifiziert"
@@ -74,6 +78,7 @@ export default function VerifiziertAbzeichen({
       title={titel}
     >
       {inhalt}
+      <WeiterIcon className="-mr-1 h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden="true" />
     </Link>
   );
 }

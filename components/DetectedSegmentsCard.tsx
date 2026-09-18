@@ -36,7 +36,7 @@ export default function DetectedSegmentsCard({ segments }: { segments: DetectedS
                   <span className="min-w-0 truncate font-medium transition-colors duration-fast group-hover:text-accent">
                     {segment.routeName}
                   </span>
-                  <div className="flex items-center gap-2 font-mono text-xs tabular-nums text-muted">
+                  <div className="flex items-center gap-2 text-xs tabular-nums text-muted">
                     <span>{(segment.distanzKm ?? 0).toFixed(1)} km</span>
                     <span aria-hidden="true">·</span>
                     <span className="flex items-center gap-1">

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import Button, { type ButtonVariant } from "./Button";
+import { SchliessenIcon } from "@/components/NavIcons";
 import { cn } from "@/lib/utils/cn";
 
 interface DialogProps {
@@ -23,6 +24,7 @@ interface DialogProps {
 // kostenlos vom Browser (Baseline-unterstützt), siehe Plan §3.
 export function Dialog({ open, onClose, title, ariaLabel, children, className }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titelId = useId();
 
   useEffect(() => {
     const el = ref.current;
@@ -51,15 +53,50 @@ export function Dialog({ open, onClose, title, ariaLabel, children, className }:
       ref={ref}
       onClose={onClose}
       aria-label={!title ? ariaLabel : undefined}
+      // Mit Überschrift: die Überschrift IST der Name. Ohne aria-labelledby
+      // trug der Dialog gar keinen — die Follower-Liste meldete sich beim
+      // Öffnen nur als "Dialog", obwohl "Follower" darin steht.
+      aria-labelledby={title ? titelId : undefined}
       className={cn(
-        "m-auto w-[min(28rem,calc(100vw-2rem))] rounded-lg border border-border bg-background p-5 text-foreground shadow-elevated outline-none backdrop:bg-foreground/30",
+        "m-auto w-[min(28rem,calc(100vw-2rem))] rounded-lg border border-border bg-background p-5 text-foreground shadow-elevated outline-none backdrop:bg-black/60",
+        // UNTER sm EIN BLATT VON UNTEN, sobald der Dialog eine Überschrift
+        // hat — Rückfragen, Listen, Formulare. Mittig schwebend lagen ihre
+        // Knöpfe in der oberen Bildschirmhälfte, also dort, wo der Daumen
+        // am schlechtesten hinkommt; von unten stehen sie, wo er ohnehin
+        // ist. Die Foto-Lightbox (kein title) bleibt mittig: ein Bild ist
+        // kein Blatt.
+        title &&
+          "max-sm:mx-0 max-sm:mt-auto max-sm:mb-0 max-sm:w-full max-sm:max-w-full max-sm:rounded-b-none max-sm:border-x-0 max-sm:border-b-0 max-sm:pb-[calc(1.25rem+var(--safe-bottom))]",
         className,
       )}
       onClick={(event) => {
         if (event.target === event.currentTarget) ref.current?.close();
       }}
     >
-      {title && <h2 className="mb-3 text-title font-semibold">{title}</h2>}
+      {/* Ein sichtbarer Schliessen-Knopf. Vorher schloss ein Dialog nur
+          über Esc oder einen Tipp daneben — beides unsichtbar, und auf dem
+          Telefon gibt es kein Esc. Die Follower-Liste hatte gar keinen
+          anderen Ausweg. */}
+      {title && (
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <h2 id={titelId} className="pt-2 text-title font-semibold">
+            {title}
+          </h2>
+          {/* Ohne Rahmen, anders als ui/IconButton: im Kopf eines Blatts
+              ist der Knopf Ausstattung, keine Handlung neben anderen — und
+              cn ist kein tailwind-merge, ein angehängtes border-transparent
+              setzte sich gegen den eingebauten Rahmen nicht verlässlich
+              durch. 44 px Tippfläche bleiben. */}
+          <button
+            type="button"
+            aria-label="Schliessen"
+            onClick={() => ref.current?.close()}
+            className="-mt-1 -mr-2 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-muted transition-colors duration-fast hover:bg-surface hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          >
+            <SchliessenIcon className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </div>
+      )}
       {children}
     </dialog>
   );
@@ -92,16 +129,22 @@ export function ConfirmDialog({
   return (
     <Dialog open={open} onClose={onCancel} title={title}>
       {description && <p className="mb-4 text-sm text-muted">{description}</p>}
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="secondary" size="sm" onClick={onCancel}>
+      {/* Auf dem Telefon, wo die Rückfrage als Blatt von unten kommt, stehen
+          die beiden Knöpfe untereinander in voller Breite und 44 px hoch —
+          die bestätigende Handlung zuunterst, dort, wo der Daumen ist. Ab sm
+          wie bisher nebeneinander rechts. Vorher waren es 36-px-Knöpfe
+          ("sm") auch auf dem Telefon, ausgerechnet vor "Verwerfen" und
+          "Löschen". */}
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <Button type="button" variant="secondary" onClick={onCancel} className="max-sm:w-full">
           {cancelLabel}
         </Button>
         <Button
           type="button"
           variant={variant}
-          size="sm"
           onClick={onConfirm}
           disabled={pending}
+          className="max-sm:w-full"
         >
           {confirmLabel}
         </Button>

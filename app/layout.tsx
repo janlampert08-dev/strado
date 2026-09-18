@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
+import HinweisLeiste from "@/components/Hinweis";
 import { BESCHREIBUNG, SLOGAN } from "@/lib/constants";
 import { siteUrl } from "@/lib/siteUrl";
 import { startbildEintraege } from "@/lib/startbilder";
@@ -123,6 +124,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full flex flex-col font-sans">
         {children}
+        <HinweisLeiste />
         <ServiceWorkerRegister />
         <Analytics />
       </body>

@@ -19,6 +19,7 @@ import { chipClassName } from "@/components/motorklassenChipStil";
 import { buttonVariants, textAktionClassName } from "@/components/ui/Button";
 import SectionHeading from "@/components/ui/SectionHeading";
 import { ConfirmDialog } from "@/components/ui/Dialog";
+import Select from "@/components/ui/Select";
 
 export const MAX_NOTIZ_LENGTH = 280;
 
@@ -69,6 +70,7 @@ export default function RideSummaryForm({
   onIsPublicChange,
   onSubmit,
   onDiscard,
+  onResume,
   maxPhotos,
   children,
 }: {
@@ -89,6 +91,10 @@ export default function RideSummaryForm({
   onIsPublicChange: (next: boolean) => void;
   onSubmit: () => void;
   onDiscard: () => void;
+  /** "Weiter aufzeichnen": die Fahrt war nicht zu Ende, nur der Knopf wurde
+   *  gedrückt. Ohne diesen Weg blieb nach einem Fehlgriff nur Speichern
+   *  oder Verwerfen — und beides beendet die Fahrt endgültig. */
+  onResume?: () => void;
   // Zusätzliche Felder oberhalb der Fahrzeugwahl (z.B. der Titel einer
   // freien Fahrt).
   children?: ReactNode;
@@ -300,7 +306,7 @@ export default function RideSummaryForm({
           // die FormData manuell und ruft die Server Action direkt auf.
           <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
             <div className="grid grid-cols-2 gap-2">
-              <select
+              <Select
                 value={newVehicleTyp}
                 onChange={(e) => {
                   setNewVehicleTyp(e.target.value as FahrzeugTyp);
@@ -313,15 +319,14 @@ export default function RideSummaryForm({
               >
                 <option value="auto">Auto</option>
                 <option value="motorrad">Motorrad</option>
-              </select>
-              <select
+              </Select>
+              <Select
                 value={newVehicleGetriebe}
                 onChange={(e) => setNewVehicleGetriebe(e.target.value)}
-                className={fieldClassName()}
               >
                 <option value="manuell">Manuell</option>
                 <option value="automatik">Automatik</option>
-              </select>
+              </Select>
             </div>
             <input
               type="text"
@@ -344,7 +349,7 @@ export default function RideSummaryForm({
               max={2100}
               value={newVehicleBaujahr}
               onChange={(e) => setNewVehicleBaujahr(e.target.value)}
-              className={fieldClassName("font-mono")}
+              className={fieldClassName()}
             />
             {newVehicleTyp === "motorrad" && (
               <input
@@ -355,7 +360,7 @@ export default function RideSummaryForm({
                 inputMode="numeric"
                 value={newVehicleHubraum}
                 onChange={(e) => setNewVehicleHubraum(e.target.value)}
-                className={fieldClassName("font-mono")}
+                className={fieldClassName()}
               />
             )}
             <input
@@ -364,7 +369,7 @@ export default function RideSummaryForm({
               inputMode="decimal"
               value={newVehicleLeistung}
               onChange={(e) => setNewVehicleLeistung(e.target.value)}
-              className={fieldClassName("font-mono")}
+              className={fieldClassName()}
             />
             <MotorklasseBadge klasse={neueFahrzeugKlasse} regelAnzeigen />
             {addVehicleError && (
@@ -489,7 +494,7 @@ export default function RideSummaryForm({
             <SectionHeading as="label" groesse="xs" htmlFor="tracking-notiz">
               Notiz (optional)
             </SectionHeading>
-            <span className="font-mono text-xs tabular-nums text-muted">
+            <span className="text-xs tabular-nums text-muted">
               {notiz.length}/{MAX_NOTIZ_LENGTH}
             </span>
           </div>
@@ -544,12 +549,33 @@ export default function RideSummaryForm({
         >
           {pending ? "Speichern…" : "Fahrt speichern"}
         </button>
+        {/* FORTSETZEN UND VERWERFEN SEHEN NICHT MEHR GLEICH AUS. Beide
+            standen als gleich grosse graue Textknöpfe nebeneinander — der
+            eine führt die Fahrt weiter, der andere löscht sie endgültig, und
+            auf dem Telefon lagen sie einen Daumen auseinander. Fortsetzen ist
+            jetzt ein umrandeter Knopf, Verwerfen eine einzelne leise Zeile in
+            der Gefahrenfarbe, mit Abstand darunter. */}
+        {onResume && (
+          <button
+            type="button"
+            onClick={onResume}
+            // Während des Speicherns gesperrt: wer jetzt weiterzeichnete,
+            // bekäme nach der Antwort Snapshot-Löschung und Weiterleitung
+            // mitten in die neue Aufzeichnung — auf ein Ticket, das der
+            // Server gerade eingelöst hat.
+            disabled={pending}
+            className={buttonVariants({ variant: "secondary", className: "w-full" })}
+          >
+            Weiter aufzeichnen
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setDiscardConfirmOpen(true)}
-          className="min-h-11 text-sm text-muted transition-colors duration-fast hover:text-foreground"
+          disabled={pending}
+          className="mt-1 min-h-11 self-center text-sm text-muted transition-colors duration-fast hover:text-danger disabled:opacity-50"
         >
-          Verwerfen
+          Fahrt verwerfen
         </button>
       </div>
 

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Hält iOS/Gmail davon ab, die Ziffern des Codes als Telefonnummer zu
+         erkennen und blau zu unterstreichen. -->
+    <meta name="format-detection" content="telephone=no,date=no,address=no,email=no" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="supported-color-schemes" content="light dark" />
+    <title>Bestätige deine E-Mail-Adresse</title>
+    <style>
+      /* Fortschrittliche Zugabe, keine Voraussetzung: Gmail im Web wirft
+         einen Teil hiervon weg, Apple Mail und iOS Mail werten es aus. Die
+         Gestaltung unten steht deshalb vollständig als inline style am
+         Element — was hier steht, ändert sie nur für den Dunkelmodus. */
+      @media (prefers-color-scheme: dark) {
+        .s-flaeche { background-color: #0b0b0d !important; }
+        .s-karte { background-color: #131316 !important; border-color: #2c2c31 !important; }
+        .s-text, .s-marke { color: #f2f2f4 !important; }
+        .s-leise { color: #8f95a3 !important; }
+        .s-codefeld { background-color: #1c1c21 !important; border-color: #2c2c31 !important; }
+        .s-code { color: #f2f2f4 !important; }
+        .s-link { color: #6b83ff !important; }
+      }
+      /* Unter 480px bleibt der Code lesbar, ohne dass die Sperrung ihn aus
+         der Karte schiebt. */
+      @media only screen and (max-width: 480px) {
+        .s-code { font-size: 28px !important; letter-spacing: 6px !important; }
+        .s-polster { padding-left: 24px !important; padding-right: 24px !important; }
+      }
+    </style>
+  </head>
+  <body class="s-flaeche" style="margin:0; padding:0; width:100%; background-color:#fafafa;">
+    <!-- Vorschauzeile: steht in der Posteingangsliste neben dem Betreff und
+         nimmt den Code bewusst NICHT vorweg — er soll nicht auf einem
+         gesperrten Bildschirm mitlesbar sein. -->
+    <div style="display:none; max-height:0; overflow:hidden; opacity:0; mso-hide:all;">
+      Dein Bestätigungscode für Strado.
+    </div>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="s-flaeche" style="background-color:#fafafa;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:100%;">
+            <!-- Wortmarke. Bewusst als Text und nicht als Bild: Gmail
+                 blockiert SVG vollständig, und ein PNG hinge an einem
+                 Fremd-Host, den viele Clients erst nach "Bilder anzeigen"
+                 laden — die Marke wäre dann in der Hälfte aller Postfächer
+                 weg. Laufweite und Kleinschreibung wie in lib/marke.ts, die
+                 Kontur selbst lässt sich hier nicht verwenden. -->
+            <tr>
+              <td align="left" style="padding:0 8px 20px 8px;">
+                <span class="s-marke" style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:26px; font-weight:700; letter-spacing:-0.8px; color:#131316;">strado</span>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="s-karte" style="background-color:#ffffff; border:1px solid #e3e4e7; border-radius:16px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td class="s-polster" style="padding:36px 40px 8px 40px;">
+                      <h1 class="s-text" style="margin:0; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:24px; line-height:32px; font-weight:600; color:#131316;">
+                        Bestätige deine E-Mail-Adresse
+                      </h1>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="s-polster" style="padding:12px 40px 0 40px;">
+                      <p class="s-leise" style="margin:0; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:15px; line-height:24px; color:#666b74;">
+                        Gib diesen Code im offenen Fenster ein, um dein Konto zu aktivieren:
+                      </p>
+                    </td>
+                  </tr>
+
+                  <!-- Der Code. {{ .Token }} ist die achtstellige Einmal-
+                       Nummer, die GoTrue zu dieser Registrierung erzeugt —
+                       dieselbe, die lib/actions/auth.ts über verifyOtp
+                       wieder einlöst. -->
+                  <tr>
+                    <td class="s-polster" style="padding:24px 40px 0 40px;">
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                          <td class="s-codefeld" align="center" style="background-color:#f3f3f5; border:1px solid #e3e4e7; border-radius:12px; padding:20px 12px;">
+                            <span class="s-code" style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace; font-size:34px; line-height:42px; font-weight:700; letter-spacing:8px; color:#131316;">{{ .Token }}</span>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td class="s-polster" style="padding:20px 40px 0 40px;">
+                      <p class="s-leise" style="margin:0; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:13px; line-height:20px; color:#666b74;">
+                        Der Code gilt 60 Minuten. Danach fordere auf der Bestätigungsseite einen neuen an.
+                      </p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="s-polster" style="padding:16px 40px 36px 40px;">
+                      <p class="s-leise" style="margin:0; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:13px; line-height:20px; color:#666b74;">
+                        Du hast dich nicht bei Strado registriert? Dann ignoriere diese E-Mail — ohne den Code passiert nichts, und wir geben den Code an niemanden weiter.
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td align="left" style="padding:20px 8px 0 8px;">
+                <p class="s-leise" style="margin:0 0 6px 0; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:12px; line-height:18px; color:#666b74;">
+                  Strado — handverlesene Pass-, Kurven- und Aussichtsstrecken in der ganzen Schweiz.
+                </p>
+                <p class="s-leise" style="margin:0; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:12px; line-height:18px; color:#666b74;">
+                  <a class="s-link" href="https://strado.ch/legal/impressum" style="color:#3d5afe; text-decoration:underline;">Impressum</a>
+                  &nbsp;·&nbsp;
+                  <a class="s-link" href="https://strado.ch/legal/datenschutz" style="color:#3d5afe; text-decoration:underline;">Datenschutz</a>
+                  &nbsp;·&nbsp;
+                  <a class="s-link" href="mailto:contact@strado.ch" style="color:#3d5afe; text-decoration:underline;">contact@strado.ch</a>
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

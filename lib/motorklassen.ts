@@ -228,6 +228,21 @@ export function filterLabel(filter: Klassenfilter): string {
 }
 
 /**
+ * Der Filter als Satzglied, zum Einsetzen hinter "Noch keine Fahrt …".
+ *
+ * filterLabel() ist eine Chip-Beschriftung und passt in keinen Satz: aus
+ * "in ${filterLabel}" wurde "in bis 150 PS", "in A offen" und — beim
+ * Fahrzeugtyp, dessen Label ein Plural ist — "in Motorräder". Eine Klasse
+ * steht deshalb hinter "in der Klasse", ein Fahrzeugtyp als "mit dem …".
+ */
+export function filterImSatz(filter: Klassenfilter): string {
+  if (istFahrzeugTyp(filter)) {
+    return filter === "auto" ? "mit dem Auto" : "mit dem Motorrad";
+  }
+  return `in der Klasse ${motorklasseLabel(filter)}`;
+}
+
+/**
  * Die Motorklassen, die ein Filter umfasst: bei einem Fahrzeugtyp dessen
  * drei Klassen, bei einer Klasse genau sie selbst.
  *

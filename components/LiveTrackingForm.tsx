@@ -17,12 +17,14 @@ import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
 import { formatDuration } from "@/lib/format";
 import RideSummaryForm from "@/components/RideSummaryForm";
 import type { KartenStrecke, RouteGeoJSON, Vehicle } from "@/types/database";
-import { Flag, Smartphone } from "lucide-react";
+import { Smartphone } from "lucide-react";
 import { buttonVariants, textAktionClassName } from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Skeleton from "@/components/ui/Skeleton";
 import FullscreenDialog from "@/components/ui/FullscreenDialog";
-import SectionHeading from "@/components/ui/SectionHeading";
+import HalteKnopf from "@/components/ui/HalteKnopf";
+import FazitKopf from "@/components/FazitKopf";
+import { zeigeHinweis } from "@/components/Hinweis";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
@@ -104,7 +106,17 @@ export default function LiveTrackingForm({
   });
   const { phase, result, finishedTrail, clearSnapshot, discard } = recorder;
 
-  const [isPublic, setIsPublic] = useState(false);
+  // VOREINGESTELLT ÖFFENTLICH, Entscheid des Inhabers vom 2026-09-17. Bis
+  // dahin stand hier false, und die Datenschutzerklärung sowie AGB
+  // Ziff. 10.1.1 sagten "Fahrten sind standardmässig privat". Beide Texte
+  // sind im selben PR als Entwurf geändert (docs/rechtstexte/) — dieser
+  // Code darf erst ausgeliefert werden, wenn die geänderten Fassungen in
+  // Kraft sind (AGB Ziff. 14.1: 30 Tage Vorankündigung).
+  //
+  // Eine Fahrt, die die Veröffentlichung nicht erfüllt, bleibt trotzdem
+  // privat: der Wert unten wird mit der Sperre verrechnet, und der Server
+  // kann ist_oeffentlich ohnehin nur verengen (0052).
+  const [isPublic, setIsPublic] = useState(true);
   // Dieselbe Rückfrage wie im angemeldeten Pfad (RideSummaryForm).
   // Vorher verwarf ein einzelner Tap hier eine bereits FERTIGE
   // Aufzeichnung sofort und endgültig — ausgerechnet im Gast-Fall,
@@ -156,6 +168,13 @@ export default function LiveTrackingForm({
   function handleExit() {
     discard();
     onExit();
+  }
+
+  // Wie in FreeRideForm: eine verworfene Fahrt bekommt eine Quittung. Hier
+  // bleibt die Seite dieselbe (die Streckenseite klappt nur ein), also sofort.
+  function handleDiscard() {
+    handleExit();
+    zeigeHinweis("Fahrt verworfen.");
   }
 
   // Wie in FreeRideForm: der einmalig einlösbare Marker entsteht im Moment
@@ -270,7 +289,7 @@ export default function LiveTrackingForm({
             followLocation={recorder.hasStarted}
           />
         </div>
-        <div className="flex flex-col gap-3 border-t border-border-strong bg-background p-4 pb-[calc(1rem+var(--safe-bottom))]">
+        <div className="md:mx-auto md:w-full md:max-w-lg md:rounded-t-lg md:border-x flex flex-col gap-3 border-t border-border-strong bg-background p-4 pb-[calc(1rem+var(--safe-bottom))]">
           {/* DER EINZIGE SCHIRM DER APP, DER IN BEWEGUNG GELESEN WIRD —
               und bis hierher beschriftete er seine Zahlen in text-xs, also
               12 px, und zeigte fünf Werte in grid-cols-3, davon zwei in
@@ -284,27 +303,36 @@ export default function LiveTrackingForm({
               Distanz, Tempo und Höhe sind interessant, aber nicht
               handlungsleitend; sie stehen darunter in 15 px statt in eigenen
               Spalten. Siehe docs/design-vereinfachung.md, Anhang B2. */}
-          <div className="flex items-center gap-2">
-            {recorder.hasStarted && (
-              <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full bg-danger" />
-            )}
-            <SectionHeading as="p" className="font-mono">
-              {recorder.hasStarted ? "Aufzeichnung läuft" : "Unterwegs zum Start"}
-            </SectionHeading>
-          </div>
+          {/* Satzschreibung statt versal in Mono — ein Zustand, kein
+              Etikett. Dieselbe Zeile wie bei der freien Fahrt. */}
+          <p className="flex items-center gap-2 text-sm font-medium">
+            <span
+              aria-hidden="true"
+              className={`h-2.5 w-2.5 shrink-0 rounded-full ${recorder.hasStarted && !recorder.pausiert ? "bg-danger" : "bg-muted"}`}
+            />
+            {recorder.pausiert ? "Pausiert" : recorder.hasStarted ? "Aufzeichnung läuft" : "Unterwegs zum Start"}
+          </p>
+          {/* Ehrlich zur Wertung: die Bestzeit misst der Server von Start bis
+              Ziel als Wanduhr (0098). Eine Pause verschwindet aus der
+              angezeigten Zeit, nicht aus der gewerteten. */}
+          {recorder.pausiert && (
+            <p className="text-sm text-muted">
+              Pausen zählen für die Bestzeit auf dieser Strecke mit.
+            </p>
+          )}
           <dl className="flex flex-wrap items-end gap-x-6 gap-y-2">
             <div>
-              <dt className="text-[15px] text-muted">Zeit</dt>
-              <dd className="font-mono text-4xl leading-none font-semibold tabular-nums">
+              <dt className="text-xs text-muted">Zeit</dt>
+              <dd className="text-5xl leading-none font-semibold tracking-tight tabular-nums">
                 {formatDuration(recorder.elapsedSeconds)}
               </dd>
             </div>
             {remainingKm !== null && (
               <div>
-                <dt className="text-[15px] text-accent">noch</dt>
-                <dd className="font-mono text-4xl leading-none font-semibold tabular-nums text-accent">
+                <dt className="text-xs text-accent">noch</dt>
+                <dd className="text-5xl leading-none font-semibold tracking-tight tabular-nums text-accent">
                   {remainingKm.toFixed(1)}
-                  <span className="ml-1 text-[15px] font-normal"> km</span>
+                  <span className="ml-1.5 text-base font-medium tracking-normal"> km</span>
                 </dd>
               </div>
             )}
@@ -315,16 +343,16 @@ export default function LiveTrackingForm({
                 <div> in einem <dl> darf nur <dt> und <dd> enthalten, ein
                 <span> dazwischen ist ungültiges HTML. aria-hidden hält ihn
                 wie zuvor aus der Vorlesereihenfolge heraus. */}
-            <div className="flex w-full flex-wrap items-baseline gap-x-2 text-[15px] text-muted">
+            <div className="flex w-full flex-wrap items-baseline gap-x-2 text-base text-foreground">
               <dt className="sr-only">Distanz</dt>
-              <dd className="font-mono tabular-nums">{recorder.distanceKm.toFixed(2)} km gefahren</dd>
+              <dd className="tabular-nums">{recorder.distanceKm.toFixed(2)} km gefahren</dd>
               <dt className="sr-only">Tempo</dt>
-              <dd className="font-mono tabular-nums">
+              <dd className="tabular-nums">
                 <span aria-hidden="true" className="mr-2">·</span>
                 {recorder.speedKmh !== null ? `${recorder.speedKmh.toFixed(0)} km/h` : "—"}
               </dd>
               <dt className="sr-only">Höhe</dt>
-              <dd className="font-mono tabular-nums">
+              <dd className="tabular-nums">
                 <span aria-hidden="true" className="mr-2">·</span>
                 {currentElevationM !== null ? `${currentElevationM} m` : "—"}
               </dd>
@@ -373,19 +401,33 @@ export default function LiveTrackingForm({
               mit Symbol. Er steht vor dem Beenden und nicht daneben, damit
               er nicht mit der Handlung konkurriert.
               docs/audit/uiux.md §5.4. */}
-          <p className="flex items-start gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm leading-snug">
+          <p className="flex items-start gap-2 text-sm leading-snug text-muted">
             <Smartphone className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
             <span>Bildschirm an lassen — sonst pausiert die Aufzeichnung.</span>
           </p>
           <div className="flex flex-wrap items-center gap-3">
             {recorder.hasStarted ? (
-              <button
-                type="button"
-                onClick={recorder.stop}
-                className={buttonVariants({ variant: "accent", size: "lg", className: "flex-1" })}
-              >
-                Strecke beenden
-              </button>
+              // Halten statt Tippen, wie bei der freien Fahrt (HalteKnopf
+              // begründet es). Hier zählt es doppelt: am Ziel beendet sich
+              // die Fahrt ohnehin selbst, ein Knopfdruck von Hand ist also
+              // fast immer der Sonderfall — und ein versehentlicher kostet
+              // die Bestzeit.
+              <>
+                <button
+                  type="button"
+                  onClick={recorder.pausiert ? recorder.weiterNachPause : recorder.pausieren}
+                  className={buttonVariants({
+                    variant: recorder.pausiert ? "accent" : "secondary",
+                    size: "lg",
+                    className: "shrink-0 px-6",
+                  })}
+                >
+                  {recorder.pausiert ? "Weiter" : "Pause"}
+                </button>
+                <HalteKnopf onBestaetigt={recorder.stop} className="flex-1">
+                  Zum Beenden halten
+                </HalteKnopf>
+              </>
             ) : (
               <>
                 <button
@@ -412,9 +454,21 @@ export default function LiveTrackingForm({
 
   // phase === "finished" — Fazit als eigener Vollbild-Screen, keine
   // Streckendetails/Karte mehr im Blick.
-  const avgKmh = result && result.seconds > 0 ? result.distanceKm / (result.seconds / 3600) : null;
+  //
+  // Die angezeigte Zeit ist ohne Pausen gerechnet, gewertet wird aber die
+  // Wanduhr samt Pausen (0098). Die Bestzeit-Aussage muss sich an die
+  // gewertete Zahl halten, sonst verkündet eine Fahrt mit zehn Minuten
+  // Passhalt eine Bestzeit, die Fahrtseite und Rangliste danach nicht
+  // zeigen. Die Wanduhr steht in den Zeitstempeln des Trails — die
+  // überleben auch einen Tab-Kill, anders als jeder eigene Pausenzähler.
+  const wanduhrSekunden =
+    finishedTrail.length >= 2
+      ? Math.round((finishedTrail[finishedTrail.length - 1].t - finishedTrail[0].t) / 1000)
+      : 0;
+  const gewerteteSekunden = result !== null ? Math.max(result.seconds, wanduhrSekunden) : 0;
+  const mitPausen = result !== null && wanduhrSekunden - result.seconds >= 60;
   const isNewBest =
-    result !== null && (personalBestSeconds === null || result.seconds < personalBestSeconds);
+    result !== null && (personalBestSeconds === null || gewerteteSekunden < personalBestSeconds);
 
   // Ohne pb-[var(--safe-bottom)], anders als die Ansichten davor:
   // diese hier endet auf dem klebenden Speichern-Streifen aus
@@ -426,22 +480,12 @@ export default function LiveTrackingForm({
   return (
     <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)]">
       <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-5 py-8 sm:px-6 sm:py-10">
-        <SectionHeading icon={Flag}>Fazit</SectionHeading>
-
-        <dl className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <dt className="text-muted">Distanz</dt>
-            <dd className="font-mono text-lg tabular-nums">{result?.distanceKm.toFixed(2)} km</dd>
-          </div>
-          <div>
-            <dt className="text-muted">Zeit</dt>
-            <dd className="font-mono text-lg tabular-nums">{formatDuration(result?.seconds ?? 0)}</dd>
-          </div>
-          <div>
-            <dt className="text-muted">Ø Tempo</dt>
-            <dd className="font-mono text-lg tabular-nums">{avgKmh?.toFixed(0)} km/h</dd>
-          </div>
-        </dl>
+        <FazitKopf
+            titel={"Strecke gefahren"}
+            trail={recorder.liveTrail}
+            distanzKm={result?.distanceKm ?? 0}
+            sekunden={result?.seconds ?? 0}
+          />
 
         {/* Ohne Konto gibt es keine Historie, gegen die sich eine Bestzeit
             vergleichen liesse — "Erste erfasste Zeit für diese Strecke"
@@ -459,6 +503,12 @@ export default function LiveTrackingForm({
               Bisherige Bestzeit: {formatDuration(personalBestSeconds ?? 0)}
             </p>
           ))}
+        {mitPausen && (
+          <p className="text-sm text-muted">
+            Zeit oben ohne Pausen. Für Bestzeit und Rangliste zählt die Zeit samt Pausen:{" "}
+            {formatDuration(gewerteteSekunden)}.
+          </p>
+        )}
 
         {/* Was der Server beim Speichern ohnehin ablehnt, steht hier schon —
             mit Begründung, damit nicht nur "ging nicht" übrig bleibt. Das
@@ -483,44 +533,54 @@ export default function LiveTrackingForm({
             Fahrt ohne Session unabhängig davon ab. */}
         {istGast ? (
         <>
-          <Card surface className="flex flex-col gap-3 p-4 text-sm">
-            <p className="font-medium text-foreground">Strecke gefahren.</p>
-            <p className="text-muted">
-              Zum Speichern brauchst du ein Konto — damit zählt die Fahrt für deine Bestzeit auf
-              dieser Strecke, für die Ranglisten und dein Profil. Die Aufzeichnung bleibt so
-              lange in diesem Browser (bis zu 24 Stunden) und wird nach der Anmeldung übernommen.
+          <div className="flex flex-col gap-3">
+            {/* Vorher fünf Zeilen grauer Text in einer Karte und "Konto erstellen"
+                als 36-px-Knopf — kleiner als die beiden Textlinks darunter. Die
+                Handlung, um die es hier geht, stand optisch an dritter Stelle.
+                Jetzt ein Satz, der eine Knopf in voller Breite und Grösse, und die
+                Nebenwege leise darunter. Der Hinweis auf die 24 Stunden bleibt: er
+                ist der Grund, sich nicht zu beeilen. */}
+            <p className="text-sm text-muted">
+              Speichern mit Konto: dann zählt die Fahrt für deine Bestzeit auf dieser Strecke, die Ranglisten und dein Profil. Sie wartet bis zu 24 Stunden in diesem Browser.
             </p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => goToAuth("/registrieren")}
-                className={buttonVariants({ variant: "accent", size: "sm" })}
-              >
-                Konto erstellen
-              </button>
-              <button
-                type="button"
-                onClick={() => goToAuth("/anmelden")}
-                className={buttonVariants({ variant: "secondary", size: "sm" })}
-              >
-                Ich habe ein Konto
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => goToAuth("/registrieren")}
+              className={buttonVariants({ variant: "accent", size: "lg", className: "w-full" })}
+            >
+              Konto erstellen und speichern
+            </button>
+            <button
+              type="button"
+              onClick={() => goToAuth("/anmelden")}
+              className={buttonVariants({ variant: "secondary", className: "w-full" })}
+            >
+              Ich habe ein Konto
+            </button>
+            <button
+              type="button"
+              onClick={recorder.fortsetzen}
+              className={buttonVariants({ variant: "secondary", className: "w-full" })}
+            >
+              Weiter aufzeichnen
+            </button>
+            {/* Verwerfen leise und allein, in der Gefahrenfarbe beim Berühren —
+                nicht in einer Reihe mit dem Weg zurück in die Fahrt. */}
             <button
               type="button"
               onClick={() => setGastVerwerfenOffen(true)}
-              className="self-start text-xs text-muted underline hover:text-foreground"
+              className="mt-1 min-h-11 self-center text-sm text-muted transition-colors duration-fast hover:text-danger"
             >
               Fahrt verwerfen
             </button>
-          </Card>
+          </div>
           <ConfirmDialog
             open={gastVerwerfenOffen}
             title="Fahrt verwerfen?"
             description="Die aufgezeichnete Fahrt wurde noch nicht gespeichert und geht dabei endgültig verloren."
             confirmLabel="Verwerfen"
             variant="danger"
-            onConfirm={handleExit}
+            onConfirm={handleDiscard}
             onCancel={() => setGastVerwerfenOffen(false)}
           />
         </>
@@ -533,10 +593,11 @@ export default function LiveTrackingForm({
             vehicles={vehicles}
             trailJson={recorder.trailJson}
               ticketJson={recorder.ticketJson}
-            isPublic={isPublic}
+            isPublic={isPublic && !belowCoverageThreshold}
             onIsPublicChange={setIsPublic}
             onSubmit={() => setSubmitted(true)}
-            onDiscard={handleExit}
+            onDiscard={handleDiscard}
+            onResume={recorder.fortsetzen}
             visibility={{
               publicDisabled: belowCoverageThreshold,
               // Seit 0078 ist der Deckungsgrad das Minimum aus "berührt" und

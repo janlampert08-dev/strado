@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { SAISONPASS_MONATE } from "@/lib/premiumLimits";
+import { saisonpassAusSession } from "@/lib/stripeCheckout";
 import {
   ereignisAbschliessen,
   ereignisBeanspruchen,
@@ -11,6 +13,7 @@ import {
   leseAboIdAusRechnung,
   leseAboZustand,
   preisHerkunft,
+  vollstaendigErstatteterPaymentIntent,
   type KulanzAktion,
 } from "@/lib/stripeWebhook";
 
@@ -87,6 +90,49 @@ async function schreibeAboZustand(
   }
 }
 
+// Trägt eine bezahlte Einmalzahlung als Saisonpass ein (0110).
+//
+// Die Prüfungen stehen in saisonpassAusSession(): eigener Modus, Session
+// abgeschlossen UND bezahlt, unsere eigene plan-Markierung in den
+// Metadaten, ein Betrag über null. Ohne sie wäre jede Einmalzahlung auf
+// diesem Stripe-Konto ein halbes Jahr Premium — dieselbe Verwechslung, die
+// preisHerkunft() für Abos verhindert.
+//
+// Idempotent über die Session-ID: apply_saisonpass trägt jede Session
+// höchstens einmal ein, und genau darauf verlässt sich diese Stelle, weil
+// derselbe Kauf regelmässig doppelt ankommt (Webhook und Bestätigung aus
+// dem Browser).
+async function schreibeSaisonpass(
+  supabase: AdminClient,
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  const pass = saisonpassAusSession(session, null);
+  if (!pass) return;
+
+  const { data, error } = await supabase.rpc("apply_saisonpass", {
+    p_stripe_customer_id: pass.customerId,
+    p_stripe_checkout_session_id: pass.sessionId,
+    p_stripe_payment_intent_id: pass.paymentIntentId,
+    p_price_id: pass.preisId,
+    p_betrag_rappen: pass.betragRappen,
+    p_waehrung: pass.waehrung,
+    p_monate: SAISONPASS_MONATE,
+  });
+
+  if (error) throw error;
+
+  // false heisst: kein Profil zu diesem Customer. Bei einer bezahlten
+  // Zahlung ist das ein Fall für Handarbeit (gelöschtes Konto, Customer aus
+  // dem anderen Stripe-Modus) — und darf nicht als Erfolg durchgehen, sonst
+  // ist das Geld da und der Zugang nicht. Werfen heisst: Stripe liefert
+  // erneut aus, und der Fehler steht im Dashboard.
+  if (data === false) {
+    throw new Error(
+      `Saisonpass ${pass.sessionId}: kein Profil zu Customer ${pass.customerId} — nicht eingetragen`,
+    );
+  }
+}
+
 // Welche Abo-ID betrifft dieses Ereignis? Abo-Ereignisse tragen sie direkt,
 // Rechnungs-Ereignisse über parent.subscription_details.
 function betroffenesAbo(event: Stripe.Event): { id: string; invoiceId: string | null } | null {
@@ -151,11 +197,65 @@ export async function POST(req: Request) {
     // und schreiben tun beide denselben, frisch von Stripe geholten Zustand.
     // Doppelte Zustellung ist über den Anspruch oben abgefangen, mehrfaches
     // Schreiben desselben Zustands über apply_subscription_state.
-    if (event.type === "checkout.session.completed") {
+    if (
+      event.type === "checkout.session.completed" ||
+      event.type === "checkout.session.async_payment_succeeded"
+    ) {
       const session = event.data.object as Stripe.Checkout.Session;
       const aboId = typeof session.subscription === "string" ? session.subscription : null;
       if (session.mode === "subscription" && aboId) {
         await schreibeAboZustand(supabase, aboId, "unveraendert", null);
+      } else {
+        // Der Saisonpass (0110). Zwei Ereignisse, weil TWINT nicht sofort
+        // verbucht: "completed" kommt beim Abschluss, "async_payment_succeeded"
+        // erst, wenn das Geld da ist — und nur im zweiten Fall steht
+        // payment_status auf "paid". saisonpassAusSession() prüft genau das,
+        // also darf derselbe Aufruf für beide Ereignisse hier stehen.
+        //
+        // Zuordnung über den Customer in apply_saisonpass statt über die
+        // supabase_user_id aus den Metadaten: die Signatur beweist, dass
+        // Stripe die Anfrage geschickt hat, nicht dass die Nutzlast stimmt
+        // (AGENTS.md, Supabase Rules). Der Customer ist die Kennung, die
+        // dieser Server selbst am Profil gespeichert hat.
+        await schreibeSaisonpass(supabase, session);
+      }
+    } else if (event.type === "charge.refunded") {
+      // Eine vollständig erstattete Zahlung nimmt den Pass zurück. Abos
+      // brauchen das nicht: dort kommt mit der Erstattung ohnehin ein
+      // Abo-Ereignis, und saisonpass_erstatten() findet ohne passende
+      // PaymentIntent-Zeile nichts.
+      const charge = event.data.object as Stripe.Charge;
+      const paymentIntentId = vollstaendigErstatteterPaymentIntent(charge);
+      if (paymentIntentId) {
+        const { data, error } = await supabase.rpc("saisonpass_erstatten", {
+          p_stripe_payment_intent_id: paymentIntentId,
+        });
+        if (error) throw error;
+        if (data === true) {
+          console.info("Saisonpass nach Erstattung zurückgenommen", { paymentIntentId });
+        }
+
+        // Ein Anschluss-Abo (während des Passes abgeschlossen, in Stripe als
+        // Testphase bis zum Passende) verlöre mit dem Pass seinen Grund,
+        // gratis zu laufen: ohne diesen Schritt blieb Premium nach der
+        // Erstattung bis zum alten Passende kostenlos an. Die Testphase
+        // endet deshalb jetzt, und das Abo zahlt ab heute. Unabhängig von
+        // `data`, damit eine wiederholte Zustellung nachholt, was beim
+        // ersten Mal nach dem RPC gescheitert ist — ein bereits beendetes
+        // Probeabo steht nicht mehr auf "trialing" und fällt heraus.
+        const customerId = typeof charge.customer === "string" ? charge.customer : charge.customer?.id;
+        if (customerId) {
+          const anschluss = await getStripe().subscriptions.list({
+            customer: customerId,
+            status: "trialing",
+            limit: 10,
+          });
+          for (const abo of anschluss.data) {
+            if (abo.metadata?.variante !== "anschluss") continue;
+            await getStripe().subscriptions.update(abo.id, { trial_end: "now" });
+            console.info("Anschluss-Abo nach Passerstattung sofort fällig", { subscriptionId: abo.id });
+          }
+        }
       }
     } else {
       const kulanzAktion = kulanzAktionFuer(event.type);

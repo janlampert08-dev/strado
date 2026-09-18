@@ -19,9 +19,21 @@
 >
 > Es gibt **keine Platzhalter** mehr in diesem Dokument (Stand 2026-09-07).
 
+> ### ⚠️ Entwurf vom 17. September 2026 — noch nicht veröffentlicht
+>
+> Abschnitte 3 („Sichtbarkeit"), 5.1, 5.2 und offener Punkt 12 beschreiben
+> **voreingestellt öffentliche Fahrten** (Entscheid des Inhabers vom
+> 2026-09-17). Die veröffentlichte Fassung
+> (`janlampert08-dev/stradoinfo`, `legal/datenschutz.html`) sagt noch
+> „standardmässig privat" und muss **vor** der Auslieferung des Codes aus
+> `staging-fahrten-standardmaessig-oeffentlich` nachgezogen werden —
+> zusammen mit der AGB-Mitteilung nach deren Ziff. 14.1. Die geänderte
+> Rechtsgrundlage (keine Einwilligung mehr, siehe 5.1) ist anwaltlich zu
+> prüfen; siehe offener Punkt 12.
+
 ---
 
-**Stand: 14. September 2026**
+**Stand: 16. September 2026**
 
 ## 1. Verantwortliche Stelle
 
@@ -97,6 +109,14 @@ erscheinen deshalb Typ, Marke und Modell neben veröffentlichten Fahrten und die
 **vollständige Fahrzeugliste** — inklusive Getriebeart und Baujahr — auf dem
 öffentlichen Profil.
 
+**Wartungsheft (Premium).** Wer ein Premium-Abo oder einen Saisonpass hat,
+kann je Fahrzeug Wartungseinträge führen (Art der Arbeit, Datum, optional
+Kilometerstand, Kosten und eine Notiz) und Erinnerungen für Service und
+Motorfahrzeugkontrolle hinterlegen. Diese Angaben sind **immer privat**: sie
+erscheinen nicht auf dem öffentlichen Profil, in keiner Bestenliste und in
+keiner Fahrt. Der Schalter „Fahrzeuge zeigen" ändert daran nichts. Sie werden
+mit dem Fahrzeug und mit dem Konto gelöscht (Abschnitt 8).
+
 ### 3.4 Fahrten und GPS-Standortdaten
 
 Dies ist die **datenschutzrechtlich heikelste Kategorie**, weil aus
@@ -117,9 +137,12 @@ Dazu kommen: Datum, gewähltes Fahrzeug, eine optionale private **Notiz** (max.
 280 Zeichen), bei freien Fahrten ein selbst gewählter **Titel** sowie ein
 per Reverse-Geocoding ermittelter **Ortsbezug** (Startort und Region).
 
-**Sichtbarkeit.** Fahrten sind **standardmässig privat**. Eine Fahrt wird erst
-öffentlich, wenn dies pro Fahrt aktiv gewählt wird; die Einstellung ist
-jederzeit umkehrbar. Der **vollständige GPS-Track ist ausschliesslich für die
+**Sichtbarkeit.** Neu aufgezeichnete Fahrten sind **voreingestellt
+öffentlich**: Vor dem Speichern steht die Wahl sichtbar auf „Öffentlich" und
+lässt sich mit einem Tipp auf „Privat" umstellen; die Einstellung ist pro
+Fahrt jederzeit umkehrbar. Eine Fahrt, die die Voraussetzungen für eine
+Veröffentlichung nicht erfüllt, bleibt privat. Bereits gespeicherte Fahrten
+behalten ihre Einstellung. Der **vollständige GPS-Track ist ausschliesslich für die
 eigene Person sichtbar** — die Zugriffsregeln der Datenbank
 (Row Level Security) lassen keinen anderen Zugriff zu.
 
@@ -136,10 +159,34 @@ nach dem Zuschnitt zu wenig übrig, wird gar keine Karte veröffentlicht.
 der Zwischenstand (bisheriger Trail, Distanz, Startzeit) **lokal im Browser**
 gespeichert, damit eine unterbrochene Aufzeichnung — geschlossener Tab,
 Absturz, Bildschirmsperre — fortgesetzt werden kann. Dieser Zwischenspeicher
-liegt auf dem Gerät und wird nicht an uns übermittelt, solange die Fahrt nicht
-gespeichert wird. Auch **nicht angemeldete Besuchende** können eine freie Fahrt
-aufzeichnen; die Aufzeichnung bleibt dann bis zu einer allfälligen Anmeldung
-ausschliesslich lokal.
+liegt auf dem Gerät. Der **Trail selbst** wird nicht an uns übermittelt,
+solange die Fahrt nicht gespeichert wird. Auch **nicht angemeldete Besuchende**
+können eine freie Fahrt aufzeichnen; der Trail bleibt dann bis zu einer
+allfälligen Anmeldung auf dem Gerät. Unabhängig davon melden wir während der
+Aufzeichnung einzelne Positionen an den Server — siehe den nächsten Absatz.
+
+**Positionsmeldungen während der Aufzeichnung.** Besteht eine Verbindung,
+meldet die Anwendung während einer laufenden Aufzeichnung etwa **alle 20
+Sekunden** die aktuelle Position an unseren Server, der sie mit seiner eigenen
+Uhr stempelt. Das gilt **auch für nicht angemeldete Besuchende**. Zweck ist
+allein, die Dauer einer Fahrt gegen eine Uhr zu prüfen, die nicht auf dem Gerät
+läuft; ohne das liesse sich eine Bestzeit durch Verändern der Gerätezeit
+fälschen (berechtigtes Interesse an manipulationsfreien Bestenlisten). Wir
+speichern dazu **nur die jeweils letzte Meldung** — Zeitpunkt und Position —
+sowie deren Anzahl; jede neue Meldung überschreibt die vorherige, es entsteht
+also **keine Spur des Wegs**. Eine Aufzeichnung, die nie gespeichert wird,
+lässt sich nach **24 Stunden** nicht mehr verwenden — weder nimmt der Server
+weitere Meldungen dazu an noch lässt sie sich einer Fahrt zuordnen — und wird
+danach gelöscht: frühestens nach 48 Stunden, bei der nächsten Gelegenheit, die
+der Betrieb dafür bietet — eine feste Frist sichern wir nicht zu. Wird die Fahrt gespeichert,
+bleibt die letzte Meldung als Nachweis der gemessenen Dauer bei der Fahrt; sie
+wird mit dem Konto gelöscht. Dasselbe gilt, wenn angemeldet gespeichert wird
+und das Speichern erst nach der Zeitprüfung scheitert: Die letzte Meldung
+bleibt dann beim Konto, damit ein erneuter Versuch die gemessene Dauer behält,
+und wird mit dem Konto gelöscht. Wer ohne Verbindung fährt, kann normal
+aufzeichnen; die Fahrt wird dann lediglich nicht als „verifiziert"
+gekennzeichnet. Ohne Standortfreigabe ist keine Aufzeichnung möglich, weil sie
+auf den Positionen des Geräts beruht.
 
 **Standort ausserhalb der Aufzeichnung.** In der Streckensuche und bei der
 Streckenwahl kann der aktuelle Standort abgefragt werden, um Strecken in der
@@ -213,7 +260,7 @@ sowie eine gespiegelte Fassung des Abo-Zustands mit den folgenden Angaben:
 | Angabe | Zweck |
 | --- | --- |
 | Kennung des Abos bei Stripe | ordnet die Zeile dem Abo zu, aus dem sie stammt |
-| Kennung des gewählten Preises | unterscheidet Monats- und Jahresabo (bei älteren Abos auch den früheren Gründerpreis) |
+| Kennung des gewählten Preises | unterscheidet Monats- und Jahresabo (bei älteren Abos auch den früheren Gründerpreis und die früheren Preise) |
 | Status des Abos | entscheidet über die Premium-Berechtigung |
 | Ende der laufenden Abrechnungsperiode | Anzeige „Premium bis …" und Erkennung ausgebliebener Meldungen |
 | Kennzeichen „zum Periodenende gekündigt" | Anzeige des Kündigungsstands |
@@ -224,6 +271,15 @@ An Stripe übermitteln wir die **E-Mail-Adresse** und die interne
 Benutzer-Kennung (als Metadatum zur Zuordnung). Stripe erhebt darüber hinaus
 selbst die Zahlungsmitteldaten, Rechnungs- und Transaktionsdaten sowie
 technische Daten des Zahlungsvorgangs.
+
+**Saisonpass.** Wer statt eines Abos einen Saisonpass kauft (AGB Ziff. 4.6),
+hat bei uns eine Zeile mit der **Kennung der Bezahlseite und der Zahlung bei
+Stripe**, der Kunden-Kennung, der Kennung des Preises, dem **bezahlten Betrag
+und der Währung**, dem **Gültigkeitszeitraum** und — falls erstattet wurde —
+dem Zeitpunkt der Erstattung. Zweck ist die Berechtigung: ohne Zeitraum liesse
+sich nicht feststellen, ob Premium noch gilt. Die Zeile wird mit dem Konto
+gelöscht (Abschnitt 8); die Zahlungsbelege selbst liegen bei Stripe und
+unterliegen dort den handelsrechtlichen Aufbewahrungsfristen.
 
 Zur Absicherung gegen doppelt zugestellte Zahlungsereignisse speichern wir zu
 jedem von Stripe gemeldeten Ereignis dessen **Kennung**, seinen **Typ**, den
@@ -252,6 +308,7 @@ hinweg**. Verwendet werden:
 | Zweck | Technik | Bemerkung |
 | --- | --- | --- |
 | Anmeldung / Sitzung | Cookies des Authentifizierungsdienstes | technisch notwendig; werden bei jedem Seitenaufruf erneuert |
+| Offene E-Mail-Bestätigung | Cookie `strado_bestaetigung` | technisch notwendig; entsteht nur bei einer Registrierung, deren Adresse noch nicht bestätigt ist. Enthält die eingegebene E-Mail-Adresse und, falls vorhanden, die Seite, auf der es danach weitergehen soll — ohne diese Angabe liesse sich der Code aus der E-Mail keiner Adresse zuordnen. 60 Minuten, wird nach der Bestätigung gelöscht |
 | Herkunft einer Registrierung (Ziff. 3.11) | Cookie `strado_herkunft` | nur nach Aufruf eines Creator-Links; enthält allein dessen Code, 90 Tage, wird bei der Registrierung gelöscht |
 | Farbschema (hell/dunkel) | `localStorage` | reine Anzeigepräferenz |
 | Zwischenstand einer laufenden Aufzeichnung | `localStorage` | siehe Abschnitt 3.4 |
@@ -350,13 +407,13 @@ bearbeiten, solange die Persönlichkeit der betroffenen Personen nicht
 widerrechtlich verletzt wird. Wo eine Rechtfertigung nötig ist, stützen wir uns
 auf Art. 31 DSG: **Vertragserfüllung** (Konto, Fahrten, Abo),
 **überwiegendes privates Interesse** (Sicherheit, Missbrauchsabwehr,
-Reichweitenmessung, Weiterentwicklung), **Einwilligung** (Standortzugriff,
-Veröffentlichen einzelner Fahrten) und **gesetzliche Pflicht**
+Reichweitenmessung, Weiterentwicklung), **Einwilligung** (Standortzugriff) und **gesetzliche Pflicht**
 (Aufbewahrung).
 
 Die sechs voreingestellt eingeschalteten Profil-Schalter (Abschnitt 3.2)
-lassen sich **nicht** auf eine Einwilligung stützen, weil ihnen keine aktive
-Wahl vorausgeht. Wir stützen sie auf die Vertragserfüllung — ein öffentliches
+und die **voreingestellt öffentliche Sichtbarkeit neuer Fahrten**
+(Abschnitt 3, „Sichtbarkeit") lassen sich **nicht** auf eine Einwilligung
+stützen, weil ihnen keine aktive Wahl vorausgeht. Wir stützen sie auf die Vertragserfüllung — ein öffentliches
 Fahrerprofil ist Teil der Plattformfunktion — und auf unser überwiegendes
 Interesse am Betrieb einer öffentlichen Community; jeder Schalter lässt sich
 jederzeit abschalten. Ob diese Voreinstellung mit dem Grundsatz „Datenschutz
@@ -369,7 +426,8 @@ ist, gilt zusätzlich:
 | Bearbeitung | Rechtsgrundlage DSGVO |
 | --- | --- |
 | Konto, Fahrten, Abo, Zahlungsabwicklung | Art. 6 Abs. 1 lit. b (Vertrag) |
-| Standortzugriff, Veröffentlichen einzelner Fahrten | Art. 6 Abs. 1 lit. a (Einwilligung) |
+| Standortzugriff | Art. 6 Abs. 1 lit. a (Einwilligung) |
+| Voreingestellt öffentliche Fahrten | Art. 6 Abs. 1 lit. b und f (Vertrag, berechtigtes Interesse) — anwaltlich zu prüfen, siehe offener Punkt 12 |
 | Voreingestellt sichtbare Profilangaben (Abschnitt 6) | Art. 6 Abs. 1 lit. b und f — siehe offenen Punkt 12 |
 | Sicherheit, Missbrauchsabwehr, Reichweitenmessung, Moderation | Art. 6 Abs. 1 lit. f (berechtigtes Interesse) |
 | Aufbewahrung von Rechnungsunterlagen | Art. 6 Abs. 1 lit. c (rechtliche Verpflichtung) |
@@ -420,7 +478,7 @@ weisungsgemäss und mit angemessenen Sicherheitsmassnahmen zu bearbeiten.
 | **Vercel** (Vercel Inc., USA) | Hosting der Anwendung, Reichweitenmessung | technische Verbindungsdaten inkl. IP-Adresse, alle über die Anwendung laufenden Inhalte, aggregierte Nutzungszahlen |
 | **Stripe** (Stripe Payments Europe Ltd., Irland, sowie verbundene Gesellschaften) | Zahlungsabwicklung, Abo-Verwaltung, Kundenportal | E-Mail-Adresse, interne Benutzer-Kennung, Zahlungsmittel- und Rechnungsdaten (direkt bei Stripe erhoben) |
 | **Mapbox** (Mapbox Inc., USA) | Kartendarstellung, Routenberechnung, Ortsnamen (Geocoding), Verkehrslage | IP-Adresse und technische Daten des Browsers beim Laden von Karten; Koordinaten der angezeigten bzw. geplanten Strecke |
-| **Open-Meteo** (`api.open-meteo.com`) | aktuelles Wetter am Streckenstart | Koordinaten des Streckenstartpunkts. Die Abfrage erfolgt von unserem Server aus; die IP-Adresse der Nutzenden wird dabei nicht übermittelt |
+| **Open-Meteo** (`api.open-meteo.com`) | aktuelles Wetter am Streckenstart; Sieben-Tage-Vorhersage für das Wetterfenster (Premium) | Koordinaten und Höhe des Streckenstartpunkts und — sofern deutlich höher gelegen — des höchsten Punkts der Strecke. Die Abfrage erfolgt von unserem Server aus; die IP-Adresse der Nutzenden wird dabei nicht übermittelt |
 | **swisstopo / geo.admin.ch** (Bundesamt für Landestopografie, Schweiz) | Höhenprofile entlang von Strecken und Fahrten | Geometrie der jeweiligen Strecke bzw. Fahrt. Die Abfrage erfolgt von unserem Server aus; die IP-Adresse der Nutzenden wird dabei nicht übermittelt |
 
 **Karten und Verkehrsdaten laufen direkt aus dem Browser** zu Mapbox — dabei
@@ -687,7 +745,12 @@ Dokument muss leer bleiben und ist Teil der Prüfung vor jeder weiteren
     aufgenommene Fotos nicht gedreht erscheinen. Sie enthält keine
     personenbezogene Information; der Hinweis im Text sollte trotzdem
     bestätigt werden.
-12. **Voreinstellung der Sichtbarkeits-Schalter** (Abschnitte 3.2, 5 und 6) —
+12. **Voreinstellung der Sichtbarkeits-Schalter und der Fahrten** (Abschnitte 3, 3.2, 5 und 6) —
+    **Ergänzung 2026-09-17:** auch neue Fahrten sind jetzt voreingestellt
+    öffentlich. Das verschärft Punkt a) unten: ein GPS-Track verrät mehr als
+    eine Profilangabe, und die Kappung um die Privatzone ist die einzige
+    technische Schranke. Vor der Veröffentlichung dieser Fassung prüfen.
+    Ursprünglicher Text:
     dieser Text beschreibt den Zustand, den der Quellcode vorgibt: die sechs
     Profil-Schalter stehen auf **an** (`0054_sichtbarkeit_standardmaessig_aktiv.sql`,
     Fallback `?? true` in `app/profil/einstellungen/page.tsx`). Offen ist

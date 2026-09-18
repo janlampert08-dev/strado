@@ -49,6 +49,22 @@ const TERRAIN_EXAGGERATION = 1.4;
 const TILTED_PITCH = 60;
 const TILTED_BEARING = -17;
 
+// Die Schweiz im Scheinwerfer: alles ausserhalb bekommt einen Schleier in
+// der Hintergrundfarbe der App — im Dunkelmodus dunkelt er das Umland ab,
+// im hellen Stil wäscht er es aus. Die Schweiz selbst bleibt unberührt, der
+// Schleier legt sich also nie über eine Strecke im Land.
+//
+// Die Grenzen kommen aus Mapbox' eigenem Tileset, nicht aus einer GeoJSON-
+// Datei im Repo: dieselbe Herkunft wie die Kacheln (CSP unverändert), und
+// Grenzverlauf und Kartengrundlage passen zwingend aufeinander.
+//
+// Der Worldview-Filter ist nötig, weil das Tileset strittige Gebiete je
+// Weltsicht mehrfach führt; ohne ihn lägen dort zwei Schleier übereinander.
+const UMLAND_SOURCE = "country-boundaries";
+const UMLAND_LAYER = "umland-schleier";
+const UMLAND_DECKKRAFT_DUNKEL = 0.45;
+const UMLAND_DECKKRAFT_HELL = 0.55;
+
 // Die Farbe einer Streckenlinie: der Signaturton der Strecke, sonst
 // --color-accent. Beides zur Laufzeit aus den Tokens aufgelöst
 // (lib/theme.ts), weil ein Mapbox-Layer keine CSS-Variable annimmt.
@@ -448,6 +464,8 @@ export default function RouteMap({
   routesClickable = true,
   centerOnFirstLocation = false,
   followLocation = false,
+  ohneBedienelemente = false,
+  umlandSchleier = false,
 }: {
   // Alle Strecken, die gezeichnet werden. Die Reihenfolge ist gleichgültig,
   // sie landen gemeinsam in einer Feature-Sammlung. Genau eine Strecke ist
@@ -546,6 +564,13 @@ export default function RouteMap({
   // positioniert hat, und pausiert, solange die Nutzerin die Karte selbst
   // verschiebt.
   followLocation?: boolean;
+  /** Zoom- und Kompass-Knöpfe weglassen (Vorschaukarten, z. B. im Fazit). */
+  ohneBedienelemente?: boolean;
+  /** Das Ausland unter einen Schleier legen, damit die Schweiz heraussticht.
+   *  Nur für die Entdecken-Karte: beim Aufzeichnen und auf der eigenen Fahrt
+   *  sind die Strassen jenseits der Grenze (Splügen, Vorarlberg, FL) die,
+   *  auf denen man gerade fährt, und dürfen nicht verblassen. */
+  umlandSchleier?: boolean;
   // Pixel am unteren Rand der Karte, die von etwas anderem verdeckt werden —
   // auf Mobile das Bottom-Sheet plus die BottomNav darunter (gemeldet von
   // DragSheet.tsx, siehe ExploreView/RouteDetailLayout). Die Leinwand füllt
@@ -569,6 +594,11 @@ export default function RouteMap({
   // ExploreView) — ohne das wäre die Karte für ein bis zwei Sekunden leer.
   const [isReady, setIsReady] = useState(false);
   const routesRef = useRef(routes);
+  // Nur der Wert beim Aufbau zählt: die Knöpfe werden einmal angehängt.
+  const ohneBedienelementeRef = useRef(ohneBedienelemente);
+  // Ebenso nur beim Aufbau: der Schleier wird bei jedem style.load neu
+  // angelegt, und welche Karte ihn trägt, ändert sich nicht.
+  const umlandSchleierRef = useRef(umlandSchleier);
   const trailRef = useRef(trail);
   const routesClickableRef = useRef(routesClickable);
   const fitRoutesRef = useRef(fitRoutes);
@@ -683,10 +713,31 @@ export default function RouteMap({
       // `attributionControl: false` samt der AttributionControl-Zeile unten
       // (dann greift wieder das responsive Standardverhalten).
       attributionControl: false,
+      // Ohne locale melden sich die Bedienelemente englisch ("Zoom in",
+      // "Reset bearing to north") in einem lang="de"-Dokument.
+      locale: {
+        "AttributionControl.ToggleAttribution": "Quellenangabe ein-/ausblenden",
+        "GeolocateControl.FindMyLocation": "Meinen Standort finden",
+        "GeolocateControl.LocationNotAvailable": "Standort nicht verfügbar",
+        "LogoControl.Title": "Mapbox-Logo",
+        "Map.Title": "Karte",
+        "NavigationControl.ResetBearing": "Nach Norden ausrichten",
+        "NavigationControl.ZoomIn": "Hineinzoomen",
+        "NavigationControl.ZoomOut": "Herauszoomen",
+        "ScrollZoomBlocker.CtrlMessage": "Zum Zoomen Strg gedrückt halten",
+        "ScrollZoomBlocker.CmdMessage": "Zum Zoomen ⌘ gedrückt halten",
+        "TouchPanBlocker.Message": "Zum Bewegen der Karte zwei Finger benutzen",
+      },
     });
 
     map.addControl(new mapboxgl.AttributionControl({ compact: true }));
-    map.addControl(new mapboxgl.NavigationControl(), "top-right");
+    // Zoom und Kompass nur, wo die Karte zum Erkunden da ist. Auf einer
+    // Vorschau (Fazit) sind drei 32-px-Knöpfe Lärm auf einer Fläche, die
+    // nur eine Linie zeigen soll. Die Attribution bleibt immer — sie ist
+    // Pflicht (globals.css, Mapbox-Abschnitt).
+    if (!ohneBedienelementeRef.current) {
+      map.addControl(new mapboxgl.NavigationControl(), "top-right");
+    }
     mapRef.current = map;
 
     let hasFitBounds = false;
@@ -714,6 +765,37 @@ export default function RouteMap({
       const firstSymbolId = map.getStyle().layers?.some((l) => l.id === shieldLayerId)
         ? shieldLayerId
         : undefined;
+
+      // Vor den Strecken hinzugefügt und mit demselben beforeId, damit er
+      // unter ihnen liegt: eine Strecke, die die Grenze kreuzt (ein Pass nach
+      // Italien, eine Jurarunde über Frankreich), bleibt auch im Umland voll
+      // sichtbar. Ortsnamen liegen darüber und bleiben lesbar.
+      if (umlandSchleierRef.current) {
+        map.addSource(UMLAND_SOURCE, {
+          type: "vector",
+          url: "mapbox://mapbox.country-boundaries-v1",
+        });
+        map.addLayer(
+          {
+            id: UMLAND_LAYER,
+            type: "fill",
+            source: UMLAND_SOURCE,
+            "source-layer": "country_boundaries",
+            filter: [
+              "all",
+              ["!=", ["get", "iso_3166_1"], "CH"],
+              ["==", ["get", "disputed"], "false"],
+              ["any", ["==", "all", ["get", "worldview"]], ["in", "US", ["get", "worldview"]]],
+            ],
+            paint: {
+              "fill-color": tokenFarbe("--color-background", isDarkTheme() ? "#0b0b0d" : "#fafafa"),
+              "fill-opacity": isDarkTheme() ? UMLAND_DECKKRAFT_DUNKEL : UMLAND_DECKKRAFT_HELL,
+              "fill-antialias": false,
+            },
+          },
+          firstSymbolId,
+        );
+      }
 
       map.addSource(ROUTES_SOURCE, {
         type: "geojson",
@@ -946,7 +1028,14 @@ export default function RouteMap({
 
       styleLoadedRef.current = true;
       setStilGeneration((n) => n + 1);
-      setIsReady(true);
+      // Erst wenn die Karte einmal fertig gezeichnet hat, nicht schon beim
+      // geladenen Stil: dazwischen liegen die Kacheln, und genau die Sekunden
+      // sah man im Review als schwarze Fläche, wo eine Karte sein sollte.
+      // Der Notnagel darunter hebt das Skelett auch dann, wenn "idle" nie
+      // kommt (kein Netz, blockierte Kacheln) — dann steht wenigstens der
+      // leere Kartenhintergrund statt eines ewigen Skeletts.
+      map.once("idle", () => setIsReady(true));
+      window.setTimeout(() => setIsReady(true), 6000);
     });
 
     // Delegierte Layer-Listener bleiben auch über einen Style-Wechsel hinweg

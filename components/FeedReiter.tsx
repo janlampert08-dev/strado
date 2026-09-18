@@ -54,6 +54,12 @@ export default function FeedReiter({
       : []),
   ];
 
+  // Eine Leiste mit einem einzigen Reiter ist keine Wahl, sondern eine
+  // Pille ohne Funktion. Abgemeldete sehen nur "Alle" — dann gar keine
+  // Leiste. (Der Kommentar in app/feed/page.tsx nannte das einmal "billiger
+  // als ein Sonderfall"; im Re-Review las es sich als kaputter Filter.)
+  if (reiter.length === 1) return null;
+
   return (
     <nav aria-label="Ansicht" className={segmentHuelleClassName("self-start")}>
       {reiter.map((r) => {

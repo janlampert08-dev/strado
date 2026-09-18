@@ -32,17 +32,20 @@ export default function FollowCounts({
       <button
         type="button"
         onClick={() => setOpenList("followers")}
-        className="transition-colors duration-fast hover:text-accent"
+        // Die Zahl steht als Textzeile da (20 px hoch), ist aber ein Knopf,
+        // der eine Liste öffnet. after: dehnt die Tippfläche auf 44 px, ohne
+        // die Zeile höher zu machen.
+        className="relative transition-colors duration-fast after:absolute after:-inset-x-1 after:-inset-y-3 after:content-[''] hover:text-accent"
       >
-        <span className="font-mono font-semibold tabular-nums">{followersCount}</span>{" "}
+        <span className="font-semibold tabular-nums">{followersCount}</span>{" "}
         <span className="text-muted">Follower</span>
       </button>
       <button
         type="button"
         onClick={() => setOpenList("following")}
-        className="transition-colors duration-fast hover:text-accent"
+        className="relative transition-colors duration-fast after:absolute after:-inset-x-1 after:-inset-y-3 after:content-[''] hover:text-accent"
       >
-        <span className="font-mono font-semibold tabular-nums">{followingCount}</span>{" "}
+        <span className="font-semibold tabular-nums">{followingCount}</span>{" "}
         <span className="text-muted">Gefolgt</span>
       </button>
 

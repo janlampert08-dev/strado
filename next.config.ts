@@ -36,6 +36,13 @@ const nextConfig: NextConfig = {
   // Die Policy selbst steht in lib/csp.ts — dort mit der Herleitung jeder
   // Direktive und, anders als hier, mit einer Testdatei daneben
   // (lib/csp.test.ts). next.config.ts lädt Vitest nicht.
+  // /leaderboards hiess die einzige englische Adresse einer deutschen App.
+  // Seit 2026-09-17 /ranglisten; die alte Adresse leitet dauerhaft weiter,
+  // damit geteilte Links, Lesezeichen und der Suchindex nicht ins Leere
+  // laufen. Die Abfrage (?klasse=…) geht mit.
+  async redirects() {
+    return [{ source: "/leaderboards", destination: "/ranglisten", permanent: true }];
+  },
   async headers() {
     const csp = contentSecurityPolicy(process.env.NODE_ENV !== "production");
 

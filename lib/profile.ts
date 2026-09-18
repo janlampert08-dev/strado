@@ -55,7 +55,17 @@ export const getPublicProfile = cache(async function getPublicProfile(
     profile.zeigt_fahrzeuge
       ? supabase.from("vehicles").select("*").eq("user_id", userId)
       : Promise.resolve({ data: [] as Vehicle[], error: null }),
-    supabase.from("public_fahrten").select("*").eq("user_id", userId),
+    // Neueste zuerst, wie im Feed. Ohne order kam die Liste in der
+    // Reihenfolge der Datenbank und stand auf dem öffentlichen Profil
+    // älteste zuerst — dieselben Fahrten, zwei Sortierungen. completion_id
+    // als zweites Kriterium aus demselben Grund wie in lib/feed.ts: datum
+    // hat keine Uhrzeit.
+    supabase
+      .from("public_fahrten")
+      .select("*")
+      .eq("user_id", userId)
+      .order("datum", { ascending: false })
+      .order("completion_id", { ascending: false }),
   ]);
 
   // Hier wiegt das besonders schwer: eine gescheiterte Fahrtenabfrage würde
@@ -79,10 +89,23 @@ export const getPublicProfile = cache(async function getPublicProfile(
   // hier nicht mehr die Scheitelhöhe summiert wird, siehe lib/hoehenmeter.ts.
   //
   // Dass diese Summe kleiner ausfällt als die auf dem eigenen Profil, ist
-  // kein Widerspruch mehr, sondern der Sichtbarkeitsunterschied: die View
-  // führt nur öffentlich geteilte Fahrten. Gerechnet wird auf beiden Seiten
-  // dasselbe, nur über verschiedene Bestände — nicht wieder angleichen, das
-  // hiesse private Fahrten öffentlich mitzuzählen.
+  // kein Widerspruch, sondern hat inzwischen ZWEI Gründe — der zweite kam
+  // mit dem Filter gegen doppelt gezählte Abschnitte dazu:
+  //
+  //   1. Sichtbarkeit: die View führt nur öffentlich geteilte Fahrten.
+  //      Nicht angleichen, das hiesse private Fahrten öffentlich
+  //      mitzuzählen.
+  //   2. Erkannte Abschnitte: app/profil/page.tsx und lib/achievements.ts
+  //      filtern parent_completion_id is null, diese Seite kann das nicht —
+  //      public_fahrten führt die Spalte bewusst nicht (0050). Solange
+  //      niemand einen Abschnitt von Hand öffentlich schaltet, ist das
+  //      folgenlos: beim Anlegen ist er ist_oeffentlich = false und
+  //      erreicht die View gar nicht. Wird er geteilt, zählt diese Summe
+  //      seine Kilometer doppelt — zu schliessen nur über eine Migration
+  //      an der View, siehe die Beschreibung von PR #274.
+  //
+  // Gerechnet wird also nicht mehr "auf beiden Seiten dasselbe": die
+  // Formel ist dieselbe, die Menge unterscheidet sich in beiden Punkten.
   const hoehenmeter = summiereHoehenmeter(fahrten);
 
   return {

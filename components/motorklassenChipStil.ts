@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils/cn";
 // WARUM DAS EINE EIGENE DATEI IST UND NICHT IN MotorklassenChips.tsx STEHT
 //
 // Diese Funktion wird aus einer Server Component heraus aufgerufen
-// (MeineKlasseChip in app/leaderboards/page.tsx). Stünde sie in der
+// (MeineKlasseChip in app/ranglisten/page.tsx). Stünde sie in der
 // "use client"-Datei, ersetzte React sie dort durch einen Client-Verweis:
 // einen Stub, der beim Aufruf wirft mit "Attempted to call chipClassName()
 // from the server but chipClassName is on the client". Genau das ist
@@ -33,16 +33,23 @@ import { cn } from "@/lib/utils/cn";
  * daneben versprach 44. Das ist der Schirm am Strassenrand, und die
  * Motorklasse entscheidet über die Wertung.
  *
- * Die Filterleiste auf /leaderboards bleibt bei 36: dort stehen bis zu neun
+ * Die Filterleiste auf /ranglisten bleibt bei 36: dort stehen bis zu neun
  * Chips in zwei Zeilen, und sie wird im Sitzen bedient.
  */
 export function chipClassName(aktiv: boolean, gross = false): string {
   return cn(
-    "inline-flex shrink-0 items-center rounded-full border px-3 text-sm font-medium whitespace-nowrap transition-colors duration-fast",
+    // relative + after: auch in der 36-px-Fassung eine 44-px-Tippfläche,
+    // ohne die zwei Chipzeilen der Ranglisten höher zu machen.
+    "relative inline-flex shrink-0 items-center rounded-full border px-3 text-sm font-medium whitespace-nowrap transition-colors duration-fast after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']",
     gross ? "min-h-11" : "min-h-9",
+    // Gewählt = gefüllt in der Vordergrundfarbe, wie ein Segment in
+    // ui/SegmentedControl. Vorher blau gefüllt: dieselbe Rolle ("das ist
+    // ausgewählt") sah in den Ranglisten anders aus als im Feed-Reiter und in
+    // der Sichtbarkeitswahl, und Blau heisst in dieser App "tippen löst etwas
+    // aus", nicht "ist gewählt".
     aktiv
-      ? "border-accent bg-accent text-background"
-      : "border-border text-muted hover:border-border-strong hover:text-foreground",
+      ? "border-foreground bg-foreground text-background"
+      : "border-border-control text-muted hover:border-border-strong hover:text-foreground",
   );
 }
 
@@ -51,9 +58,14 @@ export function chipClassName(aktiv: boolean, gross = false): string {
 // bleibt, welche Zeile die Auswahl anführt und welche sie verfeinert.
 export function unterChipClassName(aktiv: boolean): string {
   return cn(
-    "inline-flex min-h-8 shrink-0 items-center rounded-full border px-2.5 text-xs font-medium whitespace-nowrap transition-colors duration-fast",
+    // relative + after wie in der oberen Zeile: 32 px hoch dargestellt, 44 px
+    // tippbar. Die Unterzeile war die einzige Chipreihe der App ohne diese
+    // Vergrösserung — "A1" mass 38 × 32 und war damit das kleinste Ziel auf
+    // /ranglisten, ausgerechnet in der Reihe, die man mit Handschuhen am
+    // ehesten am Strassenrand antippt.
+    "relative inline-flex min-h-8 shrink-0 items-center rounded-full border px-2.5 text-xs font-medium whitespace-nowrap transition-colors duration-fast after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-['']",
     aktiv
-      ? "border-accent bg-accent-subtle text-accent"
-      : "border-border text-muted hover:border-border-strong hover:text-foreground",
+      ? "border-foreground bg-surface text-foreground"
+      : "border-border-control text-muted hover:border-border-strong hover:text-foreground",
   );
 }

@@ -8,6 +8,7 @@ import {
   leseAboZustand,
   bekanntePreisIds,
   preisHerkunft,
+  vollstaendigErstatteterPaymentIntent,
 } from "@/lib/stripeWebhook";
 
 // Minimaler Mock für genau die Teile der Supabase-Query-Builder-API, die
@@ -212,6 +213,9 @@ describe("preisHerkunft", () => {
     "STRIPE_PREMIUM_PRICE_ID_JAHR",
     "STRIPE_PREMIUM_PRICE_ID_GRUENDER",
     "STRIPE_PREMIUM_PRICE_ID",
+    "STRIPE_PREMIUM_PRICE_IDS_MONAT_BESTAND",
+    "STRIPE_PREMIUM_PRICE_IDS_JAHR_BESTAND",
+    "STRIPE_PREMIUM_PRICE_ID_SAISONPASS",
   ] as const;
 
   let gesichert: Record<string, string | undefined>;
@@ -256,6 +260,26 @@ describe("preisHerkunft", () => {
     expect(preisHerkunft("price_irgendwas")).toBe("unkonfiguriert");
   });
 
+  // Der Fall, für den die Bestandslisten existieren: nach einer
+  // Preisänderung zeigen _MONAT/_JAHR auf neue IDs, die laufenden Abos
+  // buchen aber unter den alten weiter. Wären die alten "fremd", liefe jede
+  // Kündigung am Datenbankzustand vorbei.
+  it("zählt Bestandspreise nach einer Preisänderung weiter mit", () => {
+    process.env.STRIPE_PREMIUM_PRICE_ID_MONAT = "price_monat_neu";
+    process.env.STRIPE_PREMIUM_PRICE_IDS_MONAT_BESTAND = "price_monat_alt";
+    process.env.STRIPE_PREMIUM_PRICE_IDS_JAHR_BESTAND = " price_jahr_alt , price_jahr_uralt ,";
+    expect(preisHerkunft("price_monat_alt")).toBe("premium");
+    expect(preisHerkunft("price_jahr_alt")).toBe("premium");
+    expect(preisHerkunft("price_jahr_uralt")).toBe("premium");
+    expect(bekanntePreisIds()).not.toContain("");
+  });
+
+  it("führt den Saisonpass nicht als Abo-Preis", () => {
+    process.env.STRIPE_PREMIUM_PRICE_ID_MONAT = "price_monat";
+    process.env.STRIPE_PREMIUM_PRICE_ID_SAISONPASS = "price_pass";
+    expect(preisHerkunft("price_pass")).toBe("fremd");
+  });
+
   it("sammelt alle gesetzten Varianten ohne Dubletten", () => {
     process.env.STRIPE_PREMIUM_PRICE_ID_MONAT = "price_a";
     process.env.STRIPE_PREMIUM_PRICE_ID = "price_a";
@@ -267,5 +291,32 @@ describe("preisHerkunft", () => {
     process.env.STRIPE_PREMIUM_PRICE_ID_MONAT = "   ";
     expect(bekanntePreisIds()).toEqual([]);
     expect(preisHerkunft("price_x")).toBe("unkonfiguriert");
+  });
+});
+
+describe("vollstaendigErstatteterPaymentIntent", () => {
+  const charge = (overrides: Partial<Stripe.Charge>) =>
+    ({
+      amount: 2900,
+      amount_refunded: 2900,
+      refunded: true,
+      payment_intent: "pi_1",
+      ...overrides,
+    }) as Stripe.Charge;
+
+  it("liefert den PaymentIntent einer vollständig erstatteten Zahlung", () => {
+    expect(vollstaendigErstatteterPaymentIntent(charge({}))).toBe("pi_1");
+    expect(
+      vollstaendigErstatteterPaymentIntent(charge({ payment_intent: { id: "pi_2" } as Stripe.PaymentIntent })),
+    ).toBe("pi_2");
+  });
+
+  // Eine Kulanz von ein paar Franken darf nicht den ganzen Pass nehmen.
+  it("lässt eine Teilerstattung stehen", () => {
+    expect(vollstaendigErstatteterPaymentIntent(charge({ refunded: false, amount_refunded: 500 }))).toBeNull();
+  });
+
+  it("liefert null ohne PaymentIntent", () => {
+    expect(vollstaendigErstatteterPaymentIntent(charge({ payment_intent: null }))).toBeNull();
   });
 });
