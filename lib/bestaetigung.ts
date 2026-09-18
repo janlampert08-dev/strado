@@ -56,8 +56,26 @@ export const BESTAETIGUNG_GUELTIG_SEKUNDEN = 60 * 60;
 // hier heisst: Konto angelegt, Code verschickt, niemand kann ihn eingeben.
 export const BESTAETIGUNG_PFAD = "/registrieren/bestaetigen";
 
-/** Länge des Codes aus der E-Mail (GoTrue erzeugt sechs Ziffern). */
-export const CODE_LAENGE = 6;
+// Länge des Codes aus der E-Mail — so, wie das Supabase-Projekt ihn
+// tatsächlich verschickt (Authentication → Sign In / Providers → Email →
+// Email OTP Length). Stand 2026-09-18 sind das acht Ziffern.
+//
+// Bis dahin stand hier eine 6, weil GoTrue früher sechs erzeugte. Das
+// Projekt verschickte aber acht, und codeNormalisieren() liess nur genau
+// sechs durch: die Seite verlangte einen „6-stelligen Code", die E-Mail
+// brachte acht Ziffern, und wer sie korrekt eintippte, bekam „Bitte gib den
+// 6-stelligen Code ein". Eine Registrierung war damit nicht abzuschliessen.
+//
+// Die Zahl steuert nur, was die Seite anzeigt und wie viele Kästchen das
+// Feld hat. Angenommen wird jede Länge, die Supabase erlaubt (CODE_MIN bis
+// CODE_MAX), damit eine spätere Änderung der Einstellung im Dashboard die
+// Registrierung nicht noch einmal still abschaltet — schlimmstenfalls
+// stimmt dann die Zahl im Text nicht, der Code geht trotzdem durch.
+export const CODE_LAENGE = 8;
+
+// Der Bereich, den Supabase für „Email OTP Length" zulässt.
+const CODE_MIN = 6;
+const CODE_MAX = 10;
 
 export interface OffeneBestaetigung {
   /** Adresse, an die der Code ging — niemals aus einer Nutzereingabe. */
@@ -81,14 +99,17 @@ const MAX_EMAIL_LENGTH = 255;
  * Zwischenablagen aus einem markierten Text machen — eine Fehlermeldung
  * dafür wäre reine Schikane.
  *
- * Danach gilt die Länge streng: genau sechs Ziffern. Alles andere kann gar
- * kein Code sein, und es gar nicht erst an Supabase zu schicken spart einen
- * Versuch aus dem Kontingent, das die Bremse unten zählt.
+ * Danach zählt die Länge: was ausserhalb dessen liegt, was Supabase
+ * überhaupt verschicken kann (CODE_MIN bis CODE_MAX), kann kein Code sein,
+ * und es gar nicht erst an Supabase zu schicken spart einen Versuch aus dem
+ * Kontingent, das die Bremse in lib/actions/auth.ts zählt.
  */
 export function codeNormalisieren(roh: unknown): string | null {
   if (typeof roh !== "string") return null;
   const ziffern = roh.replace(/\D/g, "");
-  return ziffern.length === CODE_LAENGE ? ziffern : null;
+  return ziffern.length >= CODE_MIN && ziffern.length <= CODE_MAX
+    ? ziffern
+    : null;
 }
 
 /**
