@@ -16,8 +16,17 @@ import {
 // lib/passwortWiederherstellung.ts.
 
 describe("codeNormalisieren", () => {
-  it("nimmt sechs Ziffern", () => {
+  it("nimmt die acht Ziffern, die das Projekt verschickt", () => {
+    expect(codeNormalisieren("12345678")).toBe("12345678");
+  });
+
+  // Der Fehler vom 2026-09-18: die Seite liess nur sechs Ziffern durch,
+  // die E-Mail brachte acht. Jede Länge, die Supabase einstellen lässt,
+  // muss durchgehen — sonst schaltet eine Änderung im Dashboard die
+  // Registrierung still ab.
+  it("nimmt jede Länge, die Supabase verschicken kann", () => {
     expect(codeNormalisieren("123456")).toBe("123456");
+    expect(codeNormalisieren("1234567890")).toBe("1234567890");
   });
 
   // Der eigentliche Grund für die Funktion: so kommt ein aus der E-Mail
@@ -25,13 +34,14 @@ describe("codeNormalisieren", () => {
   it("entfernt, was beim Kopieren mitkommt", () => {
     expect(codeNormalisieren(" 123 456 ")).toBe("123456");
     expect(codeNormalisieren("123-456")).toBe("123456");
+    expect(codeNormalisieren("1234 5678")).toBe("12345678");
     expect(codeNormalisieren("123456\n")).toBe("123456");
     expect(codeNormalisieren(" 123456")).toBe("123456");
   });
 
-  it("weist ab, was keine sechs Ziffern ergibt", () => {
+  it("weist ab, was zu kurz oder zu lang für einen Code ist", () => {
     expect(codeNormalisieren("12345")).toBeNull();
-    expect(codeNormalisieren("1234567")).toBeNull();
+    expect(codeNormalisieren("12345678901")).toBeNull();
     expect(codeNormalisieren("")).toBeNull();
     expect(codeNormalisieren("abcdef")).toBeNull();
   });
@@ -46,7 +56,7 @@ describe("codeNormalisieren", () => {
   });
 
   it("hält die Länge und den Pfad fest, auf die drei Stellen zeigen", () => {
-    expect(CODE_LAENGE).toBe(6);
+    expect(CODE_LAENGE).toBe(8);
     expect(BESTAETIGUNG_PFAD).toBe("/registrieren/bestaetigen");
     // Muss mit der Email-OTP-Expiration im Supabase-Projekt und mit dem Text
     // in supabase/email-vorlagen/bestaetigung.html übereinstimmen.

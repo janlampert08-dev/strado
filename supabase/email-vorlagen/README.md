@@ -24,6 +24,12 @@ sichtbar wird statt nur in einem Formularfeld, das niemand sieht.
    Text, und die App wiederholt sie auf der Bestätigungsseite
    (`BESTAETIGUNG_GUELTIG_SEKUNDEN` in `lib/bestaetigung.ts`). Drei Stellen,
    ein Wert — wer eine ändert, ändert alle drei.
+   Gleich darunter steht **Email OTP Length**: `8`. Die App nennt diese Zahl
+   auf der Bestätigungsseite und zeichnet so viele Kästchen
+   (`CODE_LAENGE` in `lib/bestaetigung.ts`). Eingelöst wird jede Länge von 6
+   bis 10, ein abweichender Wert sperrt also niemanden aus — aber die Seite
+   sagt dann eine falsche Zahl, wie bis zum 2026-09-18, als sie „6-stellig"
+   verlangte und die E-Mail acht Ziffern brachte.
 5. **Confirm email** muss eingeschaltet bleiben. Ist es aus, liefert
    `signUp()` sofort eine Session, und die ganze Bestätigung entfällt
    stillschweigend (der Zweig dafür steht in `lib/actions/auth.ts`).

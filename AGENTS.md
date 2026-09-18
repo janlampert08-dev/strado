@@ -179,8 +179,11 @@ is what should be corrected.
     `NEXT_PUBLIC_` prefix buys nothing and costs this freezing. Renaming it
     to `SITE_URL` would make it a true runtime value; that needs the repo
     and the Vercel dashboard changed together, so it has not been done.
-- **Sign-up is confirmed with a six-digit code, not a link, since
-  2026-09-16.** The Supabase *Confirm signup* template now renders
+- **Sign-up is confirmed with an eight-digit code, not a link, since
+  2026-09-16.** Eight is what the project sends (Email OTP Length); until
+  2026-09-18 the app assumed six and rejected every real code, so nobody
+  could finish signing up — `codeNormalisieren()` now accepts 6–10 digits.
+  The Supabase *Confirm signup* template now renders
   `{{ .Token }}`; the versioned copy of it is
   `supabase/email-vorlagen/bestaetigung.html`, and like a migration it is
   **not applied by anything** — it is pasted into the dashboard by hand, and
@@ -198,7 +201,7 @@ is what should be corrected.
     stranger's address and guess codes" machine. What actually stops that is
     not the cookie (anyone may edit their own) but the per-address and per-IP
     limits in `lib/actions/auth.ts`: ten redemptions per ten minutes against
-    a one-in-a-million code that lives 60 minutes.
+    a one-in-10^8 code that lives 60 minutes.
   - `signIn()` no longer answers `email_not_confirmed` with a dead-end
     message. It writes the same cookie and redirects to the code page, which
     is safe because GoTrue only returns that error **after** a successful

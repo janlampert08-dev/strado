@@ -3,6 +3,7 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import BestaetigenForm from "@/components/BestaetigenForm";
 import {
+  BESTAETIGUNG_GUELTIG_SEKUNDEN,
   CODE_LAENGE,
   emailAndeuten,
   leseBestaetigung,
@@ -52,6 +53,7 @@ export default async function BestaetigenPage() {
             <BestaetigenForm
               emailHinweis={emailAndeuten(offen.email)}
               codeLaenge={CODE_LAENGE}
+              gueltigMinuten={BESTAETIGUNG_GUELTIG_SEKUNDEN / 60}
             />
           ) : (
             // Kein Cookie: abgelaufen (60 Minuten), in einem anderen Browser

@@ -21,18 +21,26 @@ export default function Loading() {
       <div className="flex-1 overflow-y-auto">
         <Seitenrahmen breite="schmal" className="min-h-full justify-center">
           {/* Überschrift, der Satz mit der angedeuteten Adresse (zwei
-              Zeilen), das Codefeld mit Beschriftung, der Knopf, und darunter
-              der zweite für den neuen Code. */}
-          <Skeleton className="h-9 w-48 rounded-md" />
-          <div className="flex flex-col gap-2">
-            <Skeleton className="h-4 rounded-sm" />
-            <Skeleton className="h-4 w-2/3 rounded-sm" />
+              Zeilen), die Kästchenreihe mit Beschriftung, der Knopf, und
+              darunter abgesetzt die beiden Auswege. */}
+          <div className="flex flex-col gap-3">
+            <Skeleton className="h-9 w-56 rounded-md" />
+            <div className="flex flex-col gap-2">
+              <Skeleton className="h-4 rounded-sm" />
+              <Skeleton className="h-4 w-2/3 rounded-sm" />
+            </div>
           </div>
-          <div className="flex flex-col gap-4">
-            <Skeleton className="h-16 rounded-lg" />
-            <Skeleton className="h-10 rounded-lg" />
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-2">
+              <Skeleton className="h-4 w-36 rounded-sm" />
+              <Skeleton className="h-14 rounded-md" />
+            </div>
+            <Skeleton className="h-11 rounded-full" />
           </div>
-          <Skeleton className="h-10 w-48 rounded-lg" />
+          <div className="flex flex-col gap-3 border-t border-border pt-5">
+            <Skeleton className="h-4 w-3/4 rounded-sm" />
+            <Skeleton className="h-4 w-1/2 rounded-sm" />
+          </div>
         </Seitenrahmen>
       </div>
     </div>

@@ -277,7 +277,7 @@ export interface BestaetigungState {
   error: string | null;
 }
 
-// Löst den sechsstelligen Code aus der Registrierungsmail ein.
+// Löst den Code aus der Registrierungsmail ein (Länge: CODE_LAENGE).
 //
 // Das Gegenstück zum Link-Weg in app/auth/callback/route.ts, und aus dem
 // Grund gebaut, der dort im Fehlerfall steht: der Link wird per PKCE
@@ -309,11 +309,11 @@ export async function bestaetigeRegistrierung(
     };
   }
 
-  // Der Code hat eine Million Möglichkeiten und gilt 60 Minuten — ohne
-  // Bremse wäre er in dieser Zeit durchprobierbar. Mit zehn Versuchen je
-  // zehn Minuten sind es über die Gültigkeitsdauer höchstens 60 Versuche
-  // auf 10^6 Möglichkeiten; für eine Nutzerin, die sich zweimal vertippt,
-  // ist es weiterhin unmerklich.
+  // Der Code hat (bei acht Ziffern) 10^8 Möglichkeiten und gilt 60 Minuten
+  // — ohne Bremse wäre er in dieser Zeit trotzdem durchprobierbar. Mit zehn
+  // Versuchen je zehn Minuten sind es über die Gültigkeitsdauer höchstens 60
+  // Versuche; für eine Nutzerin, die sich zweimal vertippt, ist es
+  // weiterhin unmerklich.
   //
   // Zwei Schlüssel wie in signIn: einer pro Adresse (bremst das Erraten
   // eines bestimmten Codes über wechselnde IPs) und einer pro IP (bremst
