@@ -49,6 +49,22 @@ const TERRAIN_EXAGGERATION = 1.4;
 const TILTED_PITCH = 60;
 const TILTED_BEARING = -17;
 
+// Die Schweiz im Scheinwerfer: alles ausserhalb bekommt einen Schleier in
+// der Hintergrundfarbe der App — im Dunkelmodus dunkelt er das Umland ab,
+// im hellen Stil wäscht er es aus. Die Schweiz selbst bleibt unberührt, der
+// Schleier legt sich also nie über eine Strecke im Land.
+//
+// Die Grenzen kommen aus Mapbox' eigenem Tileset, nicht aus einer GeoJSON-
+// Datei im Repo: dieselbe Herkunft wie die Kacheln (CSP unverändert), und
+// Grenzverlauf und Kartengrundlage passen zwingend aufeinander.
+//
+// Der Worldview-Filter ist nötig, weil das Tileset strittige Gebiete je
+// Weltsicht mehrfach führt; ohne ihn lägen dort zwei Schleier übereinander.
+const UMLAND_SOURCE = "country-boundaries";
+const UMLAND_LAYER = "umland-schleier";
+const UMLAND_DECKKRAFT_DUNKEL = 0.45;
+const UMLAND_DECKKRAFT_HELL = 0.55;
+
 // Die Farbe einer Streckenlinie: der Signaturton der Strecke, sonst
 // --color-accent. Beides zur Laufzeit aus den Tokens aufgelöst
 // (lib/theme.ts), weil ein Mapbox-Layer keine CSS-Variable annimmt.
@@ -714,6 +730,35 @@ export default function RouteMap({
       const firstSymbolId = map.getStyle().layers?.some((l) => l.id === shieldLayerId)
         ? shieldLayerId
         : undefined;
+
+      // Vor den Strecken hinzugefügt und mit demselben beforeId, damit er
+      // unter ihnen liegt: eine Strecke, die die Grenze kreuzt (ein Pass nach
+      // Italien, eine Jurarunde über Frankreich), bleibt auch im Umland voll
+      // sichtbar. Ortsnamen liegen darüber und bleiben lesbar.
+      map.addSource(UMLAND_SOURCE, {
+        type: "vector",
+        url: "mapbox://mapbox.country-boundaries-v1",
+      });
+      map.addLayer(
+        {
+          id: UMLAND_LAYER,
+          type: "fill",
+          source: UMLAND_SOURCE,
+          "source-layer": "country_boundaries",
+          filter: [
+            "all",
+            ["!=", ["get", "iso_3166_1"], "CH"],
+            ["==", ["get", "disputed"], "false"],
+            ["any", ["==", "all", ["get", "worldview"]], ["in", "US", ["get", "worldview"]]],
+          ],
+          paint: {
+            "fill-color": tokenFarbe("--color-background", isDarkTheme() ? "#0b0b0d" : "#fafafa"),
+            "fill-opacity": isDarkTheme() ? UMLAND_DECKKRAFT_DUNKEL : UMLAND_DECKKRAFT_HELL,
+            "fill-antialias": false,
+          },
+        },
+        firstSymbolId,
+      );
 
       map.addSource(ROUTES_SOURCE, {
         type: "geojson",
