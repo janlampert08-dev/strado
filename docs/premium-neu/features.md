@@ -1,8 +1,9 @@
-# Was Premium jetzt ist — die vier neuen Funktionen
+# Was Premium jetzt ist — die neuen Funktionen
 
 Begleitdokument zum Premium-Ausbau vom 17. September 2026. Es beschreibt, was
-gebaut wurde, warum diese vier und nicht andere, und wo die Grenze zwischen
-gratis und bezahlt liegt. Der Plan davor steht in
+gebaut wurde, warum diese und nicht andere, und wo die Grenze zwischen gratis
+und bezahlt liegt. Vier waren ausgewählt, **drei sind es geworden** — warum
+der Pass-Alarm herausfiel, steht in Abschnitt 2. Der Plan davor steht in
 `docs/premium-naechste-features.md` (Auswahl) und
 `docs/premium-ausbau-plan.md` (Umsetzungsregeln); beide gelten weiter, wo sie
 nicht hier korrigiert werden.
@@ -13,8 +14,8 @@ Aus `docs/premium-naechste-features.md`, unverändert richtig: **die stärksten
 Premium-Funktionen sind die, die im Winter Wert haben.** Nicht die, die beim
 Fahren helfen. Ein Abo, dessen Nutzen ausschliesslich zwischen April und
 Oktober entsteht, wird im November gekündigt — und der Saisonpass
-(`docs/premium-neu/preise.md`) ist die Preisantwort darauf, diese vier
-Funktionen sind die inhaltliche.
+(`docs/premium-neu/preise.md`) ist die Preisantwort darauf, diese Funktionen
+sind die inhaltliche.
 
 Dazu die Regel, die keine dieser Funktionen brechen durfte:
 
@@ -23,8 +24,8 @@ Dazu die Regel, die keine dieser Funktionen brechen durfte:
   danach weiterhin.
 - **Nicht hinter die Schranke gehören** Sicherheit, Privatsphäre,
   Bestenlisten, öffentliche Streckenvorschläge — und alles, was zum
-  Schnellerfahren anstösst (AGB Ziff. 11.3/11.4). Keine der vier zeigt
-  Zeiten oder Tempo.
+  Schnellerfahren anstösst (AGB Ziff. 11.3/11.4). Keine davon zeigt Zeiten
+  oder Tempo.
 - **Ein Ort je Funktion, und dieser Ort existiert schon**
   (`docs/premium-ausbau-plan.md` §1). `BottomNav` ist unverändert, die
   Startseite hat nichts dazubekommen, es gibt kein neues visuelles Muster.
@@ -69,57 +70,44 @@ der kommerziellen Lizenz (rund CHF 27/Monat, `docs/premium-plan.md` §5.4)
 schärfer stellt als die bisherige Wetterzeile. Kein Code-Problem, ein
 Launch-Punkt.
 
-## 2. Pass-Alarm — "sobald der Klausen offen ist"
+## 2. Pass-Alarm — gebaut und wieder zurückgezogen
 
-**Was:** Ein Status je Passstrasse (`offen` / `gesperrt` / `Wintersperre`, mit
-voraussichtlicher Öffnung, Hinweis, Quelle und **Prüfdatum**), gepflegt von
-der Moderation. Wer Premium hat, kann einen Alarm setzen; beim Wechsel auf
-"offen" erscheint die Meldung in `/aktivitaet` und im Zähler der Kopfleiste.
+Diese Funktion stand in der Auswahl, ist gebaut worden und ist **nicht Teil
+des Ausbaus**. Der Grund ist nicht Zweifel am Nutzen, sondern eine Kollision,
+die während der Arbeit entstand: am 17. September 2026 ist aus einem
+parallelen Zweig ein vollständiges Pass-System in die Produktion gegangen —
+`paesse` führt den Pass als eigenes Objekt (Höhe, Kantone, Scheitelpunkt,
+Monate der Wintersperre), dazu `pass_status`, `pass_ereignisse`,
+`pass_sperrtage`, `pass_folgen` (die Abos) und `strecken_paesse`. Die
+Aktivitätsliste, der Zähler in der Kopfleiste und die Kontolöschung sind dort
+bereits erweitert.
 
-**Wo:** Statuszeile unter dem Streckentitel; Schalter auf derselben Seite;
-Pflege im bestehenden Moderationsbereich.
+Unsere Fassung hätte eine gleichnamige Tabelle mit anderem Schlüssel angelegt
+(`route_id` statt `pass_id`) und beim Ersetzen zweier Funktionen den
+Pass-Anteil des anderen Zweigs aus dem Abzeichen entfernt. Zwei Systeme für
+dieselbe Frage — "ist der Pass offen?" — wären ausserdem zwei Wahrheiten
+gewesen, und die schlechtere hätten wir gebaut: unsere kannte nur Strecken,
+nicht Pässe.
 
-**Grenze — und sie ist die wichtigste dieses Ausbaus:** Der **Status ist für
-alle kostenlos**, auch ohne Konto. Er ist sicherheitsrelevant, und
-`docs/premium-naechste-features.md` sagt zu Recht, dass Schutz nicht verkauft
-wird. Bezahlt ist ausschliesslich die **Benachrichtigung**.
+Entscheid des Eigentümers am 18. September 2026: **das Live-System gilt.**
+Migration und Code sind aus dem Zweig entfernt (`supabase/migrations/README.md`
+unter 0112 hält fest, was daran zu lernen war). Was bleibt: die TCS-Adresse in
+`lib/constants.ts` als Quelle für die Statuspflege.
 
-**Ehrlichkeit über die Daten:** Das Prüfdatum steht immer dabei, und nach
-sieben Tagen wird es als "nicht mehr aktuell" markiert. Ein falsch als "offen"
-gemeldeter Pass ist schlimmer als keine Angabe
-(`docs/markt/schweizer-identitaet.md` §2.1).
+**Was das für Premium heisst:** Der Ausbau bringt drei Funktionen statt vier.
+Ob ein Pass-Abo bezahlt oder kostenlos sein soll, entscheidet jetzt der
+Zweig, der es gebaut hat — und die Regel dieses Dokuments gilt dort genauso:
+der **Status** ist sicherheitsrelevant und gehört nicht hinter eine Schranke,
+die **Meldung** wäre die verkaufbare Leistung.
 
-**Datenquelle.** Die amtliche Auskunft ist das **TCS-Passportal**
-(`TCS_PASS_PORTAL_URL` in `lib/constants.ts`, vom Eigentümer am 2026-09-17 als
-offizielle Quelle benannt): 77 Pässe mit Status, Temperatur, dem Zeitraum der
-Wintersperre und einem Zeitstempel. Die Moderationsmaske verlinkt sie direkt
-neben dem Feld "Quelle" und trägt "TCS" als Vorgabe ein — gepflegt wird also
-**von Hand, aber gegen die richtige Quelle**.
-
-Ein automatischer Abgleich ist die naheliegende Folgearbeit und bewusst nicht
-Teil dieses PRs:
-
-- Die Seite lädt ihre Daten über ein eingebettetes Widget nach; es braucht
-  erst die Feststellung, über welchen Endpunkt sie kommen und ob er stabil
-  ist.
-- Die Seite nennt **keine Nutzungsbedingungen für die Weiterverwendung**. Ob
-  ein automatischer Abgleich zulässig ist, ist zu klären, bevor er läuft —
-  nicht danach. Ein Anruf beim TCS ist der kürzere Weg als jede
-  Rechtsauslegung.
-- Namensabgleich: TCS führt Passnamen, Strado führt Strecken. Die Zuordnung
-  braucht eine Spalte (etwa `routes.pass_name`) oder eine Zuordnungstabelle;
-  geraten wird sie nicht.
-
-Bis dahin gilt: was ungeprüft nicht weiterverwendet werden darf, wird auch
-nicht abgeschrieben. Der Status bleibt Handarbeit, und das Prüfdatum sagt
-genau, wie alt sie ist.
-
-**Kein Push, keine E-Mail.** `public/sw.js` hat keinen Push-Handler, und es
-gibt keine Mailinfrastruktur. Die Meldung erreicht die Person beim nächsten
-Öffnen der App. Echter Web-Push (VAPID, Abo-Tabelle, Einwilligung,
-Datenschutztext) ist ein eigenes Vorhaben — und der einzige Punkt, an dem
-diese Funktion heute hinter ihrem Versprechen zurückbleibt: "sobald" heisst
-in der App, nicht auf dem Sperrbildschirm.
+**Die Datenquelle bleibt offen, und sie ist dieselbe:** Das TCS-Passportal
+(`TCS_PASS_PORTAL_URL`, vom Eigentümer am 17. September 2026 als offizielle
+Quelle benannt) führt 77 Pässe mit Status, Temperatur, Wintersperre und
+Zeitstempel. Ein automatischer Abgleich ist nicht gebaut — die Seite lädt
+ihre Daten über ein eingebettetes Widget nach und nennt keine
+Nutzungsbedingungen für die Weiterverwendung. Das ist vor dem Bauen zu
+klären, nicht danach; ein Anruf beim TCS ist der kürzere Weg als jede
+Rechtsauslegung.
 
 ## 3. Pass-Sammlung und Saisonrückblick — "deine Schweiz, Pass für Pass"
 
@@ -135,7 +123,7 @@ bestehenden Auswertung.
 der Hinweis. Die Zahl ist der Teaser, nicht die Sperre — wer sie sieht, sieht
 etwas Wahres über sich selbst.
 
-**Warum es zieht:** Es ist die einzige der vier Funktionen, die mit der Zeit
+**Warum es zieht:** Es ist die einzige der drei Funktionen, die mit der Zeit
 wertvoller wird und im Dezember ihren besten Monat hat — und der Rückblick ist
 zugleich das am besten teilbare Objekt, das die App erzeugen kann. Ortsnamen
 stehen vorn, Kennzahlen hinten (AGENTS.md: der Ortsname ist die Einheit der
@@ -198,8 +186,9 @@ erscheint im öffentlichen Profil, in keiner Liste, in keiner Fahrt.
 ## Offene Punkte, die keine Codearbeit sind
 
 1. **Open-Meteo-Lizenz** für die kommerzielle Nutzung (Abschnitt 1).
-2. **TCS-Abgleich**: Zulässigkeit und Endpunkt klären (Abschnitt 2).
-3. **Streckenbestand.** Alle vier Funktionen skalieren mit Strecken, nicht mit
+2. **TCS-Abgleich**: Zulässigkeit und Endpunkt klären (Abschnitt 2) — die
+   Frage bleibt offen, auch ohne unseren Pass-Alarm.
+3. **Streckenbestand.** Alle drei Funktionen skalieren mit Strecken, nicht mit
    Code: eine Pass-Sammlung über eine einzige Passstrasse ist kein Erlebnis,
    und ein Pass-Alarm braucht Pässe. Das ist die eigentliche Arbeit nach
    diesem PR.

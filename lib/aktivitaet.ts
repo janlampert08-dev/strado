@@ -1,12 +1,11 @@
 import type { ReceivedKudos } from "@/lib/kudos";
 import type { ReceivedFollower } from "@/lib/follows";
-import type { ReceivedPassMeldung } from "@/lib/passStatusAbfragen";
 
 // Der Rückkanal aus Schritt 8 des Kernloops (AGENTS.md, "Core User Loop"),
 // an einer Stelle zusammengefasst: /aktivitaet zeigt beides nebeneinander,
 // die Kopfleiste zählt beides in einem Abzeichen.
 //
-// Drei Arten (seit 0112 auch Passöffnungen), eine Zeitachse. Die gemischte Liste ist der Grund für diese
+// Zwei Arten, eine Zeitachse. Die gemischte Liste ist der Grund für diese
 // Datei: ohne sie müsste die Seite zwei Reihenfolgen nebeneinanderlegen und
 // der Nutzer beim Lesen selbst mischen.
 //
@@ -36,36 +35,16 @@ export interface FollowerEintrag extends AktivitaetBasis {
   art: "follower";
 }
 
-// Seit 0112 die dritte Art: ein abonnierter Pass ist offen (Pass-Alarm,
-// Premium). Keine Reaktion einer Person, deshalb ohne die Personenfelder
-// der Basis — eine erfundene "Person Strado" wäre ein Avatar ohne Mensch.
-export interface PassOffenEintrag {
-  art: "pass_offen";
-  meldungId: number;
-  routeId: string;
-  routeName: string;
-  erstelltAm: string;
-  neu: boolean;
-}
-
-export type AktivitaetsEintrag = KudosEintrag | FollowerEintrag | PassOffenEintrag;
+export type AktivitaetsEintrag = KudosEintrag | FollowerEintrag;
 
 // Eine Zeile pro Reaktion, nicht pro Person: derselbe Nutzer kann mehreren
 // Fahrten Kudos geben und zusätzlich folgen. Der Schlüssel muss deshalb die
 // Art mitführen — ohne sie kollidiert das Kudo von A auf Fahrt X mit
 // nichts, das Folgen von A aber mit einem späteren Wieder-Folgen von A.
-//
-// Eine Passmeldung hat eine eigene ID (0112): derselbe Pass kann in einer
-// Saison zweimal öffnen, und beide Meldungen gehören in die Liste.
 export function aktivitaetsSchluessel(eintrag: AktivitaetsEintrag): string {
-  switch (eintrag.art) {
-    case "kudos":
-      return `kudos-${eintrag.completionId}-${eintrag.personId}`;
-    case "follower":
-      return `follower-${eintrag.personId}-${eintrag.erstelltAm}`;
-    case "pass_offen":
-      return `pass-${eintrag.meldungId}`;
-  }
+  return eintrag.art === "kudos"
+    ? `kudos-${eintrag.completionId}-${eintrag.personId}`
+    : `follower-${eintrag.personId}-${eintrag.erstelltAm}`;
 }
 
 export const AKTIVITAET_LIMIT = 30;
@@ -75,16 +54,13 @@ export const AKTIVITAET_LIMIT = 30;
 // lib/ steht, ist das Einzige, was hier automatisiert abgedeckt werden kann.
 //
 // Das Kappen auf AKTIVITAET_LIMIT nach dem Mischen ist korrekt, nicht nur
-// pragmatisch: alle Quellen liefern bereits die jeweils letzten 30 (0057,
-// 0100 bzw. 0112). Die gemeinsamen letzten 30 können aus einer Quelle höchstens
+// pragmatisch: beide Quellen liefern bereits die jeweils letzten 30 (0057
+// bzw. 0100). Die gemeinsamen letzten 30 können aus einer Quelle höchstens
 // 30 Einträge enthalten — es kann also kein Eintrag fehlen, der es in die
 // gemischte Liste geschafft hätte.
 export function mischeAktivitaet(
   kudos: ReceivedKudos[],
   follower: ReceivedFollower[],
-  // Mit Vorgabe, damit bestehende Aufrufer und Tests ohne Passmeldungen
-  // unverändert bleiben.
-  passMeldungen: ReceivedPassMeldung[] = [],
 ): AktivitaetsEintrag[] {
   const eintraege: AktivitaetsEintrag[] = [
     ...kudos.map(
@@ -106,16 +82,6 @@ export function mischeAktivitaet(
         personAvatarUrl: f.followerAvatarUrl,
         erstelltAm: f.erstelltAm,
         neu: f.neu,
-      }),
-    ),
-    ...passMeldungen.map(
-      (m): PassOffenEintrag => ({
-        art: "pass_offen",
-        meldungId: m.meldungId,
-        routeId: m.routeId,
-        routeName: m.routeName,
-        erstelltAm: m.erstelltAm,
-        neu: m.neu,
       }),
     ),
   ];

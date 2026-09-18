@@ -43,10 +43,10 @@
 >
 > **Was geändert wurde (Entwurf vom 17. September 2026) — Premium-Ausbau
 > und neue Preise:**
-> - **Ziff. 3.2** nennt vier neue Premium-Leistungen, die im selben Release
->   ausgeliefert werden: Wetterfenster, Pass-Alarm, Pass-Sammlung mit
->   Saisonrückblick und Wartungsheft. Rein additiv — keine bisher kostenlose
->   Funktion wird entzogen (Kernregel 16, `docs/premium-plan.md` Abschnitt 4).
+> - **Ziff. 3.2** nennt drei neue Premium-Leistungen, die im selben Release
+>   ausgeliefert werden: Wetterfenster, Pass-Sammlung mit Saisonrückblick und
+>   Wartungsheft. Rein additiv — keine bisher kostenlose Funktion wird
+>   entzogen (Kernregel 16, `docs/premium-plan.md` Abschnitt 4).
 > - **Ziff. 4.1** führt neue Preise (Monatsabo CHF 6.90, Jahresabo CHF 39.00)
 >   und mit dem **Saisonpass CHF 29.00 für sechs Monate** ein Produkt, das
 >   sich nicht verlängert. Begründung und Marktvergleich:
@@ -228,11 +228,6 @@ Nutzung. Es umfasst:
 - das **Wetterfenster**: eine Einschätzung der nächsten sieben Tage je
   Strecke, wie sie für eine Fahrt taugen (aus einer fremden Wetterquelle
   abgeleitet — Ziff. 12 gilt, es ist eine Prognose und keine Zusage),
-- den **Pass-Alarm**: eine Meldung in der App, sobald eine abonnierte
-  Passstrasse im Passstatus auf "offen" gesetzt wird. Der Passstatus selbst
-  ist für alle kostenlos sichtbar, wird von Hand gepflegt und ist eine
-  Momentaufnahme; verbindlich sind die Signalisation vor Ort und die
-  Auskünfte der zuständigen Stellen (Ziff. 11, Ziff. 12),
 - die **Pass-Sammlung**: die Übersicht der selbst gefahrenen Passstrassen mit
   dem Datum der ersten Fahrt, und den **Saisonrückblick** als Bild zum
   Teilen,

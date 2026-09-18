@@ -11,11 +11,18 @@
 // Deshalb gilt weiter, was in PremiumPurchaseView stand: hier steht nur,
 // was es tatsächlich gibt. Ein geplantes Feature gehört nicht in diese
 // Liste.
-// Mit dem Premium-Ausbau vom 2026-09-17 sind vier Zeilen dazugekommen
-// (Wetterfenster, Pass-Alarm, Pass-Sammlung mit Saisonrückblick,
-// Wartungsheft). Jede davon steht hier erst, weil sie im selben PR
-// ausgeliefert wird — und AGB Ziff. 3.2 zieht im selben Schritt mit, weil
-// diese Liste die dort zugesagte Leistung ist.
+// Mit dem Premium-Ausbau vom 2026-09-17 sind drei Zeilen dazugekommen
+// (Wetterfenster, Pass-Sammlung mit Saisonrückblick, Wartungsheft). Jede
+// davon steht hier erst, weil sie im selben PR ausgeliefert wird — und AGB
+// Ziff. 3.2 zieht im selben Schritt mit, weil diese Liste die dort zugesagte
+// Leistung ist.
+//
+// Eine vierte war geplant und ist wieder herausgefallen: der Pass-Alarm.
+// Während dieser Ausbau lief, ist aus einem anderen Zweig ein vollständiges
+// Pass-System live gegangen (Pässe als eigene Objekte, mit Status, Sperrtagen
+// und Abos). Zwei Systeme für dieselbe Frage wären zwei Wahrheiten gewesen;
+// unsere Fassung wurde zurückgezogen, bevor irgendjemand sie als Zusage
+// lesen konnte. Details in supabase/migrations/README.md unter 0112.
 //
 // Der erste Punkt hiess bis 0086 "Eigene Strecken erstellen — privat für
 // dich oder öffentlich nach Review". Das Erstellen selbst ist seither wieder
@@ -37,7 +44,6 @@
 // unten baut daraus die Zeile, die Konten OHNE Abo sehen.
 export const PREMIUM_VORTEILE = [
   "Wetterfenster: die trockenen Tage der Woche",
-  "Pass-Alarm: sobald dein Pass offen ist",
   "Pass-Sammlung und Saisonrückblick als Bild",
   "Wartungsheft mit MFK- und Service-Erinnerung",
   "GPX-Export kuratierter Strecken — fürs Navi",

@@ -5,7 +5,7 @@ import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
-import { AktivitaetIcon, PassIcon } from "@/components/NavIcons";
+import { AktivitaetIcon } from "@/components/NavIcons";
 import { aktivitaetsSchluessel, type AktivitaetsEintrag } from "@/lib/aktivitaet";
 
 // Die Liste selbst kommt LIVE aus den Props, die "neu"-Markierungen aus
@@ -58,30 +58,15 @@ export default function ActivityList({
     <ul className="flex flex-col gap-3">
       {eintraege.map((eintrag) => (
         <Card as="li" key={aktivitaetsSchluessel(eintrag)} className="flex items-center gap-3 p-4">
-          {eintrag.art === "pass_offen" ? (
-            // Pass-Alarm (0112): kein Mensch hat reagiert, also kein Avatar.
-            // Dieselbe 40-px-Fläche, damit die Textspalte in einer Flucht
-            // mit den Reaktionen darunter bleibt.
-            <span
-              aria-hidden="true"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border text-muted"
-            >
-              <PassIcon className="h-5 w-5" />
-            </span>
-          ) : (
-            <Avatar url={eintrag.personAvatarUrl} name={eintrag.personName} size={40} />
-          )}
+          <Avatar url={eintrag.personAvatarUrl} name={eintrag.personName} size={40} />
           {/* Kudos führen zur Fahrt, um die es geht; ein neuer Follower zu
               der Person, die gefolgt ist — das ist dort die einzige
-              sinnvolle Anschlusshandlung (ansehen, zurückfolgen). Eine
-              Passöffnung führt zur Strecke, wo Status und Prüfdatum stehen. */}
+              sinnvolle Anschlusshandlung (ansehen, zurückfolgen). */}
           <Link
             href={
               eintrag.art === "kudos"
                 ? `/fahrten/${eintrag.completionId}`
-                : eintrag.art === "follower"
-                  ? `/fahrer/${eintrag.personId}`
-                  : `/strecken/${eintrag.routeId}`
+                : `/fahrer/${eintrag.personId}`
             }
             className="min-w-0 flex-1 transition-colors duration-fast hover:text-accent"
           >
@@ -91,19 +76,12 @@ export default function ActivityList({
                 stehen und das Zeichen mitnehmen. Hier kürzen Name und
                 Nachsatz unabhängig, das Zeichen dazwischen bleibt. Gleiche
                 Lösung wie in der Feed-Karte (app/feed/page.tsx). */}
-            {eintrag.art === "pass_offen" ? (
-              <p className="flex items-center text-sm">
-                <span className="truncate font-medium">{eintrag.routeName}</span>
-                <span className="ml-1 shrink-0">ist offen</span>
-              </p>
-            ) : (
-              <p className="flex items-center text-sm">
-                <span className="truncate font-medium">{eintrag.personName ?? "Ein Fahrer"}</span>
-                <span className="ml-1 truncate">
-                  {eintrag.art === "kudos" ? "hat deiner Fahrt Kudos gegeben" : "folgt dir jetzt"}
-                </span>
-              </p>
-            )}
+            <p className="flex items-center text-sm">
+              <span className="truncate font-medium">{eintrag.personName ?? "Ein Fahrer"}</span>
+              <span className="ml-1 truncate">
+                {eintrag.art === "kudos" ? "hat deiner Fahrt Kudos gegeben" : "folgt dir jetzt"}
+              </span>
+            </p>
             <p className="text-xs text-muted">
               {new Date(eintrag.erstelltAm).toLocaleString("de-CH", {
                 day: "numeric",

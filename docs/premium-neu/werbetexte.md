@@ -11,7 +11,8 @@ PR, weil sie ausserhalb dieses Repos leben.
    zugesagte Vertragsleistung. Ein Satz, der mehr verspricht als diese Liste,
    ist kein Marketing, sondern eine Vertragsänderung.
 2. **Was gratis bleibt, wird genannt.** Entdecken, Aufzeichnen, Strecken
-   erstellen, Ranglisten, Feed und der **Passstatus** bleiben kostenlos. Ein
+   erstellen, Ranglisten, Feed und der **Passstatus** (aus dem separaten
+   Pass-System) bleiben kostenlos. Ein
    Vorteil, der verschweigt, was es auch ohne Abo gibt, wird beim ersten
    Ausprobieren als Übertreibung gelesen.
 3. **Keine Zeiten, kein Tempo.** AGB Ziff. 11.3: Strado ist kein Wettbewerb um
@@ -49,16 +50,15 @@ Liste: vorne steht, was am ersten Tag einen Grund gibt, hinten die
 Obergrenzen, die man erst im zweiten Sommer spürt.
 
 1. Wetterfenster: die trockenen Tage der Woche
-2. Pass-Alarm: sobald dein Pass offen ist
-3. Pass-Sammlung und Saisonrückblick als Bild
-4. Wartungsheft mit MFK- und Service-Erinnerung
-5. GPX-Export kuratierter Strecken — fürs Navi
-6. Auswertung nach Jahr und Fahrzeug
-7. Unbegrenzt Strecken offline speichern
-8. Unbegrenzt private Strecken (ohne Abo: eine)
-9. 12 statt 6 Fotos pro Fahrt
+2. Pass-Sammlung und Saisonrückblick als Bild
+3. Wartungsheft mit MFK- und Service-Erinnerung
+4. GPX-Export kuratierter Strecken — fürs Navi
+5. Auswertung nach Jahr und Fahrzeug
+6. Unbegrenzt Strecken offline speichern
+7. Unbegrenzt private Strecken (ohne Abo: eine)
+8. 12 statt 6 Fotos pro Fahrt
 
-Punkt 5 ist der unterschätzte: er macht Strado zur Ergänzung der
+Punkt 4 ist der unterschätzte: er macht Strado zur Ergänzung der
 Navigations-Apps statt zu ihrem Konkurrenten — "die Strecke, die du hier
 findest, fährst du mit dem Navi, das du schon hast". Genau das ist die
 Position, die `docs/markt/konkurrenzanalyse-schweiz.md` §6.4 offen lässt.
@@ -74,7 +74,6 @@ ist. Kein Schloss-Symbol — additives Gating nimmt nichts weg.
 
 - Streckenseite: "Mit Premium siehst du, an welchen Tagen diese Woche die
   Strecke trocken ist"
-- Passstrecke: "Mit Premium meldet Strado dir, sobald der Pass offen ist"
 - Profil, Pass-Sammlung: "Mit Premium siehst du jeden Pass mit deiner ersten
   Fahrt und teilst deine Saison als Bild"
 - Fahrzeugseite: "Mit Premium führst du hier dein Wartungsheft und Strado
@@ -112,10 +111,9 @@ Textvorschlag für den Premium-Abschnitt der Infoseite:
 > **Premium: mehr aus jeder Saison**
 >
 > Das Wetterfenster zeigt dir, an welchen Tagen diese Woche die Strecke trocken
-> ist. Der Pass-Alarm meldet sich, sobald deine Passstrasse wieder offen ist.
-> Die Pass-Sammlung hält fest, welche du schon hattest — und im Dezember wird
-> daraus dein Saisonrückblick. Dazu das Wartungsheft mit MFK-Erinnerung und
-> jede kuratierte Strecke als GPX für dein Navi.
+> ist. Die Pass-Sammlung hält fest, welche Pässe du schon hattest — und im
+> Dezember wird daraus dein Saisonrückblick. Dazu das Wartungsheft mit
+> MFK-Erinnerung und jede kuratierte Strecke als GPX für dein Navi.
 >
 > CHF 39.00 im Jahr, die ersten 14 Tage gratis. Oder CHF 29.00 für die halbe
 > Saison, ohne Verlängerung. Entdecken, Aufzeichnen und die Ranglisten bleiben
@@ -133,9 +131,9 @@ Widerspruchsrecht. Die Preisrunde und der Premium-Ausbau sind so eine
 >
 > Hallo
 >
-> Strado bekommt vier neue Premium-Funktionen: das Wetterfenster für die
-> nächsten sieben Tage, den Pass-Alarm, die Pass-Sammlung mit Saisonrückblick
-> und ein Wartungsheft mit MFK-Erinnerung.
+> Strado bekommt drei neue Premium-Funktionen: das Wetterfenster für die
+> nächsten sieben Tage, die Pass-Sammlung mit Saisonrückblick und ein
+> Wartungsheft mit MFK-Erinnerung.
 >
 > Damit ändern sich die Preise für **neue** Abos: CHF 6.90 im Monat, CHF 39.00
 > im Jahr (statt 49.00), neu ein Saisonpass für CHF 29.00, der sechs Monate
@@ -160,7 +158,6 @@ Screenshot der Preisliste:
 
 - **Wetterfenster:** ein Wochenraster über einem Passfoto. "Sonntag trocken,
   18°. Samstag lieber nicht."
-- **Pass-Alarm:** Schild "Wintersperre" / Schild weg. "Wir sagen dir, wann."
 - **Pass-Sammlung:** die Liste mit Scheitelhöhen. "Sieben von zwölf. Vier
   Wochenenden."
 - **Wartungsheft:** die MFK-Zeile. "Der Termin, den niemand freiwillig im

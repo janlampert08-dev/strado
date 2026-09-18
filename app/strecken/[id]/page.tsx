@@ -13,13 +13,10 @@ import PublishRouteButton from "@/components/PublishRouteButton";
 import ElevationProfile from "@/components/ElevationProfile";
 import PhotoGallery from "@/components/PhotoGallery";
 import RouteLeaderboardPreview from "@/components/RouteLeaderboardPreview";
-import PassStatusZeile from "@/components/PassStatusZeile";
 import OfflineRouteButton from "@/components/OfflineRouteButton";
 import PremiumHinweis from "@/components/PremiumHinweis";
 import { WetterfensterStreifen, WetterfensterStreifenPlatzhalter } from "@/components/Wetterfenster";
 import { getKontextStrecken, getRoute } from "@/lib/routes";
-import { istPassStrecke } from "@/lib/passStatus";
-import { getPassStatus, hatPassAlarm } from "@/lib/passStatusAbfragen";
 import { formatKm } from "@/lib/format";
 import { getRatings, getOwnRating } from "@/lib/ratings";
 import { bewertungAusSternen } from "@/lib/bewertungen";
@@ -147,12 +144,7 @@ export default async function StreckeDetailPage({
   // hier serverseitig mitgeladen, weil GefahrenSection eine Client-Komponente
   // ist und selbst nicht abfragen kann — im selben Promise.all wie alles
   // andere, also ohne die Antwortzeit zu verlängern.
-  // Passstatus und Pass-Alarm (0112) nur für Passstrassen: bei jeder
-  // anderen Strecke wären es zwei Abfragen für eine Zeile, die es nicht
-  // gibt. Die Kategorie steht in der schon geladenen Route.
-  const istPass = istPassStrecke(route.kategorien);
-
-  const [ratings, ownRating, favorite, vehicles, personalBestSeconds, photos, leaderboard, leaderboardKlassen, weather, moderator, premiumStatus, kontextStrecken, passStatus, passAlarm] =
+  const [ratings, ownRating, favorite, vehicles, personalBestSeconds, photos, leaderboard, leaderboardKlassen, weather, moderator, premiumStatus, kontextStrecken] =
     await Promise.all([
       getRatings(id),
       user ? getOwnRating(id, user.id) : Promise.resolve(null),
@@ -172,8 +164,6 @@ export default async function StreckeDetailPage({
       user ? isModerator(user.id) : Promise.resolve(false),
       getPremiumStatus(),
       getKontextStrecken(route),
-      istPass ? getPassStatus(id) : Promise.resolve(null),
-      istPass && user ? hatPassAlarm(id, user.id) : Promise.resolve(false),
     ]);
 
   // Strukturierte Daten für die Streckenseite — der einzige öffentlich
@@ -254,21 +244,6 @@ export default async function StreckeDetailPage({
             {route.ist_rundfahrt ? `Start/Ziel: ${route.start_ort}` : `${route.start_ort} → ${route.ziel_ort}`}
           </p>
         </div>
-
-        {/* Passstatus und Pass-Alarm, direkt unter dem Titel — dort, wo
-            von Oktober bis Juni die erste Frage steht ("ist der offen?").
-            Der Status selbst ist für alle da, nur die Meldung ist Premium;
-            der bestehende TCS-Link im Aktionsmenü bleibt daneben stehen,
-            er ist die Live-Quelle für alles, was hier fehlt. */}
-        {istPass && (
-          <PassStatusZeile
-            routeId={id}
-            status={passStatus}
-            alarmAktiv={passAlarm}
-            angemeldet={!!user}
-            istPremium={premiumStatus.aktiv}
-          />
-        )}
 
         {/* Nur für die Person, die die Strecke angelegt hat — für alle
             anderen ist der Query-Parameter bedeutungslos und würde nur eine

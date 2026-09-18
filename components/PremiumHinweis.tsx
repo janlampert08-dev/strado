@@ -3,12 +3,12 @@ import { SparklesIcon } from "@/components/NavIcons";
 
 // Der eine Hinweis, mit dem eine Premium-Funktion sich Konten ohne Abo zeigt.
 //
-// Vier Funktionen kommen mit dem Premium-Ausbau dazu (Wetterfenster,
-// Pass-Alarm, Pass-Sammlung mit Saisonrückblick, Wartungsheft), und jede
-// braucht an ihrem Ort einen Satz, der sagt, was hier mit Premium stünde.
-// Stünde dieser Satz viermal gebaut da, gäbe es vier Tonlagen und vier
-// Abstände — und genau das verbietet docs/premium-ausbau-plan.md Abschnitt 1
-// ("kein neues visuelles Muster").
+// Drei Funktionen kommen mit dem Premium-Ausbau dazu (Wetterfenster,
+// Pass-Sammlung mit Saisonrückblick, Wartungsheft), und jede braucht an
+// ihrem Ort einen Satz, der sagt, was hier mit Premium stünde. Stünde dieser
+// Satz dreimal gebaut da, gäbe es drei Tonlagen und drei Abstände — und
+// genau das verbietet docs/premium-ausbau-plan.md Abschnitt 1 ("kein neues
+// visuelles Muster").
 //
 // Bewusst leise: eine Zeile in text-muted, das Funkeln als einziges Zeichen,
 // der Link unterstrichen statt als Knopf. Der gefüllte Akzent gehört den

@@ -3,20 +3,21 @@
 Die Reihenfolge ist nicht Geschmackssache. Jeder Schritt hier setzt den
 vorherigen voraus, und zwei Schritte sind der Punkt, an dem Geld fliesst.
 
-**Stand dieses Dokuments:** Schritte 1 und 2 sind vorbereitet, aber **nicht
-ausgeführt** — der Stripe-Zugang dieser Sitzung ist lesend, und
-Umgebungsvariablen bei Vercel sind über keine Programmierschnittstelle
-erreichbar, die hier zur Verfügung steht. Beides macht der Eigentümer im
-Dashboard.
+**Stand 18. September 2026.** Schritt 3 (Migrationen) ist **erledigt**:
+`0110` und `0111` sind eingespielt und nachgemessen, `0112` ist
+zurückgezogen (`supabase/migrations/README.md`). Offen sind Schritt 1 und 2 —
+der Stripe-Zugang dieser Sitzung ist lesend, und Umgebungsvariablen bei
+Vercel sind über keine hier verfügbare Schnittstelle erreichbar. Beides macht
+der Eigentümer im Dashboard.
 
 ---
 
 ## 0. Was im Repo liegt und noch nichts tut
 
-Der Zweig `staging-premium-neu` enthält drei Migrationen (`0110` Saisonpass,
-`0111` Wartungsheft, `0112` Passstatus/Pass-Alarm), den Code für vier neue
-Funktionen, die neuen Kaufseiten-Texte und die Entwürfe der Rechtstexte.
-**Keine Migration ist eingespielt, kein Preis ist umgestellt.** Solange die
+Der Zweig `staging-premium-neu` enthält zwei Migrationen (`0110` Saisonpass,
+`0111` Wartungsheft — beide am 2026-09-18 eingespielt), den Code für drei
+neue Funktionen, die neuen Kaufseiten-Texte und die Entwürfe der
+Rechtstexte. **Kein Preis ist umgestellt.** Solange die
 Umgebungsvariablen auf die alten Preise zeigen, verkauft die Anwendung
 weiterhin CHF 4.90/49.00 und bietet keinen Saisonpass an — der Plan
 verschwindet einfach von der Kaufseite, wenn seine Variable leer ist
@@ -79,8 +80,11 @@ ist zulässig, aber dann darf die Infoseite nicht hinterherhängen (Schritt 6).
 
 ## 3. Migrationen einspielen — Schema vor Code
 
-In dieser Reihenfolge, jede einzeln und mit den Prüfungen aus
-`supabase/migrations/README.md`:
+**Erledigt am 2026-09-18**, in dieser Reihenfolge und mit den Prüfungen aus
+`supabase/migrations/README.md` — dort steht auch, was dabei aufgefallen ist:
+der Live-Rumpf von `anonymize_account` war nicht der erwartete, und eine in
+Teilen eingespielte Migration lässt die Rechte einer neuen Funktion kurz
+offen.
 
 1. **`0110_saisonpass.sql`** — ersetzt `apply_subscription_state` (Rumpf aus
    `0062`), `premium_abgleich` (aus `0059`) und `anonymize_account` (aus
@@ -89,14 +93,16 @@ In dieser Reihenfolge, jede einzeln und mit den Prüfungen aus
    Zusatz in diese Fassung übernehmen, sonst dreht `0110` ihn zurück.
 2. **`0111_wartungsheft.sql`** — zwei private Tabellen plus ein zusätzlicher
    Unique-Index auf `vehicles (id, user_id)`.
-3. **`0112_pass_status_und_alarm.sql`** — ersetzt `count_unseen_activity` und
-   `mark_activity_seen` (Rümpfe aus `0100`), vorher vergleichen.
+
+`0112` gibt es nicht mehr: das Pass-System eines anderen Zweigs ist seit dem
+2026-09-17 live, und unsere Fassung wurde zurückgezogen
+(`docs/premium-neu/features.md` §2).
 
 Warum Schema zuerst: `getPremiumStatus()` liest `saisonpaesse` auf jeder Seite
-mit Premium-Bezug, `/aktivitaet` und jede Passstrecke lesen `0112`, und die
-Fahrzeugseite liest `0111`. Ein Query-Fehler gilt in diesem Code nicht als
-"nichts da" (`lib/queryError.ts`), sondern als Fehler — der Code ohne Schema
-liefert also Fehlerseiten.
+mit Premium-Bezug, und die Fahrzeugseite liest `0111`. Ein Query-Fehler gilt in
+diesem Code nicht als "nichts da" (`lib/queryError.ts`), sondern als Fehler —
+der Code ohne Schema liefert also Fehlerseiten. Da beide Migrationen stehen,
+ist das erledigt; für den nächsten Zug bleibt die Regel.
 
 ## 4. Code mergen
 
@@ -116,6 +122,8 @@ Vorgeschichte, gegen die Sandbox:
 - Mit laufendem Pass ein Abo abschliessen: "erste Zahlung am <Passende>".
 - TWINT einmal mit Weiterleitung, weil nur dort die Rückkehr über
   `?sitzung=` läuft.
+- Wartungsheft: einen Eintrag anlegen, MFK-Termin setzen, Premium entziehen —
+  lesen und löschen müssen weiterhin gehen, anlegen nicht.
 - Eine Erstattung im Stripe-Dashboard: der Pass muss danach als erstattet
   gelten und Premium fallen (Webhook `charge.refunded`).
 
@@ -131,7 +139,7 @@ gehören in dieselbe Mitteilung**. Vorlage für die Mail:
 Bis zum Inkrafttreten bleibt die veröffentlichte HTML-Fassung im Repo
 `janlampert08-dev/stradoinfo` auf ihrem Stand. Am Tag des Inkrafttretens
 gehören dorthin: die neuen AGB, der neue Datenschutzabschnitt (Wartungsheft,
-Pass-Alarm, Saisonpass, Sieben-Tage-Vorhersage) und die neuen Preise.
+Saisonpass, Sieben-Tage-Vorhersage) und die neuen Preise.
 
 **Das ist die eine Reihenfolge, die unangenehm ist:** Preise und
 Funktionsumfang dürfen technisch vor dem Inkrafttreten der AGB live gehen, und

@@ -29,41 +29,46 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
-## 0110_saisonpass — ZUR HÄLFTE angewendet (Stand 2026-09-18)
+## 0110_saisonpass — vollständig angewendet am 2026-09-18
 
-> **Erst lesen, dann handeln.** Eingespielt sind am 2026-09-18 die Tabelle
-> und die neuen Funktionen (Ledger-Einträge `0110_saisonpass_tabelle`,
-> `0110_saisonpass_funktionen`, `0110_saisonpass_rechte_entziehen`).
-> **Nicht** eingespielt sind die drei `create or replace` — die
-> Berechtigungsprüfung der Sitzung hat das Ersetzen bestehender
-> Produktionsfunktionen abgewiesen. Sie liegen unverändert in
-> `supabase/migrations/ausstehend/0110_projektion_nachziehen.sql`, mit der
-> Begründung, den Prüfabfragen und dem Weg zurück im Kopf.
+> Eingespielt in vier Schritten (Ledger `0110_saisonpass_tabelle`,
+> `0110_saisonpass_funktionen`, `0110_saisonpass_rechte_entziehen`,
+> `0110_saisonpass_projektion`). Danach gemessen:
 >
-> **Folge, solange das offen ist:** ein Saisonpass würde Premium freischalten
-> und nie wieder ablaufen, und ein Abo-Ereignis eines Pass-Inhabers würde ihm
-> Premium wegnehmen. Deshalb darf `STRIPE_PREMIUM_PRICE_ID_SAISONPASS` bis
-> dahin **nicht gesetzt** werden — ohne die Variable lässt
-> `getPremiumAngebot()` den Plan weg, und es gibt nichts zu kaufen. Abo,
-> Testphase und Bestandspreise sind unabhängig davon vollständig.
+> - `apply_subscription_state` und `premium_abgleich` rechnen über
+>   `saisonpass_gueltig()`; `anonymize_account` löscht die Pässe **und** trägt
+>   weiterhin die Ergänzungen aus `0101` (`fahrt_starts`) und der
+>   Pässe-Migration (`pass_folgen`).
+> - Alle sechs Funktionen: `anon` = false, `authenticated` = false,
+>   `service_role` = true.
+> - `saisonpaesse`: RLS an, eine Select-Policy, Spalten-Grants ohne die
+>   Stripe-Kennungen.
 >
-> Zwei Dinge, die beim Einspielen aufgefallen sind und die jede künftige
-> Migration angehen:
+> **Funktionaler Test, zurückgerollt** (`DO`-Block mit `raise exception` am
+> Ende, Muster aus `0098`): erster Kauf legt an und setzt `ist_premium`;
+> **dieselbe Checkout-Session ein zweites Mal ändert nichts** (eine Zeile —
+> Webhook und Browser bestätigen beide); Laufzeit sechs Monate; ein zweiter
+> Pass beginnt exakt am `gueltig_bis` des ersten (Anschluss, keine
+> verschluckte Zeit); nach künstlichem Ablauf nimmt `premium_abgleich()` die
+> Person in die Ergebnisliste und `ist_premium` fällt auf false. Danach
+> geprüft: `saisonpaesse` leer, kein Testkunde am Profil, Zahl der
+> Premium-Konten unverändert.
 >
-> 1. **Der Live-Körper von `anonymize_account` war nicht der aus `0092`.**
->    Er trug bereits die Ergänzungen aus `0101` (`fahrt_starts`) und aus der
->    Pässe-Migration (`pass_folgen`). Die Datei wurde vor dem Einspielen auf
->    den Live-Stand gehoben; ein `create or replace` auf dem `0092`-Körper
->    hätte beide still zurückgedreht.
+> Zwei Lehren, die jede künftige Migration angehen:
+>
+> 1. **Der Live-Körper von `anonymize_account` war nicht der aus `0092`.** Er
+>    trug bereits `0101` und die Pässe-Migration. Die Datei wurde vor dem
+>    Einspielen auf den Live-Stand gehoben; ein `create or replace` auf dem
+>    `0092`-Körper hätte beide still zurückgedreht. Genau dafür steht die
+>    `prosrc`-Abfrage im Kopf dieser Datei.
 > 2. **Neue Funktionen bekommen von Supabase automatisch `EXECUTE` für
->    `anon` und `authenticated`.** Weil die `revoke`-Zeilen im abgewiesenen
->    Teil standen, waren `apply_saisonpass` und `saisonpass_erstatten` einige
->    Minuten lang über den anonymen Schlüssel aufrufbar — die Falle aus
->    `0047`, `0048`, `0091`, `0097`, diesmal durch eine halb eingespielte
->    Datei. Geschlossen mit `0110_saisonpass_rechte_entziehen`, gemessen:
->    `anon=false`, `authenticated=false`, `service_role=true`. **Wer eine
->    Migration in Teilen einspielt, spielt die Rechte zuerst ein oder prüft
->    sie unmittelbar danach.**
+>    `anon` und `authenticated`.** Weil die Datei in Teilen eingespielt wurde
+>    und die `revoke`-Zeilen im letzten Teil standen, waren
+>    `apply_saisonpass` und `saisonpass_erstatten` einige Minuten lang über
+>    den anonymen Schlüssel aufrufbar — die Falle aus `0047`, `0048`, `0091`,
+>    `0097`, diesmal durch die Stückelung. **Wer eine Migration in Teilen
+>    einspielt, nimmt die Rechte in denselben Teil wie die Funktion oder
+>    misst sie unmittelbar danach nach.**
 
 ### Ursprüngliche Beschreibung
 
@@ -154,144 +159,31 @@ droppen. Die Tabelle bleibt stehen — solange ein verkaufter Pass läuft, ist
 sie der Beleg dafür, und ein Drop wäre der Verlust des Zugangs, den jemand
 bezahlt hat.
 
-## 0112_pass_status_und_alarm — NICHT einspielen, Konflikt (Stand 2026-09-18)
+## 0112_pass_status_und_alarm — zurückgezogen, nie eingespielt
 
-> **Diese Migration kollidiert mit einem System, das bereits produktiv ist.**
-> Am 2026-09-17 (Ledger `20260917212131`, `paesse`) hat ein paralleler Zweig
-> ein vollständiges Pass-System eingespielt:
+> **Die Datei ist aus dem Zweig entfernt (2026-09-18), und das ist kein
+> Versehen.** Sie hätte `public.pass_status` angelegt — eine Tabelle, die seit
+> dem 2026-09-17 in der Produktion steht, aus einem parallelen Zweig, mit
+> einem anderen Schlüssel (`pass_id` text statt `route_id`) und in einem
+> grösseren System: `paesse` führt den Pass als eigenes Objekt mit Höhe,
+> Kantonen, Scheitelpunkt und Wintersperre, dazu `pass_ereignisse`,
+> `pass_sperrtage`, `pass_folgen` (die Abos) und `strecken_paesse` (die
+> Zuordnung zur Strecke). `count_unseen_activity`, `mark_activity_seen` und
+> `anonymize_account` sind dort bereits erweitert.
 >
-> | Live | Was |
-> | --- | --- |
-> | `paesse` | Pass als eigenes Objekt: `id` (text), Name, Höhe, Kantone, Scheitelpunkt, Monate der Wintersperre |
-> | `pass_status` | **derselbe Tabellenname wie hier**, aber auf `pass_id` (text) statt `route_id`, mit `zustand`/`meldung`/`seit`/`manuell_bis` |
-> | `pass_ereignisse`, `pass_sperrtage` | Verlauf und Sperrtage je Pass |
-> | `pass_folgen` | die Abos — dieselbe Idee wie `pass_alarme` hier |
-> | `strecken_paesse` | Zuordnung Strecke ↔ Pass |
-> | `profiles.paesse_gesehen_am` | gesehen-Zeitpunkt, wie `pass_meldungen_gesehen_am` hier |
-> | `count_unseen_activity`, `mark_activity_seen`, `anonymize_account`, `recent_pass_meldungen` | bereits um die Pässe erweitert |
+> Eingespielt hätte `0112` also erstens auf dem Tabellennamen abgebrochen und
+> zweitens — über `create or replace` — den Pass-Summanden des anderen Zweigs
+> aus dem Aktivitäts-Abzeichen entfernt. Zwei Systeme für dieselbe Frage
+> ("ist der Pass offen?") wären ausserdem zwei Wahrheiten.
 >
-> `create table public.pass_status` würde also fehlschlagen, und die
-> `create or replace` auf `count_unseen_activity`/`mark_activity_seen` würden
-> den Pass-Summanden des anderen Zweigs **entfernen** — eine sichtbare
-> Regression im Aktivitäts-Abzeichen.
->
-> Das Live-System ist ausserdem das reichere: es kennt den Pass als Objekt,
-> nicht nur als Strecke, und trägt Wintersperre und Verlauf.
->
-> **Offen ist eine Produktentscheidung**, nicht eine technische: entweder
-> diese Migration samt dem zugehörigen Code (`lib/passStatus*`,
-> `lib/actions/passAlarm.ts`, `components/PassStatusForm.tsx`,
-> `components/PassAlarmSchalter.tsx`, `components/PassStatusZeile.tsx`,
-> die Änderungen an `lib/aktivitaet*`) aus dem Zweig nehmen und die
-> Oberfläche an das Live-System hängen — oder sie bewusst nebeneinander
-> führen, was zwei Wahrheiten über "offen" bedeutet und nicht empfohlen ist.
-> **Bis das entschieden ist, darf der Zweig nicht nach `staging` gemergt
-> werden:** `lib/passStatusAbfragen.ts` fragt `pass_status` über `route_id`
-> ab, und diese Spalte gibt es live nicht — jede Passstrecken-Seite und
-> `/aktivitaet` liefen in eine Fehlerseite.
+> Entscheid des Eigentümers am 2026-09-18: **das Live-System gilt**, unsere
+> Fassung wird zurückgezogen. Mit ihr ging der zugehörige Code
+> (`lib/passStatus*`, `lib/actions/passAlarm.ts`, die drei
+> `PassStatus*`/`PassAlarm*`-Komponenten, die Erweiterung von
+> `lib/actions/moderation.ts` und der Aktivitätsliste). Was bleibt: die
+> TCS-Adresse in `lib/constants.ts` und die Pass-Sammlung, die ohne eigenes
+> Schema auskommt.
 
-### Ursprüngliche Beschreibung
-
-Passstatus (für alle) und Pass-Alarm (Premium), aus
-`docs/markt/schweizer-identitaet.md` §2.1. Liegt auf dem Zweig
-`staging-premium-pass-alarm` und ist **nicht eingespielt**.
-
-Was sie anlegt:
-
-| Objekt | Was |
-| --- | --- |
-| `pass_status` | eine Zeile je Passstrecke: `status` (`offen`/`gesperrt`/`wintersperre`), `voraussichtlich_offen_ab`, `hinweis`, `quelle`, `geprueft_am`, `aktualisiert_von`. Lesbar für `anon`+`authenticated` (ohne `aktualisiert_von`), schreibbar nur für Moderatoren und nur für freigegebene, nicht private Strecken der Kategorie `passstrasse` |
-| `pass_alarme` | `(user_id, route_id)`; Insert-Policy verlangt `profiles.ist_premium`, Delete-Policy nicht |
-| `pass_alarm_meldungen` | Ereignis "Pass offen", je Abonnent eine Zeile. RLS an, **keine** Policy, **keine** Grants |
-| `pass_status_stempeln` | BEFORE-Trigger: setzt `geprueft_am = now()` und `aktualisiert_von = auth.uid()` — jede gespeicherte Eingabe IST eine Prüfung |
-| `pass_status_oeffnung_melden` | AFTER-Trigger (SECURITY DEFINER): schreibt beim Übergang nach `offen` je Premium-Abonnent eine Meldung, in derselben Transaktion |
-| `pass_alarme_kontoloeschung` | Trigger auf `profiles.geloescht_am`: löscht Alarme und Meldungen des Kontos, nullt `aktualisiert_von` |
-| `profiles.pass_meldungen_gesehen_am` | dritter "gesehen"-Zeitpunkt, Muster von `0053`/`0100`, bewusst ohne Spalten-Grant |
-| `recent_pass_meldungen()` | Liste für `/aktivitaet`, `SECURITY DEFINER`, nur `auth.uid()` |
-| `count_unseen_activity()` / `mark_activity_seen()` | **ersetzt** (`create or replace`), Rümpfe aus `0100` plus je ein Zusatz |
-
-**Reihenfolge: Schema zuerst, Code danach — hier zwingend.**
-`getPassStatus()` läuft auf der Streckenseite jeder Passstrasse und
-`getRecentPassMeldungen()` auf `/aktivitaet`; beide lassen einen
-Query-Fehler nicht als "nichts da" durchgehen (`lib/queryError.ts`). Ohne
-die Migration antworten also die Passseiten **und** `/aktivitaet` mit einer
-Fehlerseite. Nicht mergen, bevor die Migration steht.
-
-**Vor dem Einspielen** die Live-Rümpfe der beiden ersetzten Funktionen
-auslesen und gegen `0100` vergleichen (die Lehre aus `0088`/`0090`):
-
-```sql
-select prosrc from pg_proc p
-join pg_namespace n on n.oid = p.pronamespace
-where n.nspname = 'public' and p.proname in ('count_unseen_activity', 'mark_activity_seen');
-```
-
-Weicht einer ab, hat ein anderer Zweig sie inzwischen angefasst — dann
-diesen Zusatz auf den neuen Rumpf setzen, statt die Datei wie sie ist
-einzuspielen. `anonymize_account()` wird bewusst **nicht** ersetzt, weil
-`0101_anonymisierung_fahrtstarts` (PR #255) auf demselben Rumpf sitzt;
-die Kontolöschung hängt deshalb an einem Trigger auf `geloescht_am`.
-
-**Danach prüfen** — die Grant-Falle zuerst (`0047`, `0048`, `0091`, `0097`):
-
-```sql
--- Erwartet: recent_pass_meldungen anon=false authenticated=true,
--- die vier Trigger-/Stempelfunktionen auf beiden false.
-select p.proname,
-       has_function_privilege('anon', p.oid, 'EXECUTE') as anon,
-       has_function_privilege('authenticated', p.oid, 'EXECUTE') as authed
-from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-where n.nspname = 'public'
-  and p.proname in ('recent_pass_meldungen', 'pass_status_stempeln',
-                    'pass_status_oeffnung_melden', 'pass_alarme_kontoloeschung',
-                    'count_unseen_activity', 'mark_activity_seen');
-
--- Erwartet: pass_status SELECT true/true (nur die sechs Spalten),
--- pass_alarme SELECT/INSERT/DELETE nur authenticated,
--- pass_alarm_meldungen nichts für beide Rollen.
-select table_name, grantee, privilege_type, column_name
-from information_schema.column_privileges
-where table_schema = 'public'
-  and table_name in ('pass_status', 'pass_alarme', 'pass_alarm_meldungen')
-  and grantee in ('anon', 'authenticated')
-order by table_name, grantee, privilege_type, column_name;
-
--- Erwartet: RLS an auf allen drei Tabellen.
-select relname, relrowsecurity from pg_class
-where relnamespace = 'public'::regnamespace
-  and relname in ('pass_status', 'pass_alarme', 'pass_alarm_meldungen');
-
--- Erwartet: aktualisiert_von hat KEINEN Select-Grant (in der Abfrage oben
--- nicht auftauchen), pass_meldungen_gesehen_am ebenfalls keinen.
-select column_name, grantee, privilege_type
-from information_schema.column_privileges
-where table_schema = 'public' and table_name = 'profiles'
-  and column_name = 'pass_meldungen_gesehen_am';
-```
-
-Und ein funktionaler Test, zurückgerollt (Muster von `0098`/`0100`: `DO`-Block,
-Ergebnis über `raise exception`, was denselben Block zurückrollt):
-
-1. Status einer Passstrecke auf `gesperrt`, dann auf `offen` — ein
-   Premium-Abonnent bekommt **eine** Zeile in `pass_alarm_meldungen`, ein
-   Abonnent ohne Premium **keine**.
-2. Erneut auf `offen` speichern — **keine** zweite Meldung, aber ein
-   frisches `geprueft_am`.
-3. `count_unseen_activity()` als der Abonnent: um genau diese eine Meldung
-   höher; `mark_activity_seen()`, dann wieder auf dem Vorwert.
-4. `insert into pass_alarme` als Konto ohne Premium → `42501`
-   (Policy), `delete` derselben Zeile als ehemaliger Abonnent → erlaubt.
-5. `anonymize_account(<konto>)` → `pass_alarme` und
-   `pass_alarm_meldungen` dieses Kontos sind leer, `pass_status` steht
-   unverändert (nur `aktualisiert_von` genullt), `geprueft_am`
-   **unverändert** — das Nullen darf nicht als Prüfung zählen.
-
-### Rückweg
-
-Die Migration löscht nichts Bestehendes; der Weg zurück steht im Kopf der
-Datei (Funktionen aus `0100` wiederherstellen, drei Tabellen und die
-Trigger droppen, Spalte entfernen). Verloren gehen dabei Passstatus,
-gesetzte Alarme und Meldungen.
 ## 0111_wartungsheft — angewendet am 2026-09-18
 
 > Vollständig eingespielt (Ledger `0111_wartungsheft_eintraege`,

@@ -5,7 +5,6 @@ import Header from "@/components/Header";
 import ModerationActions from "@/components/ModerationActions";
 import ReportedContentActions from "@/components/ReportedContentActions";
 import FeedbackActions from "@/components/FeedbackActions";
-import PassStatusForm from "@/components/PassStatusForm";
 import { getCurrentUser } from "@/lib/supabase/server";
 import {
   isModerator,
@@ -17,13 +16,11 @@ import {
 } from "@/lib/moderation";
 import type { ComponentType } from "react";
 import { formatKm, datumCH } from "@/lib/format";
-import { getPassStreckenMitStatus } from "@/lib/passStatusAbfragen";
-import { passStatusAnzeige } from "@/lib/passStatus";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import SectionHeading from "@/components/ui/SectionHeading";
 import { buttonVariants } from "@/components/ui/Button";
-import { MapPinIcon, ShieldIcon, LinkIcon, FeedbackIcon, MailIcon, PassIcon } from "@/components/NavIcons";
+import { MapPinIcon, ShieldIcon, LinkIcon, FeedbackIcon, MailIcon } from "@/components/NavIcons";
 import { POSTFACH_URL } from "@/lib/constants";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
@@ -130,20 +127,13 @@ export default async function ModerationPage() {
   if (!user) redirect("/anmelden");
   if (!(await isModerator(user.id))) redirect("/");
 
-  const [routes, routeReports, ratingReports, completionReports, feedback, paesse] =
-    await Promise.all([
-      getPendingRoutes(),
-      getOpenRouteReports(),
-      getOpenRatingReports(),
-      getOpenCompletionReports(),
-      getOpenFeedback(),
-      getPassStreckenMitStatus(),
-    ]);
-
-  // Einmal pro Seitenaufbau, nicht pro Pass: sonst könnte die Liste zwei
-  // Zeitpunkte mischen, und "veraltet" ist eine Aussage über einen
-  // Stichtag.
-  const jetzt = new Date();
+  const [routes, routeReports, ratingReports, completionReports, feedback] = await Promise.all([
+    getPendingRoutes(),
+    getOpenRouteReports(),
+    getOpenRatingReports(),
+    getOpenCompletionReports(),
+    getOpenFeedback(),
+  ]);
 
   // Die drei Meldungsarten in eine Liste, chronologisch. Vorher standen sie
   // als drei Blöcke untereinander — wer die Warteschlange von oben abarbeitet,
@@ -248,14 +238,6 @@ export default async function ModerationPage() {
                   Postfach
                 </a>
               )}
-              {/* Sprung in den Abschnitt weiter unten, kein neuer
-                  Navigationspunkt und keine eigene Seite
-                  (docs/premium-ausbau-plan.md §1). Ein <a> statt next/link:
-                  ein Anker auf derselben Seite. */}
-              <a href="#paesse" className={buttonVariants({ variant: "secondary", size: "sm" })}>
-                <PassIcon className="h-4 w-4" aria-hidden="true" />
-                Passstatus
-              </a>
               <Link
                 href="/moderation/creator"
                 className={buttonVariants({ variant: "secondary", size: "sm" })}
@@ -366,60 +348,6 @@ export default async function ModerationPage() {
                   <FeedbackActions feedbackId={eintrag.id} />
                 </Card>
               ))
-            )}
-          </section>
-
-          {/* Passstatus (0112). Kein Vorgang in der Warteschlange, sondern
-              eine Pflegeliste — deshalb ohne Sprungmarke in der Zählleiste
-              oben, die offene Vorgänge zählt, und ohne Eingang in
-              offeneVorgaenge. Die Reihenfolge kommt aus der Abfrage: ohne
-              Status zuerst, dann die am längsten nicht geprüften. */}
-          <section id="paesse" className="flex scroll-mt-4 flex-col gap-3">
-            <AbschnittKopf title="Passstatus" count={paesse.length} icon={PassIcon} />
-
-            {paesse.length === 0 ? (
-              <EmptyState
-                icon={PassIcon}
-                title="Keine freigegebene Strecke trägt die Kategorie Passstrasse."
-              />
-            ) : (
-              paesse.map((pass) => {
-                const anzeige = pass.status ? passStatusAnzeige(pass.status, jetzt) : null;
-                return (
-                  <Card key={pass.id} className="flex flex-col gap-3 p-4">
-                    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                      <Link
-                        href={`/strecken/${pass.id}`}
-                        className="-my-1.5 py-1.5 font-medium transition-colors duration-fast hover:text-accent"
-                      >
-                        {pass.name}
-                      </Link>
-                      {/* Derselbe Satz wie auf der Streckenseite — was hier
-                          gespeichert wird, steht dort. */}
-                      <span
-                        className={`text-xs ${anzeige?.veraltet ? "text-warning" : "text-muted"}`}
-                      >
-                        {anzeige
-                          ? `${anzeige.label} · ${anzeige.geprueft}`
-                          : "Noch nicht erfasst"}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted">{pass.region}</p>
-                    {/* Aufgeklappt nur, solange nichts erfasst ist: dann ist
-                        das Formular die Arbeit, die hier wartet. Sonst
-                        zusammengefaltet, damit die Liste überblickbar
-                        bleibt — dasselbe <details>-Muster wie im Profil. */}
-                    <details open={!pass.status}>
-                      <summary className="cursor-pointer text-sm text-muted">
-                        {pass.status ? "Status prüfen oder ändern" : "Status erfassen"}
-                      </summary>
-                      <div className="pt-3">
-                        <PassStatusForm routeId={pass.id} status={pass.status} />
-                      </div>
-                    </details>
-                  </Card>
-                );
-              })
             )}
           </section>
         </Seitenrahmen>

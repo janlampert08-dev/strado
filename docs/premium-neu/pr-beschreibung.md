@@ -8,7 +8,14 @@ Beschreibung sonst verloren geht.
 
 ## Summary
 
-Premium bekommt vier Funktionen, drei Pläne und neue Preise.
+Premium bekommt drei Funktionen, drei Pläne und neue Preise.
+
+> **Stand 18.09.2026:** `0110` (Saisonpass) und `0111` (Wartungsheft) sind in
+> der Produktionsdatenbank, geprüft und mit einem zurückgerollten
+> Funktionstest belegt. Eine vierte Funktion — der Pass-Alarm — wurde
+> zurückgezogen, weil parallel ein vollständiges Pass-System live ging; die
+> Migration `0112` und ihr Code sind aus diesem Zweig entfernt. Offen bleiben
+> die drei Stripe-Preise und die fünf Umgebungsvariablen.
 
 **Warum.** Premium bestand aus fünf Punkten, von denen vier Obergrenzen waren
 — man spürt sie im zweiten Sommer, nicht am ersten Tag. Der Jahresplan sparte
@@ -24,10 +31,6 @@ Startseite und visuelles Vokabular unberührt — `docs/premium-ausbau-plan.md`
 - **Wetterfenster** — sieben Tage je Strecke, Stufe plus Grund ("trocken,
   18°", "Glätte möglich"), dazu die besten Tage der Favoriten im Profil.
   Aktuelles Wetter bleibt gratis, die Vorhersage ist Premium.
-- **Passstatus (gratis) und Pass-Alarm (Premium)** — Status je Passstrasse mit
-  Prüfdatum, von der Moderation gegen das TCS-Passportal gepflegt. Die
-  *Meldung* bei Öffnung ist bezahlt, die *Information* nicht: Sicherheit wird
-  nicht verkauft.
 - **Pass-Sammlung und Saisonrückblick** — welche Pässe dieses Konto hatte, mit
   erster Fahrt und Scheitelhöhe, und ein Bild für Feed und Story. Ohne Abo die
   Zahl ("3 von 12"), keine Sperrfläche. Keine Zeiten, kein Tempo (AGB 11.3).
@@ -49,7 +52,7 @@ wird.
 ## Protected Areas — was hier eingegriffen wird und warum es trägt
 
 `supabase/migrations/**`, `lib/actions/billing.ts`, `app/api/stripe/**`,
-`lib/stripe*`, `lib/actions/moderation.ts`, `app/profil/**`.
+`lib/stripe*`, `app/profil/**`.
 
 - **`0110_saisonpass`** führt die zweite Quelle für Premium ein.
   `profiles.ist_premium` ist ab jetzt "Abo läuft **oder** Pass gültig"; die
@@ -77,28 +80,30 @@ wird.
   `trialing`. Die Bindung an den eigenen Customer bleibt unverändert die
   Prüfung, die "Premium mit fremder Session-ID" verhindert.
 - **Neue Tabellen** (`saisonpaesse`, `wartungseintraege`,
-  `wartungserinnerungen`, `pass_alarme`, `pass_alarm_meldungen`, `pass_status`)
-  haben RLS an, Grants ausgeschrieben für `public, anon, authenticated` (die
+  `wartungserinnerungen`) haben RLS an, Grants ausgeschrieben für `public, anon, authenticated` (die
   Falle aus `0047`/`0048`/`0091`/`0097`) und Premium-Gating in der
   Insert-Policy **und** in der Server Action. Lesen und Löschen eigener Daten
   bleiben ohne Abo erlaubt.
-- **Drei Migrationen sind geschrieben und NICHT eingespielt.** Reihenfolge,
-  Prüfabfragen, funktionale Rollback-Tests und der Weg zurück stehen je
-  Migration in `supabase/migrations/README.md`. `0110` und `0101` (PR #255)
-  sitzen beide auf `anonymize_account` — wer zuletzt einspielt, muss beide
-  Zusätze im Rumpf haben.
+- **Beide Migrationen sind eingespielt (2026-09-18) und nachgemessen.**
+  Prüfabfragen, der funktionale Rollback-Test und der Weg zurück stehen je
+  Migration in `supabase/migrations/README.md`. Zwei Dinge daraus gehören in
+  jede künftige Migration: der Live-Rumpf von `anonymize_account` war **nicht**
+  der aus `0092` (er trug bereits `0101` und die Pässe-Migration — ein
+  `create or replace` auf dem alten Rumpf hätte beide still zurückgedreht),
+  und eine in Teilen eingespielte Migration lässt neue Funktionen so lange für
+  `anon` ausführbar, bis ihr `revoke`-Teil läuft.
 
 ## Geschäftsregeln, die sich ändern (Kernregel 16)
 
-- Premium umfasst vier Leistungen mehr; AGB Ziff. 3.2 zieht im
+- Premium umfasst drei Leistungen mehr; AGB Ziff. 3.2 zieht im
   **Entwurf** mit.
 - Neue Preise und ein neuer Plan; AGB Ziff. 4.1/4.3/4.5/4.6 im Entwurf,
   Bestandsschutz geregelt.
 - Erstmals eine Gratis-Testphase (Jahresplan, einmal pro Konto) — die
   Gegenposition in `docs/premium-plan.md` §6 ist in
   `docs/premium-neu/preise.md` §3 ausdrücklich revidiert.
-- **Nichts wird entzogen.** Der Passstatus ist neu und kostenlos, alle
-  bisherigen Gratis-Funktionen bleiben es.
+- **Nichts wird entzogen.** Alle bisherigen Gratis-Funktionen bleiben
+  kostenlos; die drei neuen Leistungen kommen obendrauf.
 
 ## Rechtstexte
 
@@ -115,9 +120,8 @@ vor (Ziff. 11.4/12.6) — beide gehören in **eine** Mitteilung. Vorlage:
    Sitzung ist lesend.
 2. Fünf Umgebungsvariablen bei Vercel setzen, inklusive der beiden
    BESTAND-Listen.
-3. Migrationen `0110`, `0111`, `0112` einspielen — Schema vor Code.
-4. Infoseite (`stradoinfo`): Preisblock und `Offer`-Schema.
-5. Open-Meteo-Lizenz für die kommerzielle Nutzung klären.
+3. Infoseite (`stradoinfo`): Preisblock und `Offer`-Schema.
+4. Open-Meteo-Lizenz für die kommerzielle Nutzung klären.
 
 Alles mit Reihenfolge und Begründung in `docs/premium-neu/rollout.md`.
 
@@ -129,15 +133,19 @@ In diesem Worktree ausgeführt:
   das meldet `app/layout.tsx` vorbestehend `LayoutProps`).
 - `npm run lint` → 0 Fehler, 5 Warnungen, alle vorbestehend
   (`no-img-element` in den Icon-/OG-Routen).
-- `npm run test` → **945 grün**, 15 rot. Die 15 liegen ausschliesslich in
+- `npm run test` → **929 grün**, 15 rot. Die 15 liegen ausschliesslich in
   `.claude/hooks/sql-guard.test.ts` und sind **vorbestehend**: auf einem
   unveränderten `origin/staging`-Worktree fallen dieselben 15 (gemessen, nicht
   vermutet — die Hook-Tests laufen in dieser Windows-Umgebung nicht).
 - `npm run build` → erfolgreich.
-- `node scripts/check-migration-prefixes.mjs` → "Keine neuen Kollisionen. 103
+- `node scripts/check-migration-prefixes.mjs` → "Keine neuen Kollisionen. 102
   Präfixe geprüft."
-- Kein SQL gegen die Datenbank ausgeführt; keine Migration eingespielt; in
-  Stripe nur gelesen.
+- Gegen die Produktionsdatenbank: `0110` und `0111` eingespielt, danach
+  Grants, RLS, Policies und die drei ersetzten Funktionsrümpfe nachgemessen,
+  plus ein zurückgerollter Funktionstest (Kauf, zweite Zustellung derselben
+  Session, Anschlusskauf, Ablauf über `premium_abgleich()`). Danach geprüft:
+  `saisonpaesse` leer, kein Testkunde am Profil, Zahl der Premium-Konten
+  unverändert. In Stripe wurde nur gelesen.
 
 ## Definition of Done
 

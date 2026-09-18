@@ -147,15 +147,16 @@ function legaleBasisUrl(): string {
 // Wintersperre und einem Prüfzeitpunkt (vom Auftraggeber am 2026-09-17 als
 // die offizielle Quelle benannt).
 //
-// Von zwei Stellen gebraucht und deshalb hier: das Aktionsmenü einer
-// saisonalen Strecke verlinkt sie für alle (components/RouteActionsMenu.tsx),
-// und die Moderation schlägt vor der Statuspflege dort nach
-// (components/PassStatusForm.tsx). Der Passstatus in Strado bleibt bis
-// auf Weiteres von Hand gepflegt — ein automatischer Abgleich ist als
-// Folgearbeit beschrieben (docs/premium-neu/features.md), weil die Seite
-// ihre Daten über ein eingebettetes Widget nachlädt und keine
-// Nutzungsbedingungen für die Weiterverwendung nennt. Was ungeprüft nicht
-// weiterverwendet werden darf, wird auch nicht abgeschrieben.
+// Gebraucht vom Aktionsmenü einer saisonalen Strecke, das sie für alle
+// verlinkt (components/RouteActionsMenu.tsx).
+//
+// Ein automatischer Abgleich gegen diese Seite ist bewusst nicht gebaut: sie
+// lädt ihre Daten über ein eingebettetes Widget nach und nennt keine
+// Nutzungsbedingungen für die Weiterverwendung. Was ungeprüft nicht
+// weiterverwendet werden darf, wird auch nicht abgeschrieben — ein Anruf
+// beim TCS ist der kürzere Weg als jede Rechtsauslegung. Den Passstatus
+// selbst führt seit dem 2026-09-17 das Pass-System aus einem anderen Zweig
+// (Tabellen paesse/pass_status/pass_ereignisse).
 //
 // Kein Link pro Pass: TCS pflegt eigene Seiten je Pass, aber die URL-Muster
 // sind nicht für jeden zuverlässig bekannt — ein falsch geratener Link wäre

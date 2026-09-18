@@ -248,20 +248,6 @@ jedem von Stripe gemeldeten Ereignis dessen **Kennung**, seinen **Typ**, den
 Angaben enthalten keine Zahlungsdaten; sie dienen ausschliesslich dazu, ein
 mehrfach zugestelltes Ereignis nur einmal wirken zu lassen.
 
-### 3.9a Pass-Alarm (nur bei Premium)
-
-Wer einen Pass-Alarm setzt, hat bei uns zwei Listen: **welche Passstrassen das
-Konto abonniert hat** und **welche Öffnungsmeldungen es erhalten hat** (je
-Meldung die Strecke und der Zeitpunkt), dazu den Zeitpunkt, an dem die
-Meldungen zuletzt angesehen wurden. Zweck ist die Meldung selbst. Es entstehen
-dabei **keine Standortdaten**, und es wird nichts an Dritte übermittelt. Beide
-Listen werden mit dem Konto gelöscht (Abschnitt 8).
-
-Der **Passstatus** selbst (offen, gesperrt, Wintersperre, Prüfzeitpunkt) ist
-keine personenbezogene Angabe über Nutzende, sondern eine Angabe über eine
-Strasse; er wird von der Moderation von Hand gepflegt. Wer ihn zuletzt
-gesetzt hat, steht intern am Datensatz und wird nicht ausgeliefert.
-
 ### 3.10 Technische Daten
 
 **Server- und Plattformprotokolle.** Beim Aufruf der Website fallen bei den

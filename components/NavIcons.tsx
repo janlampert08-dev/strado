@@ -64,12 +64,9 @@ export {
   Wind as WetterWindIcon,
 } from "lucide-react";
 
-// Ebenfalls kein Nav-Icon, und von zwei Stellen geteilt: der Berg steht
-// für "Pass" und nicht für Höhe allgemein. Er trägt die Pass-Sammlung im
-// Kennzahlen-Block der Profilseite (components/PassSammlung.tsx), die
-// Meldung "Pass ist offen" in der Aktivitätsliste — wo sonst eine Person
-// mit Avatar stünde — und den Abschnitt "Passstatus" unter /moderation
-// (0112).
+// Ebenfalls kein Nav-Icon: die Pass-Sammlung im Kennzahlen-Block der
+// Profilseite (components/PassSammlung.tsx) — der Berg als Zeichen für "Pass",
+// nicht für Höhe allgemein.
 export { Mountain as PassIcon } from "lucide-react";
 
 // Das Wartungsheft (0111): der Schraubenschlüssel für den Abschnitt und
