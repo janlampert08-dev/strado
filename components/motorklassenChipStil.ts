@@ -58,7 +58,12 @@ export function chipClassName(aktiv: boolean, gross = false): string {
 // bleibt, welche Zeile die Auswahl anführt und welche sie verfeinert.
 export function unterChipClassName(aktiv: boolean): string {
   return cn(
-    "inline-flex min-h-8 shrink-0 items-center rounded-full border px-2.5 text-xs font-medium whitespace-nowrap transition-colors duration-fast",
+    // relative + after wie in der oberen Zeile: 32 px hoch dargestellt, 44 px
+    // tippbar. Die Unterzeile war die einzige Chipreihe der App ohne diese
+    // Vergrösserung — "A1" mass 38 × 32 und war damit das kleinste Ziel auf
+    // /ranglisten, ausgerechnet in der Reihe, die man mit Handschuhen am
+    // ehesten am Strassenrand antippt.
+    "relative inline-flex min-h-8 shrink-0 items-center rounded-full border px-2.5 text-xs font-medium whitespace-nowrap transition-colors duration-fast after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-['']",
     aktiv
       ? "border-foreground bg-surface text-foreground"
       : "border-border-control text-muted hover:border-border-strong hover:text-foreground",

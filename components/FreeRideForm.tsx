@@ -431,7 +431,11 @@ export default function FreeRideForm({
               </li>
             )}
           </ul>
-          <div className="flex flex-col gap-1">
+          {/* gap-2 statt gap-1: zwischen dem Start- und dem Abbrechen-Knopf
+              lagen 4 px. Das ist das einzige Knopfpaar der App, bei dem ein
+              Fehlgriff etwas kostet — wer starten will und abbricht, steht
+              wieder am Anfang, mit Helm und Handschuhen. */}
+          <div className="flex flex-col gap-2">
             <button
               type="button"
               onClick={recorder.starten}

@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useId,
   useRef,
   useState,
   type CSSProperties,
@@ -108,6 +109,7 @@ export default function DragSheet({
   kompakt?: ReactNode;
   children: ReactNode;
 }) {
+  const inhaltId = useId();
   const [snap, setSnap] = useState<SheetSnap>("peek");
   // Als Boolean für die Abhängigkeitslisten: `kompakt` ist ein ReactNode und
   // bei jedem Render ein neues Objekt — direkt als Abhängigkeit hinge jeder
@@ -410,7 +412,19 @@ export default function DragSheet({
   // Der Griff beschreibt, was seine Aktivierung tut — und die führt nie nach
   // unten aus dem Blickfeld (siehe nextSnapOnTap): aus "versteckt" und "peek"
   // geht es hinauf, nur aus "voll" wieder zurück auf Peek.
-  const handleLabel = snap === "voll" ? handleLabels.collapse : handleLabels.expand;
+  // DREI RASTPUNKTE, DREI NAMEN. Vorher hiess der Griff in "versteckt" und
+  // in "peek" gleich ("Details ausklappen") und meldete beide Male
+  // aria-expanded="false" — der Unterschied zwischen einem eingeklappten
+  // Sheet und einer halb offenen Vorschau war für Hilfstechnik also gar
+  // nicht vorhanden, und der Zustandswechsel per Pfeiltaste blieb stumm.
+  // Jetzt benennt jeder Zustand seine eigene Handlung: aus "versteckt"
+  // holt der Griff das Sheet zurück, aus "peek" zieht er es ganz auf.
+  const handleLabel =
+    snap === "voll"
+      ? handleLabels.collapse
+      : snap === "peek"
+        ? `${handleLabels.expand} (ganz)`
+        : handleLabels.expand;
 
   return (
     <div
@@ -436,6 +450,9 @@ export default function DragSheet({
         tabIndex={0}
         aria-label={handleLabel}
         aria-expanded={snap === "voll"}
+        // Nennt den Bereich, den der Griff auf- und zuzieht — ohne ihn ist
+        // "Details ausklappen" eine Handlung ohne Gegenstand.
+        aria-controls={inhaltId}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
@@ -477,7 +494,7 @@ export default function DragSheet({
           {kompakt}
         </button>
       )}
-      <div className="contents" inert={istSheet && snap === "versteckt"}>
+      <div id={inhaltId} className="contents" inert={istSheet && snap === "versteckt"}>
         {children}
       </div>
     </div>

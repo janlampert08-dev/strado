@@ -32,7 +32,26 @@ import LeaderboardListsSkeleton from "@/components/LeaderboardListsSkeleton";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
-export const metadata: Metadata = {
+// generateMetadata statt einer festen Konstante, allein wegen des Titels:
+// /ranglisten und /ranglisten?klasse=motorrad zeigten dieselbe Zeile im Tab
+// und im Verlauf, obwohl die zweite Adresse nur eine von fünf Listen führt.
+// Wer zwei Filter nebeneinander offen hat, konnte die Reiter nicht
+// auseinanderhalten.
+//
+// Alles Übrige — Beschreibung und vor allem das Canonical — bleibt
+// unverändert: der Filter darf im Titel stehen und trotzdem keine eigene
+// Seite für Suchmaschinen sein.
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ klasse?: string }>;
+}): Promise<Metadata> {
+  const { klasse } = await searchParams;
+  const zusatz = istKlassenfilter(klasse) ? ` – ${filterLabel(klasse)}` : "";
+  return { ...basisMetadaten, title: `Ranglisten${zusatz} – Strado` };
+}
+
+const basisMetadaten: Metadata = {
   title: "Ranglisten – Strado",
   description:
     "Die schnellsten Zeiten je Strecke und Fahrzeugklasse — und die Fahrerinnen und Fahrer mit den meisten Kilometern in der Schweiz.",

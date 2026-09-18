@@ -212,7 +212,10 @@ function Chip({
         title={title}
         // Kein aria-pressed an einem Link: aktiv heisst hier "das ist die
         // Seite, auf der du gerade bist".
-        aria-current={aktiv ? "true" : undefined}
+        // "page", nicht "true": diese Chips sind Links, die die Adresse
+        // ändern (hrefs-Betriebsart auf /ranglisten) — der gewählte Chip ist
+        // also die aktuelle Seite und nicht bloss "irgendwie aktuell".
+        aria-current={aktiv ? "page" : undefined}
         // Der Sprung nach oben wäre hier falsch — die Leiste steht mitten
         // auf der Seite, und ihr Ergebnis steht direkt darunter.
         scroll={false}
