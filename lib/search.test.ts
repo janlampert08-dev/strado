@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchesSearch } from "@/lib/search";
+import { brauchtUrlSync, istFremderSuchtext, matchesSearch } from "@/lib/search";
 import type { RouteGeoJSON } from "@/types/database";
 
 function makeRoute(overrides: Partial<RouteGeoJSON> = {}): RouteGeoJSON {
@@ -51,5 +51,48 @@ describe("matchesSearch", () => {
 
   it("returns false when nothing matches", () => {
     expect(matchesSearch(route, "Zürich")).toBe(false);
+  });
+});
+
+describe("istFremderSuchtext", () => {
+  it("hält jeden Wert für fremd, solange nichts geschrieben wurde", () => {
+    expect(istFremderSuchtext("furka", null)).toBe(true);
+    expect(istFremderSuchtext("", null)).toBe(true);
+  });
+
+  it("erkennt das Echo des eigenen Schreibvorgangs", () => {
+    expect(istFremderSuchtext("furka", "furka")).toBe(false);
+  });
+
+  it("erkennt Zurück/Vorwärts auf einen anderen Suchtext als fremd", () => {
+    expect(istFremderSuchtext("julier", "furka")).toBe(true);
+  });
+
+  it("erkennt das Echo des geleerten Feldes", () => {
+    // Feld geleert → geschrieben wird "" (URL ganz ohne ?q=), und das Echo
+    // darf die Eingabe genauso wenig anfassen wie jedes andere.
+    expect(istFremderSuchtext("", "")).toBe(false);
+  });
+});
+
+describe("brauchtUrlSync", () => {
+  it("verlangt einen Sync, solange die URL hinterherhinkt", () => {
+    expect(brauchtUrlSync("furka", "")).toBe(true);
+    expect(brauchtUrlSync("furkas", "furka")).toBe(true);
+    expect(brauchtUrlSync("", "furka")).toBe(true);
+  });
+
+  it("ist zufrieden, sobald die URL den Suchtext trägt", () => {
+    expect(brauchtUrlSync("furka", "furka")).toBe(false);
+    expect(brauchtUrlSync("", "")).toBe(false);
+  });
+
+  it("vergleicht getrimmt, damit Leerzeichen keine Schreibschleife auslösen", () => {
+    // searchQueryHref() trimmt beim Schreiben. Ohne Trimmen hier bliebe
+    // "furka " gegenüber ?q=furka dauerhaft ungleich — der debounced Effekt
+    // schriebe denselben Wert dann alle 300 ms erneut.
+    expect(brauchtUrlSync("furka ", "furka")).toBe(false);
+    expect(brauchtUrlSync("  furka", "furka")).toBe(false);
+    expect(brauchtUrlSync("   ", "")).toBe(false);
   });
 });
