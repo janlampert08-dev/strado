@@ -122,9 +122,17 @@ der Crons häufiger als täglich zulässt (hier: Pro).
 
 ## Offen
 
-- **Der Feed ist ungetestet gegen echte Daten.** Der Parser ist gegen
-  nachgebaute DATEX-Lieferungen geprüft, nicht gegen die Lieferung des ASTRA.
-  Der erste Lauf mit Schlüssel ist die eigentliche Probe.
+- **Der Feed ist gegen eine echte Lieferung geprüft** (2026-09-18, 13.7 MB,
+  890 Situationen): 5 Treffer, keiner davon falsch. Drei Dinge hat erst diese
+  Probe gezeigt, alle drei sind behoben (0107, 0108 und die Kontextregel in
+  `lib/passMeldungen.ts`): der Feed schreibt "Pass Gotthard-Pass" statt
+  "Gotthardpass", ein blosser Passname trifft auch Dörfer ("Leuk/Susten") und
+  Strassen ("Route Du Simplon"), und `<value>`-Elemente ausserhalb der Meldung
+  verschoben den Text, an dem eine Aufhebung erkannt wird.
+  **Was die Probe nicht zeigen konnte:** es ist September, keine Meldung im
+  Bestand trug eine Wintersperre. Die Deutung dieser Meldungen ist gegen
+  nachgebaute Texte geprüft, nicht gegen echte — das entscheidet sich erst im
+  Oktober.
 - **TMC-Ortstabelle**: mit ihr liesse sich die Zuordnung geometrisch statt
   über Namen machen. Anfrage beim ASTRA nötig.
 - **Sprachen**: alles Deutsch, wie der Rest der App. Gerade diese Seite hätte

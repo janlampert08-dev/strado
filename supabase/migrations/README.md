@@ -54,6 +54,52 @@ unverändert (`anon` nur auf `strecken_startzeiten`).
 **Rückweg:** die drei Funktionen aus `0104`/`0105` erneut anlegen — sie sind
 dort vollständig ausgeschrieben.
 
+## Eingespielt: 0107 und 0108 (Suchbegriffe, 2026-09-18, Produktion)
+
+Beides Datenänderungen am Passkatalog, ausgelöst vom **ersten Probelauf gegen
+den echten Feed** (13.7 MB, 890 Situationen, mit dem Schlüssel des Eigentümers).
+
+`0104` hatte die Suchbegriffe geschätzt. Der Feed schreibt Pässe aber anders,
+nämlich mit Gattungswort und Bindestrich — "zwischen Pass Gotthard-Pass und
+Ortschaft Motto Bartola", französisch "Col Col du St-Gothard". Die Form
+"Gotthardpass" kommt in der ganzen Lieferung nicht vor.
+
+Umgekehrt haben die kurzen Formen **drei falsche Treffer** erzeugt, weil
+Passnamen in der Schweiz auch Dörfer und Strassen sind:
+
+| Meldung | Fälschlich erkannt als |
+| --- | --- |
+| "A9 Sion ↔ Brig zwischen Anschluss **Leuk/Susten**-Ost …" | Sustenpass |
+| "Route de la Lienne ↔ **Route Du Simplon** …" | Simplonpass |
+| "A9 Brig ↔ Domodossola … Ortschaft **Simplon-Dorf** …" | Simplonpass |
+
+`0107` ersetzt deshalb alle Begriffslisten durch die Schreibweisen des Feeds
+(Bindestrichform, französische und italienische Fassung) und nimmt die blossen
+Ortsnamen heraus. `0108` nimmt zusätzlich "Panoramastrasse" beim Glaubenbielen
+weg: die Baustellenmeldung am Jaunpass heisst wörtlich "Instandsetzung
+Panoramastrasse Jaunpass", und der 80 km entfernte Glaubenbielen stand damit
+auf "eingeschränkt".
+
+Dazu kommt die Kontextregel in `lib/passMeldungen.ts` (kein Schemateil): ein
+Begriff ohne eigenes Gattungswort zählt nur, wenn unmittelbar davor
+"Pass"/"Col"/"Passo" steht.
+
+### Gegen die echte Lieferung gemessen
+
+| | vorher | nachher |
+| --- | --- | --- |
+| Treffer insgesamt | 4 | 5 |
+| davon falsch | 3 | **0** |
+| Situationen, deren erster Text ein Aufzählungswert war | 523 | **0** |
+
+Die fünf verbliebenen Treffer sind vier Baustellenmeldungen an der
+Gotthard-Passstrasse und eine am Jaunpass, alle als "eingeschränkt" gedeutet —
+was sie auch sind. Die Gegenprobe mit erfundenen, aber echt geformten
+Meldungen trifft weiterhin: "Pass Gotthard-Pass … gesperrt",
+"Sustenpass: Wintersperre", "Col du Grimsel … route fermée".
+
+**Rückweg:** `0104` enthält die ursprünglichen Begriffslisten im Wortlaut.
+
 ## Eingespielt: 0104_paesse und 0105_strecken_verkehr (2026-09-18, Produktion)
 
 Beide am 2026-09-18 über `apply_migration` eingespielt, **vor** dem Merge des

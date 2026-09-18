@@ -32,7 +32,8 @@ export type MeldungsZustand = "eingeschraenkt" | "gesperrt" | "wintersperre";
 
 export interface DatexSituation {
   id: string;
-  /** Alle Meldungstexte der Situation, in allen gelieferten Sprachen. */
+  /** Die öffentlichen Meldungstexte der Situation, in allen gelieferten
+   *  Sprachen (de/fr/it). */
   texte: string[];
   /** Werte aller ...Type-Elemente, z.B. "roadClosed", "snowChainsMandatory". */
   typen: string[];
@@ -91,6 +92,16 @@ export function entschluesselXml(text: string): string {
   });
 }
 
+/** Alle Blöcke eines Elements samt Inhalt — für verschachtelte Strukturen,
+ *  aus denen nur ein Teil gelesen werden soll. */
+function elementBloecke(block: string, name: string): string[] {
+  const ausdruck = new RegExp(
+    `<(?:[\\w.-]+:)?${name}\\b[^>]*>([\\s\\S]*?)</(?:[\\w.-]+:)?${name}>`,
+    "gi",
+  );
+  return [...block.matchAll(ausdruck)].map((t) => t[1]);
+}
+
 function elementInhalte(block: string, name: string): string[] {
   const ausdruck = new RegExp(`<(?:[\\w.-]+:)?${name}\\b[^>]*>([\\s\\S]*?)</(?:[\\w.-]+:)?${name}>`, "gi");
   return [...block.matchAll(ausdruck)].map((t) => entschluesselXml(t[1]).trim());
@@ -118,7 +129,18 @@ export function parseVerkehrsmeldungen(xml: string): DatexSituation[] {
     const id = /\bid="([^"]*)"/.exec(kopf)?.[1];
     if (!id) continue;
 
-    const texte = [...new Set(elementInhalte(block, "value").filter((t) => t.length > 0))];
+    // NUR die Texte aus generalPublicComment. Vorher wurde jedes <value> im
+    // Dokument eingesammelt — und die echte Lieferung des ASTRA hat viele
+    // davon ausserhalb der Meldung: Aufzählungswerte wie "duringTheNight"
+    // standen bei 520 von 890 Situationen an erster Stelle. Das ist nicht nur
+    // Rauschen, es verschob den Text, an dem die Aufhebung erkannt wird.
+    const texte = [
+      ...new Set(
+        elementBloecke(block, "generalPublicComment")
+          .flatMap((kommentar) => elementInhalte(kommentar, "value"))
+          .filter((t) => t.length > 0),
+      ),
+    ];
 
     // Jedes Element, dessen Name auf "Type" endet: roadOrCarriagewayOrLaneManagementType,
     // winterEquipmentManagementType, abnormalTrafficType, … Sie sind die
@@ -131,9 +153,19 @@ export function parseVerkehrsmeldungen(xml: string): DatexSituation[] {
       ),
     ];
 
-    // <cancel>true</cancel> im lifeCycleManagement hebt eine Situation auf;
-    // <end>true</end> beendet sie. Beides heisst für uns dasselbe: weg damit.
-    const aufgehoben = /<(?:[\w.-]+:)?(?:cancel|end)\b[^>]*>\s*true\s*</i.test(block);
+    // Drei Wege, auf denen eine Situation erledigt sein kann, und die echte
+    // Lieferung des ASTRA nutzt alle drei:
+    //   * <cancel>/<end> im lifeCycleManagement,
+    //   * validityStatus "suspended" statt "active",
+    //   * der Vorspann "Aufgehoben:" / "Levé:" / "Revocato:" im Meldungstext.
+    //
+    // Der letzte wird über ALLE Sprachfassungen geprüft, nicht nur über die
+    // erste: welche zuerst steht, entscheidet die Reihenfolge im XML, und in
+    // der echten Lieferung ist das mal die deutsche, mal eine andere.
+    const aufgehoben =
+      /<(?:[\w.-]+:)?(?:cancel|end)\b[^>]*>\s*true\s*</i.test(block) ||
+      /<(?:[\w.-]+:)?validityStatus\b[^>]*>\s*suspended\s*</i.test(block) ||
+      texte.some((t) => AUFGEHOBEN.test(t));
 
     situationen.push({
       id,
@@ -207,10 +239,40 @@ export function deuteMeldung(texte: string[], typen: string[]): MeldungsZustand 
   return null;
 }
 
-/** Wortgrenze über Unicode: "Furka-" trifft "Furka", "Berninabahn" nicht. */
+/**
+ * Trifft der Suchbegriff im Text — und meint er dort tatsächlich den Pass?
+ *
+ * DIE ZWEITE HÄLFTE IST DER GANZE PUNKT, und sie stammt aus der echten
+ * Lieferung des ASTRA. Ein Probelauf über 890 Situationen fand mit blosser
+ * Wortgrenzen-Prüfung vier Treffer, von denen drei falsch waren:
+ *
+ *   "A9 Sion <-> Brig zwischen Anschluss Leuk/Susten-Ost …"  → "Susten"
+ *   "Route de la Lienne <-> Route Du Simplon …"              → "Simplon"
+ *   "A9 Brig <-> Domodossola … Ortschaft Simplon-Dorf …"     → "Simplon"
+ *
+ * Susten ist auch ein Dorf im Wallis, Simplon eine Strasse und ein Dorf. Ein
+ * Passname allein ist in der Schweiz also kein Beleg für einen Pass — und der
+ * Preis eines falschen Treffers ist hoch: er sperrt eine offene Passstrasse
+ * in der Anzeige.
+ *
+ * Der Feed schreibt Pässe selbst konsequent mit ihrem Gattungswort:
+ * "Pass Gotthard-Pass", "Pass Jaun-Pass", "Col Col du St-Gothard". Genau
+ * darauf stützt sich die Regel: entweder trägt der Suchbegriff das Wort
+ * selbst, oder unmittelbar vor dem Fund steht es.
+ */
 function begriffTrifft(text: string, begriff: string): boolean {
   const geschuetzt = begriff.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`(?<![\\p{L}\\p{N}])${geschuetzt}(?![\\p{L}\\p{N}])`, "iu").test(text);
+  const ausdruck = new RegExp(`(?<![\\p{L}\\p{N}])${geschuetzt}(?![\\p{L}\\p{N}])`, "giu");
+
+  // Ein Begriff, der "Pass"/"Col"/"Passo" selbst führt, spricht für sich.
+  if (BEGRIFF_MEINT_PASS.test(begriff)) return ausdruck.test(text);
+
+  // Sonst muss das Gattungswort unmittelbar davor stehen.
+  for (const fund of text.matchAll(ausdruck)) {
+    const davor = text.slice(Math.max(0, fund.index - 14), fund.index);
+    if (/(?:^|[^\p{L}])(?:pass|col|passo|passh[öo]he)[\s-]*$/iu.test(davor)) return true;
+  }
+  return false;
 }
 
 /**
@@ -222,7 +284,6 @@ export function ordneMeldungZu(situation: DatexSituation, paesse: PassMuster[]):
 
   const text = situation.texte.join(" · ");
   if (text.length === 0) return [];
-  if (AUFGEHOBEN.test(situation.texte[0] ?? "")) return [];
 
   const zustand = deuteMeldung(situation.texte, situation.typen);
   if (!zustand) return [];

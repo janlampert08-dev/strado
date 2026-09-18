@@ -46,12 +46,15 @@ function situationXml(optionen: {
 </dx223:situation>`;
 }
 
+// Dieselben Schreibweisen wie im Katalog (0107): Bindestrichform, Fremdsprachen,
+// keine blossen Ortsnamen.
 const PAESSE: PassMuster[] = [
-  { id: "susten", suchbegriffe: ["Sustenpass", "Susten", "Sustenstrasse"] },
-  { id: "furka", suchbegriffe: ["Furkapass", "Furka", "Furkastrasse"] },
-  { id: "grimsel", suchbegriffe: ["Grimselpass", "Grimsel", "Grimselstrasse"] },
-  { id: "gotthard", suchbegriffe: ["Gotthardpass", "Tremola", "Passo del San Gottardo"] },
-  { id: "bernina", suchbegriffe: ["Berninapass", "Bernina"] },
+  { id: "susten", suchbegriffe: ["Sustenpass", "Susten-Pass", "Col du Susten"] },
+  { id: "furka", suchbegriffe: ["Furkapass", "Furka-Pass", "Col de la Furka"] },
+  { id: "grimsel", suchbegriffe: ["Grimselpass", "Grimsel-Pass", "Col du Grimsel"] },
+  { id: "gotthard", suchbegriffe: ["Gotthardpass", "Gotthard-Pass", "Tremola", "Passo del San Gottardo"] },
+  { id: "bernina", suchbegriffe: ["Berninapass", "Bernina-Pass"] },
+  { id: "ibergeregg", suchbegriffe: ["Ibergeregg", "Ibergeregg-Pass"] },
 ];
 
 function situation(teil: Partial<DatexSituation> & { texte: string[] }): DatexSituation {
@@ -115,10 +118,45 @@ describe("parseVerkehrsmeldungen", () => {
   });
 
   it("kommt ohne Namensraum-Präfix zurecht", () => {
-    const xml = `<situation id="s.9"><situationRecord><values><value lang="de-CH">Grimselpass gesperrt</value></values></situationRecord></situation>`;
+    const xml = `<situation id="s.9"><situationRecord><generalPublicComment><comment><values><value lang="de-CH">Grimselpass gesperrt</value></values></comment></generalPublicComment></situationRecord></situation>`;
     const [s] = parseVerkehrsmeldungen(xml);
     expect(s.id).toBe("s.9");
     expect(s.texte).toEqual(["Grimselpass gesperrt"]);
+  });
+
+  // Die echte Lieferung trägt <value>-Elemente auch ausserhalb der Meldung:
+  // Aufzählungswerte wie "duringTheNight" standen bei 523 von 890 Situationen
+  // an erster Stelle, bevor die Auswertung auf generalPublicComment begrenzt
+  // wurde. Das ist nicht nur Rauschen — an texte[0] hing die Erkennung einer
+  // aufgehobenen Meldung.
+  it("liest nur den öffentlichen Meldungstext, nicht jedes <value> im Dokument", () => {
+    const xml = `<dx223:situation id="s.10">
+      <dx223:situationRecord>
+        <dx223:validityTimeSpecification><dx223:recurringTimePeriodOfDay><dx223:value>duringTheNight</dx223:value></dx223:recurringTimePeriodOfDay></dx223:validityTimeSpecification>
+        <dx223:generalPublicComment><dx223:comment><dx223:values>
+          <dx223:value lang="de-CH">Klausenpass: Strecke gesperrt</dx223:value>
+          <dx223:value lang="fr-CH">Col du Klausen: route fermée</dx223:value>
+        </dx223:values></dx223:comment></dx223:generalPublicComment>
+      </dx223:situationRecord>
+    </dx223:situation>`;
+    const [s] = parseVerkehrsmeldungen(xml);
+    expect(s.texte).toEqual(["Klausenpass: Strecke gesperrt", "Col du Klausen: route fermée"]);
+  });
+
+  it("erkennt eine Aufhebung auch, wenn sie nicht im ersten Text steht", () => {
+    const xml = `<situation id="s.11"><situationRecord><generalPublicComment><comment><values>
+      <value lang="fr-CH">Levé: Col du Susten</value>
+      <value lang="de-CH">Aufgehoben: Sustenpass gesperrt</value>
+    </values></comment></generalPublicComment></situationRecord></situation>`;
+    expect(parseVerkehrsmeldungen(xml)[0].aufgehoben).toBe(true);
+  });
+
+  it("erkennt eine ausgesetzte Situation über den Gültigkeitsstatus", () => {
+    const xml = `<situation id="s.12"><situationRecord>
+      <validityStatus>suspended</validityStatus>
+      <generalPublicComment><comment><values><value lang="de-CH">Sustenpass gesperrt</value></values></comment></generalPublicComment>
+    </situationRecord></situation>`;
+    expect(parseVerkehrsmeldungen(xml)[0].aufgehoben).toBe(true);
   });
 
   it("liefert für Unsinn eine leere Liste statt einer Ausnahme", () => {
@@ -171,10 +209,70 @@ describe("ordneMeldungZu", () => {
 
   it("trifft alle in einer Meldung genannten Pässe", () => {
     const treffer = ordneMeldungZu(
-      situation({ texte: ["Furka- und Grimselpass: Wintersperre"] }),
+      situation({ texte: ["Furkapass und Grimselpass: Wintersperre"] }),
       PAESSE,
     );
     expect(treffer.map((t) => t.passId).sort()).toEqual(["furka", "grimsel"]);
+  });
+
+  // Die Schreibweise, die der ASTRA-Feed tatsächlich verwendet — gemessen an
+  // einer echten Lieferung: "zwischen Pass Gotthard-Pass und Ortschaft …".
+  it("versteht die Schreibweise des Feeds mit Bindestrich und Gattungswort", () => {
+    const treffer = ordneMeldungZu(
+      situation({
+        texte: ["H2 Airolo <-> Göschenen zwischen Pass Gotthard-Pass und Ortschaft Motto Bartola Sachlage: Strecke gesperrt"],
+      }),
+      PAESSE,
+    );
+    expect(treffer.map((t) => t.passId)).toEqual(["gotthard"]);
+  });
+
+  it("versteht die französische Fassung derselben Meldung", () => {
+    const treffer = ordneMeldungZu(
+      situation({ texte: ["Libéré: Col Col du Grimsel Situation: route fermée"] }),
+      PAESSE,
+    );
+    expect(treffer.map((t) => t.passId)).toEqual(["grimsel"]);
+  });
+
+  // Die drei Fehltreffer aus dem ersten Probelauf gegen echte Daten. Ein
+  // Passname ist in der Schweiz auch ein Dorf oder eine Strasse.
+  it("verwechselt das Dorf Leuk/Susten nicht mit dem Sustenpass", () => {
+    expect(
+      ordneMeldungZu(
+        situation({
+          texte: ["A9 Sion <-> Brig zwischen Anschluss Leuk/Susten-Ost und Anschluss Gampel/Steg-West Sachlage: Strecke gesperrt"],
+        }),
+        PAESSE,
+      ),
+    ).toEqual([]);
+  });
+
+  it("hält eine Strasse namens Simplon nicht für den Simplonpass", () => {
+    const simplon: PassMuster[] = [{ id: "simplon", suchbegriffe: ["Simplonpass", "Simplon-Pass", "Col du Simplon"] }];
+    expect(
+      ordneMeldungZu(
+        situation({ texte: ["Route de la Lienne <-> Route Du Simplon Sachlage: Strecke gesperrt"] }),
+        simplon,
+      ),
+    ).toEqual([]);
+    expect(
+      ordneMeldungZu(
+        situation({ texte: ["A9 Brig <-> Domodossola zwischen Ortschaft Simplon-Dorf und Ortschaft Gabi Sachlage: Strecke gesperrt"] }),
+        simplon,
+      ),
+    ).toEqual([]);
+  });
+
+  it("nimmt einen Namen ohne Gattungswort nur mit 'Pass' davor", () => {
+    // Ibergeregg trägt kein "Pass" im Namen — der Feed schreibt "Pass Ibergeregg".
+    expect(
+      ordneMeldungZu(situation({ texte: ["Pass Ibergeregg Sachlage: Strecke gesperrt"] }), PAESSE)
+        .map((t) => t.passId),
+    ).toEqual(["ibergeregg"]);
+    expect(
+      ordneMeldungZu(situation({ texte: ["Ortschaft Ibergeregg Sachlage: Strecke gesperrt"] }), PAESSE),
+    ).toEqual([]);
   });
 
   it("verwechselt einen Wortteil nicht mit dem Pass", () => {
@@ -199,9 +297,8 @@ describe("ordneMeldungZu", () => {
     expect(treffer.map((t) => t.passId)).toEqual(["gotthard"]);
   });
 
-  it("ignoriert aufgehobene Meldungen — auf beiden Wegen", () => {
+  it("ignoriert aufgehobene Meldungen", () => {
     expect(ordneMeldungZu(situation({ texte: ["Sustenpass gesperrt"], aufgehoben: true }), PAESSE)).toEqual([]);
-    expect(ordneMeldungZu(situation({ texte: ["Aufgehoben: Sustenpass gesperrt"] }), PAESSE)).toEqual([]);
   });
 
   it("ignoriert Meldungen ohne Aussage und ohne bekannten Pass", () => {
