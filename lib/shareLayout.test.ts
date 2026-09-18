@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { projectRoute, statsColumns } from "@/lib/shareLayout";
+import { massstab, profilPunkte, projectRoute, statsColumns } from "@/lib/shareLayout";
 
 function bounds(points: [number, number][]) {
   const xs = points.map((p) => p[0]);
@@ -77,5 +77,49 @@ describe("statsColumns", () => {
       expect(cols[i].x).toBeCloseTo(cols[i - 1].x + cols[i - 1].w, 9);
       expect(cols[i].w).toBeCloseTo(cols[0].w, 9);
     }
+  });
+});
+
+describe("massstab", () => {
+  const box = { x: 0, y: 0, w: 800, h: 600 };
+
+  it("wählt eine runde Länge, die nicht über das Ziel hinausgeht", () => {
+    // Ungefähr 20 km Ost-West auf 47° Breite.
+    const coords: [number, number][] = [
+      [8.3, 47],
+      [8.563, 47],
+    ];
+    const m = massstab(coords, box, 180)!;
+    expect([0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200]).toContain(m.km);
+    expect(m.px).toBeLessThanOrEqual(180);
+    // Die nächstgrössere Stufe wäre zu lang gewesen.
+    expect(m.px * 2).toBeGreaterThan(180 * 0.4);
+  });
+
+  it("liefert nichts für weniger als zwei Punkte", () => {
+    expect(massstab([[8, 47]], box)).toBeNull();
+  });
+});
+
+describe("profilPunkte", () => {
+  const box = { x: 10, y: 20, w: 100, h: 50 };
+
+  it("legt den tiefsten Punkt über die Mindesthöhe und den höchsten an die Oberkante", () => {
+    const pts = profilPunkte(
+      [
+        { km: 0, m: 400 },
+        { km: 5, m: 900 },
+        { km: 10, m: 600 },
+      ],
+      box,
+    );
+    expect(pts[0][0]).toBe(10);
+    expect(pts[2][0]).toBe(110);
+    expect(pts[1][1]).toBeCloseTo(20);
+    expect(pts[0][1]).toBeCloseTo(20 + 50 - 50 * 0.12);
+  });
+
+  it("gibt für ein zu kurzes Profil eine leere Liste zurück", () => {
+    expect(profilPunkte([{ km: 0, m: 400 }], box)).toEqual([]);
   });
 });
