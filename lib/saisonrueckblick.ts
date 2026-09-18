@@ -21,7 +21,7 @@
 // Keine Zeiten und kein Tempo, aus denselben Gründen wie in
 // lib/fahrtstatistik.ts (A1 Bein 2, AGB Ziff. 11.3).
 
-import { fahrtenProMonat, jahrAus } from "@/lib/fahrtstatistik";
+import { jahrAus, monatsWerte } from "@/lib/fahrtstatistik";
 
 export interface SaisonFahrt {
   /** "YYYY-MM-DD" */
@@ -145,10 +145,10 @@ export function saisonAuswerten(
     orte,
     ortArt: passReihe.size > 0 ? "paesse" : "strecken",
     meistgefahren: spitze && spitze.anzahl >= 2 ? { name: spitze.name, anzahl: spitze.anzahl } : null,
-    proMonat: fahrtenProMonat(
-      imJahr.map((f) => ({ ...f, fahrzeug_id: null })),
+    proMonat: monatsWerte(
+      imJahr.map((f) => ({ ...f, fahrzeug_id: null, region: null })),
       jahr,
-    ),
+    ).map((monat) => monat.fahrten),
   };
 }
 
