@@ -9,7 +9,7 @@ import ExploreSidebar from "@/components/ExploreSidebar";
 import DragSheet from "@/components/ui/DragSheet";
 import Skeleton from "@/components/ui/Skeleton";
 import { haversineKm } from "@/lib/geo";
-import { brauchtUrlSync, istFremderSuchtext, matchesSearch } from "@/lib/search";
+import { brauchtUrlSync, echoEinordnen, matchesSearch } from "@/lib/search";
 import { computeSignatures } from "@/lib/signature";
 import type { ExploreRoute } from "@/types/database";
 import type { Streckenbewertung } from "@/lib/bewertungen";
@@ -109,14 +109,16 @@ export default function ExploreView({
   const urlSearchQuery = searchParams.get("q") ?? "";
 
   const [searchInput, setSearchInput] = useState(urlSearchQuery);
-  // Der Wert, den der Effekt unten zuletzt in die URL geschrieben hat. Er
-  // unterscheidet das Echo dieses Schreibvorgangs von einer fremden Änderung
-  // (siehe istFremderSuchtext). Bewusst State und keine Ref: gelesen wird er
-  // im Render-Abgleich direkt darunter, und eine Ref dort zu lesen ist genau
-  // das, was react-hooks/refs verbietet — unter StrictMode läuft der Render
-  // zweimal, und ein Wert, der sich zwischen beiden Durchläufen ändert,
-  // führte zu zwei verschiedenen Ergebnissen.
-  const [zuletztGesendeteSuche, setZuletztGesendeteSuche] = useState<string | null>(null);
+  // Die Werte, die der Effekt unten in die URL geschrieben hat und deren Echo
+  // noch aussteht. Sie unterscheiden das Echo eines eigenen Schreibvorgangs
+  // von einer fremden Änderung (siehe echoEinordnen). Eine Liste und nicht
+  // der zuletzt gesendete Wert allein, weil bei langsamer Antwort zwei
+  // Sendungen gleichzeitig unterwegs sein können. Bewusst State und keine
+  // Ref: gelesen wird sie im Render-Abgleich direkt darunter, und eine Ref
+  // dort zu lesen ist genau das, was react-hooks/refs verbietet — unter
+  // StrictMode läuft der Render zweimal, und ein Wert, der sich zwischen
+  // beiden Durchläufen ändert, führte zu zwei verschiedenen Ergebnissen.
+  const [offeneSuchsendungen, setOffeneSuchsendungen] = useState<string[]>([]);
   // Merkt sich, mit welchem URL-Wert searchInput zuletzt abgeglichen wurde,
   // um externe Änderungen (Browser-Zurück/Vorwärts auf eine URL mit
   // anderem ?q=…) von den eigenen (debounced) Schreibvorgängen zu
@@ -130,15 +132,18 @@ export default function ExploreView({
     // Nur eine fremde Änderung darf das Feld überschreiben. Beim eigenen Echo
     // bleibt stehen, was seit dem Abschicken dazugetippt wurde; der Effekt
     // unten zieht die URL gleich darauf nach.
-    if (istFremderSuchtext(urlSearchQuery, zuletztGesendeteSuche)) {
+    const verbleibend = echoEinordnen(urlSearchQuery, offeneSuchsendungen);
+    if (verbleibend === null) {
       setSearchInput(urlSearchQuery);
+    } else {
+      setOffeneSuchsendungen(verbleibend);
     }
   }
 
   useEffect(() => {
     if (!brauchtUrlSync(searchInput, urlSearchQuery)) return;
     const timeout = setTimeout(() => {
-      setZuletztGesendeteSuche(searchInput.trim());
+      setOffeneSuchsendungen((bisher) => [...bisher, searchInput.trim()]);
       router.replace(searchQueryHref(pathname, searchInput), { scroll: false });
     }, SEARCH_URL_SYNC_DEBOUNCE_MS);
     return () => clearTimeout(timeout);
