@@ -1,7 +1,13 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { haversineKm } from "@/lib/geo";
-import type { ExploreRoute, GeoLineString, KartenStrecke, RouteGeoJSON } from "@/types/database";
+import type {
+  ExploreRoute,
+  GeoLineString,
+  KartenStrecke,
+  RouteGeoJSON,
+  SignaturStrecke,
+} from "@/types/database";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -182,6 +188,30 @@ export async function getKontextStrecken(route: RouteGeoJSON): Promise<KartenStr
 export interface RouteSitemapEintrag {
   id: string;
   created_at: string;
+}
+
+// Der Streckenbestand, reduziert auf die Spalten, aus denen sich ein
+// Signatur-Merkmal berechnet. computeSignatures() vergleicht eine Strecke
+// immer mit allen anderen — die Streckenseite braucht den Bestand also
+// vollständig, aber ohne Geometrie, Höhenprofil und Namen: bei dreissig
+// Strecken ist die Geometrie der mit Abstand teuerste Posten, und gezeichnet
+// wird hier nichts davon.
+export async function getSignaturbestand(): Promise<SignaturStrecke[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("routes")
+    .select("id, hoehe_m, laenge_km, max_steigung_prozent, kehren, tempolimits")
+    .eq("status_ok", true);
+
+  // Ohne Bestand kein Vergleich, und ohne Vergleich kein Merkmal — die
+  // Streckenseite lässt das Abzeichen dann weg, statt eine Fehlermeldung
+  // für eine Auszeichnung zu zeigen.
+  if (error) {
+    console.error("Signaturbestand konnte nicht geladen werden:", error.message);
+    return [];
+  }
+
+  return (data as unknown as SignaturStrecke[]) ?? [];
 }
 
 export async function listRoutesForSitemap(): Promise<RouteSitemapEintrag[]> {

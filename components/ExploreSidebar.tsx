@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { ChevronDown, Crosshair, Gauge, Mountain, Route, Ruler, SearchX, TrendingUp } from "lucide-react";
+import { ChevronDown, Crosshair, SearchX } from "lucide-react";
 import { routeShapePath } from "@/lib/routeShape";
 import { formatKm } from "@/lib/format";
 import { type RouteSignature, type SignatureKey } from "@/lib/signature";
@@ -13,10 +13,8 @@ import { fieldClassName } from "@/components/ui/Input";
 import EmptyState from "@/components/ui/EmptyState";
 import { buttonVariants } from "@/components/ui/Button";
 import IconButton from "@/components/ui/IconButton";
+import { SIGNATURE_ICONS, SIGNATUR_KLASSEN } from "@/components/signaturStil";
 
-// Icon je Signatur-Merkmal — spiegelt visuell wider, worin die Strecke
-// heraussticht (Kehren -> kurvige Straße, Tempo -> Tacho, etc.), statt für
-// alle Merkmale dasselbe Mountain-Symbol zu zeigen.
 // Wortlaut der Farblegende, in der Reihenfolge der Tokens in globals.css.
 const LEGENDE: { key: SignatureKey; text: string }[] = [
   { key: "kehren", text: "Viele Kehren" },
@@ -26,31 +24,7 @@ const LEGENDE: { key: SignatureKey; text: string }[] = [
   { key: "laenge", text: "Lange Strecke" },
 ];
 
-const SIGNATURE_ICONS: Record<SignatureKey, typeof Mountain> = {
-  kehren: Route,
-  steigung: TrendingUp,
-  hoehe: Mountain,
-  tempo: Gauge,
-  laenge: Ruler,
-};
 
-// Die Utility-Klassen je Merkmal. Ausgeschrieben und nicht zusammengesetzt:
-// Tailwind liest Klassennamen statisch aus dem Quelltext, ein
-// `text-signatur-${key}` stünde in keinem erzeugten Stylesheet.
-//
-// Drei Klassen je Merkmal, weil drei Dinge in der Zeile denselben Ton
-// tragen: die linke Kante (was für eine Strecke das ist), das Icon samt
-// Label (worin sie heraussticht) und die Streckenform rechts (ihr
-// Vorschaubild). Die Hex-Werte dahinter stehen in app/globals.css, sind
-// für hell und dunkel gesetzt und gegen Hintergrund, Fläche und Hover-Grund
-// nachgerechnet — siehe lib/signature.ts.
-const SIGNATUR_KLASSEN: Record<SignatureKey, { rand: string; text: string }> = {
-  kehren: { rand: "border-l-signatur-kehren", text: "text-signatur-kehren" },
-  steigung: { rand: "border-l-signatur-steigung", text: "text-signatur-steigung" },
-  hoehe: { rand: "border-l-signatur-hoehe", text: "text-signatur-hoehe" },
-  tempo: { rand: "border-l-signatur-tempo", text: "text-signatur-tempo" },
-  laenge: { rand: "border-l-signatur-laenge", text: "text-signatur-laenge" },
-};
 
 export default function ExploreSidebar({
   routes,

@@ -13,7 +13,9 @@ import ElevationProfile from "@/components/ElevationProfile";
 import PhotoGallery from "@/components/PhotoGallery";
 import RouteLeaderboardPreview from "@/components/RouteLeaderboardPreview";
 import OfflineRouteButton from "@/components/OfflineRouteButton";
-import { getKontextStrecken, getRoute } from "@/lib/routes";
+import { getKontextStrecken, getRoute, getSignaturbestand } from "@/lib/routes";
+import { computeSignatures } from "@/lib/signature";
+import { SIGNATURE_ICONS, SIGNATUR_KLASSEN } from "@/components/signaturStil";
 import { formatKm } from "@/lib/format";
 import { getRatings, getOwnRating } from "@/lib/ratings";
 import { bewertungAusSternen } from "@/lib/bewertungen";
@@ -140,7 +142,7 @@ export default async function StreckeDetailPage({
   // hier serverseitig mitgeladen, weil GefahrenSection eine Client-Komponente
   // ist und selbst nicht abfragen kann — im selben Promise.all wie alles
   // andere, also ohne die Antwortzeit zu verlängern.
-  const [ratings, ownRating, favorite, vehicles, personalBestSeconds, photos, leaderboard, leaderboardKlassen, weather, moderator, premiumStatus, kontextStrecken] =
+  const [ratings, ownRating, favorite, vehicles, personalBestSeconds, photos, leaderboard, leaderboardKlassen, weather, moderator, premiumStatus, kontextStrecken, signaturbestand] =
     await Promise.all([
       getRatings(id),
       user ? getOwnRating(id, user.id) : Promise.resolve(null),
@@ -160,7 +162,13 @@ export default async function StreckeDetailPage({
       user ? isModerator(user.id) : Promise.resolve(false),
       getPremiumStatus(),
       getKontextStrecken(route),
+      // Für das Signatur-Abzeichen unter dem Titel: das Merkmal einer
+      // Strecke ist ein Vergleich mit allen anderen, also braucht auch
+      // diese Seite den Bestand — ohne Geometrie, siehe getSignaturbestand().
+      getSignaturbestand(),
     ]);
+
+  const signatur = computeSignatures(signaturbestand).get(route.id) ?? null;
 
   // Strukturierte Daten für die Streckenseite — der einzige öffentlich
   // indexierbare Evergreen-Inhalt der Plattform (app/sitemap.ts listet
@@ -236,6 +244,26 @@ export default async function StreckeDetailPage({
             {route.ist_rundfahrt && " · Rundfahrt"}
           </p>
           <h1 className="text-display font-semibold tracking-tight">{route.name}</h1>
+          {/* DER TON, DEN DIE LISTE VERGEBEN HAT, GILT AUCH HIER. In der
+              Streckenliste trägt jede Zeile ihr Signatur-Merkmal — worin
+              diese Strecke unter allen heraussticht — als farbige Kante mit
+              Icon und Wort. Beim Antippen verschwand beides: die Seite, auf
+              der die Auszeichnung erst etwas bedeutet, wusste nichts davon,
+              und der Besucher musste sich selbst zusammenreimen, warum
+              ausgerechnet diese Strecke violett war. Farbe steht auch hier
+              nie allein (Icon und Wort daneben) — sie ist die dritte
+              Kodierung derselben Aussage. */}
+          {signatur && (
+            <p
+              className={`mt-1.5 flex items-center gap-1.5 text-sm font-medium ${SIGNATUR_KLASSEN[signatur.key].text}`}
+            >
+              {(() => {
+                const SignaturIcon = SIGNATURE_ICONS[signatur.key];
+                return <SignaturIcon className="h-4 w-4 shrink-0" aria-hidden="true" />;
+              })()}
+              {signatur.label}
+            </p>
+          )}
           <p className="mt-1 text-sm text-muted">
             {route.ist_rundfahrt ? `Start/Ziel: ${route.start_ort}` : `${route.start_ort} → ${route.ziel_ort}`}
           </p>

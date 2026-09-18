@@ -35,7 +35,7 @@
 // Wert dieser Datei. Siehe docs/design-vereinfachung.md, Anhang A4.
 import { averageTempolimit } from "@/lib/geo";
 import { formatKm, mitAnzahl } from "@/lib/format";
-import type { ExploreRoute } from "@/types/database";
+import type { SignaturStrecke } from "@/types/database";
 
 export type SignatureKey = "kehren" | "steigung" | "hoehe" | "tempo" | "laenge";
 
@@ -113,7 +113,7 @@ function percentileRanks(values: (number | null)[]): (number | null)[] {
 }
 
 
-function formatSignature(key: SignatureKey, route: ExploreRoute): string {
+function formatSignature(key: SignatureKey, route: SignaturStrecke): string {
   switch (key) {
     case "kehren":
       // kehren ist hier nie null: computeSignatures wählt diesen Schlüssel nur,
@@ -150,7 +150,7 @@ function formatSignature(key: SignatureKey, route: ExploreRoute): string {
 // Signatur-Merkmal je Strecke. Sollte immer auf dem ungefilterten Bestand
 // aufgerufen werden — sonst würde z.B. eine Textsuche die Perzentile (und
 // damit Merkmal/Farbe) einzelner Strecken verschieben.
-export function computeSignatures(routes: ExploreRoute[]): Map<string, RouteSignature> {
+export function computeSignatures(routes: SignaturStrecke[]): Map<string, RouteSignature> {
   const kehrenDichte = routes.map((r) =>
     r.kehren !== null && r.laenge_km > 0 ? r.kehren / r.laenge_km : null,
   );
