@@ -9,6 +9,7 @@ import { FEED_QUELLE } from "@/lib/astraFeed";
 import type { PassZustand } from "@/lib/passMeldungen";
 import { istFeedGesund, schwerwiegendster } from "@/lib/passStatus";
 import { heuteCH, type PassEreignis, type Sperrtag, type SperrtagArt } from "@/lib/passKalender";
+import { throwOnQueryError } from "@/lib/queryError";
 
 export interface Pass {
   id: string;
@@ -114,6 +115,14 @@ export async function getPaesseMitStatus(): Promise<PassMitStatus[]> {
       ? supabase.rpc("meine_paesse")
       : Promise.resolve({ data: [] as { pass_id: string; erstmals: string; fahrten: number }[] }),
   ]);
+
+  // Ein Query-Fehler ist etwas anderes als "keine Zeilen" (lib/queryError.ts).
+  // Ohne diese Prüfung rendert die Seite einen Ausfall als Tatsachenbehauptung:
+  // "0 Passhöhen", und für ein angemeldetes Konto "0 von 0 befahren".
+  throwOnQueryError(katalog.error, "Die Passhöhen");
+  throwOnQueryError(status.error, "Der Passstatus");
+  throwOnQueryError(verknuepfungen.error, "Die Strecken zu den Passhöhen");
+  if ("error" in sammlung) throwOnQueryError(sammlung.error, "Die eigene Passsammlung");
 
   const paesse = ((katalog.data as PassRoh[] | null) ?? []).map(alsPass);
   const statusJePass = new Map(
@@ -281,9 +290,14 @@ export async function getPassZustaendeJeStrecke(
   const jetzt = new Date();
   const zustandJePass = new Map(
     (status ?? []).map((s) => {
-      const fristAbgelaufen =
-        s.quelle === "moderation" && s.manuell_bis !== null && new Date(s.manuell_bis) <= jetzt;
-      const veraltet = (s.quelle === "feed" || fristAbgelaufen) && !feedGesund;
+      // Dieselbe Unterscheidung wie in lib/passStatus.ts, inklusive
+      // `manuell_bis === null`: pass_status_freigeben (0104) setzt nur die
+      // Frist zurück, nicht Quelle und Zustand. Ohne den null-Zweig trüge ein
+      // freigegebenes "gesperrt" das Abzeichen unbefristet weiter.
+      const handSetzungGiltNichtMehr =
+        s.quelle === "moderation" &&
+        (s.manuell_bis === null || new Date(s.manuell_bis) <= jetzt);
+      const veraltet = (s.quelle === "feed" || handSetzungGiltNichtMehr) && !feedGesund;
       return [s.pass_id, veraltet ? ("unbekannt" as PassZustand) : s.zustand];
     }),
   );
@@ -315,10 +329,17 @@ export async function getSammlungsStand(): Promise<SammlungsStand | null> {
   if (!user) return null;
 
   const supabase = await createClient();
-  const [{ data: katalog }, { data: meine }] = await Promise.all([
+  const [katalogAntwort, meineAntwort] = await Promise.all([
     supabase.from("paesse").select("id, hoehe_m").returns<{ id: string; hoehe_m: number }[]>(),
     supabase.rpc("meine_paesse"),
   ]);
+
+  // Sonst stünde bei einem Ausfall der RPC "0 von 34 befahren" da — eine
+  // falsche persönliche Zahl, die wie eine Tatsache aussieht.
+  throwOnQueryError(katalogAntwort.error, "Die Passhöhen");
+  throwOnQueryError(meineAntwort.error, "Die eigene Passsammlung");
+  const katalog = katalogAntwort.data;
+  const meine = meineAntwort.data;
 
   const hoeheJePass = new Map((katalog ?? []).map((p) => [p.id, p.hoehe_m]));
   const befahreneIds = ((meine as { pass_id: string }[] | null) ?? []).map((m) => m.pass_id);
@@ -362,6 +383,13 @@ export async function getPassModerationsDaten(): Promise<ModerationsDaten> {
       .limit(50),
     getFeedStand(),
   ]);
+
+  // Ein Query-Fehler ist etwas anderes als "keine Zeilen" (lib/queryError.ts).
+  // In der Moderationsansicht wäre eine leere Liste die gefährlichere
+  // Auskunft: nichts zu sperren, nichts freizugeben.
+  throwOnQueryError(katalog.error, "Die Passhöhen");
+  throwOnQueryError(status.error, "Der Passstatus");
+  throwOnQueryError(sperrtage.error, "Die Sperrtage");
 
   const paesse = ((katalog.data as PassRoh[] | null) ?? []).map(alsPass);
   const nameJePass = new Map(paesse.map((p) => [p.id, p.name]));

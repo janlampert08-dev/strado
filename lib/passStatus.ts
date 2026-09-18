@@ -134,13 +134,25 @@ export function anzeigeFuerStatus(
   // Betriebszustand ohne ASTRA-Schlüssel, in dem nie ein Feed-Lauf
   // dazwischenschreibt: ein vor 240 Tagen gesetztes "gesperrt" stünde heute
   // noch als aktuelle Auskunft da.
-  const fristAbgelaufen =
+  //
+  // `manuell_bis === null` gehört genauso hierher, und das war die zweite
+  // Hälfte desselben Fehlers: pass_status_freigeben (0104) setzt nur die
+  // Frist auf null und lässt `quelle` und `zustand` stehen. Ohne diesen Zweig
+  // war die ausdrückliche Freigabe schlechter als das blosse Ablaufenlassen —
+  // ein freigegebenes "gesperrt" galt unbefristet als aktuelle Auskunft,
+  // während dieselbe Setzung mit abgelaufener Frist korrekt auf "unbekannt"
+  // fiel. Der Knopf heisst "Freigeben"; danach soll der Feed zuständig sein,
+  // und wo der nichts liefert, ist die ehrliche Antwort "unbekannt".
+  // !manuellBis statt === null: das Feld ist optional, und eine fehlende
+  // Frist bedeutet dasselbe wie eine zurückgesetzte — es übersteuert nichts
+  // mehr. Die frühere Zeile las sie mit Boolean() genauso.
+  const handSetzungGiltNichtMehr =
     status.quelle === "moderation" &&
-    Boolean(status.manuellBis) &&
-    new Date(status.manuellBis!).getTime() <= jetzt.getTime();
+    (!status.manuellBis || new Date(status.manuellBis).getTime() <= jetzt.getTime());
+  const freigegeben = status.quelle === "moderation" && !status.manuellBis;
 
   const veraltet =
-    (status.quelle === "feed" || fristAbgelaufen) && !istFeedGesund(feedErfolgAm, jetzt);
+    (status.quelle === "feed" || handSetzungGiltNichtMehr) && !istFeedGesund(feedErfolgAm, jetzt);
   const zustand: PassZustand = veraltet ? "unbekannt" : status.zustand;
 
   const alter = seitWann(status.aktualisiertAm, jetzt);
@@ -151,9 +163,11 @@ export function anzeigeFuerStatus(
     label: ZUSTAND_LABEL[zustand],
     ton: ZUSTAND_TON[zustand],
     text: veraltet
-      ? fristAbgelaufen
-        ? "Die Setzung von Hand ist abgelaufen, und der Abgleich mit den Verkehrsmeldungen liefert gerade nichts."
-        : "Der Abgleich mit den Verkehrsmeldungen hängt gerade — der letzte Stand ist zu alt, um ihn zu zeigen."
+      ? freigegeben
+        ? "Die Setzung von Hand wurde freigegeben, und der Abgleich mit den Verkehrsmeldungen liefert gerade nichts."
+        : handSetzungGiltNichtMehr
+          ? "Die Setzung von Hand ist abgelaufen, und der Abgleich mit den Verkehrsmeldungen liefert gerade nichts."
+          : "Der Abgleich mit den Verkehrsmeldungen hängt gerade — der letzte Stand ist zu alt, um ihn zu zeigen."
       : (status.meldung ?? ZUSTAND_ERKLAERUNG[zustand]),
     herkunft: alter ? `${quelle} · ${alter}` : quelle,
   };
