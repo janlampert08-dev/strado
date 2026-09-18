@@ -214,6 +214,24 @@ async function modusHochladen(ids) {
   const geladen = await alleQuellenLaden(ids);
 
   for (const { quelle, daten } of geladen) {
+    // Eine leere Lieferung ist kein Grund, den Bestand zu loeschen.
+    //
+    // alleQuellenLaden() faengt Fehler ab und ueberspringt die Quelle dann
+    // ganz richtig, ohne zu loeschen. Eine LEERE ERFOLGSANTWORT ist aber kein
+    // Fehler: ein WFS in Wartung oder mit umbenanntem Layer antwortet mit
+    // HTTP 200 und einer leeren FeatureCollection, und die GML-Quellen
+    // liefern einen <ows:ExceptionReport> ueblicherweise ebenfalls mit 200.
+    // Beide Lader werfen dabei nicht und geben [] zurueck. Vorher loeschte
+    // der Lauf darauf den gesamten Bestand dieser Quelle, fuegte nichts ein
+    // und buchte das als "0 hochgeladen" — die amtlichen Werte des Gebiets
+    // waren still weg, und ein Wiederholungslauf ohne --frisch wiederholte
+    // es aus dem Cache.
+    if (!daten.features?.length) {
+      log(`  ${quelle.id}: LEERE Lieferung — Bestand bleibt unveraendert, nichts geloescht.`);
+      log(`  ${quelle.id}: Quelle pruefen (Wartung, umbenannter Layer, ExceptionReport), dann mit --frisch wiederholen.`);
+      continue;
+    }
+
     const meta = {
       id: quelle.id,
       name: quelle.name,

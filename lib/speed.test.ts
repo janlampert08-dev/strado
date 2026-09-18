@@ -42,6 +42,23 @@ describe("tempolimitQuelle", () => {
     expect(tempolimitQuelle([{ ...amtlich, km_von: 0 }])).toBe("Amtliche Daten (Kanton/Stadt)");
     expect(tempolimitQuelle([karte, amtlich])).toBe("Amtliche Daten (Kanton/Stadt) für 50 %, sonst Kartendaten (OSM/Mapbox)");
   });
+
+  it("behauptet nicht 'amtlich', wenn ein kurzes Stück aus Kartendaten stammt", () => {
+    // 19,95 km amtlich, 50 m aus Kartendaten: der gerundete Anteil ist 100,
+    // die Aussage darf es nicht sein — sie steht auf der öffentlichen API.
+    const amtlich: TempolimitSegment = { km_von: 0, km_bis: 19.95, kmh: 80, bekannt: true, amtlich: true, quelle: "zh" };
+    const karte: TempolimitSegment = { km_von: 19.95, km_bis: 20, kmh: 80, bekannt: true };
+    expect(amtlicherAnteilProzent([amtlich, karte])).toBe(100);
+    expect(tempolimitQuelle([amtlich, karte])).toBe(
+      "Amtliche Daten (Kanton/Stadt) für 99 %, sonst Kartendaten (OSM/Mapbox)",
+    );
+  });
+
+  it("nennt eine Strecke ohne jedes amtliche Stück nicht amtlich, auch bei winzigem Rest", () => {
+    const karte: TempolimitSegment = { km_von: 0, km_bis: 19.95, kmh: 80, bekannt: true };
+    const winzig: TempolimitSegment = { km_von: 19.95, km_bis: 20, kmh: 80, bekannt: true };
+    expect(tempolimitQuelle([karte, winzig])).toBe("Kartendaten (OSM/Mapbox), nicht amtlich");
+  });
 });
 
 describe("sliceRouteBySpeed", () => {
