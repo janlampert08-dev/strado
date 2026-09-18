@@ -16,33 +16,34 @@
 // will, liest zuerst dort nach.
 //
 // ---------------------------------------------------------------------------
-// Warum die Grundmenge nur öffentliche Pässe sind
+// Die Grundmenge ist der Passkatalog (0104), nicht die Streckenliste
 // ---------------------------------------------------------------------------
-// "3 von 12" ist nur dann eine ehrliche Zahl, wenn die 12 für alle dieselbe
-// ist. Eine private Passstrecke, die jemand für sich angelegt hat, oder eine
-// abgelehnte, die noch in alten Fahrten hängt, gehört nicht in den Nenner —
-// und deshalb auch nicht in den Zähler: sonst stünde "13 von 12" da. Fahrten
-// auf Strecken ausserhalb der Grundmenge fallen hier also still heraus. Die
-// Kachel "Pässe befahren" auf der Profilseite zählt anders (jede Strecke,
-// siehe app/profil/page.tsx) — das ist eine bestehende Zahl mit eigener
-// Geschichte und wird hier nicht umdefiniert.
+// Bis 2026-09-18 zählte diese Sammlung Strecken der Kategorie "passstrasse"
+// und nur Streckenfahrten. Daneben zählte die freie Passsammlung aus 0104
+// Passhöhen über den Track — zwei Zahlen mit derselben Überschrift auf
+// derselben Seite. Entscheid des Inhabers: eine Quelle. Grundmenge ist jetzt
+// `paesse`, gezählt wird über `meine_passfahrten()` (0113): jede eigene
+// Fahrt, deren Track einem Scheitel auf 150 m nahekommt — auch eine freie
+// Fahrt über den Klausen. "3 von 34" ist damit für alle derselbe Nenner und
+// dieselbe Zahl wie auf /paesse. Die Kachel "Pässe befahren" auf der
+// Profilseite zählt weiterhin Strecken und wird hier nicht umdefiniert.
 
 import { jahrAus } from "@/lib/fahrtstatistik";
 
-/** Eine freigegebene, öffentliche Strecke der Kategorie "passstrasse". */
+/** Ein Pass aus dem Katalog (`paesse`, 0104). */
 export interface PassStrecke {
+  /** Kürzel des Passes, z. B. "klausen" — kein Strecken-UUID. */
   id: string;
   name: string;
-  /** Freitext aus routes.region, meist der Kanton. */
+  /** Kantone, z. B. "UR · GL". */
   region: string | null;
-  /** Scheitelhöhe der Strecke (routes.hoehe_m) — der höchste Punkt, nicht
-   *  der kumulierte Anstieg. Kann fehlen. */
+  /** Scheitelhöhe in Metern. */
   hoehe_m: number | null;
 }
 
-/** Eine eigene Streckenfahrt, so knapp wie die Sammlung sie braucht. */
-export interface StreckenFahrt {
-  route_id: string | null;
+/** Eine eigene Fahrt über einen Pass, wie `meine_passfahrten()` sie liefert. */
+export interface PassFahrt {
+  pass_id: string;
   /** DATE-Spalte, "YYYY-MM-DD". */
   datum: string;
 }
@@ -68,24 +69,7 @@ export interface PassSammlung {
 const sortierer = new Intl.Collator("de-CH", { sensitivity: "base" });
 
 /**
- * Nur die Zahl: wie viele der Pässe aus der Grundmenge unter den eigenen
- * Fahrten vorkommen. Für den Hinweis ohne Abo, der nichts anderes zeigt —
- * er soll nicht die ganze Sammlung aufbauen, um eine Zahl daraus zu lesen.
- */
-export function zaehleGefahrenePaesse(
-  passIds: Iterable<string>,
-  fahrten: readonly { route_id: string | null }[],
-): number {
-  const grundmenge = new Set(passIds);
-  const gefahren = new Set<string>();
-  for (const fahrt of fahrten) {
-    if (fahrt.route_id !== null && grundmenge.has(fahrt.route_id)) gefahren.add(fahrt.route_id);
-  }
-  return gefahren.size;
-}
-
-/**
- * Baut die Sammlung aus der Grundmenge und den eigenen Streckenfahrten.
+ * Baut die Sammlung aus dem Katalog und den eigenen Passfahrten.
  *
  * Gefahrene Pässe stehen in der Reihenfolge, in der sie dazukamen — älteste
  * erste Fahrt zuerst. Das ist die Lesart "Pass für Pass": eine Sammlung
@@ -97,19 +81,19 @@ export function zaehleGefahrenePaesse(
  */
 export function baueSammlung(
   paesse: readonly PassStrecke[],
-  fahrten: readonly StreckenFahrt[],
+  fahrten: readonly PassFahrt[],
 ): PassSammlung {
   const nachId = new Map<string, { ersteFahrt: string; anzahl: number }>();
   const grundmenge = new Set(paesse.map((p) => p.id));
 
   for (const fahrt of fahrten) {
-    if (fahrt.route_id === null || !grundmenge.has(fahrt.route_id)) continue;
+    if (!grundmenge.has(fahrt.pass_id)) continue;
     // Ein unlesbares Datum zählt nicht: als "erste Fahrt" liesse es sich
     // weder sortieren noch anzeigen, und raten wäre schlechter als weglassen.
     if (jahrAus(fahrt.datum) === null) continue;
-    const bisher = nachId.get(fahrt.route_id);
+    const bisher = nachId.get(fahrt.pass_id);
     if (!bisher) {
-      nachId.set(fahrt.route_id, { ersteFahrt: fahrt.datum, anzahl: 1 });
+      nachId.set(fahrt.pass_id, { ersteFahrt: fahrt.datum, anzahl: 1 });
     } else {
       bisher.anzahl += 1;
       // "YYYY-MM-DD" sortiert als Zeichenkette richtig — kein Date nötig,

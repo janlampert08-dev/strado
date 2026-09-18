@@ -1,43 +1,49 @@
 import { createClient } from "@/lib/supabase/server";
-import type { PassStrecke } from "@/lib/passSammlung";
+import type { PassFahrt, PassStrecke } from "@/lib/passSammlung";
 
-// Die Grundmenge der Pass-Sammlung: alle freigegebenen, öffentlichen
-// Strecken der Kategorie "passstrasse". SERVER-ONLY (lib/supabase/server).
+// Die Daten der Pass-Sammlung: der Katalog (`paesse`, 0104) und die eigenen
+// Passfahrten (`meine_passfahrten()`, 0113). SERVER-ONLY (lib/supabase/server).
 //
-// Eine Abfrage, ohne Geometrie. Die Basistabelle statt routes_geojson: die
-// View rechnet für jede Zeile die geography-Spalten in GeoJSON um, und davon
-// braucht die Sammlung nichts. RLS läuft als angemeldete Person — die Policy
-// aus 0001 gibt freigegebene Strecken frei; Moderatoren sehen darüber hinaus
-// unveröffentlichte (0021), und eigene private Strecken sind für ihre
-// Ersteller lesbar. Deshalb filtern status_ok UND ist_privat ausdrücklich,
-// statt sich auf RLS zu verlassen: der Nenner "von 12" soll für jedes Konto
-// derselbe sein, nicht für Moderatoren grösser.
+// Dieselbe Quelle wie die freie Passsammlung auf /paesse und die Zeile
+// "Passsammlung X von Y" auf dem Profil (getSammlungsStand in lib/paesse.ts)
+// — damit die Premium-Ansicht dieselbe Zahl zeigt und nur mehr darüber
+// erzählt. Bis 2026-09-18 zählte sie Strecken der Kategorie "passstrasse";
+// warum das endete, steht im Kopf von lib/passSammlung.ts.
 //
-// Der Kategorienfilter trifft den GIN-Index routes_kategorien_idx (0001).
-// Das limit ist eine Schranke, kein erwarteter Wert: die Schweiz hat keine
-// 300 befahrbaren Pässe, eine Liste darüber wäre ein Datenfehler, und eine
-// Profilseite soll davon nicht langsam werden.
-const MAX_PAESSE = 300;
-
-export async function getPassStrecken(): Promise<{ paesse: PassStrecke[]; fehler: boolean }> {
+// Kein throw: die Sammlung ist ein Zusatz auf der Profilseite, und ein
+// Ladefehler hier soll nicht die ganze Seite in die Fehlergrenze schicken.
+// Die Komponente zeigt dann einen Satz statt "0 von 0".
+export async function getPassSammlungsDaten(): Promise<{
+  paesse: PassStrecke[];
+  fahrten: PassFahrt[];
+  fehler: boolean;
+}> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("routes")
-    .select("id, name, region, hoehe_m")
-    .eq("status_ok", true)
-    .eq("ist_privat", false)
-    .contains("kategorien", ["passstrasse"])
-    .order("name")
-    .limit(MAX_PAESSE)
-    .returns<PassStrecke[]>();
+  const [katalog, eigene] = await Promise.all([
+    supabase
+      .from("paesse")
+      .select("id, name, hoehe_m, kantone")
+      .order("name")
+      .returns<{ id: string; name: string; hoehe_m: number | null; kantone: string[] | null }[]>(),
+    supabase.rpc("meine_passfahrten"),
+  ]);
 
-  if (error) {
-    // Kein throw: die Sammlung ist ein Zusatz auf der Profilseite, und ein
-    // Ladefehler hier soll nicht die ganze Seite in die Fehlergrenze
-    // schicken. Die Komponente zeigt dann einen Satz statt "0 von 0".
-    console.error("Passstrecken konnten nicht geladen werden:", error.message);
-    return { paesse: [], fehler: true };
+  if (katalog.error || eigene.error) {
+    console.error(
+      "Pass-Sammlung konnte nicht geladen werden:",
+      katalog.error?.message ?? eigene.error?.message,
+    );
+    return { paesse: [], fahrten: [], fehler: true };
   }
 
-  return { paesse: data ?? [], fehler: false };
+  return {
+    paesse: (katalog.data ?? []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      hoehe_m: p.hoehe_m,
+      region: p.kantone && p.kantone.length > 0 ? p.kantone.join(" · ") : null,
+    })),
+    fahrten: (eigene.data as PassFahrt[] | null) ?? [],
+    fehler: false,
+  };
 }

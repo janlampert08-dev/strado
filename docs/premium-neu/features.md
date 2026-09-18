@@ -111,17 +111,26 @@ Rechtsauslegung.
 
 ## 3. Pass-Sammlung und Saisonrückblick — "deine Schweiz, Pass für Pass"
 
-**Was:** Welche Passstrassen dieses Konto schon gefahren hat, mit dem Datum
-der ersten Fahrt und der Scheitelhöhe, und daneben die, die noch fehlen. Dazu
-einmal im Jahr "Meine Saison" als Bild für Feed (1080 × 1350) und Story
-(1080 × 1920).
+**Was:** Welche Pässe aus dem Passkatalog (`paesse`, 0104) dieses Konto
+schon gefahren hat, mit dem Datum der ersten Fahrt, der Anzahl und der
+Scheitelhöhe, und daneben die, die noch fehlen. Dazu einmal im Jahr "Meine
+Saison" als Bild für Feed (1080 × 1350) und Story (1080 × 1920).
+
+**Eine Quelle (seit 2026-09-18).** Gebaut war die Sammlung zuerst auf
+Strecken der Kategorie "passstrasse" und nur auf Streckenfahrten. Parallel
+ging das Pass-System mit einer eigenen, freien Passsammlung live (Zeile
+"Passsammlung X von Y" auf dem Profil, /paesse). Zwei verschiedene Zahlen
+unter derselben Überschrift — Entscheid des Inhabers: die Premium-Sammlung
+liest denselben Katalog und zählt über `meine_passfahrten()` (0113), also
+über den Track, einschliesslich freier Fahrten.
 
 **Wo:** eigenes `<details>` im Kennzahlenblock des Profils, direkt nach der
 bestehenden Auswertung.
 
-**Grenze:** Ohne Abo steht dort die **Zahl** ("3 von 12 Pässen gefahren") plus
-der Hinweis. Die Zahl ist der Teaser, nicht die Sperre — wer sie sieht, sieht
-etwas Wahres über sich selbst.
+**Grenze:** Die **Zahl** gehört allen — sie steht für jedes Konto in der
+Zeile "Passsammlung" und auf /paesse. Ohne Abo steht an der Stelle der
+Sammlung nur der Hinweis; mit Abo die Liste Pass für Pass und der
+Saisonrückblick.
 
 **Warum es zieht:** Es ist die einzige der drei Funktionen, die mit der Zeit
 wertvoller wird und im Dezember ihren besten Monat hat — und der Rückblick ist
@@ -132,8 +141,8 @@ Wortmarke bleibt auf jeder Variante; ein "Bild ohne Branding" wäre die
 Funktion, die man sich selbst wegverkauft.
 
 **Bekannte Unschärfe, Produktentscheid offen:** Die bestehende Profilkachel
-"Pässe befahren" zählt *jede* gefahrene Strecke, nicht nur Passstrassen. Sie
-kann also höher stehen als "3 von 12". Empfehlung aus der Umsetzung: die
+"Pässe befahren" zählt *jede* gefahrene Strecke, nicht Passhöhen. Sie
+kann also höher oder tiefer stehen als "3 von 34". Empfehlung aus der Umsetzung: die
 Kachel in einem eigenen PR umbenennen ("Strecken befahren"), statt ihre
 Bedeutung zu ändern — an ihr hängen Auszeichnungen und das Abzeichen auf
 geteilten Bildern.

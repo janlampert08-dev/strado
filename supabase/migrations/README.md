@@ -105,6 +105,35 @@ und `fahrt_start_einloesen` die Zeile beide nicht mehr annehmen. Wer daraus
 eine echte Frist machen will, braucht einen Cron wie `premium_abgleich()`
 (`0059`) — eigene Entscheidung, keine Nacharbeit zu dieser.
 
+## Ausstehend: 0113_passsammlung_je_fahrt (2026-09-18, NICHT eingespielt)
+
+Die Premium-Pass-Sammlung liest seit dem Entscheid des Inhabers vom
+2026-09-18 denselben Katalog wie die freie Passsammlung aus `0104`. Dafür
+kommt `meine_passfahrten()` hinzu (je eigene Fahrt und berührtem Pass eine
+Zeile `pass_id, datum`, SECURITY INVOKER, nur `authenticated`), und
+`meine_paesse()` filtert erkannte Abschnitte heraus
+(`parent_completion_id is null`) — vorher zählte eine Ausfahrt mit einem
+erkannten Passabschnitt als zwei Fahrten. Der Live-Rumpf von
+`meine_paesse()` wurde vorher ausgelesen und stimmte mit `0104` überein.
+
+**0113, nicht 0112:** 0112 ist das zurückgezogene
+`0112_pass_status_und_alarm` (unten).
+
+**Reihenfolge:** Migration vor dem Code. Ohne `meine_passfahrten()` zeigt die
+Premium-Sammlung "liessen sich gerade nicht laden"; die übrige Profilseite
+bleibt heil.
+
+**Rückweg:** `drop function public.meine_passfahrten();` und `meine_paesse()`
+mit dem Rumpf aus `0104`.
+
+**Nach dem Einspielen prüfen:**
+
+```sql
+select has_function_privilege('anon', 'public.meine_passfahrten()', 'execute');          -- false
+select has_function_privilege('authenticated', 'public.meine_passfahrten()', 'execute'); -- true
+select position('parent_completion_id' in pg_get_functiondef('public.meine_paesse()'::regprocedure)) > 0; -- true
+```
+
 ## Ausstehend: 0109_profilname_aendern (geschrieben 2026-09-17 als 0103, NICHT eingespielt)
 
 Neue Funktion `profilname_aendern(p_name text)`, `SECURITY DEFINER`, nur für

@@ -86,6 +86,9 @@ export function waehleSaisonJahr(daten: readonly string[], heute: string): numbe
 export function saisonAuswerten(
   fahrten: readonly SaisonFahrt[],
   paesse: readonly { id: string; name: string; hoehe_m: number | null }[],
+  /** Die eigenen Passfahrten aus meine_passfahrten() (0113) — über den
+   *  Track erkannt, also auch freie Fahrten. */
+  passFahrten: readonly { pass_id: string; datum: string }[],
   jahr: number,
 ): Saison {
   const imJahr = fahrten
@@ -98,9 +101,26 @@ export function saisonAuswerten(
 
   const passNachId = new Map(paesse.map((p) => [p.id, p]));
 
+  // Die Pässe der Saison in der Reihenfolge, in der sie dazukamen; bei
+  // gleichem Tag nach Namen, damit das Bild bei jedem Aufruf gleich ist.
+  const passReihe = new Map<string, SaisonOrt>();
+  const sortierer = new Intl.Collator("de-CH", { sensitivity: "base" });
+  passFahrten
+    .filter((f) => jahrAus(f.datum) === jahr && passNachId.has(f.pass_id))
+    .slice()
+    .sort(
+      (a, b) =>
+        (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : 0) ||
+        sortierer.compare(passNachId.get(a.pass_id)!.name, passNachId.get(b.pass_id)!.name),
+    )
+    .forEach((f) => {
+      if (passReihe.has(f.pass_id)) return;
+      const pass = passNachId.get(f.pass_id)!;
+      passReihe.set(f.pass_id, { name: pass.name, hoehe_m: pass.hoehe_m });
+    });
+
   let km = 0;
   let hoehenmeter = 0;
-  const passReihe = new Map<string, SaisonOrt>();
   const streckenReihe = new Map<string, { name: string; anzahl: number; erste: number }>();
 
   imJahr.forEach((fahrt, index) => {
@@ -108,12 +128,7 @@ export function saisonAuswerten(
     hoehenmeter += fahrt.hoehenmeter_aufstieg ?? 0;
     if (fahrt.route_id === null) return;
 
-    const pass = passNachId.get(fahrt.route_id);
-    if (pass && !passReihe.has(pass.id)) {
-      passReihe.set(pass.id, { name: pass.name, hoehe_m: pass.hoehe_m });
-    }
-
-    const name = pass?.name ?? fahrt.streckenName;
+    const name = fahrt.streckenName;
     if (!name) return;
     const bisher = streckenReihe.get(fahrt.route_id);
     if (bisher) bisher.anzahl += 1;

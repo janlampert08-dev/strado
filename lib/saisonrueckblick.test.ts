@@ -21,6 +21,19 @@ function fahrt(
   return { datum, route_id, streckenName, distanz_km: km, hoehenmeter_aufstieg: hm };
 }
 
+// In den Tests führt jede Strecke mit dem Kürzel eines Passes über diesen
+// Pass — so wie meine_passfahrten() (0113) es aus dem Track erkennen würde.
+function passFahrtenAus(fahrten: SaisonFahrt[]) {
+  const kuerzel = new Set(paesse.map((p) => p.id));
+  return fahrten
+    .filter((f) => f.route_id !== null && kuerzel.has(f.route_id))
+    .map((f) => ({ pass_id: f.route_id as string, datum: f.datum }));
+}
+
+function auswerten(fahrten: SaisonFahrt[], jahr: number) {
+  return saisonAuswerten(fahrten, paesse, passFahrtenAus(fahrten), jahr);
+}
+
 describe("waehleSaisonJahr", () => {
   it("nimmt das laufende Jahr, wenn es Fahrten hat", () => {
     expect(waehleSaisonJahr(["2025-07-01", "2026-06-01"], "2026-09-17")).toBe(2026);
@@ -43,26 +56,24 @@ describe("waehleSaisonJahr", () => {
 
 describe("saisonAuswerten", () => {
   it("summiert nur das gewählte Jahr und rundet auf ganze Werte", () => {
-    const saison = saisonAuswerten(
+    const saison = auswerten(
       [
         fahrt("2026-06-01", "klausen", "Klausenpass", 40.4, 900.6),
         fahrt("2026-07-01", null, null, 10.4, 100),
         fahrt("2025-07-01", "pragel", "Pragelpass", 999, 999),
       ],
-      paesse,
       2026,
     );
     expect(saison).toMatchObject({ jahr: 2026, fahrten: 2, km: 51, hoehenmeter: 1001, paesse: 1 });
   });
 
   it("stellt Pässe in der Reihenfolge der Saison voran, unabhängig von der Abfragesortierung", () => {
-    const saison = saisonAuswerten(
+    const saison = auswerten(
       [
         fahrt("2026-08-01", "klausen", "Klausenpass"),
         fahrt("2026-06-01", "pragel", "Pragelpass"),
         fahrt("2026-07-01", "zuerich-runde", "Pfannenstiel"),
       ],
-      paesse,
       2026,
     );
     expect(saison.ortArt).toBe("paesse");
@@ -72,10 +83,22 @@ describe("saisonAuswerten", () => {
     ]);
   });
 
-  it("zeigt ohne Pass die gefahrenen Strecken als Orte", () => {
+  // Der Grund für 0113: eine freie Fahrt über den Klausen ist eine
+  // Passfahrt, obwohl sie keine Strecke trägt.
+  it("zählt eine freie Fahrt über einen Pass als Pass der Saison", () => {
     const saison = saisonAuswerten(
-      [fahrt("2026-06-01", "runde", "Pfannenstiel"), fahrt("2026-06-02", null)],
+      [fahrt("2026-07-04", null)],
       paesse,
+      [{ pass_id: "klausen", datum: "2026-07-04" }],
+      2026,
+    );
+    expect(saison.paesse).toBe(1);
+    expect(saison.orte).toEqual([{ name: "Klausenpass", hoehe_m: 1948 }]);
+  });
+
+  it("zeigt ohne Pass die gefahrenen Strecken als Orte", () => {
+    const saison = auswerten(
+      [fahrt("2026-06-01", "runde", "Pfannenstiel"), fahrt("2026-06-02", null)],
       2026,
     );
     expect(saison.ortArt).toBe("strecken");
@@ -83,43 +106,39 @@ describe("saisonAuswerten", () => {
   });
 
   it("nennt die meistgefahrene Strecke erst ab zwei Fahrten", () => {
-    const einmal = saisonAuswerten(
+    const einmal = auswerten(
       [fahrt("2026-06-01", "klausen", "Klausenpass"), fahrt("2026-06-02", "pragel", "Pragelpass")],
-      paesse,
       2026,
     );
     expect(einmal.meistgefahren).toBeNull();
 
-    const oft = saisonAuswerten(
+    const oft = auswerten(
       [
         fahrt("2026-06-01", "pragel", "Pragelpass"),
         fahrt("2026-06-02", "klausen", "Klausenpass"),
         fahrt("2026-06-03", "klausen", "Klausenpass"),
       ],
-      paesse,
       2026,
     );
     expect(oft.meistgefahren).toEqual({ name: "Klausenpass", anzahl: 2 });
   });
 
   it("entscheidet einen Gleichstand für die früher gefahrene Strecke", () => {
-    const saison = saisonAuswerten(
+    const saison = auswerten(
       [
         fahrt("2026-08-01", "klausen", "Klausenpass"),
         fahrt("2026-05-01", "pragel", "Pragelpass"),
         fahrt("2026-08-02", "klausen", "Klausenpass"),
         fahrt("2026-05-02", "pragel", "Pragelpass"),
       ],
-      paesse,
       2026,
     );
     expect(saison.meistgefahren?.name).toBe("Pragelpass");
   });
 
   it("verteilt die Fahrten auf zwölf Monate", () => {
-    const saison = saisonAuswerten(
+    const saison = auswerten(
       [fahrt("2026-06-01", null), fahrt("2026-06-20", null), fahrt("2026-10-01", null)],
-      paesse,
       2026,
     );
     expect(saison.proMonat).toHaveLength(12);
@@ -128,7 +147,7 @@ describe("saisonAuswerten", () => {
   });
 
   it("ergibt für ein Jahr ohne Fahrten eine leere Saison", () => {
-    const saison = saisonAuswerten([fahrt("2025-06-01", "klausen", "Klausenpass")], paesse, 2026);
+    const saison = auswerten([fahrt("2025-06-01", "klausen", "Klausenpass")], 2026);
     expect(saison.fahrten).toBe(0);
     expect(saison.orte).toEqual([]);
     expect(istSaisonLeer(saison)).toBe(true);

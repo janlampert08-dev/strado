@@ -1,15 +1,10 @@
 import { describe, expect, it } from "vitest";
-import {
-  baueSammlung,
-  datumAnzeige,
-  zaehleGefahrenePaesse,
-  type PassStrecke,
-} from "./passSammlung";
+import { baueSammlung, datumAnzeige, type PassStrecke } from "./passSammlung";
 
-const klausen: PassStrecke = { id: "klausen", name: "Klausenpass", region: "Uri", hoehe_m: 1948 };
-const pragel: PassStrecke = { id: "pragel", name: "Pragelpass", region: "Schwyz", hoehe_m: 1550 };
-const nufenen: PassStrecke = { id: "nufenen", name: "Nufenenpass", region: "Wallis", hoehe_m: 2478 };
-const ohneHoehe: PassStrecke = { id: "ibergeregg", name: "Ibergeregg", region: "Schwyz", hoehe_m: null };
+const klausen: PassStrecke = { id: "klausen", name: "Klausenpass", region: "UR · GL", hoehe_m: 1948 };
+const pragel: PassStrecke = { id: "pragel", name: "Pragelpass", region: "SZ · GL", hoehe_m: 1550 };
+const nufenen: PassStrecke = { id: "nufenen", name: "Nufenenpass", region: "VS · TI", hoehe_m: 2478 };
+const ohneHoehe: PassStrecke = { id: "ibergeregg", name: "Ibergeregg", region: "SZ", hoehe_m: null };
 const uebergang: PassStrecke = { id: "u", name: "Übergang", region: null, hoehe_m: null };
 
 describe("baueSammlung", () => {
@@ -17,9 +12,9 @@ describe("baueSammlung", () => {
     const sammlung = baueSammlung(
       [klausen, pragel],
       [
-        { route_id: "klausen", datum: "2026-08-01" },
-        { route_id: "klausen", datum: "2026-06-14" },
-        { route_id: "klausen", datum: "2026-07-03" },
+        { pass_id: "klausen", datum: "2026-08-01" },
+        { pass_id: "klausen", datum: "2026-06-14" },
+        { pass_id: "klausen", datum: "2026-07-03" },
       ],
     );
     expect(sammlung.gefahren).toHaveLength(1);
@@ -33,25 +28,19 @@ describe("baueSammlung", () => {
     const sammlung = baueSammlung(
       [nufenen, klausen, pragel],
       [
-        { route_id: "nufenen", datum: "2026-09-01" },
-        { route_id: "pragel", datum: "2025-07-01" },
-        { route_id: "klausen", datum: "2026-05-30" },
+        { pass_id: "nufenen", datum: "2026-09-01" },
+        { pass_id: "pragel", datum: "2025-07-01" },
+        { pass_id: "klausen", datum: "2026-05-30" },
       ],
     );
     expect(sammlung.gefahren.map((p) => p.id)).toEqual(["pragel", "klausen", "nufenen"]);
   });
 
-  // Die Grundmenge ist die öffentliche Liste. Eine Fahrt auf einer Strecke
-  // ausserhalb (privat, abgelehnt, keine Passstrasse) darf weder den Zähler
-  // noch den Nenner verändern — sonst stünde "3 von 2" da.
-  it("ignoriert Fahrten ausserhalb der Grundmenge und freie Fahrten", () => {
-    const sammlung = baueSammlung(
-      [klausen],
-      [
-        { route_id: "privater-pass", datum: "2026-07-01" },
-        { route_id: null, datum: "2026-07-02" },
-      ],
-    );
+  // Die Grundmenge ist der Katalog (0104). Eine Passfahrt zu einem Kürzel,
+  // das nicht (mehr) im Katalog steht, darf weder Zähler noch Nenner
+  // verändern — sonst stünde "3 von 2" da.
+  it("ignoriert Passfahrten ausserhalb des Katalogs", () => {
+    const sammlung = baueSammlung([klausen], [{ pass_id: "entfernter-pass", datum: "2026-07-01" }]);
     expect(sammlung.anzahlGefahren).toBe(0);
     expect(sammlung.anzahlGesamt).toBe(1);
   });
@@ -63,7 +52,7 @@ describe("baueSammlung", () => {
   });
 
   it("überspringt Fahrten mit unlesbarem Datum", () => {
-    const sammlung = baueSammlung([klausen], [{ route_id: "klausen", datum: "gestern" }]);
+    const sammlung = baueSammlung([klausen], [{ pass_id: "klausen", datum: "gestern" }]);
     expect(sammlung.anzahlGefahren).toBe(0);
   });
 
@@ -77,43 +66,21 @@ describe("baueSammlung", () => {
     const sammlung = baueSammlung(
       [klausen, nufenen, ohneHoehe],
       [
-        { route_id: "klausen", datum: "2026-06-01" },
-        { route_id: "ibergeregg", datum: "2026-06-02" },
+        { pass_id: "klausen", datum: "2026-06-01" },
+        { pass_id: "ibergeregg", datum: "2026-06-02" },
       ],
     );
     expect(sammlung.hoechsterPass?.id).toBe("klausen");
   });
 
   it("hat ohne Höhenangabe keinen höchsten Pass", () => {
-    const sammlung = baueSammlung([ohneHoehe], [{ route_id: "ibergeregg", datum: "2026-06-02" }]);
+    const sammlung = baueSammlung([ohneHoehe], [{ pass_id: "ibergeregg", datum: "2026-06-02" }]);
     expect(sammlung.hoechsterPass).toBeNull();
   });
 
   it("kommt mit einer leeren Grundmenge zurecht", () => {
-    const sammlung = baueSammlung([], [{ route_id: "klausen", datum: "2026-06-01" }]);
+    const sammlung = baueSammlung([], [{ pass_id: "klausen", datum: "2026-06-01" }]);
     expect(sammlung).toMatchObject({ anzahlGefahren: 0, anzahlGesamt: 0, hoechsterPass: null });
-  });
-});
-
-describe("zaehleGefahrenePaesse", () => {
-  it("zählt verschiedene Pässe aus der Grundmenge, jede Strecke einmal", () => {
-    expect(
-      zaehleGefahrenePaesse(
-        ["klausen", "pragel"],
-        [{ route_id: "klausen" }, { route_id: "klausen" }, { route_id: "anderswo" }, { route_id: null }],
-      ),
-    ).toBe(1);
-  });
-
-  it("stimmt mit baueSammlung überein", () => {
-    const fahrten = [
-      { route_id: "klausen", datum: "2026-06-01" },
-      { route_id: "pragel", datum: "2026-06-02" },
-    ];
-    const paesse = [klausen, pragel, nufenen];
-    expect(zaehleGefahrenePaesse(paesse.map((p) => p.id), fahrten)).toBe(
-      baueSammlung(paesse, fahrten).anzahlGefahren,
-    );
   });
 });
 

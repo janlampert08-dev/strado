@@ -7,31 +7,26 @@ import {
   baueSammlung,
   datumAnzeige,
   hoeheAnzeige,
-  zaehleGefahrenePaesse,
+  type PassFahrt,
   type PassStrecke,
-  type StreckenFahrt,
 } from "@/lib/passSammlung";
 import { saisonAuswerten, waehleSaisonJahr } from "@/lib/saisonrueckblick";
 
 // Die Pass-Sammlung auf der Profilseite: "deine Schweiz, Pass für Pass".
 //
-// Zwei Fassungen in einer Datei, weil sie dieselbe Zahl zeigen und nicht
-// auseinanderlaufen dürfen:
+// Die Zahl "X von Y" gehört allen: sie steht für jedes Konto als Zeile
+// "Passsammlung" über den Kacheln (getSammlungsStand, 0104) und führt auf
+// /paesse. Premium erzählt darüber hinaus — jeder Pass mit erster Fahrt und
+// Anzahl, die offenen als Einladung, der Saisonrückblick als Bild. Beide
+// lesen dieselbe Quelle (Katalog 0104, Fahrten über meine_passfahrten()
+// aus 0113), damit nie zwei verschiedene Zahlen nebeneinanderstehen.
 //
-//   PassZaehler    — ohne Abo. Eine Zeile mit der Zahl, darunter der
-//                    gemeinsame PremiumHinweis. Ein Vorgeschmack, keine
-//                    Mauer: die Zahl gehört der Person auch ohne Abo.
-//   PassSammlung   — mit Abo. Die ganze Sammlung, die offenen Pässe als
-//                    Einladung, und der Saisonrückblick als Bild.
+//   PassSammlungHinweis — ohne Abo. Nur der gemeinsame PremiumHinweis; die
+//                         Zahl steht schon in der Zeile darüber.
+//   PassSammlung        — mit Abo.
 //
-// Additives Gating (docs/premium-plan.md, Abschnitt 4): nichts, was vorher
-// sichtbar war, verschwindet. Die Kachel "Pässe befahren" darüber bleibt, wie
-// sie ist — sie zählt jede gefahrene Strecke, die Sammlung nur öffentliche
-// Passstrassen (Begründung im Kopf von lib/passSammlung.ts).
-//
-// Die Daten kommen von der Seite: die eigenen Streckenfahrten lädt sie
-// ohnehin, die Grundmenge ist eine zusätzliche, parallele Abfrage
-// (lib/passSammlungDaten.ts). Keine Abfrage hier drin, kein N+1.
+// Die Daten kommen von der Seite (lib/passSammlungDaten.ts, parallel zu den
+// übrigen Abfragen). Keine Abfrage hier drin, kein N+1.
 
 /** Die Form, in der die Profilseite ihre Fahrten ohnehin hat. */
 interface ProfilFahrt {
@@ -43,30 +38,12 @@ interface ProfilFahrt {
   routes: { name: string } | null;
 }
 
-export function PassZaehler({
-  paesse,
-  fahrten,
-}: {
-  paesse: readonly PassStrecke[];
-  fahrten: readonly { route_id: string | null }[];
-}) {
-  // Ohne freigegebene Passstrasse gäbe es nur "0 von 0" zu sagen, und ein
-  // Verkaufssatz für eine leere Sammlung wäre unredlich.
-  if (paesse.length === 0) return null;
-
-  const gefahren = zaehleGefahrenePaesse(
-    paesse.map((p) => p.id),
-    fahrten,
-  );
-
+export function PassSammlungHinweis() {
   return (
     <div className="flex flex-col gap-2 py-4">
       <p className="flex items-center gap-1.5 text-sm font-medium">
         <PassIcon className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
-        <span>
-          <span className="font-mono tabular-nums">{gefahren}</span> von{" "}
-          <span className="font-mono tabular-nums">{paesse.length}</span> Pässen gefahren
-        </span>
+        Pass-Sammlung
       </p>
       <PremiumHinweis>
         Mit Premium siehst du jeden Pass mit deiner ersten Fahrt und teilst deine Saison als Bild
@@ -78,13 +55,13 @@ export function PassZaehler({
 export default function PassSammlung({
   paesse,
   ladefehler,
-  streckenFahrten,
+  passFahrten,
   fahrten,
 }: {
   paesse: readonly PassStrecke[];
   ladefehler: boolean;
-  /** Alle eigenen Streckenfahrten — dieselbe Menge wie "Pässe befahren". */
-  streckenFahrten: readonly StreckenFahrt[];
+  /** Die eigenen Passfahrten (meine_passfahrten, 0113). */
+  passFahrten: readonly PassFahrt[];
   /** Die gezählten Fahrten der Seite, für den Saisonrückblick. */
   fahrten: readonly ProfilFahrt[];
 }) {
@@ -98,15 +75,10 @@ export default function PassSammlung({
   }
 
   if (paesse.length === 0) {
-    return (
-      <p className="text-sm text-muted">
-        Noch ist keine Passstrasse freigegeben. Sobald die erste da ist, beginnt hier deine
-        Sammlung.
-      </p>
-    );
+    return <p className="text-sm text-muted">Der Passkatalog ist gerade leer.</p>;
   }
 
-  const sammlung = baueSammlung(paesse, streckenFahrten);
+  const sammlung = baueSammlung(paesse, passFahrten);
 
   // Die Saison aus denselben Fahrten wie die Auswertung darüber
   // (FahrtStatistik), damit km und Fahrten auf dem Bild mit "Nach Jahr"
@@ -122,7 +94,7 @@ export default function PassSammlung({
     saisonFahrten.map((f) => f.datum),
     todayInZurich(),
   );
-  const saison = jahr === null ? null : saisonAuswerten(saisonFahrten, paesse, jahr);
+  const saison = jahr === null ? null : saisonAuswerten(saisonFahrten, paesse, passFahrten, jahr);
 
   const { anzahlGefahren, anzahlGesamt, hoechsterPass } = sammlung;
   // Bis 40 Pässe ein Strich je Pass — "Pass für Pass" wörtlich genommen.
@@ -182,7 +154,10 @@ export default function PassSammlung({
             {sammlung.gefahren.map((pass) => (
               <li key={pass.id}>
                 <Link
-                  href={`/strecken/${pass.id}`}
+                  // Ein Pass ist ein Katalogeintrag, keine Strecke: /paesse
+                  // trägt je Pass einen Anker mit seinem Kürzel, dazu Status
+                  // und die Strecke, die darüber führt.
+                  href={`/paesse#${pass.id}`}
                   // -mx-2/px-2: die Fläche für Hover und Fokus darf ein
                   // Stück über die Textkante hinausgehen, ohne die Flucht
                   // der Liste zum Seitenrand zu verlieren.
@@ -226,7 +201,7 @@ export default function PassSammlung({
             {sammlung.offen.map((pass) => (
               <li key={pass.id}>
                 <Link
-                  href={`/strecken/${pass.id}`}
+                  href={`/paesse#${pass.id}`}
                   className="-mx-2 flex min-h-11 items-center justify-between gap-3 rounded-md px-2 py-2 text-muted transition-colors duration-fast hover:bg-surface hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/40"
                 >
                   <span className="flex min-w-0 items-baseline gap-2">

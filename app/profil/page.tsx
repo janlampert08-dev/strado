@@ -28,11 +28,11 @@ import FollowCounts from "@/components/FollowCounts";
 import PremiumCard from "@/components/PremiumCard";
 import FahrtStatistik from "@/components/FahrtStatistik";
 import { WetterfensterFavoriten, WetterfensterFavoritenPlatzhalter } from "@/components/Wetterfenster";
-import PassSammlung, { PassZaehler } from "@/components/PassSammlung";
+import PassSammlung, { PassSammlungHinweis } from "@/components/PassSammlung";
 import { ChartIcon, PassIcon, RecordIcon, ShieldIcon } from "@/components/NavIcons";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
-import { getPassStrecken } from "@/lib/passSammlungDaten";
+import { getPassSammlungsDaten } from "@/lib/passSammlungDaten";
 import { getWartungsHinweise } from "@/lib/wartungsdaten";
 import { isModerator } from "@/lib/moderation";
 import { istCreator } from "@/lib/creatorKennzahlen";
@@ -118,7 +118,6 @@ export default async function ProfilPage() {
     istMod,
     istCreatorKonto,
     sammlung,
-    passStrecken,
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -267,11 +266,13 @@ export default async function ProfilPage() {
     istCreator(user.id),
     // Die Passsammlung — eine RPC, die nur eigene Fahrten sieht (0104).
     getSammlungsStand(),
-    // Grundmenge der Pass-Sammlung: freigegebene öffentliche Passstrassen,
-    // ohne Geometrie. Läuft für alle Konten mit, weil auch der Zähler ohne
-    // Abo sie braucht — parallel, also ohne zusätzliche Wartezeit.
-    getPassStrecken(),
   ]);
+
+  // Die ausführliche Pass-Sammlung (Premium): Katalog und eigene
+  // Passfahrten aus derselben Quelle wie die Zeile oben (0104/0113). Nur mit
+  // Abo — ohne gibt es dort nur den Hinweis, und die Zahl steht schon in
+  // getSammlungsStand.
+  const passSammlung = premiumStatus.aktiv ? await getPassSammlungsDaten() : null;
 
   // Eine Wartungszeile je Fahrzeugkachel, aber nur mit laufendem Abo und
   // erst nach dem Status: die drei Abfragen dahinter (Einträge,
@@ -518,22 +519,22 @@ export default async function ProfilPage() {
 
             {/* Direkt nach der Auswertung: beides ist "dein Fahrjahr", und
                 der Saisonrückblick darin ist ihr teilbares Gegenstück.
-                Ohne Abo eine Zeile mit der Zahl statt der Klappe — siehe
-                components/PassSammlung.tsx. */}
-            {premiumStatus.aktiv ? (
+                Ohne Abo nur der Hinweis — die Zahl steht schon in der Zeile
+                "Passsammlung" oben. Siehe components/PassSammlung.tsx. */}
+            {passSammlung ? (
               <details open className="group py-4">
                 <SectionSummary icon={PassIcon} label="Pass-Sammlung" />
                 <div className="mt-4">
                   <PassSammlung
-                    paesse={passStrecken.paesse}
-                    ladefehler={passStrecken.fehler}
-                    streckenFahrten={completions ?? []}
+                    paesse={passSammlung.paesse}
+                    ladefehler={passSammlung.fehler}
+                    passFahrten={passSammlung.fahrten}
                     fahrten={trackedRides ?? []}
                   />
                 </div>
               </details>
             ) : (
-              <PassZaehler paesse={passStrecken.paesse} fahrten={completions ?? []} />
+              sammlung && sammlung.gesamt > 0 && <PassSammlungHinweis />
             )}
           </div>
         </section>
