@@ -84,12 +84,18 @@ function LeaderboardSection({
   const platzierte = entries.filter((entry) => entry.value > 0);
   return (
     <section className="flex flex-col gap-3">
+      {/* min-h an der Beschreibung: die vier Spalten stehen ab sm
+          nebeneinander, und eine zweizeilige Beschreibung schob ihre Liste
+          eine Zeile tiefer als die Nachbarn — vier Siegerzeilen auf drei
+          Grundlinien. */}
       <div className="flex flex-col gap-0.5">
         <SectionHeading icon={icon}>{title}</SectionHeading>
-        {beschreibung && <p className="text-xs text-muted">{beschreibung}</p>}
+        {beschreibung && <p className="text-xs text-muted sm:min-h-8">{beschreibung}</p>}
       </div>
       {platzierte.length === 0 ? (
-        <p className="text-sm text-muted">Noch keine Einträge.</p>
+        // Dieselbe Fläche wie eine gefüllte Liste: eine nackte Textzeile
+        // neben drei gerahmten Karten las sich wie ein Darstellungsfehler.
+        <Card className="px-4 py-3 text-sm text-muted">Noch keine Einträge.</Card>
       ) : (
         <Card as="ol" className="divide-y divide-border">
           {platzierte.map((entry, i) => {

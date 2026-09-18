@@ -36,6 +36,9 @@ const RouteMap = dynamic(() => import("@/components/RouteMap"), {
 });
 
 const initialState: FreeRideFormState = { error: null };
+// Stabile leere Liste für den Startschirm — ein Literal je Render würde den
+// Kartenausschnitt bei jedem Zustandswechsel neu einpassen.
+const KEINE_STRECKEN: never[] = [];
 const MAX_TITEL_LENGTH = 80;
 
 
@@ -403,7 +406,11 @@ export default function FreeRideForm({
     return (
       <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col bg-background">
         <div className="min-h-0 flex-1">
-          <RouteMap routes={routes} fitRoutes={false} routesClickable={false} />
+          {/* Ohne die kuratierten Strecken: auf dem Startschirm einer FREIEN
+              Fahrt sind sie Beiwerk, und mit ihnen sprang der Ausschnitt auf
+              die halbe Schweiz statt in die Umgebung. Die Orientierungshilfe
+              beginnt mit der Aufzeichnung, wo die Karte dem Standort folgt. */}
+          <RouteMap routes={KEINE_STRECKEN} fitRoutes={false} routesClickable={false} />
         </div>
         <div className="md:mx-auto md:w-full md:max-w-lg md:rounded-t-lg md:border-x flex flex-col gap-4 border-t border-border bg-background px-5 pt-5 pb-[calc(1.25rem+var(--safe-bottom))]">
           <div className="flex flex-col gap-1">

@@ -972,7 +972,14 @@ export default function RouteMap({
 
       styleLoadedRef.current = true;
       setStilGeneration((n) => n + 1);
-      setIsReady(true);
+      // Erst wenn die Karte einmal fertig gezeichnet hat, nicht schon beim
+      // geladenen Stil: dazwischen liegen die Kacheln, und genau die Sekunden
+      // sah man im Review als schwarze Fläche, wo eine Karte sein sollte.
+      // Der Notnagel darunter hebt das Skelett auch dann, wenn "idle" nie
+      // kommt (kein Netz, blockierte Kacheln) — dann steht wenigstens der
+      // leere Kartenhintergrund statt eines ewigen Skeletts.
+      map.once("idle", () => setIsReady(true));
+      window.setTimeout(() => setIsReady(true), 6000);
     });
 
     // Delegierte Layer-Listener bleiben auch über einen Style-Wechsel hinweg
