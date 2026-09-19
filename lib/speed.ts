@@ -62,8 +62,22 @@ export function sliceRouteBySpeed(
 // die Zahlen amtlich, geschätzt oder gemischt sind.
 export function tempolimitQuelle(segments: TempolimitSegment[] | null | undefined): string | null {
   if (!segments?.length) return null;
-  const anteil = amtlicherAnteilProzent(segments);
-  if (anteil === 0) return "Kartendaten (OSM/Mapbox), nicht amtlich";
-  if (anteil === 100) return "Amtliche Daten (Kanton/Stadt)";
+
+  // Die beiden absoluten Aussagen hängen an den Flags selbst, nicht am
+  // gerundeten Anteil. amtlicherAnteilProzent() rundet: eine 20-km-Strecke
+  // mit 100 m aus Kartendaten ergibt 99,5 % → 100, und die Antwort behauptete
+  // dann ohne jede Einschränkung eine Behörde als Quelle für die ganze
+  // Strecke. Das ist die einzige der drei Formulierungen, die das tut, und
+  // sie steht auf der öffentlichen API, die per CORS von jeder Origin lesbar
+  // ist. Die Gegenrichtung (0,4 % → 0 → "nicht amtlich") untertreibt und ist
+  // harmlos, wird hier aber genauso exakt geprüft.
+  if (segments.every((s) => !s.amtlich)) return "Kartendaten (OSM/Mapbox), nicht amtlich";
+  if (segments.every((s) => s.amtlich)) return "Amtliche Daten (Kanton/Stadt)";
+
+  // Gemischt. Der Anteil wird hier bei 99 gedeckelt: sonst stünde bei 99,5 %
+  // "für 100 %, sonst Kartendaten" — ein Satz, der sich selbst widerspricht.
+  // Der Deckel greift nur ganz oben und lässt jeden anderen Wert unberührt;
+  // untertreiben ist bei einer Herkunftsangabe die sichere Richtung.
+  const anteil = Math.min(amtlicherAnteilProzent(segments), 99);
   return `Amtliche Daten (Kanton/Stadt) für ${anteil} %, sonst Kartendaten (OSM/Mapbox)`;
 }
