@@ -83,6 +83,17 @@ export default function PassModeration({
   );
   const [freigabeLaeuft, starteFreigabe] = useTransition();
   const [loeschenLaeuft, starteLoeschen] = useTransition();
+  // "Freigeben" und "Entfernen" sind die beiden Knoepfe hier, die KEIN
+  // Formular sind und deshalb auch keinen useActionState-Zustand haben.
+  // Ihre Server Actions geben { ok } zurueck und koennen fehlschlagen —
+  // abgelaufene Sitzung, entzogene Moderatorenrolle, RPC-Fehler. Die
+  // Rueckgabe wurde bisher weggeworfen, und weil beide Knoepfe im Erfolgsfall
+  // ohnehin nur die Liste neu zeichnen lassen, sah ein Fehlschlag exakt aus
+  // wie ein noch nicht durchgelaufenes revalidatePath: nichts passiert.
+  // Beim Entfernen ist das die teure Richtung — der Sperrtag bleibt stehen,
+  // waehrend die Moderatorin annimmt, er sei weg.
+  const [freigabeFehler, setzeFreigabeFehler] = useState<string | null>(null);
+  const [loeschFehler, setzeLoeschFehler] = useState<string | null>(null);
   const [formular, setzeFormular] = useState<"status" | "sperrtag" | null>(null);
   // Beide Formulare geben bei einem Fehler nur { error } zurueck und bleiben
   // stehen — ohne den Haken leert React 19 dabei jedes Feld. Beim Sperrtag
@@ -135,7 +146,17 @@ export default function PassModeration({
                     variant="ghost"
                     size="sm"
                     disabled={freigabeLaeuft}
-                    onClick={() => starteFreigabe(() => gibPassStatusFrei(pass.id).then(() => undefined))}
+                    onClick={() => {
+                      setzeFreigabeFehler(null);
+                      starteFreigabe(async () => {
+                        const { ok } = await gibPassStatusFrei(pass.id);
+                        if (!ok) {
+                          setzeFreigabeFehler(
+                            `„${pass.name}“ konnte nicht freigegeben werden. Seite neu laden und nochmals versuchen.`,
+                          );
+                        }
+                      });
+                    }}
                   >
                     Freigeben
                   </Button>
@@ -144,6 +165,11 @@ export default function PassModeration({
             </li>
           ))}
         </Card>
+      )}
+      {freigabeFehler && (
+        <p role="alert" className="text-sm text-danger">
+          {freigabeFehler}
+        </p>
       )}
 
       <div className="flex flex-wrap gap-2">
@@ -292,7 +318,17 @@ export default function PassModeration({
                   variant="ghost"
                   size="sm"
                   disabled={loeschenLaeuft}
-                  onClick={() => starteLoeschen(() => loescheSperrtag(sperrtag.id).then(() => undefined))}
+                  onClick={() => {
+                    setzeLoeschFehler(null);
+                    starteLoeschen(async () => {
+                      const { ok } = await loescheSperrtag(sperrtag.id);
+                      if (!ok) {
+                        setzeLoeschFehler(
+                          `Die Sperrung „${sperrtag.titel}“ konnte nicht entfernt werden. Seite neu laden und nochmals versuchen.`,
+                        );
+                      }
+                    });
+                  }}
                 >
                   Entfernen
                 </Button>
@@ -300,6 +336,11 @@ export default function PassModeration({
             ))}
           </Card>
         </div>
+      )}
+      {loeschFehler && (
+        <p role="alert" className="text-sm text-danger">
+          {loeschFehler}
+        </p>
       )}
     </div>
   );
