@@ -28,6 +28,15 @@ export const FEHLER_BESTAETIGUNG = "bestaetigung";
 /** Zurücksetzen-Link liess sich nicht einlösen. */
 export const FEHLER_LINK = "link";
 
+/**
+ * Die IP-Bremse im Callback hat zugeschlagen — der Link selbst ist in
+ * Ordnung. Eigener Wert, weil die beiden Meldungen oben hier schlicht
+ * falsch wären ("abgelaufen, schon verwendet"): wer hinter einer geteilten
+ * Adresse sitzt oder dessen Mailscanner den Link vorab abruft, hat nichts
+ * falsch gemacht und soll es gleich noch einmal versuchen können.
+ */
+export const FEHLER_ZU_VIELE = "zuviele";
+
 const MELDUNGEN: Record<string, string> = {
   [FEHLER_BESTAETIGUNG]:
     "Dieser Link hat nicht funktioniert — er ist abgelaufen, wurde schon verwendet oder in einem anderen Browser geöffnet als dem, aus dem er angefordert wurde. Bitte melde dich an oder fordere einen neuen Link an.",
@@ -38,6 +47,8 @@ const MELDUNGEN: Record<string, string> = {
   // hier heraus, obwohl mit dem Link selbst alles in Ordnung ist.
   [FEHLER_LINK]:
     "Der Link zum Zurücksetzen hat nicht funktioniert — er ist abgelaufen, wurde schon verwendet oder in einem anderen Browser geöffnet als dem, aus dem er angefordert wurde. Fordere hier einen neuen an und öffne ihn im selben Browser.",
+  [FEHLER_ZU_VIELE]:
+    "Von deinem Anschluss kamen gerade zu viele Anfragen. Warte einen Moment und öffne den Link dann noch einmal — er ist weiterhin gültig.",
 };
 
 export function authFehlerText(
