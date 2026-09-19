@@ -18,21 +18,29 @@ export interface AchievementStats {
 }
 
 // Dieselbe Aggregation wie die Statistiken-Kachelreihe in app/profil/page.tsx
-// (Pässe dedupliziert pro Strecke, Höhenmeter als kumulierter Anstieg über
-// dieselben Fahrten, die auch "Anzahl Fahrten" zählt), hier separat abrufbar
-// für Stellen, die nicht die ganze Profilseite laden — z.B. das Teilen-Bild
-// einer einzelnen Fahrt (app/fahrten/[id]/page.tsx). Beide Stellen müssen
-// dieselbe Zahl zeigen: das Abzeichen auf dem geteilten Bild behauptet einen
-// Meilenstein, den das eigene Profil sonst nicht bestätigt.
+// (befahrene Passhöhen aus meine_paesse(), Höhenmeter als kumulierter Anstieg
+// über dieselben Fahrten, die auch "Anzahl Fahrten" zählt), hier separat
+// abrufbar für Stellen, die nicht die ganze Profilseite laden — z.B. das
+// Teilen-Bild einer einzelnen Fahrt (app/fahrten/[id]/page.tsx). Beide Stellen
+// müssen dieselbe Zahl zeigen: das Abzeichen auf dem geteilten Bild behauptet
+// einen Meilenstein, den das eigene Profil sonst nicht bestätigt.
+//
+// NUR FÜR DAS EIGENE KONTO. Die Pässe kommen aus meine_paesse(), das auf
+// auth.uid() rechnet; für ein fremdes userId käme die Zahl der aufrufenden
+// Person heraus. Der einzige Aufrufer ruft nur mit completion.isOwner auf,
+// und die Prüfung unten macht daraus eine Regel statt einer Gewohnheit.
 export async function getUserAchievementStats(userId: string): Promise<AchievementStats> {
   const supabase = await createClient();
-  const [{ data: streckenFahrten }, { data: fahrten, count: fahrtenCount }] = await Promise.all([
-    supabase
-      .from("route_completions")
-      .select("route_id")
-      .eq("user_id", userId)
-      .eq("art", "strecke")
-      .returns<{ route_id: string }[]>(),
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (user?.id !== userId) {
+    throw new Error("getUserAchievementStats gilt nur für das eigene Konto");
+  }
+  const [paesseAntwort, { data: fahrten, count: fahrtenCount }] = await Promise.all([
+    // Befahrene Passhöhen statt befahrener Strecken (Entscheid des Inhabers,
+    // 2026-09-19) — dieselbe Zahl wie Profil und /paesse.
+    supabase.rpc("meine_paesse"),
     // hoehenmeter_aufstieg statt eines Joins auf routes(hoehe_m): der
     // kumulierte Anstieg hängt an der Fahrt, nicht an der Strecke, und gilt
     // deshalb auch für freie Fahrten. Siehe lib/hoehenmeter.ts.
@@ -47,11 +55,9 @@ export async function getUserAchievementStats(userId: string): Promise<Achieveme
     // trotzdem mit ab, damit er auch dann noch stimmt, wenn sich das
     // einmal ändert.
     //
-    // Die Pässe-Abfrage darüber bleibt ohne den Filter — dort sollen die
-    // Abschnitte zählen. Die beiden Abfragen beschreiben absichtlich
-    // unterschiedliche Mengen; das ist keine Unachtsamkeit, sondern die
-    // Regel: "welche Strecken habe ich befahren" schliesst Abschnitte ein,
-    // "wie viel bin ich gefahren" nicht.
+    // meine_paesse() filtert Abschnitte seit 0113 ebenso heraus; für die
+    // Frage "welche Passhöhe" ist das gleichgültig (derselbe Scheitel liegt
+    // auch im Track der Elternfahrt), für die Anzahl je Pass nicht.
     //
     // Diese Funktion speist auch das Abzeichen auf dem Teilen-Bild
     // (app/fahrten/[id]/page.tsx). Der Kopf oben verlangt, dass sie
@@ -66,8 +72,15 @@ export async function getUserAchievementStats(userId: string): Promise<Achieveme
       .returns<{ hoehenmeter_aufstieg: number | null }[]>(),
   ]);
 
+  // Ein Fehler hier liefe sonst als "0 Pässe" auf ein Teilen-Bild. Ohne
+  // Pässe zeigt das Abzeichen den nächsten Meilenstein (Höhenmeter/Fahrten)
+  // — besser als eine erfundene Null, aber gemeldet.
+  if (paesseAntwort.error) {
+    console.error("Pässe für die Auszeichnungen nicht ladbar", paesseAntwort.error.message);
+  }
+
   return {
-    passCount: new Set((streckenFahrten ?? []).map((c) => c.route_id)).size,
+    passCount: ((paesseAntwort.data as { pass_id: string }[] | null) ?? []).length,
     hoehenmeter: summiereHoehenmeter(fahrten ?? []),
     fahrtenCount: fahrtenCount ?? 0,
   };

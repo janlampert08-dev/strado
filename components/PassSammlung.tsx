@@ -15,15 +15,14 @@ import { saisonAuswerten, waehleSaisonJahr } from "@/lib/saisonrueckblick";
 
 // Die Pass-Sammlung auf der Profilseite: "deine Schweiz, Pass für Pass".
 //
-// Die Zahl "X von Y" gehört allen: sie steht für jedes Konto als Zeile
-// "Passsammlung" über den Kacheln (getSammlungsStand, 0104) und führt auf
-// /paesse. Premium erzählt darüber hinaus — jeder Pass mit erster Fahrt und
+// Die Zahl "X von Y" gehört allen: sie steht für jedes Konto in der Kachel
+// "Pässe befahren" (getSammlungsStand, 0104) und führt auf /paesse. Premium erzählt darüber hinaus — jeder Pass mit erster Fahrt und
 // Anzahl, die offenen als Einladung, der Saisonrückblick als Bild. Beide
 // lesen dieselbe Quelle (Katalog 0104, Fahrten über meine_passfahrten()
 // aus 0113), damit nie zwei verschiedene Zahlen nebeneinanderstehen.
 //
 //   PassSammlungHinweis — ohne Abo. Nur der gemeinsame PremiumHinweis; die
-//                         Zahl steht schon in der Zeile darüber.
+//                         Zahl steht schon in der Kachel darüber.
 //   PassSammlung        — mit Abo.
 //
 // Die Daten kommen von der Seite (lib/passSammlungDaten.ts, parallel zu den
