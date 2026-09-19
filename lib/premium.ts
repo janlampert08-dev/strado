@@ -2,6 +2,7 @@ import { cache } from "react";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { BESTAND_VARIABLEN, preisIdsAus } from "@/lib/stripeWebhook";
 import { passZeitraum } from "@/lib/premiumAngebot";
+import { throwOnQueryError } from "@/lib/queryError";
 import {
   MAX_PRIVATE_STRECKEN_GRATIS,
   type AboPlanKennung,
@@ -93,7 +94,11 @@ export const getPremiumStatus = cache(async function getPremiumStatus(): Promise
 
   if (!user) return KEIN_PREMIUM;
 
-  const [{ data: profil }, { data: abo }, { data: pass }] = await Promise.all([
+  const [
+    { data: profil, error: profilError },
+    { data: abo, error: aboError },
+    { data: pass, error: passError },
+  ] = await Promise.all([
     supabase.from("profiles").select("ist_premium").eq("id", user.id).maybeSingle(),
     supabase
       .from("subscriptions")
@@ -126,6 +131,33 @@ export const getPremiumStatus = cache(async function getPremiumStatus(): Promise
       .order("gueltig_bis", { ascending: false })
       .limit(5),
   ]);
+
+  // Ein Lesefehler ist kein "nichts da". Ohne diese drei Zeilen wurde aus
+  // einem Timeout oder einem PostgREST-Fehler auf profiles ein data = null
+  // und daraus aktiv = false: ein zahlendes Konto galt als Gratis-Konto,
+  // ohne dass irgendwo etwas schiefzugehen schien.
+  //
+  // Das kostet mehr als eine falsche Anzeige. logTrackedCompletion und
+  // logFreeRide schneiden die Fotoliste auf maxFotosProFahrt(await
+  // istPremium()) zu — bei einem Lesefehler also auf 6 statt 12, still,
+  // nachdem das Formular mit maxPhotos={12} gerendert hatte. Die Fahrt ist
+  // danach gespeichert und der Upload nicht wiederholbar: sechs Bilder sind
+  // weg, und niemand hat eine Fehlermeldung gesehen.
+  //
+  // Die beiden anderen Abfragen tragen den Zugang nicht (der haengt an der
+  // Projektion), sie benennen ihn — Plan, Periodenende, Kuendigungsstand.
+  // Faellt eine aus, zeigte die Seite einem Abonnenten "von Hand gesetzt,
+  // kein Datum" und verbarg die Kuendigungsmoeglichkeit. Auch das ist eine
+  // Tatsachenbehauptung ueber einen Ausfall, also ebenfalls werfen.
+  //
+  // Dieselbe Unterscheidung macht zugangsgeschichte() in
+  // lib/actions/billing.ts ausdruecklich, und lib/queryError.ts ist dafuer
+  // da. Der Preis ist bewusst: die Premium-, Profil-, Streckendetail- und
+  // Neue-Fahrt-Seiten zeigen bei einem Lesefehler die Fehlerseite, statt
+  // stillschweigend auf "kein Abo" zurueckzufallen.
+  throwOnQueryError(profilError, "Premium-Status");
+  throwOnQueryError(aboError, "Abo");
+  throwOnQueryError(passError, "Saisonpass");
 
   // profiles.ist_premium ist die massgebliche Projektion: sie wird in
   // derselben Transaktion geschrieben wie die Abo-Zeile (0059) bzw. der
