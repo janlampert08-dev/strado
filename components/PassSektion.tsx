@@ -62,7 +62,7 @@ export default function PassSektion({
                     {kontext.pass.name}
                   </Link>
                 </h3>
-                <p className="font-mono text-[11px] uppercase tracking-wide text-muted">
+                <p className="text-xs text-muted">
                   {kontext.pass.hoeheM.toLocaleString("de-CH")} m · {kontext.pass.kantone.join(" / ")}
                 </p>
               </div>

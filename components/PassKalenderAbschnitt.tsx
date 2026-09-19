@@ -41,7 +41,7 @@ function Saisonband({
           <li
             key={i}
             className={cn(
-              "flex h-7 flex-1 items-center justify-center rounded-sm font-mono text-[11px]",
+              "flex h-7 flex-1 items-center justify-center rounded-sm text-[11px] tabular-nums",
               istOffen ? "bg-accent-subtle text-foreground" : "bg-surface text-muted",
               i + 1 === heutigerMonat && "ring-1 ring-accent",
             )}
@@ -141,7 +141,7 @@ export default function PassKalenderAbschnitt({
         <dl className="flex flex-wrap gap-x-6 gap-y-2">
           {oeffnungen.slice(0, 4).map((oeffnung) => (
             <div key={oeffnung.jahr} className="flex flex-col">
-              <dt className="font-mono text-[11px] uppercase tracking-wide text-muted">
+              <dt className="text-xs text-muted">
                 Öffnung {oeffnung.jahr}
               </dt>
               <dd className="text-sm">{formatiereZeitraum(oeffnung.datum, oeffnung.datum)}</dd>

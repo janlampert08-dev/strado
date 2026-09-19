@@ -70,7 +70,7 @@ export default async function PaessePage() {
           // macht aus "ich war auf dem Susten" eine Quote, die man vollmachen
           // soll. Die Zahl genügt, und der Rest der Seite sagt, was fehlt.
           <p className="text-sm">
-            <span className="font-mono font-semibold tabular-nums">
+            <span className="font-semibold tabular-nums">
               {befahren} von {eintraege.length}
             </span>{" "}
             befahren
@@ -78,7 +78,7 @@ export default async function PaessePage() {
               <span className="text-muted">
                 {" "}
                 · hochalpin{" "}
-                <span className="font-mono tabular-nums">
+                <span className="tabular-nums">
                   {hochalpinBefahren} von {hochalpin.length}
                 </span>
               </span>
@@ -106,7 +106,7 @@ export default async function PaessePage() {
           </div>
         )}
 
-        <p className="font-mono text-[11px] uppercase tracking-wide text-muted">
+        <p className="text-xs text-muted">
           Status aus den Verkehrsmeldungen des ASTRA · Passhöhen nach swisstopo ·
           Wintersperren sind Erfahrungswerte
         </p>

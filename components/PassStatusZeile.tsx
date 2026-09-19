@@ -65,7 +65,7 @@ export default function PassStatusZeile({ anzeige }: { anzeige: PassStatusAnzeig
       {/* Die Herkunft steht fest dabei, auch wenn sie klein ist: ein Status,
           der nicht sagt, woher er kommt und wie alt er ist, wird geglaubt
           oder verworfen — beides ohne Grundlage. */}
-      <p className="font-mono text-[11px] uppercase tracking-wide text-muted">{anzeige.herkunft}</p>
+      <p className="text-xs text-muted">{anzeige.herkunft}</p>
     </div>
   );
 }

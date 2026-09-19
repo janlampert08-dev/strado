@@ -42,7 +42,7 @@ function Zeile({
     <div className="flex items-start gap-3 px-4 py-3">
       <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <p className="text-xs tracking-wide text-muted uppercase">{titel}</p>
+        <p className="text-xs text-muted">{titel}</p>
         <p className={`text-sm font-medium ${farbe}`}>{wert}</p>
         {erklaerung && <p className="text-xs text-muted">{erklaerung}</p>}
       </div>

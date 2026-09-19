@@ -133,7 +133,7 @@ export default function PaesseListe({
                     eintrag.name
                   )}
                 </p>
-                <p className="truncate font-mono text-[11px] uppercase tracking-wide text-muted">
+                <p className="truncate text-xs text-muted">
                   {eintrag.hoeheM.toLocaleString("de-CH")} m · {eintrag.kantone.join(" / ")}
                   {!eintrag.strecke && " · noch keine Strecke"}
                 </p>

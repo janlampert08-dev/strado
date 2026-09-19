@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronDown } from "lucide-react";
 import PremiumHinweis from "@/components/PremiumHinweis";
 import SaisonrueckblickTeilen from "@/components/SaisonrueckblickTeilen";
 import { PassIcon } from "@/components/NavIcons";
@@ -109,9 +110,9 @@ export default function PassSammlung({
             sie nur grafisch und ist deshalb aria-hidden. So hängt nichts an
             der Farbe allein. */}
         <p className="flex items-baseline gap-2">
-          <span className="font-mono text-3xl font-semibold tabular-nums">{anzahlGefahren}</span>
+          <span className="text-3xl font-semibold tabular-nums">{anzahlGefahren}</span>
           <span className="text-sm text-muted">
-            von <span className="font-mono tabular-nums">{anzahlGesamt}</span>{" "}
+            von <span className="tabular-nums">{anzahlGesamt}</span>{" "}
             {anzahlGesamt === 1 ? "Pass" : "Pässen"} gefahren
           </span>
         </p>
@@ -136,7 +137,7 @@ export default function PassSammlung({
           <p className="text-sm text-muted">
             Höchster Punkt:{" "}
             <span className="text-foreground">{hoechsterPass.name}</span>,{" "}
-            <span className="font-mono tabular-nums">{hoeheAnzeige(hoechsterPass.hoehe_m)}</span>
+            <span className="tabular-nums">{hoeheAnzeige(hoechsterPass.hoehe_m)}</span>
           </p>
         )}
       </div>
@@ -172,13 +173,13 @@ export default function PassSammlung({
                         <span className="shrink-0 text-xs text-muted">{pass.region}</span>
                       )}
                     </span>
-                    <span className="font-mono text-xs text-muted tabular-nums">
+                    <span className="text-xs text-muted tabular-nums">
                       Erstmals {datumAnzeige(pass.ersteFahrt)} ·{" "}
                       {mitAnzahl(pass.anzahl, "Fahrt", "Fahrten")}
                     </span>
                   </span>
                   {pass.hoehe_m !== null && (
-                    <span className="shrink-0 font-mono text-sm tabular-nums">
+                    <span className="shrink-0 text-sm tabular-nums">
                       {hoeheAnzeige(pass.hoehe_m)}
                     </span>
                   )}
@@ -190,10 +191,20 @@ export default function PassSammlung({
       </section>
 
       {sammlung.offen.length > 0 && (
-        <section className="flex flex-col gap-2" aria-labelledby="pass-sammlung-offen">
-          <h3 id="pass-sammlung-offen" className="text-sm font-medium">
-            Noch offen
-          </h3>
+        // Zugeklappt: der Katalog hat 34 Pässe, und am Anfang sind fast alle
+        // offen — ausgeklappt stand eine Liste von 34 Zeilen mitten im Profil,
+        // zwischen Auswertung und Saisonrückblick. Die Zahl steht im Titel.
+        <details className="group flex flex-col gap-2">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-sm font-medium [&::-webkit-details-marker]:hidden">
+            <span>
+              Noch offen{" "}
+              <span className="font-normal text-muted tabular-nums">{sammlung.offen.length}</span>
+            </span>
+            <ChevronDown
+              className="h-4 w-4 text-muted transition-transform duration-fast group-open:rotate-180"
+              aria-hidden="true"
+            />
+          </summary>
           {/* Leiser als die gefahrenen: dieselbe Zeile, aber in der
               gedämpften Farbe und ohne Datumszeile. Eine Einladung, kein
               Vorwurf — deshalb auch kein "fehlt" und kein Schloss. */}
@@ -209,7 +220,7 @@ export default function PassSammlung({
                     {pass.region && <span className="shrink-0 text-xs">{pass.region}</span>}
                   </span>
                   {pass.hoehe_m !== null && (
-                    <span className="shrink-0 font-mono text-sm tabular-nums">
+                    <span className="shrink-0 text-sm tabular-nums">
                       {hoeheAnzeige(pass.hoehe_m)}
                     </span>
                   )}
@@ -217,7 +228,7 @@ export default function PassSammlung({
               </li>
             ))}
           </ul>
-        </section>
+        </details>
       )}
 
       <div className="border-t border-border pt-5">
