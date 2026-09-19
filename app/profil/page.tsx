@@ -107,7 +107,6 @@ export default async function ProfilPage() {
   const [
     { data: profile },
     { data: vehicles },
-    { data: completions },
     { data: trackedRides },
     { data: favorites },
     followCounts,
@@ -135,20 +134,6 @@ export default async function ProfilPage() {
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
-    // Der Pässe-Zähler ist streckenbezogen: ohne den art-Filter käme seit
-    // 0044_freie_fahrten.sql für jede freie Fahrt eine Zeile mit
-    // route_id = null dazu und der Zähler wäre um eins zu hoch. Die
-    // Höhenmeter kommen nicht mehr aus dieser Abfrage (früher über den
-    // Join routes(hoehe_m)), sondern aus trackedRides unten — siehe
-    // lib/hoehenmeter.ts.
-    supabase
-      .from("route_completions")
-      // datum nur für die Pass-Sammlung (erste Fahrt je Pass) — eine Spalte
-      // mehr in dieser Abfrage statt einer zweiten Runde zur Datenbank.
-      .select("route_id, datum")
-      .eq("user_id", user.id)
-      .eq("art", "strecke")
-      .returns<{ route_id: string; datum: string }[]>(),
     // Beide Fahrtarten: freie Fahrten stehen in derselben Liste wie
     // Streckenfahrten und zählen in "Km gefahren"/"Anzahl Fahrten" mit —
     // anders als in den globalen Bestenlisten, die streckenbasiert bleiben
@@ -300,9 +285,13 @@ export default async function ProfilPage() {
   // Headers, deshalb md:hidden.
   const rollen = getRollenItems({ moderator: istMod, creator: istCreatorKonto });
 
-  // Pro Strecke nur einmal zählen (auch bei mehrfacher Befahrung) — wie im
-  // öffentlichen Profil (lib/profile.ts).
-  const passCount = new Set((completions ?? []).map((c) => c.route_id)).size;
+  // Befahrene Passhöhen, nicht befahrene Strecken (Entscheid des Inhabers,
+  // 2026-09-19): dieselbe Zahl wie die Passsammlung auf /paesse
+  // (meine_paesse, 0104/0113) — jeder Scheitel, dem ein eigener Track auf
+  // 150 m nahekam, auch auf einer freien Fahrt. Bis dahin zählte die Kachel
+  // jede gefahrene Strecke, auch eine Runde ums Dorf, und stand damit neben
+  // einer zweiten, anderen Pass-Zahl.
+  const passCount = sammlung?.befahren ?? 0;
   // Höhenmeter über dieselbe Fahrtenliste wie "Km gefahren" und "Anzahl
   // Fahrten" darunter, damit die vier Kacheln denselben Bestand beschreiben.
   // Gezählt wird der kumulierte Anstieg, nicht mehr die Scheitelhöhe der
@@ -425,7 +414,17 @@ export default async function ProfilPage() {
             />
           ) : (
             <Kennzahlen>
-              <Kennzahl beschriftung="Pässe befahren" wert={<CountUp value={passCount} />} />
+              <Kennzahl
+                beschriftung="Pässe befahren"
+                wert={sammlung ? <CountUp value={passCount} /> : "–"}
+                zusatz={
+                  sammlung && sammlung.gesamt > 0 ? (
+                    <Link href="/paesse" className="hover:text-foreground hover:underline">
+                      von {sammlung.gesamt} Passhöhen
+                    </Link>
+                  ) : undefined
+                }
+              />
               <Kennzahl
                 beschriftung="Höhenmeter gesammelt"
                 wert={<CountUp value={hoehenmeter} unit="m" />}
@@ -436,25 +435,6 @@ export default async function ProfilPage() {
               />
               <Kennzahl beschriftung="Fahrten" wert={<CountUp value={trackedRides?.length ?? 0} />} />
             </Kennzahlen>
-          )}
-
-          {/* Die Passsammlung steht als eigene Zeile neben den Kacheln, nicht
-              als fünfte Kachel: sie zählt etwas anderes als die Kachel
-              "Pässe befahren" darüber, die weiterhin BEFAHRENE STRECKEN zählt
-              (jede Strecke einmal, auch eine Runde ums Dorf). Die Sammlung
-              zählt Passhöhen aus dem Katalog (0104). Zwei Zahlen mit
-              derselben Überschrift nebeneinander wären die schlechtere
-              Hälfte beider Aussagen. */}
-          {sammlung && sammlung.gesamt > 0 && (
-            <Link
-              href="/paesse"
-              className="flex items-center justify-between gap-3 rounded-lg border border-border px-4 py-3 transition-colors duration-fast hover:border-border-strong"
-            >
-              <span className="text-sm">Passsammlung</span>
-              <span className="text-sm tabular-nums text-muted">
-                {sammlung.befahren} von {sammlung.gesamt}
-              </span>
-            </Link>
           )}
 
           <div className="flex flex-col divide-y divide-border border-t border-border">
@@ -525,8 +505,8 @@ export default async function ProfilPage() {
 
             {/* Direkt nach der Auswertung: beides ist "dein Fahrjahr", und
                 der Saisonrückblick darin ist ihr teilbares Gegenstück.
-                Ohne Abo nur der Hinweis — die Zahl steht schon in der Zeile
-                "Passsammlung" oben. Siehe components/PassSammlung.tsx. */}
+                Ohne Abo nur der Hinweis — die Zahl steht schon in der Kachel
+                "Pässe befahren" oben. Siehe components/PassSammlung.tsx. */}
             {passSammlung ? (
               <details open className="group py-4">
                 <SectionSummary icon={PassIcon} label="Pass-Sammlung" />
