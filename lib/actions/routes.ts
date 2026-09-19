@@ -198,7 +198,15 @@ export async function proposeRoute(
   let hoehenprofil: unknown = null;
   const kehren = countKehren(geometry.coordinates);
   const profile = await fetchElevationProfile(geometry.coordinates);
-  if (profile) {
+  // length >= 2, nicht bloss truthy: fetchElevationProfile gibt bei einer
+  // leeren Antwort-Liste [] zurueck (json.map auf [] ist []), und [] ist
+  // wahrheitswertig. computeHoeheUndSteigung([]) liefert dann hoeheM
+  // -Infinity (Math.max ohne Argumente), und buildHoehenprofil([]) wirft
+  // eine TypeError — beides gemessen. Um den Block liegt kein try, der
+  // Streckenvorschlag bricht also ab, obwohl die Geometrie in Ordnung ist.
+  // Dieselbe Pruefung macht lib/actions/completions.ts fuer denselben
+  // Aufruf bereits.
+  if (profile && profile.length >= 2) {
     const stats = computeHoeheUndSteigung(profile);
     hoeheM = stats.hoeheM;
     maxSteigungProzent = stats.maxSteigungProzent;

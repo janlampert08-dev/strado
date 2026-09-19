@@ -43,6 +43,30 @@ describe("buildHoehenprofil", () => {
     expect(points.length).toBeLessThan(150);
     expect(points.length).toBeGreaterThan(10);
   });
+
+  // Der Test darueber laesst alles zwischen 11 und 149 durch und konnte
+  // deshalb nicht auffallen lassen, dass die Zahl deutlich ueber dem Ziel
+  // liegt: step ist floor(n / targetPoints) und damit ganzzahlig, also
+  // schiesst die Funktion systematisch darueber hinaus. 300 Rohpunkte sind
+  // genau der Fall aus proposeRoute() (MIN_STUETZPUNKTE), und die Zahl steht
+  // in lib/routes.ts als Begruendung dafuer, das Profil nur auf Anforderung
+  // auszuliefern — sie gehoert deshalb festgehalten und nicht geschaetzt.
+  it("liefert bei 300 Rohpunkten 101 Punkte, nicht ~80", () => {
+    const profile = Array.from({ length: 300 }, (_, i) => ({ dist: i * 50, elevation: 400 + i }));
+    expect(buildHoehenprofil(profile, 80)).toHaveLength(101);
+  });
+
+  // Ein leeres Profil hat keine Punkte. Vorher warf die Funktion hier eine
+  // TypeError, weil der Nachschlag am Ende auf profile[-1] zugreift —
+  // ausgeloest dadurch, dass fetchElevationProfile bei einer leeren
+  // Antwort-Liste [] liefert und der Aufrufer in lib/actions/routes.ts nur
+  // auf truthy prueft. Der Aufrufer prueft jetzt auf die Laenge; diese
+  // Zeile haelt zusaetzlich fest, dass die Funktion selbst keine Falle mehr
+  // fuer den naechsten Aufrufer ist.
+  it("wirft bei einem leeren Profil nicht", () => {
+    expect(buildHoehenprofil([])).toEqual([]);
+    expect(buildHoehenprofil([], 10)).toEqual([]);
+  });
 });
 
 describe("countKehren", () => {
