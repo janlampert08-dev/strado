@@ -1,10 +1,25 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { deleteVehicle } from "@/lib/actions/vehicles";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 
-export default function DeleteVehicleButton({ vehicleId }: { vehicleId: string }) {
+export default function DeleteVehicleButton({
+  vehicleId,
+  nachLoeschenHref,
+}: {
+  vehicleId: string;
+  /**
+   * Wohin nach dem Löschen. Gesetzt auf der Fahrzeugseite
+   * (app/profil/fahrzeuge/[id]): stehenzubleiben hiesse, die Detailseite
+   * eines Fahrzeugs zu zeigen, das es nicht mehr gibt. Ohne die Angabe
+   * bleibt die Seite stehen — so verhält sich der Knopf dort, wo er in
+   * einer Liste sitzt.
+   */
+  nachLoeschenHref?: string;
+}) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +52,13 @@ export default function DeleteVehicleButton({ vehicleId }: { vehicleId: string }
           setError(null);
           startTransition(async () => {
             const result = await deleteVehicle(vehicleId);
-            if (result.error) setError(result.error);
+            if (result.error) {
+              setError(result.error);
+              return;
+            }
+            // replace statt push: das gelöschte Fahrzeug soll nicht im
+            // Verlauf liegen und über "Zurück" wieder als 404 erscheinen.
+            if (nachLoeschenHref) router.replace(nachLoeschenHref);
           });
         }}
       />

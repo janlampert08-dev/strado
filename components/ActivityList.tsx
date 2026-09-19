@@ -5,8 +5,9 @@ import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
-import { AktivitaetIcon } from "@/components/NavIcons";
-import { aktivitaetsSchluessel, type AktivitaetsEintrag } from "@/lib/aktivitaet";
+import { buttonVariants } from "@/components/ui/Button";
+import { AktivitaetIcon, BergIcon } from "@/components/NavIcons";
+import { aktivitaetsSchluessel, passMeldungText, type AktivitaetsEintrag } from "@/lib/aktivitaet";
 
 // Die Liste selbst kommt LIVE aus den Props, die "neu"-Markierungen aus
 // einem Schnappschuss des ersten Rendervorgangs. Die Trennung ist der
@@ -49,14 +50,49 @@ export default function ActivityList({
     return (
       <EmptyState
         icon={AktivitaetIcon}
-        title="Noch nichts passiert — teile eine Fahrt, dann kommen Kudos und Follower."
+        title="Noch keine Neuigkeiten."
+        description="Wer deinen geteilten Fahrten Kudos gibt oder dir folgt, steht hier — und wenn ein Pass, dem du folgst, öffnet oder schliesst."
+        action={
+          <Link href="/" className={buttonVariants({ variant: "secondary", size: "md" })}>
+            Strecken entdecken
+          </Link>
+        }
       />
     );
   }
 
   return (
     <ul className="flex flex-col gap-3">
-      {eintraege.map((eintrag) => (
+      {eintraege.map((eintrag) =>
+        // Die Passmeldung ist die eine Zeile ohne Person: statt Avatar und
+        // Name steht der Pass da, und der Link führt auf seine Strecke.
+        eintrag.art === "pass" ? (
+          <Card as="li" key={aktivitaetsSchluessel(eintrag)} className="flex items-center gap-3 p-4">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface">
+              <BergIcon className="h-5 w-5 text-muted" aria-hidden="true" />
+            </span>
+            <Link
+              href={`/paesse#${eintrag.passId}`}
+              className="min-w-0 flex-1 transition-colors duration-fast hover:text-accent"
+            >
+              <p className="flex items-center text-sm">
+                <span className="truncate font-medium">{eintrag.passName}</span>
+                <span className="ml-1 truncate">{passMeldungText(eintrag)}</span>
+              </p>
+              <p className="text-xs text-muted">
+                {new Date(eintrag.erstelltAm).toLocaleString("de-CH", {
+                  day: "numeric",
+                  month: "long",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
+            </Link>
+            {eintrag.neu && (
+              <span className="h-2 w-2 shrink-0 rounded-full bg-accent" aria-label="Neu" />
+            )}
+          </Card>
+        ) : (
         <Card as="li" key={aktivitaetsSchluessel(eintrag)} className="flex items-center gap-3 p-4">
           <Avatar url={eintrag.personAvatarUrl} name={eintrag.personName} size={40} />
           {/* Kudos führen zur Fahrt, um die es geht; ein neuer Follower zu
@@ -93,7 +129,8 @@ export default function ActivityList({
           </Link>
           {eintrag.neu && <span className="h-2 w-2 shrink-0 rounded-full bg-accent" aria-label="Neu" />}
         </Card>
-      ))}
+        ),
+      )}
     </ul>
   );
 }

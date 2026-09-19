@@ -77,7 +77,11 @@ export default function LogoLink() {
   // jeder anderen Seite, und dort ist sie ein Link. Ohne die Klasse bekäme
   // sie ausgerechnet auf der Startseite den Standard-Cursor eines Buttons
   // und fühlte sich anders an als zwei Klicks vorher.
-  const klassen = "shrink-0 text-foreground";
+  //
+  // relative + after: die Marke ist 18 px hoch, als Tippfläche zu klein.
+  // Das Pseudoelement dehnt sie auf 44 px, ohne den Kopf zu vergrössern.
+  const klassen =
+    "relative shrink-0 text-foreground after:absolute after:-inset-x-2 after:-inset-y-[13px] after:content-['']";
 
   // Auf der Startseite ist das hier kein Link: es führt nirgendwohin,
   // sondern schlägt eine Strecke vor. Als <Link> angekündigt bekämen

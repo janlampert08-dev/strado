@@ -35,16 +35,42 @@ export interface FollowerEintrag extends AktivitaetBasis {
   art: "follower";
 }
 
-export type AktivitaetsEintrag = KudosEintrag | FollowerEintrag;
+/**
+ * Ein Pass, dem man folgt, hat auf- oder zugemacht (0104).
+ *
+ * Die dritte Art auf derselben Zeitachse, und die erste ohne Person: hier
+ * reagiert niemand auf einen, hier ändert sich etwas an der Strasse. Deshalb
+ * trägt sie die Personenfelder nicht als null mit, sondern gar nicht — eine
+ * Zeile, die einen Avatar von null zeichnet, ist eine Zeile mit einem Loch.
+ */
+export interface PassEintrag {
+  art: "pass";
+  erstelltAm: string;
+  neu: boolean;
+  passId: string;
+  passName: string;
+  zustand: "offen" | "eingeschraenkt" | "gesperrt" | "wintersperre";
+  vorher: "offen" | "eingeschraenkt" | "gesperrt" | "wintersperre" | null;
+}
+
+export type AktivitaetsEintrag = KudosEintrag | FollowerEintrag | PassEintrag;
+
+/** Was eine Passmeldung auf der Zeitachse sagt. */
+export function passMeldungText(eintrag: PassEintrag): string {
+  if (eintrag.zustand === "offen") return "ist wieder offen";
+  if (eintrag.zustand === "wintersperre") return "ist über den Winter zu";
+  if (eintrag.zustand === "gesperrt") return "ist gesperrt";
+  return "ist nur eingeschränkt befahrbar";
+}
 
 // Eine Zeile pro Reaktion, nicht pro Person: derselbe Nutzer kann mehreren
 // Fahrten Kudos geben und zusätzlich folgen. Der Schlüssel muss deshalb die
 // Art mitführen — ohne sie kollidiert das Kudo von A auf Fahrt X mit
 // nichts, das Folgen von A aber mit einem späteren Wieder-Folgen von A.
 export function aktivitaetsSchluessel(eintrag: AktivitaetsEintrag): string {
-  return eintrag.art === "kudos"
-    ? `kudos-${eintrag.completionId}-${eintrag.personId}`
-    : `follower-${eintrag.personId}-${eintrag.erstelltAm}`;
+  if (eintrag.art === "kudos") return `kudos-${eintrag.completionId}-${eintrag.personId}`;
+  if (eintrag.art === "pass") return `pass-${eintrag.passId}-${eintrag.erstelltAm}`;
+  return `follower-${eintrag.personId}-${eintrag.erstelltAm}`;
 }
 
 export const AKTIVITAET_LIMIT = 30;
@@ -61,6 +87,7 @@ export const AKTIVITAET_LIMIT = 30;
 export function mischeAktivitaet(
   kudos: ReceivedKudos[],
   follower: ReceivedFollower[],
+  passMeldungen: PassEintrag[] = [],
 ): AktivitaetsEintrag[] {
   const eintraege: AktivitaetsEintrag[] = [
     ...kudos.map(
@@ -84,6 +111,7 @@ export function mischeAktivitaet(
         neu: f.neu,
       }),
     ),
+    ...passMeldungen,
   ];
 
   // Neueste zuerst. Gleicher Zeitstempel (zwei Reaktionen in derselben

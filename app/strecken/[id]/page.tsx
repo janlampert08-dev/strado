@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ogMitBild } from "@/lib/openGraph";
@@ -13,7 +14,11 @@ import ElevationProfile from "@/components/ElevationProfile";
 import PhotoGallery from "@/components/PhotoGallery";
 import RouteLeaderboardPreview from "@/components/RouteLeaderboardPreview";
 import OfflineRouteButton from "@/components/OfflineRouteButton";
-import { getKontextStrecken, getRoute } from "@/lib/routes";
+import { getKontextStrecken, getRoute, getSignaturbestand } from "@/lib/routes";
+import { computeSignatures } from "@/lib/signature";
+import { SIGNATURE_ICONS, SIGNATUR_KLASSEN } from "@/components/signaturStil";
+import PremiumHinweis from "@/components/PremiumHinweis";
+import { WetterfensterStreifen, WetterfensterStreifenPlatzhalter } from "@/components/Wetterfenster";
 import { formatKm } from "@/lib/format";
 import { getRatings, getOwnRating } from "@/lib/ratings";
 import { bewertungAusSternen } from "@/lib/bewertungen";
@@ -24,6 +29,11 @@ import { isModerator } from "@/lib/moderation";
 import { getPremiumStatus, maxFotosProFahrt } from "@/lib/premium";
 import { getRouteLeaderboard, getRouteLeaderboardKlassen } from "@/lib/leaderboard";
 import { fetchCurrentWeather } from "@/lib/weather";
+import PassSektion from "@/components/PassSektion";
+import RuhigeZeiten from "@/components/RuhigeZeiten";
+import { getFeedStand, getPassKontextFuerStrecke } from "@/lib/paesse";
+import { getRuhigeZeiten } from "@/lib/ruhigeZeitenAbfrage";
+import { wetterMassstab } from "@/lib/wetterfenster";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { KATEGORIEN } from "@/lib/constants";
 import { averageTempolimit, estimateRouteDurationMinutes, formatMinutes } from "@/lib/geo";
@@ -140,7 +150,7 @@ export default async function StreckeDetailPage({
   // hier serverseitig mitgeladen, weil GefahrenSection eine Client-Komponente
   // ist und selbst nicht abfragen kann — im selben Promise.all wie alles
   // andere, also ohne die Antwortzeit zu verlängern.
-  const [ratings, ownRating, favorite, vehicles, personalBestSeconds, photos, leaderboard, leaderboardKlassen, weather, moderator, premiumStatus, kontextStrecken] =
+  const [ratings, ownRating, favorite, vehicles, personalBestSeconds, photos, leaderboard, leaderboardKlassen, weather, moderator, premiumStatus, kontextStrecken, signaturbestand, passKontexte, feedStand, ruhigeZeiten] =
     await Promise.all([
       getRatings(id),
       user ? getOwnRating(id, user.id) : Promise.resolve(null),
@@ -160,7 +170,20 @@ export default async function StreckeDetailPage({
       user ? isModerator(user.id) : Promise.resolve(false),
       getPremiumStatus(),
       getKontextStrecken(route),
+      // Für das Signatur-Abzeichen unter dem Titel: das Merkmal einer
+      // Strecke ist ein Vergleich mit allen anderen, also braucht auch
+      // diese Seite den Bestand — ohne Geometrie, siehe getSignaturbestand().
+      getSignaturbestand(),
+      // Pässe, Status und Verkehrsprofil hängen nicht voneinander ab und
+      // laufen deshalb im selben Promise.all wie alles andere. Führt die
+      // Strecke über keinen Pass, sind die beiden ersten leer und die
+      // Abschnitte fallen weg.
+      getPassKontextFuerStrecke(id),
+      getFeedStand(),
+      getRuhigeZeiten(id),
     ]);
+
+  const signatur = computeSignatures(signaturbestand).get(route.id) ?? null;
 
   // Strukturierte Daten für die Streckenseite — der einzige öffentlich
   // indexierbare Evergreen-Inhalt der Plattform (app/sitemap.ts listet
@@ -236,6 +259,26 @@ export default async function StreckeDetailPage({
             {route.ist_rundfahrt && " · Rundfahrt"}
           </p>
           <h1 className="text-display font-semibold tracking-tight">{route.name}</h1>
+          {/* DER TON, DEN DIE LISTE VERGEBEN HAT, GILT AUCH HIER. In der
+              Streckenliste trägt jede Zeile ihr Signatur-Merkmal — worin
+              diese Strecke unter allen heraussticht — als farbige Kante mit
+              Icon und Wort. Beim Antippen verschwand beides: die Seite, auf
+              der die Auszeichnung erst etwas bedeutet, wusste nichts davon,
+              und der Besucher musste sich selbst zusammenreimen, warum
+              ausgerechnet diese Strecke violett war. Farbe steht auch hier
+              nie allein (Icon und Wort daneben) — sie ist die dritte
+              Kodierung derselben Aussage. */}
+          {signatur && (
+            <p
+              className={`mt-1.5 flex items-center gap-1.5 text-sm font-medium ${SIGNATUR_KLASSEN[signatur.key].text}`}
+            >
+              {(() => {
+                const SignaturIcon = SIGNATURE_ICONS[signatur.key];
+                return <SignaturIcon className="h-4 w-4 shrink-0" aria-hidden="true" />;
+              })()}
+              {signatur.label}
+            </p>
+          )}
           <p className="mt-1 text-sm text-muted">
             {route.ist_rundfahrt ? `Start/Ziel: ${route.start_ort}` : `${route.start_ort} → ${route.ziel_ort}`}
           </p>
@@ -314,6 +357,13 @@ export default async function StreckeDetailPage({
             wo ein Besucher ohne Konto zuerst ankommt. Der Kommentar-Teil des
             alten Hinweises lebt jetzt in RatingSection weiter, wo er
             hingehört. */}
+        {/* Vor dem Losfahren steht die Frage, ob der Pass überhaupt offen
+            ist — also vor Aufzeichnung, Höhenprofil und Kennzahlen. */}
+        <PassSektion kontexte={passKontexte} angemeldet={!!user} feedStand={feedStand} />
+
+        {/* Sprungziel für "Zum Start" in der leeren Bestenliste. scroll-mt:
+            sonst endet der Sprung mit dem Knopf an der oberen Kante. */}
+        <div id="fahren" className="scroll-mt-6">
         <GefahrenSection
           route={route}
           kontextStrecken={kontextStrecken}
@@ -323,6 +373,7 @@ export default async function StreckeDetailPage({
           guestContinuationToken={fortsetzen ?? null}
           maxPhotos={maxFotosProFahrt(premiumStatus.aktiv)}
         />
+        </div>
 
         {route.hoehenprofil && route.hoehenprofil.length > 1 && (
           <ElevationProfile punkte={route.hoehenprofil} />
@@ -346,8 +397,21 @@ export default async function StreckeDetailPage({
         <Kennzahlen>
           <Kennzahl beschriftung="Länge" wert={`${formatKm(route.laenge_km)} km`} />
           <Kennzahl
-            beschriftung="Höhe"
-            wert={route.hoehe_m !== null ? `${route.hoehe_m} m` : "—"}
+            // routes.hoehe_m ist die Scheitelhöhe (lib/signature.ts: "m
+            // hoch"). "Höhe" allein liess offen, ob Höhenlage oder Anstieg
+            // gemeint ist — auf der Fahrtseite steht daneben "Aufstieg".
+            beschriftung="Höchster Punkt"
+            // Aus dem Höhenprofil, wenn es eins gibt: die Kachel zeigte
+            // routes.hoehe_m (2283 m), das Profil darunter seinen eigenen
+            // Scheitel (2281 m) — zwei Zahlen für denselben Punkt auf einem
+            // Schirm. Das Profil ist die Quelle, die man sieht.
+            wert={
+              route.hoehenprofil && route.hoehenprofil.length > 1
+                ? `${Math.max(...route.hoehenprofil.map((p) => p.m))} m`
+                : route.hoehe_m !== null
+                  ? `${route.hoehe_m} m`
+                  : "—"
+            }
           />
           <Kennzahl beschriftung="Kehren" wert={route.kehren ?? "—"} />
           <Kennzahl
@@ -377,6 +441,37 @@ export default async function StreckeDetailPage({
             },
           ]}
         />
+
+        <RuhigeZeiten
+          punkte={ruhigeZeiten.punkte}
+          startzeiten={ruhigeZeiten.startzeiten}
+          berechnetAm={ruhigeZeiten.berechnetAm}
+        />
+
+        {/* Wetterfenster (Premium): die Woche direkt unter dem Wetter von
+            jetzt, an derselben Stelle statt als eigener Abschnitt
+            (docs/premium-ausbau-plan.md, Abschnitt 1). Das Gate steht hier:
+            ohne Abo wird keine Vorhersage abgefragt, nicht nur keine
+            gezeigt. Suspense, weil Open-Meteo bis zu einer Sekunde braucht
+            und der Rest der Seite darauf nicht warten soll.
+
+            Ohne Abo ein einziger Hinweis — und nur angemeldet: wer über
+            einen geteilten Link ohne Konto hier landet, entscheidet gerade
+            über die Strecke, nicht über ein Abo. */}
+        {premiumStatus.aktiv ? (
+          <Suspense fallback={<WetterfensterStreifenPlatzhalter />}>
+            <WetterfensterStreifen
+              strecke={route}
+              fahrzeug={wetterMassstab(vehicles.map((v) => v.typ))}
+            />
+          </Suspense>
+        ) : (
+          user && (
+            <PremiumHinweis>
+              Mit Premium siehst du, an welchen Tagen diese Woche die Strecke trocken ist
+            </PremiumHinweis>
+          )
+        )}
 
         <RouteLeaderboardPreview
           routeId={id}

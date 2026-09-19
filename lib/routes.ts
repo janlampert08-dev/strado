@@ -1,7 +1,13 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { haversineKm } from "@/lib/geo";
-import type { ExploreRoute, GeoLineString, KartenStrecke, RouteGeoJSON } from "@/types/database";
+import type {
+  ExploreRoute,
+  GeoLineString,
+  KartenStrecke,
+  RouteGeoJSON,
+  SignaturStrecke,
+} from "@/types/database";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -184,6 +190,30 @@ export interface RouteSitemapEintrag {
   created_at: string;
 }
 
+// Der Streckenbestand, reduziert auf die Spalten, aus denen sich ein
+// Signatur-Merkmal berechnet. computeSignatures() vergleicht eine Strecke
+// immer mit allen anderen — die Streckenseite braucht den Bestand also
+// vollständig, aber ohne Geometrie, Höhenprofil und Namen: bei dreissig
+// Strecken ist die Geometrie der mit Abstand teuerste Posten, und gezeichnet
+// wird hier nichts davon.
+export async function getSignaturbestand(): Promise<SignaturStrecke[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("routes")
+    .select("id, hoehe_m, laenge_km, max_steigung_prozent, kehren, tempolimits")
+    .eq("status_ok", true);
+
+  // Ohne Bestand kein Vergleich, und ohne Vergleich kein Merkmal — die
+  // Streckenseite lässt das Abzeichen dann weg, statt eine Fehlermeldung
+  // für eine Auszeichnung zu zeigen.
+  if (error) {
+    console.error("Signaturbestand konnte nicht geladen werden:", error.message);
+    return [];
+  }
+
+  return (data as unknown as SignaturStrecke[]) ?? [];
+}
+
 export async function listRoutesForSitemap(): Promise<RouteSitemapEintrag[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -257,7 +287,7 @@ export async function listRoutesForApi(mitHoehenprofil = false): Promise<RouteAp
   return (data as RouteApiZeile[]) ?? [];
 }
 
-// Für die Streckenauswahl in TrackLeaderboardChooser (app/leaderboards) —
+// Für die Streckenauswahl in TrackLeaderboardChooser (app/ranglisten) —
 // die dortige Karte braucht nur id+name, kein select("*") mit voller
 // Geometrie/Höhenprofil/Tempolimits wie getRoutes() oben.
 export interface RouteChoice {
@@ -278,7 +308,20 @@ export async function listRouteChoices(): Promise<RouteChoice[]> {
     return [];
   }
 
-  return (data as RouteChoice[]) ?? [];
+  // Strecken mit Bestzeiten zuerst, innerhalb beider Gruppen alphabetisch.
+  // Die Auswahl startet auf dem ersten Eintrag — alphabetisch war das eine
+  // Strecke ohne jede Zeit, und die Seite zeigte beim Öffnen einen
+  // Leerzustand, obwohl es anderswo Zeiten gab. Scheitert die Abfrage, bleibt
+  // es bei der alphabetischen Reihenfolge: das ist eine Sortierhilfe, kein
+  // Inhalt.
+  const strecken = (data as RouteChoice[]) ?? [];
+  const { data: zeiten } = await supabase.from("route_leaderboard").select("route_id").limit(2000);
+  const mitZeiten = new Set(((zeiten as { route_id: string }[] | null) ?? []).map((z) => z.route_id));
+  if (mitZeiten.size === 0) return strecken;
+  return [
+    ...strecken.filter((r) => mitZeiten.has(r.id)),
+    ...strecken.filter((r) => !mitZeiten.has(r.id)),
+  ];
 }
 
 // Kandidaten für die automatische Streckenerkennung innerhalb einer freien

@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { liveTempoKmh } from "@/lib/livetempo";
 import { haversineKm, type TrailPoint } from "@/lib/geo";
-import { evaluateProximity } from "@/lib/tracking";
+import { END_PROXIMITY_KM, evaluateProximity } from "@/lib/tracking";
+import { MAX_JUMP_KM } from "@/lib/track";
 import type { FahrtStartTicket } from "@/lib/fahrtstart";
 import { fahrtStartAnlegen, fahrtStartPuls } from "@/lib/actions/fahrtstart";
 import { sollPulsen } from "@/lib/fahrtstart";
@@ -97,7 +98,33 @@ export interface RideRecorder {
   // Manueller Start ("Bin schon am Start"), falls die GPS-Genauigkeit am
   // Startpunkt nicht für den automatischen Start reicht.
   beginNow: () => void;
+  /**
+   * Startet die GPS-Watch von Hand. Nur nötig, wenn der Hook mit
+   * `autoStart: false` aufgesetzt ist (freie Fahrt): dort beginnt eine
+   * Aufzeichnung erst mit einem ausdrücklichen Tippen, nicht schon beim
+   * Öffnen des Schirms.
+   */
+  starten: () => void;
   stop: () => void;
+  /**
+   * Eine beendete, noch nicht gespeicherte Fahrt wieder aufnehmen — für den
+   * Fall, dass "beenden" ein Versehen war. Trail, Distanz, Startzeit und
+   * Ticket bleiben, nur die GPS-Watch läuft wieder an. Die Zeit im Fazit
+   * zählt mit: gemessen wird Wanduhr ab dem Start, genau wie die
+   * serverseitige Dauer (letzter Puls − Start, 0098) es ohnehin tut.
+   */
+  fortsetzen: () => void;
+  /** true, solange die Aufzeichnung pausiert ist (Phase bleibt "tracking"). */
+  pausiert: boolean;
+  /**
+   * Pause: GPS-Watch und Uhr stehen, der Trail bleibt. Anders als stop()
+   * führt sie nicht ins Fazit. Die angezeigte Fahrzeit rechnet die Pause
+   * heraus; die serverseitig gewertete Dauer (letzter Puls − Start, 0098)
+   * tut das nicht — eine Pause kann eine Bestzeit also nur verschlechtern,
+   * nie verbessern. Die Oberfläche sagt das bei Streckenfahrten dazu.
+   */
+  pausieren: () => void;
+  weiterNachPause: () => void;
   // Aufzeichnung abbrechen/verwerfen: GPS-Watch beenden, Wake Lock
   // freigeben und den lokalen Snapshot löschen.
   discard: () => void;
@@ -116,6 +143,7 @@ export function useRideRecorder({
   storageKey,
   gate = null,
   guestContinuationToken = null,
+  autoStart = true,
 }: {
   // Teil des localStorage-Schlüssels: eine abgebrochene Aufzeichnung darf
   // auf einem geteilten Gerät nicht dem nächsten angemeldeten Nutzer
@@ -129,6 +157,20 @@ export function useRideRecorder({
   // gültigen Marker passiert nichts — eine fremde Gastaufzeichnung auf einem
   // geteilten Gerät darf dem nächsten Konto nicht angeboten werden.
   guestContinuationToken?: string | null;
+  /**
+   * true (Vorgabe): die GPS-Watch startet beim Mount. Richtig für die
+   * Streckenfahrt — dort IST das Öffnen schon die bewusste Handlung
+   * ("Strecke starten" auf der Streckenseite), und die Zeitmessung beginnt
+   * ohnehin erst am Startpunkt.
+   *
+   * false: der Recorder wartet auf starten(). Für die freie Fahrt, deren
+   * Einstieg ein Eintrag der Navigationsleiste ist. Dort begann die Messung
+   * mit dem ersten GPS-Fix nach dem Antippen des Tabs — ein Fehlgriff auf
+   * die mittlere, am leichtesten erreichbare Stelle der Leiste startete also
+   * eine Fahrt. Eine unterbrochene Aufzeichnung wird unabhängig davon immer
+   * wiederaufgenommen: die hat jemand bereits bewusst begonnen.
+   */
+  autoStart?: boolean;
 }): RideRecorder {
   const [phase, setPhase] = useState<RecorderPhase>("idle");
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -146,6 +188,8 @@ export function useRideRecorder({
   const [trailJson, setTrailJson] = useState("[]");
   const [ticketJson, setTicketJson] = useState("null");
   const [hasStarted, setHasStarted] = useState(false);
+  const [pausiert, setPausiert] = useState(false);
+  const pausiertAmRef = useRef<number | null>(null);
 
   const ticketRef = useRef<FahrtStartTicket | null>(null);
   // Zeitpunkt des letzten abgesetzten Pulses (0098_fahrtstart_puls.sql).
@@ -167,6 +211,9 @@ export function useRideRecorder({
   // Dauer erzeugen. Siehe lib/livetempo.ts.
   const lastPointMeasuredAtRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
+  // Wann stop() lief — damit fortsetzen() die Zeit auf dem Fazit-Schirm aus
+  // der angezeigten Fahrzeit herausrechnen kann (siehe dort).
+  const gestopptAmRef = useRef<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const trailRef = useRef<TrailPoint[]>([]);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
@@ -189,6 +236,17 @@ export function useRideRecorder({
   // Verhindert, dass die Zielnähe-Prüfung bei Rundfahrten (Start = Ziel)
   // sofort nach dem Start greift.
   const hasLeftStartRef = useRef(false);
+  // Nach "Weiter aufzeichnen" oder "Weiter" nach einer Pause: die
+  // Zielnähe-Prüfung erst wieder scharf schalten, wenn der Zielradius
+  // verlassen wurde. Sonst stoppt eine am Ziel automatisch beendete Fahrt,
+  // die jemand bewusst fortsetzt, beim ersten Fix gleich wieder.
+  const zielErstVerlassenRef = useRef(false);
+  // Der erste Fix nach dem Fortsetzen wird gegen den letzten Punkt vor der
+  // Unterbrechung geprüft (siehe dort).
+  const nachUnterbrechungRef = useRef(false);
+  // stop()/pausieren() sind in der watchPosition-Closure nicht in der
+  // aktuellen Fassung sichtbar; der Sprungschutz ruft pausieren über die Ref.
+  const pausierenRef = useRef<() => void>(() => {});
   // gate/storageKey werden beim Mount in die Watch-Closure eingeschlossen —
   // über Refs bleibt der Zugriff aktuell, ohne die Aufzeichnung bei einem
   // Render neu aufzusetzen. Die Zuweisung läuft (wie in RouteMap.tsx) über
@@ -196,6 +254,7 @@ export function useRideRecorder({
   const gateRef = useRef(gate);
   const storageKeyRef = useRef(storageKey);
   const userIdRef = useRef(userId);
+  const autoStartRef = useRef(autoStart);
   // Nur der Wert beim Mount zählt — die Übernahme passiert einmalig im
   // Wiederherstellungs-Effekt unten, ein späteres Umschalten der Prop hätte
   // dort keine Wirkung mehr.
@@ -298,6 +357,9 @@ export function useRideRecorder({
     if (phase !== "tracking") return;
     function handleVisibilityChange() {
       if (document.visibilityState !== "visible") return;
+      // Pausiert ist keine Lücke: keine GPS-Warnung und kein Wake Lock, der
+      // den Bildschirm während eines Passhalts wach hält.
+      if (pausiertAmRef.current !== null) return;
       // Der Browser markiert das Sentinel bei der automatischen Freigabe als
       // "released", setzt die Ref aber nicht selbst auf null zurück — ein
       // reiner `=== null`-Check würde die Neuanfrage nach jedem
@@ -394,6 +456,13 @@ export function useRideRecorder({
   // am Ziel) nicht auf veraltete Werte aus dem ersten Render zugreift.
   const stop = useCallback(() => {
     releaseTracking();
+    // Aus der Pause heraus beendet: die Pause gehört nicht zur Fahrzeit.
+    if (pausiertAmRef.current !== null && startTimeRef.current !== null) {
+      startTimeRef.current += Date.now() - pausiertAmRef.current;
+    }
+    pausiertAmRef.current = null;
+    setPausiert(false);
+    gestopptAmRef.current = Date.now();
     // Gegenstück zum Impuls beim Start (siehe beginActualTracking): die
     // Aufzeichnung endet auch automatisch am Ziel, also ohne Tastendruck.
     navigator.vibrate?.(10);
@@ -476,6 +545,16 @@ export function useRideRecorder({
         startTimeRef.current = resume.startTimeMs;
         distanceKmRef.current = resume.distanceKm;
         hasLeftStartRef.current = resume.hasLeftStart;
+        // Jede Wiederaufnahme ist eine Lücke: zwischen dem letzten Punkt im
+        // Snapshot und dem ersten neuen Fix lief keine Aufzeichnung, und wer
+        // in dieser Zeit weitergefahren ist, bringt einen Sprung mit, den der
+        // Server dauerhaft ablehnt (MAX_JUMP_KM, lib/actions/completions.ts).
+        // Die Wache gehört deshalb hierher und nicht an die Aufrufer: über
+        // start(snapshot) kommen alle drei Wege herein — "Weiter aufzeichnen"
+        // am Ziel, "Weiter" nach der Pause und die Wiederaufnahme nach einem
+        // Tab-Kill. Am letzten fehlte sie, und das ist ausgerechnet der Weg,
+        // den diese Datei oben selbst als Normalfall beschreibt.
+        nachUnterbrechungRef.current = true;
         publishLiveTrail(Date.now(), true);
         if (resume.hasStarted && resume.startTimeMs) {
           intervalRef.current = setInterval(() => {
@@ -497,6 +576,8 @@ export function useRideRecorder({
         startTimeRef.current = null;
         distanceKmRef.current = 0;
         hasLeftStartRef.current = false;
+        zielErstVerlassenRef.current = false;
+        nachUnterbrechungRef.current = false;
         setLiveTrail([]);
         setLiveTrailPoints([]);
       }
@@ -569,6 +650,23 @@ export function useRideRecorder({
           // Deckungsgrad (siehe lib/actions/completions.ts) — nur ausreichend
           // genaue Punkte, damit Ungenauigkeit nicht fälschlich als "war
           // dort" zählt.
+          // Sprungschutz nach einer Unterbrechung. Der Server lehnt eine Fahrt
+          // mit mehr als MAX_JUMP_KM zwischen zwei Punkten als Ganzes ab
+          // (lib/track.ts) — wer in der Pause weiterfährt, verlöre beim
+          // Speichern alles, auch den Teil davor. Deshalb wird ein solcher
+          // Fix nicht angehängt; die Aufzeichnung geht wieder in die Pause
+          // und sagt, warum. Beenden speichert dann die Fahrt bis zur Pause.
+          if (nachUnterbrechungRef.current) {
+            nachUnterbrechungRef.current = false;
+            const letzter = trailRef.current.at(-1);
+            if (letzter && haversineKm([letzter.lng, letzter.lat], point) > MAX_JUMP_KM * 0.75) {
+              pausierenRef.current();
+              setLocationError(
+                "Seit der Unterbrechung liegt über 1,5 km ohne Aufzeichnung dazwischen. Eine solche Lücke kann Strado nicht speichern — beende die Fahrt hier (gespeichert wird bis zur Unterbrechung) und starte für den Rest eine neue.",
+              );
+              return;
+            }
+          }
           trailRef.current.push({ lng: point[0], lat: point[1], t: now });
 
           // Denselben Punkt an den Server melden (0098_fahrtstart_puls.sql).
@@ -637,6 +735,12 @@ export function useRideRecorder({
             { hasStarted: true, hasLeftStart: hasLeftStartRef.current },
           );
           hasLeftStartRef.current = proximity.hasLeftStart;
+          if (zielErstVerlassenRef.current) {
+            if (haversineKm(point, currentGate.endPoint) > END_PROXIMITY_KM) {
+              zielErstVerlassenRef.current = false;
+            }
+            return;
+          }
           if (proximity.shouldAutoStop) stop();
         },
         (error) => {
@@ -664,6 +768,112 @@ export function useRideRecorder({
     },
     [beginActualTracking, requestWakeLock, stop, writeSnapshot, publishLiveTrail, pulsen],
   );
+
+  const starten = useCallback(() => {
+    if (watchIdRef.current !== null) return;
+    start();
+  }, [start]);
+
+  const fortsetzen = useCallback(() => {
+    if (watchIdRef.current !== null) return;
+    // DIE ZEIT AUF DEM FAZIT-SCHIRM IST KEINE FAHRZEIT. Ohne diese Zeilen lief
+    // die Uhr ab dem ursprünglichen Start weiter: wer eine Minute im Fazit
+    // stand und dann "Weiter aufzeichnen" wählte, bekam diese Minute als
+    // gefahren angerechnet, und das Ø-Tempo im nächsten Fazit fiel (im Test
+    // von 57 auf 38 km/h bei konstantem Tempo). Der Startzeitpunkt wird
+    // deshalb um die Pause nach vorn geschoben.
+    //
+    // Das betrifft die Anzeige und die clientseitig gemessene Dauer. Die
+    // serverseitig gewertete Dauer (letzter Puls − Start, 0098) sieht die
+    // Pause weiterhin — sie ist bewusst eine Wanduhr, siehe AGENTS.md A1.
+    // Nach dem Tab-Kill-Weg (Fazit aus dem Snapshot) fehlt der Stoppzeitpunkt;
+    // dann bleibt es beim bisherigen Verhalten statt zu raten.
+    if (gestopptAmRef.current !== null && startTimeRef.current !== null) {
+      startTimeRef.current += Date.now() - gestopptAmRef.current;
+    }
+    gestopptAmRef.current = null;
+    zielErstVerlassenRef.current = true;
+    // Derselbe Weg wie nach einem Tab-Kill: start() mit einem Snapshot
+    // übernimmt Trail, Distanz, Startzeit und Ticket aus diesem Stand und
+    // fragt nur die Watch neu an. Die Refs sind hier in jedem Fall gesetzt —
+    // entweder vom stop() eben oder vom Wiederherstellungszweig "finished"
+    // beim Mount, der sie aus dem Snapshot befüllt.
+    const stand: TrackingSnapshot = {
+      phase: "tracking",
+      trail: trailRef.current,
+      distanceKm: distanceKmRef.current,
+      hasStarted: true,
+      hasLeftStart: hasLeftStartRef.current,
+      startTimeMs: startTimeRef.current,
+      savedAt: Date.now(),
+      seconds: null,
+      ticket: ticketRef.current,
+    };
+    setResult(null);
+    start(stand);
+    writeSnapshot(stand, true);
+  }, [start, writeSnapshot]);
+
+  const pausieren = useCallback(() => {
+    if (!hasStartedRef.current || watchIdRef.current === null) return;
+    releaseTracking();
+    const jetzt = Date.now();
+    pausiertAmRef.current = jetzt;
+    setPausiert(true);
+    // Die letzte gemessene Geschwindigkeit stehen zu lassen, war die einzige
+    // Zahl auf dem Schirm, die während der Pause log: Uhr und Distanz stehen,
+    // "59 km/h" blieb. Genau in dem Moment prüft jemand, ob die Pause wirkt.
+    setSpeedKmh(null);
+    // Ein letzter Puls mit der aktuellen Position, erzwungen — damit die
+    // Serverzeit nicht hinter dem Trail zurückbleibt, falls die Pause lang
+    // wird und die Fahrt danach direkt beendet wird.
+    const letzterPunkt = trailRef.current.at(-1);
+    if (letzterPunkt) pulsen([letzterPunkt.lng, letzterPunkt.lat], true);
+    writeSnapshot(
+      {
+        phase: "tracking",
+        trail: trailRef.current,
+        distanceKm: distanceKmRef.current,
+        hasStarted: true,
+        hasLeftStart: hasLeftStartRef.current,
+        startTimeMs: startTimeRef.current,
+        savedAt: jetzt,
+        seconds: null,
+        pausiert: true,
+        pausiertAm: jetzt,
+      },
+      true,
+    );
+  }, [releaseTracking, writeSnapshot, pulsen]);
+  useEffect(() => {
+    pausierenRef.current = pausieren;
+  }, [pausieren]);
+
+  const weiterNachPause = useCallback(() => {
+    if (watchIdRef.current !== null) return;
+    if (pausiertAmRef.current !== null && startTimeRef.current !== null) {
+      startTimeRef.current += Date.now() - pausiertAmRef.current;
+    }
+    pausiertAmRef.current = null;
+    setPausiert(false);
+    setLocationError(null);
+    zielErstVerlassenRef.current = true;
+    const stand: TrackingSnapshot = {
+      phase: "tracking",
+      trail: trailRef.current,
+      distanceKm: distanceKmRef.current,
+      hasStarted: true,
+      hasLeftStart: hasLeftStartRef.current,
+      startTimeMs: startTimeRef.current,
+      savedAt: Date.now(),
+      seconds: null,
+      ticket: ticketRef.current,
+      pausiert: false,
+      pausiertAm: null,
+    };
+    start(stand);
+    writeSnapshot(stand, true);
+  }, [start, writeSnapshot]);
 
   const discard = useCallback(() => {
     releaseTracking();
@@ -753,7 +963,37 @@ export function useRideRecorder({
         setPhase("finished");
         return;
       }
-      start(snapshot?.phase === "tracking" ? snapshot : undefined);
+      if (snapshot?.phase === "tracking" && snapshot.pausiert) {
+        // Pausiert verlassen, pausiert wiederaufgenommen: Stand übernehmen,
+        // aber keine GPS-Watch anfragen. Die Uhr steht auf dem Wert zum
+        // Zeitpunkt der Pause.
+        ticketRef.current = snapshot.ticket ?? null;
+        setTicketJson(JSON.stringify(snapshot.ticket ?? null));
+        trailRef.current = snapshot.trail;
+        distanceKmRef.current = snapshot.distanceKm;
+        startTimeRef.current = snapshot.startTimeMs;
+        hasStartedRef.current = true;
+        hasLeftStartRef.current = snapshot.hasLeftStart;
+        pausiertAmRef.current = snapshot.pausiertAm ?? Date.now();
+        setHasStarted(true);
+        setDistanceKm(snapshot.distanceKm);
+        setTrailJson(JSON.stringify(snapshot.trail));
+        setLiveTrail(snapshot.trail.map((p) => [p.lng, p.lat] as [number, number]));
+        setLiveTrailPoints([...snapshot.trail]);
+        const pausiertAm = snapshot.pausiertAm ?? Date.now();
+        setElapsedSeconds(
+          snapshot.startTimeMs ? Math.round((pausiertAm - snapshot.startTimeMs) / 1000) : 0,
+        );
+        setPausiert(true);
+        setSpeedKmh(null);
+        setPhase("tracking");
+        return;
+      }
+      if (snapshot?.phase === "tracking") {
+        start(snapshot);
+        return;
+      }
+      if (autoStartRef.current) start();
     }, 0);
 
     return () => clearTimeout(timeout);
@@ -780,7 +1020,12 @@ export function useRideRecorder({
     trailJson,
     ticketJson,
     beginNow: beginActualTracking,
+    starten,
     stop,
+    fortsetzen,
+    pausiert,
+    pausieren,
+    weiterNachPause,
     discard,
     clearSnapshot,
   };

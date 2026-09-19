@@ -14,9 +14,6 @@ export default function Loading() {
         <Skeleton className="h-4 w-64 rounded-sm" />
       </div>
 
-      {/* Profilsuche */}
-      <Skeleton className="h-10 rounded-lg" />
-
       {/* Die Reiterleiste (components/FeedReiter.tsx): eine umrandete Hülle
           mit p-1, drei Segmente à min-h-9, keine Trennlinie darunter.
           Gezeichnet werden drei — angemeldet sind es drei ("Alle",
@@ -30,6 +27,9 @@ export default function Loading() {
         <Skeleton className="h-9 w-24 rounded-full" />
         <Skeleton className="h-9 w-24 rounded-full" />
       </div>
+
+      {/* Profilsuche — unter den Reitern, wie auf der Seite selbst. */}
+      <Skeleton className="h-10 rounded-lg" />
 
       <div className="flex flex-col gap-4">
         {Array.from({ length: 5 }).map((_, i) => (

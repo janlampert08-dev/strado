@@ -53,9 +53,15 @@ export default function Kennzahl({
       )}
     >
       <dt className="flex items-center gap-1.5 text-sm text-muted">{beschriftung}</dt>
-      <dd className="text-title font-mono font-semibold tabular-nums">{wert}</dd>
+      {/* whitespace-nowrap: "33.1 km" und "~22 min" brachen in der
+          Vierer-Reihe der Streckenseite zwischen Zahl und Einheit um. */}
+      {/* mt-auto: in einer Reihe von Kacheln bricht eine längere
+          Beschriftung ("Höchster Punkt") auf zwei Zeilen um, und die Werte
+          standen danach auf verschiedenen Grundlinien. Jetzt sitzen sie alle
+          an der Unterkante ihrer Kachel. */}
+      <dd className="mt-auto text-title font-semibold whitespace-nowrap tabular-nums">{wert}</dd>
       {zusatz !== undefined && zusatz !== null && (
-        <dd className="font-mono text-xs tabular-nums text-muted">{zusatz}</dd>
+        <dd className="text-xs tabular-nums text-muted">{zusatz}</dd>
       )}
       {fuss !== undefined && fuss !== null && <dd className="mt-auto pt-1">{fuss}</dd>}
     </div>
@@ -113,7 +119,7 @@ export function Kennzahlenzeile({
       {sichtbar.map((e, i) => (
         <span key={e.beschriftung}>
           {i > 0 && <span aria-hidden="true"> · </span>}
-          {e.beschriftung} <span className="font-mono tabular-nums text-foreground">{e.wert}</span>
+          {e.beschriftung} <span className="tabular-nums text-foreground">{e.wert}</span>
         </span>
       ))}
     </p>

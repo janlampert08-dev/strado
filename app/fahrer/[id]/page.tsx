@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { datumCH } from "@/lib/format";
 import type { Metadata } from "next";
 import { OG_GEERBT } from "@/lib/openGraph";
 import Link from "next/link";
@@ -147,24 +148,27 @@ export default async function FahrerPage({
 
         {zeigtStatistiken && (
           <Card as="dl" className="grid grid-cols-2 gap-x-4 gap-y-4 p-4 text-sm sm:grid-cols-3">
-            {profile.zeigtPaesse && (
+            {/* Null-Werte weglassen: "Pässe befahren 0" neben 1'380
+                Höhenmetern las sich im Review wie ein Fehler, nicht wie eine
+                Auskunft. */}
+            {profile.zeigtPaesse && profile.passCount > 0 && (
               <div>
                 <dt className="text-muted">Pässe befahren</dt>
-                <dd className="font-mono text-lg tabular-nums">{profile.passCount}</dd>
+                <dd className="text-lg tabular-nums">{profile.passCount}</dd>
               </div>
             )}
-            {profile.zeigtHoehenmeter && (
+            {profile.zeigtHoehenmeter && profile.hoehenmeter > 0 && (
               <div>
                 <dt className="text-muted">Höhenmeter gesammelt</dt>
-                <dd className="font-mono text-lg tabular-nums">
+                <dd className="text-lg tabular-nums">
                   {profile.hoehenmeter.toLocaleString("de-CH")} m
                 </dd>
               </div>
             )}
-            {profile.zeigtDistanz && (
+            {profile.zeigtDistanz && profile.distanzKm > 0 && (
               <div>
                 <dt className="text-muted">GPS-getrackte Distanz</dt>
-                <dd className="font-mono text-lg tabular-nums">
+                <dd className="text-lg tabular-nums">
                   {profile.distanzKm.toFixed(0)} km
                 </dd>
               </div>
@@ -199,15 +203,17 @@ export default async function FahrerPage({
                     <li key={f.completion_id} className="flex items-center gap-2 px-4 py-3">
                       <Link
                         href={`/fahrten/${f.completion_id}`}
-                        className="flex min-w-0 flex-1 items-baseline justify-between text-sm transition-colors duration-fast hover:text-accent"
+                        // min-h-11: die Zeile ist ein Link auf die Fahrt, war
+                        // aber nur so hoch wie ihre Schrift (20 px).
+                        className="flex min-h-11 min-w-0 flex-1 items-center justify-between text-sm transition-colors duration-fast hover:text-accent"
                       >
                         <span className="truncate">
                           {f.art === "frei"
                             ? freieFahrtTitel(f.titel, f.start_ort)
                             : f.route_name}
                         </span>
-                        <span className="ml-2 shrink-0 font-mono text-xs tabular-nums text-muted">
-                          {new Date(f.datum).toLocaleDateString("de-CH")}
+                        <span className="ml-2 shrink-0 text-xs tabular-nums text-muted">
+                          {datumCH(new Date(f.datum))}
                         </span>
                       </Link>
                       {viewer && (

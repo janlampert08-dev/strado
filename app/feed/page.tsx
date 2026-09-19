@@ -9,6 +9,7 @@ import ProfileSearch from "@/components/ProfileSearch";
 import FeedReiter from "@/components/FeedReiter";
 import { Signet } from "@/components/Wortmarke";
 import { getFeed, type FeedScope } from "@/lib/feed";
+import { getFollowedUserIds } from "@/lib/follows";
 import { freieFahrtTitel } from "@/lib/completions";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { getUnseenActivityCount } from "@/lib/aktivitaetsliste";
@@ -60,9 +61,18 @@ export default async function FeedPage({
     user ? getUnseenActivityCount() : Promise.resolve(0),
   ]);
 
+  // Ein leerer Folgen-Feed hat zwei Ursachen mit verschiedenen nächsten
+  // Schritten: niemandem folgen (Leute finden) oder Leuten folgen, die noch
+  // nichts geteilt haben (abwarten, selbst fahren). Die Abfrage läuft nur im
+  // leeren Fall, der volle Feed kostet damit nichts zusätzlich.
+  const folgtNiemandem =
+    scope === "following" && feed.length === 0 && user
+      ? (await getFollowedUserIds(user.id)).length === 0
+      : false;
+
   return (
     <div className="flex h-dvh flex-col">
-      <Header back="/" />
+      <Header />
       {/* Ziehen zum Aktualisieren (nur Touch) — siehe PullToRefreshArea.tsx */}
       <PullToRefreshArea>
       <div className="flex-1 overflow-y-auto">
@@ -71,8 +81,6 @@ export default async function FeedPage({
           <h1 className="text-display font-semibold">Feed</h1>
           <p className="mt-1 text-sm text-muted">Geteilte Fahrten aus der Community.</p>
         </div>
-
-        <ProfileSearch />
 
         {/* Die Reiter stehen in einer eigenen Komponente, weil /aktivitaet
             sie mitbenutzt: die eigene Aktivität ist der dritte Blick auf
@@ -88,6 +96,13 @@ export default async function FeedPage({
           ungeseheneAktivitaet={ungeseheneAktivitaet}
         />
 
+        {/* Die Suche steht UNTER den Reitern, nicht darüber. /aktivitaet
+            teilt die Reiterleiste, hat aber keine Suche — stand sie oben,
+            sprang die Leiste beim Wechsel zwischen "Folge ich" und
+            "Aktivität" um die Höhe des Suchfelds nach oben, genau unter dem
+            Finger, der gerade getippt hatte. */}
+        <ProfileSearch />
+
         {feed.length === 0 ? (
           <EmptyState
             // Der globale Feed ist die eine Stelle, an der "leer" nicht
@@ -97,16 +112,43 @@ export default async function FeedPage({
             // Feed-Icon besser als das Logo.
             icon={scope === "following" ? Rss : Signet}
             title={
-              scope === "following"
-                ? "Von den Fahrern, denen du folgst, kam noch nichts."
-                : "Hier ist es noch ruhig. Fahr eine Runde, dann nicht mehr."
+              scope !== "following"
+                ? "Der Feed wartet auf die erste Fahrt."
+                : !user
+                  ? "Melde dich an, um Fahrern zu folgen."
+                  : folgtNiemandem
+                    ? "Du folgst noch niemandem."
+                    : "Von den Fahrern, denen du folgst, kam noch nichts."
+            }
+            // Der Satz sagt, wie der Feed sich füllt, statt nur festzustellen,
+            // dass er leer ist: solange wenige teilen, ist das der Zustand,
+            // den ein Erstbesucher hier am häufigsten sieht.
+            description={
+              scope !== "following"
+                ? "Zeichne eine Strecke auf und teil die Fahrt, dann steht sie hier ganz oben."
+                : !user
+                  ? "Wem du folgst, dessen Fahrten stehen dann hier."
+                  : folgtNiemandem
+                    ? "Über die Suche oben findest du Fahrer. Folgst du ihnen, stehen ihre Fahrten hier."
+                    : "Sobald jemand von ihnen eine Fahrt teilt, steht sie hier."
             }
             action={
-              scope === "following" ? (
-                <Link href="/feed" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+              scope === "following" && !user ? (
+                <Link
+                  href={`/anmelden?next=${encodeURIComponent("/feed?scope=following")}`}
+                  className={buttonVariants({ variant: "secondary", size: "md" })}
+                >
+                  Anmelden
+                </Link>
+              ) : scope === "following" ? (
+                <Link href="/feed" className={buttonVariants({ variant: "secondary", size: "md" })}>
                   Alle Fahrten ansehen
                 </Link>
-              ) : undefined
+              ) : (
+                <Link href="/" className={buttonVariants({ variant: "secondary", size: "md" })}>
+                  Strecken entdecken
+                </Link>
+              )
             }
           />
         ) : (
@@ -144,7 +186,7 @@ export default async function FeedPage({
                     Siehe docs/design-vereinfachung.md, Anhang B5. */}
                 <div className="flex items-center gap-3 p-4">
                   <Link href={`/fahrer/${item.user_id}`} className="relative z-10 shrink-0">
-                    <Avatar url={item.avatar_url} name={item.display_name} size={40} />
+                    <Avatar url={item.avatar_url} name={item.display_name} size={44} />
                   </Link>
 
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -173,14 +215,17 @@ export default async function FeedPage({
                     <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-sm text-muted">
                       <Link
                         href={`/fahrer/${item.user_id}`}
-                        className="relative z-10 shrink-0 transition-colors duration-fast hover:text-foreground"
+                        // after: macht den Namen (24 × 20) zu einer 44 px hohen
+                        // Tippfläche. Er überlappt dabei den Avatar daneben —
+                        // beide führen auf dasselbe Profil.
+                        className="relative z-10 shrink-0 transition-colors duration-fast hover:text-foreground after:absolute after:-inset-x-3 after:-inset-y-3 after:content-['']"
                       >
                         {item.display_name ?? "Fahrer"}
                       </Link>
                       <span aria-hidden="true">·</span>
                       <span className="truncate">{item.region}</span>
                       <span aria-hidden="true">·</span>
-                      <span className="font-mono tabular-nums">
+                      <span className="tabular-nums">
                         {(item.distanz_km ?? item.laenge_km ?? 0).toFixed(1)} km
                       </span>
                       <span aria-hidden="true">·</span>
@@ -192,7 +237,7 @@ export default async function FeedPage({
                           für Hilfstechnik und Suchmaschinen erhalten bleibt. */}
                       <time
                         dateTime={item.datum}
-                        className="font-mono tabular-nums"
+                        className="tabular-nums"
                         title={new Date(item.datum).toLocaleDateString("de-CH")}
                       >
                         {new Date(item.datum).toLocaleDateString("de-CH", {

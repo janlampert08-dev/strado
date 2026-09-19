@@ -36,7 +36,7 @@ export default function ActivityHeatmap({ dates }: { dates: string[] }) {
           <div style={{ height: ZELLE_PX }} />
           <div className="grid gap-1" style={{ gridTemplateRows: `repeat(7, ${ZELLE_PX}px)` }}>
             {WOCHENTAGE_KURZ.map((tag, i) => (
-              <span key={tag} className="text-[9px] leading-[10px] text-muted">
+              <span key={tag} className="text-[10px] leading-[10px] text-muted">
                 {i % 2 === 0 && i < 6 ? tag : ""}
               </span>
             ))}
@@ -57,7 +57,7 @@ export default function ActivityHeatmap({ dates }: { dates: string[] }) {
               {monthLabels.map(({ label, weekIndex }) => (
                 <span
                   key={`${label}-${weekIndex}`}
-                  className="text-[9px] leading-[10px] whitespace-nowrap text-muted"
+                  className="text-[10px] leading-[10px] whitespace-nowrap text-muted"
                   style={{ gridColumnStart: weekIndex + 1 }}
                 >
                   {label}

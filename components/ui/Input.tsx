@@ -27,10 +27,12 @@ import { cn } from "@/lib/utils/cn";
 // Formular soll aussehen wie bisher.
 export function fieldClassName(className?: string, invalid?: boolean): string {
   return cn(
-    "w-full rounded-lg border bg-transparent px-3 py-2 text-base outline-none transition-shadow duration-fast md:text-sm",
+    // min-h-11: mit py-2 und text-base waren Felder 42 px hoch, knapp unter
+    // der 44-px-Tippfläche, die der Rest der App einhält.
+    "min-h-11 w-full rounded-lg border bg-transparent px-3 py-2 text-base outline-none transition-shadow duration-fast md:text-sm",
     invalid
       ? "border-danger focus:border-danger focus:ring-2 focus:ring-danger/15"
-      : "border-border focus:border-accent focus:ring-2 focus:ring-accent/15",
+      : "border-border-control focus:border-accent focus:ring-2 focus:ring-accent/15",
     className,
   );
 }
@@ -64,14 +66,18 @@ export function Input({ className, invalid, type, ...props }: InputProps) {
     <div className="relative">
       <input
         type={visible ? "text" : "password"}
-        className={fieldClassName(cn("pr-10", className), invalid)}
+        className={fieldClassName(cn("pr-12", className), invalid)}
         {...props}
       />
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
         aria-label={visible ? "Passwort verbergen" : "Passwort anzeigen"}
-        className="absolute inset-y-0 right-0 flex items-center px-3 text-muted transition-colors duration-fast hover:text-foreground"
+        // min-w-11 statt px-3: der Knopf war 40 px breit und damit das eine
+        // Ziel im Anmeldeformular unter der 44-px-Marke — bei einem Knopf,
+        // den man mit nassen Fingern am Strassenrand trifft oder nicht. Das
+        // Feld bekommt dafür pr-12, damit der Text nicht darunter läuft.
+        className="absolute inset-y-0 right-0 flex min-w-11 items-center justify-center text-muted transition-colors duration-fast hover:text-foreground"
       >
         {visible ? (
           <EyeOff className="h-4 w-4" aria-hidden="true" />

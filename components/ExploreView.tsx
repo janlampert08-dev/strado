@@ -9,10 +9,11 @@ import ExploreSidebar from "@/components/ExploreSidebar";
 import DragSheet from "@/components/ui/DragSheet";
 import Skeleton from "@/components/ui/Skeleton";
 import { haversineKm } from "@/lib/geo";
-import { matchesSearch } from "@/lib/search";
+import { brauchtUrlSync, echoEinordnen, matchesSearch } from "@/lib/search";
 import { computeSignatures } from "@/lib/signature";
 import type { ExploreRoute } from "@/types/database";
 import type { Streckenbewertung } from "@/lib/bewertungen";
+import type { PassZustand } from "@/lib/passStatus";
 
 // URL-Sync für den Suchtext wird debounced (siehe searchInput-Effekt unten),
 // damit nicht jeder Tastendruck einen router.replace() (und damit einen
@@ -84,12 +85,15 @@ const ZUFALLSVORSCHLAG_MS = 5000;
 export default function ExploreView({
   routes,
   bewertungen,
+  passZustaende,
   loadError = false,
   loggedIn,
 }: {
   routes: ExploreRoute[];
   /** Sternenschnitt je Strecken-ID; Strecken ohne Wertung fehlen. */
   bewertungen: Record<string, Streckenbewertung>;
+  /** Schwerwiegendster Passzustand je Strecke; Strecken ohne Pass fehlen. */
+  passZustaende: Record<string, PassZustand>;
   loadError?: boolean;
   loggedIn: boolean;
 }) {
@@ -105,6 +109,16 @@ export default function ExploreView({
   const urlSearchQuery = searchParams.get("q") ?? "";
 
   const [searchInput, setSearchInput] = useState(urlSearchQuery);
+  // Die Werte, die der Effekt unten in die URL geschrieben hat und deren Echo
+  // noch aussteht. Sie unterscheiden das Echo eines eigenen Schreibvorgangs
+  // von einer fremden Änderung (siehe echoEinordnen). Eine Liste und nicht
+  // der zuletzt gesendete Wert allein, weil bei langsamer Antwort zwei
+  // Sendungen gleichzeitig unterwegs sein können. Bewusst State und keine
+  // Ref: gelesen wird sie im Render-Abgleich direkt darunter, und eine Ref
+  // dort zu lesen ist genau das, was react-hooks/refs verbietet — unter
+  // StrictMode läuft der Render zweimal, und ein Wert, der sich zwischen
+  // beiden Durchläufen ändert, führte zu zwei verschiedenen Ergebnissen.
+  const [offeneSuchsendungen, setOffeneSuchsendungen] = useState<string[]>([]);
   // Merkt sich, mit welchem URL-Wert searchInput zuletzt abgeglichen wurde,
   // um externe Änderungen (Browser-Zurück/Vorwärts auf eine URL mit
   // anderem ?q=…) von den eigenen (debounced) Schreibvorgängen zu
@@ -115,12 +129,21 @@ export default function ExploreView({
   const [syncedSearchQuery, setSyncedSearchQuery] = useState(urlSearchQuery);
   if (urlSearchQuery !== syncedSearchQuery) {
     setSyncedSearchQuery(urlSearchQuery);
-    setSearchInput(urlSearchQuery);
+    // Nur eine fremde Änderung darf das Feld überschreiben. Beim eigenen Echo
+    // bleibt stehen, was seit dem Abschicken dazugetippt wurde; der Effekt
+    // unten zieht die URL gleich darauf nach.
+    const verbleibend = echoEinordnen(urlSearchQuery, offeneSuchsendungen);
+    if (verbleibend === null) {
+      setSearchInput(urlSearchQuery);
+    } else {
+      setOffeneSuchsendungen(verbleibend);
+    }
   }
 
   useEffect(() => {
-    if (searchInput === urlSearchQuery) return;
+    if (!brauchtUrlSync(searchInput, urlSearchQuery)) return;
     const timeout = setTimeout(() => {
+      setOffeneSuchsendungen((bisher) => [...bisher, searchInput.trim()]);
       router.replace(searchQueryHref(pathname, searchInput), { scroll: false });
     }, SEARCH_URL_SYNC_DEBOUNCE_MS);
     return () => clearTimeout(timeout);
@@ -232,6 +255,7 @@ export default function ExploreView({
         aria-label="Kartenansicht der Strecken — die vollständige Liste steht in der Seitenleiste."
       >
         <RouteMap
+          umlandSchleier
           routes={visibleRoutes}
           signaturen={kartenSignaturen}
           userLocation={userLocation}
@@ -282,8 +306,10 @@ export default function ExploreView({
         <ExploreSidebar
           routes={visibleRoutes}
           bewertungen={bewertungen}
+          passZustaende={passZustaende}
           loadError={loadError}
           loggedIn={loggedIn}
+          anzahlStrecken={routes.length}
           searchQuery={searchInput}
           onSearchChange={setSearchInput}
           signatures={signatures}

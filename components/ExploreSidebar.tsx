@@ -2,51 +2,41 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { Crosshair, Gauge, Mountain, Route, Ruler, SearchX, TrendingUp } from "lucide-react";
+import { ChevronDown, Crosshair, Route, SearchX } from "lucide-react";
 import { routeShapePath } from "@/lib/routeShape";
-import { formatKmGerundet } from "@/lib/format";
+import { formatKmGerundet, mitAnzahl } from "@/lib/format";
 import { type RouteSignature, type SignatureKey } from "@/lib/signature";
 import type { ExploreRoute } from "@/types/database";
+import { PassStatusMarke } from "@/components/PassStatusZeile";
+import { ZUSTAND_LABEL, ZUSTAND_TON, zeigeInListe, type PassZustand } from "@/lib/passStatus";
 import { anzahlText, type Streckenbewertung } from "@/lib/bewertungen";
 import Sternschnitt from "@/components/Sternschnitt";
 import { fieldClassName } from "@/components/ui/Input";
 import EmptyState from "@/components/ui/EmptyState";
+import Button, { buttonVariants } from "@/components/ui/Button";
 import IconButton from "@/components/ui/IconButton";
+import { SIGNATURE_ICONS, SIGNATUR_KLASSEN } from "@/components/signaturStil";
 
-// Icon je Signatur-Merkmal — spiegelt visuell wider, worin die Strecke
-// heraussticht (Kehren -> kurvige Straße, Tempo -> Tacho, etc.), statt für
-// alle Merkmale dasselbe Mountain-Symbol zu zeigen.
-const SIGNATURE_ICONS: Record<SignatureKey, typeof Mountain> = {
-  kehren: Route,
-  steigung: TrendingUp,
-  hoehe: Mountain,
-  tempo: Gauge,
-  laenge: Ruler,
-};
+// Wortlaut der Farblegende, in der Reihenfolge der Tokens in globals.css.
+const LEGENDE: { key: SignatureKey; text: string }[] = [
+  { key: "kehren", text: "Viele Kehren" },
+  { key: "steigung", text: "Steile Steigung" },
+  { key: "hoehe", text: "Hoch hinauf" },
+  { key: "tempo", text: "Durchschnittlich erlaubtes Tempo" },
+  { key: "laenge", text: "Lange Strecke" },
+];
 
-// Die Utility-Klassen je Merkmal. Ausgeschrieben und nicht zusammengesetzt:
-// Tailwind liest Klassennamen statisch aus dem Quelltext, ein
-// `text-signatur-${key}` stünde in keinem erzeugten Stylesheet.
-//
-// Drei Klassen je Merkmal, weil drei Dinge in der Zeile denselben Ton
-// tragen: die linke Kante (was für eine Strecke das ist), das Icon samt
-// Label (worin sie heraussticht) und die Streckenform rechts (ihr
-// Vorschaubild). Die Hex-Werte dahinter stehen in app/globals.css, sind
-// für hell und dunkel gesetzt und gegen Hintergrund, Fläche und Hover-Grund
-// nachgerechnet — siehe lib/signature.ts.
-const SIGNATUR_KLASSEN: Record<SignatureKey, { rand: string; text: string }> = {
-  kehren: { rand: "border-l-signatur-kehren", text: "text-signatur-kehren" },
-  steigung: { rand: "border-l-signatur-steigung", text: "text-signatur-steigung" },
-  hoehe: { rand: "border-l-signatur-hoehe", text: "text-signatur-hoehe" },
-  tempo: { rand: "border-l-signatur-tempo", text: "text-signatur-tempo" },
-  laenge: { rand: "border-l-signatur-laenge", text: "text-signatur-laenge" },
-};
+function kuerzen(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
+}
 
 export default function ExploreSidebar({
   routes,
   bewertungen,
+  passZustaende,
   loadError = false,
   loggedIn,
+  anzahlStrecken,
   searchQuery,
   onSearchChange,
   signatures,
@@ -59,8 +49,12 @@ export default function ExploreSidebar({
   routes: ExploreRoute[];
   /** Sternenschnitt je Strecken-ID; Strecken ohne Wertung fehlen darin. */
   bewertungen: Record<string, Streckenbewertung>;
+  /** Schwerwiegendster Passzustand je Strecke; Strecken ohne Pass fehlen. */
+  passZustaende: Record<string, PassZustand>;
   loadError?: boolean;
   loggedIn: boolean;
+  /** Der ganze Bestand, ungefiltert — routes ist schon die Trefferliste. */
+  anzahlStrecken: number;
   searchQuery: string;
   onSearchChange: (value: string) => void;
   signatures: Map<string, RouteSignature>;
@@ -147,6 +141,9 @@ export default function ExploreSidebar({
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Strecke oder Ort"
+          // Der Platzhalter verschwindet beim Tippen und ist kein Name —
+          // ohne aria-label meldete ein Screenreader nur "Suchfeld".
+          aria-label="Strecken suchen"
           className={fieldClassName("min-h-11")}
         />
         {/* Der Standort war eine eigene Zeile mit Textbeschriftung. Als
@@ -183,15 +180,91 @@ export default function ExploreSidebar({
 
       <div className="border-b border-border" />
 
+      {/* Die Legende zu den fünf Signaturtönen. Die Farbe ist nie die
+          einzige Kodierung (Icon und Wort stehen an jeder Zeile, siehe
+          lib/signature.ts), aber sie ist die erste, die man sieht — und im
+          Review blieb offen, warum eine Strecke violett und die nächste
+          orange ist. Zugeklappt, damit sie die Liste nicht nach unten
+          schiebt; wer fragt, findet die Antwort an der Stelle der Frage. */}
+      <details className="group text-sm">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-muted transition-colors duration-fast hover:text-foreground [&::-webkit-details-marker]:hidden">
+          Was die Farben bedeuten
+          <ChevronDown
+            className="h-4 w-4 transition-transform duration-fast group-open:rotate-180"
+            aria-hidden="true"
+          />
+        </summary>
+        <p className="pb-2 text-xs text-muted">
+          Jede Strecke zeigt, worin sie unter allen Strecken am meisten heraussticht:
+        </p>
+        <ul className="grid grid-cols-1 gap-1.5 pb-2 sm:grid-cols-2">
+          {LEGENDE.map(({ key, text }) => {
+            const Icon = SIGNATURE_ICONS[key];
+            return (
+              <li key={key} className={`flex items-center gap-2 text-xs ${SIGNATUR_KLASSEN[key].text}`}>
+                <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                {text}
+              </li>
+            );
+          })}
+        </ul>
+      </details>
+
+      {/* Zwei verschiedene Leeren: eine Suche ohne Treffer lässt sich mit
+          einem Tipp zurücknehmen, ein leerer Bestand nicht. Vorher sagte
+          beide "für diese Suche", auch wenn gar nichts gesucht war. Der
+          Vorschlag steht in beiden Fällen, weil die fehlende Strecke genau
+          die ist, die jemand kennt und die Karte noch nicht.
+
+          Ausserhalb der <ul> und in einer Live-Region, die immer im DOM
+          steht: vorher war der Leerzustand das einzige <li> der Liste
+          ("Liste, 1 Element"), und dass das Tippen die Treffer auf null
+          brachte, sagte ein Screenreader gar nicht an. */}
+      <div role="status">
+        {routes.length === 0 && !loadError && (
+          searchQuery.trim() ? (
+            <EmptyState
+              icon={SearchX}
+              kompakt
+              // Auf 24 Zeichen gekürzt: der Titel muss auf 390 px einzeilig bleiben,
+              // sonst rutscht "Suche zurücksetzen" abgemeldet unter die Peek-Kante (nachgemessen: 283 px Inhaltsfläche).
+              // «» statt „“: das Schweizer Anführungszeichen.
+              title={`Keine Strecke zu «${kuerzen(searchQuery.trim(), 24)}».`}
+              // Die Zahl statt eines allgemeinen Tipps: wer "Klausen"
+              // getippt hat, weiss schon, dass man nach Pässen suchen kann.
+              // Was er nicht weiss, ist, wie klein der Bestand noch ist.
+              description={`Gesucht in Namen, Regionen, Start- und Zielorten von ${mitAnzahl(anzahlStrecken, "Strecke", "Strecken")}. Kennst du eine, die fehlt, schlag sie vor.`}
+              action={
+                <div className="flex flex-wrap gap-3">
+                  <Button variant="secondary" size="md" onClick={() => onSearchChange("")}>
+                    Suche zurücksetzen
+                  </Button>
+                  <Link href="/strecken/neu" className={buttonVariants({ variant: "ghost", size: "md" })}>
+                    Strecke vorschlagen
+                  </Link>
+                </div>
+              }
+            />
+          ) : (
+            <EmptyState
+              kompakt
+              icon={Route}
+              title="Noch keine Strecken freigegeben."
+              description="Kennst du eine Strasse, die man gefahren sein muss? Schlag sie vor."
+              action={
+                <Link href="/strecken/neu" className={buttonVariants({ variant: "secondary", size: "md" })}>
+                  Strecke vorschlagen
+                </Link>
+              }
+            />
+          )
+        )}
+      </div>
+
       <ul className="flex flex-col gap-1">
         {routes.length === 0 && loadError && (
           <li role="alert" className="text-sm text-danger">
             Strecken konnten nicht geladen werden. Bitte versuche es später erneut.
-          </li>
-        )}
-        {routes.length === 0 && !loadError && (
-          <li>
-            <EmptyState icon={SearchX} title="Keine Strecken für diese Suche." />
           </li>
         )}
         {routes.map((route) => {
@@ -256,9 +329,9 @@ export default function ExploreSidebar({
                       //
                       // Schrumpfen soll das Signatur-Label daneben: es hat
                       // truncate und kürzt mit Auslassungspunkten, was bei
-                      // "Ø 114 km/h" lesbar bleibt. Eine umbrechende
+                      // "Ø erlaubt 114 km/h" lesbar bleibt. Eine umbrechende
                       // Masszahl ist dagegen nie richtig.
-                      <span className="shrink-0 font-mono text-sm tabular-nums whitespace-nowrap text-muted">
+                      <span className="shrink-0 text-sm tabular-nums whitespace-nowrap text-muted">
                         {formatKmGerundet(route.laenge_km)} km
                       </span>
                     )}
@@ -302,6 +375,22 @@ export default function ExploreSidebar({
                       >
                         <span className="sr-only">{anzahlText(bewertung.anzahl)}</span>
                       </Sternschnitt>
+                    )}
+                    {/* Der Passzustand steht nur hier, wenn er die Planung
+                        ändert: gesperrt, Wintersperre, eingeschränkt. "Offen"
+                        ist die Erwartung und bekäme sonst in jeder Zeile ein
+                        Abzeichen, das nichts sagt (lib/passStatus.ts). */}
+                    {zeigeInListe(passZustaende[route.id] ?? null) && (
+                      <PassStatusMarke
+                        className="shrink-0"
+                        anzeige={{
+                          zustand: passZustaende[route.id],
+                          label: ZUSTAND_LABEL[passZustaende[route.id]],
+                          ton: ZUSTAND_TON[passZustaende[route.id]],
+                          text: "",
+                          herkunft: "",
+                        }}
+                      />
                     )}
                   </div>
                 </div>

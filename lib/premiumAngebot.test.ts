@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { betragText, jahresVorteilProzent, monatsAequivalentRappen, planName } from "./premiumAngebot";
+import {
+  betragText,
+  jahresVorteilProzent,
+  monatsAequivalentRappen,
+  passZeitraum,
+  planName,
+  saisonpassVerlaengerbar,
+} from "./premiumAngebot";
 import type { PlanAngebot } from "./premiumLimits";
 
 function plan(betragRappen: number, teil: Partial<PlanAngebot> = {}): PlanAngebot {
@@ -88,5 +95,82 @@ describe("planName", () => {
 
   it("nennt den Gründerpreis beim Namen — Bestandsabos laufen weiter", () => {
     expect(planName("gruender")).toBe("Jahresabo zum Gründerpreis");
+  });
+});
+
+describe("passZeitraum", () => {
+  const JETZT = new Date("2026-09-18T12:00:00.000Z");
+  const pass = (ab: string, bis: string) => ({ gueltig_ab: ab, gueltig_bis: bis });
+
+  it("erkennt den laufenden Pass und sein Ende", () => {
+    const r = passZeitraum([pass("2026-08-01T00:00:00+00:00", "2027-02-01T00:00:00+00:00")], JETZT);
+    expect(r.laeuft).toBe(true);
+    expect(r.deckungBis?.toISOString()).toBe("2027-02-01T00:00:00.000Z");
+  });
+
+  // DER FALL, AN DEM DIESE FUNKTION HÄNGT.
+  //
+  // Wer kurz vor Ablauf verlängert, hat zwei Zeilen: eine, die heute gilt,
+  // und eine, die erst am Ende der ersten beginnt (apply_saisonpass hängt sie
+  // hinten an). Vorher prüfte lib/premium.ts "läuft gerade" am SPÄTEREN Pass
+  // — der beginnt aber in der Zukunft. Ergebnis: Premium galt als von Hand
+  // gesetzt, das Profil zeigte kein Datum, und die Kaufseite schickte die
+  // Person weg, weil deren Ausnahme an quelle === "saisonpass" hängt. Wer
+  // bezahlt hatte, war damit ausgesperrt, bis der erste Pass ablief.
+  it("zählt eine Verlängerung als laufend und nennt das spätere Ende", () => {
+    const r = passZeitraum(
+      [
+        pass("2026-10-01T00:00:00+00:00", "2027-04-01T00:00:00+00:00"),
+        pass("2026-04-01T00:00:00+00:00", "2026-10-01T00:00:00+00:00"),
+      ],
+      JETZT,
+    );
+    expect(r.laeuft).toBe(true);
+    expect(r.deckungBis?.toISOString()).toBe("2027-04-01T00:00:00.000Z");
+  });
+
+  it("meldet nichts, wenn alle Pässe abgelaufen sind", () => {
+    expect(passZeitraum([pass("2025-04-01T00:00:00+00:00", "2025-10-01T00:00:00+00:00")], JETZT)).toEqual({
+      laeuft: false,
+      deckungBis: null,
+    });
+  });
+
+  // Ein Pass, der erst später beginnt, ohne einen, der heute gilt, kann über
+  // apply_saisonpass nicht entstehen. Käme er doch, wäre "läuft" falsch —
+  // und dann darf auch kein Enddatum behauptet werden.
+  it("behauptet kein Enddatum, solange nichts läuft", () => {
+    expect(passZeitraum([pass("2026-12-01T00:00:00+00:00", "2027-06-01T00:00:00+00:00")], JETZT)).toEqual({
+      laeuft: false,
+      deckungBis: null,
+    });
+  });
+
+  it("überspringt unlesbare Zeitstempel, statt sie als gültig zu nehmen", () => {
+    expect(passZeitraum([pass("keine Zeit", "auch nicht")], JETZT).laeuft).toBe(false);
+  });
+
+  // Der Grund für Date.parse statt eines Zeichenkettenvergleichs: PostgREST
+  // liefert je nach Zeitzone der Sitzung "+02:00", toISOString() liefert
+  // ".000Z". Lexikografisch verglichen läge das um Stunden daneben.
+  it("versteht einen Zeitstempel mit lokalem Versatz", () => {
+    const r = passZeitraum([pass("2026-08-01T02:00:00+02:00", "2026-09-18T16:00:00+02:00")], JETZT);
+    expect(r.laeuft).toBe(true);
+  });
+});
+
+describe("saisonpassVerlaengerbar", () => {
+  const JETZT = new Date("2026-09-18T12:00:00.000Z");
+
+  it("lässt verlängern, wenn gar kein Pass läuft", () => {
+    expect(saisonpassVerlaengerbar(null, JETZT)).toBe(true);
+  });
+
+  it("lässt verlängern, sobald der Pass in weniger als 30 Tagen endet", () => {
+    expect(saisonpassVerlaengerbar(new Date("2026-10-10T12:00:00.000Z"), JETZT)).toBe(true);
+  });
+
+  it("wehrt den Doppelkauf mitten in der Saison ab", () => {
+    expect(saisonpassVerlaengerbar(new Date("2027-02-01T12:00:00.000Z"), JETZT)).toBe(false);
   });
 });

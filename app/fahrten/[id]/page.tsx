@@ -324,78 +324,10 @@ export default async function FahrtDetailPage({
             <CompletionMap route={route} track={completion.track} />
           </Card>
 
-          {detectedSegments.length > 0 && <DetectedSegmentsCard segments={detectedSegments} />}
-
-          {(completion.vehicle ||
-            gewerteteKlasse !== null ||
-            completion.abdeckungProzent !== null ||
-            completion.notiz) && (
-            <Card surface className="flex flex-col gap-4 p-4">
-              {(completion.vehicle || gewerteteKlasse !== null) && (
-                <div className="flex items-center gap-3">
-                  {completion.vehicle && (
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-background">
-                      <VehicleIcon className="h-5 w-5 text-muted" aria-hidden="true" />
-                    </span>
-                  )}
-                  <div className="flex min-w-0 flex-col gap-1">
-                    {completion.vehicle && (
-                      <p className="text-sm font-medium text-foreground">
-                        {completion.vehicle.marke} {completion.vehicle.modell}
-                      </p>
-                    )}
-                    {gewerteteKlasse !== null && <MotorklasseBadge klasse={gewerteteKlasse} />}
-                  </div>
-                </div>
-              )}
-              {gewerteteKlasse !== null &&
-                completion.motorklasse !== null &&
-                gewerteteKlasse !== completion.motorklasse && (
-                  <p className="text-sm leading-relaxed text-muted">
-                    Angegeben war{" "}
-                    <span className="font-medium text-foreground">
-                      {motorklasseLabel(completion.motorklasse)}
-                    </span>
-                    . Diese Fahrt hat mehr Motorleistung verlangt, als diese Klasse hergibt, und
-                    wird deshalb in{" "}
-                    <span className="font-medium text-foreground">
-                      {motorklasseLabel(gewerteteKlasse)}
-                    </span>{" "}
-                    gewertet. Wenn das nicht stimmt, liegt es meist an der Leistungsangabe des
-                    Fahrzeugs — trag das Fahrzeug mit dem richtigen Wert neu ein.
-                  </p>
-                )}
-              {completion.abdeckungProzent !== null && (
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1.5 text-muted">
-                      <RouteIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                      Streckenabdeckung
-                    </span>
-                    <span className="font-mono tabular-nums text-foreground">
-                      {completion.abdeckungProzent}%
-                    </span>
-                  </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
-                    <div
-                      className="h-full rounded-full bg-accent"
-                      style={{ width: `${Math.min(100, Math.max(0, completion.abdeckungProzent))}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-              {completion.notiz && (
-                <p className="text-sm leading-relaxed text-foreground">{completion.notiz}</p>
-              )}
-            </Card>
-          )}
-
-          <CompletionPhotoGallery
-            photos={completion.photos}
-            canRemove={completion.isOwner}
-            displayName={completion.displayName}
-          />
-
+          {/* Die Kennzahlen direkt unter der Karte. Sie standen nach
+              Fahrzeug, Abdeckung, Notiz und Fotos — auf dem Telefon also
+              zwei Bildschirmhöhen tief, obwohl sie die Frage beantworten, mit
+              der man eine Fahrt öffnet: wie weit, wie lang, wie schnell. */}
           {/* Vier Kennzahlen, eine Betonungsstufe. Vorher trugen Distanz
               und Zeit text-title/600 und die beiden daneben nur font-mono —
               gleiche Rolle, zwei Grössen, und zwar an jeder der drei
@@ -449,7 +381,7 @@ export default async function FahrtDetailPage({
               beschriftung={
                 <>
                   <Mountain className="h-3.5 w-3.5" aria-hidden="true" />
-                  {istFreieFahrt ? "Aufstieg" : "Höhe"}
+                  {istFreieFahrt ? "Aufstieg" : "Höchster Punkt"}
                 </>
               }
               wert={
@@ -463,6 +395,79 @@ export default async function FahrtDetailPage({
               }
             />
           </Kennzahlen>
+
+          {detectedSegments.length > 0 && <DetectedSegmentsCard segments={detectedSegments} />}
+
+          {(completion.vehicle ||
+            gewerteteKlasse !== null ||
+            completion.abdeckungProzent !== null ||
+            completion.notiz) && (
+            <Card surface className="flex flex-col gap-4 p-4">
+              {(completion.vehicle || gewerteteKlasse !== null) && (
+                <div className="flex items-center gap-3">
+                  {completion.vehicle && (
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-background">
+                      <VehicleIcon className="h-5 w-5 text-muted" aria-hidden="true" />
+                    </span>
+                  )}
+                  <div className="flex min-w-0 flex-col gap-1">
+                    {completion.vehicle && (
+                      <p className="text-sm font-medium text-foreground">
+                        {completion.vehicle.marke} {completion.vehicle.modell}
+                      </p>
+                    )}
+                    {gewerteteKlasse !== null && <MotorklasseBadge klasse={gewerteteKlasse} />}
+                  </div>
+                </div>
+              )}
+              {gewerteteKlasse !== null &&
+                completion.motorklasse !== null &&
+                gewerteteKlasse !== completion.motorklasse && (
+                  <p className="text-sm leading-relaxed text-muted">
+                    Angegeben war{" "}
+                    <span className="font-medium text-foreground">
+                      {motorklasseLabel(completion.motorklasse)}
+                    </span>
+                    . Diese Fahrt hat mehr Motorleistung verlangt, als diese Klasse hergibt, und
+                    wird deshalb in{" "}
+                    <span className="font-medium text-foreground">
+                      {motorklasseLabel(gewerteteKlasse)}
+                    </span>{" "}
+                    gewertet. Wenn das nicht stimmt, liegt es meist an der Leistungsangabe des
+                    Fahrzeugs — trag das Fahrzeug mit dem richtigen Wert neu ein.
+                  </p>
+                )}
+              {completion.abdeckungProzent !== null && (
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-1.5 text-muted">
+                      <RouteIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                      Streckenabdeckung
+                    </span>
+                    <span className="tabular-nums text-foreground">
+                      {completion.abdeckungProzent}%
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
+                    <div
+                      className="h-full rounded-full bg-accent"
+                      style={{ width: `${Math.min(100, Math.max(0, completion.abdeckungProzent))}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+              {completion.notiz && (
+                <p className="text-sm leading-relaxed text-foreground">{completion.notiz}</p>
+              )}
+            </Card>
+          )}
+
+          <CompletionPhotoGallery
+            photos={completion.photos}
+            canRemove={completion.isOwner}
+            displayName={completion.displayName}
+          />
+
 
           {hoehenprofil && hoehenprofil.length > 1 && <ElevationProfile punkte={hoehenprofil} />}
         </Seitenrahmen>

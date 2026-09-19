@@ -38,9 +38,9 @@ const BASIS = `http://127.0.0.1:${PORT}`;
 const ROUTEN = [
   "/",
   "/feed",
-  "/leaderboards",
-  "/leaderboards?klasse=moto_a1",
-  "/leaderboards?klasse=ungueltig",
+  "/ranglisten",
+  "/ranglisten?klasse=moto_a1",
+  "/ranglisten?klasse=ungueltig",
   "/aktivitaet",
   "/strecken/neu",
   "/fahrten/neu",

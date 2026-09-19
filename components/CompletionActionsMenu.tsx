@@ -247,7 +247,7 @@ export default function CompletionActionsMenu({
             <SectionHeading as="label" groesse="xs" htmlFor="notiz-edit">
               Notiz
             </SectionHeading>
-            <span className="font-mono text-xs tabular-nums text-muted">
+            <span className="text-xs tabular-nums text-muted">
               {notizDraft.length}/{MAX_NOTIZ_LENGTH}
             </span>
           </div>

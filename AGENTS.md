@@ -83,8 +83,48 @@ Facts that are true right now and are expensive to rediscover. Anything
 here is a snapshot — if the code disagrees, the code wins, and this section
 is what should be corrected.
 
-- **Premium is live.** The purchase page, Payment Element, customer portal,
-  the `subscriptions` table and the nightly reconciliation cron all ship.
+- **Premium is live, and a rebuilt offer is on `staging-premium-neu` but not
+  rolled out.** That branch (2026-09-17) adds three Premium features
+  (Wetterfenster, Pass-Sammlung with Saisonrückblick, Wartungsheft), a
+  **Saisonpass** — six months of Premium as a one-time
+  payment that never renews, migration `0110` — a 14-day trial on the yearly
+  plan, and new prices (CHF 6.90/39.00 instead of 4.90/49.00). Read
+  `docs/premium-neu/` before touching anything priced. Four things about it
+  are expensive to rediscover:
+  - **Nothing is live until two dashboard steps happen.** The Stripe prices
+    do not exist yet and the Vercel price-ID variables still point at the old
+    ones, so the app keeps selling CHF 4.90/49.00 and simply omits the
+    Saisonpass (an unset price variable drops that plan from the purchase
+    page). `docs/premium-neu/rollout.md` has the order.
+  - **`profiles.ist_premium` is no longer a projection of `subscriptions`
+    alone.** With `0110` it is "subscription active OR a valid Saisonpass",
+    and three functions write it: `apply_subscription_state`,
+    `premium_abgleich` and the new `apply_saisonpass`. A fourth writer has to
+    know both halves.
+  - **Old price IDs must stay configured.** `STRIPE_PREMIUM_PRICE_IDS_MONAT_BESTAND`
+    / `…_JAHR_BESTAND` exist because `preisHerkunft()` treats an unknown
+    price as somebody else's product: drop the old IDs and every cancellation
+    of a grandfathered subscription stops reaching the database.
+  - **`0110` and `0111` were applied on 2026-09-18** and verified, including a
+    rolled-back functional test of purchase, idempotency, chaining and expiry.
+    `supabase/migrations/README.md` carries what that turned up: the live body
+    of `anonymize_account` was **not** the one `0092` left behind (it already
+    carried `0101` and the Pässe migration), and applying a migration in
+    pieces left two new functions executable by `anon` for a few minutes —
+    Supabase grants that by default, and the `revoke` lines sat in a later
+    piece.
+  - **A fourth feature was built and withdrawn.** Our Pass-Alarm (`0112`)
+    collided with the pass system another branch put live on 2026-09-17
+    (`paesse`, `pass_status`, `pass_ereignisse`, `pass_folgen`,
+    `pass_sperrtage`, `strecken_paesse`, plus extensions to
+    `count_unseen_activity` / `mark_activity_seen` / `anonymize_account`).
+    That system is the richer one and it wins; the owner decided so on
+    2026-09-18. Anything pass-shaped builds on it, not on a second table.
+  The purchase page, Payment Element, customer portal,
+  the `subscriptions` table and the reconciliation cron all ship. The cron
+  runs hourly since 2026-09-18 (it was nightly): an expired Saisonpass is
+  only switched off there, and a day of free Premium plus a purchase page
+  that redirects away was too long a lag.
   Founder seats (Gründerpreis) were sold until 2026-09-07 and are no longer
   offered: the DB functions from `0065`–`0069` remain but are no longer
   called, and `STRIPE_PREMIUM_PRICE_ID_GRUENDER` only names existing
@@ -232,6 +272,39 @@ is what should be corrected.
   `@vercel/analytics`). `script-src` trägt weiterhin `'unsafe-inline'` und
   `'unsafe-eval'`; der Ersatz durch Nonces verlangt die CSP pro Anfrage in
   `proxy.ts` und macht jede Seite dynamisch — offen, bewusst.
+- **Pässe sind seit 2026-09-18 eigene Objekte, und der Passstatus ist frei.**
+  `0104_paesse` und `0105_strecken_verkehr` sind eingespielt (Rollout, Prüfung
+  und Rückweg: `supabase/migrations/README.md`; das Produkt dahinter:
+  `docs/paesse-plan.md`). Vier Dinge, die man vorher wissen muss:
+  - **Ein Pass ist kein Streckenattribut.** `paesse` ist ein Katalog von 34
+    Passhöhen mit Scheitelpunkt; welche Strecke über welchen Pass führt,
+    steht nirgends gepflegt, sondern wird gerechnet (View `strecken_paesse`,
+    `ST_DWithin` 400 m, `security_invoker`). Eine neue Strecke hängt damit
+    ohne Handgriff am richtigen Pass. Die Sammlung (`meine_paesse`) zählt
+    über den **Track** (150 m), nicht über die Streckenliste — eine freie
+    Fahrt über den Klausen zählt.
+  - **Der Status ist nicht Premium und soll es nicht werden.** Wer vor einer
+    gesperrten Strasse steht, hat nichts davon, dass die Information hinter
+    einer Schranke korrekt war. Zwei Quellen, eine Schreibstelle
+    (`pass_status_anwenden`): der ASTRA-Feed (Cron alle fünf Minuten) und die
+    Übersteuerung durch Moderatoren, die für eine Frist gilt und den Feed
+    solange sperrt.
+  - **„Offen" heisst „keine Sperrung gemeldet".** Die Zuordnung läuft über
+    den Meldungstext, weil die TMC-Ortstabelle nicht im offenen Datensatz
+    liegt — sie kann danebenliegen. Im Kernwinter eines saisonalen Passes und
+    bei einem über 30 Minuten stillen Feed sagt die App „kein Stand" statt
+    „offen". Wer diese Regeln lockert, verkauft eine Vermutung als Auskunft.
+  - **Die Kachel „Pässe befahren" im Profil zählt weiterhin Strecken**, nicht
+    Passhöhen, und `lib/achievements.ts` ebenso. Die Sammlung steht als
+    eigene Zeile daneben. Das ist bewusst offen gelassen: die Zusammenführung
+    ist eine Produktentscheidung (und betrifft das Teilen-Bild), kein
+    Aufräumen nebenbei.
+  - **Zwei ältere Zweige bauen dasselbe anders**, beide nicht eingespielt und
+    nicht gemerged: `staging-premium-pass-alarm` (Status je *Strecke*, Alarm
+    hinter Premium, Migration `0112`) und `staging-premium-pass-sammlung`
+    (Sammlung aus Passstrassen-Strecken, Premium). Wer einen davon weiterführt,
+    muss zuerst entscheiden, welche der beiden Welten gilt — nebeneinander
+    ergeben sie zwei Wahrheiten über denselben Pass.
 - **Migrations are applied by hand.** Green CI means nothing about the live
   schema — nothing applies a migration for you. As of 2026-09-14 the repo and
   the production database do match: `0083_feedback` went in on 2026-09-13, and
@@ -378,6 +451,29 @@ is what should be corrected.
     leaderboard of its **3 existing rows on 1 route** — #249's description
     claimed the list was already empty; it was not. The rides themselves are
     untouched and carry `dauer_quelle = 'trail'`.
+  - **`0101_anonymisierung_fahrtstarts` went in on 2026-09-16**, and unlike
+    the set above it went in *behind* its text rather than ahead of its
+    code: it makes a sentence in the privacy policy true that was not
+    (`strado`#255, `stradoinfo`#19, both still open). `anonymize_account`
+    never touched `fahrt_starts` — the table is two days younger than
+    `0092` — so a "deleted" account kept `letzter_puls_punkt`, a GPS
+    position from the same ride whose `route_completions.track` the very
+    same function nulls two statements earlier. **The `on delete cascade`
+    from `0096` is not a substitute and never fires**: `deleteAccount()`
+    does not delete the `auth.users` row, it anonymises the account and
+    invalidates the credentials with `updateUserById()`. `0090` and `0092`
+    both say so in their own headers; `0096` did not read them. Write the
+    delete out, and write **both** columns — a guest records with
+    `user_id` NULL and signs in only at save time, so the person is then
+    in `eingeloest_von` alone. Verified against the catalog (body, grants
+    unchanged at `service_role` only) and by a rolled-back functional test
+    that exercised the real function for both cases; the queries and the
+    way back are in `supabase/migrations/README.md`. **Still open and
+    deliberately so:** guest rows belonging to no account are cleaned up
+    only by the opportunistic `random() < 0.02` sweep inside
+    `fahrt_start_anlegen`, which guarantees no deadline — hence the
+    privacy text's "in der Regel innert 48 Stunden" over the hard 24-hour
+    gate that `fahrt_start_puls` and `fahrt_start_einloesen` both enforce.
   - **There is no separate staging database — confirmed, and staying that
     way.** The linked Supabase account holds exactly one project, and it is
     production; the owner confirmed on 2026-09-14 that `staging` points at
@@ -658,7 +754,8 @@ is what should be corrected.
   `lib/constants.ts`, the home title (`app/page.tsx`), the visible `<h1>` in
   `components/ExploreSidebar.tsx`, the `/feed` and `/leaderboards`
   descriptions, the free-ride placeholder, and `ZURICH_CENTER` →
-  `SCHWEIZ_ZENTRUM` (Älggialp) with `DEFAULT_ZOOM` 10.5 → 6.9. The three
+  `SCHWEIZ_ZENTRUM` (Älggialp) with `DEFAULT_ZOOM` 10.5 → 6.9, corrected to
+5.9 by #268 (Mapbox counts zoom on 512-px tiles). The three
   that stay, each for its own reason:
   - **The legal texts.** AGB Ziff. 1.3 still reads "mit Schwerpunkt Schweiz,
     vorerst Raum Zürich", and the published HTML in
@@ -669,10 +766,21 @@ is what should be corrected.
     wording is in `docs/markt/schweizer-identitaet.md`. The provider address,
     the Gerichtsstand and the impressum name Zürich as the *company's* seat
     and are not affected at all.
-  - **`amtlich` on `TempolimitSegment`.** The official signalised-speed
-    dataset is the canton of Zürich's (GDS 102). Outside it the flag is
-    simply false — that is a fact about coverage, not stale copy, and the
-    comments in `types/database.ts` and `lib/speed.ts` say so on purpose.
+  - **`amtlich` on `TempolimitSegment` — no longer Zürich-only, as of
+    2026-09-17.** There is no national speed-limit dataset; cantons and
+    cities publish their own, and only some do. The register of every one
+    found (13 sources: ZH, Stadt Zürich, Stadt Bern, Biel, UR, SZ, AG, FR,
+    GE, plus Tempo-30 zones for ZH, BS and Stadt St. Gallen) is
+    `scripts/amtliche-tempolimits/quellen.mjs`, with the gaps documented in
+    `docs/amtliche-tempolimits.md`. `0102` stores all of it in
+    `amtliche_tempolimits`, and `proposeRoute()` matches every new route
+    against it (`lib/amtlicheTempolimits.ts` → `lib/tempolimitAbgleich.ts`).
+    The table is filled by `scripts/enrich-amtliche-tempolimits.mjs
+    --hochladen`, not by the migration — an applied `0102` with an empty
+    table silently yields no official values. Where no source covers a road
+    the flag is false: a fact about coverage, not about the road.
+    `parseTempolimits()` strips `amtlich`/`quelle` from client input; only
+    the server may set them.
   - **`docs/marketing/**/daten.mjs`.** Frozen snapshots of the eight routes
     that existed when they were written. They are records of what was
     published, not live copy.
@@ -851,6 +959,7 @@ area**; each is a few hundred lines at most.
 | `.agents/security.md` | Any Protected Area; use as a pre-merge checklist |
 | `.agents/deployment.md` | Applying migrations, shipping to Vercel/Stripe |
 | `docs/audit/README.md` | Completions, leaderboards, RLS views, auth — check the remediation table before reporting a "new" finding |
+| `docs/premium-neu/` | Anything priced: the 2026-09-17 offer (prices, the four new features, the copy, the rollout order). Where it disagrees with `docs/premium-plan.md` on price, this one wins |
 | `docs/premium-plan.md` | Anything premium, Stripe, or entitlement-shaped |
 | `docs/design-vereinfachung.md` | Visual/structural UI work. **Read its "Umsetzungsstand" section first** — most of it shipped, four items are deliberately open and two of those need a product decision, not a design one. The section says which |
 | `docs/markt/schweizer-identitaet.md` | First-run copy, the info page, share/OG images, anything a non-user sees first |

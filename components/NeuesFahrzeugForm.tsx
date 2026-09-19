@@ -1,12 +1,15 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
+import { useEntwurfSchutz } from "@/components/useEntwurfSchutz";
+import useEingabenBewahren from "@/components/useEingabenBewahren";
 import { addVehicle, type VehicleFormState } from "@/lib/actions/vehicles";
 import { Input, fieldClassName } from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import MotorklasseBadge from "@/components/MotorklasseBadge";
 import { fahrzeugtypdefinition, motorklasseFor, psInKw } from "@/lib/motorklassen";
 import type { FahrzeugTyp } from "@/types/database";
+import Select from "@/components/ui/Select";
 
 const initialState: VehicleFormState = { error: null };
 
@@ -23,9 +26,29 @@ function zahl(wert: string): number | null {
 
 export default function NeuesFahrzeugForm({ nextHref }: { nextHref?: string } = {}) {
   const [state, formAction, pending] = useActionState(addVehicle, initialState);
+  // addVehicle hat unter anderem einen Cooldown von zwei Sekunden: ein
+  // Doppeltipp leerte damit Marke, Modell, Baujahr und Getriebe.
+  // Siehe components/useEingabenBewahren.ts.
+  const formRef = useRef<HTMLFormElement>(null);
+  useEingabenBewahren(formRef);
   const [typ, setTyp] = useState<FahrzeugTyp>("auto");
   const [hubraum, setHubraum] = useState("");
   const [leistung, setLeistung] = useState("");
+  // Irgendeine Eingabe macht das Formular zum Entwurf — die meisten Felder
+  // sind unkontrolliert, deshalb über onInput am Formular statt über ihren
+  // State. Siehe components/useEntwurfSchutz.ts.
+  const [beruehrt, setBeruehrt] = useState(false);
+  // Fehler direkt am Feld statt der Blase des Browsers. Die native Meldung
+  // ("Füllen Sie dieses Feld aus.") erschien je nach Browser in einer
+  // anderen Sprache und verschwand nach zwei Sekunden; wer vom Feld
+  // wegschaute, sah danach nur noch, dass nichts gespeichert war.
+  const [feldfehler, setFeldfehler] = useState<Record<string, string>>({});
+  const MELDUNGEN: Record<string, string> = {
+    marke: "Bitte die Marke angeben, z. B. Porsche.",
+    modell: "Bitte das Modell angeben, z. B. 911.",
+    baujahr: "Das Baujahr liegt zwischen 1900 und 2100.",
+  };
+  useEntwurfSchutz("neues-fahrzeug", beruehrt && !pending);
 
   // Beim Auto wird in PS eingegeben, beim Motorrad in kW — Begründung in
   // lib/motorklassen.ts, Abschnitt EINHEITEN. Gespeichert wird beides als
@@ -51,11 +74,34 @@ export default function NeuesFahrzeugForm({ nextHref }: { nextHref?: string } = 
   return (
     <>
       <h1 className="text-display font-semibold">Fahrzeug hinzufügen</h1>
-      <form action={formAction} className="flex flex-col gap-4">
+      <form
+        ref={formRef}
+        action={formAction}
+        onInput={(event) => {
+          setBeruehrt(true);
+          const name = (event.target as HTMLInputElement).name;
+          if (feldfehler[name]) {
+            setFeldfehler((bisher) => {
+              const rest = { ...bisher };
+              delete rest[name];
+              return rest;
+            });
+          }
+        }}
+        onInvalidCapture={(event) => {
+          event.preventDefault();
+          const feld = event.target as HTMLInputElement;
+          setFeldfehler((bisher) => ({
+            ...bisher,
+            [feld.name]: MELDUNGEN[feld.name] ?? "Bitte dieses Feld prüfen.",
+          }));
+        }}
+        className="flex flex-col gap-4"
+      >
         {nextHref && <input type="hidden" name="next" value={nextHref} />}
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           Typ
-          <select
+          <Select
             name="typ"
             required
             value={typ}
@@ -71,26 +117,63 @@ export default function NeuesFahrzeugForm({ nextHref }: { nextHref?: string } = 
           >
             <option value="auto">Auto</option>
             <option value="motorrad">Motorrad</option>
-          </select>
+          </Select>
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           Marke
-          <Input type="text" name="marke" required />
+          <Input
+            type="text"
+            name="marke"
+            required
+            invalid={!!feldfehler.marke}
+            aria-describedby={feldfehler.marke ? "fehler-marke" : undefined}
+          />
+          {feldfehler.marke && (
+            <span id="fehler-marke" role="alert" className="text-xs font-normal text-danger">
+              {feldfehler.marke}
+            </span>
+          )}
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           Modell
-          <Input type="text" name="modell" required />
+          <Input
+            type="text"
+            name="modell"
+            required
+            invalid={!!feldfehler.modell}
+            aria-describedby={feldfehler.modell ? "fehler-modell" : undefined}
+          />
+          {feldfehler.modell && (
+            <span id="fehler-modell" role="alert" className="text-xs font-normal text-danger">
+              {feldfehler.modell}
+            </span>
+          )}
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           Getriebe
-          <select name="getriebe" required defaultValue="manuell" className={fieldClassName()}>
+          <Select name="getriebe" required defaultValue="manuell">
             <option value="manuell">Manuell</option>
             <option value="automatik">Automatik</option>
-          </select>
+          </Select>
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           Baujahr (optional)
-          <Input type="number" name="baujahr" min={1900} max={2100} className="font-mono" />
+          {/* Ohne Zahlen-Pfeile: ein Baujahr tippt man, man klickt es nicht
+              von 1900 hoch. */}
+          <Input
+            type="number"
+            name="baujahr"
+            min={1900}
+            max={2100}
+            inputMode="numeric"
+            invalid={!!feldfehler.baujahr}
+            className="[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          />
+          {feldfehler.baujahr && (
+            <span role="alert" className="text-xs font-normal text-danger">
+              {feldfehler.baujahr}
+            </span>
+          )}
         </label>
 
         {/* Hubraum nur beim Motorrad: er trennt dort A1 von A 35 kW. Für ein
@@ -106,7 +189,6 @@ export default function NeuesFahrzeugForm({ nextHref }: { nextHref?: string } = 
               inputMode="numeric"
               value={hubraum}
               onChange={(e) => setHubraum(e.target.value)}
-              className="font-mono"
             />
           </label>
         )}
@@ -122,7 +204,6 @@ export default function NeuesFahrzeugForm({ nextHref }: { nextHref?: string } = 
             inputMode="decimal"
             value={leistung}
             onChange={(e) => setLeistung(e.target.value)}
-            className="font-mono"
           />
           <span className="text-xs font-normal text-muted">
             {einheit === "PS"

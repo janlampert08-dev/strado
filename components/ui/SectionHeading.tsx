@@ -54,7 +54,16 @@ interface SectionHeadingProps extends HTMLAttributes<HTMLElement> {
   children?: ReactNode;
 }
 
-// Die Abschnittsmarke: klein, gesperrt, versal, in der gedämpften Farbe.
+// Die Abschnittsmarke: klein, halbfett, in der gedämpften Farbe — und seit
+// dem Ruhe-Durchgang in Satzschreibung statt versal und gesperrt.
+//
+// Versal gesperrt ist die Marke einer Kategorie ("KENNZAHLEN") und stand
+// auf derselben Seite neben aufklappbaren Abschnitten in Satzschreibung
+// ("Auszeichnungen"): zwei Stimmen für dieselbe Rolle. Satzschreibung ist
+// die ruhigere der beiden und die, die sich neben Fliesstext nicht vordrängt;
+// die Hierarchie trägt jetzt Gewicht und Farbe allein, und das reicht.
+//
+// Vorher: klein, gesperrt, versal, in der gedämpften Farbe.
 // Stand bisher als lokale Klassenkonstante nur in PremiumPurchaseView.tsx,
 // während die Zahlungsseite ihre Abschnitte gar nicht beschriftet hat —
 // beide Seiten gehören zum selben Kauf und müssen beim Überfliegen dieselben
@@ -71,7 +80,7 @@ export default function SectionHeading({
   return (
     <Component
       className={cn(
-        "font-semibold tracking-wide text-muted uppercase",
+        "font-semibold text-muted",
         groesse === "xs" ? "text-xs" : "text-sm",
         // Nur wenn ein Icon da ist: sonst bekämen die Marken ohne eines
         // ein flex und damit eine andere Zeilenhöhe als vorher.

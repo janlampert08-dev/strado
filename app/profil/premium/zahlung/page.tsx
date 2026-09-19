@@ -11,7 +11,8 @@ import { getPremiumAngebot } from "@/lib/actions/billing";
 import { getPremiumStatus } from "@/lib/premium";
 import { LEGAL_URLS } from "@/lib/constants";
 import { betragText, planTitel, planZeitraum } from "@/lib/premiumAngebot";
-import type { AboPlan } from "@/lib/premiumLimits";
+import { datumCH } from "@/lib/format";
+import { SAISONPASS_MONATE, TESTPHASE_TAGE, type AboPlan } from "@/lib/premiumLimits";
 
 // Wie die Kaufseite: der Preis kommt bei jedem Aufruf frisch aus Stripe.
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Zahlung – Strado" };
 
 function istAboPlan(wert: string | undefined): wert is AboPlan {
-  return wert === "monat" || wert === "jahr";
+  return wert === "monat" || wert === "jahr" || wert === "saisonpass";
 }
 
 // Eigene Seite fürs Bezahlformular, erreichbar nur über die Kaufseite
@@ -52,8 +53,10 @@ export default async function PremiumZahlungPage({
   if (!user) redirect("/anmelden");
 
   // Wer schon Premium hat, hat hier nichts zu suchen — siehe
-  // app/profil/premium/page.tsx.
-  if (status.aktiv) redirect("/profil");
+  // app/profil/premium/page.tsx. Eine Ausnahme seit 0110: mit einem
+  // laufenden Saisonpass darf ein Abo abgeschlossen werden, das erst mit
+  // dem Passende zu zahlen beginnt (und ein neuer Pass kurz vor Ablauf).
+  if (status.aktiv && status.quelle !== "saisonpass") redirect("/profil");
 
   if (!istAboPlan(plan)) redirect("/profil/premium");
 
@@ -73,6 +76,14 @@ export default async function PremiumZahlungPage({
     Number.isFinite(beworbenerPreisRappen) && beworbenerPreisRappen > 0
       ? beworbenerPreisRappen
       : gewaehlt.betragRappen;
+
+  // Beides kommt aus getPremiumAngebot() und damit vom Server: ob diesem
+  // Konto die Testphase zusteht und ob ein Saisonpass läuft, an den ein Abo
+  // anschliesst. Die endgültige Entscheidung fällt beim Anlegen der Session
+  // (lib/actions/billing.ts) — hier steuert es nur, welche Pflichtangaben
+  // dastehen.
+  const testphase = gewaehlt.plan === "jahr" && angebot.testphaseMoeglich;
+  const passBis = angebot.saisonpassBis ? new Date(angebot.saisonpassBis) : null;
 
   return (
     // Diese Seite scrollt als Dokument statt in einem eigenen
@@ -128,16 +139,51 @@ export default async function PremiumZahlungPage({
             Verlängerung, Kündigungsweg, Widerrufslage. Sie stehen hier im
             Text und nicht nur im verlinkten Dokument, weil ein Link auf 16
             Ziffern AGB niemand vor dem Bezahlen liest — und unmittelbar über
-            dem Formular, das die Zahlungspflicht auslöst. */}
+            dem Formular, das die Zahlungspflicht auslöst.
+
+            Drei Pläne, drei verschiedene Pflichtangaben, und der Unterschied
+            ist nicht Kosmetik: beim Saisonpass gibt es keine Verlängerung
+            und damit auch keine Kündigung, bei der Testphase entscheidet
+            das Datum darüber, ob überhaupt etwas abgebucht wird. Ein Text,
+            der für alles zugleich gälte, wäre für jeden Fall ein bisschen
+            falsch. */}
         <section className="flex flex-col gap-3">
           <SectionHeading icon={Scale}>Bevor du bestätigst</SectionHeading>
           <Card surface className="flex flex-col gap-2 px-4 py-3 text-sm text-muted">
-            <p>
-              Das Abo verlängert sich automatisch um{" "}
-              {gewaehlt.plan === "monat" ? "einen Monat" : "zwölf Monate"}, bis du kündigst.
-              Kündigen kannst du jederzeit ohne Frist in deinem Profil. Premium läuft danach bis
-              zum Ende der bezahlten Periode weiter.
-            </p>
+            {gewaehlt.plan === "saisonpass" ? (
+              <p>
+                Einmalige Zahlung für {SAISONPASS_MONATE} Monate Premium ab heute. Der Saisonpass
+                verlängert sich nicht und muss nicht gekündigt werden — nach {SAISONPASS_MONATE}{" "}
+                Monaten läuft er einfach aus.
+                {passBis && (
+                  <>
+                    {" "}
+                    Dein laufender Pass gilt bis {datumCH(passBis)}; der neue schliesst daran an.
+                  </>
+                )}
+              </p>
+            ) : (
+              <>
+                {testphase && (
+                  <p>
+                    Die ersten {TESTPHASE_TAGE} Tage sind gratis. Kündigst du innerhalb dieser Zeit,
+                    wird nichts abgebucht.
+                  </p>
+                )}
+                {passBis && (
+                  <p>
+                    Die erste Zahlung wird am {datumCH(passBis)} fällig — dann endet dein
+                    Saisonpass. Bis dahin läuft Premium über den Pass weiter.
+                  </p>
+                )}
+                <p>
+                  Das Abo verlängert sich {testphase || passBis ? "danach " : ""}automatisch um{" "}
+                  {gewaehlt.plan === "monat" ? "einen Monat" : "zwölf Monate"}, bis du kündigst.
+                  Kündigen kannst du jederzeit ohne Frist in deinem Profil. Premium läuft danach bis
+                  zum Ende der bezahlten Periode weiter.
+                </p>
+              </>
+            )}
             <p>
               Es gelten die{" "}
               <a

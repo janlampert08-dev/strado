@@ -55,7 +55,11 @@ export default function AnmeldenForm({ nextHref }: { nextHref?: string } = {}) {
         Noch kein Konto?{" "}
         <Link
           href={nextHref ? `/registrieren?next=${encodeURIComponent(nextHref)}` : "/registrieren"}
-          className="font-medium text-accent hover:underline"
+          // after: macht aus der 17 px hohen Textzeile eine 44 px hohe
+          // Tippfläche, ohne den Satz auseinanderzuziehen — derselbe Griff
+          // wie beim Fahrernamen im Feed. Registrieren ist der Weg für jeden,
+          // der hier zum ersten Mal steht.
+          className="relative font-medium text-accent hover:underline after:absolute after:-inset-x-2 after:-inset-y-3.5 after:content-['']"
         >
           Registrieren
         </Link>

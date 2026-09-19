@@ -20,6 +20,7 @@ import { chipClassName } from "@/components/motorklassenChipStil";
 import {
   FAHRZEUGTYPEN,
   MOTORKLASSEN,
+  filterImSatz,
   filterLabel,
   istKlassenfilter,
   motorklasseFor,
@@ -28,11 +29,32 @@ import type { Klassenfilter } from "@/lib/motorklassen";
 import type { Motorklasse, Vehicle } from "@/types/database";
 import { MEDAL_COLORS } from "@/lib/constants";
 import Card from "@/components/ui/Card";
+import EmptyState from "@/components/ui/EmptyState";
+import { buttonVariants } from "@/components/ui/Button";
 import LeaderboardListsSkeleton from "@/components/LeaderboardListsSkeleton";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
-export const metadata: Metadata = {
+// generateMetadata statt einer festen Konstante, allein wegen des Titels:
+// /ranglisten und /ranglisten?klasse=motorrad zeigten dieselbe Zeile im Tab
+// und im Verlauf, obwohl die zweite Adresse nur eine von fünf Listen führt.
+// Wer zwei Filter nebeneinander offen hat, konnte die Reiter nicht
+// auseinanderhalten.
+//
+// Alles Übrige — Beschreibung und vor allem das Canonical — bleibt
+// unverändert: der Filter darf im Titel stehen und trotzdem keine eigene
+// Seite für Suchmaschinen sein.
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ klasse?: string }>;
+}): Promise<Metadata> {
+  const { klasse } = await searchParams;
+  const zusatz = istKlassenfilter(klasse) ? ` – ${filterLabel(klasse)}` : "";
+  return { ...basisMetadaten, title: `Ranglisten${zusatz} – Strado` };
+}
+
+const basisMetadaten: Metadata = {
   title: "Ranglisten – Strado",
   description:
     "Die schnellsten Zeiten je Strecke und Fahrzeugklasse — und die Fahrerinnen und Fahrer mit den meisten Kilometern in der Schweiz.",
@@ -51,7 +73,7 @@ export const metadata: Metadata = {
   // Hier besonders wichtig: die Seite nimmt ?typ= und ?klasse= entgegen. Ohne
   // Canonical wäre jede Kombination eine eigene Adresse mit weitgehend
   // demselben Inhalt.
-  alternates: { canonical: "/leaderboards" },
+  alternates: { canonical: "/ranglisten" },
 };
 
 function LeaderboardSection({
@@ -61,8 +83,11 @@ function LeaderboardSection({
   unit,
   format = (v) => v.toLocaleString("de-CH"),
   currentUserId,
+  beschreibung,
 }: {
   title: string;
+  /** Ein Satz, was gezählt wird — nur wo der Titel es nicht selbst sagt. */
+  beschreibung?: string;
   /** Jede Abschnittsmarke trägt eines — siehe components/ui/SectionHeading.tsx. */
   icon: ComponentType<{ className?: string }>;
   entries: LeaderboardEntry[];
@@ -74,14 +99,28 @@ function LeaderboardSection({
   format?: (value: number) => string;
   currentUserId: string | null;
 }) {
+  // Einträge mit dem Wert 0 sind keine Platzierung. "Entdecker · Platz 1 ·
+  // Jan · 0 Strecken" las sich wie eine kaputte Liste: Platz 1 für nichts.
+  // Wer noch nichts hat, steht nicht auf dem Podest, sondern fehlt — und
+  // bleiben nur solche übrig, greift der ehrliche Leerzustand darunter.
+  const platzierte = entries.filter((entry) => entry.value > 0);
   return (
     <section className="flex flex-col gap-3">
-      <SectionHeading icon={icon}>{title}</SectionHeading>
-      {entries.length === 0 ? (
-        <p className="text-sm text-muted">Noch keine Einträge.</p>
+      {/* min-h an der Beschreibung: die vier Spalten stehen ab sm
+          nebeneinander, und eine zweizeilige Beschreibung schob ihre Liste
+          eine Zeile tiefer als die Nachbarn — vier Siegerzeilen auf drei
+          Grundlinien. */}
+      <div className="flex flex-col gap-0.5">
+        <SectionHeading icon={icon}>{title}</SectionHeading>
+        {beschreibung && <p className="text-xs text-muted sm:min-h-8">{beschreibung}</p>}
+      </div>
+      {platzierte.length === 0 ? (
+        // Dieselbe Fläche wie eine gefüllte Liste: eine nackte Textzeile
+        // neben drei gerahmten Karten las sich wie ein Darstellungsfehler.
+        <Card className="px-4 py-3 text-sm text-muted">Noch keine Einträge.</Card>
       ) : (
         <Card as="ol" className="divide-y divide-border">
-          {entries.map((entry, i) => {
+          {platzierte.map((entry, i) => {
             const isOwn = entry.userId === currentUserId;
             return (
               <li
@@ -96,19 +135,21 @@ function LeaderboardSection({
                     <span className="sr-only">Platz {i + 1}</span>
                   </span>
                 ) : (
-                  <span className="w-4 shrink-0 text-center font-mono text-xs text-muted">{i + 1}.</span>
+                  <span className="w-4 shrink-0 text-center text-xs text-muted">{i + 1}.</span>
                 )}
                 <Avatar url={entry.avatarUrl} name={entry.name} size={24} />
                 <Link
                   href={`/fahrer/${entry.userId}`}
-                  className={`flex min-w-0 flex-1 items-center transition-colors duration-fast hover:text-accent ${
+                  // after: dehnt die Tippfläche über die ganze Zeilenhöhe
+                  // (py-3 der Zeile), die Schrift allein war 20 px hoch.
+                  className={`relative flex min-w-0 flex-1 items-center transition-colors duration-fast hover:text-accent after:absolute after:-inset-y-3 after:inset-x-0 after:content-[''] ${
                     isOwn ? "font-medium text-accent" : ""
                   }`}
                 >
                   <span className="truncate">{entry.name}</span>
                 </Link>
                 <span
-                  className={`shrink-0 font-mono tabular-nums ${isOwn ? "text-accent" : "text-muted"}`}
+                  className={`shrink-0 tabular-nums ${isOwn ? "text-accent" : "text-muted"}`}
                 >
                   {format(entry.value)} {typeof unit === "function" ? unit(entry.value) : unit}
                 </span>
@@ -130,7 +171,7 @@ const ALLE_KLASSEN: Motorklasse[] = MOTORKLASSEN.map((k) => k.id);
 const ALLE_FILTER: Klassenfilter[] = [...FAHRZEUGTYPEN.map((t) => t.id), ...ALLE_KLASSEN];
 
 function klassenHref(filter: Klassenfilter | null): string {
-  return filter ? `/leaderboards?klasse=${filter}` : "/leaderboards";
+  return filter ? `/ranglisten?klasse=${filter}` : "/ranglisten";
 }
 
 // Die Ziele aller Chips einmal vorberechnen. MotorklassenChips ist
@@ -152,7 +193,7 @@ const KLASSEN_HREFS: Partial<Record<Klassenfilter, string>> = Object.fromEntries
 // ist die Bedienung, nicht die Ordnung: Solange die Seite selbst auf
 // Sitzung, Fahrzeuge, Ranglisten und Streckenliste wartete, konnte sie erst
 // rendern, wenn alle vier da waren — und bei jedem Klick auf einen
-// Klassen-Chip ersetzte app/leaderboards/loading.tsx die *ganze* Seite
+// Klassen-Chip ersetzte app/ranglisten/loading.tsx die *ganze* Seite
 // samt Chip-Leiste durch ein Skelett. Ein Filterklick fühlte sich damit an
 // wie ein Seitenneuaufbau.
 //
@@ -200,12 +241,42 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
     await Promise.all([getGlobalLeaderboards(klasse), getCurrentUser()]);
 
   const currentUserId = user?.id ?? null;
-  const klassenZusatz = klasse ? ` · ${filterLabel(klasse)}` : "";
+  // Kein Klassen-Zusatz mehr in jedem Titel: die gewählte Klasse steht im
+  // aktiven Chip direkt darüber, und "· Motorräder" viermal wiederholt liess
+  // zwei der vier Titel auf dem Telefon umbrechen.
+  const klassenZusatz = "";
+
+  // Sind alle vier Listen leer, stand hier viermal "Noch keine Einträge."
+  // unter vier Überschriften: ein Raster aus Absagen. Eine einzige Stelle
+  // sagt dasselbe einmal und dazu, was es braucht, um draufzukommen.
+  // Gezählt wird nur, wer einen Wert über null hat — ein Eintrag mit 0
+  // ist keine Platzierung.
+  const allesLeer = [meisteFahrten, meisteHoehenmeter, meisteKm, meisteStrecken].every(
+    (liste) => !liste.some((eintrag) => eintrag.value > 0),
+  );
+  if (allesLeer) {
+    return (
+      <EmptyState
+        icon={RankingIcon}
+        title={klasse ? `Noch keine geteilte Fahrt ${filterImSatz(klasse)}.` : "Die Ranglisten sind noch leer."}
+        // "geteilte": leaderboard_completions (0080) zählt nur Fahrten mit
+        // ist_oeffentlich. Ohne das Wort versprach der Satz einer privaten
+        // Fahrt einen Platz, den sie nie bekommt.
+        description="Fahrten, Kilometer, Höhenmeter und Strecken zählen ab der ersten geteilten Fahrt. Schon eine kann für Platz 1 reichen."
+        action={
+          <Link href="/" className={buttonVariants({ variant: "secondary", size: "md" })}>
+            Strecken entdecken
+          </Link>
+        }
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col gap-8 sm:grid sm:grid-cols-2 sm:items-start sm:gap-6 xl:grid-cols-4">
       <LeaderboardSection
         title={`Meiste Fahrten${klassenZusatz}`}
+        beschreibung="Geteilte Fahrten, freie und auf Strecken."
         icon={Route}
         entries={meisteFahrten}
         unit={(n) => nomen(n, "Fahrt", "Fahrten")}
@@ -213,6 +284,7 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
       />
       <LeaderboardSection
         title={`Meiste Höhenmeter${klassenZusatz}`}
+        beschreibung="Summe des Aufstiegs aller geteilten Fahrten."
         icon={TrendingUp}
         entries={meisteHoehenmeter}
         unit="m"
@@ -221,6 +293,7 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
       />
       <LeaderboardSection
         title={`Meiste km gefahren${klassenZusatz}`}
+        beschreibung="GPS-gemessene Kilometer aller geteilten Fahrten."
         icon={Ruler}
         entries={meisteKm}
         unit="km"
@@ -229,6 +302,8 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
       />
       <LeaderboardSection
         title={`Entdecker${klassenZusatz}`}
+        // "Entdecker" allein erklärte nicht, was gezählt wird.
+        beschreibung="Unterschiedliche kuratierte Strecken — freie Fahrten zählen hier nicht."
         icon={Compass}
         entries={meisteStrecken}
         unit={(n) => nomen(n, "Strecke", "Strecken")}

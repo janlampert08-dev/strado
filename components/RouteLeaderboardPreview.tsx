@@ -9,7 +9,7 @@ import Avatar from "@/components/Avatar";
 import { RankingIcon } from "@/components/NavIcons";
 import Card from "@/components/ui/Card";
 import MotorklassenChips from "@/components/MotorklassenChips";
-import { filterLabel, istFahrzeugTyp, motorklassendefinition } from "@/lib/motorklassen";
+import { filterImSatz, istFahrzeugTyp, motorklassendefinition } from "@/lib/motorklassen";
 import type { Klassenfilter } from "@/lib/motorklassen";
 import type { Motorklasse } from "@/types/database";
 import { cn } from "@/lib/utils/cn";
@@ -23,12 +23,12 @@ const SICHTBAR = 5;
 // Der ungefilterte Stand kommt weiterhin serverseitig herein: Die erste
 // Ansicht ist damit sofort vollständig, ohne Ladezustand. Erst ein Klick auf
 // einen Klassen-Chip holt nach — über denselben öffentlichen Endpunkt, den
-// der Chooser auf /leaderboards schon benutzt.
+// der Chooser auf /ranglisten schon benutzt.
 //
 // Bewusst über Client-State statt über ?klasse= in der URL: Die Streckenseite
 // lädt Karte, Fotos, Bewertungen und Wetter mit, und die alle bei jedem
 // Chip-Tipp neu zu berechnen wäre teuer für einen Filter, der nur eine
-// Kartenliste betrifft. Auf /leaderboards, wo die globalen Listen die Seite
+// Kartenliste betrifft. Auf /ranglisten, wo die globalen Listen die Seite
 // ausmachen, gilt das umgekehrt.
 export default function RouteLeaderboardPreview({
   routeId,
@@ -86,8 +86,14 @@ export default function RouteLeaderboardPreview({
       {sichtbar.length === 0 ? (
         <p className={cn("text-sm text-muted transition-opacity", laedt && "opacity-40")}>
           {klasse === null
-            ? "Noch keine geteilten Bestzeiten für diese Strecke."
-            : `Noch keine Zeit in ${filterLabel(klasse)} auf dieser Strecke — du kannst die erste sein.`}
+            ? "Noch keine Bestzeit auf dieser Strecke. Zeichne sie auf und teil die Fahrt, dann kannst du der Erste sein."
+            : `Noch keine Zeit ${filterImSatz(klasse)} auf dieser Strecke. Du kannst der Erste sein.`}{" "}
+          {/* Der Startknopf steht weiter oben auf derselben Seite (#fahren in
+              app/strecken/[id]/page.tsx); auf dem Telefon ist er bis hierher
+              meist aus dem Bild gescrollt. */}
+          <a href="#fahren" className="text-accent underline-offset-4 hover:underline">
+            Zum Start
+          </a>
         </p>
       ) : (
         <Card
@@ -102,12 +108,12 @@ export default function RouteLeaderboardPreview({
                   <span className="sr-only">Platz {i + 1}</span>
                 </span>
               ) : (
-                <span className="w-4 shrink-0 text-center font-mono text-xs text-muted">{i + 1}.</span>
+                <span className="w-4 shrink-0 text-center text-xs text-muted">{i + 1}.</span>
               )}
               <Avatar url={entry.avatarUrl} name={entry.name} size={24} />
               <Link
                 href={`/fahrer/${entry.userId}`}
-                className="flex min-w-0 flex-1 items-center transition-colors duration-fast hover:text-accent"
+                className="relative flex min-w-0 flex-1 items-center transition-colors duration-fast hover:text-accent after:absolute after:-inset-y-3 after:inset-x-0 after:content-['']"
               >
                 <span className="truncate">{entry.name}</span>
               </Link>
@@ -117,11 +123,11 @@ export default function RouteLeaderboardPreview({
                   welches eine Zeit gefahren hat, ist dort die Auskunft, auf
                   die es ankommt. */}
               {(klasse === null || istFahrzeugTyp(klasse)) && entry.klasse && (
-                <span className="shrink-0 font-mono text-xs text-muted">
+                <span className="shrink-0 text-xs text-muted">
                   {motorklassendefinition(entry.klasse).label}
                 </span>
               )}
-              <span className="shrink-0 font-mono tabular-nums text-muted">
+              <span className="shrink-0 tabular-nums text-muted">
                 {formatDuration(entry.dauerSekunden)}
               </span>
             </li>

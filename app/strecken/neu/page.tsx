@@ -10,14 +10,16 @@ import { NICHT_INDEXIEREN } from "@/lib/seo";
 // auf /anmelden um, ein Crawler sähe also ohnehin keinen Inhalt, aber das
 // hängt am Redirect und nicht an einer Aussage.
 export const metadata: Metadata = {
-  title: "Strecke vorschlagen – Strado",
+  title: "Strecke erstellen – Strado",
   robots: NICHT_INDEXIEREN,
 };
 
 export default async function NeueStreckePage() {
   const user = await getCurrentUser();
 
-  if (!user) redirect("/anmelden");
+  // next: wer über "Strecke vorschlagen" abgemeldet hier landet, soll nach
+  // der Anmeldung im Formular ankommen und nicht auf der Startseite.
+  if (!user) redirect("/anmelden?next=/strecken/neu");
 
   // Bis 0086 stand hier eine Premium-Weiche: wer kein Abo hatte, sah statt
   // des Formulars eine Werbekarte (components/PremiumGate.tsx, mit dieser

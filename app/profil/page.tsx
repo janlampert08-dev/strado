@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { ComponentType } from "react";
@@ -20,24 +21,30 @@ import VehicleGrid from "@/components/VehicleGrid";
 import AvatarUpload from "@/components/AvatarUpload";
 import RideVisibilityToggle from "@/components/RideVisibilityToggle";
 import AchievementBadges from "@/components/AchievementBadges";
+import { getSammlungsStand } from "@/lib/paesse";
 import ActivityHeatmap from "@/components/ActivityHeatmap";
 import CountUp from "@/components/CountUp";
 import FollowCounts from "@/components/FollowCounts";
 import PremiumCard from "@/components/PremiumCard";
 import FahrtStatistik from "@/components/FahrtStatistik";
-import { ChartIcon, ShieldIcon } from "@/components/NavIcons";
+import { WetterfensterFavoriten, WetterfensterFavoritenPlatzhalter } from "@/components/Wetterfenster";
+import PassSammlung, { PassSammlungHinweis } from "@/components/PassSammlung";
+import { ChartIcon, PassIcon, RecordIcon, ShieldIcon } from "@/components/NavIcons";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
+import { getPassSammlungsDaten } from "@/lib/passSammlungDaten";
+import { getWartungsHinweise } from "@/lib/wartungsdaten";
 import { isModerator } from "@/lib/moderation";
 import { istCreator } from "@/lib/creatorKennzahlen";
 import { getRollenItems } from "@/lib/nav";
 import { getUnseenKudosCount } from "@/lib/kudos";
 import { markKudosSeen } from "@/lib/actions/kudos";
 import { getFollowCounts, getFollowerProfiles, getFollowingProfiles } from "@/lib/follows";
-import { formatDuration, formatKm } from "@/lib/format";
+import { formatDuration, formatKm, datumCH } from "@/lib/format";
 import { freieFahrtTitel } from "@/lib/completions";
 import { publicationBlockReason } from "@/lib/track";
 import { summiereHoehenmeter } from "@/lib/hoehenmeter";
+import { wetterMassstab } from "@/lib/wetterfenster";
 import type { FahrtArt, Vehicle } from "@/types/database";
 import Card from "@/components/ui/Card";
 import Kennzahl, { Kennzahlen } from "@/components/ui/Kennzahl";
@@ -46,6 +53,10 @@ import EmptyState from "@/components/ui/EmptyState";
 import { buttonVariants, textAktionClassName } from "@/components/ui/Button";
 import { iconButtonVariants } from "@/components/ui/IconButton";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
+
+// Ohne eigenen Titel hiess der Tab auf dieser Seite nur "Strado" — neben
+// anderen offenen Tabs derselben App nicht zu unterscheiden.
+export const metadata = { title: "Profil – Strado" };
 
 // Gemeinsamer Stil für die aufklappbaren Unterabschnitte innerhalb einer
 // Gruppen-Card (siehe AdvancedFiltersPanel.tsx für dasselbe native
@@ -106,6 +117,7 @@ export default async function ProfilPage() {
     unseenKudos,
     istMod,
     istCreatorKonto,
+    sammlung,
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -131,21 +143,73 @@ export default async function ProfilPage() {
     // lib/hoehenmeter.ts.
     supabase
       .from("route_completions")
-      .select("route_id")
+      // datum nur für die Pass-Sammlung (erste Fahrt je Pass) — eine Spalte
+      // mehr in dieser Abfrage statt einer zweiten Runde zur Datenbank.
+      .select("route_id, datum")
       .eq("user_id", user.id)
       .eq("art", "strecke")
-      .returns<{ route_id: string }[]>(),
+      .returns<{ route_id: string; datum: string }[]>(),
     // Beide Fahrtarten: freie Fahrten stehen in derselben Liste wie
     // Streckenfahrten und zählen in "Km gefahren"/"Anzahl Fahrten" mit —
     // anders als in den globalen Bestenlisten, die streckenbasiert bleiben
     // (siehe 0044_freie_fahrten.sql).
+    //
+    // .is("parent_completion_id", null) ist der Unterschied zwischen "eine
+    // Fahrt" und "eine Fahrt plus ihre Abschnitte". Erkennt lapDetection in
+    // einer freien Fahrt drei bekannte Strecken, legt
+    // save_free_ride_with_segments (0050/0081) neben der Elternfahrt DREI
+    // weitere route_completions-Zeilen an, jede mit eigener distanz_km.
+    // Ohne diesen Filter trägt eine einzige physische Ausfahrt ihre
+    // Kilometer viermal bei — einmal als Ganzes und dreimal in
+    // Ausschnitten — und zählt als vier Fahrten.
+    //
+    // NICHT betroffen waren die Höhenmeter: der Segment-INSERT in 0081
+    // zählt seine Spalten einzeln auf und hoehenmeter_aufstieg ist nicht
+    // darunter (auch DetectedSegmentPayload führt es nicht). Abschnitte
+    // tragen dort null, und summiereHoehenmeter überspringt null. Der
+    // Filter gilt trotzdem für alle drei Grössen — er soll auch dann noch
+    // stimmen, wenn ein Abschnitt eines Tages einen Anstieg bekommt.
+    //
+    // Betroffen war damit alles, was Kilometer oder Fahrten aus dieser
+    // Abfrage zieht: die Kacheln "Km gefahren" und "Fahrten", der
+    // Aktivitätskalender, die Fahrten-Auszeichnungen und die
+    // Premium-Auswertung.
+    //
+    // Der Pässe-Zähler oben bleibt bewusst OHNE diesen Filter: dass eine
+    // unterwegs mitgenommene Strecke als befahren zählt, ist genau der Sinn
+    // der Erkennung. Doppelt gezählt wird dort nichts, weil er ohnehin pro
+    // Strecke dedupliziert.
+    //
+    // Für die Liste selbst gilt dasselbe: ein Abschnitt ist kein eigener
+    // Ausflug. Er bleibt vollständig erreichbar — die Fahrtseite der
+    // Elternfahrt zeigt ihn unter "Auf dieser Fahrt erkannt", mit eigenem
+    // Sichtbarkeits-Schalter (components/DetectedSegmentsCard.tsx).
+    //
+    // Löscht jemand die Elternfahrt, setzt "on delete set null" (0050) die
+    // Spalte auf null und der Abschnitt zählt ab dann als eigenständige
+    // Fahrt. 0050 sagt zu, dass die ZEILEN das Löschen überleben — über
+    // Zähler sagt es nichts, weil damals keiner auf die Spalte filterte.
+    // Die Folge ist deshalb hier zu notieren und nicht dort: eine freie
+    // Fahrt mit drei Abschnitten steht als "Fahrten 1"; wird sie gelöscht,
+    // steht dort "Fahrten 3", während "Km gefahren" gleichzeitig sinkt und
+    // im Aktivitätskalender drei Punkte an einem eben geleerten Tag wieder
+    // auftauchen. Selten und nicht falsch — die Abschnitte SIND dann
+    // eigenständige Fahrten —, aber überraschend genug, um es
+    // aufzuschreiben.
     supabase
       .from("route_completions")
       .select(
-        "id, art, route_id, fahrzeug_id, datum, dauer_sekunden, distanz_km, ist_oeffentlich, abdeckung_prozent, notiz, titel, start_ort, bewegte_zeit_sekunden, hoehenmeter_aufstieg, routes(name)",
+        // region (0044) und routes(region) kommen nur für die
+        // Premium-Auswertung mit: zwei Spalten mehr in einer Abfrage, die
+        // ohnehin läuft, statt einer zweiten Runde zur Datenbank. Bei einer
+        // Streckenfahrt trägt route_completions.region nichts, bei einer
+        // freien Fahrt gibt es keine Strecke — deshalb weiter unten das
+        // coalesce der beiden, wie es public_fahrten seit 0045 auch macht.
+        "id, art, route_id, fahrzeug_id, datum, dauer_sekunden, distanz_km, ist_oeffentlich, abdeckung_prozent, notiz, titel, start_ort, region, bewegte_zeit_sekunden, hoehenmeter_aufstieg, routes(name, region)",
       )
       .eq("user_id", user.id)
       .not("dauer_sekunden", "is", null)
+      .is("parent_completion_id", null)
       // Neueste zuerst — created_at als Tiebreaker, da datum nur ein Datum
       // (kein Zeitstempel) ist und mehrere Fahrten am selben Tag sonst in
       // unbestimmter Reihenfolge stünden.
@@ -168,9 +232,10 @@ export default async function ProfilPage() {
           notiz: string | null;
           titel: string | null;
           start_ort: string | null;
+          region: string | null;
           bewegte_zeit_sekunden: number | null;
           hoehenmeter_aufstieg: number | null;
-          routes: { name: string } | null;
+          routes: { name: string; region: string | null } | null;
         }[]
       >(),
     supabase
@@ -199,7 +264,35 @@ export default async function ProfilPage() {
     // per cache() request-weit memoisiert.
     isModerator(user.id),
     istCreator(user.id),
+    // Die Passsammlung — eine RPC, die nur eigene Fahrten sieht (0104).
+    // Seit #296 wirft sie bei einem Query-Fehler, statt "0 von 34" zu
+    // behaupten. Auf /paesse ist das richtig; hier ist die Zeile ein Zusatz,
+    // und ein Ausfall soll sie ausblenden, nicht das ganze Profil.
+    getSammlungsStand().catch((err) => {
+      console.error("Passsammlung für das Profil nicht ladbar", err);
+      return null;
+    }),
   ]);
+
+  // Die ausführliche Pass-Sammlung (Premium): Katalog und eigene
+  // Passfahrten aus derselben Quelle wie die Zeile oben (0104/0113). Nur mit
+  // Abo — ohne gibt es dort nur den Hinweis, und die Zahl steht schon in
+  // getSammlungsStand.
+  const passSammlung = premiumStatus.aktiv ? await getPassSammlungsDaten() : null;
+
+  // Eine Wartungszeile je Fahrzeugkachel, aber nur mit laufendem Abo und
+  // erst nach dem Status: die drei Abfragen dahinter (Einträge,
+  // Erinnerungen, Fahrten) sind für ein Konto ohne Wartungsheft reine
+  // Leerläufe. Bewusst NACH dem Promise.all und nicht darin — sonst liefe
+  // sie für jedes kostenlose Konto bei jedem Profilaufruf mit.
+  // Eine Zusatzzeile, kein tragender Teil der Seite: scheitert sie, fehlen
+  // die Hinweise, nicht das ganze Profil.
+  const wartungsHinweise = premiumStatus.aktiv
+    ? await getWartungsHinweise(user.id).catch((err) => {
+        console.error("Wartungshinweise nicht ladbar", err);
+        return undefined;
+      })
+    : undefined;
 
   // Die mobile Leiste (BottomNav) führt Creator und Moderation nicht mehr —
   // sie ist auf fünf Einträge gedeckelt, siehe lib/nav.ts. Unter md ist das
@@ -258,7 +351,9 @@ export default async function ProfilPage() {
           </div>
           <div className="flex flex-col gap-1.5">
             <h1 className="text-display font-semibold">{profile?.display_name ?? user.email}</h1>
-            <p className="text-sm text-muted">{user.email}</p>
+            {/* Die E-Mail-Adresse stand hier unter dem Namen — auf der Seite, die
+                man anderen am ehesten über die Schulter zeigt, und doppelt:
+                Einstellungen → Konto nennt sie ohnehin. */}
             <FollowCounts
               followersCount={followCounts.followers}
               followingCount={followCounts.following}
@@ -313,18 +408,54 @@ export default async function ProfilPage() {
             Siehe docs/design-vereinfachung.md, Abschnitt 3.9. */}
         <section className="flex flex-col gap-3">
           <SectionHeading icon={Gauge}>Kennzahlen</SectionHeading>
-          <Kennzahlen>
-            <Kennzahl beschriftung="Pässe befahren" wert={<CountUp value={passCount} />} />
-            <Kennzahl
-              beschriftung="Höhenmeter gesammelt"
-              wert={<CountUp value={hoehenmeter} unit="m" />}
+          {/* Vier Kacheln mit einer Null darin sind für ein neues Konto die
+              erste Aussage der eigenen Profilseite — und sie sagt nur, was
+              fehlt. Solange es keine einzige Fahrt gibt, steht an ihrer
+              Stelle der eine nächste Schritt; die Kacheln erscheinen mit der
+              ersten Fahrt, dann tragen sie auch etwas. */}
+          {(trackedRides?.length ?? 0) === 0 && passCount === 0 ? (
+            <EmptyState
+              icon={RecordIcon}
+              title="Noch keine Fahrt aufgezeichnet — deine Kennzahlen entstehen mit der ersten."
+              action={
+                <Link href="/fahrten/neu" className={buttonVariants({ variant: "accent", size: "sm" })}>
+                  Erste Fahrt aufzeichnen
+                </Link>
+              }
             />
-            <Kennzahl
-              beschriftung="Km gefahren"
-              wert={<CountUp value={getrackteDistanzGesamt} unit="km" />}
-            />
-            <Kennzahl beschriftung="Fahrten" wert={<CountUp value={trackedRides?.length ?? 0} />} />
-          </Kennzahlen>
+          ) : (
+            <Kennzahlen>
+              <Kennzahl beschriftung="Pässe befahren" wert={<CountUp value={passCount} />} />
+              <Kennzahl
+                beschriftung="Höhenmeter gesammelt"
+                wert={<CountUp value={hoehenmeter} unit="m" />}
+              />
+              <Kennzahl
+                beschriftung="Km gefahren"
+                wert={<CountUp value={getrackteDistanzGesamt} unit="km" />}
+              />
+              <Kennzahl beschriftung="Fahrten" wert={<CountUp value={trackedRides?.length ?? 0} />} />
+            </Kennzahlen>
+          )}
+
+          {/* Die Passsammlung steht als eigene Zeile neben den Kacheln, nicht
+              als fünfte Kachel: sie zählt etwas anderes als die Kachel
+              "Pässe befahren" darüber, die weiterhin BEFAHRENE STRECKEN zählt
+              (jede Strecke einmal, auch eine Runde ums Dorf). Die Sammlung
+              zählt Passhöhen aus dem Katalog (0104). Zwei Zahlen mit
+              derselben Überschrift nebeneinander wären die schlechtere
+              Hälfte beider Aussagen. */}
+          {sammlung && sammlung.gesamt > 0 && (
+            <Link
+              href="/paesse"
+              className="flex items-center justify-between gap-3 rounded-lg border border-border px-4 py-3 transition-colors duration-fast hover:border-border-strong"
+            >
+              <span className="text-sm">Passsammlung</span>
+              <span className="text-sm tabular-nums text-muted">
+                {sammlung.befahren} von {sammlung.gesamt}
+              </span>
+            </Link>
+          )}
 
           <div className="flex flex-col divide-y divide-border border-t border-border">
             {/* Auf dem Telefon zugeklappt, ab sm offen. Der
@@ -369,6 +500,18 @@ export default async function ProfilPage() {
                       distanz_km: r.distanz_km,
                       hoehenmeter_aufstieg: r.hoehenmeter_aufstieg,
                       fahrzeug_id: r.fahrzeug_id,
+                      route_id: r.route_id,
+                      // Streckenfahrt: die Region der Strecke. Freie Fahrt:
+                      // die beim Speichern ermittelte Region der Fahrt
+                      // selbst. Dieselbe REIHENFOLGE wie das coalesce in
+                      // public_fahrten (0045) — nicht dieselbe Quelle: der
+                      // Embed hier läuft unter der RLS des Aufrufers, jene
+                      // View mit Eigentümerrechten. Eine Fahrt auf einer
+                      // Strecke, die inzwischen privat oder zurückgezogen
+                      // ist, fällt hier auf "Ohne Region", während der Feed
+                      // sie weiter zeigt. Gilt für routes(name) genauso und
+                      // ist dort Bestand.
+                      region: r.routes?.region ?? r.region,
                     }))}
                     fahrzeuge={(vehicles ?? []).map((v) => ({
                       id: v.id,
@@ -378,6 +521,26 @@ export default async function ProfilPage() {
                   />
                 </div>
               </details>
+            )}
+
+            {/* Direkt nach der Auswertung: beides ist "dein Fahrjahr", und
+                der Saisonrückblick darin ist ihr teilbares Gegenstück.
+                Ohne Abo nur der Hinweis — die Zahl steht schon in der Zeile
+                "Passsammlung" oben. Siehe components/PassSammlung.tsx. */}
+            {passSammlung ? (
+              <details open className="group py-4">
+                <SectionSummary icon={PassIcon} label="Pass-Sammlung" />
+                <div className="mt-4">
+                  <PassSammlung
+                    paesse={passSammlung.paesse}
+                    ladefehler={passSammlung.fehler}
+                    passFahrten={passSammlung.fahrten}
+                    fahrten={trackedRides ?? []}
+                  />
+                </div>
+              </details>
+            ) : (
+              sammlung && sammlung.gesamt > 0 && <PassSammlungHinweis />
             )}
           </div>
         </section>
@@ -438,8 +601,8 @@ export default async function ProfilPage() {
                                 {/* Datum jetzt Teil derselben mono/tabular-nums-Zeile wie
                                     Dauer/Tempo statt separat rechts neben dem Titel — gleiche
                                     Schrift, Grösse und Punkt-Trennung wie die übrigen Werte. */}
-                                <div className="flex items-center gap-2 font-mono text-xs tabular-nums text-muted">
-                                  <span>{new Date(ride.datum).toLocaleDateString("de-CH")}</span>
+                                <div className="flex items-center gap-2 text-xs tabular-nums text-muted">
+                                  <span>{datumCH(new Date(ride.datum))}</span>
                                   <span aria-hidden="true">·</span>
                                   {/* Stoppuhr-Icon davor, damit "06:26" nicht als Uhrzeit
                                       gelesen wird — es ist die gestoppte Fahrtdauer. Gleiche
@@ -475,15 +638,16 @@ export default async function ProfilPage() {
                       })}
                     </ul>
                   ) : (
-                    <EmptyState
-                      icon={RouteIcon}
-                      title="Noch keine Fahrten aufgezeichnet."
-                      action={
-                        <Link href="/" className={buttonVariants({ variant: "secondary", size: "sm" })}>
-                          Strecken entdecken
-                        </Link>
-                      }
-                    />
+                    // Eine Zeile statt eines zweiten Leerzustands: ohne jede
+                    // Fahrt steht der Aufruf "Erste Fahrt aufzeichnen" schon
+                    // oben bei den Kennzahlen. Zwei Kästen mit zwei Knöpfen
+                    // für dieselbe Lücke lasen sich im Review als Wiederholung.
+                    <p className="py-2 text-sm text-muted">
+                      Noch keine Fahrten aufgezeichnet.{" "}
+                      <Link href="/" className="text-accent hover:underline">
+                        Strecken entdecken
+                      </Link>
+                    </p>
                   )}
                 </div>
               </details>
@@ -496,6 +660,20 @@ export default async function ProfilPage() {
               <details className="group py-4">
                 <SectionSummary icon={Bookmark} label="Favoriten" count={favorites?.length ?? 0} />
                 <div className="mt-4">
+                  {/* Wetterfenster (Premium): über der Liste, nicht in jeder
+                      Zeile — die Übersicht ist auf fünf Strecken gedeckelt
+                      (siehe WetterfensterFavoriten), und eine Wetterangabe in
+                      nur fünf von zwölf Zeilen läse sich wie fehlende Daten.
+                      Ohne Abo steht hier nichts; den Hinweis trägt die
+                      Streckenseite. Das Gate verhindert auch den Abruf. */}
+                  {premiumStatus.aktiv && favorites && favorites.length > 0 && (
+                    <Suspense fallback={<WetterfensterFavoritenPlatzhalter />}>
+                      <WetterfensterFavoriten
+                        routeIds={favorites.filter((f) => f.routes).map((f) => f.route_id)}
+                        fahrzeug={wetterMassstab(((vehicles as Vehicle[]) ?? []).map((v) => v.typ))}
+                      />
+                    </Suspense>
+                  )}
                   {favorites && favorites.length > 0 ? (
                     <Card as="ul" className="divide-y divide-border">
                       {favorites.map((f) =>
@@ -508,7 +686,7 @@ export default async function ProfilPage() {
                               <span className="transition-colors duration-fast group-hover:text-accent">
                                 {f.routes.name}
                               </span>
-                              <span className="font-mono text-sm tabular-nums text-muted">
+                              <span className="text-sm tabular-nums text-muted">
                                 {formatKm(f.routes.laenge_km)} km
                               </span>
                             </Link>
@@ -520,8 +698,9 @@ export default async function ProfilPage() {
                     <EmptyState
                       icon={Bookmark}
                       title="Noch keine Favoriten gemerkt."
+                      description="Mit dem Lesezeichen auf einer Strecke merkst du sie dir. Hier findest du sie wieder."
                       action={
-                        <Link href="/" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                        <Link href="/" className={buttonVariants({ variant: "secondary", size: "md" })}>
                           Strecken entdecken
                         </Link>
                       }
@@ -545,7 +724,7 @@ export default async function ProfilPage() {
                 + Hinzufügen
               </Link>
             </div>
-            <VehicleGrid vehicles={(vehicles as Vehicle[]) ?? []} />
+            <VehicleGrid vehicles={(vehicles as Vehicle[]) ?? []} hinweise={wartungsHinweise} />
           </section>
 
           {/* Zuunterst und ohne Unterbrechung der Kernschleife: ohne Abo ein

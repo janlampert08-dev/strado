@@ -206,20 +206,12 @@ export function anteilText(zaehler: number, nenner: number): string | null {
   return quote === null ? null : `${String(quote).replace(".", ",")} %`;
 }
 
-// Balkenhöhe in Prozent für den Verlauf. Ein Tag mit Wert > 0 bekommt
-// mindestens 10 %, sonst wäre ein einzelner Klick neben einem Ausreisser
-// optisch dasselbe wie gar nichts.
-//
-// Die 10 % sind an der Bahnhöhe gerechnet, nicht geschätzt: die Bahn ist
-// h-12 (48 px), ein leerer Tag steht als 2-px-Strich da. Bei den früheren
-// 4 % war ein Tag MIT Bewegung 1.92 px hoch — niedriger als der Strich, der
-// gar nichts bedeutet, womit die Untergrenze genau das verfehlte, wofür es
-// sie gibt. 10 % ergeben 4.8 px und damit denselben Abstand wie in
-// FahrtStatistik.tsx (8 px Minimum auf 80 px Bahn).
-export function balkenHoehe(wert: number, hoechstwert: number): number {
-  if (wert <= 0 || hoechstwert <= 0) return 0;
-  return Math.max(10, Math.round((wert / hoechstwert) * 100));
-}
+// Die Balkenhöhe steht in lib/balken.ts — dieses Modul zieht
+// lib/supabase/server.ts (und damit next/headers) nach sich, eine reine
+// Rechenregel darf davon nicht abhängen. Die Begründung steht dort
+// ausgeschrieben. Bewusst KEIN Re-Export an dieser Stelle: er wäre
+// bequem und würde die Server-Abhängigkeit weiterreichen, ohne dass es
+// jemand merkt.
 
 export interface VerlaufReihe {
   code: string;

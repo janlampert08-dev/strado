@@ -29,6 +29,694 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Eingespielt: 0101_anonymisierung_fahrtstarts (2026-09-16, Produktion)
+
+Nacharbeit zur Datenschutzerklärung (`strado`#255 / `stradoinfo`#19) und
+zugleich eine echte Lücke: `anonymize_account()` hat `fahrt_starts` nie
+angefasst.
+
+**Warum die Fremdschlüssel nicht reichten.** `fahrt_starts.user_id` und
+`.eingeloest_von` tragen seit `0096` beide `on delete cascade`. Die Kaskade
+feuert nur nie, weil `deleteAccount()` die Zeile in `auth.users` **nicht
+löscht**, sondern das Konto anonymisiert und die Zugangsdaten per
+`updateUserById()` entwertet. Genau diesen Satz schreiben `0090` und `0092`
+bereits in ihre Köpfe; `0096` ist zwei Tage später entstanden und hat ihn
+nicht gelesen. Die Folge: `letzter_puls_punkt` — eine GPS-Position aus
+derselben Fahrt, deren `route_completions.track` die Funktion zwei
+Anweisungen weiter oben ausdrücklich auf NULL setzt — blieb nach einer
+Kontolöschung stehen.
+
+**Vorher geprüft.** Der Rumpf wurde aus der Produktionsdatenbank
+ausgelesen (`pg_get_functiondef`) und gegen `0092` verglichen: Anweisung für
+Anweisung deckungsgleich, keine Abweichung, die ein `create or replace`
+still zurückgedreht hätte. Das ist die Lehre aus `0088`/`0090`/`0092`, und
+sie gilt hier genauso.
+
+**Danach geprüft, gegen den Katalog:**
+
+```sql
+select
+  position('delete from public.fahrt_starts' in pg_get_functiondef(p.oid)) > 0 as hat_delete,
+  position('eingeloest_von = p_user_id' in pg_get_functiondef(p.oid)) > 0    as beide_spalten,
+  position('creator_links' in pg_get_functiondef(p.oid)) > 0                 as rumpf_0092_intakt,
+  p.prosecdef, p.proconfig,
+  has_function_privilege('anon',          p.oid, 'execute') as anon,
+  has_function_privilege('authenticated', p.oid, 'execute') as authenticated,
+  has_function_privilege('service_role',  p.oid, 'execute') as service_role
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public' and p.proname = 'anonymize_account';
+```
+
+Ergebnis: alle drei `position`-Prüfungen `true`, `prosecdef = true`,
+`search_path = public, pg_temp`, und **`anon = false`, `authenticated =
+false`, `service_role = true`** — die Rechte, die `0076` gesetzt hat, stehen
+unverändert. Die Fallgrube aus `0047`/`0048`/`0091`/`0097` hat hier nicht
+zugeschlagen, weil `create or replace` Rechte ohnehin nicht anfasst; die
+`revoke`/`grant`-Zeilen am Ende der Datei sind Zusicherung, keine Reparatur.
+
+**Und funktional, zurückgerollt.** Ein `DO`-Block hat zwei Zeilen in
+`fahrt_starts` angelegt — eine mit `user_id` (eigenes Ticket), eine mit
+`user_id = null` und `eingeloest_von` (Gast, der sich zwischen Start und
+Speichern angemeldet hat) —, dann `anonymize_account()` für dieses Konto
+aufgerufen und das Ergebnis über `raise exception` zurückgegeben, was
+denselben Block zurückrollt. Ergebnis: **0 verbleibende Zeilen** für beide
+Fälle, und das Profil war innerhalb des Blocks anonymisiert
+(`display_name` von gesetzt auf NULL) — der Beweis, dass wirklich die
+Funktion lief und nicht nur das Prädikat. Danach gemessen: 17 aktive
+Profile, 17 mit Namen, 7 Fahrten, alle mit Track — nichts zurückgeblieben.
+
+Die beiden Spalten sind bewusst beide im `where`: ein Gast zeichnet ohne
+Konto auf (`user_id` NULL) und meldet sich erst beim Speichern an — dann
+steht die Person **nur** in `eingeloest_von`. Wer nur über `user_id`
+löscht, lässt genau den Fall stehen, für den `0096` die zweite Spalte
+eingeführt hat.
+
+**Der Weg zurück**, falls nötig: `0092` erneut anwenden — der Rumpf dort ist
+derselbe minus der letzten Anweisung.
+
+**Was diese Migration NICHT löst.** Gast-Zeilen ohne jedes Konto
+(`user_id` und `eingeloest_von` beide NULL) hängen an keiner Kontolöschung.
+Sie räumt der Lauf in `fahrt_start_anlegen` (`0096`) ab — und der hängt
+hinter `random() < 0.02`, läuft also nur, wenn jemand eine Fahrt startet,
+und dann in 2 % der Fälle. Eine Frist sichert das nicht zu; die
+Datenschutzerklärung sagt deshalb „in der Regel innert 48 Stunden" und
+nennt als harte Grenze die **24 Stunden**, nach denen `fahrt_start_puls`
+und `fahrt_start_einloesen` die Zeile beide nicht mehr annehmen. Wer daraus
+eine echte Frist machen will, braucht einen Cron wie `premium_abgleich()`
+(`0059`) — eigene Entscheidung, keine Nacharbeit zu dieser.
+
+## Eingespielt: 0113_passsammlung_je_fahrt (2026-09-18, Produktion)
+
+**Eingespielt am 2026-09-18** nach dem Merge von #291, vor der Promotion
+nach `main`. Geprüft am Katalog: `meine_passfahrten()` für `anon` nicht
+ausführbar, für `authenticated` schon; `meine_paesse()` trägt den Filter
+`parent_completion_id`, `anon` weiterhin ohne Recht. Funktional im
+zurückgerollten Test als echtes Konto aufgerufen (Aufruf ohne Fehler).
+
+Die Premium-Pass-Sammlung liest seit dem Entscheid des Inhabers vom
+2026-09-18 denselben Katalog wie die freie Passsammlung aus `0104`. Dafür
+kommt `meine_passfahrten()` hinzu (je eigene Fahrt und berührtem Pass eine
+Zeile `pass_id, datum`, SECURITY INVOKER, nur `authenticated`), und
+`meine_paesse()` filtert erkannte Abschnitte heraus
+(`parent_completion_id is null`) — vorher zählte eine Ausfahrt mit einem
+erkannten Passabschnitt als zwei Fahrten. Der Live-Rumpf von
+`meine_paesse()` wurde vorher ausgelesen und stimmte mit `0104` überein.
+
+**0113, nicht 0112:** 0112 ist das zurückgezogene
+`0112_pass_status_und_alarm` (unten).
+
+**Reihenfolge:** Migration vor dem Code. Ohne `meine_passfahrten()` zeigt die
+Premium-Sammlung "liessen sich gerade nicht laden"; die übrige Profilseite
+bleibt heil.
+
+**Rückweg:** `drop function public.meine_passfahrten();` und `meine_paesse()`
+mit dem Rumpf aus `0104`.
+
+**Nach dem Einspielen prüfen:**
+
+```sql
+select has_function_privilege('anon', 'public.meine_passfahrten()', 'execute');          -- false
+select has_function_privilege('authenticated', 'public.meine_passfahrten()', 'execute'); -- true
+select position('parent_completion_id' in pg_get_functiondef('public.meine_paesse()'::regprocedure)) > 0; -- true
+```
+
+## Eingespielt: 0109_profilname_aendern (geschrieben 2026-09-17 als 0103, Produktion 2026-09-18)
+
+**Eingespielt am 2026-09-18** nach dem Merge von #291. Geprüft am Katalog:
+`anon = false`, `authenticated = true`, `prosecdef = true`, Index
+`profiles_display_name_lower_eindeutig` vorhanden. Funktional in einem
+zurückgerollten `DO`-Block als echtes Konto: Name eines anderen Kontos plus
+Nullbreite-Leerzeichen → `ungueltig`, plus NBSP → `vergeben`,
+Vollbreiten-Buchstaben → normalisiert `ok`, ein Zeichen → `zu_kurz`;
+danach keine Testzeile übrig.
+
+Neue Funktion `profilname_aendern(p_name text)`, `SECURITY DEFINER`, nur für
+`authenticated` (EXECUTE ausdrücklich von `public` und `anon` entzogen).
+Ändert ausschliesslich `display_name` der Zeile von `auth.uid()`, nach den
+Regeln von `signUp()` (2–50 Zeichen, case-insensitiv eindeutig). Rein
+additiv, kein Eingriff in Tabellen, Policies oder Grants — der Rückweg ist
+`drop function public.profilname_aendern(text);` plus
+`drop index public.profiles_display_name_lower_eindeutig;`.
+
+**Nummer 0109, nicht 0103.** Geschrieben als 0103; beim Zusammenführen am
+2026-09-18 waren 0103 (`amtliche_tempolimits_entlang_schneller`) und 0104
+(`paesse`) in Produktion vergeben, 0105 doppelt. 0109 war auf keinem
+Remote-Branch belegt (`git ls-tree` über alle, 2026-09-18).
+
+**Nach dem Review gehärtet (2026-09-18):** NFKC-Normalisierung und
+Leerraum-Zusammenfassung vor jeder Prüfung, Steuer- und unsichtbare
+Formatzeichen werden mit `ungueltig` abgewiesen (vorher galt "Jan" +
+Nullbreite-Leerzeichen als freier Name), und ein partieller Unique-Index
+`profiles_display_name_lower_eindeutig` auf `lower(display_name)` macht
+die Eindeutigkeit gegen gleichzeitige Umbenennungen und gegen
+`handle_new_user` verbindlich. Vorher gemessen: 15 Profile, keine
+Dublette; gelöschte Konten tragen `display_name = null` und fallen heraus.
+
+**Reihenfolge:** Migration zuerst, dann der Code (`staging-profilname-aendern`).
+Ohne die Funktion zeigt das Formular in den Einstellungen eine allgemeine
+Fehlermeldung, stürzt aber nicht ab.
+
+**Nach dem Einspielen prüfen:**
+
+```sql
+select has_function_privilege('anon', 'public.profilname_aendern(text)', 'execute');          -- false
+select has_function_privilege('authenticated', 'public.profilname_aendern(text)', 'execute'); -- true
+```
+
+## Eingespielt: 0105_tempolimits_quellen_amtlich (2026-09-18, Produktion)
+
+Spalte `amtlich` an `amtliche_tempolimit_quellen` (Vorgabe true) und
+`amtliche_tempolimits_entlang()` gibt sie mit zurück. Nötig, weil seither
+zwei Quellen dabei sind, die keine amtliche Signalisationsangabe sind:
+OpenStreetMap (deckt als einzige Wallis, Tessin, Waadt und das Berner
+Oberland ab) und der Bündner Lärmkataster (Feld heisst nur `speed_2019`).
+
+Der Rückgabetyp ändert sich, deshalb `drop` + `create` statt
+`create or replace`; die Rechte werden danach neu gesetzt, weil ein Drop sie
+mitnimmt. Gemessen danach: `anon` darf nicht ausführen, `authenticated` schon.
+
+**0105, nicht 0104** — und damit doppelt: 0104 war für PR #281 gedacht,
+wurde aber am selben Tag von `0104_paesse` belegt, und `0105_strecken_verkehr`
+ging ebenfalls am 2026-09-18 ein. Beide 0105er sind eingespielt; siehe
+"Doppelte Nummernpräfixe". PR #281 ist auf `0109` ausgewichen.
+
+**Daten am 2026-09-18 nachgeladen:** acht weitere amtliche Quellen, vor allem
+Lärmkataster, die die signalisierte Geschwindigkeit als Modelleingang führen
+und oft auch Gemeindestrassen abdecken — SG (18 842, inkl. Gemeindestrassen
+und Stadt St. Gallen), GR-Lärmkataster (15 719, nicht als amtlich
+ausgewiesen), TG (4 969), LU (4 115), UR (501), dazu Emmen (1 069),
+Winterthur (154) und BL (289) als Zonen. Bestand danach: 27 Quellen,
+67 712 Objekte, 0 ungültige Geometrien.
+
+## Eingespielt: 0102 und 0103 (amtliche Tempolimits, 2026-09-17, Produktion)
+
+| Datei | Ledger | Was |
+| --- | --- | --- |
+| `0102_amtliche_tempolimits` | `20260917163713` | Tabellen `amtliche_tempolimit_quellen` / `amtliche_tempolimits` (LV95, GiST), Reparatur-Trigger für Flächen, `amtliche_tempolimits_entlang(jsonb)` |
+| `0103_amtliche_tempolimits_entlang_schneller` | `20260917165008` | dieselbe Funktion, Puffer per ST_Subdivide zerlegt |
+
+**0102, nicht 0101:** `0101_anonymisierung_fahrtstarts` lag beim Schreiben auf
+einem offenen Branch und ist inzwischen eingespielt.
+
+**Nummernkollision 0103:** `staging-profilname-aendern` (PR #281) trägt ebenfalls
+`0103_profilname_aendern.sql`, noch nicht eingespielt. Die eingespielte Nummer
+gilt; jene Datei heisst inzwischen `0109_profilname_aendern.sql` (0104 war
+bis dahin von `0104_paesse` belegt).
+
+**Eingespielt vor dem Code**, wie vorgesehen: ohne die Funktion würde
+`proposeRoute()` bei jedem Vorschlag einen Fehler loggen (und die
+Kartendaten nehmen).
+
+**Warum 0103 am selben Tag folgte:** 0102 brauchte für den Zürichsee Run
+(65 km) 14,8 s — über dem Statement-Timeout von `authenticated`, lange
+Strecken wären still ohne amtliche Werte geblieben. Mit 0103 gemessen: alle
+26 freigegebenen Strecken zwischen 54 und 809 ms, über die echte Funktion
+plus `lib/tempolimitAbgleich.ts`, Ergebnis je Strecke identisch mit dem
+Offline-Abgleich des Skripts.
+
+**Befüllt** am 2026-09-17 mit
+`node --env-file=.env.local --no-warnings scripts/enrich-amtliche-tempolimits.mjs --hochladen`:
+19 Quellen, 22 054 Objekte, 0 ungültige Geometrien. Zwei Lehren aus dem Lauf,
+beide im Skript behoben: Genfer Flächen in Stapeln von 1000 rissen das
+Statement-Timeout (jetzt 50 Zeilen / 200 kB für Zonen), und 310 Linien aus
+Bern, Freiburg und Zürich fielen nach dem Runden auf 10 cm auf einen Punkt
+zusammen (jetzt werden doppelte Punkte entfernt).
+
+**Gemessen** gegen die Objekte, nicht gegen das Ledger:
+
+```sql
+-- anon/authenticated: nur SELECT; Funktion: authenticated ja, anon nein
+select grantee, privilege_type from information_schema.role_table_grants
+ where table_name in ('amtliche_tempolimits', 'amtliche_tempolimit_quellen') order by 1, 2;
+select has_function_privilege('anon', 'public.amtliche_tempolimits_entlang(jsonb)', 'execute');
+select id, anzahl, geladen_am from public.amtliche_tempolimit_quellen order by id;
+```
+
+Ergebnis: SELECT für beide Rollen, sonst nichts; RLS auf beiden Tabellen an;
+`anon` darf die Funktion nicht ausführen, `authenticated` schon.
+
+**Eingespielt am 2026-09-17:** `supabase/seed/0013_tempolimits_amtlich_schweiz.sql`,
+19 UPDATEs in einer Transaktion. Danach gemessen: 19 von 28 Strecken tragen
+amtliche Abschnitte, Anteil je Strecke identisch mit dem Abgleich vorher
+(Albis Loop, Albulapass, Greifensee, Hirzel 100 %; Ibergeregg, Oberalp, Ofen,
+San Bernardino 99 %; Flüela 96 %; Zürichsee Run 93 %; Bernina 89 %; Klausen
+78 %; Zürichberg 71 %; Furka 54 %; Lukmanier 50 %; Susten 38 %; Jaun 26 %;
+Glaubenbielen 14 %; Gotthard 1 %). Ohne amtliche Daten bleiben Julier,
+Grimsel, Nufenen, Simplon, Grosser St. Bernhard, Col des Mosses und
+Col de la Croix — dort veröffentlicht der Kanton nichts.
+
+**Der Weg zurück** ist eine Sicherung der vorherigen Werte; sie lagen vor dem
+Einspielen alle auf Kartendaten (kein einziges `amtlich: true`). Die Datei
+lässt sich jederzeit neu erzeugen (`--live`) — die Streckenliste wächst
+gerade schnell, also vor einem erneuten Einspielen neu erzeugen.
+
+## Eingespielt: 0106_startzeiten_schwelle_je_fach (2026-09-18, Produktion)
+
+Nacharbeit zu `0105` und `0104`, aus der Review desselben Zweigs. Beide
+Befunde betreffen bereits eingespielte Objekte, deshalb eine eigene Datei.
+
+- **Die Schwelle in `strecken_startzeiten` zählte die falsche Menge.** `0105`
+  gibt erst ab 20 Starts etwas heraus und begründet das damit, dass "33 %
+  Sonntagmorgen" bei drei Starts ein Satz über eine Person wäre. Geprüft wurde
+  aber die Gesamtzahl, und die Ausgabe hat 7 × 4 = 28 Fächer: bei n = 20 wurde
+  ein Fach mit **einem** Start als "5 %" ausgeliefert, und weil jeder Wert ein
+  Vielfaches von 5 ist, ist der Nenner ablesbar. `fahrt_starts` enthält auch
+  Starts ohne veröffentlichte Fahrt, und die Funktion ist an `anon` vergeben —
+  derselbe Mechanismus wie in `0094`. Jetzt gilt zusätzlich `having count(*) >= 5`
+  je Fach; Fächer darunter fallen weg, statt gerundet zu werden.
+- **`pg_temp` fehlte im `search_path` von `count_unseen_activity` und
+  `mark_activity_seen`.** Aus `0100` geerbt und in `0104` mitgenommen. Beide
+  Rümpfe sind unverändert, nur der `search_path` ist ergänzt.
+
+Am Katalog geprüft: alle drei Funktionen tragen `search_path=public, pg_temp`,
+`strecken_startzeiten` enthält `having count(*) >= 5`, die Grants sind
+unverändert (`anon` nur auf `strecken_startzeiten`).
+
+**Rückweg:** die drei Funktionen aus `0104`/`0105` erneut anlegen — sie sind
+dort vollständig ausgeschrieben.
+
+## Eingespielt: 0107 und 0108 (Suchbegriffe, 2026-09-18, Produktion)
+
+Beides Datenänderungen am Passkatalog, ausgelöst vom **ersten Probelauf gegen
+den echten Feed** (13.7 MB, 890 Situationen, mit dem Schlüssel des Eigentümers).
+
+`0104` hatte die Suchbegriffe geschätzt. Der Feed schreibt Pässe aber anders,
+nämlich mit Gattungswort und Bindestrich — "zwischen Pass Gotthard-Pass und
+Ortschaft Motto Bartola", französisch "Col Col du St-Gothard". Die Form
+"Gotthardpass" kommt in der ganzen Lieferung nicht vor.
+
+Umgekehrt haben die kurzen Formen **drei falsche Treffer** erzeugt, weil
+Passnamen in der Schweiz auch Dörfer und Strassen sind:
+
+| Meldung | Fälschlich erkannt als |
+| --- | --- |
+| "A9 Sion ↔ Brig zwischen Anschluss **Leuk/Susten**-Ost …" | Sustenpass |
+| "Route de la Lienne ↔ **Route Du Simplon** …" | Simplonpass |
+| "A9 Brig ↔ Domodossola … Ortschaft **Simplon-Dorf** …" | Simplonpass |
+
+`0107` ersetzt deshalb alle Begriffslisten durch die Schreibweisen des Feeds
+(Bindestrichform, französische und italienische Fassung) und nimmt die blossen
+Ortsnamen heraus. `0108` nimmt zusätzlich "Panoramastrasse" beim Glaubenbielen
+weg: die Baustellenmeldung am Jaunpass heisst wörtlich "Instandsetzung
+Panoramastrasse Jaunpass", und der 80 km entfernte Glaubenbielen stand damit
+auf "eingeschränkt".
+
+Dazu kommt die Kontextregel in `lib/passMeldungen.ts` (kein Schemateil): ein
+Begriff ohne eigenes Gattungswort zählt nur, wenn unmittelbar davor
+"Pass"/"Col"/"Passo" steht.
+
+### Gegen die echte Lieferung gemessen
+
+| | vorher | nachher |
+| --- | --- | --- |
+| Treffer insgesamt | 4 | 5 |
+| davon falsch | 3 | **0** |
+| Situationen, deren erster Text ein Aufzählungswert war | 523 | **0** |
+
+Die fünf verbliebenen Treffer sind vier Baustellenmeldungen an der
+Gotthard-Passstrasse und eine am Jaunpass, alle als "eingeschränkt" gedeutet —
+was sie auch sind. Die Gegenprobe mit erfundenen, aber echt geformten
+Meldungen trifft weiterhin: "Pass Gotthard-Pass … gesperrt",
+"Sustenpass: Wintersperre", "Col du Grimsel … route fermée".
+
+**Rückweg:** `0104` enthält die ursprünglichen Begriffslisten im Wortlaut.
+
+## Eingespielt: 0104_paesse und 0105_strecken_verkehr (2026-09-18, Produktion)
+
+Beide am 2026-09-18 über `apply_migration` eingespielt, **vor** dem Merge des
+Codes — die Reihenfolge, die AGENTS.md verlangt (Schema zuerst).
+
+| Datei | Was |
+| --- | --- |
+| `0104_paesse` | `paesse` (Katalog, 34 Zeilen), View `strecken_paesse` (security_invoker), `pass_status`, `pass_ereignisse`, `verkehrsmeldungen`, `feed_abgleich`, `pass_sperrtage` (4 Zeilen), `pass_folgen`, Spalte `profiles.paesse_gesehen_am`, Funktionen `pass_status_anwenden/-setzen/-freigeben`, `pass_ereignis_meldenswert`, `recent_pass_meldungen`, `meine_paesse`; Ersatz von `count_unseen_activity`, `mark_activity_seen` und `anonymize_account` auf den **live gelesenen** Rümpfen |
+| `0105_strecken_verkehr` | `strecken_verkehr`, `strecken_verkehr_stand`, `strecken_startzeiten(uuid)` |
+
+### Beim ersten Versuch gescheitert, und woran
+
+`quelle_url text check (quelle_url ~ '^https://[^[:space:]]{4,500}$')` bricht
+schon beim Anlegen der Tabelle ab: **PostgreSQL lässt in einem regulären
+Ausdruck höchstens 255 Wiederholungen zu** (`invalid repetition count(s)`).
+Die ganze Migration lief in einer Transaktion, es blieb also nichts halb
+angelegt. Die Längengrenze steht jetzt als eigene Bedingung neben dem
+Ausdruck. Wer hier eine Obergrenze braucht: `char_length(...) <= n`, nie
+`{m,n}` mit n über 255.
+
+### Nachher am Katalog geprüft (nicht am Ledger)
+
+- **Die Grant-Falle hat nicht zugeschlagen** (sie hat `0047`, `0048`, `0091`
+  und `0097` erwischt): `has_function_privilege('anon', …, 'execute')` ist bei
+  `pass_status_anwenden`, `pass_status_setzen`, `pass_status_freigeben`,
+  `recent_pass_meldungen` und `meine_paesse` **false**. Bewusst `true` ist es
+  bei `pass_ereignis_meldenswert` (reines Prädikat ohne Datenzugriff) und bei
+  `strecken_startzeiten` (die öffentliche Seite fragt sie; sie gibt erst ab
+  20 Starts etwas heraus, und dann nur Prozente über grobe Fächer).
+- `pass_status_anwenden` ist nur an `service_role` vergeben — der Cron.
+- RLS ist auf allen neun neuen Tabellen an. `verkehrsmeldungen` hat bewusst
+  **keine** Policy und keine Grants (nur `service_role`), wie `fahrt_starts`
+  und `stripe_webhook_events`; der Advisor meldet das als INFO.
+- `strecken_paesse` taucht **nicht** unter `security_definer_view` auf —
+  `security_invoker = true` ist angekommen. Private und noch nicht
+  freigegebene Strecken bleiben damit hinter der RLS von `routes`.
+- `feed_abgleich`: Grants nur auf `(quelle, erfolg_am)`; Fehlertexte sind für
+  `anon`/`authenticated` nicht lesbar.
+- **Die Zuordnung Strecke ↔ Pass stimmt an den Objekten**: 21 der 34 Pässe
+  haben genau eine Strecke, jede die richtige (Susten → „Sustenpass",
+  Gotthard → „Gotthardpass (Tremola)"), und keine der Zürcher Runden hat
+  fälschlich einen Pass gefunden. 400 m Toleranz, gemessen an echten Daten.
+- `add column paesse_gesehen_am … default now()` ist wie in `0100` billig
+  (`now()` ist stabil → `attmissingval`, keine Tabellenumschreibung); alle
+  14 Profile teilen sich denselben Zeitstempel, genau die Absicht.
+
+### Funktionstest (zurückgerollte Transaktion, Produktion)
+
+Ein `DO`-Block, dessen Ergebnis über `raise exception` zurückkam und damit
+denselben Block zurückrollte (Muster aus `0098`). Geprüft am Susten:
+
+| Schritt | Erwartet | Gemessen |
+| --- | --- | --- |
+| Feed meldet Wintersperre | Status entsteht, Ereignis wird geschrieben | `true` |
+| Derselbe Zustand nochmals | kein zweites Ereignis, `seit` bleibt stehen | `false`, `seit` unverändert |
+| Pass geht auf | Ereignis mit `vorher = 'wintersperre'`, meldenswert | `true`, `vorher = wintersperre`, meldenswert `true` |
+| Moderation übersteuert, dann schreibt der Feed | Feed prallt ab | `false`, Zustand blieb `gesperrt`/`moderation` |
+
+Danach gemessen: `pass_status`, `pass_ereignisse`, `pass_folgen`,
+`verkehrsmeldungen` und `strecken_verkehr` sind leer, `paesse` hat 34 Zeilen,
+`pass_sperrtage` die vier gesetzten — der Rollback hat gegriffen.
+
+### Was das noch nicht misst
+
+Der Feed selbst. Ohne `ASTRA_API_KEY` in der Umgebung meldet
+`app/api/cron/passstatus` „übersprungen" und schreibt nichts; jeder Pass
+bleibt auf „kein Stand", bis ihn ein Moderator setzt. Die Zuordnung von
+Meldungstexten zu Pässen ist gegen erfundene DATEX-Lieferungen getestet
+(`lib/passMeldungen.test.ts`), **nicht** gegen echte — das geht erst mit
+Schlüssel.
+
+## 0110_saisonpass — vollständig angewendet am 2026-09-18
+
+> Eingespielt in vier Schritten (Ledger `0110_saisonpass_tabelle`,
+> `0110_saisonpass_funktionen`, `0110_saisonpass_rechte_entziehen`,
+> `0110_saisonpass_projektion`). Danach gemessen:
+>
+> - `apply_subscription_state` und `premium_abgleich` rechnen über
+>   `saisonpass_gueltig()`; `anonymize_account` löscht die Pässe **und** trägt
+>   weiterhin die Ergänzungen aus `0101` (`fahrt_starts`) und der
+>   Pässe-Migration (`pass_folgen`).
+> - Alle sechs Funktionen: `anon` = false, `authenticated` = false,
+>   `service_role` = true.
+> - `saisonpaesse`: RLS an, eine Select-Policy, Spalten-Grants ohne die
+>   Stripe-Kennungen.
+>
+> **Funktionaler Test, zurückgerollt** (`DO`-Block mit `raise exception` am
+> Ende, Muster aus `0098`): erster Kauf legt an und setzt `ist_premium`;
+> **dieselbe Checkout-Session ein zweites Mal ändert nichts** (eine Zeile —
+> Webhook und Browser bestätigen beide); Laufzeit sechs Monate; ein zweiter
+> Pass beginnt exakt am `gueltig_bis` des ersten (Anschluss, keine
+> verschluckte Zeit); nach künstlichem Ablauf nimmt `premium_abgleich()` die
+> Person in die Ergebnisliste und `ist_premium` fällt auf false. Danach
+> geprüft: `saisonpaesse` leer, kein Testkunde am Profil, Zahl der
+> Premium-Konten unverändert.
+>
+> Zwei Lehren, die jede künftige Migration angehen:
+>
+> 1. **Der Live-Körper von `anonymize_account` war nicht der aus `0092`.** Er
+>    trug bereits `0101` und die Pässe-Migration. Die Datei wurde vor dem
+>    Einspielen auf den Live-Stand gehoben; ein `create or replace` auf dem
+>    `0092`-Körper hätte beide still zurückgedreht. Genau dafür steht die
+>    `prosrc`-Abfrage im Kopf dieser Datei.
+> 2. **Neue Funktionen bekommen von Supabase automatisch `EXECUTE` für
+>    `anon` und `authenticated`.** Weil die Datei in Teilen eingespielt wurde
+>    und die `revoke`-Zeilen im letzten Teil standen, waren
+>    `apply_saisonpass` und `saisonpass_erstatten` einige Minuten lang über
+>    den anonymen Schlüssel aufrufbar — die Falle aus `0047`, `0048`, `0091`,
+>    `0097`, diesmal durch die Stückelung. **Wer eine Migration in Teilen
+>    einspielt, nimmt die Rechte in denselben Teil wie die Funktion oder
+>    misst sie unmittelbar danach nach.**
+
+### Ursprüngliche Beschreibung
+
+Der Saisonpass: Premium für sechs Monate, einmal bezahlt, ohne Verlängerung
+(`docs/premium-neu/preise.md`). Liegt auf dem Zweig `staging-premium-neu` und
+ist **nicht eingespielt**.
+
+Was sie anlegt und ändert:
+
+| Objekt | Was |
+| --- | --- |
+| `saisonpaesse` | eine Zeile je Kauf: Stripe-Kennungen, Betrag, Währung, `gueltig_ab`/`gueltig_bis`, `erstattet_am`. RLS an, `select` für die eigene Zeile und nur auf den Spalten ohne Stripe-Kennungen (Muster aus `0063`), kein Schreibrecht für `authenticated` |
+| `saisonpass_gueltig(uuid)` | die einzige Definition, wann ein Pass Premium gewährt |
+| `apply_saisonpass(...)` | trägt einen bezahlten Pass ein; idempotent je Checkout-Session, serialisiert je Nutzer über denselben Advisory-Lock wie `apply_subscription_state`, hängt einen zweiten Pass an das Ende des laufenden |
+| `saisonpass_erstatten(text)` | nimmt einen vollständig erstatteten Pass zurück und zieht die Projektion nach |
+| `apply_subscription_state` | **ersetzt** (`create or replace`), Rumpf aus `0062` mit genau einer Änderung: `profiles.ist_premium` ist ab jetzt "Abo läuft ODER Pass gültig" |
+| `premium_abgleich()` | **ersetzt**, Rumpf aus `0059`, Soll-Menge über Abos UND Pässe (ein Pass löst an seinem Ende kein Stripe-Ereignis aus), anonymisierte Profile ausgenommen |
+| `anonymize_account(uuid)` | **ersetzt**, Rumpf aus `0092` plus `delete from saisonpaesse` |
+
+**Reihenfolge: Schema zuerst, Code danach.** `getPremiumStatus()` liest
+`saisonpaesse` auf jeder Seite, die Premium kennt, und `lib/actions/billing.ts`
+ruft `apply_saisonpass` nach der Zahlung. Ohne die Migration schlägt der
+Statusabruf fehl, und — teurer — ein bezahlter Pass liesse sich nicht
+eintragen.
+
+**Vor dem Einspielen** die Live-Rümpfe der drei ersetzten Funktionen auslesen
+und gegen `0062`/`0059`/`0092` vergleichen (die Lehre aus `0088`/`0090`):
+
+```sql
+select pg_get_functiondef(p.oid)
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname in ('apply_subscription_state', 'premium_abgleich', 'anonymize_account');
+```
+
+Weicht einer ab, hat ein anderer Zweig ihn inzwischen angefasst — dann die
+Änderung auf den neuen Rumpf setzen, statt die Datei wie sie ist einzuspielen.
+**Bekannte Berührung:** `0101_anonymisierung_fahrtstarts` (PR #255) sitzt
+ebenfalls auf `anonymize_account`. Wer zuletzt einspielt, muss beide Zusätze
+im Rumpf haben — sonst dreht der zweite den ersten still zurück. Ist `0101`
+schon drin, gehört dessen `delete from fahrt_starts …` in diese Fassung
+übernommen, bevor sie läuft.
+
+**Danach prüfen** — die Grant-Falle zuerst (`0047`, `0048`, `0091`, `0097`):
+
+```sql
+-- Erwartet: alle drei neuen Funktionen anon=false, authenticated=false.
+select p.proname,
+       has_function_privilege('anon', p.oid, 'EXECUTE') as anon,
+       has_function_privilege('authenticated', p.oid, 'EXECUTE') as authed
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname in ('saisonpass_gueltig', 'apply_saisonpass', 'saisonpass_erstatten');
+
+-- Erwartet: SELECT nur für authenticated und nur auf den acht freigegebenen
+-- Spalten; kein INSERT/UPDATE/DELETE für anon oder authenticated.
+select grantee, privilege_type, column_name
+from information_schema.column_privileges
+where table_schema = 'public' and table_name = 'saisonpaesse'
+order by grantee, column_name;
+
+-- Erwartet: RLS an, genau eine Policy (select, authenticated).
+select relrowsecurity from pg_class where relname = 'saisonpaesse';
+select polname, polcmd, polroles::regrole[] from pg_policy
+where polrelid = 'public.saisonpaesse'::regclass;
+```
+
+**Funktionaler Test, zurückgerollt** (im `DO`-Block mit `raise exception` am
+Ende, wie bei `0098`):
+
+1. `apply_saisonpass` mit der Kunden-Kennung eines Testkontos aufrufen →
+   `true`, eine Zeile, `profiles.ist_premium = true`.
+2. Denselben Aufruf mit derselben Session-ID wiederholen → `true`, weiterhin
+   **eine** Zeile (Idempotenz — Webhook und Browser bestätigen beide).
+3. Zweiter Aufruf mit anderer Session-ID → `gueltig_ab` der neuen Zeile
+   gleich `gueltig_bis` der ersten (Anschluss, keine verschluckte Zeit).
+4. `apply_subscription_state` mit einem beendeten Abo (`status = 'canceled'`)
+   → `ist_premium` bleibt `true`, solange ein Pass gilt. Das ist die eine
+   Zeile, die `0110` an `0062` ändert.
+5. `gueltig_bis` einer Zeile in die Vergangenheit setzen, `premium_abgleich()`
+   → die Person kommt in der Ergebnisliste vor, `ist_premium` ist `false`.
+6. `saisonpass_erstatten` mit der PaymentIntent-Kennung → `erstattet_am`
+   gesetzt, `ist_premium` `false` (sofern kein Abo läuft).
+
+**Der Weg zurück:** die drei Funktionen auf die Rümpfe aus `0062`/`0059`/`0092`
+zurücksetzen und `saisonpass_gueltig`/`apply_saisonpass`/`saisonpass_erstatten`
+droppen. Die Tabelle bleibt stehen — solange ein verkaufter Pass läuft, ist
+sie der Beleg dafür, und ein Drop wäre der Verlust des Zugangs, den jemand
+bezahlt hat.
+
+## 0112_pass_status_und_alarm — zurückgezogen, nie eingespielt
+
+> **Die Datei ist aus dem Zweig entfernt (2026-09-18), und das ist kein
+> Versehen.** Sie hätte `public.pass_status` angelegt — eine Tabelle, die seit
+> dem 2026-09-17 in der Produktion steht, aus einem parallelen Zweig, mit
+> einem anderen Schlüssel (`pass_id` text statt `route_id`) und in einem
+> grösseren System: `paesse` führt den Pass als eigenes Objekt mit Höhe,
+> Kantonen, Scheitelpunkt und Wintersperre, dazu `pass_ereignisse`,
+> `pass_sperrtage`, `pass_folgen` (die Abos) und `strecken_paesse` (die
+> Zuordnung zur Strecke). `count_unseen_activity`, `mark_activity_seen` und
+> `anonymize_account` sind dort bereits erweitert.
+>
+> Eingespielt hätte `0112` also erstens auf dem Tabellennamen abgebrochen und
+> zweitens — über `create or replace` — den Pass-Summanden des anderen Zweigs
+> aus dem Aktivitäts-Abzeichen entfernt. Zwei Systeme für dieselbe Frage
+> ("ist der Pass offen?") wären ausserdem zwei Wahrheiten.
+>
+> Entscheid des Eigentümers am 2026-09-18: **das Live-System gilt**, unsere
+> Fassung wird zurückgezogen. Mit ihr ging der zugehörige Code
+> (`lib/passStatus*`, `lib/actions/passAlarm.ts`, die drei
+> `PassStatus*`/`PassAlarm*`-Komponenten, die Erweiterung von
+> `lib/actions/moderation.ts` und der Aktivitätsliste). Was bleibt: die
+> TCS-Adresse in `lib/constants.ts` und die Pass-Sammlung, die ohne eigenes
+> Schema auskommt.
+
+## 0111_wartungsheft — angewendet am 2026-09-18
+
+> Vollständig eingespielt (Ledger `0111_wartungsheft_eintraege`,
+> `0111_wartungsheft_erinnerungen`). Gemessen danach: beide Tabellen mit RLS
+> und je vier Policies, Tabellenrechte für `authenticated` nur `SELECT` und
+> `DELETE` (Schreiben läuft über die Spalten-Grants), `anon` hat nichts, und
+> `wartungseintraege_obergrenze()` ist für `anon` wie `authenticated` nicht
+> ausführbar. Der zusätzliche Unique-Index auf `vehicles (id, user_id)` ist
+> da; `vehicles` hatte ihn vorher nicht.
+
+### Ursprüngliche Beschreibung
+
+`0111_wartungsheft.sql` liegt auf `staging-premium-wartungsheft` und ist
+**nicht angewendet**. Die Nummer `0111` ist vom Koordinator dieses
+Premium-Ausbaus reserviert (0110–0112 für drei parallele Zweige); `0101`–`0109`
+gehören zu Zweigen, die dieses Verzeichnis noch nicht sieht — wer vor dem
+Einspielen prüft, prüft gegen die offenen PRs, nicht gegen diesen Baum
+(`scripts/check-migration-prefixes.mjs` sieht nur einen Zweig).
+
+**Was sie anlegt.** Zwei private Tabellen, `wartungseintraege` (Serviceheft
+pro Fahrzeug: Art, Datum, optional Kilometerstand, Kosten, Notiz) und
+`wartungserinnerungen` (höchstens eine Zeile pro Fahrzeug: MFK-Termin,
+Serviceintervall in km und/oder Monaten), dazu einen Unique-Constraint
+`vehicles_id_user_id_key` auf `public.vehicles (id, user_id)` als Ziel der
+zusammengesetzten Fremdschlüssel und eine Trigger-Funktion
+`wartungseintraege_obergrenze()` (höchstens 1000 Einträge je Fahrzeug).
+
+**Rein additiv.** Nichts Bestehendes ändert sein Verhalten; der einzige
+Eingriff an einer bestehenden Tabelle ist der zusätzliche Unique-Index auf
+`vehicles`, fachlich redundant zum Primärschlüssel. Er nimmt kurz
+`ACCESS EXCLUSIVE` — deshalb steht ein `set local lock_timeout = '5s'` am
+Anfang der Datei; scheitert sie daran, lieber gleich noch einmal, als die
+Tabelle zu stauen (dieselbe Überlegung wie bei `0095`).
+
+**Reihenfolge: Schema zuerst, Code danach.** `lib/wartungsdaten.ts` wirft bei
+einem Abfragefehler (`lib/queryError.ts`), statt ihn als leeres Wartungsheft
+auszugeben — ohne die Migration antwortet `app/profil/fahrzeuge/[id]` also mit
+einer Fehlerseite, und `/profil` ebenfalls, sobald das Konto Premium hat
+(`getWartungsHinweise`). Also nicht mergen, bevor die Migration steht.
+
+### Vor dem Einspielen prüfen
+
+```sql
+-- Sind die Namen frei? Erwartet: 0 Zeilen.
+select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public'
+  and c.relname in ('wartungseintraege', 'wartungserinnerungen', 'vehicles_id_user_id_key');
+
+-- Wie viele Fahrzeuge trägt die Tabelle, die den Index bekommt?
+select count(*) from public.vehicles;
+```
+
+### Nach dem Einspielen prüfen — an den Objekten, nicht am Ledger
+
+```sql
+-- 1. Die Grant-Falle (0047/0048/0091/0097): anon darf NICHTS.
+--    Erwartet: nur 'authenticated'-Zeilen, kein 'anon'.
+select grantee, privilege_type, table_name
+from information_schema.role_table_grants
+where table_schema = 'public'
+  and table_name in ('wartungseintraege', 'wartungserinnerungen')
+order by table_name, grantee, privilege_type;
+
+-- 2. Spalten-Grants: INSERT ohne id/created_at, UPDATE ohne
+--    fahrzeug_id/user_id.
+select table_name, column_name, privilege_type, grantee
+from information_schema.column_privileges
+where table_schema = 'public'
+  and table_name in ('wartungseintraege', 'wartungserinnerungen')
+order by table_name, privilege_type, column_name;
+
+-- 3. RLS an, acht Policies (je Tabelle: select, insert, update, delete),
+--    und die Premium-Bedingung genau in insert und update.
+select tablename, policyname, cmd, roles, qual, with_check
+from pg_policies
+where schemaname = 'public'
+  and tablename in ('wartungseintraege', 'wartungserinnerungen')
+order by tablename, cmd;
+
+select relname, relrowsecurity from pg_class
+where relname in ('wartungseintraege', 'wartungserinnerungen');
+
+-- 4. Kein anon-Recht auf die Trigger-Funktion.
+select has_function_privilege('anon', 'public.wartungseintraege_obergrenze()', 'EXECUTE') as anon,
+       has_function_privilege('authenticated', 'public.wartungseintraege_obergrenze()', 'EXECUTE') as auth;
+
+-- 5. Die Fremdschlüssel zeigen auf das PAAR, mit Kaskade.
+select conname, pg_get_constraintdef(oid)
+from pg_constraint
+where conrelid in ('public.wartungseintraege'::regclass, 'public.wartungserinnerungen'::regclass)
+order by conname;
+
+-- 6. Die Indizes stehen (der erste deckt auch den Fremdschlüssel).
+select indexname, indexdef from pg_indexes
+where schemaname = 'public'
+  and tablename in ('wartungseintraege', 'wartungserinnerungen', 'vehicles')
+order by tablename, indexname;
+```
+
+**Funktionaler Test, zurückgerollt** (`DO`-Block, Ergebnis über
+`raise exception` zurücklesen — dieselbe Form wie bei `0098`; die Ausnahme
+rollt den Block zurück, es bleibt nichts stehen). Drei Punkte sind es wert:
+
+1. Ein Eintrag mit **fremder** `fahrzeug_id` und eigener `user_id` muss am
+   Fremdschlüssel scheitern (`wartungseintraege_fahrzeug_fkey`) — das ist die
+   Eigentumsklammer, und sie soll auch dann halten, wenn eine Policy je
+   gelockert wird.
+2. Ein Konto **ohne** `ist_premium` darf nicht einfügen (Policy), aber seine
+   vorhandenen Zeilen lesen und löschen. Das ist die Zusage in der
+   Oberfläche: nach dem Abo-Ende bleiben die Daten der Person.
+3. `delete from public.vehicles where id = …` muss beide Tabellen mitnehmen
+   (Kaskade). Damit ist auch die Kontolöschung abgedeckt, denn
+   `anonymize_account()` (Rumpf in `0092`) löscht genau diese Zeilen —
+   **die Funktion wird von 0111 absichtlich nicht angefasst**.
+
+### Rückweg
+
+```sql
+-- Code zuerst zurücknehmen, dann:
+drop function if exists public.meine_paesse();
+drop function if exists public.recent_pass_meldungen();
+drop function if exists public.pass_status_freigeben(text);
+drop function if exists public.pass_status_setzen(text, text, text, timestamptz);
+drop function if exists public.pass_status_anwenden(text, text, text, text, timestamptz);
+drop function if exists public.strecken_startzeiten(uuid);
+drop table if exists public.strecken_verkehr, public.strecken_verkehr_stand;
+drop table if exists public.pass_folgen, public.pass_sperrtage, public.verkehrsmeldungen,
+                     public.feed_abgleich, public.pass_ereignisse, public.pass_status;
+drop view if exists public.strecken_paesse;
+drop table if exists public.paesse;
+drop function if exists public.pass_ereignis_meldenswert(text, text);
+alter table public.profiles drop column if exists paesse_gesehen_am;
+```
+
+`count_unseen_activity()`, `mark_activity_seen()` und `anonymize_account()`
+müssen danach **auf die Rümpfe vor 0104 zurückgesetzt** werden (aus `0100`
+bzw. `0101`), sonst greifen sie auf gelöschte Tabellen und Spalten zu. Der
+Rückweg ist damit nicht „drop und fertig": diese drei zuerst zurückschreiben,
+dann die Drops.
+
+drop table if exists public.wartungserinnerungen;
+drop table if exists public.wartungseintraege;
+drop function if exists public.wartungseintraege_obergrenze();
+alter table public.vehicles drop constraint if exists vehicles_id_user_id_key;
+```
+
+Verliert alle Wartungsdaten unwiderruflich. Sobald Premium-Konten Einträge
+haben, ist der Rückweg ein Datenverlust und kein Rollback — vorher
+exportieren.
+
 ## Eingespielt: 0096–0098 (Fahrtstart serverseitig, 2026-09-15, Produktion)
 
 | Datei | Was |
@@ -1141,7 +1829,7 @@ eingespielte Migration nicht nachträglich umbenannt wird.
 
 ## Doppelte Nummernpräfixe
 
-Der `0041`-Fall ist kein Einzelfall geblieben. Aktuell gibt es **sechs**
+Der `0041`-Fall ist kein Einzelfall geblieben. Aktuell gibt es **sieben**
 doppelt vergebene Präfixe, jeweils aus parallelen Branches, die unabhängig
 voneinander dieselbe nächste Nummer gezogen haben:
 
@@ -1153,6 +1841,7 @@ voneinander dieselbe nächste Nummer gezogen haben:
 | `0054` | `0054_leaderboard_user_totals.sql`, `0054_sichtbarkeit_standardmaessig_aktiv.sql` |
 | `0059` | `0059_fahrtstatistiken_serverseitig_erzwingen.sql`, `0059_premium_abo_zustand.sql` |
 | `0060` | `0060_premium_funktionen_execute_entziehen.sql`, `0060_private_strecken_aus_oeffentlichen_views.sql` |
+| `0105` | `0105_strecken_verkehr.sql` (Ledger `20260918121129`), `0105_tempolimits_quellen_amtlich.sql` (Ledger `20260918122212`) — beide eingespielt |
 
 Die beiden letzten Paare sind der unangenehmste Fall dieser Liste: Bei
 `0059` wie bei `0060` liegt jeweils die **Sicherheitsmigration** auf der
@@ -1161,7 +1850,9 @@ Audit-Befund A1, `0060_private_strecken…` der zu A3. Beide sind nach `main`
 gemergt und warten seither.
 
 Seit `scripts/check-migration-prefixes.mjs` (in CI vor Lint/Test/Build)
-kann kein siebtes Paar mehr unbemerkt dazukommen. Die sechs bestehenden
+kann kein neues Paar mehr unbemerkt dazukommen — *innerhalb eines Branches*.
+Das siebte (`0105`) entstand trotzdem: zwei Branches, beide für sich grün,
+beide Hälften vor dem Zusammenführen eingespielt. Die sieben bestehenden
 stehen dort als Altbestand und sind vom Fehlschlag ausgenommen; die Liste
 darf nur kürzer werden.
 

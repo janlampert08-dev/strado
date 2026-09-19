@@ -9,6 +9,9 @@ export type DauerQuelle = "trail" | "server";
 // (components/FeedbackDialog.tsx) sie als Auswahlliste braucht — hier nur
 // der davon abgeleitete Typ, damit es keine zweite Werteliste gibt.
 import type { FeedbackKategorie } from "@/lib/feedback";
+// Dieselbe Begründung für die Wartungsarten: die Liste speist das Formular
+// (components/WartungseintragForm.tsx) und steht deshalb in lib/wartung.ts.
+import type { Wartungsart } from "@/lib/wartung";
 
 export type FahrzeugTyp = "auto" | "motorrad";
 export type Getriebe = "manuell" | "automatik";
@@ -23,6 +26,74 @@ export type Motorklasse =
   | "auto_bis220"
   | "auto_ueber220";
 export type Kategorie = "kurvig" | "scenic" | "passstrasse" | "freie_fahrt";
+
+// Pässe (0104). Ein Pass ist ein eigenes Objekt, keine Streckeneigenschaft:
+// sein Zustand gilt für jede Strecke, die über ihn führt, und die Sammlung
+// zählt Passhöhen statt Strecken. Die Zuordnung Strecke ↔ Pass wird über die
+// Geometrie gerechnet (View strecken_paesse), nicht gepflegt.
+export type PassZustandDb =
+  | "offen"
+  | "eingeschraenkt"
+  | "gesperrt"
+  | "wintersperre"
+  | "unbekannt";
+export type PassStatusQuelle = "feed" | "moderation";
+export type PassSperrtagArt = "autofrei" | "veranstaltung" | "bauarbeiten" | "sonstiges";
+
+export interface Pass {
+  id: string;
+  name: string;
+  hoehe_m: number;
+  kantone: string[];
+  /** Übliche Wintersperre als Monatsspanne; beide null = ganzjährig. */
+  wintersperre_ab_monat: number | null;
+  wintersperre_bis_monat: number | null;
+  /** Schreibweisen für die Zuordnung von Verkehrsmeldungen (lib/passMeldungen.ts). */
+  suchbegriffe: string[];
+  created_at: string;
+}
+
+export interface PassStatusRow {
+  pass_id: string;
+  zustand: PassZustandDb;
+  meldung: string | null;
+  quelle: PassStatusQuelle;
+  seit: string;
+  /** Bis dahin schreibt der Feed nicht über eine Moderator-Setzung. */
+  manuell_bis: string | null;
+  aktualisiert_am: string;
+}
+
+export interface PassEreignisRow {
+  id: number;
+  pass_id: string;
+  zustand: Exclude<PassZustandDb, "unbekannt">;
+  vorher: Exclude<PassZustandDb, "unbekannt"> | null;
+  quelle: PassStatusQuelle;
+  meldung: string | null;
+  erfasst_am: string;
+}
+
+export interface PassSperrtag {
+  id: string;
+  pass_id: string;
+  von: string;
+  bis: string;
+  art: PassSperrtagArt;
+  titel: string;
+  zeitfenster: string | null;
+  quelle_url: string | null;
+  erstellt_von: string | null;
+  erstellt_am: string;
+}
+
+/** Verkehrsprofil einer Strecke (0105): 1.00 ist die ruhigste Stunde. */
+export interface StreckenVerkehr {
+  route_id: string;
+  wochentag: number;
+  stunde: number;
+  faktor: number;
+}
 export type SaisonStatus = "ganzjaehrig" | "saisonal";
 
 export interface GeoPoint {
@@ -44,9 +115,31 @@ export interface TempolimitSegment {
   km_bis: number;
   kmh: number;
   bekannt: boolean;
-  // true nur für Abschnitte innerhalb Kanton Zürich, die mit dem amtlichen
-  // "Signalisierte Geschwindigkeit"-Datensatz (GDS 102) abgeglichen wurden.
+  // true für Abschnitte, deren Wert aus den amtlichen Daten eines Kantons
+  // oder einer Stadt stammt (Tabelle amtliche_tempolimits, 0102; Verzeichnis
+  // in scripts/amtliche-tempolimits/quellen.mjs). Wo keine Quelle die Strasse
+  // abdeckt, bleibt es false — eine Aussage über die Datenlage, nicht über
+  // die Strasse.
   amtlich?: boolean;
+  // Kennung der amtlichen Quelle (amtliche_tempolimit_quellen.id, z.B. "zh",
+  // "stadt-bern"), nur bei amtlich: true.
+  quelle?: string;
+}
+
+// Eine Quelle amtlicher Tempolimit-Daten (Tabelle amtliche_tempolimit_quellen, 0102).
+export interface AmtlicheTempolimitQuelle {
+  id: string;
+  name: string;
+  traeger: string;
+  gebiet: string;
+  datensatz: string;
+  lizenz: string;
+  stand: string | null;
+  art: "linie" | "zone";
+  rang: number;
+  rand_m: number;
+  anzahl: number;
+  geladen_am: string;
 }
 
 // Ein Punkt des Höhenprofil-Diagramms (kumulierte Distanz ab Start, Meter ü. M.).
@@ -174,6 +267,17 @@ export type ExploreRoute = Pick<
   | "ist_rundfahrt"
 >;
 
+/**
+ * Das Minimum, aus dem sich ein Signatur-Merkmal berechnen lässt
+ * (lib/signature.ts). ExploreRoute erfüllt ihn, aber nicht nur: die
+ * Streckenseite braucht denselben Vergleich über den ganzen Bestand und
+ * darf dafür nicht dreissig Geometrien laden.
+ */
+export type SignaturStrecke = Pick<
+  RouteGeoJSON,
+  "id" | "hoehe_m" | "laenge_km" | "max_steigung_prozent" | "kehren" | "tempolimits"
+>;
+
 export interface RouteRating {
   id: string;
   route_id: string;
@@ -288,6 +392,29 @@ export interface RouteCompletion {
   // übergeordnete freie Fahrt, sonst null. Nie Teil der öffentlichen Views
   // (public_fahrten & Co.) — nur über die RLS-geschützte Basistabelle
   // sichtbar, siehe save_free_ride_with_segments.
+  //
+  // DIE REGEL FÜR JEDE NEUE AUFSUMMIERUNG, und sie hat schon einmal
+  // gefehlt: ein Abschnitt trägt eine eigene distanz_km, obwohl dieselben
+  // Kilometer bereits in der Elternfahrt stecken — und er ist eine eigene
+  // Zeile, zählt also auch als eigene Fahrt.
+  //
+  // hoehenmeter_aufstieg ist heute NICHT betroffen: der Segment-INSERT in
+  // 0081 setzt die Spalte nicht, Abschnitte tragen dort null, und
+  // summiereHoehenmeter überspringt null. Die Regel unten nennt den
+  // Anstieg trotzdem — sie soll auch dann noch gelten, wenn ein Abschnitt
+  // eines Tages einen bekommt, und eine Regel mit Ausnahme merkt sich
+  // niemand.
+  //
+  //   Mengenfragen ("wie viel bin ich gefahren", "wie oft", "wie viele
+  //   Höhenmeter") filtern parent_completion_id is null.
+  //   Zugehörigkeitsfragen ("welche Strecken habe ich befahren") filtern
+  //   NICHT — dass eine unterwegs mitgenommene Strecke zählt, ist der
+  //   Sinn der Erkennung.
+  //
+  // Wer eine Abfrage schreibt, die Zeilen addiert oder zählt, entscheidet
+  // sich für eine der beiden Seiten. app/profil/page.tsx und
+  // lib/achievements.ts führen beide Abfragen nebeneinander und begründen
+  // dort, welche welche ist.
   parent_completion_id: string | null;
   // true, wenn diese Streckenfahrt automatisch erkannt statt explizit über
   // die Streckenseite gestartet wurde. Rein informativ (Badge).
@@ -452,6 +579,46 @@ export interface Feedback {
   erstellt_am: string;
   bearbeitet_am: string | null;
   bearbeitet_von: string | null;
+}
+
+// Zeilenform von public.wartungseintraege (0111_wartungsheft.sql) — das
+// Wartungsheft eines Fahrzeugs. Privat: RLS gibt nur die eigenen Zeilen
+// frei, es gibt keine öffentliche View darauf. Anlegen und Ändern verlangen
+// Premium (Policy + Server Action), Lesen und Löschen nicht.
+//
+// Die Art ist in lib/wartung.ts als Wartungsart typisiert, weil die
+// Auswahlliste dort auch das Formular speist (Client Component) — der CHECK
+// in der Migration trägt dieselben Werte.
+export interface Wartungseintrag {
+  id: string;
+  fahrzeug_id: string;
+  // Redundant zum Fahrzeug, damit die RLS-Policy ein Spaltenvergleich
+  // bleibt; (fahrzeug_id, user_id) ist ein Fremdschlüssel auf
+  // vehicles (id, user_id), das Paar kann also nicht auseinanderfallen.
+  user_id: string;
+  art: Wartungsart;
+  /** DATE-Spalte, "YYYY-MM-DD". Nie in der Zukunft (CHECK). */
+  datum: string;
+  /** Kilometerstand beim Eintrag, freiwillig. */
+  km_stand: number | null;
+  /** numeric(8,2); PostgREST liefert es als JSON-Zahl. */
+  kosten_chf: number | null;
+  notiz: string | null;
+  created_at: string;
+}
+
+// Zeilenform von public.wartungserinnerungen (0111) — höchstens eine Zeile
+// pro Fahrzeug. Die Fälligkeit selbst steht nicht in der Datenbank: sie
+// wird in lib/wartung.ts aus diesen Werten, den Einträgen und den
+// aufgezeichneten Fahrten abgeleitet.
+export interface Wartungserinnerung {
+  fahrzeug_id: string;
+  user_id: string;
+  /** Termin aus dem Aufgebot des Strassenverkehrsamts. */
+  naechste_mfk_am: string | null;
+  service_intervall_km: number | null;
+  service_intervall_monate: number | null;
+  created_at: string;
 }
 
 // Die drei Felder, die eine Weiterleitung unter /c/<code> braucht — genau

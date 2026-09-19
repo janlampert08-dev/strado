@@ -101,12 +101,18 @@ export default async function AnmeldenPage({
 
           --bottom-nav-h ist ab md 0 (siehe globals.css), der Zuschlag
           verschwindet auf dem Desktop also von selbst. */}
+      {/* inline-flex + min-h-11 an den beiden Links: als reine Textzeile
+          waren sie 15 px hoch. Das sind die zwei Links, über die von dieser
+          Seite aus der einzige Weg zu Impressum und Datenschutzerklärung
+          führt — sie dürfen nicht das kleinste Ziel der Seite sein. Die
+          Zeilenhöhe der Fusszeile bleibt gleich, weil die Fläche über die
+          Zeilenbox hinauswächst. */}
       <footer className="pb-[calc(1.5rem+var(--bottom-nav-h))] text-center text-xs text-muted">
         <a
           href={LEGAL_URLS.impressum}
           target="_blank"
           rel="noopener noreferrer"
-          className="transition-colors duration-fast hover:text-foreground"
+          className="inline-flex min-h-11 items-center px-1 transition-colors duration-fast hover:text-foreground"
         >
           Impressum
         </a>{" "}
@@ -115,7 +121,7 @@ export default async function AnmeldenPage({
           href={LEGAL_URLS.datenschutz}
           target="_blank"
           rel="noopener noreferrer"
-          className="transition-colors duration-fast hover:text-foreground"
+          className="inline-flex min-h-11 items-center px-1 transition-colors duration-fast hover:text-foreground"
         >
           Datenschutz
         </a>

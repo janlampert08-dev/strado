@@ -77,21 +77,21 @@ export default function OfflineRoutesList() {
         <dl className="grid grid-cols-2 gap-3">
           <Card surface className="flex flex-col gap-1 p-3">
             <dt className="text-xs text-muted">Länge</dt>
-            <dd className="font-mono text-sm tabular-nums">{selected.laengeKm} km</dd>
+            <dd className="text-sm tabular-nums">{selected.laengeKm} km</dd>
           </Card>
           <Card surface className="flex flex-col gap-1 p-3">
-            <dt className="text-xs text-muted">Höhe</dt>
-            <dd className="font-mono text-sm tabular-nums">{selected.hoeheM ?? "—"} m</dd>
+            <dt className="text-xs text-muted">Höchster Punkt</dt>
+            <dd className="text-sm tabular-nums">{selected.hoeheM ?? "—"} m</dd>
           </Card>
           <Card surface className="flex flex-col gap-1 p-3">
             <dt className="text-xs text-muted">Max. Steigung</dt>
-            <dd className="font-mono text-sm tabular-nums">
+            <dd className="text-sm tabular-nums">
               {selected.maxSteigungProzent !== null ? `${selected.maxSteigungProzent}%` : "—"}
             </dd>
           </Card>
           <Card surface className="flex flex-col gap-1 p-3">
             <dt className="text-xs text-muted">Kehren</dt>
-            <dd className="font-mono text-sm tabular-nums">{selected.kehren ?? "—"}</dd>
+            <dd className="text-sm tabular-nums">{selected.kehren ?? "—"}</dd>
           </Card>
         </dl>
         {selected.charakterText && (
@@ -131,7 +131,7 @@ export default function OfflineRoutesList() {
                 />
               </svg>
               <span className="min-w-0 flex-1 truncate text-sm font-medium">{route.name}</span>
-              <span className="shrink-0 font-mono text-xs tabular-nums text-muted">
+              <span className="shrink-0 text-xs tabular-nums text-muted">
                 {route.laengeKm} km
               </span>
             </button>

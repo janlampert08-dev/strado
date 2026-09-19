@@ -38,7 +38,7 @@ export default async function AktivitaetPage() {
 
   return (
     <div className="flex h-dvh flex-col">
-      <Header back="/feed" />
+      <Header />
       {/* Markiert beim Laden alles aktuell Ungesehene als gesehen, siehe
           MarkSeen.tsx — hier mit markActivitySeen, das BEIDE Zeitpunkte
           setzt (0100). Auf /profil läuft dieselbe Komponente mit

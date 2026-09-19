@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   anteil,
   anteilText,
-  balkenHoehe,
   summiere,
   verlaufNachCode,
   type CreatorKennzahl,
@@ -83,29 +82,6 @@ describe("anteilText", () => {
     expect(anteilText(5, 0)).toBeNull();
     expect(anteilText(5, -1)).toBeNull();
     expect(anteilText(Number.NaN, 10)).toBeNull();
-  });
-});
-
-describe("balkenHoehe", () => {
-  it("skaliert auf den Höchstwert", () => {
-    expect(balkenHoehe(50, 100)).toBe(50);
-    expect(balkenHoehe(100, 100)).toBe(100);
-  });
-
-  // Ein einzelner Klick neben einem Ausreisser wäre sonst optisch dasselbe
-  // wie ein Tag ohne jeden Klick. Die Untergrenze muss dafür über dem
-  // 2-px-Strich liegen, mit dem ein leerer Tag gezeichnet wird: auf der
-  // 48 px hohen Bahn sind 10 % = 4.8 px, die alten 4 % waren 1.92 px und
-  // damit niedriger als "gar nichts".
-  it("hält einen Tag mit Bewegung sichtbar", () => {
-    expect(balkenHoehe(1, 500)).toBe(10);
-    expect(balkenHoehe(1, 500) * 0.48).toBeGreaterThan(2);
-  });
-
-  it("lässt einen leeren Tag leer", () => {
-    expect(balkenHoehe(0, 500)).toBe(0);
-    expect(balkenHoehe(0, 0)).toBe(0);
-    expect(balkenHoehe(3, 0)).toBe(0);
   });
 });
 

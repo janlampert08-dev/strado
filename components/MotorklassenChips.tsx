@@ -7,6 +7,7 @@ import {
   MOTORKLASSEN,
   fahrzeugtypdefinition,
   filterTyp,
+  istMotorklasse,
   motorklassendefinition,
 } from "@/lib/motorklassen";
 import type { Klassenfilter } from "@/lib/motorklassen";
@@ -46,13 +47,13 @@ import { cn } from "@/lib/utils/cn";
 //   onChange — die Auswahl lebt im Client-State. Für die Streckenseite, die
 //              Karte, Fotos, Bewertungen und Wetter mitlädt und die nicht
 //              bei jedem Chip-Tipp komplett neu berechnet werden soll.
-//   hrefs    — die Auswahl steht in der URL. Für /leaderboards, wo die
+//   hrefs    — die Auswahl steht in der URL. Für /ranglisten, wo die
 //              Listen die Seite ausmachen: die Seite bleibt Server
 //              Component, der Zurück-Knopf funktioniert, und ein Link auf
 //              eine Klasse ist teilbar.
 //
 // Warum `hrefs` eine fertige Zuordnung ist und keine Funktion: Diese Datei
-// ist "use client", /leaderboards ist eine Server Component. React kann
+// ist "use client", /ranglisten ist eine Server Component. React kann
 // keine Funktion über diese Grenze reichen — der Versuch endet mit
 // "Functions cannot be passed directly to Client Components", und zwar
 // beim Rendern, also erst bei einer echten Anfrage. Weder `next build`
@@ -170,6 +171,16 @@ export default function MotorklassenChips({
           ))}
         </div>
       )}
+
+      {/* Die Regel sichtbar, sobald eine Klasse gewählt ist. Sie stand nur
+          im title-Attribut der Chips — auf einem Telefon gibt es kein
+          Schweben, also war "A 35 kW" dort eine Abkürzung ohne Auflösung,
+          und genau zwischen A1 und A 35 kW muss man wissen, wo man steht. */}
+      {aktiv !== null && istMotorklasse(aktiv) && (
+        <p className="px-1 text-xs text-muted">
+          {motorklassendefinition(aktiv).label}: {motorklassendefinition(aktiv).regel}
+        </p>
+      )}
     </div>
   );
 }
@@ -201,7 +212,10 @@ function Chip({
         title={title}
         // Kein aria-pressed an einem Link: aktiv heisst hier "das ist die
         // Seite, auf der du gerade bist".
-        aria-current={aktiv ? "true" : undefined}
+        // "page", nicht "true": diese Chips sind Links, die die Adresse
+        // ändern (hrefs-Betriebsart auf /ranglisten) — der gewählte Chip ist
+        // also die aktuelle Seite und nicht bloss "irgendwie aktuell".
+        aria-current={aktiv ? "page" : undefined}
         // Der Sprung nach oben wäre hier falsch — die Leiste steht mitten
         // auf der Seite, und ihr Ergebnis steht direkt darunter.
         scroll={false}
@@ -227,7 +241,7 @@ function Chip({
 
 // Sofortige Rückmeldung auf den Tipp, solange die neue Liste unterwegs ist.
 //
-// Die Ladegrenzen in app/leaderboards/page.tsx sind die eigentliche
+// Die Ladegrenzen in app/ranglisten/page.tsx sind die eigentliche
 // Verbesserung — die Leiste bleibt beim Klassenwechsel stehen, statt mit der
 // ganzen Seite durch ein Skelett ersetzt zu werden. Diese Anzeige deckt die
 // kurze Spanne davor ab, in der sonst gar nichts passiert.
