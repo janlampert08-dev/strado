@@ -59,7 +59,7 @@ export default function WartungserinnerungenForm({
           min="1950-01-01"
           max={plusJahre(heute, MFK_MAX_JAHRE_VORAUS)}
           defaultValue={erinnerungen?.naechste_mfk_am ?? ""}
-          className="font-mono"
+          className="tabular-nums"
         />
         <span className="text-xs font-normal text-muted">
           Das Datum aus dem Aufgebot des Strassenverkehrsamts.
@@ -76,7 +76,7 @@ export default function WartungserinnerungenForm({
               name="service_intervall_km"
               inputMode="numeric"
               defaultValue={erinnerungen?.service_intervall_km?.toString() ?? ""}
-              className="font-mono"
+              className="tabular-nums"
             />
           </label>
           <label className="flex flex-col gap-1.5 text-sm font-medium">
@@ -86,7 +86,7 @@ export default function WartungserinnerungenForm({
               name="service_intervall_monate"
               inputMode="numeric"
               defaultValue={erinnerungen?.service_intervall_monate?.toString() ?? ""}
-              className="font-mono"
+              className="tabular-nums"
             />
           </label>
         </div>

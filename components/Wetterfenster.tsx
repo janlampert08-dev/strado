@@ -106,7 +106,7 @@ export async function WetterfensterStreifen({
               <span
                 aria-hidden="true"
                 className={cn(
-                  "font-mono text-xs tabular-nums",
+                  "text-xs tabular-nums",
                   t.stufe === "schlecht" || t.stufe === null ? "text-muted" : "text-foreground",
                 )}
               >
@@ -172,7 +172,7 @@ export async function WetterfensterFavoriten({
               <span className="min-w-0 truncate">{name}</span>
               {beste.length > 0 ? (
                 <>
-                  <span aria-hidden="true" className="shrink-0 font-mono tabular-nums">
+                  <span aria-hidden="true" className="shrink-0 tabular-nums">
                     {tageAufzaehlen(beste, fenster.heute, true)}
                   </span>
                   <span className="sr-only">{tageAufzaehlen(beste, fenster.heute)}</span>

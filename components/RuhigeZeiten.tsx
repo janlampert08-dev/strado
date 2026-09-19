@@ -108,7 +108,7 @@ export default function RuhigeZeiten({
           {karte.stunden.map((stunde, i) => (
             <span
               key={stunde}
-              className="flex-1 text-center font-mono text-[10px] text-muted"
+              className="flex-1 text-center text-[10px] tabular-nums text-muted"
               aria-hidden="true"
             >
               {i % 2 === 0 ? stunde : ""}
@@ -118,7 +118,7 @@ export default function RuhigeZeiten({
 
         {karte.zeilen.map((zeile) => (
           <div key={zeile.wochentag} className="flex items-center gap-0.5">
-            <span className="w-8 shrink-0 font-mono text-[11px] text-muted" aria-hidden="true">
+            <span className="w-8 shrink-0 text-[11px] tabular-nums text-muted" aria-hidden="true">
               {WOCHENTAG_KURZ[zeile.wochentag - 1]}
             </span>
             {zeile.werte.map((faktor, i) => {
@@ -156,7 +156,7 @@ export default function RuhigeZeiten({
 
       {gemeinschaft && <p className="text-sm text-muted">{gemeinschaft}</p>}
 
-      <p className="font-mono text-[11px] uppercase tracking-wide text-muted">
+      <p className="text-xs text-muted">
         Verkehrsvorhersage Mapbox
         {berechnetAm &&
           ` · Stand ${new Intl.DateTimeFormat("de-CH", {

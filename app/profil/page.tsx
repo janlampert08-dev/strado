@@ -445,7 +445,7 @@ export default async function ProfilPage() {
               className="flex items-center justify-between gap-3 rounded-lg border border-border px-4 py-3 transition-colors duration-fast hover:border-border-strong"
             >
               <span className="text-sm">Passsammlung</span>
-              <span className="font-mono text-sm tabular-nums text-muted">
+              <span className="text-sm tabular-nums text-muted">
                 {sammlung.befahren} von {sammlung.gesamt}
               </span>
             </Link>

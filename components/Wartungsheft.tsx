@@ -76,7 +76,7 @@ function Felder({
           required
           max={heute}
           defaultValue={eintrag?.datum ?? heute}
-          className="font-mono"
+          className="tabular-nums"
         />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium">
@@ -86,7 +86,7 @@ function Felder({
           name="km_stand"
           inputMode="numeric"
           defaultValue={eintrag?.km_stand?.toString() ?? ""}
-          className="font-mono"
+          className="tabular-nums"
         />
         <span className="text-xs font-normal text-muted">
           Der Stand auf dem Zähler. Damit rechnet Strado bis zum nächsten Service weiter.
@@ -99,7 +99,7 @@ function Felder({
           name="kosten_chf"
           inputMode="decimal"
           defaultValue={eintrag?.kosten_chf?.toString() ?? ""}
-          className="font-mono"
+          className="tabular-nums"
         />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium">
@@ -215,12 +215,12 @@ export default function Wartungsheft({
             <li key={eintrag.id} className="flex flex-col gap-1 px-4 py-3">
               <div className="flex items-baseline justify-between gap-3">
                 <p className="font-medium">{WARTUNGSART_LABEL[eintrag.art]}</p>
-                <p className="shrink-0 font-mono text-sm text-muted tabular-nums">
+                <p className="shrink-0 text-sm text-muted tabular-nums">
                   {datumText(eintrag.datum)}
                 </p>
               </div>
               {(eintrag.km_stand !== null || eintrag.kosten_chf !== null) && (
-                <p className="font-mono text-sm text-muted tabular-nums">
+                <p className="text-sm text-muted tabular-nums">
                   {[
                     eintrag.km_stand !== null ? kmText(eintrag.km_stand) : null,
                     eintrag.kosten_chf !== null ? betragText(eintrag.kosten_chf) : null,

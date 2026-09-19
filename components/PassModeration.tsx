@@ -110,7 +110,7 @@ export default function PassModeration({
                   {/* Bis wann die Setzung gilt — ohne diese Angabe sieht ein
                       Moderator nicht, ob sie noch in Kraft ist oder der Feed
                       längst wieder schreibt. */}
-                  <span className="font-mono text-[11px] uppercase tracking-wide text-muted">
+                  <span className="text-xs text-muted">
                     {pass.status.manuellBis
                       ? new Date(pass.status.manuellBis) > new Date()
                         ? `von Hand bis ${new Intl.DateTimeFormat("de-CH", {
@@ -265,7 +265,7 @@ export default function PassModeration({
 
       {sperrtage.length > 0 && (
         <div className="flex flex-col gap-2">
-          <p className="font-mono text-[11px] uppercase tracking-wide text-muted">
+          <p className="text-xs text-muted">
             Kommende Sperrungen
           </p>
           <Card as="ul" className="divide-y divide-border">
