@@ -66,7 +66,12 @@ export default function RouteActionsMenu({
   // vom Menü nur der erste Eintrag zu sehen. fixed entkommt dem Zuschnitt
   // (das Sheet trägt kein transform, das einen neuen Bezugsrahmen bilden
   // würde), und ist unten zu wenig Platz, geht es nach oben auf.
-  const [lage, setLage] = useState<{ left: number; top?: number; bottom?: number } | null>(null);
+  const [lage, setLage] = useState<{
+    left: number;
+    top?: number;
+    bottom?: number;
+    maxHeight?: number;
+  } | null>(null);
   const [copied, setCopied] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
@@ -77,6 +82,22 @@ export default function RouteActionsMenu({
   const containerRef = useRef<HTMLDivElement>(null);
   const ausloeserRef = useRef<HTMLButtonElement>(null);
   const reportAction = reportRoute.bind(null, route.id);
+
+  // Wie viele Zeilen das Menue bekommt, haengt von Rolle und Strecke ab: drei
+  // feste (Teilen, Google Maps, GPX), dazu je eine fuer einen saisonalen Pass,
+  // fuer die eigene Strecke und fuer "Melden", dazu zwei fuer die Moderation.
+  // Drei bis sieben also — vorher rechnete die Hoehenschaetzung fest mit
+  // fuenf. Bei sieben (eine Moderatorin auf einer fremden saisonalen Strecke)
+  // unterschaetzte sie das Menue um rund 90 px, es ging nach unten auf, wo es
+  // nicht hinpasst, und weil die Karte `fixed` liegt, war der abgeschnittene
+  // Teil nicht wegscrollbar: "Melden" und "Strecke loeschen" waren nicht
+  // erreichbar.
+  const menueEintraege =
+    3 +
+    (route.saison_status === "saisonal" ? 1 : 0) +
+    (isOwner ? 1 : 0) +
+    (canReport ? 1 : 0) +
+    (moderator ? 2 : 0);
 
   useEffect(() => {
     if (!open) return;
@@ -105,11 +126,34 @@ export default function RouteActionsMenu({
       // Anlass), bekäme den Fokus sonst an den Auslöser weiter oben gerissen.
       schliessenUndFokusZurueck();
     }
+    // Die Karte liegt `fixed` und behaelt die Bildschirmkoordinaten, die beim
+    // Oeffnen ausgerechnet wurden. Scrollt danach etwas — auf der
+    // Streckenseite scrollt das DragSheet, in dem der Ausloeser sitzt —,
+    // bleibt das Menue stehen, waehrend der Ausloeser darunter wegwandert:
+    // eine Ueberlagerung ohne sichtbaren Bezug, die Klicks auf das abfaengt,
+    // was inzwischen darunter liegt. Deshalb schliesst es mit. Das ist die
+    // uebliche Antwort fuer ein verankertes Menue und billiger als eine
+    // Neuberechnung pro Frame, die beim Ziehen des Sheets dauernd liefe.
+    //
+    // capture: true, weil das Sheet selbst der scrollende Kasten ist und ein
+    // scroll-Ereignis eines Elements nicht bis zum document blubbert.
+    function handleScroll(e: Event) {
+      // Das Menue selbst darf scrollen, ohne sich dabei zu schliessen: passt
+      // es in keine Richtung ganz, begrenzt die Hoehe es und der Rest wird
+      // gescrollt (overflow-y-auto). Dieses Ereignis kommt aus dem Menue und
+      // ist kein Wegwandern des Ausloesers.
+      if (e.target instanceof Node && containerRef.current?.contains(e.target)) return;
+      setOpen(false);
+    }
     document.addEventListener("mousedown", handleClickOutside);
     document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("scroll", handleScroll, true);
+    window.addEventListener("resize", handleScroll);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("scroll", handleScroll, true);
+      window.removeEventListener("resize", handleScroll);
     };
   }, [open]);
 
@@ -184,13 +228,26 @@ export default function RouteActionsMenu({
         onClick={() => {
           const rect = ausloeserRef.current?.getBoundingClientRect();
           if (rect) {
-            const menuHoehe = 5 * 44 + 16;
+            // 44 px Tippflaeche plus 1 px Trennlinie je Eintrag, plus Luft.
+            const menuHoehe = menueEintraege * 45 + 8;
             const left = Math.max(8, Math.min(rect.left, window.innerWidth - 224 - 8));
-            setLage(
-              window.innerHeight - rect.bottom < menuHoehe
-                ? { left, bottom: window.innerHeight - rect.top + 4 }
-                : { left, top: rect.bottom + 4 },
-            );
+            // 4 px Abstand zum Ausloeser, 8 px zum Bildschirmrand.
+            const platzUnten = window.innerHeight - rect.bottom - 12;
+            const platzOben = rect.top - 12;
+            // Passt es unten, geht es nach unten auf. Passt es dort nicht,
+            // gewinnt die Seite mit mehr Platz — vorher klappte es blind nach
+            // oben, auch wenn dort noch weniger Raum war. Und damit ein Menue,
+            // das in keine Richtung ganz passt, trotzdem bedienbar bleibt,
+            // wird die Hoehe auf den vorhandenen Platz begrenzt; der Rest ist
+            // dann scrollbar statt abgeschnitten (siehe overflow-y-auto unten).
+            const nachUnten = platzUnten >= menuHoehe || platzUnten >= platzOben;
+            setLage({
+              left,
+              ...(nachUnten
+                ? { top: rect.bottom + 4 }
+                : { bottom: window.innerHeight - rect.top + 4 }),
+              maxHeight: Math.max(120, nachUnten ? platzUnten : platzOben),
+            });
           }
           setOpen((v) => !v);
           setGpxHinweis(false);
@@ -204,7 +261,7 @@ export default function RouteActionsMenu({
         <Card
           elevated
           as="div"
-          className="fixed z-50 flex w-56 flex-col overflow-hidden"
+          className="fixed z-50 flex w-56 flex-col overflow-y-auto"
           style={lage ?? undefined}
         >
           <button type="button" onClick={handleShare} className={ITEM_CLASS}>
