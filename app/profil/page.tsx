@@ -265,7 +265,13 @@ export default async function ProfilPage() {
     isModerator(user.id),
     istCreator(user.id),
     // Die Passsammlung — eine RPC, die nur eigene Fahrten sieht (0104).
-    getSammlungsStand(),
+    // Seit #296 wirft sie bei einem Query-Fehler, statt "0 von 34" zu
+    // behaupten. Auf /paesse ist das richtig; hier ist die Zeile ein Zusatz,
+    // und ein Ausfall soll sie ausblenden, nicht das ganze Profil.
+    getSammlungsStand().catch((err) => {
+      console.error("Passsammlung für das Profil nicht ladbar", err);
+      return null;
+    }),
   ]);
 
   // Die ausführliche Pass-Sammlung (Premium): Katalog und eigene
