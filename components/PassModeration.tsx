@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useRef, useState, useTransition } from "react";
 import Card from "@/components/ui/Card";
+import useEingabenBewahren from "@/components/useEingabenBewahren";
 import Button from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Input";
 import { PassStatusMarke } from "@/components/PassStatusZeile";
@@ -83,6 +84,15 @@ export default function PassModeration({
   const [freigabeLaeuft, starteFreigabe] = useTransition();
   const [loeschenLaeuft, starteLoeschen] = useTransition();
   const [formular, setzeFormular] = useState<"status" | "sperrtag" | null>(null);
+  // Beide Formulare geben bei einem Fehler nur { error } zurueck und bleiben
+  // stehen — ohne den Haken leert React 19 dabei jedes Feld. Beim Sperrtag
+  // sind das sechs Eingaben (Pass, Von, Bis, Art, Titel, Zeitfenster,
+  // Quelle), nur weil jemand Von und Bis vertauscht hat.
+  // Siehe components/useEingabenBewahren.ts.
+  const statusFormRef = useRef<HTMLFormElement>(null);
+  const sperrtagFormRef = useRef<HTMLFormElement>(null);
+  useEingabenBewahren(statusFormRef);
+  useEingabenBewahren(sperrtagFormRef);
 
   // Gezeigt wird, was von der Erwartung abweicht: alles, was nicht offen ist,
   // und alles, was gerade von Hand gesetzt ist. Die übrigen 30 Zeilen wären
@@ -156,7 +166,7 @@ export default function PassModeration({
       </div>
 
       {formular === "status" && (
-        <form action={statusAction}>
+        <form ref={statusFormRef} action={statusAction}>
           <Card surface className="flex flex-col gap-3 p-4">
           <PassWahl paesse={paesse} name="pass_id" />
 
@@ -203,7 +213,7 @@ export default function PassModeration({
       )}
 
       {formular === "sperrtag" && (
-        <form action={sperrtagAction}>
+        <form ref={sperrtagFormRef} action={sperrtagAction}>
           <Card surface className="flex flex-col gap-3 p-4">
           <PassWahl paesse={paesse} name="pass_id" />
 
