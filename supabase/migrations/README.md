@@ -105,6 +105,23 @@ und `fahrt_start_einloesen` die Zeile beide nicht mehr annehmen. Wer daraus
 eine echte Frist machen will, braucht einen Cron wie `premium_abgleich()`
 (`0059`) — eigene Entscheidung, keine Nacharbeit zu dieser.
 
+## Eingespielt: 0114_oeffentliche_passhoehen (2026-09-19, Produktion)
+
+"Pässe befahren" zählt Passhöhen statt Strecken (Entscheid des Inhabers vom
+2026-09-19). Eigenes Profil und Auszeichnungen lesen `meine_paesse()`; für
+fremde Profile gibt `oeffentliche_passhoehen(p_user_id)` nur eine Zahl
+heraus — über dieselben Fahrten wie `public_fahrten` (WHERE-Bedingung live
+gelesen), ohne erkannte Abschnitte, und `NULL`, wenn `zeigt_paesse` aus ist
+oder das Konto gelöscht. SECURITY DEFINER mit festem `search_path`, für
+`anon` und `authenticated` ausdrücklich gewährt (öffentliche Profile sind
+ohne Anmeldung lesbar).
+
+Eingespielt vor dem Code. Geprüft: `anon` darf ausführen, `prosecdef = true`,
+ein Konto ohne `zeigt_paesse` liefert `NULL`, alle übrigen 0 (Stand
+2026-09-19: noch kein öffentlicher Track über einen der 34 Scheitel).
+
+**Rückweg:** `drop function public.oeffentliche_passhoehen(uuid);`
+
 ## Eingespielt: 0113_passsammlung_je_fahrt (2026-09-18, Produktion)
 
 **Eingespielt am 2026-09-18** nach dem Merge von #291, vor der Promotion

@@ -51,7 +51,7 @@ export const getPublicProfile = cache(async function getPublicProfile(
 
   if (!profile) return null;
 
-  const [vehiclesResult, fahrtenResult] = await Promise.all([
+  const [vehiclesResult, fahrtenResult, passhoehenResult] = await Promise.all([
     profile.zeigt_fahrzeuge
       ? supabase.from("vehicles").select("*").eq("user_id", userId)
       : Promise.resolve({ data: [] as Vehicle[], error: null }),
@@ -66,6 +66,12 @@ export const getPublicProfile = cache(async function getPublicProfile(
       .eq("user_id", userId)
       .order("datum", { ascending: false })
       .order("completion_id", { ascending: false }),
+    // Befahrene Passhöhen auf öffentlich geteilten Fahrten (0114). Die
+    // Funktion zieht die zeigt_paesse-Schranke selbst und antwortet dann
+    // NULL; nur abfragen, wenn die Zahl überhaupt gezeigt wird.
+    profile.zeigt_paesse
+      ? supabase.rpc("oeffentliche_passhoehen", { p_user_id: userId })
+      : Promise.resolve({ data: null, error: null }),
   ]);
 
   // Hier wiegt das besonders schwer: eine gescheiterte Fahrtenabfrage würde
@@ -75,13 +81,18 @@ export const getPublicProfile = cache(async function getPublicProfile(
   throwOnQueryError(vehiclesResult.error, "Fahrzeuge");
   throwOnQueryError(fahrtenResult.error, "Fahrten");
 
+  // Kein throwOnQueryError: die Zahl ist eine von vier Kennzahlen, und ein
+  // Ausfall soll sie ausblenden (passCount 0 wird auf der Seite nicht
+  // gezeigt), nicht das ganze Profil auf die Fehlerseite schicken.
+  if (passhoehenResult.error) {
+    console.error("Passhöhen für das öffentliche Profil nicht ladbar", passhoehenResult.error.message);
+  }
+
   const fahrten = (fahrtenResult.data as PublicFahrt[]) ?? [];
-  // Der Pässe-Zähler ist die einzige streckenbezogene Kennzahl: seit
-  // 0044_freie_fahrten.sql kann route_id null sein, und ohne diesen Filter
-  // liefe null als eigener "Pass" in die Menge. Distanz und Höhenmeter
-  // umfassen dagegen bewusst jede Fahrt, freie wie Streckenfahrten.
-  const streckenFahrten = fahrten.filter((f) => f.route_id !== null);
-  const passCount = new Set(streckenFahrten.map((f) => f.route_id)).size;
+  // Befahrene Passhöhen, nicht Strecken (Entscheid des Inhabers,
+  // 2026-09-19; 0114). Distanz und Höhenmeter umfassen weiterhin jede
+  // öffentlich geteilte Fahrt, freie wie Streckenfahrten.
+  const passCount = typeof passhoehenResult.data === "number" ? passhoehenResult.data : 0;
   const distanzKm = fahrten.reduce((sum, f) => sum + (f.distanz_km ?? 0), 0);
   // Kumulierter Anstieg aus der View statt einer zweiten Abfrage auf
   // routes.hoehe_m: public_fahrten führt hoehenmeter_aufstieg seit

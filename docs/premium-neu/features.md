@@ -140,12 +140,13 @@ Wiedererkennung), und **keine Zeiten, kein Tempo** (AGB Ziff. 11.3). Die
 Wortmarke bleibt auf jeder Variante; ein "Bild ohne Branding" wäre die
 Funktion, die man sich selbst wegverkauft.
 
-**Bekannte Unschärfe, Produktentscheid offen:** Die bestehende Profilkachel
-"Pässe befahren" zählt *jede* gefahrene Strecke, nicht Passhöhen. Sie
-kann also höher oder tiefer stehen als "3 von 34". Empfehlung aus der Umsetzung: die
-Kachel in einem eigenen PR umbenennen ("Strecken befahren"), statt ihre
-Bedeutung zu ändern — an ihr hängen Auszeichnungen und das Abzeichen auf
-geteilten Bildern.
+**Entschieden am 2026-09-19:** Die Profilkachel "Pässe befahren" zählte bis
+dahin jede gefahrene Strecke. Entscheid des Inhabers: sie zählt Passhöhen.
+Eigenes Profil, Auszeichnungen und Teilen-Abzeichen lesen `meine_paesse()`,
+das öffentliche Profil `oeffentliche_passhoehen()` (0114, nur öffentlich
+geteilte Fahrten, nur mit `zeigt_paesse`). Die eigene Zeile "Passsammlung"
+ist in der Kachel aufgegangen — eine Pass-Zahl auf dem Profil, nicht zwei.
+Die Rechtstexte ("Anzahl Pässe") stimmen damit wörtlich.
 
 ## 4. Wartungsheft mit MFK- und Service-Erinnerung
 
