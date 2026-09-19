@@ -231,29 +231,49 @@ export async function POST(req: Request) {
           p_stripe_payment_intent_id: paymentIntentId,
         });
         if (error) throw error;
+        // `data === true` heisst: zu diesem PaymentIntent gab es eine
+        // Passzeile, die erstattete Zahlung war also wirklich ein Saisonpass.
+        // Nur dann darf hier etwas geschehen.
         if (data === true) {
           console.info("Saisonpass nach Erstattung zurückgenommen", { paymentIntentId });
-        }
 
-        // Ein Anschluss-Abo (während des Passes abgeschlossen, in Stripe als
-        // Testphase bis zum Passende) verlöre mit dem Pass seinen Grund,
-        // gratis zu laufen: ohne diesen Schritt blieb Premium nach der
-        // Erstattung bis zum alten Passende kostenlos an. Die Testphase
-        // endet deshalb jetzt, und das Abo zahlt ab heute. Unabhängig von
-        // `data`, damit eine wiederholte Zustellung nachholt, was beim
-        // ersten Mal nach dem RPC gescheitert ist — ein bereits beendetes
-        // Probeabo steht nicht mehr auf "trialing" und fällt heraus.
-        const customerId = typeof charge.customer === "string" ? charge.customer : charge.customer?.id;
-        if (customerId) {
-          const anschluss = await getStripe().subscriptions.list({
-            customer: customerId,
-            status: "trialing",
-            limit: 10,
-          });
-          for (const abo of anschluss.data) {
-            if (abo.metadata?.variante !== "anschluss") continue;
-            await getStripe().subscriptions.update(abo.id, { trial_end: "now" });
-            console.info("Anschluss-Abo nach Passerstattung sofort fällig", { subscriptionId: abo.id });
+          // Ein Anschluss-Abo (während des Passes abgeschlossen, in Stripe
+          // als Testphase bis zum Passende) verlöre mit dem Pass seinen
+          // Grund, gratis zu laufen: ohne diesen Schritt bliebe Premium nach
+          // der Erstattung bis zum alten Passende kostenlos an. Die Testphase
+          // endet deshalb jetzt, und das Abo zahlt ab heute.
+          //
+          // WARUM INNERHALB VON `data === true`: Vorher lief dieser Block für
+          // jede vollständig erstattete Zahlung des Kontos.
+          // vollstaendigErstatteterPaymentIntent() prüft nur `refunded` und
+          // den Betrag — nichts über Preis oder Produkt —, und einen Filter
+          // auf eigene Preise (preisHerkunft()) gibt es auf diesem Weg nicht.
+          // Eine Kulanzerstattung einer alten Rechnung oder die Erstattung
+          // eines Fremdprodukts auf demselben Stripe-Konto beendete damit die
+          // Testphase eines Anschluss-Abos, dessen Pass unberührt weiterlief:
+          // die Person zahlte den vollen Jahresbetrag sofort und denselben
+          // Zeitraum ein zweites Mal. Zurückholen liesse sich das nur von
+          // Hand.
+          //
+          // Die frühere Begründung („unabhängig von `data`, damit eine
+          // wiederholte Zustellung nachholt") trägt nicht: saisonpass_erstatten
+          // (0110) sucht die Zeile ohne Filter auf `erstattet_am` und setzt
+          // `erstattet_am = coalesce(erstattet_am, now())`. Bei jeder erneuten
+          // Zustellung kommt also wieder `true` zurück, und das Nachholen
+          // bleibt erhalten — ein bereits beendetes Probeabo steht dann nicht
+          // mehr auf "trialing" und fällt ohnehin heraus.
+          const customerId = typeof charge.customer === "string" ? charge.customer : charge.customer?.id;
+          if (customerId) {
+            const anschluss = await getStripe().subscriptions.list({
+              customer: customerId,
+              status: "trialing",
+              limit: 10,
+            });
+            for (const abo of anschluss.data) {
+              if (abo.metadata?.variante !== "anschluss") continue;
+              await getStripe().subscriptions.update(abo.id, { trial_end: "now" });
+              console.info("Anschluss-Abo nach Passerstattung sofort fällig", { subscriptionId: abo.id });
+            }
           }
         }
       }
