@@ -68,6 +68,43 @@ describe("anzeigeFuerStatus", () => {
     expect(anzeige.text).toContain("abgelaufen");
   });
 
+  it("nimmt eine freigegebene Setzung von Hand zurück", () => {
+    // pass_status_freigeben (0104) setzt nur manuell_bis auf null und lässt
+    // Quelle und Zustand stehen. Ohne den null-Zweig war ausgerechnet die
+    // ausdrückliche Freigabe schlechter als das Ablaufenlassen: das
+    // freigegebene "gesperrt" stand unbefristet als aktuelle Auskunft da.
+    const anzeige = anzeigeFuerStatus(
+      {
+        zustand: "gesperrt",
+        meldung: "Felssturz",
+        quelle: "moderation",
+        aktualisiertAm: "2026-03-01T12:00:00Z",
+        manuellBis: null,
+      },
+      null,
+      JETZT,
+    );
+    expect(anzeige.zustand).toBe("unbekannt");
+    expect(anzeige.text).toContain("freigegeben");
+  });
+
+  it("hält eine freigegebene Setzung, solange der Feed frisch ist", () => {
+    // Dann ist der Feed zuständig und schreibt den Zustand ohnehin gleich um;
+    // bis dahin ist der zuletzt bekannte Stand die bessere Auskunft.
+    const anzeige = anzeigeFuerStatus(
+      {
+        zustand: "gesperrt",
+        meldung: "Felssturz",
+        quelle: "moderation",
+        aktualisiertAm: "2026-03-01T12:00:00Z",
+        manuellBis: null,
+      },
+      FRISCH,
+      JETZT,
+    );
+    expect(anzeige.zustand).toBe("gesperrt");
+  });
+
   it("hält eine abgelaufene Setzung, solange der Feed frisch ist — dann schreibt er sie ohnehin gleich um", () => {
     const anzeige = anzeigeFuerStatus(
       {
