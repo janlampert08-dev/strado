@@ -134,8 +134,15 @@ export function ConfirmDialog({
           die bestätigende Handlung zuunterst, dort, wo der Daumen ist. Ab sm
           wie bisher nebeneinander rechts. Vorher waren es 36-px-Knöpfe
           ("sm") auch auf dem Telefon, ausgerechnet vor "Verwerfen" und
-          "Löschen". */}
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          "Löschen".
+
+          flex-col und nicht flex-col-reverse: column-reverse setzt das erste
+          Kind nach UNTEN, und das erste Kind ist hier der Abbrechen-Knopf —
+          damit stand genau verkehrt herum, was der Absatz oben beschreibt.
+          Dazu lief die Tab-Reihenfolge der sichtbaren entgegen (WCAG 2.4.3),
+          weil die DOM-Folge Abbrechen/Bestätigen blieb. Ab sm ordnet
+          flex-row ohnehin neu: Abbrechen links, Bestätigen rechts. */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
         <Button type="button" variant="secondary" onClick={onCancel} className="max-sm:w-full">
           {cancelLabel}
         </Button>
