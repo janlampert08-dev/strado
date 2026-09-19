@@ -176,14 +176,24 @@ export function computeAscentM(profile: { dist: number; elevation: number }[]): 
   return Math.round(ascent);
 }
 
-// Downsampled Höhenprofil fürs Diagramm (ca. 80 Punkte reichen für eine
-// glatte Linie, spart Speicher/Payload gegenüber den Rohpunkten — deren
-// Anzahl hängt seit stuetzpunkteFuer() an der Länge und ist nicht mehr
-// zwingend 300).
+// Downsampled Höhenprofil fürs Diagramm — spart Speicher/Payload gegenüber
+// den Rohpunkten, deren Anzahl seit stuetzpunkteFuer() an der Länge hängt
+// und nicht mehr zwingend 300 ist.
+//
+// targetPoints ist eine Untergrenze, keine Obergrenze, und der Abstand
+// dahin ist grösser, als "ca. 80" hier früher behauptete: step ist
+// floor(n / targetPoints), also ganzzahlig, und schiesst deshalb übers
+// Ziel. Gemessen bei targetPoints = 80: n=300 ergibt 101 Punkte, n=239
+// sogar 120. 300 ist genau der Fall, der bei proposeRoute() auftritt
+// (MIN_STUETZPUNKTE), das reale Ergebnis dort sind also 101 Punkte.
 export function buildHoehenprofil(
   profile: { dist: number; elevation: number }[],
   targetPoints = 80,
 ): { km: number; m: number }[] {
+  // Ohne diese Zeile wirft die Funktion bei leerer Eingabe: der
+  // Nachschlag unten greift auf profile[-1] zu. Ein leeres Profil hat
+  // schlicht keine Punkte, das ist die einzig richtige Antwort darauf.
+  if (profile.length === 0) return [];
   const smoothed = medianSmooth(profile.map((p) => p.elevation));
   const step = Math.max(1, Math.floor(profile.length / targetPoints));
   const points: { km: number; m: number }[] = [];
