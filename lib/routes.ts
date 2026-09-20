@@ -286,7 +286,7 @@ export type RouteApiZeile = Pick<
 
 // mitHoehenprofil nur auf ausdrückliche Anforderung (?hoehenprofil=1 am
 // Endpunkt): das Profil ist nach der Geometrie der grösste Posten pro
-// Strecke — bis zu 81 Punkte, siehe buildHoehenprofil() — und wächst mit
+// Strecke — rund 101 Punkte, siehe buildHoehenprofil() — und wächst mit
 // jeder freigegebenen Strecke mit. Wer nur die Liste will, soll dafür nicht
 // zahlen; wer wie die Info-Seite ein Profil zeichnen will, spart sich einen
 // zweiten Abruf mitsamt vollständiger Geometrie.

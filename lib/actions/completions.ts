@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isRateLimited } from "@/lib/rateLimit";
 import { computeRouteCoverage, COVERAGE_THRESHOLD_PERCENT } from "@/lib/routeCoverage";
 import { computeTrailStats, type TrailPoint } from "@/lib/geo";
+import { buildTempoprofil, type TempoprofilPunkt } from "@/lib/tempoprofil";
 import { abdruckVon, leseTicket, type FahrtStartTicket } from "@/lib/fahrtstart";
 import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
 import {
@@ -491,6 +492,9 @@ export async function logTrackedCompletion(
       // wie freie Fahrten (statt der Scheitelhöhe der Strecke) — deshalb
       // hier ab jetzt ebenfalls berechnet, nicht mehr nur bei logFreeRide.
       hoehenmeter_aufstieg: elevation.hoehenmeter_aufstieg,
+      // Wo man wie schnell gefahren ist (0115) — aus dem rohen Trail, wie
+      // alle Kennzahlen oben. Reine Anzeige für den Besitzer, keine Wertung.
+      tempoprofil: buildTempoprofil(trail),
       // Was die Fahrt an Motorleistung mindestens verlangt hat, übersetzt in
       // eine Motorklasse (0080). Die Datenbank bildet daraus und aus der
       // deklarierten Klasse das Maximum — eine zu niedrig angegebene
@@ -642,6 +646,9 @@ interface DetectedSegmentPayload {
   bewegte_zeit_sekunden: number;
   abdeckung_prozent: number;
   track: string | null;
+  // Tempoprofil des Abschnitts aus seinem eigenen Trail-Ausschnitt (0115) —
+  // wie bei distanz_km oben: aus dem Ausschnitt, nicht aus der ganzen Fahrt.
+  tempoprofil: TempoprofilPunkt[] | null;
   motorklasse_belegt: string | null;
   // Ab 0118: Ticket + Fenster für eine Server-Dauer. Fehlt das Ticket (kein
   // Netz beim Start, Gast ohne Konto), bleibt es bei trail — der Trigger
@@ -752,6 +759,7 @@ async function buildDetectedSegments(
       bewegte_zeit_sekunden: movingSeconds(subTrail),
       abdeckung_prozent: abdeckungProzent,
       track: toEwktLineString(toCoordinates(simplifyTrack(subTrail))),
+      tempoprofil: buildTempoprofil(subTrail),
       // Je Segment aus dem EIGENEN Trail-Ausschnitt, nicht aus der ganzen
       // Fahrt: sonst würde die Spitzenleistung einer schnellen Etappe eine
       // ruhige Runde auf einer anderen Strecke mit hochstufen. Ohne
@@ -936,6 +944,9 @@ export async function logFreeRide(
     region: ort?.region ?? null,
     hoehenmeter_aufstieg: elevation.hoehenmeter_aufstieg,
     hoehenprofil: elevation.hoehenprofil,
+    // Wo man wie schnell gefahren ist (0115) — aus dem rohen Trail, wie alle
+    // Kennzahlen dieser Fahrt. Reine Anzeige für den Besitzer, keine Wertung.
+    tempoprofil: buildTempoprofil(trail),
     // Siehe logTrackedCompletion: wirkt nur nach oben, die Datenbank bildet
     // das Maximum mit der deklarierten Klasse (0080).
     motorklasse_belegt: belegteKlasse(fahrzeugTyp, trail, elevation.hoehenprofil),

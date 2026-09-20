@@ -18,7 +18,8 @@ import KudosButton from "@/components/KudosButton";
 import ShareRideButton from "@/components/ShareRideButton";
 import CompletionActionsMenu from "@/components/CompletionActionsMenu";
 import CompletionReportButton from "@/components/CompletionReportButton";
-import ElevationProfile from "@/components/ElevationProfile";
+import FahrtProfilUmschalter from "@/components/FahrtProfilUmschalter";
+import { tempoAbschnitte } from "@/lib/tempoprofil";
 import CompletionMap from "@/components/CompletionMap";
 import CompletionPhotoGallery from "@/components/CompletionPhotoGallery";
 import DetectedSegmentsCard from "@/components/DetectedSegmentsCard";
@@ -187,6 +188,21 @@ export default async function FahrtDetailPage({
   const hoehenprofil = istFreieFahrt ? completion.hoehenprofil : (route?.hoehenprofil ?? null);
   const VehicleIcon = completion.vehicle?.typ === "motorrad" ? Bike : Car;
 
+  // Tempo-Einfärbung der eigenen Spur (0115): nur für den Besitzer, nur wenn
+  // das Profil beim Speichern berechnet wurde — ältere Fahrten und fremde
+  // Betrachter sehen die bisherige Darstellung. Bei Streckenfahrten tritt
+  // die eigene Spur an die Stelle der Streckengeometrie: Das Tempo hängt an
+  // den gefahrenen Punkten, nicht an der Soll-Linie.
+  const tempoSegmente =
+    completion.isOwner && completion.tempoprofil && completion.track
+      ? tempoAbschnitte(
+          completion.track.coordinates as [number, number][],
+          completion.tempoprofil,
+        )
+      : null;
+  const hatEigenesTempo = tempoSegmente !== null && tempoSegmente.length > 0;
+  const kartenRoute = !istFreieFahrt && !hatEigenesTempo ? route : null;
+
   // Die gewertete Klasse sieht nur der Fahrer selbst (siehe CompletionDetail).
   // Sie hängt bewusst NICHT am Fahrzeug: fahrzeug_id ist `on delete set null`,
   // die Klasse an der Fahrt bleibt beim Löschen des Fahrzeugs aber stehen
@@ -338,9 +354,16 @@ export default async function FahrtDetailPage({
             )}
           </div>
 
-          <Card className="h-64 overflow-hidden sm:h-80">
-            <CompletionMap route={route} track={completion.track} />
-          </Card>
+          <div className="flex flex-col gap-2">
+            <Card className="h-64 overflow-hidden sm:h-80">
+              <CompletionMap route={kartenRoute} track={completion.track} tempoSegmente={tempoSegmente} />
+            </Card>
+            {hatEigenesTempo && (
+              <p className="text-xs text-muted">
+                Linie nach deinem gefahrenen Tempo eingefärbt — nur für dich sichtbar.
+              </p>
+            )}
+          </div>
 
           {/* Die Kennzahlen direkt unter der Karte. Sie standen nach
               Fahrzeug, Abdeckung, Notiz und Fotos — auf dem Telefon also
@@ -487,7 +510,11 @@ export default async function FahrtDetailPage({
           />
 
 
-          {hoehenprofil && hoehenprofil.length > 1 && <ElevationProfile punkte={hoehenprofil} />}
+          <FahrtProfilUmschalter
+            hoehenprofil={hoehenprofil}
+            tempoprofil={completion.isOwner ? completion.tempoprofil : null}
+            schnittKmh={avgKmh}
+          />
         </Seitenrahmen>
       </div>
     </div>
