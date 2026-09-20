@@ -135,7 +135,10 @@ export function staticKartenUrl(
   const w = Math.max(1, Math.min(MAX_KANTE_PX, Math.round(breite)));
   const h = Math.max(1, Math.min(MAX_KANTE_PX, Math.round(hoehe)));
   const r = (n: number) => (Math.round(n * 1e5) / 1e5).toFixed(5);
-  const rahmen = `${r(bbox.west)},${r(bbox.sued)},${r(bbox.ost)},${r(bbox.nord)}`;
+  // Die Klammern sind Pflicht: ohne sie liest die API west,sued,ost,nord als
+  // lon,lat,zoom,bearing — ein verdrehter Ausschnitt an der falschen Stelle,
+  // der trotzdem 200 antwortet (docs.mapbox.com/api/maps/static-images).
+  const rahmen = `[${r(bbox.west)},${r(bbox.sued)},${r(bbox.ost)},${r(bbox.nord)}]`;
   return (
     `https://api.mapbox.com/styles/v1/${stil}/static/${rahmen}/${w}x${h}` +
     `?access_token=${encodeURIComponent(token)}&logo=false&attribution=false`
