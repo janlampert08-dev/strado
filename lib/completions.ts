@@ -3,6 +3,7 @@ import type { DauerQuelle } from "@/types/database";
 import { createClient } from "@/lib/supabase/server";
 import { throwOnQueryError } from "@/lib/queryError";
 import { mitSigniertenFotoUrls } from "@/lib/storageUrls";
+import { alsTempoprofil } from "@/lib/tempoprofil";
 import type {
   CompletionPhoto,
   FahrtArt,
@@ -13,6 +14,7 @@ import type {
   PublicCompletionPhoto,
   PublicFahrt,
   PublicFahrtTrack,
+  TempoprofilPunkt,
 } from "@/types/database";
 
 // Fotozeilen (beide Quellen liefern dieselben zwei Felder) in die
@@ -161,6 +163,9 @@ export interface CompletionDetail {
   bewegteZeitSekunden: number | null;
   hoehenmeterAufstieg: number | null;
   hoehenprofil: HoehenprofilPunkt[] | null;
+  // Ab 0115, nur für den Besitzer geladen (wie hoehenprofil): wo man wie
+  // schnell gefahren ist. In keiner öffentlichen View enthalten.
+  tempoprofil: TempoprofilPunkt[] | null;
   // Der aufgezeichnete GPS-Track — nur für den Besitzer und vorerst nur bei
   // freien Fahrten geladen (fahrt_tracks läuft mit den Rechten des
   // Aufrufers, liefert also ohnehin nur eigene Fahrten). Bei Streckenfahrten
@@ -243,6 +248,7 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
     // anderen — die eigene Ansicht bleibt vollständig, so wie es die
     // Einstellung zusagt.
     let ownHoehenprofil: HoehenprofilPunkt[] | null = null;
+    let ownTempoprofil: TempoprofilPunkt[] | null = null;
     let ownTrack: GeoLineString | null = null;
     // Nur für den Besitzer selbst gesetzt — siehe parentCompletionId weiter
     // unten und der Kommentar auf CompletionDetail.parentCompletionId.
@@ -256,11 +262,12 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
       ] = await Promise.all([
         supabase
           .from("route_completions")
-          .select("hoehenprofil, parent_completion_id, motorklasse, motorklasse_gewertet")
+          .select("hoehenprofil, tempoprofil, parent_completion_id, motorklasse, motorklasse_gewertet")
           .eq("id", row.completion_id)
           .eq("user_id", viewerId)
           .maybeSingle<{
             hoehenprofil: HoehenprofilPunkt[] | null;
+            tempoprofil: TempoprofilPunkt[] | null;
             parent_completion_id: string | null;
             motorklasse: Motorklasse | null;
             motorklasse_gewertet: Motorklasse | null;
@@ -275,6 +282,8 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
       throwOnQueryError(ownTrackError, "Track der Fahrt");
 
       ownHoehenprofil = own?.hoehenprofil ?? null;
+      // Aus der Datenbank gelesen, nicht blind übernommen (0115).
+      ownTempoprofil = alsTempoprofil(own?.tempoprofil ?? null);
       ownTrack = ownTrackRow?.track_geojson ?? null;
       ownParentCompletionId = own?.parent_completion_id ?? null;
       ownMotorklasse = own?.motorklasse ?? null;
@@ -322,6 +331,8 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
       // Fehler, den 0035_public_fahrten_notiz.sql für Notiz und Fahrzeug
       // korrigiert hat).
       hoehenprofil: ownHoehenprofil,
+      // Nur für den Besitzer nachgeladen — siehe ownTempoprofil oben.
+      tempoprofil: ownTempoprofil,
       track: ownTrack ?? trackRow?.track_geojson ?? null,
       // public_fahrten führt parent_completion_id absichtlich nicht (siehe
       // 0050) — der Rückverweis "Teil einer längeren Fahrt" bleibt fremden
@@ -339,7 +350,7 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
   const { data: own, error: eigeneFahrtError } = await supabase
     .from("route_completions")
     .select(
-      "id, art, route_id, user_id, datum, dauer_sekunden, dauer_quelle, distanz_km, ist_oeffentlich, abdeckung_prozent, notiz, titel, start_ort, region, bewegte_zeit_sekunden, hoehenmeter_aufstieg, hoehenprofil, parent_completion_id, motorklasse, motorklasse_gewertet, vehicles(typ, marke, modell)",
+      "id, art, route_id, user_id, datum, dauer_sekunden, dauer_quelle, distanz_km, ist_oeffentlich, abdeckung_prozent, notiz, titel, start_ort, region, bewegte_zeit_sekunden, hoehenmeter_aufstieg, hoehenprofil, tempoprofil, parent_completion_id, motorklasse, motorklasse_gewertet, vehicles(typ, marke, modell)",
     )
     .eq("id", id)
     .eq("user_id", viewerId)
@@ -361,6 +372,7 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
       bewegte_zeit_sekunden: number | null;
       hoehenmeter_aufstieg: number | null;
       hoehenprofil: HoehenprofilPunkt[] | null;
+      tempoprofil: TempoprofilPunkt[] | null;
       parent_completion_id: string | null;
       motorklasse: Motorklasse | null;
       motorklasse_gewertet: Motorklasse | null;
@@ -388,10 +400,12 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
   throwOnQueryError(profileError, "Profil zur Fahrt");
   throwOnQueryError(eigeneFotosError, "Fotos der Fahrt");
 
-  // Nur bei freien Fahrten nötig: die Detailkarte einer Streckenfahrt zeigt
-  // weiterhin die Streckengeometrie, dafür braucht es keinen zweiten Zugriff.
+  // Der eigene Track — für beide Fahrtarten geladen: Bei freien Fahrten
+  // zeichnet die Detailkarte ohnehin den Track, bei Streckenfahrten braucht
+  // ihn die Tempo-Einfärbung (0115). Nur eigene Zeilen (RLS), für fremde
+  // Betrachter bleibt es bei der Streckengeometrie bzw. dem gekappten Track.
   let track: GeoLineString | null = null;
-  if (own.art === "frei") {
+  {
     const { data: trackRow, error: trackError } = await supabase
       .from("fahrt_tracks")
       .select("track_geojson")
@@ -426,6 +440,7 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
     bewegteZeitSekunden: own.bewegte_zeit_sekunden,
     hoehenmeterAufstieg: own.hoehenmeter_aufstieg,
     hoehenprofil: own.hoehenprofil,
+    tempoprofil: alsTempoprofil(own.tempoprofil),
     track,
     parentCompletionId: own.parent_completion_id,
     motorklasse: own.motorklasse,

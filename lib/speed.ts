@@ -21,6 +21,15 @@ export function speedColor(kmh: number): string {
 
 export const SPEED_LEGEND = SPEED_BUCKETS.map((b) => ({ label: b.label, color: b.color }));
 
+// Dieselben Farben für das GEFAHRENE Tempo (lib/tempoprofil.ts). Die
+// Beschriftung ist eine andere: dort steht ein Limit, hier ein Bereich —
+// "50 km/h" hiesse auf der eigenen Fahrt "genau 50", gemeint ist "31 bis 50".
+export const TEMPO_LEGENDE = SPEED_BUCKETS.map((b, i) => ({
+  label:
+    b.max === Infinity ? `über ${SPEED_BUCKETS[i - 1].max} km/h` : `bis ${b.max} km/h`,
+  color: b.color,
+}));
+
 // Anteil der Streckenlänge, der mit dem amtlichen "Signalisierte
 // Geschwindigkeit"-Datensatz des Kantons Zürich abgeglichen werden konnte
 // (0, wenn die Strecke ausserhalb liegt oder keine Segmente markiert sind).

@@ -23,6 +23,12 @@ const ENDPOINTS_SOURCE = "route-endpoints";
 const ENDPOINTS_LAYER = "route-endpoints-circle";
 const TRAFFIC_SOURCE = "traffic-segments";
 const TRAFFIC_LINE_LAYER = "traffic-segments-line";
+// Eigene gefahrene Geschwindigkeit je Abschnitt (0115, Fahrt-Detailseite) —
+// eigene Quelle statt Wiederverwendung der Stau-Ebene: beide wären sonst
+// gleichzeitig sichtbar nie, aber begrifflich vermischt, und die Sichtbarkeit
+// folgt hier den Daten (Segmente vorhanden oder nicht), nicht einem Schalter.
+const TEMPO_SOURCE = "tempo-segments";
+const TEMPO_LINE_LAYER = "tempo-segments-line";
 const HIGHLIGHT_SOURCE = "route-highlight";
 const HIGHLIGHT_HALO_LAYER = "route-highlight-halo";
 const HIGHLIGHT_LINE_LAYER = "route-highlight-line";
@@ -41,6 +47,7 @@ const TRACK_LINE_LAYER = "ride-track-line";
 // laufende WebGL-Neuzeichnung ohne jede Änderung, auf dem Gerät im Auto.
 // Dieselbe Lösung wie NO_ROUTES in CompletionMap.tsx.
 const KEINE_VERKEHRSSEGMENTE: { coords: [number, number][]; color: string }[] = [];
+const KEINE_TEMPOSEGMENTE: { coords: [number, number][]; color: string }[] = [];
 const KEIN_TRACK: [number, number][] = [];
 
 const TERRAIN_SOURCE = "mapbox-dem";
@@ -458,6 +465,7 @@ export default function RouteMap({
   flyToRouteId = null,
   bottomInsetPx = 0,
   trafficSegments = KEINE_VERKEHRSSEGMENTE,
+  tempoSegmente = KEINE_TEMPOSEGMENTE,
   trail = KEIN_TRACK,
   fitTrail = false,
   fitRoutes = true,
@@ -532,6 +540,11 @@ export default function RouteMap({
   // -Farben nicht selbst — sie kommen aus lib/traffic.ts über
   // RouteDetailMap, genau wie die Signatur-Farben oben.
   trafficSegments?: { coords: [number, number][]; color: string }[];
+  // Fertig eingefärbte Tempo-Abschnitte der eigenen Fahrt (0115,
+  // lib/tempoprofil.ts: tempoAbschnitte). Werden sie übergeben, tritt die
+  // einfarbige Track-Linie zurück und die Abschnitte tragen die Linie —
+  // dieselben Farben wie die Tempolimit-Ebene, aber gefahren statt erlaubt.
+  tempoSegmente?: { coords: [number, number][]; color: string }[];
   // Aufgezeichneter GPS-Track: live wachsend während einer Aufzeichnung
   // (FreeRideForm) oder fertig auf der Fahrt-Detailseite (CompletionMap).
   trail?: [number, number][];
@@ -654,6 +667,11 @@ export default function RouteMap({
   useEffect(() => {
     trafficSegmentsRef.current = trafficSegments;
   }, [trafficSegments]);
+
+  const tempoSegmenteRef = useRef(tempoSegmente);
+  useEffect(() => {
+    tempoSegmenteRef.current = tempoSegmente;
+  }, [tempoSegmente]);
 
   // Refs statt der Props direkt, weil setupLayers() unten nicht nur beim
   // Erstaufbau läuft, sondern auch nach jedem Themenwechsel (map.setStyle()
@@ -846,7 +864,13 @@ export default function RouteMap({
           id: TRACK_LINE_LAYER,
           type: "line",
           source: TRACK_SOURCE,
-          layout: { "line-join": "round", "line-cap": "round" },
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
+            // Mit Tempo-Abschnitten trägt die farbige Ebene die Linie, die
+            // einfarbige träte nur doppelt darunter hervor.
+            visibility: tempoSegmenteRef.current.length > 0 ? "none" : "visible",
+          },
           paint: {
             "line-color": streckenFarbe(),
             "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2.5, 14, 4.5],
@@ -901,6 +925,30 @@ export default function RouteMap({
             "line-join": "round",
             "line-cap": "round",
             visibility: showTrafficRef.current ? "visible" : "none",
+          },
+          paint: {
+            "line-color": ["get", "color"],
+            "line-width": ["interpolate", ["linear"], ["zoom"], 8, 3, 14, 6],
+          },
+        },
+        firstSymbolId,
+      );
+
+      // Eigene gefahrene Geschwindigkeit je Abschnitt (0115) — gleiche
+      // Strichstärke wie die Stau-Ebene, Sichtbarkeit folgt den Daten.
+      map.addSource(TEMPO_SOURCE, {
+        type: "geojson",
+        data: toTrafficFeatureCollection(tempoSegmenteRef.current),
+      });
+      map.addLayer(
+        {
+          id: TEMPO_LINE_LAYER,
+          type: "line",
+          source: TEMPO_SOURCE,
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
+            visibility: tempoSegmenteRef.current.length > 0 ? "visible" : "none",
           },
           paint: {
             "line-color": ["get", "color"],
@@ -1247,6 +1295,20 @@ export default function RouteMap({
     const source = map.getSource(TRAFFIC_SOURCE) as mapboxgl.GeoJSONSource | undefined;
     source?.setData(toTrafficFeatureCollection(trafficSegments));
   }, [trafficSegments]);
+
+  // Aktualisiert die Tempo-Abschnitte der eigenen Fahrt und blendet dabei
+  // die einfarbige Track-Linie aus bzw. ein — sonst lägen zwei Linien
+  // übereinander.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !styleLoadedRef.current) return;
+    const source = map.getSource(TEMPO_SOURCE) as mapboxgl.GeoJSONSource | undefined;
+    source?.setData(toTrafficFeatureCollection(tempoSegmente));
+    if (!map.getLayer(TEMPO_LINE_LAYER) || !map.getLayer(TRACK_LINE_LAYER)) return;
+    const sichtbar = tempoSegmente.length > 0 ? "visible" : "none";
+    map.setLayoutProperty(TEMPO_LINE_LAYER, "visibility", sichtbar);
+    map.setLayoutProperty(TRACK_LINE_LAYER, "visibility", tempoSegmente.length > 0 ? "none" : "visible");
+  }, [tempoSegmente]);
 
   // Sichtbarkeit des Tempolimit-Layers reagiert auf den "Tempolimits
   // anzeigen"-Toggle, statt bei jedem Kartenaufbau neu (und nur einmalig)
