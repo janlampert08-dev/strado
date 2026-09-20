@@ -207,7 +207,12 @@ export default async function EinstellungenPage() {
                         >
                           {route.name}
                         </Link>
-                        <span className={`shrink-0 text-sm font-medium ${color}`}>
+                        {/* Der Status als Chip statt als farbiges Wort: dieselbe
+                            Form wie die Kategorie-Chips auf der Streckenseite
+                            (rounded-full, border, text-xs). */}
+                        <span
+                          className={`shrink-0 rounded-full border border-border px-2 py-0.5 text-xs font-medium whitespace-nowrap ${color}`}
+                        >
                           {label}
                         </span>
                       </div>
@@ -242,19 +247,17 @@ export default async function EinstellungenPage() {
           <section id="sitzung" className="flex scroll-mt-20 flex-col gap-3">
             <SectionHeading icon={LogOut}>Sitzung</SectionHeading>
             <p className="text-sm text-muted">Du bist auf diesem Gerät angemeldet.</p>
-            {/* Ohne Card: ein Rahmen um einen einzelnen Knopf grenzt nichts
-                ab, was die Überschrift nicht schon abgrenzt. */}
-            <div>
+            {/* In einer Card wie "Darstellung" und "Konto" daneben: vorher
+                stand der Knopf rahmenlos, während alle Nachbarn Karten sind. */}
+            <Card className="p-4">
               <form action="/auth/abmelden" method="post">
-                {/* size="md" (44 px) statt "sm" (36 px): Abmelden ist die
-                    einzige Handlung dieses Abschnitts und kein Knopf in
-                    einer Zeile. Gilt für die drei Geschwister darunter
-                    ebenso. */}
+                {/* size="md" (44 px): Abmelden ist die einzige Handlung
+                    dieses Abschnitts und kein Knopf in einer Zeile. */}
                 <Button type="submit" variant="secondary">
                   Abmelden
                 </Button>
               </form>
-            </div>
+            </Card>
           </section>
 
           {/* Nur für Abonnenten: ohne Abo gibt es hier nichts zu verwalten,
@@ -288,7 +291,9 @@ export default async function EinstellungenPage() {
                 brach auf drei Zeilen um, und die Card wurde höher als die
                 aller Nachbarn. Jetzt läuft der Satz über die volle Breite
                 und der Knopf steht darunter, wie in "Sitzung" und "Konto". */}
-            <div>
+            {/* Der Knopf in einer Card wie in "Sitzung" und "Konto": vorher
+                stand er rahmenlos unter einem mehrzeiligen Satz. */}
+            <Card className="p-4">
               <Link
                 href={premiumStatus.aktiv ? "/profil/einstellungen/abo" : "/profil/premium"}
                 className={buttonVariants({ variant: "secondary" })}
@@ -302,27 +307,32 @@ export default async function EinstellungenPage() {
                     : "Abo verwalten"
                   : "Premium ansehen"}
               </Link>
-            </div>
+            </Card>
           </section>
 
           <section id="konto" className="flex scroll-mt-20 flex-col gap-3">
             <SectionHeading icon={KeyRound}>Konto</SectionHeading>
-            <ProfilnameForm aktuellerName={profile?.display_name ?? null} />
-            {/* break-all an der Adresse: eine lange E-Mail ohne Leerzeichen
-                sprengt auf 390 px sonst die Card nach rechts, statt
-                umzubrechen. */}
-            <p className="text-sm">
-              <span className="text-muted">E-Mail:</span>{" "}
-              <span className="break-all text-foreground">{user.email}</span>
-            </p>
-            <Card className="flex flex-col gap-3 p-4">
-              <Link
-                href="/profil/passwort-aendern"
-                className={buttonVariants({ variant: "secondary", className: "self-start" })}
-              >
-                Passwort ändern
-              </Link>
-              <DeleteAccountSection />
+            {/* Alles zum Konto in einer Card: Name, Adresse, Passwort und
+                Löschen gehörten vorher drei verschiedenen Behältern an
+                (Formular, freier Absatz, Card) und die Kante sprang. */}
+            <Card className="flex flex-col gap-4 p-4">
+              <ProfilnameForm aktuellerName={profile?.display_name ?? null} />
+              {/* break-all an der Adresse: eine lange E-Mail ohne Leerzeichen
+                  sprengt auf 390 px sonst die Card nach rechts, statt
+                  umzubrechen. */}
+              <p className="text-sm">
+                <span className="text-muted">E-Mail:</span>{" "}
+                <span className="break-all text-foreground">{user.email}</span>
+              </p>
+              <div className="flex flex-col gap-3 border-t border-border pt-4">
+                <Link
+                  href="/profil/passwort-aendern"
+                  className={buttonVariants({ variant: "secondary", className: "self-start" })}
+                >
+                  Passwort ändern
+                </Link>
+                <DeleteAccountSection />
+              </div>
             </Card>
           </section>
 
