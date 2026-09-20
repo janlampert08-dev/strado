@@ -294,14 +294,16 @@ export async function renderShareImage(data: ShareRideData): Promise<Blob> {
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
     // Auf der Karte zuerst ein breiter Hintergrundstrich, sonst versinkt
-    // die 7-px-Linie in Ortsnamen und Strassen.
+    // die Linie in Ortsnamen und Strassen. Mit Karte ist die Linie feiner
+    // (5 statt 7): auf den Kacheln trägt die volle Breite zu dick auf.
+    const linienBreite = mitKarte ? 5 : 7;
     if (mitKarte) {
       ctx.strokeStyle = BG;
-      ctx.lineWidth = 13;
+      ctx.lineWidth = 9;
       strich(ctx, punkte);
     }
     ctx.strokeStyle = INK;
-    ctx.lineWidth = 7;
+    ctx.lineWidth = linienBreite;
     strich(ctx, punkte);
 
     const start = punkte[0];
@@ -309,18 +311,18 @@ export async function renderShareImage(data: ShareRideData): Promise<Blob> {
     // Start: Ring in Vordergrundfarbe, innen Hintergrund.
     ctx.beginPath();
     ctx.fillStyle = BG;
-    ctx.arc(start[0], start[1], 12, 0, Math.PI * 2);
+    ctx.arc(start[0], start[1], mitKarte ? 10 : 12, 0, Math.PI * 2);
     ctx.fill();
-    ctx.lineWidth = 5;
+    ctx.lineWidth = mitKarte ? 4 : 5;
     ctx.strokeStyle = INK;
     ctx.stroke();
     // Ziel: gefüllter Akzentpunkt mit Hintergrundring, damit er auf der
     // Linie sitzt statt in ihr zu verschwimmen.
     ctx.beginPath();
     ctx.fillStyle = ACCENT;
-    ctx.arc(ziel[0], ziel[1], 16, 0, Math.PI * 2);
+    ctx.arc(ziel[0], ziel[1], mitKarte ? 13 : 16, 0, Math.PI * 2);
     ctx.fill();
-    ctx.lineWidth = 6;
+    ctx.lineWidth = mitKarte ? 5 : 6;
     ctx.strokeStyle = BG;
     ctx.stroke();
     ctx.restore();
