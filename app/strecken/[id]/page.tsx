@@ -52,6 +52,20 @@ const KATEGORIE_LABEL = Object.fromEntries(
 
 const SAISON_LABEL = { saisonal: "Saisonal (Winterschliessung)" };
 
+/**
+ * Ob der Passname im Kompaktstatus der Streckenseite entfallen kann, weil er
+ * schon im Titel steht ("Berninapass" über "Berninapass · Offen"). Nur bei
+ * genau einem Pass und gleichem oder enthaltenem Namen — bei mehreren Pässen
+ * oder abweichendem Namen bliebe der Status sonst nicht zuordenbar.
+ */
+function istNameSchonImTitel(streckenName: string, passName: string, anzahlPaesse: number): boolean {
+  if (anzahlPaesse !== 1) return false;
+  const strecke = streckenName.trim().toLowerCase();
+  const pass = passName.trim().toLowerCase();
+  if (!strecke || !pass) return false;
+  return strecke === pass || strecke.includes(pass) || pass.includes(strecke);
+}
+
 // getRoute() ist mit React cache() memoisiert (lib/routes.ts) — derselbe
 // Aufruf hier und in der Page unten kostet innerhalb desselben Requests
 // nur eine DB-Abfrage.
@@ -315,7 +329,15 @@ export default async function StreckeDetailPage({
                     className="inline-flex items-center gap-1.5 rounded-full transition-opacity hover:opacity-70"
                     title={`${kontext.pass.name}: ${anzeige.label}`}
                   >
-                    <span className="font-medium text-foreground">{kontext.pass.name}</span>
+                    {/* Steht der Passname schon im Titel (eine Strecke, ein
+                        Pass, derselbe Name — "Berninapass" über "Berninapass ·
+                        Offen"), fällt er hier weg: der Status allein
+                        beantwortet "kann ich los?". Bei mehreren Pässen oder
+                        abweichendem Namen bleibt er stehen, sonst wäre der
+                        Status nicht zuordenbar. */}
+                    {!istNameSchonImTitel(route.name, kontext.pass.name, passKontexte.length) && (
+                      <span className="font-medium text-foreground">{kontext.pass.name}</span>
+                    )}
                     <PassStatusMarke anzeige={anzeige} />
                   </Link>
                 );
