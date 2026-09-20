@@ -300,7 +300,7 @@ export default function ExploreSidebar({
                 // (rounded, border, surface) mit Begründung darüber und
                 // grösserer Form — der Rest bleibt volle Zeile MIT Form, damit
                 // ein Dutzend Strecken kein Hintergrundrauschen wird.
-                className={`group flex items-center gap-3 border-l-[3px] py-3 pr-2 pl-3 transition-colors duration-fast hover:bg-accent-subtle active:bg-accent-subtle ${ton?.rand ?? "border-l-border-strong"} ${istEmpfohlen ? "h-24 rounded-xl border border-border bg-surface" : "h-20 border-b border-border"}`}
+                className={`group flex items-center gap-3 border-l-[3px] py-3 pr-2 pl-3 transition-colors duration-fast hover:bg-accent-subtle active:bg-accent-subtle ${ton?.rand ?? "border-l-border-strong"} ${istEmpfohlen ? "min-h-24 rounded-xl border border-border bg-surface" : "h-20 border-b border-border"}`}
               >
                 <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5">
                   {empfehlungsText && (
@@ -394,8 +394,9 @@ export default function ExploreSidebar({
                     Liste lesbare Strecken statt blosser Namen — der Rest
                     rückt einen Schritt zurück (ohne Fläche, ohne Begründung),
                     aber nicht in den Hintergrund. Die Empfehlung zeigt sie
-                    grösser. */}
-                <div className={`relative shrink-0 overflow-hidden rounded-md bg-surface ${istEmpfohlen ? "h-16 w-24" : "h-14 w-20"}`}>
+                    grösser. Ihre Wanne läuft dort auf dem Seitenhintergrund,
+                    weil sie auf der Fläche sonst unsichtbar wäre. */}
+                <div className={`relative shrink-0 overflow-hidden rounded-md ${istEmpfohlen ? "h-16 w-24 bg-background" : "h-14 w-20 bg-surface"}`}>
                   {shape && (
                     <svg
                       viewBox="0 0 64 48"
