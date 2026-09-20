@@ -1,7 +1,10 @@
 "use client";
 
 import { Children, useState, type ReactNode } from "react";
-import { cn } from "@/lib/utils/cn";
+import {
+  segmentClassName,
+  segmentHuelleClassName,
+} from "@/components/ui/SegmentedControl";
 
 export interface AbschnittTab {
   titel: string;
@@ -37,41 +40,40 @@ export default function AbschnittTabs({
 
   return (
     <div className="flex flex-col gap-3">
-      <div
-        role="tablist"
-        aria-label="Abschnitte dieser Seite"
-        className="sticky top-0 z-10 -mx-1 flex gap-1 overflow-x-auto reiter-scroller bg-background/95 px-1 py-1.5 backdrop-blur"
-      >
-        {tabs.map((tab, i) => {
-          const istAktiv = aktiv === i;
-          return (
-            <button
-              key={tab.titel}
-              type="button"
-              role="tab"
-              aria-selected={istAktiv}
-              onClick={() => setAktiv(i)}
-              className={cn(
-                "flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-medium transition-colors duration-fast",
-                istAktiv
-                  ? "bg-foreground text-background"
-                  : "text-muted hover:bg-surface hover:text-foreground",
-              )}
-            >
-              {tab.titel}
-              {tab.anzahl !== undefined && (
-                <span
-                  className={cn(
-                    "rounded-full px-1.5 py-0.5 text-xs tabular-nums",
-                    istAktiv ? "bg-background/20" : "bg-surface",
-                  )}
-                >
-                  {tab.anzahl}
-                </span>
-              )}
-            </button>
-          );
-        })}
+      {/* Dieselbe Hülle wie der Feed-Reiter (FeedReiter.tsx): eine Leiste,
+          ein Stil — egal ob die Reiter Adressen oder Ansichten schalten. */}
+      <div className="sticky top-0 z-10 -mx-1 bg-background/95 px-1 py-1.5 backdrop-blur">
+        <div
+          role="tablist"
+          aria-label="Abschnitte dieser Seite"
+          className={segmentHuelleClassName("overflow-x-auto reiter-scroller")}
+        >
+          {tabs.map((tab, i) => {
+            const istAktiv = aktiv === i;
+            return (
+              <button
+                key={tab.titel}
+                type="button"
+                role="tab"
+                aria-selected={istAktiv}
+                onClick={() => setAktiv(i)}
+                className={segmentClassName(istAktiv)}
+              >
+                {tab.titel}
+                {tab.anzahl !== undefined && (
+                  <span
+                    aria-hidden="true"
+                    className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums ${
+                      istAktiv ? "bg-background text-foreground" : "bg-accent text-background"
+                    }`}
+                  >
+                    {tab.anzahl > 99 ? "99+" : tab.anzahl}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
       <div role="tabpanel">{panels[aktiv]}</div>
     </div>
