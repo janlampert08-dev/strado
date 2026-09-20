@@ -22,6 +22,7 @@ import {
 } from "@/lib/follows";
 import { getCurrentUser } from "@/lib/supabase/server";
 import Card from "@/components/ui/Card";
+import Kennzahl, { Kennzahlen } from "@/components/ui/Kennzahl";
 import { freieFahrtTitel } from "@/lib/completions";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
@@ -147,33 +148,27 @@ export default async function FahrerPage({
         </div>
 
         {zeigtStatistiken && (
-          <Card as="dl" className="grid grid-cols-2 gap-x-4 gap-y-4 p-4 text-sm sm:grid-cols-3">
+          <Kennzahlen>
             {/* Null-Werte weglassen: "Pässe befahren 0" neben 1'380
                 Höhenmetern las sich im Review wie ein Fehler, nicht wie eine
-                Auskunft. */}
+                Auskunft. Dieselbe Primitive wie Profil, Strecke und Fahrt —
+                dritte Schriftgrösse war keine Hierarchie, sondern Zufall. */}
             {profile.zeigtPaesse && profile.passCount > 0 && (
-              <div>
-                <dt className="text-muted">Pässe befahren</dt>
-                <dd className="text-lg tabular-nums">{profile.passCount}</dd>
-              </div>
+              <Kennzahl beschriftung="Pässe befahren" wert={profile.passCount} />
             )}
             {profile.zeigtHoehenmeter && profile.hoehenmeter > 0 && (
-              <div>
-                <dt className="text-muted">Höhenmeter gesammelt</dt>
-                <dd className="text-lg tabular-nums">
-                  {profile.hoehenmeter.toLocaleString("de-CH")} m
-                </dd>
-              </div>
+              <Kennzahl
+                beschriftung="Höhenmeter"
+                wert={`${profile.hoehenmeter.toLocaleString("de-CH")} m`}
+              />
             )}
             {profile.zeigtDistanz && profile.distanzKm > 0 && (
-              <div>
-                <dt className="text-muted">GPS-getrackte Distanz</dt>
-                <dd className="text-lg tabular-nums">
-                  {profile.distanzKm.toFixed(0)} km
-                </dd>
-              </div>
+              <Kennzahl
+                beschriftung="Distanz"
+                wert={`${profile.distanzKm.toFixed(0)} km`}
+              />
             )}
-          </Card>
+          </Kennzahlen>
         )}
 
         <div className="flex flex-col gap-8">

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronDown } from "lucide-react";
 import Card from "@/components/ui/Card";
 import SectionHeading from "@/components/ui/SectionHeading";
 import { MapPinIcon } from "@/components/NavIcons";
@@ -77,12 +78,23 @@ export default function PassSektion({
             <PassStatusZeile anzeige={anzeige} />
             {offenSeit && <p className="text-sm text-muted">{offenSeit}</p>}
 
-            <PassKalenderAbschnitt
-              wintersperreAbMonat={kontext.pass.wintersperreAbMonat}
-              wintersperreBisMonat={kontext.pass.wintersperreBisMonat}
-              sperrtage={kontext.sperrtage}
-              ereignisse={kontext.ereignisse}
-            />
+            <details className="group/kalender">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-muted transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden">
+                Saison & Sperrungen
+                <ChevronDown
+                  className="h-4 w-4 transition-transform duration-fast group-open/kalender:rotate-180"
+                  aria-hidden="true"
+                />
+              </summary>
+              <div className="pt-1">
+                <PassKalenderAbschnitt
+                  wintersperreAbMonat={kontext.pass.wintersperreAbMonat}
+                  wintersperreBisMonat={kontext.pass.wintersperreBisMonat}
+                  sperrtage={kontext.sperrtage}
+                  ereignisse={kontext.ereignisse}
+                />
+              </div>
+            </details>
           </Card>
         );
       })}

@@ -273,42 +273,47 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
   }
 
   return (
-    <div className="flex flex-col gap-8 sm:grid sm:grid-cols-2 sm:items-start sm:gap-6 xl:grid-cols-4">
-      <LeaderboardSection
-        title={`Meiste Fahrten${klassenZusatz}`}
-        beschreibung="Geteilte Fahrten, freie und auf Strecken."
-        icon={Route}
-        entries={meisteFahrten}
-        unit={(n) => nomen(n, "Fahrt", "Fahrten")}
-        currentUserId={currentUserId}
-      />
-      <LeaderboardSection
-        title={`Meiste Höhenmeter${klassenZusatz}`}
-        beschreibung="Summe des Aufstiegs aller geteilten Fahrten."
-        icon={TrendingUp}
-        entries={meisteHoehenmeter}
-        unit="m"
-        format={(v) => Math.round(v).toLocaleString("de-CH")}
-        currentUserId={currentUserId}
-      />
+    <div className="flex flex-col gap-6">
+      {/* Eine Rangliste führt, drei vertiefen: vier gleich grosse Podien
+          hiessen kein Podium. Km ist die Schweizer Währung des Unterwegsseins. */}
       <LeaderboardSection
         title={`Meiste km gefahren${klassenZusatz}`}
-        beschreibung="GPS-gemessene Kilometer aller geteilten Fahrten."
         icon={Ruler}
         entries={meisteKm}
         unit="km"
         format={(v) => v.toFixed(0)}
         currentUserId={currentUserId}
       />
-      <LeaderboardSection
-        title={`Entdecker${klassenZusatz}`}
-        // "Entdecker" allein erklärte nicht, was gezählt wird.
-        beschreibung="Unterschiedliche kuratierte Strecken — freie Fahrten zählen hier nicht."
-        icon={Compass}
-        entries={meisteStrecken}
-        unit={(n) => nomen(n, "Strecke", "Strecken")}
-        currentUserId={currentUserId}
-      />
+      <details className="group rounded-xl border border-border">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium marker:content-none">
+          Weitere Ranglisten
+          <span className="text-xs font-normal text-muted">Fahrten · Höhe · Entdecker</span>
+        </summary>
+        <div className="flex flex-col gap-8 px-4 pb-4 sm:grid sm:grid-cols-2 sm:items-start sm:gap-6 xl:grid-cols-3">
+          <LeaderboardSection
+            title={`Meiste Fahrten${klassenZusatz}`}
+            icon={Route}
+            entries={meisteFahrten}
+            unit={(n) => nomen(n, "Fahrt", "Fahrten")}
+            currentUserId={currentUserId}
+          />
+          <LeaderboardSection
+            title={`Meiste Höhenmeter${klassenZusatz}`}
+            icon={TrendingUp}
+            entries={meisteHoehenmeter}
+            unit="m"
+            format={(v) => Math.round(v).toLocaleString("de-CH")}
+            currentUserId={currentUserId}
+          />
+          <LeaderboardSection
+            title={`Entdecker${klassenZusatz}`}
+            icon={Compass}
+            entries={meisteStrecken}
+            unit={(n) => nomen(n, "Strecke", "Strecken")}
+            currentUserId={currentUserId}
+          />
+        </div>
+      </details>
     </div>
   );
 }

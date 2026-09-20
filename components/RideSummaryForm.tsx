@@ -401,7 +401,7 @@ export default function RideSummaryForm({
         )}
       </div>
 
-      <div className={FAZIT_ABSCHNITT}>
+      <div className="flex flex-col gap-2 rounded-2xl border border-border bg-surface p-4">
         <SectionHeading as="h3" groesse="xs">Sichtbarkeit</SectionHeading>
         {visibility ? (
           <>

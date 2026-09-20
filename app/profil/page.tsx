@@ -351,37 +351,31 @@ export default async function ProfilPage() {
               following={following}
             />
           </div>
-          {/* grid statt flex-wrap: beide Schaltflächen sollen gleich breit
-              sein (die halbe Zeile), unabhängig von ihrer unterschiedlich
-              langen Beschriftung — mit flex-wrap wäre jede nur so breit wie
-              ihr eigener Text.
-
-              size="md" statt "sm", und "Öffentliches Profil" statt
-              "Öffentliches Profil ansehen". Nachgerechnet für 390 px: der
-              Seitenrahmen nimmt 2 × 20 px, das gap 8 px, jede Zelle bleibt
-              bei 171 px. Die alte Beschriftung braucht in text-xs rund
-              150 px plus 2 × 12 px Innenabstand — sie lief also über und
-              brach in zwei Zeilen um. "ansehen" sagt dabei nichts, was der
-              Knopf nicht ohnehin tut.
-
-              "sm" ist ausserdem 36 px hoch. Das ist die Grösse für einen
-              Knopf IN einer Liste, nicht für die zwei Hauptwege einer
-              Seite; 44 px ist der Wert, den components/ui/IconButton für
-              diese App festschreibt. */}
-          <div className="grid grid-cols-2 gap-2">
+          {/* Eine Handlung führt: Fahrt aufzeichnen ist der Kernloop, alles
+              andere sind Textwege. Vorher zwei gleich breite Pillen —
+              zwei Primärfarben heisst keine Hierarchie. */}
+          <div className="flex flex-col gap-2">
             <Link
-              href="/strecken/neu"
-              className={buttonVariants({ variant: "primary", className: "w-full" })}
+              href="/fahrten/neu"
+              className={buttonVariants({ variant: "accent", size: "lg", className: "w-full" })}
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
-              Strecke erstellen
+              Fahrt aufzeichnen
             </Link>
-            <Link
-              href={`/fahrer/${user.id}`}
-              className={buttonVariants({ variant: "secondary", className: "w-full" })}
-            >
-              Öffentliches Profil
-            </Link>
+            <div className="flex items-center justify-between text-sm">
+              <Link
+                href="/strecken/neu"
+                className="font-medium text-muted transition-colors hover:text-foreground"
+              >
+                Strecke erstellen
+              </Link>
+              <Link
+                href={`/fahrer/${user.id}`}
+                className="font-medium text-muted transition-colors hover:text-foreground"
+              >
+                Öffentliches Profil →
+              </Link>
+            </div>
           </div>
         </div>
 

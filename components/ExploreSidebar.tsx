@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { ChevronDown, Crosshair, Route, SearchX } from "lucide-react";
+import { Crosshair, Route, SearchX } from "lucide-react";
 import { routeShapePath } from "@/lib/routeShape";
 import { formatKmGerundet, mitAnzahl } from "@/lib/format";
-import { type RouteSignature, type SignatureKey } from "@/lib/signature";
+import { type RouteSignature } from "@/lib/signature";
 import type { ExploreRoute } from "@/types/database";
 import { PassStatusMarke } from "@/components/PassStatusZeile";
 import { ZUSTAND_LABEL, ZUSTAND_TON, zeigeInListe, type PassZustand } from "@/lib/passStatus";
@@ -17,14 +17,10 @@ import Button, { buttonVariants } from "@/components/ui/Button";
 import IconButton from "@/components/ui/IconButton";
 import { SIGNATURE_ICONS, SIGNATUR_KLASSEN } from "@/components/signaturStil";
 
-// Wortlaut der Farblegende, in der Reihenfolge der Tokens in globals.css.
-const LEGENDE: { key: SignatureKey; text: string }[] = [
-  { key: "kehren", text: "Viele Kehren" },
-  { key: "steigung", text: "Steile Steigung" },
-  { key: "hoehe", text: "Hoch hinauf" },
-  { key: "tempo", text: "Durchschnittlich erlaubtes Tempo" },
-  { key: "laenge", text: "Lange Strecke" },
-];
+// Kompakte Listenzeichen: Die ersten drei Strecken sind die Entscheidung
+// (grosse Form, volle Meta), der Rest ist Bestand (einzeilig, ohne Form).
+// Eine Liste aus 13 identischen Karten hat keine Hierarchie — drei
+// Hervorgehobene geben dem Auge einen Einstieg.
 
 function kuerzen(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
@@ -180,35 +176,10 @@ export default function ExploreSidebar({
 
       <div className="border-b border-border" />
 
-      {/* Die Legende zu den fünf Signaturtönen. Die Farbe ist nie die
-          einzige Kodierung (Icon und Wort stehen an jeder Zeile, siehe
-          lib/signature.ts), aber sie ist die erste, die man sieht — und im
-          Review blieb offen, warum eine Strecke violett und die nächste
-          orange ist. Zugeklappt, damit sie die Liste nicht nach unten
-          schiebt; wer fragt, findet die Antwort an der Stelle der Frage. */}
-      <details className="group text-sm">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-muted transition-colors duration-fast hover:text-foreground [&::-webkit-details-marker]:hidden">
-          Was die Farben bedeuten
-          <ChevronDown
-            className="h-4 w-4 transition-transform duration-fast group-open:rotate-180"
-            aria-hidden="true"
-          />
-        </summary>
-        <p className="pb-2 text-xs text-muted">
-          Jede Strecke zeigt, worin sie unter allen Strecken am meisten heraussticht:
-        </p>
-        <ul className="grid grid-cols-1 gap-1.5 pb-2 sm:grid-cols-2">
-          {LEGENDE.map(({ key, text }) => {
-            const Icon = SIGNATURE_ICONS[key];
-            return (
-              <li key={key} className={`flex items-center gap-2 text-xs ${SIGNATUR_KLASSEN[key].text}`}>
-                <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                {text}
-              </li>
-            );
-          })}
-        </ul>
-      </details>
+      {/* Keine Farbkasten-Legende mehr: fünf Signaturtöne mit Wort + Icon
+          an jeder Zeile brauchen keine eigene Erklärungsebene, die im
+          Peek-Fenster Platz kostet. Die Bedeutung steht dort, wo sie
+          gefragt ist — an der Strecke selbst. */}
 
       {/* Zwei verschiedene Leeren: eine Suche ohne Treffer lässt sich mit
           einem Tipp zurücknehmen, ein leerer Bestand nicht. Vorher sagte
@@ -267,7 +238,7 @@ export default function ExploreSidebar({
             Strecken konnten nicht geladen werden. Bitte versuche es später erneut.
           </li>
         )}
-        {routes.map((route) => {
+        {routes.map((route, index) => {
           const signature = signatures.get(route.id);
           const shape = shapes.get(route.id);
           // Wenn das Signatur-Merkmal selbst die Länge ist (signature.label
@@ -310,10 +281,10 @@ export default function ExploreSidebar({
                 // Der Akzent bleibt dem einen Wert und dem Hover, der ein
                 // Zustand ist und keine dauerhafte Markierung.
                 //
-                // border-l-[3px] bleibt: die Kante ist das, was man beim
-                // Überfliegen der Liste zuerst sieht, und 3 px sind auch
-                // ohne Farbwahrnehmung noch eine Kante.
-                className={`group flex h-20 items-center gap-3 border-b border-border border-l-[3px] py-3 pr-2 pl-3 transition-colors duration-fast hover:bg-accent-subtle active:bg-accent-subtle ${ton?.rand ?? "border-l-border-strong"}`}
+                // Die ersten drei sind die Entscheidung (volle Form), der Rest
+                // ist Bestand: kompakt, ohne Form, damit 13 Strecken nicht
+                // 13 identische Karten sind.
+                className={`group flex items-center gap-3 border-b border-border border-l-[3px] py-3 pr-2 pl-3 transition-colors duration-fast hover:bg-accent-subtle active:bg-accent-subtle ${ton?.rand ?? "border-l-border-strong"} ${index < 3 ? "h-20" : "min-h-14"}`}
               >
                 <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5">
                   <span className="truncate text-base font-medium transition-colors duration-fast group-hover:text-accent">
@@ -395,18 +366,9 @@ export default function ExploreSidebar({
                   </div>
                 </div>
 
-                {/* SVG-Routenform im Signaturton auf --color-surface. Die
-                    Fläche bleibt neutral — getönt wäre sie ein vierter Ton
-                    in derselben Zeile, und die Form darauf müsste dann gegen
-                    ihn gerechnet werden statt gegen die zwei Untergründe, die
-                    es ohnehin gibt.
-
-                    Kein Foto hier: hochgeladene Fahrt-Fotos sind bewusst nur
-                    auf der jeweiligen Streckenseite (Fotos-Sektion) bzw. der
-                    Fahrt-Detailseite sichtbar, nicht als Vorschaubild in der
-                    Explore-Liste.
-
-                    h-14 statt h-16, passend zur auf 80 px verkürzten Zeile. */}
+                {/* Form nur bei den ersten drei: der Rest ist eine kompakte
+                    Bestandszeile ohne Vorschaubild. */}
+                {index < 3 && (
                 <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-md bg-surface">
                   {shape && (
                     <svg
@@ -425,6 +387,7 @@ export default function ExploreSidebar({
                     </svg>
                   )}
                 </div>
+                )}
               </Link>
             </li>
           );
