@@ -66,7 +66,7 @@ describe("staticKartenUrl", () => {
       400,
       "token-mit-sonderzeichen/+",
     );
-    expect(url).toContain("/static/8.00000,46.00000,9.00000,47.00000/1280x400?");
+    expect(url).toContain("/static/[8.00000,46.00000,9.00000,47.00000]/1280x400?");
     expect(url).toContain("logo=false&attribution=false");
     expect(url).toContain(`access_token=${encodeURIComponent("token-mit-sonderzeichen/+")}`);
   });
