@@ -1,5 +1,10 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { ShieldIcon, WeiterIcon } from "@/components/NavIcons";
+import { Dialog } from "@/components/ui/Dialog";
+import VerifiziertErklaerung from "@/components/VerifiziertErklaerung";
 import type { DauerQuelle } from "@/types/database";
 
 // Macht sichtbar, was 0096–0098 in der Datenbank angelegt haben: ob die Dauer
@@ -24,10 +29,13 @@ import type { DauerQuelle } from "@/types/database";
 // deshalb nie "bestätigt", "geprüft" oder "echt" behaupten. (Der Entwurf
 // einer Ziff. 12.6, die die verifizierte Fahrt eigens definiert, liegt auf
 // einem offenen Zweig und ist nicht in Kraft.)
-
+//
+// Die Erklärung öffnet sich als Blatt statt als Seite: ein Erklärtext ist
+// keine Adresse. /verifiziert bleibt als kanonische Fassung für Suche und
+// Teilen bestehen und ist aus dem Blatt verlinkt.
 export default function VerifiziertAbzeichen({
   quelle,
-  /** Ohne Link, wenn das Abzeichen selbst schon in einem Link steckt (Feed-Karte). */
+  /** Ohne Dialog, wenn das Abzeichen selbst schon in einem Link steckt (Feed-Karte). */
   verlinkt = true,
   className = "",
 }: {
@@ -35,6 +43,7 @@ export default function VerifiziertAbzeichen({
   verlinkt?: boolean;
   className?: string;
 }) {
+  const [offen, setOffen] = useState(false);
   const verifiziert = quelle === "server";
 
   const inhalt = (
@@ -67,18 +76,37 @@ export default function VerifiziertAbzeichen({
     );
   }
 
-  // Ein Chevron hinter dem Text: die Pille ist ein Link auf die Erklärung,
-  // sah aber aus wie ein reines Etikett — im Review blieb "Zeit nicht
-  // verifiziert" deshalb unerklärt, obwohl die Erklärung einen Tipp entfernt
-  // lag.
+  // Ein Chevron hinter dem Text: die Pille öffnet die Erklärung, sah aber
+  // ohne ihn aus wie ein reines Etikett.
   return (
-    <Link
-      href="/verifiziert"
-      className={`${basis} ${farbe} ${className} transition-colors hover:opacity-80`}
-      title={titel}
-    >
-      {inhalt}
-      <WeiterIcon className="-mr-1 h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden="true" />
-    </Link>
+    <>
+      <button
+        type="button"
+        onClick={() => setOffen(true)}
+        className={`${basis} ${farbe} ${className} cursor-pointer transition-colors hover:opacity-80`}
+        title={titel}
+        aria-haspopup="dialog"
+      >
+        {inhalt}
+        <WeiterIcon className="-mr-1 h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden="true" />
+      </button>
+      <Dialog
+        open={offen}
+        onClose={() => setOffen(false)}
+        title="Verifizierte Zeiten"
+        className="max-h-[85dvh] overflow-y-auto"
+      >
+        <VerifiziertErklaerung />
+        <p className="mt-4 text-sm text-muted">
+          <Link
+            href="/verifiziert"
+            className="font-medium text-accent hover:underline"
+            onClick={() => setOffen(false)}
+          >
+            Ganze Erklärung öffnen →
+          </Link>
+        </p>
+      </Dialog>
+    </>
   );
 }

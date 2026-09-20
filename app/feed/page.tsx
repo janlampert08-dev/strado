@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight, Rss } from "lucide-react";
 import Header from "@/components/Header";
@@ -189,7 +190,6 @@ export default async function FeedPage({
                   <Link href={`/fahrer/${item.user_id}`} className="relative z-10 shrink-0">
                     <Avatar url={item.avatar_url} name={item.display_name} size={44} />
                   </Link>
-
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <Link
                       href={`/fahrten/${item.completion_id}`}
@@ -254,6 +254,25 @@ export default async function FeedPage({
                     </p>
                   </div>
 
+                  {item.foto_url && (
+                    // Blickfang für Fahrten mit Bild: ohne steht jede Karte
+                    // gleich da, egal ob jemand die Tour in Bildern erzählt.
+                    // Deko-Doppel des Titel-Links (Karte öffnet ohnehin die
+                    // Fahrt) — deshalb kein eigener Link, nur Fläche.
+                    <span
+                      aria-hidden="true"
+                      className="relative z-10 hidden h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-surface min-[400px]:block"
+                    >
+                      <Image
+                        src={item.foto_url}
+                        alt=""
+                        fill
+                        sizes="56px"
+                        loading="lazy"
+                        className="object-cover"
+                      />
+                    </span>
+                  )}
                   {user && (
                     <div className="relative z-10 shrink-0">
                       <KudosButton

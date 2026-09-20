@@ -32,6 +32,7 @@ import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import { buttonVariants } from "@/components/ui/Button";
 import LeaderboardListsSkeleton from "@/components/LeaderboardListsSkeleton";
+import AbschnittTabs from "@/components/ui/AbschnittTabs";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
@@ -375,13 +376,21 @@ export default async function LeaderboardsPage({
         {/* key: beim Klassenwechsel verwirft React den alten Teilbaum und
             zeigt das Skelett, statt die Zahlen der vorigen Klasse stehen zu
             lassen, bis die neuen da sind. */}
-        <Suspense key={klasse ?? "alle"} fallback={<LeaderboardListsSkeleton />}>
-          <Ranglisten klasse={klasse} />
-        </Suspense>
-
-        <Suspense fallback={null}>
-          <Streckenwahl />
-        </Suspense>
+        {/* Zwei Ansichten statt einer Säule: Volumenlisten und
+            Streckenbestzeiten hatten je ein eigenes Filtersystem auf
+            derselben Seite. Jetzt Reiter — der Chooser lebt im zweiten. */}
+        <AbschnittTabs tabs={[{ titel: "Ranglisten" }, { titel: "Bestzeiten" }]}>
+          <div>
+            <Suspense key={klasse ?? "alle"} fallback={<LeaderboardListsSkeleton />}>
+              <Ranglisten klasse={klasse} />
+            </Suspense>
+          </div>
+          <div>
+            <Suspense fallback={null}>
+              <Streckenwahl />
+            </Suspense>
+          </div>
+        </AbschnittTabs>
         </Seitenrahmen>
       </div>
       </PullToRefreshArea>
