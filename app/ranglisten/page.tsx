@@ -277,8 +277,9 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
     <div className="flex flex-col gap-6">
       {/* Eine Rangliste führt, drei vertiefen: vier gleich grosse Podien
           hiessen kein Podium. Km ist die Schweizer Währung des Unterwegsseins.
-          Die drei stehen trotzdem standardmässig offen (Eigentümerentscheid):
-          Wer bis hierher scrollt, will Ranglisten sehen, keine Klappe. */}
+          Die drei stehen offen dahinter, ohne eigene Klappe
+          (Eigentümerentscheid): Wer bis hierher scrollt, will Ranglisten
+          sehen. */}
       <LeaderboardSection
         title={`Meiste km gefahren${klassenZusatz}`}
         icon={Ruler}
@@ -287,36 +288,30 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
         format={(v) => v.toFixed(0)}
         currentUserId={currentUserId}
       />
-      <details open className="group rounded-xl border border-border">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium marker:content-none">
-          Weitere Ranglisten
-          <span className="text-xs font-normal text-muted">Fahrten · Höhe · Entdecker</span>
-        </summary>
-        <div className="flex flex-col gap-8 px-4 pb-4 sm:grid sm:grid-cols-2 sm:items-start sm:gap-6 xl:grid-cols-3">
-          <LeaderboardSection
-            title={`Meiste Fahrten${klassenZusatz}`}
-            icon={Route}
-            entries={meisteFahrten}
-            unit={(n) => nomen(n, "Fahrt", "Fahrten")}
-            currentUserId={currentUserId}
-          />
-          <LeaderboardSection
-            title={`Meiste Höhenmeter${klassenZusatz}`}
-            icon={TrendingUp}
-            entries={meisteHoehenmeter}
-            unit="m"
-            format={(v) => Math.round(v).toLocaleString("de-CH")}
-            currentUserId={currentUserId}
-          />
-          <LeaderboardSection
-            title={`Entdecker${klassenZusatz}`}
-            icon={Compass}
-            entries={meisteStrecken}
-            unit={(n) => nomen(n, "Strecke", "Strecken")}
-            currentUserId={currentUserId}
-          />
-        </div>
-      </details>
+      <div className="flex flex-col gap-8 sm:grid sm:grid-cols-2 sm:items-start sm:gap-6 xl:grid-cols-3">
+        <LeaderboardSection
+          title={`Meiste Fahrten${klassenZusatz}`}
+          icon={Route}
+          entries={meisteFahrten}
+          unit={(n) => nomen(n, "Fahrt", "Fahrten")}
+          currentUserId={currentUserId}
+        />
+        <LeaderboardSection
+          title={`Meiste Höhenmeter${klassenZusatz}`}
+          icon={TrendingUp}
+          entries={meisteHoehenmeter}
+          unit="m"
+          format={(v) => Math.round(v).toLocaleString("de-CH")}
+          currentUserId={currentUserId}
+        />
+        <LeaderboardSection
+          title={`Entdecker${klassenZusatz}`}
+          icon={Compass}
+          entries={meisteStrecken}
+          unit={(n) => nomen(n, "Strecke", "Strecken")}
+          currentUserId={currentUserId}
+        />
+      </div>
     </div>
   );
 }
