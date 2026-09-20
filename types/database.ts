@@ -148,6 +148,14 @@ export interface HoehenprofilPunkt {
   m: number;
 }
 
+// Ein Punkt des Tempoprofils (kumulierte Distanz ab Start, geglättete
+// Geschwindigkeit in km/h). Gleiches Raster-Prinzip wie HoehenprofilPunkt,
+// damit sich beide Diagramme ohne Umrechnung zeichnen lassen (0115).
+export interface TempoprofilPunkt {
+  km: number;
+  kmh: number;
+}
+
 export interface Vehicle {
   id: string;
   user_id: string;
@@ -387,6 +395,11 @@ export interface RouteCompletion {
   // Bewusst nicht dasselbe wie routes.hoehe_m (Scheitelhöhe einer Strecke).
   hoehenmeter_aufstieg: number | null;
   hoehenprofil: HoehenprofilPunkt[] | null;
+  // Ab 0115_tempoprofil.sql: geglättetes Tempo je Kilometer, beim Speichern
+  // aus den Roh-Zeitstempeln berechnet. Nur für den Besitzer lesbar (in
+  // keiner öffentlichen View), null bei allen älteren Fahrten. Reine
+  // Anzeige — fliesst in keine Wertung ein.
+  tempoprofil: TempoprofilPunkt[] | null;
   // Ab 0050_streckenerkennung_in_freier_fahrt.sql: bei einem automatisch aus
   // einer freien Fahrt erkannten Streckenabschnitt Verweis auf die
   // übergeordnete freie Fahrt, sonst null. Nie Teil der öffentlichen Views

@@ -29,6 +29,29 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## 0115 — noch nicht angewendet (Stand 2026-09-20)
+
+`0115_tempoprofil.sql` legt `route_completions.tempoprofil` an ([{km, kmh}],
+nur für den Besitzer lesbar, in keiner öffentlichen View) und erweitert
+`save_free_ride_with_segments` sowie `anonymize_account` darum. Der Code auf
+`staging-tempo-karte` schreibt die Spalte bei jeder neuen Fahrt (frei wie
+Strecke) und liest sie auf der Fahrt-Detailseite — **ohne die Migration
+schlägt jedes Speichern mit einem Spaltenfehler fehl** (Schritt 5 der
+Kernschleife). Reihenfolge: Schema zuerst, Code danach.
+
+Was nach dem Einspielen zu prüfen ist:
+
+- Spalte da? `\d route_completions` zeigt `tempoprofil jsonb`.
+- `save_free_ride_with_segments(jsonb, jsonb)`: Grant für `authenticated`,
+  **keiner** für `anon` (Falle aus 0047/0048/0091/0097).
+- `anonymize_account(uuid)`: nur `service_role`, und der Rumpf nullt
+  `tempoprofil` mit.
+- `public_fahrten` und `public_fahrt_tracks` führen die Spalte **nicht** —
+  beide listen ihre Spalten ausdrücklich auf, ein `select *` gibt es dort
+  nicht.
+- Funktionaler Test, zurückgerollt: Fahrt speichern, Profil lesen (eigene
+  Zeile sichtbar), als `anon` über `public_fahrten` unsichtbar.
+
 ## Eingespielt: 0101_anonymisierung_fahrtstarts (2026-09-16, Produktion)
 
 Nacharbeit zur Datenschutzerklärung (`strado`#255 / `stradoinfo`#19) und
