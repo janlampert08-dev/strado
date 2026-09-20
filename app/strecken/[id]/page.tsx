@@ -38,9 +38,10 @@ import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { KATEGORIEN } from "@/lib/constants";
 import { averageTempolimit, estimateRouteDurationMinutes, formatMinutes } from "@/lib/geo";
 import type { Vehicle } from "@/types/database";
+import { Pencil } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Kennzahl, { Kennzahlen, Kennzahlenzeile } from "@/components/ui/Kennzahl";
-import { buttonVariants } from "@/components/ui/Button";
+import { iconButtonVariants } from "@/components/ui/IconButton";
 
 const KATEGORIE_LABEL = Object.fromEntries(
   KATEGORIEN.map((k) => [k.value, k.label]),
@@ -268,19 +269,23 @@ export default async function StreckeDetailPage({
               ausgerechnet diese Strecke violett war. Farbe steht auch hier
               nie allein (Icon und Wort daneben) — sie ist die dritte
               Kodierung derselben Aussage. */}
-          {signatur && (
-            <p
-              className={`mt-1.5 flex items-center gap-1.5 text-sm font-medium ${SIGNATUR_KLASSEN[signatur.key].text}`}
-            >
-              {(() => {
-                const SignaturIcon = SIGNATURE_ICONS[signatur.key];
-                return <SignaturIcon className="h-4 w-4 shrink-0" aria-hidden="true" />;
-              })()}
-              {signatur.label}
-            </p>
-          )}
-          <p className="mt-1 text-sm text-muted">
-            {route.ist_rundfahrt ? `Start/Ziel: ${route.start_ort}` : `${route.start_ort} → ${route.ziel_ort}`}
+          {/* Route und Signatur in einer Zeile: vorher waren es zwei
+              Absätze (Signatur mit mt-1.5, Orte mit mt-1) — vier
+              Textzeilen bis zur ersten Handlung. Die Farbe steht
+              weiterhin nie allein (Icon und Wort daneben). */}
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+            <span>
+              {route.ist_rundfahrt ? `Start/Ziel: ${route.start_ort}` : `${route.start_ort} → ${route.ziel_ort}`}
+            </span>
+            {signatur && (
+              <span className={`flex items-center gap-1 font-medium ${SIGNATUR_KLASSEN[signatur.key].text}`}>
+                {(() => {
+                  const SignaturIcon = SIGNATURE_ICONS[signatur.key];
+                  return <SignaturIcon className="h-4 w-4 shrink-0" aria-hidden="true" />;
+                })()}
+                {signatur.label}
+              </span>
+            )}
           </p>
         </div>
 
@@ -307,12 +312,10 @@ export default async function StreckeDetailPage({
           </Card>
         )}
 
-        {/* Drei gleich geformte 44-px-Flächen statt dreier Schaltflächen in
-            zwei Silhouetten (rounded-lg neben rounded-full) mit Textlabels.
-            Die Zeile trug damit fast so viel Höhe wie die Überschrift
-            darüber — für Nebenhandlungen. "Bearbeiten" behält seinen Text:
-            es ist eine seltene, folgenreiche Handlung und nur für die
-            Besitzerin sichtbar. */}
+        {/* Vier gleich geformte 44-px-Iconflächen: Merken, Offline,
+            weitere Aktionen und — für die Besitzerin vor Freigabe —
+            Bearbeiten. Vorher trug Bearbeiten als einzige einen Text in
+            size="sm" (36 px) und brach damit Höhe und Sprache der Zeile. */}
         <div className="flex flex-wrap items-start gap-2">
           {user && <FavoriteButton routeId={id} initialFavorite={favorite} />}
           <OfflineRouteButton
@@ -343,9 +346,11 @@ export default async function StreckeDetailPage({
           {!moderator && user?.id === route.erstellt_von && !route.status_ok && (
             <Link
               href={`/strecken/${id}/bearbeiten`}
-              className={buttonVariants({ variant: "secondary", size: "sm", className: "self-start" })}
+              aria-label="Strecke bearbeiten"
+              title="Strecke bearbeiten"
+              className={iconButtonVariants()}
             >
-              Bearbeiten
+              <Pencil className="h-5 w-5" aria-hidden="true" />
             </Link>
           )}
         </div>
@@ -373,6 +378,29 @@ export default async function StreckeDetailPage({
           guestContinuationToken={fortsetzen ?? null}
           maxPhotos={maxFotosProFahrt(premiumStatus.aktiv)}
         />
+        </div>
+
+        {/* Kategorien und Charakter direkt unter dem Start: was die Strecke
+            IST, steht vor Profil und Zahlen — vorher erst nach der
+            Bestenliste, also Beschreibung nach Wertung. */}
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {route.kategorien.map((k) => (
+              <span
+                key={k}
+                className="rounded-full border border-border px-2.5 py-1 text-xs text-foreground"
+              >
+                {KATEGORIE_LABEL[k] ?? k}
+              </span>
+            ))}
+            {route.saison_status === "saisonal" && (
+              <span className="text-sm text-muted">{SAISON_LABEL.saisonal}</span>
+            )}
+          </div>
+
+          {route.charakter_text && (
+            <p className="text-sm leading-relaxed text-foreground">{route.charakter_text}</p>
+          )}
         </div>
 
         {route.hoehenprofil && route.hoehenprofil.length > 1 && (
@@ -478,26 +506,6 @@ export default async function StreckeDetailPage({
           entries={leaderboard}
           klassen={leaderboardKlassen}
         />
-
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            {route.kategorien.map((k) => (
-              <span
-                key={k}
-                className="rounded-full border border-border px-2.5 py-1 text-xs text-foreground"
-              >
-                {KATEGORIE_LABEL[k] ?? k}
-              </span>
-            ))}
-            {route.saison_status === "saisonal" && (
-              <span className="text-sm text-muted">{SAISON_LABEL.saisonal}</span>
-            )}
-          </div>
-
-          {route.charakter_text && (
-            <p className="text-sm leading-relaxed text-foreground">{route.charakter_text}</p>
-          )}
-        </div>
 
         <PhotoGallery photos={photos} />
 

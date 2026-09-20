@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronRight,
   Gauge,
+  Plus,
   Route as RouteIcon,
   Settings,
   Timer,
@@ -372,7 +373,8 @@ export default async function ProfilPage() {
               href="/strecken/neu"
               className={buttonVariants({ variant: "primary", className: "w-full" })}
             >
-              + Strecke erstellen
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Strecke erstellen
             </Link>
             <Link
               href={`/fahrer/${user.id}`}
@@ -655,7 +657,11 @@ export default async function ProfilPage() {
                     </Suspense>
                   )}
                   {favorites && favorites.length > 0 ? (
-                    <Card as="ul" className="divide-y divide-border">
+                    // Dieselbe Listenform wie "Getrackte Fahrten" darüber:
+                    // ein Rahmen um die Liste, Trennlinien zwischen den
+                    // Zeilen. Vorher eine Card — zwei verschiedene
+                    // Behälter für zwei benachbarte Listen.
+                    <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
                       {favorites.map((f) =>
                         f.routes ? (
                           <li key={f.route_id}>
@@ -673,7 +679,7 @@ export default async function ProfilPage() {
                           </li>
                         ) : null,
                       )}
-                    </Card>
+                    </ul>
                   ) : (
                     <EmptyState
                       icon={Bookmark}
@@ -701,7 +707,8 @@ export default async function ProfilPage() {
             <div className="flex items-center justify-between">
               <SectionHeading icon={Car}>Fahrzeuge</SectionHeading>
               <Link href="/profil/fahrzeuge/neu" className={textAktionClassName()}>
-                + Hinzufügen
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Hinzufügen
               </Link>
             </div>
             <VehicleGrid vehicles={(vehicles as Vehicle[]) ?? []} hinweise={wartungsHinweise} />
@@ -741,7 +748,13 @@ export default async function ProfilPage() {
             </section>
           )}
 
-          {!premiumStatus.aktiv && <PremiumCard status={premiumStatus} />}
+          {/* Eigener Abschluss mit Trennlinie: der Kauf-Einstieg steht
+              sonst rahmenlos im selben Strom wie Garage und Bereiche. */}
+          {!premiumStatus.aktiv && (
+            <div className="border-t border-border pt-6">
+              <PremiumCard status={premiumStatus} />
+            </div>
+          )}
         </div>
         </Seitenrahmen>
       </div>
