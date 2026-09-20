@@ -122,7 +122,7 @@ export default function MotorklassenChips({
         aria-label={label}
         // -mx/px: die Leiste darf am Rand durchscrollen, ohne dass die Chips
         // am Container abgeschnitten wirken.
-        className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1"
+        className="-mx-1 flex gap-1.5 overflow-x-auto reiter-scroller px-1 pb-1"
       >
         {vorne}
         <Chip aktiv={aktiv === null} onChange={onChange} href={hrefAlle} wert={null}>
@@ -145,7 +145,7 @@ export default function MotorklassenChips({
         <div
           role="group"
           aria-label={`Leistungsklasse (${fahrzeugtypdefinition(aktiverTyp).label})`}
-          className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1"
+          className="-mx-1 flex gap-1.5 overflow-x-auto reiter-scroller px-1 pb-1"
         >
           <Chip
             aktiv={aktiv === aktiverTyp}
