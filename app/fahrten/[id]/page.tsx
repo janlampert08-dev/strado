@@ -30,6 +30,7 @@ import { getCurrentUser } from "@/lib/supabase/server";
 import { formatDuration } from "@/lib/format";
 import VerifiziertAbzeichen from "@/components/VerifiziertAbzeichen";
 import { publicationBlockReason } from "@/lib/track";
+import { erkannteFahrtrichtung } from "@/lib/richtung";
 import Card from "@/components/ui/Card";
 import Kennzahl, { Kennzahlen } from "@/components/ui/Kennzahl";
 import MotorklasseBadge from "@/components/MotorklasseBadge";
@@ -194,6 +195,23 @@ export default async function FahrtDetailPage({
   // Fahrer die Information, in welcher Rangliste seine Zeit steht.
   const gewerteteKlasse = completion.isOwner ? completion.motorklasseGewertet : null;
 
+  // Diskrete Fahrtrichtung (keine Wertung, nur Anzeige): Bei einer
+  // Punkt-zu-Punkt-Strecke steht hier, von wo aus gefahren wurde — die
+  // offizielle Zeile darunter nennt immer Start → Ziel, egal wie herum
+  // gefahren wurde. Rundfahrten und freie Fahrten bleiben unverändert.
+  const trackStart = completion.track?.coordinates?.[0] ?? null;
+  const fahrtrichtung =
+    !istFreieFahrt && route && trackStart
+      ? erkannteFahrtrichtung(
+          trackStart as [number, number],
+          route.start_geojson.coordinates as [number, number],
+          route.ziel_geojson.coordinates as [number, number],
+          route.ist_rundfahrt,
+        )
+      : null;
+  const gefahrenAb =
+    fahrtrichtung === "zurueck" ? route?.ziel_ort ?? null : fahrtrichtung === "hin" ? (route?.start_ort ?? null) : null;
+
   return (
     <div className="flex h-dvh flex-col">
       <Header back={completion.isOwner ? "/profil" : `/fahrer/${completion.userId}`} />
@@ -303,7 +321,7 @@ export default async function FahrtDetailPage({
               ) : route!.ist_rundfahrt ? (
                 `Start/Ziel: ${route!.start_ort}`
               ) : (
-                `${route!.start_ort} → ${route!.ziel_ort}`
+                `${route!.start_ort} → ${route!.ziel_ort}${gefahrenAb ? ` · ab ${gefahrenAb}` : ""}`
               )}
             </p>
             {/* Rückverweis nur für den Besitzer, nur bei einer automatisch

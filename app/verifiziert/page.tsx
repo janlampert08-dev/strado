@@ -67,7 +67,10 @@ export default function VerifiziertPage() {
         </p>
         <p className="mt-3 text-sm text-muted">
           Deshalb misst der Server mit. Eine Zeit, die hier in einer Rangliste steht,
-          ist über ihre volle Länge beobachtet worden.
+          ist über ihre volle Länge beobachtet worden. Das gilt auch für automatisch
+          erkannte Abschnitte innerhalb einer freien Fahrt: Decken die Positions&shy;meldungen
+          den Abschnitt lückenlos ab, trägt er eine verifizierte Zeit wie eine
+          direkt gestartete Streckenfahrt.
         </p>
       </Card>
 

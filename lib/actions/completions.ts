@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isRateLimited } from "@/lib/rateLimit";
 import { computeRouteCoverage, COVERAGE_THRESHOLD_PERCENT } from "@/lib/routeCoverage";
 import { computeTrailStats, type TrailPoint } from "@/lib/geo";
-import { abdruckVon, leseTicket } from "@/lib/fahrtstart";
+import { abdruckVon, leseTicket, type FahrtStartTicket } from "@/lib/fahrtstart";
 import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
 import {
   MAX_JUMP_KM,
@@ -32,6 +32,8 @@ import { reverseGeocode } from "@/lib/geocoding";
 import {
   getRoute,
   listRouteDetectionCandidates,
+  listRouteDetectionCandidatesInBox,
+  trailBox,
   type RouteDetectionCandidate,
 } from "@/lib/routes";
 import { todayInZurich } from "@/lib/format";
@@ -250,6 +252,51 @@ async function uploadFotos(
   return { urls };
 }
 
+// Direkt hochgeladene Fotos (lib/actions/fotos.ts): Der Browser lädt per
+// signiertem Ticket direkt in den privaten Bucket, das Formular schickt nur
+// noch Pfade als JSON-Array im Feld "foto_pfade". Geprüft wird dasselbe wie
+// bei Dateien: eigener Ordner, erlaubte Endung, Anzahl — und dass das Objekt
+// wirklich liegt (sonst liesse sich eine fremde URL als eigenes Foto
+// eintragen). Liefert öffentliche URLs im selben Format wie uploadFotos,
+// damit attachPhotos/removeUploadedFotos unverändert bleiben.
+const FOTO_PFAD_RE = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|jpeg|png|webp|gif)$/i;
+
+async function resolveVorabGeladeneFotos(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  formData: FormData,
+  max: number,
+): Promise<{ urls: string[] } | { error: string }> {
+  const roh = String(formData.get("foto_pfade") ?? "[]");
+  let pfade: unknown;
+  try {
+    pfade = JSON.parse(roh);
+  } catch {
+    return { error: "Ungültige Foto-Angaben." };
+  }
+  if (!Array.isArray(pfade) || pfade.length === 0) return { urls: [] };
+  const liste = pfade.filter((p): p is string => typeof p === "string").slice(0, max);
+  const urls: string[] = [];
+  for (const pfad of liste) {
+    if (!FOTO_PFAD_RE.test(pfad) || !pfad.startsWith(`${userId}/`)) {
+      return { error: "Ungültige Foto-Angaben." };
+    }
+    // Existenz prüfen: list() auf dem Ordner ist billiger als ein
+    // Einzel-Download und bestätigt, dass der Upload wirklich stattgefunden
+    // hat statt nur behauptet zu werden.
+    const dateiname = pfad.slice(pfad.indexOf("/") + 1);
+    const { data, error } = await supabase.storage.from(ROUTE_PHOTOS_BUCKET).list(userId, {
+      search: dateiname,
+    });
+    if (error || !data?.some((f) => f.name === dateiname)) {
+      return { error: "Ein Foto wurde nicht gefunden — bitte erneut hochladen." };
+    }
+    const { data: urlData } = supabase.storage.from(ROUTE_PHOTOS_BUCKET).getPublicUrl(pfad);
+    urls.push(urlData.publicUrl);
+  }
+  return { urls };
+}
+
 // Verknüpft hochgeladene Fotos mit der bereits gespeicherten Fahrt. Ein
 // Fehler hier führt bewusst NICHT zu einem Fehler-Return beim Aufrufer (das
 // würde den Nutzer zu einem erneuten Absenden verleiten und eine doppelte
@@ -347,10 +394,11 @@ export async function logTrackedCompletion(
   const requestedOeffentlich = formData.get("ist_oeffentlich") === "true";
   const notizRaw = String(formData.get("notiz") ?? "").trim();
   const notiz = notizRaw ? notizRaw.slice(0, MAX_NOTIZ_LENGTH) : null;
+  const maxFotos = maxFotosProFahrt(await istPremium());
   const fotos = formData
     .getAll("foto")
     .filter((f): f is File => f instanceof File && f.size > 0)
-    .slice(0, maxFotosProFahrt(await istPremium()));
+    .slice(0, maxFotos);
 
   // distanz_km/dauer_sekunden/abdeckung_prozent kommen NICHT vom Client —
   // die liessen sich beliebig fälschen (z.B. abdeckung_prozent=100,
@@ -391,13 +439,27 @@ export async function logTrackedCompletion(
   // Fotos hochladen und Höhenmeter ableiten sind unabhängige externe
   // Aufrufe (Storage bzw. swisstopo) — parallel statt nacheinander, gleiches
   // Muster wie bei der freien Fahrt weiter unten (deriveElevation).
-  const [uploaded, elevation, fahrzeugTyp] = await Promise.all([
+  // Direkt-Uploads (foto_pfade) kommen ohne Bytes aus und werden nur noch
+  // verifiziert; übrige Plätze füllen klassische Datei-Uploads.
+  const [vorab, uploaded, elevation, fahrzeugTyp] = await Promise.all([
+    resolveVorabGeladeneFotos(supabase, user.id, formData, maxFotos),
     uploadFotos(supabase, user.id, fotos),
     deriveElevation(streckenKoordinaten),
     fahrzeugTypLaden(supabase, fahrzeugId, user.id),
   ]);
-  if ("error" in uploaded) return { error: uploaded.error };
-  const uploadedUrls = uploaded.urls;
+  if ("error" in vorab) {
+    if (!("error" in uploaded)) await removeUploadedFotos(supabase, uploaded.urls);
+    return { error: vorab.error };
+  }
+  if ("error" in uploaded) {
+    await removeUploadedFotos(supabase, vorab.urls);
+    return { error: uploaded.error };
+  }
+  if (vorab.urls.length + uploaded.urls.length > maxFotos) {
+    await removeUploadedFotos(supabase, [...vorab.urls, ...uploaded.urls]);
+    return { error: `Maximal ${maxFotos} Fotos pro Fahrt.` };
+  }
+  const uploadedUrls = [...vorab.urls, ...uploaded.urls];
 
   const { data: inserted, error } = await supabase
     .from("route_completions")
@@ -581,6 +643,13 @@ interface DetectedSegmentPayload {
   abdeckung_prozent: number;
   track: string | null;
   motorklasse_belegt: string | null;
+  // Ab 0118: Ticket + Fenster für eine Server-Dauer. Fehlt das Ticket (kein
+  // Netz beim Start, Gast ohne Konto), bleibt es bei trail — der Trigger
+  // rechnet aus denselben Werten unabhängig erneut und bleibt massgeblich.
+  dauer_quelle: "server" | "trail";
+  fahrt_start_id: string | null;
+  segment_fenster_von: number | null;
+  segment_fenster_bis: number | null;
 }
 
 // Muss zum v_max_segments-Limit der RPC-Funktion in
@@ -600,12 +669,44 @@ const MAX_DETECTED_SEGMENTS = 20;
 // besteht, wird stillschweigend verworfen (bewusst: eine verpasste
 // Erkennung kostet nichts, eine fälschlich vergebene Fahrt schon, siehe
 // PR-Beschreibung).
-function buildDetectedSegments(
+// Server-Dauer eines Abschnitts aus der Puls-Historie (0118): Vorab-
+// Berechnung für Anzeige und Payload. Gibt Sekunden oder null (trail).
+// Best effort wie alles in der Erkennung — der Trigger rechnet aus den
+// gespeicherten Fensterwerten unabhängig erneut und bleibt massgeblich.
+async function loeseSegmentDauerEin(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  ticket: FahrtStartTicket,
+  vonMs: number,
+  bisMs: number,
+  start: [number, number],
+  ende: [number, number],
+): Promise<number | null> {
+  try {
+    const { data, error } = await supabase.rpc("segment_dauer_einloesen", {
+      p_id: ticket.id,
+      p_abdruck: await abdruckVon(ticket.geheimnis),
+      p_von_ms: vonMs,
+      p_bis_ms: bisMs,
+      p_start_lng: start[0],
+      p_start_lat: start[1],
+      p_end_lng: ende[0],
+      p_end_lat: ende[1],
+    });
+    if (error || typeof data !== "number" || data <= 0) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+async function buildDetectedSegments(
+  supabase: Awaited<ReturnType<typeof createClient>>,
   trail: TrailPoint[],
   laps: DetectedLap[],
   candidates: RouteDetectionCandidate[],
   fahrzeugTyp: FahrzeugTyp | null,
-): { payloads: DetectedSegmentPayload[]; summaries: DetectedSegmentSummary[] } {
+  ticket: FahrtStartTicket | null,
+): Promise<{ payloads: DetectedSegmentPayload[]; summaries: DetectedSegmentSummary[] }> {
   const payloads: DetectedSegmentPayload[] = [];
   const summaries: DetectedSegmentSummary[] = [];
 
@@ -629,10 +730,25 @@ function buildDetectedSegments(
     // aus lapDetection — beide müssen zustimmen (siehe PR-Beschreibung).
     if (abdeckungProzent < COVERAGE_THRESHOLD_PERCENT) continue;
 
+    // Drittes Signal ab 0118: Server-Dauer aus den Pulsen im Fenster. Ohne
+    // Ticket oder ohne Abdeckung bleibt es bei trail — ehrlich unten ohne.
+    const erster = subTrail[0];
+    const letzter = subTrail[subTrail.length - 1];
+    const serverSekunden = ticket
+      ? await loeseSegmentDauerEin(
+          supabase,
+          ticket,
+          lap.entryT,
+          lap.exitT,
+          [erster.lng, erster.lat],
+          [letzter.lng, letzter.lat],
+        )
+      : null;
+
     payloads.push({
       route_id: route.id,
       distanz_km: distanceKm,
-      dauer_sekunden: durationSeconds,
+      dauer_sekunden: serverSekunden ?? durationSeconds,
       bewegte_zeit_sekunden: movingSeconds(subTrail),
       abdeckung_prozent: abdeckungProzent,
       track: toEwktLineString(toCoordinates(simplifyTrack(subTrail))),
@@ -642,8 +758,12 @@ function buildDetectedSegments(
       // Höhenprofil (es gibt keines je Segment) wird flach gerechnet — die
       // Schätzung fällt damit niedriger aus, also auf die sichere Seite.
       motorklasse_belegt: belegteKlasse(fahrzeugTyp, subTrail),
+      dauer_quelle: serverSekunden !== null ? "server" : "trail",
+      fahrt_start_id: serverSekunden !== null && ticket ? ticket.id : null,
+      segment_fenster_von: ticket ? lap.entryT : null,
+      segment_fenster_bis: ticket ? lap.exitT : null,
     });
-    summaries.push({ routeId: route.id, routeName: route.name, distanzKm: distanceKm, dauerSekunden: durationSeconds });
+    summaries.push({ routeId: route.id, routeName: route.name, distanzKm: distanceKm, dauerSekunden: serverSekunden ?? durationSeconds });
   }
 
   return { payloads, summaries };
@@ -704,10 +824,11 @@ export async function logFreeRide(
   const titel = titelRaw ? titelRaw.slice(0, MAX_TITEL_LENGTH) : null;
   const notizRaw = String(formData.get("notiz") ?? "").trim();
   const notiz = notizRaw ? notizRaw.slice(0, MAX_NOTIZ_LENGTH) : null;
+  const maxFotos = maxFotosProFahrt(await istPremium());
   const fotos = formData
     .getAll("foto")
     .filter((f): f is File => f instanceof File && f.size > 0)
-    .slice(0, maxFotosProFahrt(await istPremium()));
+    .slice(0, maxFotos);
 
   // Einmal berechnet, für die gespeicherte Track-Geometrie und die
   // Streckenerkennung weiter unten gemeinsam genutzt — Douglas-Peucker auf
@@ -726,8 +847,20 @@ export async function logFreeRide(
     fahrzeugTypLaden(supabase, fahrzeugId, user.id),
   ]);
 
+  const vorab = await resolveVorabGeladeneFotos(supabase, user.id, formData, maxFotos);
+  if ("error" in vorab) {
+    return { error: vorab.error };
+  }
   const uploaded = await uploadFotos(supabase, user.id, fotos);
-  if ("error" in uploaded) return { error: uploaded.error };
+  if ("error" in uploaded) {
+    await removeUploadedFotos(supabase, vorab.urls);
+    return { error: uploaded.error };
+  }
+  if (vorab.urls.length + uploaded.urls.length > maxFotos) {
+    await removeUploadedFotos(supabase, [...vorab.urls, ...uploaded.urls]);
+    return { error: `Maximal ${maxFotos} Fotos pro Fahrt.` };
+  }
+  const uploadedUrls = [...vorab.urls, ...uploaded.urls];
 
   // Automatische Streckenerkennung: läuft auf dem bereits vereinfachten
   // Trail (gleiche Vereinfachung wie für die gespeicherte Track-Geometrie
@@ -739,7 +872,12 @@ export async function logFreeRide(
   let segmentSummaries: DetectedSegmentSummary[] = [];
   let partialAttemptSummaries: PartialAttemptSummary[] = [];
   try {
-    const candidates = await listRouteDetectionCandidates(user.id);
+    // Bbox-Vorfilter per PostGIS (0116), Fallback auf alle Kandidaten in der
+    // Funktion selbst, falls die Migration noch nicht eingespielt ist.
+    const box = trailBox(simplifiedTrail);
+    const candidates = box
+      ? await listRouteDetectionCandidatesInBox(user.id, box)
+      : await listRouteDetectionCandidates(user.id);
     if (candidates.length > 0) {
       const routeCandidates: RouteCandidate[] = candidates.map((r) => ({
         routeId: r.id,
@@ -747,7 +885,23 @@ export async function logFreeRide(
         isLoop: r.ist_rundfahrt,
       }));
       const { laps, partialAttempts } = detectLaps(simplifiedTrail, routeCandidates);
-      const built = buildDetectedSegments(trail, laps, candidates, fahrzeugTyp);
+      // Das Ticket für Abschnittszeiten (0118): dasselbe wie das der freien
+      // Fahrt oben (fahrtstart) — nur das Geheimnis fehlt dort, hier steht
+      // es noch im Formularfeld. Ohne Ticket bleibt alles bei trail.
+      let segmentTicket: FahrtStartTicket | null = null;
+      try {
+        segmentTicket = leseTicket(JSON.parse(String(formData.get("fahrt_start") ?? "null")));
+      } catch {
+        segmentTicket = null;
+      }
+      const built = await buildDetectedSegments(
+        supabase,
+        trail,
+        laps,
+        candidates,
+        fahrzeugTyp,
+        segmentTicket,
+      );
       segmentPayloads = built.payloads;
       segmentSummaries = built.summaries;
 
@@ -822,7 +976,7 @@ export async function logFreeRide(
   const parentRow = inserted?.find((row) => row.out_art === "frei");
 
   if (error || !parentRow) {
-    await removeUploadedFotos(supabase, uploaded.urls);
+    await removeUploadedFotos(supabase, uploadedUrls);
     // Race-freie Durchsetzung via DB-Trigger (0024) — der App-seitige Check
     // oben ist nur ein schnelles Vorab-Feedback.
     if (error?.message.includes("cooldown_active")) {
@@ -831,7 +985,7 @@ export async function logFreeRide(
     return { error: "Fahrt konnte nicht gespeichert werden." };
   }
 
-  await attachPhotos(supabase, parentRow.out_id, user.id, uploaded.urls);
+  await attachPhotos(supabase, parentRow.out_id, user.id, uploadedUrls);
 
   // Reihenfolge der 'strecke'-Zeilen entspricht der Reihenfolge von
   // p_segments (save_free_ride_with_segments verarbeitet sie in einer

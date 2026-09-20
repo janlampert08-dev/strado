@@ -306,16 +306,19 @@ export function useRideRecorder({
   // Absichtlich nicht abgewartet und ohne Fehlerbehandlung: ein verlorener
   // Puls darf die Aufzeichnung nicht bremsen. Er kostet nur Genauigkeit am
   // Ende, und dafür hat der Trigger seine 500-Meter-Toleranz.
-  const pulsen = useCallback((punkt: [number, number], erzwingen = false) => {
-    const ticket = ticketRef.current;
-    if (!ticket) return;
-    const jetzt = Date.now();
-    if (!erzwingen && !sollPulsen(letzterPulsAtRef.current, jetzt)) return;
-    letzterPulsAtRef.current = jetzt;
-    void fahrtStartPuls(ticket, punkt[1], punkt[0]).catch(() => {
-      // Ohne Netz kein Puls. Beim nächsten Fix wird es erneut versucht.
-    });
-  }, []);
+  const pulsen = useCallback(
+    (punkt: [number, number], erzwingen = false, tempoKmh: number | null = null) => {
+      const ticket = ticketRef.current;
+      if (!ticket) return;
+      const jetzt = Date.now();
+      if (!erzwingen && !sollPulsen(letzterPulsAtRef.current, jetzt, tempoKmh)) return;
+      letzterPulsAtRef.current = jetzt;
+      void fahrtStartPuls(ticket, punkt[1], punkt[0]).catch(() => {
+        // Ohne Netz kein Puls. Beim nächsten Fix wird es erneut versucht.
+      });
+    },
+    [],
+  );
 
   // Verhindert, dass der Bildschirm während der Aufzeichnung automatisch
   // gesperrt wird (wie bei einem laufenden Video) — GPS-Tracking im Browser
@@ -673,8 +676,15 @@ export function useRideRecorder({
           // Bewusst genau hier: der Genauigkeitsfilter oben entscheidet damit
           // auch über den Puls, und gemeldet wird nur, was auch im Trail
           // landet. Der Trigger vergleicht den letzten Puls später mit dem
-          // Ende genau dieses Trails.
-          pulsen(point);
+          // Ende genau dieses Trails. Das Gerätetempo steuert das
+          // Pulsintervall (schnell = 10 s, sonst 20 s, lib/fahrtstart.ts).
+          const geraeteTempoKmh =
+            browserPosition.coords.speed !== null &&
+            browserPosition.coords.speed !== undefined &&
+            Number.isFinite(browserPosition.coords.speed)
+              ? browserPosition.coords.speed * 3.6
+              : null;
+          pulsen(point, false, geraeteTempoKmh);
 
           if (lastPointRef.current) {
             const segment = haversineKm(lastPointRef.current, point);

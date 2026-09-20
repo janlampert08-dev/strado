@@ -49,5 +49,15 @@ export async function GET(request: Request) {
     ...(mitHoehenprofil ? { hoehenprofil: r.hoehenprofil ?? null } : {}),
   }));
 
-  return NextResponse.json({ routes: data }, { headers: OEFFENTLICHE_API_HEADER });
+  return NextResponse.json(
+    { routes: data },
+    {
+      headers: {
+        ...OEFFENTLICHE_API_HEADER,
+        // Selten ändernd, oft gelesen (Info-Seite, externe Clients): 5 min am
+        // CDN, 60 s stale-while-revalidate im Browser.
+        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=60",
+      },
+    },
+  );
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ABDRUCK_LAENGE,
   GEHEIMNIS_LAENGE,
+  PULS_INTERVALL_SCHNELL_MS,
   abdruckVon,
   erzeugeGeheimnis,
   istGeheimnis,
@@ -162,5 +163,18 @@ describe("sollPulsen", () => {
     const t = 1_700_000_000_000;
     expect(sollPulsen(t, t - 60_000)).toBe(false);
     expect(sollPulsen(t, t + PULS_INTERVALL_MS)).toBe(true);
+  });
+
+  it("pulst bei hohem Tempo nach dem kurzen Intervall", () => {
+    const t = 1_700_000_000_000;
+    expect(sollPulsen(t, t + PULS_INTERVALL_SCHNELL_MS - 1, 90)).toBe(false);
+    expect(sollPulsen(t, t + PULS_INTERVALL_SCHNELL_MS, 90)).toBe(true);
+    // Langsam bleibt beim langen Intervall.
+    expect(sollPulsen(t, t + PULS_INTERVALL_SCHNELL_MS, 20)).toBe(false);
+    expect(sollPulsen(t, t + PULS_INTERVALL_MS, 20)).toBe(true);
+  });
+
+  it("hält das kurze Intervall über der Datenbank-Bremse", () => {
+    expect(PULS_INTERVALL_SCHNELL_MS).toBeGreaterThan(5_000);
   });
 });

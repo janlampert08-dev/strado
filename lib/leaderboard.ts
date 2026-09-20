@@ -260,18 +260,23 @@ export async function getRouteLeaderboard(
 export async function getRouteLeaderboardKlassen(routeId: string): Promise<Motorklasse[]> {
   const supabase = await createClient();
 
-  const treffer = await Promise.all(
-    MOTORKLASSEN.map(async (klasse) => {
-      const { data, error } = await supabase
-        .from("route_leaderboard")
-        .select("motorklasse")
-        .eq("route_id", routeId)
-        .eq("motorklasse", klasse.id)
-        .limit(1);
+  // Eine Abfrage statt sechs: motorklasse über einen Ausschnitt holen und in
+  // JS auf belegte Klassen reduzieren. Sechs limit(1)-Abfragen waren je für
+  // sich billig, kosteten aber sechs Roundtrips pro Bestzeiten-Aufruf.
+  const { data, error } = await supabase
+    .from("route_leaderboard")
+    .select("motorklasse")
+    .eq("route_id", routeId)
+    .limit(ROUTE_FETCH_LIMIT);
 
-      return !error && data && data.length > 0 ? klasse.id : null;
-    }),
+  if (error || !data) return [];
+
+  const belegt = new Set(
+    (data as { motorklasse: Motorklasse | null }[])
+      .map((r) => r.motorklasse)
+      .filter((k): k is Motorklasse => k !== null),
   );
 
-  return treffer.filter((klasse): klasse is Motorklasse => klasse !== null);
+  // Reihenfolge folgt dem Katalog; MotorklassenChips sortiert ohnehin danach.
+  return MOTORKLASSEN.map((k) => k.id).filter((id) => belegt.has(id));
 }

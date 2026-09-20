@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatDuration } from "@/lib/format";
+import { meldeClientFehler } from "@/lib/fehlerbericht";
 import type { RouteTimeEntry } from "@/lib/leaderboard";
 import Card from "@/components/ui/Card";
 import MotorklassenChips from "@/components/MotorklassenChips";
@@ -52,10 +53,11 @@ export default function TrackLeaderboardChooser({
         setKlassen(data.klassen ?? []);
         setFetchedKey(`${routeId}:${klasse ?? ""}`);
       })
-      .catch(() => {
+      .catch((fehler) => {
         if (cancelled) return;
         setEntries([]);
         setFetchedKey(`${routeId}:${klasse ?? ""}`);
+        meldeClientFehler(fehler, "bestzeiten-laden");
       });
     return () => {
       cancelled = true;
@@ -111,7 +113,7 @@ export default function TrackLeaderboardChooser({
       ) : entries.length === 0 ? (
         <p className={`text-sm text-muted transition-opacity ${loading ? "opacity-40" : ""}`}>
           {klasse === null
-            ? "Noch keine geteilten Zeiten für diese Strecke."
+            ? "Noch keine geteilten Zeiten für diese Strecke — sei der Erste."
             : `Noch keine Zeit ${filterImSatz(klasse)} auf dieser Strecke. Du kannst der Erste sein.`}{" "}
           {/* Ohne Einladung im Satz: steht diese Liste unter dem leeren
               Ranglisten-Zustand, hat die Seite das schon einmal gesagt. Der

@@ -419,6 +419,10 @@ export interface RouteCompletion {
   // true, wenn diese Streckenfahrt automatisch erkannt statt explizit über
   // die Streckenseite gestartet wurde. Rein informativ (Badge).
   erkennung_automatisch: boolean;
+  // Abschnittsfenster als Client-ms (0118) — nur Selektoren für die
+  // Puls-Historie bei automatisch erkannten Abschnitten, sonst null.
+  segment_fenster_von: number | null;
+  segment_fenster_bis: number | null;
   created_at: string;
 }
 
