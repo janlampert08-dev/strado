@@ -15,25 +15,26 @@ const KUDOS_COOLDOWN_MS = 500;
 // Fahrten (ist_oeffentlich = true) Kudos gegeben werden können — ein
 // insert auf eine private Fahrt schlägt serverseitig fehl, auch falls hier
 // je ein Aufruf mit falscher completionId ankäme.
-export async function toggleKudos(completionId: string): Promise<{ ok: boolean }> {
-  if (!isValidUuid(completionId)) return { ok: false };
+export async function toggleKudos(completionId: string): Promise<{ ok: boolean; grund?: "auth" | "fehler" }> {
+  if (!isValidUuid(completionId)) return { ok: false, grund: "fehler" };
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return { ok: false };
+  if (!user) return { ok: false, grund: "auth" };
 
   if (await isRateLimited(supabase, "kudos", "erstellt_am", "user_id", user.id, KUDOS_COOLDOWN_MS)) {
-    return { ok: false };
+    return { ok: false, grund: "fehler" };
   }
 
   // Besitzer der Fahrt mitlesen: nur dessen Fahrerseite muss neu gebaut
   // werden, nicht jede. Ohne diese Abfrage bliebe nur die Segmentform
   // revalidatePath("/fahrer/[id]", "page"), und die entwertet ALLE
   // Instanzen des dynamischen Segments — bei einem einzelnen Kudo also den
-  // Cache sämtlicher Fahrer- und Fahrtseiten der Plattform.
+  // Cache sämtlicher Fahrer- und Fahrtseiten der Plattform. Ausserdem
+  // entscheidet der Lesezugriff über Einfügen oder Entfernen (Toggle).
   const [{ data: existing }, { data: fahrt }] = await Promise.all([
     supabase
       .from("kudos")
@@ -48,11 +49,24 @@ export async function toggleKudos(completionId: string): Promise<{ ok: boolean }
       .maybeSingle(),
   ]);
 
+  // Einfügen als Upsert mit ignoreDuplicates statt plain insert: Zwei
+  // gleichzeitige Aufrufe (Doppeltipp, doppelt gesendeter Tap) lesen beide
+  // "nicht vorhanden", und das zweite plain insert scheiterte mit 23505 —
+  // ok:false, obwohl der Kudo in der Datenbank stand, und die Flamme
+  // sprang ohne ein Wort zurück auf grau (docs/audit/backend.md, L2). Der
+  // doppelte Aufruf wird so zum folgenlosen No-op, der einfache zum
+  // Einfügen; am Entfernen-Pfad ändert sich nichts (ein zweites delete
+  // trifft keine Zeile und meldet trotzdem Erfolg).
   const { error } = existing
     ? await supabase.from("kudos").delete().eq("completion_id", completionId).eq("user_id", user.id)
-    : await supabase.from("kudos").insert({ completion_id: completionId, user_id: user.id });
+    : await supabase
+        .from("kudos")
+        .upsert(
+          { completion_id: completionId, user_id: user.id },
+          { onConflict: "user_id,completion_id", ignoreDuplicates: true },
+        );
 
-  if (error) return { ok: false };
+  if (error) return { ok: false, grund: "fehler" };
 
   revalidatePath(`/fahrten/${completionId}`);
   // Nur die Seite des Fahrt-BESITZERS — dort ändert sich der Kudo-Zähler.
