@@ -21,10 +21,10 @@ export interface AbschnittTab {
 // eigenen Adressen. Kinder sind Panels in derselben Reihenfolge wie `tabs`;
 // gezeigt wird genau eines, in `role="tabpanel"`.
 //
-// Sticky, weil die Leiste der Orientierungsanker ist: ohne sie scrollt man
-// auf dem Profil drei Bildschirme tief und weiss nicht mehr, wo man ist.
-// `top-0` klebt am Scroll-Container der Seite (Seitenrahmen liegt in
-// `overflow-y-auto`, das Sheet der Streckenseite ebenso).
+// Nicht sticky (Eigentümerentscheid): Die Leiste war der
+// Orientierungsanker beim Tiefscrollen, blieb dafür aber auf jeder Seite
+// an ihrer Position kleben. Wer sie braucht, scrollt zurück — sie scrollt
+// mit dem Inhalt mit, statt darüber zu schweben.
 export default function AbschnittTabs({
   tabs,
   children,
@@ -42,13 +42,12 @@ export default function AbschnittTabs({
     <div className="flex flex-col gap-3">
       {/* Dieselbe Hülle wie der Feed-Reiter (FeedReiter.tsx): eine Leiste,
           ein Stil — egal ob die Reiter Adressen oder Ansichten schalten. */}
-      <div className="sticky top-0 z-10 -mx-1 bg-background/95 px-1 py-1.5 backdrop-blur">
-        <div
-          role="tablist"
-          aria-label="Abschnitte dieser Seite"
-          className={segmentHuelleClassName("overflow-x-auto reiter-scroller")}
-        >
-          {tabs.map((tab, i) => {
+      <div
+        role="tablist"
+        aria-label="Abschnitte dieser Seite"
+        className={segmentHuelleClassName("overflow-x-auto reiter-scroller")}
+      >
+        {tabs.map((tab, i) => {
             const istAktiv = aktiv === i;
             return (
               <button
@@ -73,7 +72,6 @@ export default function AbschnittTabs({
               </button>
             );
           })}
-        </div>
       </div>
       <div role="tabpanel">{panels[aktiv]}</div>
     </div>
