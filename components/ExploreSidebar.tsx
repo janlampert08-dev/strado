@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { Crosshair, Route, SearchX } from "lucide-react";
 import { routeShapePath } from "@/lib/routeShape";
+import { haversineKm } from "@/lib/geo";
+import { formatEntfernungKm, type Empfehlung } from "@/lib/empfehlung";
 import { formatKmGerundet, mitAnzahl } from "@/lib/format";
 import { type RouteSignature } from "@/lib/signature";
 import type { ExploreRoute } from "@/types/database";
@@ -17,10 +19,11 @@ import Button, { buttonVariants } from "@/components/ui/Button";
 import IconButton from "@/components/ui/IconButton";
 import { SIGNATURE_ICONS, SIGNATUR_KLASSEN } from "@/components/signaturStil";
 
-// Kompakte Listenzeichen: Die ersten drei Strecken sind die Entscheidung
-// (grosse Form, volle Meta), der Rest ist Bestand (einzeilig, ohne Form).
-// Eine Liste aus 13 identischen Karten hat keine Hierarchie — drei
-// Hervorgehobene geben dem Auge einen Einstieg.
+// Hierarchie aus einer statt aus dreien: Genau eine Strecke ist empfohlen —
+// mit Standort die nächste ("12 km von dir"), ohne die bestbewertete
+// (lib/empfehlung.ts). Sie steht auf einer Fläche mit Begründung darüber,
+// der Rest bleibt bewusst volle Zeile MIT Form: Die übrigen Strecken
+// rücken nicht in den Hintergrund, sie treten nur einen Schritt zurück.
 
 function kuerzen(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
@@ -36,6 +39,7 @@ export default function ExploreSidebar({
   searchQuery,
   onSearchChange,
   signatures,
+  empfehlung,
   userLocation,
   locating,
   locationError,
@@ -54,6 +58,8 @@ export default function ExploreSidebar({
   searchQuery: string;
   onSearchChange: (value: string) => void;
   signatures: Map<string, RouteSignature>;
+  /** Genau eine Empfehlung (oder keine bei Suche/Fehler) — siehe lib/empfehlung.ts. */
+  empfehlung: Empfehlung | null;
   userLocation: [number, number] | null;
   locating: boolean;
   locationError: string | null;
@@ -238,7 +244,7 @@ export default function ExploreSidebar({
             Strecken konnten nicht geladen werden. Bitte versuche es später erneut.
           </li>
         )}
-        {routes.map((route, index) => {
+        {routes.map((route) => {
           const signature = signatures.get(route.id);
           const shape = shapes.get(route.id);
           // Wenn das Signatur-Merkmal selbst die Länge ist (signature.label
@@ -250,6 +256,16 @@ export default function ExploreSidebar({
           // auf demselben Bestand lief — der Typ lässt es trotzdem zu) bleibt
           // die Zeile bei der neutralen Strukturkante.
           const ton = signature ? SIGNATUR_KLASSEN[signature.key] : null;
+          const istEmpfohlen = empfehlung !== null && route.id === empfehlung.id;
+          // Die Begründung steht an der Empfehlung, nicht irgendwo darüber:
+          // Nähe nur mit gemessener Distanz, sonst ehrlich der echte Grund.
+          const empfehlungsText = !istEmpfohlen
+            ? null
+            : empfehlung.grund === "naehe" && userLocation
+              ? `Für dich empfohlen · ${formatEntfernungKm(haversineKm(userLocation, route.start_geojson.coordinates as [number, number]))} von dir`
+              : empfehlung.grund === "bewertung"
+                ? "Für dich empfohlen · bestbewertet"
+                : "Für dich empfohlen";
 
           return (
             <li key={route.id}>
@@ -259,12 +275,11 @@ export default function ExploreSidebar({
                 onMouseLeave={() => onHoverRoute(null)}
                 onFocus={() => onHoverRoute(route.id)}
                 onBlur={() => onHoverRoute(null)}
-                // h-20 statt h-24: die Zeile trägt Name, Länge, das
-                // Signatur-Merkmal, den Sternenschnitt und die Streckenform —
-                // 80 px reichen dafür und liegen weiter deutlich über jeder
-                // Antippgrenze. Zusammen mit der Suchzeile oben macht das im
-                // Peek-Fenster aus einer angeschnittenen Zeile zwei volle
-                // plus Anschnitt.
+                // Alle Zeilen tragen Name, Länge, Signatur-Merkmal,
+                // Sternenschnitt und Streckenform — 80 px reichen dafür und
+                // liegen weiter deutlich über jeder Antippgrenze. Zusammen
+                // mit der Suchzeile oben macht das im Peek-Fenster aus einer
+                // angeschnittenen Zeile zwei volle plus Anschnitt.
                 //
                 // DER LINKE RAND TRÄGT DEN SIGNATURTON, NICHT DEN AKZENT.
                 //
@@ -281,12 +296,21 @@ export default function ExploreSidebar({
                 // Der Akzent bleibt dem einen Wert und dem Hover, der ein
                 // Zustand ist und keine dauerhafte Markierung.
                 //
-                // Die ersten drei sind die Entscheidung (volle Form), der Rest
-                // ist Bestand: kompakt, ohne Form, damit 13 Strecken nicht
-                // 13 identische Karten sind.
-                className={`group flex items-center gap-3 border-b border-border border-l-[3px] py-3 pr-2 pl-3 transition-colors duration-fast hover:bg-accent-subtle active:bg-accent-subtle ${ton?.rand ?? "border-l-border-strong"} ${index < 3 ? "h-20" : "min-h-14"}`}
+                // Hierarchie aus einer: Die Empfehlung steht auf einer Fläche
+                // (rounded, border, surface) mit Begründung darüber und
+                // grösserer Form — der Rest bleibt volle Zeile MIT Form, damit
+                // ein Dutzend Strecken kein Hintergrundrauschen wird.
+                className={`group flex items-center gap-3 border-l-[3px] py-3 pr-2 pl-3 transition-colors duration-fast hover:bg-accent-subtle active:bg-accent-subtle ${ton?.rand ?? "border-l-border-strong"} ${istEmpfohlen ? "h-24 rounded-xl border border-border bg-surface" : "h-20 border-b border-border"}`}
               >
                 <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5">
+                  {empfehlungsText && (
+                    // Neutral statt Akzent: Die Empfehlung ist kein Wert und
+                    // kein Zustand, sondern eine Einordnung — der Akzent
+                    // bleibt Wert (Sterne) und Hover vorbehalten.
+                    <span className="truncate text-xs font-medium text-muted">
+                      {empfehlungsText}
+                    </span>
+                  )}
                   <span className="truncate text-base font-medium transition-colors duration-fast group-hover:text-accent">
                     {route.name}
                   </span>
@@ -366,10 +390,12 @@ export default function ExploreSidebar({
                   </div>
                 </div>
 
-                {/* Form nur bei den ersten drei: der Rest ist eine kompakte
-                    Bestandszeile ohne Vorschaubild. */}
-                {index < 3 && (
-                <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-md bg-surface">
+                {/* Die Form gehört zu jeder Zeile: Erst sie macht aus der
+                    Liste lesbare Strecken statt blosser Namen — der Rest
+                    rückt einen Schritt zurück (ohne Fläche, ohne Begründung),
+                    aber nicht in den Hintergrund. Die Empfehlung zeigt sie
+                    grösser. */}
+                <div className={`relative shrink-0 overflow-hidden rounded-md bg-surface ${istEmpfohlen ? "h-16 w-24" : "h-14 w-20"}`}>
                   {shape && (
                     <svg
                       viewBox="0 0 64 48"
@@ -387,7 +413,6 @@ export default function ExploreSidebar({
                     </svg>
                   )}
                 </div>
-                )}
               </Link>
             </li>
           );

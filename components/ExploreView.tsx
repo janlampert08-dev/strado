@@ -11,6 +11,7 @@ import Skeleton from "@/components/ui/Skeleton";
 import { haversineKm } from "@/lib/geo";
 import { brauchtUrlSync, echoEinordnen, matchesSearch } from "@/lib/search";
 import { computeSignatures } from "@/lib/signature";
+import { waehleEmpfohleneStrecke, type Empfehlung } from "@/lib/empfehlung";
 import type { ExploreRoute } from "@/types/database";
 import type { Streckenbewertung } from "@/lib/bewertungen";
 import type { PassZustand } from "@/lib/passStatus";
@@ -229,6 +230,23 @@ export default function ExploreView({
     );
   }, [routes, searchInput, userLocation]);
 
+  // Genau eine Empfehlung für die Hierarchie der Liste: mit Standort die
+  // nächste Strecke, ohne die bestbewertete (lib/empfehlung.ts). Bei Suche
+  // oder Ladefehler keine — die Suche ist eine explizite Absicht.
+  const empfehlung: Empfehlung | null = useMemo(
+    () =>
+      waehleEmpfohleneStrecke(
+        visibleRoutes.map((r) => r.id),
+        {
+          hatStandort: userLocation !== null,
+          searchQuery: searchInput,
+          loadError,
+          bewertungen,
+        },
+      ),
+    [visibleRoutes, userLocation, searchInput, loadError, bewertungen],
+  );
+
   useEffect(() => {
     function handleZufallsstrecke() {
       const auswahl = visibleRoutes[Math.floor(Math.random() * visibleRoutes.length)];
@@ -263,8 +281,9 @@ export default function ExploreView({
           // Hervorhebungs-Layer, bleiben aber getrennte Zustände: der
           // Vorschlag darf einen laufenden Hover weder überschreiben noch
           // beim Ausblenden mit abräumen. Der Hover hat Vorrang — er folgt
-          // dem Zeiger und ist damit die aktuellere Absicht.
-          hoveredRouteId={hoveredRouteId ?? zufallsstrecke?.id ?? null}
+          // dem Zeiger und ist damit die aktuellere Absicht. Die Empfehlung
+          // liegt darunter: sichtbar auf der Karte, aber leiser als beides.
+          hoveredRouteId={hoveredRouteId ?? zufallsstrecke?.id ?? empfehlung?.id ?? null}
           flyToRouteId={zufallsstrecke?.id ?? null}
           bottomInsetPx={verdecktUnten}
         />
@@ -313,6 +332,7 @@ export default function ExploreView({
           searchQuery={searchInput}
           onSearchChange={setSearchInput}
           signatures={signatures}
+          empfehlung={empfehlung}
           userLocation={userLocation}
           locating={locating}
           locationError={locationError}
