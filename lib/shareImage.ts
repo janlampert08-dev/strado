@@ -15,7 +15,9 @@
 //     gross, wie er in zwei Zeilen passt;
 //   - die Linie in Vordergrundfarbe, ohne Leuchten, mit Start als Ring und
 //     Ziel als Akzentpunkt — dem einzigen Blau auf dem Blatt ausser dem
-//     Höhenprofil;
+//     Höhenprofil — auf einem abgedunkelten Kartenausschnitt (Mapbox
+//     Static Images, dark-v11); lädt die Karte nicht, bleibt der
+//     bisherige Hintergrund ohne Karte;
 //   - ein Massstabsbalken und ein Nordpfeil: Präzision als echte Angabe
 //     (lib/shareLayout.ts, massstab), nicht als Verzierung;
 //   - das Höhenprofil als Silhouette, wenn es eins gibt — das Gelände ist
@@ -35,6 +37,12 @@
 import { formatDuration } from "@/lib/format";
 import { WORTMARKE } from "@/lib/marke";
 import { massstab, profilPunkte, projectRoute } from "@/lib/shareLayout";
+import { bboxFuerRoute, kartenPunkte, ladeKartenbild, staticKartenUrl } from "@/lib/shareMap";
+
+// Öffentlicher Mapbox-Token (NEXT_PUBLIC_, im Client-Bundle ohnehin
+// enthalten): ohne ihn — oder wenn das Standbild nicht lädt — fällt das
+// Bild auf den bisherigen Hintergrund ohne Karte zurück.
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
 export interface ShareRideData {
   routeName: string;
@@ -243,7 +251,13 @@ export async function renderShareImage(data: ShareRideData): Promise<Blob> {
   const PROFIL_H = hatProfil ? 132 : 0;
   const profilOben = kennzahlenOben - PROFIL_H - (hatProfil ? 28 : 0);
 
-  // ── Linie ─────────────────────────────────────────────────────────────
+  // ── Linie auf Kartenhintergrund ─────────────────────────────────────
+  // Das Standbild kommt von Mapbox Static Images (dark-v11, passend zum
+  // Blatt), die Linie bleibt Vektor: so sitzt sie pixelgenau und in den
+  // eigenen Farben darüber, statt als verwaschener Overlay-Strich im
+  // Standbild. Bbox und Pixelabbildung teilen sich lib/shareMap.ts, damit
+  // Karte und Linie nicht auseinanderlaufen. Schlägt das Laden fehl,
+  // steht das bisherige Bild ohne Karte — kein Fehler, kein Taint.
   const kartenBox = {
     x: PAD + 24,
     y: kopfUnten + 64,
@@ -252,10 +266,40 @@ export async function renderShareImage(data: ShareRideData): Promise<Blob> {
   };
 
   if (data.coordinates.length > 1 && kartenBox.h > 120) {
-    const punkte = projectRoute(data.coordinates, kartenBox);
+    let punkte = projectRoute(data.coordinates, kartenBox);
+    let mitKarte = false;
+    if (MAPBOX_TOKEN) {
+      try {
+        const bbox = bboxFuerRoute(data.coordinates, kartenBox.w / kartenBox.h);
+        const bild = await ladeKartenbild(
+          staticKartenUrl(bbox, kartenBox.w, kartenBox.h, MAPBOX_TOKEN),
+        );
+        ctx.save();
+        ctx.drawImage(bild, kartenBox.x, kartenBox.y, kartenBox.w, kartenBox.h);
+        // Abdunklung: hält die helle Linie auf hellen Kacheln lesbar und
+        // zieht das Bild in die Marke zurück.
+        ctx.fillStyle = "rgba(11, 11, 13, 0.38)";
+        ctx.fillRect(kartenBox.x, kartenBox.y, kartenBox.w, kartenBox.h);
+        ctx.strokeStyle = HAIRLINE;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(kartenBox.x, kartenBox.y, kartenBox.w, kartenBox.h);
+        ctx.restore();
+        punkte = kartenPunkte(data.coordinates, bbox, kartenBox);
+        mitKarte = true;
+      } catch {
+        punkte = projectRoute(data.coordinates, kartenBox);
+      }
+    }
     ctx.save();
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
+    // Auf der Karte zuerst ein breiter Hintergrundstrich, sonst versinkt
+    // die 7-px-Linie in Ortsnamen und Strassen.
+    if (mitKarte) {
+      ctx.strokeStyle = BG;
+      ctx.lineWidth = 13;
+      strich(ctx, punkte);
+    }
     ctx.strokeStyle = INK;
     ctx.lineWidth = 7;
     strich(ctx, punkte);
@@ -306,6 +350,16 @@ export async function renderShareImage(data: ShareRideData): Promise<Blob> {
     setzeFont(ctx, 600, 22, sans);
     const nw = ctx.measureText("N").width;
     ctx.fillText("N", nx - nw / 2, ny + 54);
+
+    // Vorgeschriebene Nennung für das Standbild (logo=false angefordert):
+    // unten rechts in der Kartenfläche, leise, aber lesbar.
+    if (mitKarte) {
+      setzeFont(ctx, 500, 20, sans);
+      const quelle = "© Mapbox · © OpenStreetMap";
+      const qw = ctx.measureText(quelle).width;
+      ctx.fillStyle = MUTED;
+      ctx.fillText(quelle, kartenBox.x + kartenBox.w - qw - 12, kartenBox.y + kartenBox.h - 12);
+    }
   }
 
   // ── Höhenprofil ──────────────────────────────────────────────────────
