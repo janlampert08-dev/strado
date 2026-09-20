@@ -276,7 +276,9 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
   return (
     <div className="flex flex-col gap-6">
       {/* Eine Rangliste führt, drei vertiefen: vier gleich grosse Podien
-          hiessen kein Podium. Km ist die Schweizer Währung des Unterwegsseins. */}
+          hiessen kein Podium. Km ist die Schweizer Währung des Unterwegsseins.
+          Die drei stehen trotzdem standardmässig offen (Eigentümerentscheid):
+          Wer bis hierher scrollt, will Ranglisten sehen, keine Klappe. */}
       <LeaderboardSection
         title={`Meiste km gefahren${klassenZusatz}`}
         icon={Ruler}
@@ -285,7 +287,7 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
         format={(v) => v.toFixed(0)}
         currentUserId={currentUserId}
       />
-      <details className="group rounded-xl border border-border">
+      <details open className="group rounded-xl border border-border">
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium marker:content-none">
           Weitere Ranglisten
           <span className="text-xs font-normal text-muted">Fahrten · Höhe · Entdecker</span>
