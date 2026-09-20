@@ -13,6 +13,7 @@ import {
 } from "@/lib/elevation";
 import { deriveRouteLocations } from "@/lib/geocoding";
 import { mitAmtlichenTempolimits } from "@/lib/amtlicheTempolimits";
+import { istPlausiblesTempolimitSegment } from "@/lib/tempolimitEingabe";
 import { privateStreckenKontingent } from "@/lib/premium";
 import type { GeoLineString, Kategorie, TempolimitSegment } from "@/types/database";
 
@@ -91,20 +92,6 @@ function parseGeometry(raw: string): GeoLineString | null {
   return { type: "LineString", coordinates };
 }
 
-function isValidTempolimitSegment(value: unknown): value is TempolimitSegment {
-  if (!value || typeof value !== "object") return false;
-  const s = value as Record<string, unknown>;
-  return (
-    typeof s.km_von === "number" &&
-    typeof s.km_bis === "number" &&
-    typeof s.kmh === "number" &&
-    typeof s.bekannt === "boolean" &&
-    Number.isFinite(s.km_von) &&
-    Number.isFinite(s.km_bis) &&
-    Number.isFinite(s.kmh)
-  );
-}
-
 function parseTempolimits(raw: string): TempolimitSegment[] | null {
   if (raw.length > MAX_TEMPOLIMITS_JSON_LENGTH) return null;
 
@@ -116,7 +103,7 @@ function parseTempolimits(raw: string): TempolimitSegment[] | null {
   }
 
   if (!Array.isArray(parsed) || parsed.length > MAX_TEMPOLIMIT_SEGMENTS) return null;
-  if (!parsed.every(isValidTempolimitSegment)) return null;
+  if (!parsed.every(istPlausiblesTempolimitSegment)) return null;
 
   // Nur die vier Felder der Kartenschätzung übernehmen. "amtlich" und
   // "quelle" vergibt allein der Server-Abgleich — sonst könnte ein Client
