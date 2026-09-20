@@ -352,9 +352,10 @@ export default async function ProfilPage() {
               following={following}
             />
           </div>
-          {/* Eine Handlung führt: Fahrt aufzeichnen ist der Kernloop, alles
-              andere sind Textwege. Vorher zwei gleich breite Pillen —
-              zwei Primärfarben heisst keine Hierarchie. */}
+          {/* Zwei Wege, eine Rangfolge: Aufzeichnen ist der Kernloop
+              (Accent), Strecke-Erstellen das Kuratieren des Netzes
+              (volle Secondary-Fläche, kein Textlink) — beides gehört zum
+              Flow. Das öffentliche Profil ist nur ein Wegweiser darunter. */}
           <div className="flex flex-col gap-2">
             <Link
               href="/fahrten/neu"
@@ -363,20 +364,19 @@ export default async function ProfilPage() {
               <Plus className="h-4 w-4" aria-hidden="true" />
               Fahrt aufzeichnen
             </Link>
-            <div className="flex items-center justify-between text-sm">
-              <Link
-                href="/strecken/neu"
-                className="font-medium text-muted transition-colors hover:text-foreground"
-              >
-                Strecke erstellen
-              </Link>
-              <Link
-                href={`/fahrer/${user.id}`}
-                className="font-medium text-muted transition-colors hover:text-foreground"
-              >
-                Öffentliches Profil →
-              </Link>
-            </div>
+            <Link
+              href="/strecken/neu"
+              className={buttonVariants({ variant: "secondary", size: "lg", className: "w-full" })}
+            >
+              <RouteIcon className="h-4 w-4" aria-hidden="true" />
+              Strecke erstellen
+            </Link>
+            <Link
+              href={`/fahrer/${user.id}`}
+              className="self-center py-1 text-sm font-medium text-muted transition-colors hover:text-foreground"
+            >
+              Öffentliches Profil →
+            </Link>
           </div>
         </div>
 

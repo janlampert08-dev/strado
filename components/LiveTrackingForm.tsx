@@ -18,7 +18,7 @@ import { formatDuration } from "@/lib/format";
 import RideSummaryForm from "@/components/RideSummaryForm";
 import type { KartenStrecke, RouteGeoJSON, Vehicle } from "@/types/database";
 import { Smartphone } from "lucide-react";
-import { buttonVariants, textAktionClassName } from "@/components/ui/Button";
+import { buttonVariants } from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Skeleton from "@/components/ui/Skeleton";
 import FullscreenDialog from "@/components/ui/FullscreenDialog";
@@ -429,20 +429,22 @@ export default function LiveTrackingForm({
                 </HalteKnopf>
               </>
             ) : (
+              // Vorwärts statt rückwärts: die Handlung heisst Ankommen, nicht
+              // Abbrechen — wie bei der freien Fahrt (FreeRideForm.tsx).
               <>
                 <button
                   type="button"
-                  onClick={handleExit}
-                  className={buttonVariants({ variant: "secondary", size: "lg", className: "flex-1" })}
+                  onClick={recorder.beginNow}
+                  className={buttonVariants({ variant: "accent", size: "lg", className: "flex-1" })}
                 >
-                  Abbrechen
+                  Bin schon am Start
                 </button>
                 <button
                   type="button"
-                  onClick={recorder.beginNow}
-                  className={textAktionClassName()}
+                  onClick={handleExit}
+                  className="min-h-11 text-sm text-muted transition-colors duration-fast hover:text-foreground"
                 >
-                  Bin schon am Start
+                  Abbrechen
                 </button>
               </>
             )}

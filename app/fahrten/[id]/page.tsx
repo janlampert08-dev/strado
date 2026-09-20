@@ -6,6 +6,7 @@ import {
   Bike,
   Car,
   Clock,
+  Flame,
   Gauge,
   MapPin,
   Mountain,
@@ -260,6 +261,21 @@ export default async function FahrtDetailPage({
                   initialCount={kudos?.count ?? 0}
                   initialGiven={kudos?.givenByMe ?? false}
                 />
+              )}
+              {/* Der Owner kann keine eigenen Kudos geben — aber die Zahl
+                  gehört ihm: vorher sah er auf der eigenen Fahrt gar keine,
+                  während Fremde Button plus Stand sahen. Reine Anzeige,
+                  gleiche Stelle, gleiche Flamme. Nur öffentlich: private
+                  Fahrten bekommen keine Kudos. */}
+              {completion.isOwner && completion.istOeffentlich && (
+                <span
+                  className="inline-flex min-h-11 items-center gap-1 px-2 text-xs font-medium text-muted"
+                  title="So viele Kudos hat diese Fahrt erhalten"
+                >
+                  <Flame className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span className="tabular-nums">{kudos?.count ?? 0}</span>
+                  <span className="sr-only">Kudos erhalten</span>
+                </span>
               )}
               {/* Eine freie Fahrt kann nur geteilt werden, wenn sie selbst
                   öffentlich ist — nur dann existiert der gekappte Track, aus

@@ -460,12 +460,17 @@ export default async function StreckeDetailPage({
 
           </div>
           {/* Reiter Details: Profil und Zeitpunkt-Infos — Vertiefung für
-              nach dem Start, nicht Ballast davor. */}
+              nach dem Start, nicht Ballast davor. Der Pass steht auch hier:
+              unter Details wird die Strecke vertieft, und dazu gehört, über
+              welche Pässe sie führt. */}
           <div className="flex flex-col gap-5">
+            <PassSektion kontexte={passKontexte} angemeldet={!!user} feedStand={feedStand} />
             {route.hoehenprofil && route.hoehenprofil.length > 1 && (
               <ElevationProfile punkte={route.hoehenprofil} />
             )}
-            <details className="group rounded-xl border border-border">
+            {/* Standardmässig offen: der Reiter wäre sonst nur Profil plus
+                eine geschlossene Klappe — zu leer für eine eigene Ansicht. */}
+            <details open className="group rounded-xl border border-border">
           <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium marker:content-none">
             <span>
               Beste Zeit & Wetterwoche{" "}
