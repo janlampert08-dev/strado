@@ -15,6 +15,11 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // abgeleitet zu halten geht nicht (Typen existieren zur Laufzeit nicht) —
 // deshalb hier einmal ausgeschrieben und in types/database.ts dokumentiert.
 const EXPLORE_SPALTEN =
+  "id, name, region, start_ort, ziel_ort, start_geojson, ziel_geojson, geometry_geojson, geometry_uebersicht_geojson, hoehe_m, laenge_km, max_steigung_prozent, kehren, saison_status, tempolimits, ist_rundfahrt";
+
+// Spaltenstand vor 0117 (ohne Übersichtsgeometrie) — Fallback, solange die
+// Migration noch nicht eingespielt ist (Schema zuerst, Code danach).
+const EXPLORE_SPALTEN_LEGACY =
   "id, name, region, start_ort, ziel_ort, start_geojson, ziel_geojson, geometry_geojson, hoehe_m, laenge_km, max_steigung_prozent, kehren, saison_status, tempolimits, ist_rundfahrt";
 
 // Vorher select("*"). Das lud für jede freigegebene Strecke zusätzlich
@@ -32,12 +37,36 @@ export async function getRoutes(): Promise<{ routes: ExploreRoute[]; error: bool
     .eq("status_ok", true)
     .order("name");
 
+  // 0117 noch nicht eingespielt: unbekannte Spalte -> alter Stand.
   if (error) {
+    if (/geometry_uebersicht_geojson/i.test(error.message)) {
+      const fallback = await supabase
+        .from("routes_geojson")
+        .select(EXPLORE_SPALTEN_LEGACY)
+        .eq("status_ok", true)
+        .order("name");
+      if (fallback.error) {
+        console.error("Strecken konnten nicht geladen werden:", fallback.error.message);
+        return { routes: [], error: true };
+      }
+      return { routes: (fallback.data as unknown as ExploreRoute[]) ?? [], error: false };
+    }
     console.error("Strecken konnten nicht geladen werden:", error.message);
     return { routes: [], error: true };
   }
 
-  return { routes: (data as unknown as ExploreRoute[]) ?? [], error: false };
+  // Die Karte zeichnet die vereinfachte Linie; fehlt sie (null), gilt die
+  // exakte. Deckungsgrad und Erkennung nutzen diese Funktion nie — sie lesen
+  // die volle Geometrie über getRoute()/Kandidaten.
+  type ExploreZeile = ExploreRoute & { geometry_uebersicht_geojson?: ExploreRoute["geometry_geojson"] | null };
+  const zeilen = (data as unknown as ExploreZeile[]) ?? [];
+  return {
+    routes: zeilen.map(({ geometry_uebersicht_geojson, ...rest }) => ({
+      ...rest,
+      geometry_geojson: geometry_uebersicht_geojson ?? rest.geometry_geojson,
+    })),
+    error: false,
+  };
 }
 
 // Umkreis um die gefahrene Strecke, in dem umliegende Strecken auf der
@@ -374,6 +403,65 @@ export async function listRouteDetectionCandidates(
   }
 
   return (data as RouteDetectionCandidate[]) ?? [];
+}
+
+// Bbox um einen Trail, mit Marge in Grad (1° ≈ 100 km — grob, aber für einen
+// reinen Datenbank-Vorfilter genau wie in lib/lapDetection.ts zulässig).
+// Exportiert für Tests; die Marge deckt Korridor plus Zielungenauigkeit ab.
+export interface TrailBox {
+  minLng: number;
+  maxLng: number;
+  minLat: number;
+  maxLat: number;
+}
+
+export function trailBox(
+  punkte: { lng: number; lat: number }[],
+  margeKm = 2,
+): TrailBox | null {
+  if (punkte.length === 0) return null;
+  let minLng = Infinity;
+  let maxLng = -Infinity;
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  for (const p of punkte) {
+    if (!Number.isFinite(p.lng) || !Number.isFinite(p.lat)) return null;
+    if (p.lng < minLng) minLng = p.lng;
+    if (p.lng > maxLng) maxLng = p.lng;
+    if (p.lat < minLat) minLat = p.lat;
+    if (p.lat > maxLat) maxLat = p.lat;
+  }
+  const marge = margeKm / 100;
+  return { minLng: minLng - marge, maxLng: maxLng + marge, minLat: minLat - marge, maxLat: maxLat + marge };
+}
+
+// Kandidaten über den PostGIS-Bbox-Filter (0116_route_kandidaten_in_box):
+// statt aller Geometrien kommen nur die der Nachbarschaft. Fällt die RPC
+// weg (Migration noch nicht eingespielt — Schema zuerst, Code danach),
+// geht es ohne Änderung weiter über listRouteDetectionCandidates().
+export async function listRouteDetectionCandidatesInBox(
+  viewerId: string,
+  box: TrailBox,
+): Promise<RouteDetectionCandidate[]> {
+  if (!UUID_RE.test(viewerId)) return [];
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("route_kandidaten_in_box", {
+      p_min_lng: box.minLng,
+      p_min_lat: box.minLat,
+      p_max_lng: box.maxLng,
+      p_max_lat: box.maxLat,
+      p_viewer_id: viewerId,
+    });
+    if (error || !data) throw new Error(error?.message ?? "rpc leer");
+    return (data as RouteDetectionCandidate[]) ?? [];
+  } catch (e) {
+    console.error(
+      "Bbox-Kandidaten fehlgeschlagen, falle auf alle zurück:",
+      e instanceof Error ? e.message : e,
+    );
+    return listRouteDetectionCandidates(viewerId);
+  }
 }
 
 // Wirft bei einem echten Ladefehler (statt "nicht gefunden" mit null

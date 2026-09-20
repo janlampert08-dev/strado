@@ -104,6 +104,17 @@ export function leseTicket(wert: unknown): FahrtStartTicket | null {
 export const PULS_INTERVALL_MS = 20_000;
 
 /**
+ * Verkürztes Intervall bei hohem Tempo: Bei 90 km/h legt ein 20-s-Intervall
+ * 500 m zurück — genau die Toleranz des Triggers. Wer schnell fährt, pulst
+ * deshalb alle 10 s, damit ein verlorener Schlusspuls weniger kostet. Weiter
+ * als 10 s geht es nie herunter (Datenbank-Bremse: nichts unter 5 s).
+ */
+export const PULS_INTERVALL_SCHNELL_MS = 10_000;
+
+/** Ab diesem Tempo gilt das verkürzte Intervall. */
+export const PULS_SCHNELL_AB_KMH = 50;
+
+/**
  * Ist es Zeit für den nächsten Puls?
  *
  * `letzterPulsMs` ist null, solange keiner gesendet wurde — dann sofort.
@@ -113,7 +124,15 @@ export const PULS_INTERVALL_MS = 20_000;
  * und den Server mit der zuletzt bekannten Position beliefern — die dann im
  * Trigger als „passt zum Trackende" durchginge, obwohl niemand gefahren ist.
  */
-export function sollPulsen(letzterPulsMs: number | null, jetztMs: number): boolean {
+export function sollPulsen(
+  letzterPulsMs: number | null,
+  jetztMs: number,
+  tempoKmh: number | null = null,
+): boolean {
   if (letzterPulsMs === null) return true;
-  return jetztMs - letzterPulsMs >= PULS_INTERVALL_MS;
+  const intervall =
+    tempoKmh !== null && tempoKmh >= PULS_SCHNELL_AB_KMH
+      ? PULS_INTERVALL_SCHNELL_MS
+      : PULS_INTERVALL_MS;
+  return jetztMs - letzterPulsMs >= intervall;
 }

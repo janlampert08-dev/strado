@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { KONTEXT_MAX_STRECKEN, waehleKontextStrecken } from "@/lib/routes";
+import { KONTEXT_MAX_STRECKEN, trailBox, waehleKontextStrecken } from "@/lib/routes";
 import type { KartenStrecke } from "@/types/database";
 
 // Eine Strecke als gerade Linie von (lng, lat) über laengeGrad nach Osten.
@@ -86,5 +86,26 @@ describe("waehleKontextStrecken", () => {
     leer.geometry_geojson = { type: "LineString", coordinates: [] };
     const auswahl = waehleKontextStrecken([leer, strecke("gut", 8.52, 47.37)], gefahren);
     expect(auswahl.map((s) => s.id)).toEqual(["gut"]);
+  });
+});
+
+describe("trailBox", () => {
+  it("umschliesst alle Punkte plus Marge", () => {
+    const box = trailBox(
+      [
+        { lng: 8.5, lat: 47.3 },
+        { lng: 8.6, lat: 47.4 },
+      ],
+      2,
+    )!;
+    expect(box.minLng).toBeLessThan(8.5);
+    expect(box.maxLng).toBeGreaterThan(8.6);
+    expect(box.minLat).toBeLessThan(47.3);
+    expect(box.maxLat).toBeGreaterThan(47.4);
+  });
+
+  it("gibt null bei leerem Trail oder kaputten Koordinaten", () => {
+    expect(trailBox([])).toBeNull();
+    expect(trailBox([{ lng: NaN, lat: 47.3 }])).toBeNull();
   });
 });

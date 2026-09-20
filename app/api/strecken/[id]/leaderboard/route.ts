@@ -45,5 +45,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     getRouteLeaderboardKlassen(id),
   ]);
 
-  return NextResponse.json({ entries, klassen });
+  return NextResponse.json(
+    { entries, klassen },
+    { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=30" } },
+  );
 }
