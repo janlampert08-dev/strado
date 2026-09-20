@@ -40,6 +40,7 @@ import { averageTempolimit, estimateRouteDurationMinutes, formatMinutes } from "
 import type { Vehicle } from "@/types/database";
 import { ChevronDown, Pencil } from "lucide-react";
 import Card from "@/components/ui/Card";
+import AbschnittTabs from "@/components/ui/AbschnittTabs";
 import Kennzahl, { Kennzahlen, Kennzahlenzeile } from "@/components/ui/Kennzahl";
 import { iconButtonVariants } from "@/components/ui/IconButton";
 
@@ -362,6 +363,10 @@ export default async function StreckeDetailPage({
             wo ein Besucher ohne Konto zuerst ankommt. Der Kommentar-Teil des
             alten Hinweises lebt jetzt in RatingSection weiter, wo er
             hingehört. */}
+        {/* Reiter statt Stapel: Fahren (die Entscheidung), Details
+            (Vertiefung), Wertung (Community). */}
+        <AbschnittTabs tabs={[{ titel: "Fahren" }, { titel: "Details" }, { titel: "Wertung" }]}>
+          <div className="flex flex-col gap-5">
         {/* Vor dem Losfahren steht die Frage, ob der Pass überhaupt offen
             ist — also vor Aufzeichnung, Höhenprofil und Kennzahlen. */}
         <PassSektion kontexte={passKontexte} angemeldet={!!user} feedStand={feedStand} />
@@ -403,14 +408,8 @@ export default async function StreckeDetailPage({
           )}
         </div>
 
-        {route.hoehenprofil && route.hoehenprofil.length > 1 && (
-          <ElevationProfile punkte={route.hoehenprofil} />
-        )}
-
         {/* Fakten in zwei Stufen: 4 Kacheln für die Auswahl, der Rest als
-            ruhige Detailzeile + Zeitpunkt-Infos in einer Klappe. Vorher
-            standen Kennzahlenzeile, RuhigeZeiten und Wetterfenster als drei
-            gleichrangige Blöcke — eine Wand aus Sekundärinfo. */}
+            ruhige Detailzeile. Das Höhenprofil lebt im Reiter Details. */}
         <Kennzahlen>
           <Kennzahl beschriftung="Länge" wert={`${formatKm(route.laenge_km)} km`} />
           <Kennzahl
@@ -459,7 +458,14 @@ export default async function StreckeDetailPage({
           ]}
         />
 
-        <details className="group rounded-xl border border-border">
+          </div>
+          {/* Reiter Details: Profil und Zeitpunkt-Infos — Vertiefung für
+              nach dem Start, nicht Ballast davor. */}
+          <div className="flex flex-col gap-5">
+            {route.hoehenprofil && route.hoehenprofil.length > 1 && (
+              <ElevationProfile punkte={route.hoehenprofil} />
+            )}
+            <details className="group rounded-xl border border-border">
           <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium marker:content-none">
             <span>
               Beste Zeit & Wetterwoche{" "}
@@ -504,11 +510,15 @@ export default async function StreckeDetailPage({
           </div>
         </details>
 
-        <RouteLeaderboardPreview
-          routeId={id}
-          entries={leaderboard}
-          klassen={leaderboardKlassen}
-        />
+          </div>
+          {/* Reiter Wertung: Bestenliste, Meinung, Bilder — die Community
+              als eigene Ansicht. */}
+          <div className="flex flex-col gap-5">
+            <RouteLeaderboardPreview
+              routeId={id}
+              entries={leaderboard}
+              klassen={leaderboardKlassen}
+            />
 
         <RatingSection
           routeId={id}
@@ -528,6 +538,8 @@ export default async function StreckeDetailPage({
             Meinung zuerst, Galerie als Vertiefung — nicht zwischen
             Bestenliste und Bewertungen. */}
         <PhotoGallery photos={photos} />
+          </div>
+        </AbschnittTabs>
       </RouteDetailLayout>
     </div>
   );

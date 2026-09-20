@@ -1,4 +1,4 @@
--- 0115: Bestzeiten nach Strecke und Zeit — der Zugriff, den jede
+-- 0119: Bestzeiten nach Strecke und Zeit — der Zugriff, den jede
 -- Bestzeiten-Karte und jeder Klassen-Chip auslöst.
 --
 -- 0080 legte (route_id, motorklasse_gewertet, dauer_sekunden) an, partiell

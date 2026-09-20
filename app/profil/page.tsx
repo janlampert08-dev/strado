@@ -54,6 +54,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import { buttonVariants, textAktionClassName } from "@/components/ui/Button";
 import { iconButtonVariants } from "@/components/ui/IconButton";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
+import AbschnittTabs from "@/components/ui/AbschnittTabs";
 
 // Ohne eigenen Titel hiess der Tab auf dieser Seite nur "Strado" — neben
 // anderen offenen Tabs derselben App nicht zu unterscheiden.
@@ -391,8 +392,20 @@ export default async function ProfilPage() {
             Innenabstand: die Inhalte laufen jetzt bis an den Seitenrand des
             Seitenrahmens, was auf dem Telefon 32 px Breite zurückgibt.
             Siehe docs/design-vereinfachung.md, Abschnitt 3.9. */}
-        <section className="flex flex-col gap-3">
-          <SectionHeading icon={Gauge}>Kennzahlen</SectionHeading>
+        {/* Strava-Muster: Reiter statt Stapel. Kennzahlen, Statistik,
+            Fahrten und Garage waren vier gleichrangige Blöcke untereinander —
+            drei Bildschirmhöhen, keine Hierarchie. Jetzt vier Ansichten
+            nebeneinander, die Kauf- und Rollenblöcke bleiben darunter. */}
+        <AbschnittTabs
+          tabs={[
+            { titel: "Übersicht" },
+            { titel: "Statistik" },
+            { titel: "Fahrten", anzahl: trackedRides?.length ?? 0 },
+            { titel: "Garage", anzahl: (vehicles as Vehicle[])?.length ?? 0 },
+          ]}
+        >
+          <div className="flex flex-col gap-3">
+            <SectionHeading icon={Gauge}>Kennzahlen</SectionHeading>
           {/* Vier Kacheln mit einer Null darin sind für ein neues Konto die
               erste Aussage der eigenen Profilseite — und sie sagt nur, was
               fehlt. Solange es keine einzige Fahrt gibt, steht an ihrer
@@ -461,6 +474,11 @@ export default async function ProfilPage() {
                 <ActivityHeatmap dates={(trackedRides ?? []).map((r) => r.datum)} />
               </div>
             </details>
+            </div>
+          </div>
+          {/* Reiter Statistik: Auswertung + Pass-Sammlung. */}
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col divide-y divide-border border-t border-border">
 
             {/* Additiv: Ohne Abo steht hier nichts statt eines gesperrten
                 Symbols — ein Schloss an einer Stelle, an der vorher nichts
@@ -518,17 +536,16 @@ export default async function ProfilPage() {
             ) : (
               sammlung && sammlung.gesamt > 0 && <PassSammlungHinweis />
             )}
+            {!premiumStatus.aktiv && !passSammlung && !(sammlung && sammlung.gesamt > 0) && (
+              <p className="py-2 text-sm text-muted">
+                Noch keine Statistik — sie entsteht mit deiner ersten Fahrt.
+              </p>
+            )}
+            </div>
           </div>
-        </section>
-
-        <div className="flex flex-col gap-8">
-          {/* Meine Fahrten: getrackte Fahrten und gemerkte Strecken drehen sich
-              beide um "Strecken, mit denen ich zu tun habe" — eine
-              Gruppen-Card statt zwei unabhängiger Sections nebeneinander.
-              Volle Breite statt einer Zweispalten-Aufteilung mit Fahrzeuge:
-              die getrackten Fahrten sind praktisch immer deutlich länger als
-              die Garage, eine feste Spalte daneben liess auf Desktop viel
-              Leerraum neben der kurzen Fahrzeuge-Liste stehen. */}
+          {/* Reiter Fahrten: getrackte Fahrten und Favoriten — vorher ein
+              eigener Grossabschnitt unter den Kennzahlen, jetzt eine Ansicht
+              neben ihnen. */}
           <section className="flex flex-col gap-3">
             <SectionHeading icon={RouteIcon}>Meine Fahrten</SectionHeading>
             {/* Flach wie der Kennzahlen-Block darüber, nicht in einer Card.
@@ -707,6 +724,9 @@ export default async function ProfilPage() {
             </div>
             <VehicleGrid vehicles={(vehicles as Vehicle[]) ?? []} hinweise={wartungsHinweise} />
           </section>
+        </AbschnittTabs>
+
+        <div className="flex flex-col gap-6">
 
           {/* Zuunterst und ohne Unterbrechung der Kernschleife: ohne Abo ein
               einzelner Hinweis mit dem Kauf-Einstieg. Kein Banner über den

@@ -36,6 +36,7 @@ import Kennzahl, { Kennzahlen } from "@/components/ui/Kennzahl";
 import MotorklasseBadge from "@/components/MotorklasseBadge";
 import { motorklasseLabel } from "@/lib/motorklassen";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
+import AbschnittTabs from "@/components/ui/AbschnittTabs";
 import { textAktionClassName } from "@/components/ui/Button";
 
 export async function generateMetadata({
@@ -353,6 +354,10 @@ export default async function FahrtDetailPage({
             )}
           </div>
 
+          {/* Reiter statt Stapel: Übersicht (Geschichte) und Details
+              (Kleingedrucktes) nebeneinander. */}
+          <AbschnittTabs tabs={[{ titel: "Übersicht" }, { titel: "Details" }]}>
+          <div className="flex flex-col gap-5">
           {/* Karte + Profil als eine Visualisierung: ein Rahmen, ein Gedanke.
               Vorher zwei gleich grosse Blöcke mit eigenem Gewicht plus
               erklärender Kleinstzeile dazwischen. */}
@@ -446,6 +451,23 @@ export default async function FahrtDetailPage({
             />
           </Kennzahlen>
 
+          {/* Reiter Übersicht: die Geschichte — Karte, Zahlen, Notiz, Bilder.
+              Reiter Details: das Kleingedruckte — Fahrzeug, Abdeckung,
+              erkannte Abschnitte. */}
+          {completion.notiz && (
+            <blockquote className="border-l-2 border-accent pl-4 text-base leading-relaxed text-foreground">
+              {completion.notiz}
+            </blockquote>
+          )}
+
+          <CompletionPhotoGallery
+            photos={completion.photos}
+            canRemove={completion.isOwner}
+            displayName={completion.displayName}
+          />
+
+          </div>
+          <div className="flex flex-col gap-5">
           {detectedSegments.length > 0 && <DetectedSegmentsCard segments={detectedSegments} />}
 
           {/* Entflochten: Fahrzeug, Abdeckung und Notiz waren eine Karte mit
@@ -498,18 +520,8 @@ export default async function FahrtDetailPage({
               </span>
             </div>
           )}
-          {completion.notiz && (
-            <blockquote className="border-l-2 border-accent pl-4 text-base leading-relaxed text-foreground">
-              {completion.notiz}
-            </blockquote>
-          )}
-
-          <CompletionPhotoGallery
-            photos={completion.photos}
-            canRemove={completion.isOwner}
-            displayName={completion.displayName}
-          />
-
+          </div>
+          </AbschnittTabs>
         </Seitenrahmen>
       </div>
     </div>
