@@ -54,6 +54,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import { buttonVariants, textAktionClassName } from "@/components/ui/Button";
 import { iconButtonVariants } from "@/components/ui/IconButton";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
+import AbschnittTabs from "@/components/ui/AbschnittTabs";
 
 // Ohne eigenen Titel hiess der Tab auf dieser Seite nur "Strado" — neben
 // anderen offenen Tabs derselben App nicht zu unterscheiden.
@@ -351,37 +352,31 @@ export default async function ProfilPage() {
               following={following}
             />
           </div>
-          {/* grid statt flex-wrap: beide Schaltflächen sollen gleich breit
-              sein (die halbe Zeile), unabhängig von ihrer unterschiedlich
-              langen Beschriftung — mit flex-wrap wäre jede nur so breit wie
-              ihr eigener Text.
-
-              size="md" statt "sm", und "Öffentliches Profil" statt
-              "Öffentliches Profil ansehen". Nachgerechnet für 390 px: der
-              Seitenrahmen nimmt 2 × 20 px, das gap 8 px, jede Zelle bleibt
-              bei 171 px. Die alte Beschriftung braucht in text-xs rund
-              150 px plus 2 × 12 px Innenabstand — sie lief also über und
-              brach in zwei Zeilen um. "ansehen" sagt dabei nichts, was der
-              Knopf nicht ohnehin tut.
-
-              "sm" ist ausserdem 36 px hoch. Das ist die Grösse für einen
-              Knopf IN einer Liste, nicht für die zwei Hauptwege einer
-              Seite; 44 px ist der Wert, den components/ui/IconButton für
-              diese App festschreibt. */}
-          <div className="grid grid-cols-2 gap-2">
+          {/* Eine Handlung führt: Fahrt aufzeichnen ist der Kernloop, alles
+              andere sind Textwege. Vorher zwei gleich breite Pillen —
+              zwei Primärfarben heisst keine Hierarchie. */}
+          <div className="flex flex-col gap-2">
             <Link
-              href="/strecken/neu"
-              className={buttonVariants({ variant: "primary", className: "w-full" })}
+              href="/fahrten/neu"
+              className={buttonVariants({ variant: "accent", size: "lg", className: "w-full" })}
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
-              Strecke erstellen
+              Fahrt aufzeichnen
             </Link>
-            <Link
-              href={`/fahrer/${user.id}`}
-              className={buttonVariants({ variant: "secondary", className: "w-full" })}
-            >
-              Öffentliches Profil
-            </Link>
+            <div className="flex items-center justify-between text-sm">
+              <Link
+                href="/strecken/neu"
+                className="font-medium text-muted transition-colors hover:text-foreground"
+              >
+                Strecke erstellen
+              </Link>
+              <Link
+                href={`/fahrer/${user.id}`}
+                className="font-medium text-muted transition-colors hover:text-foreground"
+              >
+                Öffentliches Profil →
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -397,8 +392,20 @@ export default async function ProfilPage() {
             Innenabstand: die Inhalte laufen jetzt bis an den Seitenrand des
             Seitenrahmens, was auf dem Telefon 32 px Breite zurückgibt.
             Siehe docs/design-vereinfachung.md, Abschnitt 3.9. */}
-        <section className="flex flex-col gap-3">
-          <SectionHeading icon={Gauge}>Kennzahlen</SectionHeading>
+        {/* Strava-Muster: Reiter statt Stapel. Kennzahlen, Statistik,
+            Fahrten und Garage waren vier gleichrangige Blöcke untereinander —
+            drei Bildschirmhöhen, keine Hierarchie. Jetzt vier Ansichten
+            nebeneinander, die Kauf- und Rollenblöcke bleiben darunter. */}
+        <AbschnittTabs
+          tabs={[
+            { titel: "Übersicht" },
+            { titel: "Statistik" },
+            { titel: "Fahrten", anzahl: trackedRides?.length ?? 0 },
+            { titel: "Garage", anzahl: (vehicles as Vehicle[])?.length ?? 0 },
+          ]}
+        >
+          <div className="flex flex-col gap-3">
+            <SectionHeading icon={Gauge}>Kennzahlen</SectionHeading>
           {/* Vier Kacheln mit einer Null darin sind für ein neues Konto die
               erste Aussage der eigenen Profilseite — und sie sagt nur, was
               fehlt. Solange es keine einzige Fahrt gibt, steht an ihrer
@@ -467,6 +474,11 @@ export default async function ProfilPage() {
                 <ActivityHeatmap dates={(trackedRides ?? []).map((r) => r.datum)} />
               </div>
             </details>
+            </div>
+          </div>
+          {/* Reiter Statistik: Auswertung + Pass-Sammlung. */}
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col divide-y divide-border border-t border-border">
 
             {/* Additiv: Ohne Abo steht hier nichts statt eines gesperrten
                 Symbols — ein Schloss an einer Stelle, an der vorher nichts
@@ -524,17 +536,16 @@ export default async function ProfilPage() {
             ) : (
               sammlung && sammlung.gesamt > 0 && <PassSammlungHinweis />
             )}
+            {!premiumStatus.aktiv && !passSammlung && !(sammlung && sammlung.gesamt > 0) && (
+              <p className="py-2 text-sm text-muted">
+                Noch keine Statistik — sie entsteht mit deiner ersten Fahrt.
+              </p>
+            )}
+            </div>
           </div>
-        </section>
-
-        <div className="flex flex-col gap-8">
-          {/* Meine Fahrten: getrackte Fahrten und gemerkte Strecken drehen sich
-              beide um "Strecken, mit denen ich zu tun habe" — eine
-              Gruppen-Card statt zwei unabhängiger Sections nebeneinander.
-              Volle Breite statt einer Zweispalten-Aufteilung mit Fahrzeuge:
-              die getrackten Fahrten sind praktisch immer deutlich länger als
-              die Garage, eine feste Spalte daneben liess auf Desktop viel
-              Leerraum neben der kurzen Fahrzeuge-Liste stehen. */}
+          {/* Reiter Fahrten: getrackte Fahrten und Favoriten — vorher ein
+              eigener Grossabschnitt unter den Kennzahlen, jetzt eine Ansicht
+              neben ihnen. */}
           <section className="flex flex-col gap-3">
             <SectionHeading icon={RouteIcon}>Meine Fahrten</SectionHeading>
             {/* Flach wie der Kennzahlen-Block darüber, nicht in einer Card.
@@ -713,6 +724,9 @@ export default async function ProfilPage() {
             </div>
             <VehicleGrid vehicles={(vehicles as Vehicle[]) ?? []} hinweise={wartungsHinweise} />
           </section>
+        </AbschnittTabs>
+
+        <div className="flex flex-col gap-6">
 
           {/* Zuunterst und ohne Unterbrechung der Kernschleife: ohne Abo ein
               einzelner Hinweis mit dem Kauf-Einstieg. Kein Banner über den

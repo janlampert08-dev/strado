@@ -96,20 +96,25 @@ export default async function PaessePage() {
         <PaesseListe eintraege={eintraege} feedStand={feedStand} angemeldet={Boolean(user)} />
 
         {ohneStrecke > 0 && (
-          <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed border-border px-4 py-4">
-            <p className="text-sm">
-              Für {mitAnzahl(ohneStrecke, "Pass", "Pässe")} gibt es noch keine Strecke auf Strado.
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-border px-4 py-3">
+            <p className="text-sm text-muted">
+              Für {mitAnzahl(ohneStrecke, "Pass", "Pässe")} gibt es noch keine Strecke.
             </p>
             <Link href="/strecken/neu" className={buttonVariants({ variant: "secondary", size: "sm" })}>
-              Strecke erstellen
+              Erstellen
             </Link>
           </div>
         )}
 
-        <p className="text-xs text-muted">
-          Status aus den Verkehrsmeldungen des ASTRA · Passhöhen nach swisstopo ·
-          Wintersperren sind Erfahrungswerte
-        </p>
+        <details className="text-xs text-muted">
+          <summary className="cursor-pointer list-none hover:text-foreground [&::-webkit-details-marker]:hidden">
+            Quellen & Stand
+          </summary>
+          <p className="pt-1">
+            Status aus den Verkehrsmeldungen des ASTRA · Passhöhen nach swisstopo ·
+            Wintersperren sind Erfahrungswerte
+          </p>
+        </details>
       </Seitenrahmen>
     </div>
   );

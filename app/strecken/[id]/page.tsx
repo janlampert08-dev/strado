@@ -38,8 +38,9 @@ import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { KATEGORIEN } from "@/lib/constants";
 import { averageTempolimit, estimateRouteDurationMinutes, formatMinutes } from "@/lib/geo";
 import type { Vehicle } from "@/types/database";
-import { Pencil } from "lucide-react";
+import { ChevronDown, Pencil } from "lucide-react";
 import Card from "@/components/ui/Card";
+import AbschnittTabs from "@/components/ui/AbschnittTabs";
 import Kennzahl, { Kennzahlen, Kennzahlenzeile } from "@/components/ui/Kennzahl";
 import { iconButtonVariants } from "@/components/ui/IconButton";
 
@@ -362,6 +363,10 @@ export default async function StreckeDetailPage({
             wo ein Besucher ohne Konto zuerst ankommt. Der Kommentar-Teil des
             alten Hinweises lebt jetzt in RatingSection weiter, wo er
             hingehört. */}
+        {/* Reiter statt Stapel: Fahren (die Entscheidung), Details
+            (Vertiefung), Wertung (Community). */}
+        <AbschnittTabs tabs={[{ titel: "Fahren" }, { titel: "Details" }, { titel: "Wertung" }]}>
+          <div className="flex flex-col gap-5">
         {/* Vor dem Losfahren steht die Frage, ob der Pass überhaupt offen
             ist — also vor Aufzeichnung, Höhenprofil und Kennzahlen. */}
         <PassSektion kontexte={passKontexte} angemeldet={!!user} feedStand={feedStand} />
@@ -403,25 +408,8 @@ export default async function StreckeDetailPage({
           )}
         </div>
 
-        {route.hoehenprofil && route.hoehenprofil.length > 1 && (
-          <ElevationProfile punkte={route.hoehenprofil} />
-        )}
-
-        {/* Vier Kacheln, nicht sieben. Vorher standen hier Länge, Höhe,
-            Max. Steigung, Kehren, Ø Tempolimit, Fahrzeit und Wetter als
-            gleichrangige Kästen — in grid-cols-2 sind das auf dem Telefon
-            vier Zeilen à rund 78 px, also rund 348 px, bevor die
-            Bestenlisten-Vorschau überhaupt beginnt. Für Zahlen, die vor dem
-            Losfahren kaum jemand liest.
-
-            Geblieben sind die vier, nach denen man eine Strecke aussucht.
-            Der Rest steht als Zeile darunter — dieselbe Information,
-            rund 190 statt 348 px, und die Bestenliste rückt über die Falz.
-
-            Das Wetter gehört ohnehin nicht in eine Kachel: es ist eine
-            Momentaufnahme und behauptete neben "Kehren" eine
-            Dauerhaftigkeit, die es nicht hat.
-            Siehe docs/design-vereinfachung.md, Anhang A2. */}
+        {/* Fakten in zwei Stufen: 4 Kacheln für die Auswahl, der Rest als
+            ruhige Detailzeile. Das Höhenprofil lebt im Reiter Details. */}
         <Kennzahlen>
           <Kennzahl beschriftung="Länge" wert={`${formatKm(route.laenge_km)} km`} />
           <Kennzahl
@@ -470,44 +458,67 @@ export default async function StreckeDetailPage({
           ]}
         />
 
-        <RuhigeZeiten
-          punkte={ruhigeZeiten.punkte}
-          startzeiten={ruhigeZeiten.startzeiten}
-          berechnetAm={ruhigeZeiten.berechnetAm}
-        />
-
-        {/* Wetterfenster (Premium): die Woche direkt unter dem Wetter von
-            jetzt, an derselben Stelle statt als eigener Abschnitt
-            (docs/premium-ausbau-plan.md, Abschnitt 1). Das Gate steht hier:
-            ohne Abo wird keine Vorhersage abgefragt, nicht nur keine
-            gezeigt. Suspense, weil Open-Meteo bis zu einer Sekunde braucht
-            und der Rest der Seite darauf nicht warten soll.
-
-            Ohne Abo ein einziger Hinweis — und nur angemeldet: wer über
-            einen geteilten Link ohne Konto hier landet, entscheidet gerade
-            über die Strecke, nicht über ein Abo. */}
-        {premiumStatus.aktiv ? (
-          <Suspense fallback={<WetterfensterStreifenPlatzhalter />}>
-            <WetterfensterStreifen
-              strecke={route}
-              fahrzeug={wetterMassstab(vehicles.map((v) => v.typ))}
+          </div>
+          {/* Reiter Details: Profil und Zeitpunkt-Infos — Vertiefung für
+              nach dem Start, nicht Ballast davor. */}
+          <div className="flex flex-col gap-5">
+            {route.hoehenprofil && route.hoehenprofil.length > 1 && (
+              <ElevationProfile punkte={route.hoehenprofil} />
+            )}
+            <details className="group rounded-xl border border-border">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium marker:content-none">
+            <span>
+              Beste Zeit & Wetterwoche{" "}
+              <span className="font-normal text-muted">— Details</span>
+            </span>
+            <ChevronDown
+              className="h-4 w-4 text-muted transition-transform duration-fast group-open:rotate-180"
+              aria-hidden="true"
             />
-          </Suspense>
-        ) : (
-          user && (
-            <PremiumHinweis>
-              Mit Premium siehst du, an welchen Tagen diese Woche die Strecke trocken ist
-            </PremiumHinweis>
-          )
-        )}
+          </summary>
+          <div className="flex flex-col gap-4 px-4 pb-4">
+            <RuhigeZeiten
+              punkte={ruhigeZeiten.punkte}
+              startzeiten={ruhigeZeiten.startzeiten}
+              berechnetAm={ruhigeZeiten.berechnetAm}
+            />
 
-        <RouteLeaderboardPreview
-          routeId={id}
-          entries={leaderboard}
-          klassen={leaderboardKlassen}
-        />
+            {/* Wetterfenster (Premium): die Woche direkt unter dem Wetter von
+                jetzt, an derselben Stelle statt als eigener Abschnitt
+                (docs/premium-ausbau-plan.md, Abschnitt 1). Das Gate steht hier:
+                ohne Abo wird keine Vorhersage abgefragt, nicht nur keine
+                gezeigt. Suspense, weil Open-Meteo bis zu einer Sekunde braucht
+                und der Rest der Seite darauf nicht warten soll.
 
-        <PhotoGallery photos={photos} />
+                Ohne Abo ein einziger Hinweis — und nur angemeldet: wer über
+                einen geteilten Link ohne Konto hier landet, entscheidet gerade
+                über die Strecke, nicht über ein Abo. */}
+            {premiumStatus.aktiv ? (
+              <Suspense fallback={<WetterfensterStreifenPlatzhalter />}>
+                <WetterfensterStreifen
+                  strecke={route}
+                  fahrzeug={wetterMassstab(vehicles.map((v) => v.typ))}
+                />
+              </Suspense>
+            ) : (
+              user && (
+                <PremiumHinweis>
+                  Mit Premium siehst du, an welchen Tagen diese Woche die Strecke trocken ist
+                </PremiumHinweis>
+              )
+            )}
+          </div>
+        </details>
+
+          </div>
+          {/* Reiter Wertung: Bestenliste, Meinung, Bilder — die Community
+              als eigene Ansicht. */}
+          <div className="flex flex-col gap-5">
+            <RouteLeaderboardPreview
+              routeId={id}
+              entries={leaderboard}
+              klassen={leaderboardKlassen}
+            />
 
         <RatingSection
           routeId={id}
@@ -522,6 +533,13 @@ export default async function StreckeDetailPage({
           canRate={!!user}
           currentUserId={user?.id ?? null}
         />
+
+        {/* Fotos gehören ans Ende des Entscheidungsflusses: Wertung und
+            Meinung zuerst, Galerie als Vertiefung — nicht zwischen
+            Bestenliste und Bewertungen. */}
+        <PhotoGallery photos={photos} />
+          </div>
+        </AbschnittTabs>
       </RouteDetailLayout>
     </div>
   );

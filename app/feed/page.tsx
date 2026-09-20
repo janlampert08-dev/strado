@@ -77,9 +77,8 @@ export default async function FeedPage({
       <PullToRefreshArea>
       <div className="flex-1 overflow-y-auto">
         <Seitenrahmen>
-        <div>
+        <div className="flex items-end justify-between gap-3">
           <h1 className="text-display font-semibold">Feed</h1>
-          <p className="mt-1 text-sm text-muted">Geteilte Fahrten aus der Community.</p>
         </div>
 
         {/* Die Reiter stehen in einer eigenen Komponente, weil /aktivitaet
@@ -90,11 +89,13 @@ export default async function FeedPage({
             Für Abgemeldete bleibt genau ein Reiter übrig ("Alle") — die
             Leiste rendert dann eine einzelne Pille, was als Zustandsanzeige
             immer noch stimmt und billiger ist als ein Sonderfall. */}
-        <FeedReiter
-          aktiv={scope === "following" ? "following" : "global"}
-          angemeldet={!!user}
-          ungeseheneAktivitaet={ungeseheneAktivitaet}
-        />
+        <div className="sticky top-0 z-10 -mx-1 bg-background/95 px-1 py-2 backdrop-blur">
+          <FeedReiter
+            aktiv={scope === "following" ? "following" : "global"}
+            angemeldet={!!user}
+            ungeseheneAktivitaet={ungeseheneAktivitaet}
+          />
+        </div>
 
         {/* Die Suche steht UNTER den Reitern, nicht darüber. /aktivitaet
             teilt die Reiterleiste, hat aber keine Suche — stand sie oben,

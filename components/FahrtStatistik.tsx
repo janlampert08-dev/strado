@@ -229,7 +229,7 @@ export default function FahrtStatistik({
   return (
     <div className="flex flex-col gap-6">
       <section className="flex flex-col gap-2">
-        <h3 className="text-sm font-medium">
+        <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">
           Saison {saison.jahr}
           {saison.laufend && <span className="ml-1.5 font-normal text-muted">bis heute</span>}
         </h3>
@@ -288,7 +288,7 @@ export default function FahrtStatistik({
       </section>
 
       <section className="flex flex-col gap-2">
-        <h3 className="text-sm font-medium">Saisonkurve</h3>
+        <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">Saisonkurve</h3>
         {monatsSpitze <= 0 ? (
           <p className="text-sm text-muted">
             Für die letzten Saisons sind keine Kilometer erfasst.
@@ -387,8 +387,12 @@ export default function FahrtStatistik({
       {/* Die Jahrestabelle erst ab dem zweiten Jahr: mit nur einem Jahr
           wiederholte sie Zeile für Zeile die Kacheln ganz oben. */}
       {jahre.length > 1 && (
-        <section className="flex flex-col gap-2">
-          <h3 className="text-sm font-medium">Alle Jahre</h3>
+        <details className="group rounded-xl border border-border">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-3 py-2 text-sm font-medium marker:content-none">
+            Alle Jahre
+            <span className="text-xs font-normal text-muted">{jahre.length} Saisons</span>
+          </summary>
+          <div className="px-3 pb-3">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[20rem] text-sm tabular-nums">
               <thead>
@@ -425,19 +429,16 @@ export default function FahrtStatistik({
               </tbody>
             </table>
           </div>
-        </section>
+          </div>
+        </details>
       )}
 
-      <section className="flex flex-col gap-2">
-        <h3 className="text-sm font-medium">
+      <details className="group rounded-xl border border-border">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-3 py-2 text-sm font-medium marker:content-none">
           Nach Fahrzeug
-          {/* Ohne diesen Zusatz liest sich der Abschnitt als Fortsetzung der
-              Saison-Kacheln darüber. Er rechnet aber über alle Jahre — und
-              nur dann summieren sich seine Zeilen auf die Lebenszeit-Kachel
-              „Km gefahren" auf der Seite darüber. */}
-          <span className="ml-1.5 font-normal text-muted">gesamt</span>
-        </h3>
-        <ul className="flex flex-col gap-3">
+          <span className="text-xs font-normal text-muted">gesamt</span>
+        </summary>
+        <ul className="flex flex-col gap-3 px-3 pb-3">
           {proFahrzeug.map((zeile) => (
             <AnteilZeile
               key={zeile.fahrzeugId ?? "ohne-fahrzeug"}
@@ -451,19 +452,19 @@ export default function FahrtStatistik({
             />
           ))}
         </ul>
-      </section>
+      </details>
 
       {/* Die Region beantwortet die Frage, die weder Jahr noch Fahrzeug
           beantwortet: wo war ich eigentlich. Der Abschnitt entfällt, solange
           zu keiner Fahrt eine Region bekannt ist — eine Liste, die nur
           „Ohne Region" enthält, sagt nichts. */}
       {regionenBenannt.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <h3 className="text-sm font-medium">
+        <details className="group rounded-xl border border-border">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-3 py-2 text-sm font-medium marker:content-none">
             Nach Region
-            <span className="ml-1.5 font-normal text-muted">gesamt</span>
-          </h3>
-          <ul className="flex flex-col gap-3">
+            <span className="text-xs font-normal text-muted">gesamt</span>
+          </summary>
+          <ul className="flex flex-col gap-3 px-3 pb-3">
             {regionenOben.map((zeile) => (
               <AnteilZeile
                 key={zeile.region ?? "ohne-region"}
@@ -487,15 +488,18 @@ export default function FahrtStatistik({
               <AnteilZeile name="Ohne Region" zeile={regionenOhne} gesamtKm={gesamtKm} />
             )}
           </ul>
-        </section>
+        </details>
       )}
 
       {/* Bestwerte, nicht Bestzeiten: längste Fahrt, grösster Anstieg,
           stärkster Monat. Eine schnellste Runde stünde hier nie — siehe
           Kopf dieser Datei. */}
       {(bestwerte.laengsteFahrt || bestwerte.hoechsterAnstieg || bestwerte.staerksterMonat) && (
-        <section className="flex flex-col gap-2">
-          <h3 className="text-sm font-medium">Bestwerte</h3>
+        <details className="group rounded-xl border border-border">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-3 py-2 text-sm font-medium marker:content-none">
+            Bestwerte
+          </summary>
+          <div className="px-3 pb-3">
           <Card as="dl" surface className="divide-y divide-border">
             {bestwerte.laengsteFahrt && (
               <div className="flex items-baseline justify-between gap-3 px-3 py-2 text-sm">
@@ -532,7 +536,8 @@ export default function FahrtStatistik({
               </div>
             )}
           </Card>
-        </section>
+          </div>
+        </details>
       )}
     </div>
   );
