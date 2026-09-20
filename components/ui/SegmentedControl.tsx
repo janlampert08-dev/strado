@@ -39,7 +39,7 @@ import { cn } from "@/lib/utils/cn";
 // und ein overflow-Container würde ihn ohne dieses Polster abschneiden.
 export function segmentHuelleClassName(className?: string): string {
   return cn(
-    "inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-border p-1",
+    "inline-flex max-w-full items-center gap-1 overflow-x-auto reiter-scroller rounded-full border border-border p-1",
     className,
   );
 }

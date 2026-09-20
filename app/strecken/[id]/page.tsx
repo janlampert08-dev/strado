@@ -30,6 +30,8 @@ import { getPremiumStatus, maxFotosProFahrt } from "@/lib/premium";
 import { getRouteLeaderboard, getRouteLeaderboardKlassen } from "@/lib/leaderboard";
 import { fetchCurrentWeather } from "@/lib/weather";
 import PassSektion from "@/components/PassSektion";
+import { PassStatusMarke } from "@/components/PassStatusZeile";
+import { anzeigeFuerStatus } from "@/lib/passStatus";
 import RuhigeZeiten from "@/components/RuhigeZeiten";
 import { getFeedStand, getPassKontextFuerStrecke } from "@/lib/paesse";
 import { getRuhigeZeiten } from "@/lib/ruhigeZeitenAbfrage";
@@ -288,6 +290,38 @@ export default async function StreckeDetailPage({
               </span>
             )}
           </p>
+          {/* Kompaktstatus je Pass — Punkt plus Wort, sonst nichts. Die volle
+              Sektion (Kalender, Folgen, Meldung) lebt im Reiter Details;
+              hier zählt nur die Antwort auf "kann ich los?". */}
+          {passKontexte.length > 0 && (
+            <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+              {passKontexte.map((kontext) => {
+                const anzeige = anzeigeFuerStatus(
+                  kontext.status
+                    ? {
+                        zustand: kontext.status.zustand,
+                        meldung: kontext.status.meldung,
+                        quelle: kontext.status.quelle,
+                        aktualisiertAm: kontext.status.aktualisiertAm,
+                        manuellBis: kontext.status.manuellBis,
+                      }
+                    : null,
+                  feedStand,
+                );
+                return (
+                  <Link
+                    key={kontext.pass.id}
+                    href={`/paesse#${kontext.pass.id}`}
+                    className="inline-flex items-center gap-1.5 rounded-full transition-opacity hover:opacity-70"
+                    title={`${kontext.pass.name}: ${anzeige.label}`}
+                  >
+                    <span className="font-medium text-foreground">{kontext.pass.name}</span>
+                    <PassStatusMarke anzeige={anzeige} />
+                  </Link>
+                );
+              })}
+            </p>
+          )}
         </div>
 
         {/* Nur für die Person, die die Strecke angelegt hat — für alle
@@ -367,10 +401,6 @@ export default async function StreckeDetailPage({
             (Vertiefung), Wertung (Community). */}
         <AbschnittTabs tabs={[{ titel: "Fahren" }, { titel: "Details" }, { titel: "Wertung" }]}>
           <div className="flex flex-col gap-5">
-        {/* Vor dem Losfahren steht die Frage, ob der Pass überhaupt offen
-            ist — also vor Aufzeichnung, Höhenprofil und Kennzahlen. */}
-        <PassSektion kontexte={passKontexte} angemeldet={!!user} feedStand={feedStand} />
-
         {/* Sprungziel für "Zum Start" in der leeren Bestenliste. scroll-mt:
             sonst endet der Sprung mit dem Knopf an der oberen Kante. */}
         <div id="fahren" className="scroll-mt-6">

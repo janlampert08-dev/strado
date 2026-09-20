@@ -75,7 +75,7 @@ export default function PaesseListe({
       {/* Eine Filterzeile statt zwei: Segmente scrollen, Kanton als
           kompakter Select daneben — keine beschriftete Zweitzeile. */}
       <div className="flex items-center gap-2">
-        <div className="min-w-0 flex-1 overflow-x-auto">
+        <div className="min-w-0 flex-1 overflow-x-auto reiter-scroller">
           <SegmentedControl
             label="Auswahl"
             wert={auswahl}

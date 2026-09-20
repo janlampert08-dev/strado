@@ -571,3 +571,16 @@ main {
     }
   }
 }
+
+/* Optionsleisten (AbschnittTabs, SegmentedControl, Klassen-Chips,
+   Kopf-Navigation): horizontal wischbar, ohne sichtbare Scrollbar. Die
+   Leiste ist Navigation, kein Inhalt — ein Balken darunter liest sich als
+   Fehler, nicht als Hinweis. Tastatur- und Screenreader-Bedienung bleiben:
+   die Knöpfe sind weiter fokussierbar und erreichbar. Datentabellen
+   (Jahrestabelle, Heatmap) behalten ihren Balken bewusst. */
+.reiter-scroller {
+  scrollbar-width: none;
+}
+.reiter-scroller::-webkit-scrollbar {
+  display: none;
+}

@@ -94,7 +94,7 @@ export default async function Header({ back }: { back?: string } = {}) {
               Icon) wohnt jetzt ausschliesslich im Darstellung-Tab der
               Einstellungen (app/profil/einstellungen); ohne manuelle Wahl
               gilt weiterhin "System" als Standard. */}
-          <nav className="hidden items-center gap-3 overflow-x-auto text-sm sm:gap-6 md:flex">
+          <nav className="hidden items-center gap-3 overflow-x-auto reiter-scroller text-sm sm:gap-6 md:flex">
             {items.map((item) =>
               item.href === "/anmelden" ? (
                 <Link

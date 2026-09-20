@@ -40,7 +40,7 @@ export default function AbschnittTabs({
       <div
         role="tablist"
         aria-label="Abschnitte dieser Seite"
-        className="sticky top-0 z-10 -mx-1 flex gap-1 overflow-x-auto bg-background/95 px-1 py-1.5 backdrop-blur"
+        className="sticky top-0 z-10 -mx-1 flex gap-1 overflow-x-auto reiter-scroller bg-background/95 px-1 py-1.5 backdrop-blur"
       >
         {tabs.map((tab, i) => {
           const istAktiv = aktiv === i;

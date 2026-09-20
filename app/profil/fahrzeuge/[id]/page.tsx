@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import Header from "@/components/Header";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
+import AbschnittTabs from "@/components/ui/AbschnittTabs";
 import Card from "@/components/ui/Card";
 import Kennzahl, { Kennzahlen } from "@/components/ui/Kennzahl";
 import SectionHeading from "@/components/ui/SectionHeading";
@@ -11,6 +12,7 @@ import WartungsStatus from "@/components/WartungsStatus";
 import Wartungsheft from "@/components/Wartungsheft";
 import WartungserinnerungenForm from "@/components/WartungserinnerungenForm";
 import { AutoIcon, MotorradIcon, TerminIcon, WartungIcon } from "@/components/NavIcons";
+import { ChevronDown } from "lucide-react";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getWartungsheft } from "@/lib/wartungsdaten";
 import { istPremium } from "@/lib/premium";
@@ -74,11 +76,13 @@ export default async function FahrzeugPage({ params }: { params: Promise<{ id: s
             <h1 className="text-display font-semibold break-words">
               {fahrzeug.marke} {fahrzeug.modell}
             </h1>
-            <p className="text-sm text-muted">
-              {fahrzeug.getriebe === "automatik" ? "Automatik" : "Manuell"}
-              {fahrzeug.baujahr && ` · ${fahrzeug.baujahr}`}
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+              <span>
+                {fahrzeug.getriebe === "automatik" ? "Automatik" : "Manuell"}
+                {fahrzeug.baujahr && ` · ${fahrzeug.baujahr}`}
+              </span>
+              <MotorklasseBadge klasse={motorklasseFor(fahrzeug)} />
             </p>
-            <MotorklasseBadge klasse={motorklasseFor(fahrzeug)} className="mt-1" />
           </div>
         </div>
 
@@ -99,14 +103,27 @@ export default async function FahrzeugPage({ params }: { params: Promise<{ id: s
           />
         </Kennzahlen>
 
-        <p className="text-xs text-muted">
-          Strado zählt nur, was aufgezeichnet wurde — der tatsächliche Stand liegt also höher.
-          Deshalb steht hier „mindestens“, und deshalb meldet eine Fälligkeit nach Kilometern
-          eher zu spät als zu früh.
-        </p>
+        {/* Die Erklärung gehört zur Zahl, nicht auf die Seite: vorher stand
+            sie als eigener Absatz zwischen Kacheln und Heft und riss den
+            Flow auseinander. */}
+        <details className="text-xs text-muted">
+          <summary className="w-fit cursor-pointer list-none hover:text-foreground [&::-webkit-details-marker]:hidden">
+            Warum „mindestens“?
+          </summary>
+          <p className="pt-1">
+            Strado zählt nur, was aufgezeichnet wurde — der tatsächliche Stand liegt also
+            höher. Deshalb meldet eine Fälligkeit nach Kilometern eher zu spät als zu früh.
+          </p>
+        </details>
 
         {premium ? (
-          <>
+          <AbschnittTabs
+            tabs={[
+              { titel: "Übersicht" },
+              { titel: "Heft", anzahl: heft.eintraege.length },
+              { titel: "Erinnerungen" },
+            ]}
+          >
             <section className="flex flex-col gap-3">
               <SectionHeading icon={TerminIcon}>Steht an</SectionHeading>
               <WartungsStatus mfk={heft.mfk} service={heft.service} />
@@ -123,7 +140,7 @@ export default async function FahrzeugPage({ params }: { params: Promise<{ id: s
               />
             </section>
 
-            <section className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3">
               <SectionHeading icon={TerminIcon}>Erinnerungen</SectionHeading>
               <Card className="p-4">
                 <WartungserinnerungenForm
@@ -136,8 +153,8 @@ export default async function FahrzeugPage({ params }: { params: Promise<{ id: s
                 Strado erinnert dich hier in der App — es gibt keine E-Mail und keine
                 Push-Benachrichtigung.
               </p>
-            </section>
-          </>
+            </div>
+          </AbschnittTabs>
         ) : (
           <section className="flex flex-col gap-3">
             <SectionHeading icon={WartungIcon}>Wartungsheft</SectionHeading>
@@ -166,16 +183,24 @@ export default async function FahrzeugPage({ params }: { params: Promise<{ id: s
           </section>
         )}
 
-        <section className="flex flex-col gap-2">
-          <SectionHeading>Fahrzeug entfernen</SectionHeading>
-          <Card className="flex items-center justify-between gap-3 p-4">
+        {/* Die Danger-Zone als Klappe statt Karte: Löschen ist der seltenste
+            Weg auf dieser Seite und bekommt keine eigene Bühne. */}
+        <details className="group rounded-xl border border-border">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium text-danger marker:content-none">
+            Fahrzeug entfernen
+            <ChevronDown
+              className="h-4 w-4 text-muted transition-transform duration-fast group-open:rotate-180"
+              aria-hidden="true"
+            />
+          </summary>
+          <div className="flex items-center justify-between gap-3 px-4 pb-4">
             <p className="text-sm text-muted">
               Entfernt das Fahrzeug samt Wartungsheft. Deine Fahrten bleiben, verlieren aber die
               Zuordnung zu diesem Fahrzeug.
             </p>
             <DeleteVehicleButton vehicleId={fahrzeug.id} nachLoeschenHref="/profil" />
-          </Card>
-        </section>
+          </div>
+        </details>
         </Seitenrahmen>
       </div>
     </div>

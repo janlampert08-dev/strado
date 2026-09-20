@@ -351,31 +351,33 @@ export default async function ProfilPage() {
               followers={followers}
               following={following}
             />
+            {/* Dezent statt Knopf: wer das eigene Profil von aussen sehen
+                will, findet es hier — es ist kein Weg des Kernloops. */}
+            <Link
+              href={`/fahrer/${user.id}`}
+              className="w-fit text-xs text-muted transition-colors hover:text-foreground"
+            >
+              Öffentliches Profil ansehen →
+            </Link>
           </div>
-          {/* Zwei Wege, eine Rangfolge: Aufzeichnen ist der Kernloop
-              (Accent), Strecke-Erstellen das Kuratieren des Netzes
-              (volle Secondary-Fläche, kein Textlink) — beides gehört zum
-              Flow. Das öffentliche Profil ist nur ein Wegweiser darunter. */}
-          <div className="flex flex-col gap-2">
+          {/* Nebeneinander, Rangfolge über die Fläche: Aufzeichnen (Accent)
+              ist der Kernloop, Erstellen kuratiert das Netz (Secondary).
+              size="md" statt "lg": zwei text-base-Pillen brächen auf 390 px
+              um — text-sm passt je Zelle einzeilig. */}
+          <div className="grid grid-cols-2 gap-2">
             <Link
               href="/fahrten/neu"
-              className={buttonVariants({ variant: "accent", size: "lg", className: "w-full" })}
+              className={buttonVariants({ variant: "accent", size: "md", className: "w-full" })}
             >
-              <Plus className="h-4 w-4" aria-hidden="true" />
+              <Plus className="h-4 w-4 shrink-0" aria-hidden="true" />
               Fahrt aufzeichnen
             </Link>
             <Link
               href="/strecken/neu"
-              className={buttonVariants({ variant: "secondary", size: "lg", className: "w-full" })}
+              className={buttonVariants({ variant: "secondary", size: "md", className: "w-full" })}
             >
-              <RouteIcon className="h-4 w-4" aria-hidden="true" />
+              <RouteIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
               Strecke erstellen
-            </Link>
-            <Link
-              href={`/fahrer/${user.id}`}
-              className="self-center py-1 text-sm font-medium text-muted transition-colors hover:text-foreground"
-            >
-              Öffentliches Profil →
             </Link>
           </div>
         </div>
