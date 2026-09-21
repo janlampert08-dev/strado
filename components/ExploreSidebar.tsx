@@ -4,13 +4,10 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { Crosshair, Route, SearchX } from "lucide-react";
 import { routeShapePath } from "@/lib/routeShape";
-import { haversineKm } from "@/lib/geo";
-import { formatEntfernungKm, type Empfehlung } from "@/lib/empfehlung";
+import { type Empfehlung } from "@/lib/empfehlung";
 import { formatKmGerundet, mitAnzahl } from "@/lib/format";
 import { type RouteSignature } from "@/lib/signature";
 import type { ExploreRoute } from "@/types/database";
-import { PassStatusMarke } from "@/components/PassStatusZeile";
-import { ZUSTAND_LABEL, ZUSTAND_TON, zeigeInListe, type PassZustand } from "@/lib/passStatus";
 import { anzahlText, type Streckenbewertung } from "@/lib/bewertungen";
 import Sternschnitt from "@/components/Sternschnitt";
 import { fieldClassName } from "@/components/ui/Input";
@@ -20,10 +17,11 @@ import IconButton from "@/components/ui/IconButton";
 import { SIGNATURE_ICONS, SIGNATUR_KLASSEN } from "@/components/signaturStil";
 
 // Hierarchie aus einer statt aus dreien: Genau eine Strecke ist empfohlen —
-// mit Standort die nächste ("12 km von dir"), ohne die bestbewertete
-// (lib/empfehlung.ts). Sie steht auf einer Fläche mit Begründung darüber,
-// der Rest bleibt bewusst volle Zeile MIT Form: Die übrigen Strecken
-// rücken nicht in den Hintergrund, sie treten nur einen Schritt zurück.
+// im Grundzustand die bestbewertete (lib/empfehlung.ts). Sie steht ganz oben
+// auf einer Fläche mit Begründung darüber, der Rest bleibt bewusst volle
+// Zeile MIT Form: Die übrigen Strecken rücken nicht in den Hintergrund, sie
+// treten nur einen Schritt zurück. Bei Suche oder Standort gibt es keine
+// angeheftete Empfehlung — dort gilt Trefferliste bzw. Nähe-Sortierung.
 
 function kuerzen(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
@@ -32,7 +30,6 @@ function kuerzen(text: string, max: number): string {
 export default function ExploreSidebar({
   routes,
   bewertungen,
-  passZustaende,
   loadError = false,
   loggedIn,
   anzahlStrecken,
@@ -49,8 +46,6 @@ export default function ExploreSidebar({
   routes: ExploreRoute[];
   /** Sternenschnitt je Strecken-ID; Strecken ohne Wertung fehlen darin. */
   bewertungen: Record<string, Streckenbewertung>;
-  /** Schwerwiegendster Passzustand je Strecke; Strecken ohne Pass fehlen. */
-  passZustaende: Record<string, PassZustand>;
   loadError?: boolean;
   loggedIn: boolean;
   /** Der ganze Bestand, ungefiltert — routes ist schon die Trefferliste. */
@@ -257,15 +252,14 @@ export default function ExploreSidebar({
           // die Zeile bei der neutralen Strukturkante.
           const ton = signature ? SIGNATUR_KLASSEN[signature.key] : null;
           const istEmpfohlen = empfehlung !== null && route.id === empfehlung.id;
-          // Die Begründung steht an der Empfehlung, nicht irgendwo darüber:
-          // Nähe nur mit gemessener Distanz, sonst ehrlich der echte Grund.
+          // Die Begründung steht an der Empfehlung, nicht irgendwo darüber.
+          // Nur "bestbewertet" nennt einen Grund — der Bestand-Fallback
+          // behauptet ehrlich keinen.
           const empfehlungsText = !istEmpfohlen
             ? null
-            : empfehlung.grund === "naehe" && userLocation
-              ? `Für dich empfohlen · ${formatEntfernungKm(haversineKm(userLocation, route.start_geojson.coordinates as [number, number]))} von dir`
-              : empfehlung.grund === "bewertung"
-                ? "Für dich empfohlen · bestbewertet"
-                : "Für dich empfohlen";
+            : empfehlung.grund === "bewertung"
+              ? "Für dich empfohlen · bestbewertet"
+              : "Für dich empfohlen";
 
           return (
             <li key={route.id}>
@@ -371,22 +365,9 @@ export default function ExploreSidebar({
                         <span className="sr-only">{anzahlText(bewertung.anzahl)}</span>
                       </Sternschnitt>
                     )}
-                    {/* Der Passzustand steht nur hier, wenn er die Planung
-                        ändert: gesperrt, Wintersperre, eingeschränkt. "Offen"
-                        ist die Erwartung und bekäme sonst in jeder Zeile ein
-                        Abzeichen, das nichts sagt (lib/passStatus.ts). */}
-                    {zeigeInListe(passZustaende[route.id] ?? null) && (
-                      <PassStatusMarke
-                        className="shrink-0"
-                        anzeige={{
-                          zustand: passZustaende[route.id],
-                          label: ZUSTAND_LABEL[passZustaende[route.id]],
-                          ton: ZUSTAND_TON[passZustaende[route.id]],
-                          text: "",
-                          herkunft: "",
-                        }}
-                      />
-                    )}
+                    {/* Kein Passzustand auf der Startseite: Auch gesperrt oder
+                        eingeschränkt wird hier nicht als Abzeichen gezeigt —
+                        der Stand steht auf der Strecke und unter /paesse. */}
                   </div>
                 </div>
 
