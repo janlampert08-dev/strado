@@ -172,15 +172,6 @@ function implausibilityReason(
     return "Die Aufzeichnung enthält eine zu grosse Lücke zwischen zwei Punkten.";
   }
 
-  // Bewegtzeit (Moving Time) darf nicht grösser sein als die Gesamtdauer —
-  // der Constraint fahrt_bewegtzeit_plausibel (0074) verlangt das auf
-  // Datenbankebene. Hier prüfen wir es vorab, damit der Nutzer eine
-  // verständliche Fehlermeldung bekommt statt eines rohen DB-Fehlers.
-  const bewegteSekunden = movingSeconds(trail);
-  if (bewegteSekunden > dauerSekunden) {
-    return "Die errechnete Bewegtzeit ist länger als die Gesamtdauer — bitte Aufzeichnung prüfen.";
-  }
-
   return null;
 }
 
@@ -439,6 +430,10 @@ export async function logTrackedCompletion(
   const implausible = implausibilityReason(trail, distanzKm, dauerSekunden);
   if (implausible) return { error: implausible };
 
+  // Bewegtzeit kappen auf Gesamtdauer (siehe logFreeRide oben).
+  const bewegteSekunden = movingSeconds(trail);
+  const bewegteSekundenGekappt = bewegteSekunden > dauerSekunden ? dauerSekunden : bewegteSekunden;
+
   // Serverseitig erzwungen, nicht nur im UI verhindert: unabhängig davon, was
   // das Formular schickt, kann eine Fahrt unterhalb des Deckungsgrad-
   // Schwellenwerts nicht öffentlich sein (siehe lib/routeCoverage.ts).
@@ -490,8 +485,9 @@ export async function logTrackedCompletion(
       fahrt_start_id: fahrtstart?.ticketId ?? null,
       // Reine Bewegtzeit ohne Pausen — für eine Passfahrt am Stück fast
       // identisch mit dauer_sekunden, aber dieselbe Berechnung für beide
-      // Fahrtarten (siehe 0044_freie_fahrten.sql).
-      bewegte_zeit_sekunden: movingSeconds(trail),
+      // Fahrtarten (siehe 0044_freie_fahrten.sql). Gekappt auf Gesamtdauer
+      // falls GPS-Zeitstempel leicht über die Ticket-Dauer hinausragen.
+      bewegte_zeit_sekunden: bewegteSekundenGekappt,
       art: "strecke",
       ist_oeffentlich: istOeffentlich,
       abdeckung_prozent: abdeckungProzent,
@@ -773,11 +769,19 @@ async function buildDetectedSegments(
         )
       : null;
 
+    // Bewegtzeit des Segments kappen auf dessen Dauer (kann durch
+      // GPS-Jitter oder Client-Server-Zeitunterschiede leicht überschritten
+      // werden). Dasselbe Vorgehen wie bei der Elternfahrt.
+      const segmentBewegteSekunden = movingSeconds(subTrail);
+      const segmentDauer = serverSekunden ?? durationSeconds;
+      const segmentBewegteSekundenGekappt =
+        segmentBewegteSekunden > segmentDauer ? segmentDauer : segmentBewegteSekunden;
+
     payloads.push({
       route_id: route.id,
       distanz_km: distanceKm,
-      dauer_sekunden: serverSekunden ?? durationSeconds,
-      bewegte_zeit_sekunden: movingSeconds(subTrail),
+      dauer_sekunden: segmentDauer,
+      bewegte_zeit_sekunden: segmentBewegteSekundenGekappt,
       abdeckung_prozent: abdeckungProzent,
       track: toEwktLineString(toCoordinates(simplifyTrack(subTrail))),
       tempoprofil: buildTempoprofil(subTrail),
@@ -843,7 +847,17 @@ export async function logFreeRide(
   const implausible = implausibilityReason(trail, distanzKm, dauerSekunden);
   if (implausible) return { error: implausible };
 
-  const bewegteSekunden = movingSeconds(trail);
+  // Bewegtzeit (Moving Time) darf nicht grösser sein als die Gesamtdauer.
+  // Der Constraint fahrt_bewegtzeit_plausibel (0074) verlangt das auf
+  // Datenbankebene. Wenn die GPS-Zeitstempel leicht über die Ticket-Dauer
+  // hinausragen (z.B. durch Client-Server-Zeitunterschiede oder Jitter am
+  // Ende der Aufzeichnung), kappen wir die Bewegtzeit auf die Gesamtdauer
+  // statt die Fahrt abzulehnen — dieselbe Logik, die Migration 0074 für
+  // Bestandsdaten anwendet.
+  let bewegteSekunden = movingSeconds(trail);
+  if (bewegteSekunden > dauerSekunden) {
+    bewegteSekunden = dauerSekunden;
+  }
   const istOeffentlich =
     formData.get("ist_oeffentlich") === "true" &&
     publicationBlockReason(distanzKm, bewegteSekunden) === null;
