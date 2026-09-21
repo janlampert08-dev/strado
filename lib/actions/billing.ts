@@ -313,6 +313,25 @@ export async function getPremiumAngebot(): Promise<PremiumAngebot> {
   };
 }
 
+// Öffentliches Angebot ohne Personenbezug: dieselben Stripe-Preise wie
+// getPremiumAngebot(), aber ohne Testphase und ohne Saisonpass-Stand — für
+// die öffentliche Teaser-Seite app/premium/page.tsx, die auch ohne Konto
+// die richtigen Zahlen zeigen muss. Preise kommen aus Stripe, nie aus einer
+// zweiten Liste im Code (Preisbekanntgabeverordnung).
+export async function getOeffentlichesAngebot(): Promise<PlanAngebot[]> {
+  const [monat, jahr, pass] = await Promise.all([
+    betrag(monatsPreis()),
+    betrag(jahresPreis()),
+    betrag(passPreis()),
+  ]);
+
+  const plaene: PlanAngebot[] = [];
+  if (monat) plaene.push({ plan: "monat", betragRappen: monat.rappen, waehrung: monat.waehrung });
+  if (jahr) plaene.push({ plan: "jahr", betragRappen: jahr.rappen, waehrung: jahr.waehrung });
+  if (pass) plaene.push({ plan: "saisonpass", betragRappen: pass.rappen, waehrung: pass.waehrung });
+  return plaene;
+}
+
 // Die 14-tägige Testphase ist ein eigener Schalter, nicht Teil der neuen
 // Preise. Die geltenden AGB (Ziff. 4.5) sagen "Ein kostenloser Testzeitraum
 // wird nicht angeboten"; die Testphase steht nur im noch nicht in Kraft

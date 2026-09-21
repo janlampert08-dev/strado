@@ -32,7 +32,7 @@ export default function PremiumHinweis({
       <SparklesIcon className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
       <span>
         {children}.{" "}
-        <Link href="/profil/premium" className="text-foreground underline underline-offset-2">
+        <Link href="/premium" className="text-foreground underline underline-offset-2">
           Premium ansehen
         </Link>
       </span>
