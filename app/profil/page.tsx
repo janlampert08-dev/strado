@@ -596,10 +596,16 @@ export default async function ProfilPage() {
                     // Hover-Effekt).
                     <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
                       {trackedRides.map((ride) => {
-                        const avgKmh =
-                          ride.dauer_sekunden > 0
-                            ? ride.distanz_km / (ride.dauer_sekunden / 3600)
-                            : 0;
+                          // Für freie Fahrten: Bewegtzeit statt verstrichener Zeit,
+                          // damit Kaffeepausen das Ø-Tempo nicht künstlich senken.
+                          // Bei Streckenfahrten bleibt die verstrichene Zeit (Bestenlisten-Basis).
+                          const tempoSekunden = ride.art === "frei"
+                            ? (ride.bewegte_zeit_sekunden ?? ride.dauer_sekunden)
+                            : ride.dauer_sekunden;
+                          const avgKmh =
+                            tempoSekunden && tempoSekunden > 0 && ride.distanz_km
+                              ? ride.distanz_km / (tempoSekunden / 3600)
+                              : 0;
                         return (
                           <li key={ride.id} className="group transition-colors duration-fast hover:bg-surface">
                             <div className="flex items-center justify-between gap-3 p-3">
