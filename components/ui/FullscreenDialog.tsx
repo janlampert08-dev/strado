@@ -1,12 +1,23 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils/cn";
 
 // Vollflächige Schritte des Aufzeichnungs-Flows (FreeRideForm,
 // LiveTrackingForm). Sie liegen als "fixed inset-0 z-50" mit deckendem
 // Hintergrund über der Seite und verdecken Header und BottomNav
 // vollständig — für Auge und Maus ist das ein modaler Dialog.
+//
+// "Über der Seite" gilt nur, solange kein Vorfahre einen eigenen
+// Stapelkontext aufspannt: Auf der Streckenseite hängt die Aufzeichnung im
+// Bottom-Sheet (DragSheet, positioniert mit z-10), und darin gefangen
+// konkurriert z-50 nur noch lokal — gegen die BottomNav (z-40 auf
+// Körperebene) verliert der Dialog, und die Leiste malt über seine
+// untersten rund 64 px samt Schaltflächen. Deshalb hängt der Dialog per
+// Portal direkt an document.body statt im Sheet-Baum: Dort gilt z-50
+// wieder gegen die ganze Seite, und die "inert"-Stilllegung unten trifft
+// ohnehin die Geschwister bis hinauf zum Körper.
 //
 // Für die Tastatur war es das bisher nicht: verdeckt heisst nicht
 // unerreichbar, die Navigation dahinter blieb per Tab ansteuerbar. Ein
@@ -36,8 +47,21 @@ export default function FullscreenDialog({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  // Erst nach dem Mount portiert: Auf dem Server gibt es kein document, und
+  // der erste Client-Render muss dem Server-HTML entsprechen — also dort wie
+  // hier nichts. Geöffnet werden diese Schritte ohnehin nur per Tipp, nie
+  // beim ersten Aufbau (der ?fortsetzen-Einstieg der Streckenseite läuft
+  // ebenfalls erst im Client).
+  const [portiert, setPortiert] = useState(false);
+  useEffect(() => {
+    // Mount-Erkennung fürs Portal: document gibt es erst im Client, und der
+    // erste Client-Render muss dem Server-HTML (nichts) entsprechen.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- einmalige Mount-Erkennung, wie in GefahrenSection.tsx
+    setPortiert(true);
+  }, []);
 
   useEffect(() => {
+    if (!portiert) return;
     const el = ref.current;
     if (!el) return;
 
@@ -74,9 +98,11 @@ export default function FullscreenDialog({
       // einem Schritt zum nächsten ist der Auslöser längst ausgehängt.
       if (zuvorFokussiert?.isConnected) zuvorFokussiert.focus({ preventScroll: true });
     };
-  }, []);
+  }, [portiert]);
 
-  return (
+  if (!portiert) return null;
+
+  return createPortal(
     <div
       ref={ref}
       // tabIndex={-1} macht den Container programmatisch fokussierbar, ohne
@@ -89,6 +115,7 @@ export default function FullscreenDialog({
       className={cn("outline-none", className)}
     >
       {children}
-    </div>
+    </div>,
+    document.body,
   );
 }
