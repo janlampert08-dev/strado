@@ -272,11 +272,15 @@ export default function ExploreView({
 
   return (
     <main ref={containerRef} className="relative flex flex-1 flex-col overflow-hidden md:flex-row">
-      <div
-        className="absolute inset-0 md:static md:order-2 md:h-auto md:flex-1"
-        role="img"
-        aria-label="Kartenansicht der Strecken — die vollständige Liste steht in der Seitenleiste."
-      >
+      {/* Kein role="img" um die interaktive Karte: darin sitzt der
+          Mapbox-Navigationsschalter mit fokussierbaren Knöpfen — in einem
+          role="img" wären sie aus dem Accessibility-Baum beschnitten,
+          blieben aber in der Tab-Reihenfolge. Die Beschreibung steht als
+          sr-only-Absatz daneben. */}
+      <div className="absolute inset-0 md:static md:order-2 md:h-auto md:flex-1">
+        <p className="sr-only">
+          Kartenansicht der Strecken — die vollständige Liste steht in der Seitenleiste.
+        </p>
         <RouteMap
           umlandSchleier
           routes={angezeigteRouten}

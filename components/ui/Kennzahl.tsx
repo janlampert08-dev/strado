@@ -111,17 +111,29 @@ export function Kennzahlenzeile({
   eintraege: { beschriftung: string; wert: string }[];
   className?: string;
 }) {
-  const sichtbar = eintraege.filter((e) => e.wert.trim() !== "" && e.wert !== "—");
-  if (sichtbar.length === 0) return null;
-
+  // Immer rendern, Fehlendes als "keine Angabe": vorher filterte die Zeile
+  // Einträge mit "—" heraus und verschwand ganz, wenn alle fehlten — dann
+  // sah eine Strecke ohne Steigung, Tempolimit und Wetter aus wie eine ohne
+  // Detailzeile, statt wie eine ohne Daten. (Gegen die frühere Lesart in
+  // docs/design-vereinfachung.md, die das Verschweigen als Entscheidung
+  // festhielt: eine Zeile aus drei Gedankenstrichen sagt nichts, aber eine
+  // fehlende Zeile sagt, es gäbe nichts zu sagen.)
   return (
     <p className={cn("text-sm leading-relaxed text-muted", className)}>
-      {sichtbar.map((e, i) => (
-        <span key={e.beschriftung}>
-          {i > 0 && <span aria-hidden="true"> · </span>}
-          {e.beschriftung} <span className="tabular-nums text-foreground">{e.wert}</span>
-        </span>
-      ))}
+      {eintraege.map((e, i) => {
+        const fehlt = e.wert.trim() === "" || e.wert === "—";
+        return (
+          <span key={e.beschriftung}>
+            {i > 0 && <span aria-hidden="true"> · </span>}
+            {e.beschriftung}{" "}
+            {fehlt ? (
+              "keine Angabe"
+            ) : (
+              <span className="tabular-nums text-foreground">{e.wert}</span>
+            )}
+          </span>
+        );
+      })}
     </p>
   );
 }
