@@ -14,7 +14,6 @@ import { computeSignatures } from "@/lib/signature";
 import { waehleEmpfohleneStrecke, type Empfehlung } from "@/lib/empfehlung";
 import type { ExploreRoute } from "@/types/database";
 import type { Streckenbewertung } from "@/lib/bewertungen";
-import type { PassZustand } from "@/lib/passStatus";
 
 // URL-Sync für den Suchtext wird debounced (siehe searchInput-Effekt unten),
 // damit nicht jeder Tastendruck einen router.replace() (und damit einen
@@ -86,15 +85,12 @@ const ZUFALLSVORSCHLAG_MS = 5000;
 export default function ExploreView({
   routes,
   bewertungen,
-  passZustaende,
   loadError = false,
   loggedIn,
 }: {
   routes: ExploreRoute[];
   /** Sternenschnitt je Strecken-ID; Strecken ohne Wertung fehlen. */
   bewertungen: Record<string, Streckenbewertung>;
-  /** Schwerwiegendster Passzustand je Strecke; Strecken ohne Pass fehlen. */
-  passZustaende: Record<string, PassZustand>;
   loadError?: boolean;
   loggedIn: boolean;
 }) {
@@ -230,26 +226,35 @@ export default function ExploreView({
     );
   }, [routes, searchInput, userLocation]);
 
-  // Genau eine Empfehlung für die Hierarchie der Liste: mit Standort die
-  // nächste Strecke, ohne die bestbewertete (lib/empfehlung.ts). Bei Suche
-  // oder Ladefehler keine — die Suche ist eine explizite Absicht.
-  const empfehlung: Empfehlung | null = useMemo(
-    () =>
-      waehleEmpfohleneStrecke(
-        visibleRoutes.map((r) => r.id),
-        {
-          hatStandort: userLocation !== null,
-          searchQuery: searchInput,
-          loadError,
-          bewertungen,
-        },
-      ),
-    [visibleRoutes, userLocation, searchInput, loadError, bewertungen],
-  );
+  // Genau eine Empfehlung für die Hierarchie der Liste — und sie steht ganz
+  // oben, ausser der Nutzer filtert oder sortiert selbst: Bei Suche oder
+  // Standort ist die Liste eine explizite Absicht (Treffer bzw. Nähe), in
+  // die keine angeheftete Empfehlung gehört. Im Grundzustand (keine Suche,
+  // kein Standort) ist es die bestbewertete Strecke (lib/empfehlung.ts),
+  // an erster Stelle der angezeigten Liste.
+  const hatFilter = searchInput.trim() !== "";
+  const hatStandort = userLocation !== null;
+  const empfehlung: Empfehlung | null = useMemo(() => {
+    if (hatFilter || hatStandort || loadError) return null;
+    return waehleEmpfohleneStrecke(
+      routes.map((r) => r.id),
+      bewertungen,
+    );
+  }, [routes, hatFilter, hatStandort, loadError, bewertungen]);
+
+  // Die Empfehlung wird an die erste Stelle gestellt, der Rest behält seine
+  // Reihenfolge. Bei Filter/Standort ist empfehlung null und die Liste
+  // bleibt, wie sie ist (Treffer bzw. nähe-sortiert).
+  const angezeigteRouten = useMemo(() => {
+    if (!empfehlung) return visibleRoutes;
+    const index = visibleRoutes.findIndex((r) => r.id === empfehlung.id);
+    if (index <= 0) return visibleRoutes;
+    return [visibleRoutes[index], ...visibleRoutes.slice(0, index), ...visibleRoutes.slice(index + 1)];
+  }, [visibleRoutes, empfehlung]);
 
   useEffect(() => {
     function handleZufallsstrecke() {
-      const auswahl = visibleRoutes[Math.floor(Math.random() * visibleRoutes.length)];
+      const auswahl = angezeigteRouten[Math.floor(Math.random() * angezeigteRouten.length)];
       // Bei leerer Trefferliste (etwa während einer Suche ohne Treffer)
       // passiert schlicht nichts — besser als eine leere Meldung.
       if (!auswahl) return;
@@ -257,7 +262,7 @@ export default function ExploreView({
     }
     window.addEventListener(ZUFALLSSTRECKE_EVENT, handleZufallsstrecke);
     return () => window.removeEventListener(ZUFALLSSTRECKE_EVENT, handleZufallsstrecke);
-  }, [visibleRoutes]);
+  }, [angezeigteRouten]);
 
   useEffect(() => {
     if (!zufallsstrecke) return;
@@ -274,7 +279,7 @@ export default function ExploreView({
       >
         <RouteMap
           umlandSchleier
-          routes={visibleRoutes}
+          routes={angezeigteRouten}
           signaturen={kartenSignaturen}
           userLocation={userLocation}
           // Hover und Zufallsvorschlag speisen denselben
@@ -323,9 +328,8 @@ export default function ExploreView({
         onOccludedBottomChange={setVerdecktUnten}
       >
         <ExploreSidebar
-          routes={visibleRoutes}
+          routes={angezeigteRouten}
           bewertungen={bewertungen}
-          passZustaende={passZustaende}
           loadError={loadError}
           loggedIn={loggedIn}
           anzahlStrecken={routes.length}

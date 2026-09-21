@@ -3,7 +3,6 @@ import Header from "@/components/Header";
 import ExploreView from "@/components/ExploreView";
 import { getRoutes } from "@/lib/routes";
 import { getBewertungen } from "@/lib/ratings";
-import { getPassZustaendeJeStrecke } from "@/lib/paesse";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { BESCHREIBUNG, SLOGAN } from "@/lib/constants";
 
@@ -56,11 +55,11 @@ export default async function Home() {
   // Als einfaches Objekt statt als Map über die Server/Client-Grenze:
   // ExploreView ist eine Client Component, und ein Objekt ist in der
   // RSC-Nutzlast ohne Rückfrage serialisierbar.
-  // Beide Abfragen hängen am selben Streckenbestand, aber nicht aneinander.
-  const [bewertungenPaare, passZustaende] = await Promise.all([
-    getBewertungen(routes.map((r) => r.id)),
-    getPassZustaendeJeStrecke(routes.map((r) => r.id)),
-  ]);
+  //
+  // Kein Passzustand auf der Startseite: Auch gesperrt oder eingeschränkt
+  // wird in der Liste nicht als Abzeichen gezeigt — der Stand steht auf der
+  // Strecke und unter /paesse.
+  const bewertungenPaare = await getBewertungen(routes.map((r) => r.id));
   const bewertungen = Object.fromEntries(bewertungenPaare);
 
   return (
@@ -69,7 +68,6 @@ export default async function Home() {
       <ExploreView
         routes={routes}
         bewertungen={bewertungen}
-        passZustaende={Object.fromEntries(passZustaende)}
         loadError={error}
         loggedIn={!!user}
       />
