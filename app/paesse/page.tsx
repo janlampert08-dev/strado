@@ -11,6 +11,7 @@ import { buttonVariants } from "@/components/ui/Button";
 import { getFeedStand, getPaesseMitStatus, HOCHALPIN_AB_M } from "@/lib/paesse";
 import { anzeigeFuerStatus } from "@/lib/passStatus";
 import { getCurrentUser } from "@/lib/supabase/server";
+import { getOrigin } from "@/lib/utils/url";
 import { mitAnzahl } from "@/lib/format";
 
 // Die öffentliche Passseite: der Katalog, sein heutiger Zustand, und — für
@@ -28,10 +29,11 @@ export const metadata: Metadata = {
 };
 
 export default async function PaessePage() {
-  const [paesse, feedStand, user] = await Promise.all([
+  const [paesse, feedStand, user, origin] = await Promise.all([
     getPaesseMitStatus(),
     getFeedStand(),
     getCurrentUser(),
+    getOrigin(),
   ]);
 
   const eintraege: PassEintrag[] = paesse.map(({ pass, status, strecke, gefahren, folgtMan }) => ({
@@ -60,8 +62,47 @@ export default async function PaessePage() {
   const ohneStrecke = eintraege.filter((e) => !e.strecke).length;
   const gefolgt = eintraege.filter((e) => e.folgtMan);
 
+  // Strukturierte Daten für den Passkatalog — der zweite Evergreen-Inhalt
+  // neben den Streckenseiten (app/sitemap.ts). Nur der öffentliche Katalog:
+  // Name, Höhe und Kantone stehen so auch sichtbar in jeder Zeile
+  // (components/PaesseListe.tsx), die Sammlung ("gefahren", "folgtMan")
+  // gehört einem einzelnen Konto und hat hier nichts zu suchen. Der Status
+  // bleibt draussen, weil er sich alle fünf Minuten ändern kann und ein
+  // gecachter Stand als Tatsachenbehauptung im Index landete.
+  const strukturierteDaten = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    inLanguage: "de-CH",
+    name: "Pässe der Schweiz",
+    numberOfItems: eintraege.length,
+    itemListElement: eintraege.map((eintrag, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      item: {
+        "@type": "TouristAttraction",
+        name: eintrag.name,
+        description: `${eintrag.hoeheM.toLocaleString("de-CH")} m · ${eintrag.kantone.join(" / ")}${eintrag.strecke ? "" : " · noch keine Strecke"}`,
+        url: eintrag.strecke
+          ? `${origin}/strecken/${eintrag.strecke.id}`
+          : `${origin}/paesse#${eintrag.id}`,
+      },
+    })),
+  };
+
   return (
     <div className="flex min-h-dvh flex-col">
+      {/* Namen stammen aus dem Passkatalog (Moderationsinput). Wie auf der
+          Streckenseite escaped — ein "</script>" im Text beendete sonst den
+          Block (siehe app/strecken/[id]/page.tsx). */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(strukturierteDaten)
+            .replace(/</g, "\\u003c")
+            .replace(/>/g, "\\u003e")
+            .replace(/&/g, "\\u0026"),
+        }}
+      />
       <Header back="/" />
       <Seitenrahmen>
         <div>

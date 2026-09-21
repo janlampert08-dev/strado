@@ -10,6 +10,7 @@ import { SparklesIcon } from "@/components/NavIcons";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
 import { getOeffentlichesAngebot } from "@/lib/actions/billing";
+import { getOrigin } from "@/lib/utils/url";
 import { betragText, planTitel, planZeitraum } from "@/lib/premiumAngebot";
 import { PREMIUM_VORTEILE } from "@/lib/premiumVorteile";
 import type { AboPlan } from "@/lib/premiumLimits";
@@ -30,16 +31,41 @@ export const metadata: Metadata = {
 const REIHENFOLGE: AboPlan[] = ["jahr", "saisonpass", "monat"];
 
 export default async function PremiumTeaserPage() {
-  const [user, status, plaene] = await Promise.all([
+  const [user, status, plaene, origin] = await Promise.all([
     getCurrentUser(),
     getPremiumStatus(),
     getOeffentlichesAngebot().catch(() => []),
+    getOrigin(),
   ]);
 
   const hatPremium = status.aktiv && status.quelle !== "saisonpass";
   const sortiert = REIHENFOLGE.map((plan) => plaene.find((p) => p.plan === plan)).filter(
     (p): p is NonNullable<typeof p> => Boolean(p),
   );
+
+  // Strukturierte Daten für das öffentliche Angebot. Die Preise kommen aus
+  // derselben Stripe-Abfrage wie die sichtbare Preisliste oben (keine zweite
+  // Liste — Preisbekanntgabeverordnung, siehe getOeffentlichesAngebot), und
+  // die Beschreibung ist der sichtbare Einleitungssatz wörtlich. Fällt die
+  // Preisabfrage aus, entfällt der Block mit ihr, statt alte Zahlen zu
+  // behaupten.
+  const strukturierteDaten = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    inLanguage: "de-CH",
+    name: "Strado Premium",
+    description:
+      "Deine Strecken ins Navi, das Wetterfenster für die Woche, jeder Pass, den du hattest, und ein Wartungsheft, das mitzählt.",
+    brand: { "@type": "Brand", name: "Strado" },
+    offers: sortiert.map((p) => ({
+      "@type": "Offer",
+      name: `Strado Premium ${planTitel(p.plan)}`,
+      price: p.betragRappen / 100,
+      priceCurrency: p.waehrung.toUpperCase(),
+      url: `${origin}/profil/premium`,
+      availability: "https://schema.org/InStock",
+    })),
+  };
 
   const ctaHref = hatPremium
     ? "/profil"
@@ -50,6 +76,17 @@ export default async function PremiumTeaserPage() {
 
   return (
     <div className="flex min-h-dvh flex-col">
+      {sortiert.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(strukturierteDaten)
+              .replace(/</g, "\\u003c")
+              .replace(/>/g, "\\u003e")
+              .replace(/&/g, "\\u0026"),
+          }}
+        />
+      )}
       <Header back="/" />
       <Seitenrahmen breite="schmal">
         <div className="flex flex-col gap-3">

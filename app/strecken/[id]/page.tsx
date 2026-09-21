@@ -39,6 +39,7 @@ import { getRuhigeZeiten } from "@/lib/ruhigeZeitenAbfrage";
 import { wetterMassstab } from "@/lib/wetterfenster";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { KATEGORIEN } from "@/lib/constants";
+import { siteUrl } from "@/lib/siteUrl";
 import { averageTempolimit, estimateRouteDurationMinutes, formatMinutes } from "@/lib/geo";
 import type { Vehicle } from "@/types/database";
 import { ChevronDown, Pencil } from "lucide-react";
@@ -232,6 +233,11 @@ export default async function StreckeDetailPage({
     ...(route.laenge_km
       ? { distance: `${route.laenge_km.toFixed(1)} km` }
       : {}),
+    // Dasselbe Bild, das geteilte Links als Vorschau tragen
+    // (opengraph-image.tsx nebenan) — absolut, weil strukturierte Daten
+    // keine Basis-URL erben. staging und Previews zeigen damit auf sich
+    // selbst, wie Canonical und OG-Bild auch.
+    image: `${siteUrl()}/strecken/${route.id}/opengraph-image`,
     ...(bewertung
       ? {
           aggregateRating: {
@@ -246,8 +252,25 @@ export default async function StreckeDetailPage({
     itinerary: {
       "@type": "ItemList",
       itemListElement: [
-        { "@type": "Place", name: route.start_ort },
-        { "@type": "Place", name: route.ziel_ort },
+        {
+          "@type": "Place",
+          name: route.start_ort,
+          // GeoJSON zählt [lng, lat] — GeoCoordinates will es umgekehrt.
+          geo: {
+            "@type": "GeoCoordinates",
+            latitude: (route.start_geojson.coordinates as [number, number])[1],
+            longitude: (route.start_geojson.coordinates as [number, number])[0],
+          },
+        },
+        {
+          "@type": "Place",
+          name: route.ziel_ort,
+          geo: {
+            "@type": "GeoCoordinates",
+            latitude: (route.ziel_geojson.coordinates as [number, number])[1],
+            longitude: (route.ziel_geojson.coordinates as [number, number])[0],
+          },
+        },
       ],
     },
   };
