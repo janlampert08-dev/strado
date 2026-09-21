@@ -270,6 +270,13 @@ export default function LiveTrackingForm({
         <div className="flex-1 min-h-[30dvh]">
           <RouteMap
             routes={routes}
+            // Derselbe Schweiz-Scheinwerfer wie auf Home und bei der freien
+            // Fahrt: das Umland liegt unter einem Schleier, damit das Land
+            // heraussticht. Signaturfarben gibt es hier bewusst keine — die
+            // Kontext-Strecken sind absichtlich schlank geladen (KartenStrecke,
+            // ohne Kennzahlen), und die gefahrene Strecke ist über
+            // primaryRouteId ohnehin hervorgehoben.
+            umlandSchleier
             // Die Karte liegt hier im Vollbild über der Streckenseite. Ohne
             // das würde ein versehentlicher Tap auf die Streckenlinie zurück
             // auf /strecken/<id> navigieren, diese Komponente aushängen und
