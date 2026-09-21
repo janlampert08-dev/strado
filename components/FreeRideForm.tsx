@@ -16,6 +16,7 @@ import {
 } from "@/lib/trackingStorage";
 import RideSummaryForm, { FAZIT_ABSCHNITT } from "@/components/RideSummaryForm";
 import { formatDuration } from "@/lib/format";
+import { computeSignatures } from "@/lib/signature";
 import { movingSeconds, publicationBlockReason } from "@/lib/track";
 import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
 import type { ExploreRoute, Vehicle } from "@/types/database";
@@ -84,6 +85,14 @@ export default function FreeRideForm({
     autoStart: false,
   });
   const { phase, result, clearSnapshot, discard } = recorder;
+
+  // Dieselben Signaturfarben wie auf der Startseite (ExploreView.tsx), damit
+  // die Karte gleich aussieht: gleiche Töne in Liste und Linie, aus denselben
+  // Tokens. Eigener useMemo für eine stabile Prop-Referenz an RouteMap.
+  const kartenSignaturen = useMemo(() => {
+    const signatures = computeSignatures(routes);
+    return new Map([...signatures].map(([id, sig]) => [id, sig.key]));
+  }, [routes]);
 
   // Rein informativer Live-Hinweis während der Fahrt — siehe
   // components/useLiveLapHint.ts. Massgeblich für die tatsächlich erkannten
@@ -415,7 +424,13 @@ export default function FreeRideForm({
       // Fehler und Knöpfe stapeln sich auf kurzen Schirmen über die Höhe.
       <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-background">
         <div className="flex-1 min-h-[30dvh]">
-          <RouteMap routes={routes} fitRoutes={false} routesClickable={false} />
+          <RouteMap
+            routes={routes}
+            signaturen={kartenSignaturen}
+            umlandSchleier
+            fitRoutes={false}
+            routesClickable={false}
+          />
         </div>
         <div className="md:mx-auto md:w-full md:max-w-lg md:rounded-t-lg md:border-x flex shrink-0 flex-col gap-4 border-t border-border bg-background px-5 pt-5 pb-[calc(1.25rem+var(--safe-bottom))]">
           <div className="flex flex-col gap-1">
@@ -478,6 +493,8 @@ export default function FreeRideForm({
       <div className="flex-1 min-h-[30dvh]">
         <RouteMap
           routes={routes}
+          signaturen={kartenSignaturen}
+          umlandSchleier
           fitRoutes={false}
           routesClickable={false}
           trail={recorder.liveTrail}
