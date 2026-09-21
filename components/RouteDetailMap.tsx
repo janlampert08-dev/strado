@@ -55,9 +55,8 @@ export default function RouteDetailMap({
   // Verkehrsabfrage der Hintergrundkarte (siehe lib/traffic.ts) — speist sowohl
   // den Verkehrs-Indikator (worstCongestion) als auch die eingefärbten
   // Kartenabschnitte (sliceRouteByTraffic), statt wie zuvor zwei unabhängige
-  // Mechanismen zu pflegen. Die Verkehrs-Sektion im Reiter Details
-  // (VerkehrSektion.tsx, nur Strecken ohne Pass) fragt beim Öffnen des
-  // Reiters selbst ab — AbschnittTabs montiert nur das aktive Panel. Kein manueller Reset beim Streckenwechsel nötig:
+  // Mechanismen zu pflegen. Das FahrCheck-Widget fragt für seine
+  // Verkehrszeile selbst ab. Kein manueller Reset beim Streckenwechsel nötig:
   // die Seite rendert diese Komponente mit key={route.id} (siehe
   // app/strecken/[id]/page.tsx), ein Streckenwechsel montiert sie also neu.
   const [levels, setLevels] = useState<(CongestionLevel | null)[] | null>(null);
