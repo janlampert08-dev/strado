@@ -17,6 +17,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // und beantwortet eine Frage, die saisonal gestellt wird ("welche Pässe
     // sind offen?"). Täglich, weil der Status täglich anders sein kann.
     { url: `${origin}/paesse`, changeFrequency: "daily", priority: 0.7 },
+    { url: `${origin}/premium`, changeFrequency: "weekly", priority: 0.5 },
     ...routes.map((route) => ({
       url: `${origin}/strecken/${route.id}`,
       lastModified: route.created_at,
