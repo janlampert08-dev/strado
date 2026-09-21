@@ -172,6 +172,15 @@ function implausibilityReason(
     return "Die Aufzeichnung enthält eine zu grosse Lücke zwischen zwei Punkten.";
   }
 
+  // Bewegtzeit (Moving Time) darf nicht grösser sein als die Gesamtdauer —
+  // der Constraint fahrt_bewegtzeit_plausibel (0074) verlangt das auf
+  // Datenbankebene. Hier prüfen wir es vorab, damit der Nutzer eine
+  // verständliche Fehlermeldung bekommt statt eines rohen DB-Fehlers.
+  const bewegteSekunden = movingSeconds(trail);
+  if (bewegteSekunden > dauerSekunden) {
+    return "Die errechnete Bewegtzeit ist länger als die Gesamtdauer — bitte Aufzeichnung prüfen.";
+  }
+
   return null;
 }
 
