@@ -102,7 +102,9 @@ export default function RouteDetailMap({
 
   return (
     <div className="relative h-full w-full">
-      <div className="h-full w-full" role="img" aria-label={`Kartenansicht der Strecke ${route.name}`}>
+      {/* Kein eigenes role="img": die Beschreibung trägt bereits die
+          übergeordnete Seite, und darin sitzt der Navigationsschalter. */}
+      <div className="h-full w-full">
         <RouteMap
           routes={routesForMap}
           showSpeedLimits={showSpeedLimits}

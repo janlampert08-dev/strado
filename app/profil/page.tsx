@@ -42,6 +42,12 @@ import { getUnseenKudosCount } from "@/lib/kudos";
 import { markKudosSeen } from "@/lib/actions/kudos";
 import { getFollowCounts, getFollowerProfiles, getFollowingProfiles } from "@/lib/follows";
 import { formatDuration, formatKm, datumCH } from "@/lib/format";
+import {
+  FAHRTEN_MILESTONES,
+  HOEHENMETER_MILESTONES,
+  PASS_MILESTONES,
+  highestMilestone,
+} from "@/lib/achievements";
 import { freieFahrtTitel } from "@/lib/completions";
 import { publicationBlockReason } from "@/lib/track";
 import { summiereHoehenmeter } from "@/lib/hoehenmeter";
@@ -300,6 +306,16 @@ export default async function ProfilPage() {
   // Strecke — siehe lib/hoehenmeter.ts.
   const hoehenmeter = summiereHoehenmeter(trackedRides ?? []);
 
+  // Anzahl erreichter Auszeichnungen für die Abschnittsmarke — dieselben
+  // reinen Funktionen wie in AchievementBadges unten, keine neue Quelle und
+  // keine neue Abfrage. Auf dem Telefon bleibt der Abschnitt zugeklappt,
+  // die Zahl sagt trotzdem, ob sich das Aufklappen lohnt.
+  const auszeichnungenAnzahl = [
+    highestMilestone(passCount, PASS_MILESTONES),
+    highestMilestone(hoehenmeter, HOEHENMETER_MILESTONES),
+    highestMilestone(trackedRides?.length ?? 0, FAHRTEN_MILESTONES),
+  ].filter((m) => m !== null).length;
+
   const getrackteDistanzGesamt = (trackedRides ?? []).reduce(
     (sum, r) => sum + r.distanz_km,
     0,
@@ -460,7 +476,7 @@ export default async function ProfilPage() {
                 Client-Anteil nur dafür wäre zu viel. Siehe
                 app/globals.css, Regel `details.ab-sm-offen`. */}
             <details className="group ab-sm-offen py-4">
-              <SectionSummary icon={Award} label="Auszeichnungen" />
+              <SectionSummary icon={Award} label="Auszeichnungen" count={auszeichnungenAnzahl} />
               <div className="mt-4">
                 <AchievementBadges
                   passCount={passCount}

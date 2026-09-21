@@ -43,11 +43,11 @@ export default function RouteDetailLayout({
       >
         Zur Streckeninfo
       </a>
-      <div
-        className="absolute inset-0 md:static md:order-2 md:h-auto md:flex-1"
-        role="img"
-        aria-label="Kartenansicht der Strecke"
-      >
+      {/* Kein role="img" um die interaktive Karte (siehe ExploreView):
+          der Navigationsschalter darin bleibt für Tastatur und
+          Hilfstechnik erreichbar, die Beschreibung steht daneben. */}
+      <div className="absolute inset-0 md:static md:order-2 md:h-auto md:flex-1">
+        <p className="sr-only">Kartenansicht der Strecke.</p>
         <RouteDetailMap route={route} bottomInsetPx={verdecktUnten} key={route.id} />
       </div>
 
