@@ -422,7 +422,7 @@ export default async function StreckeDetailPage({
             hingehört. */}
         {/* Reiter statt Stapel: Fahren (die Entscheidung), Details
             (Vertiefung), Wertung (Community). */}
-        <AbschnittTabs tabs={[{ titel: "Fahren" }, { titel: "Details" }, { titel: "Wertung" }]}>
+        <AbschnittTabs tabs={[{ titel: "Fahren" }, { titel: "Details" }, { titel: "Wertung", anzahl: ratings.length }]}>
           <div className="flex flex-col gap-5">
         {/* Sprungziel für "Zum Start" in der leeren Bestenliste. scroll-mt:
             sonst endet der Sprung mit dem Knopf an der oberen Kante. */}

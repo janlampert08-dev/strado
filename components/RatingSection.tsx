@@ -103,6 +103,7 @@ export default function RatingSection({
             name="kommentar"
             defaultValue={ownRating?.kommentar ?? ""}
             placeholder="Kommentar (optional)"
+            aria-label="Kommentar zur Strecke"
             rows={2}
             maxLength={1000}
           />
@@ -114,6 +115,13 @@ export default function RatingSection({
           <Button type="submit" variant="secondary" size="sm" disabled={pending} className="self-start">
             {ownRating ? "Bewertung aktualisieren" : "Bewerten"}
           </Button>
+          {/* Erfolgsmeldung statt stillem Button-Kipp: nach dem Speichern
+              wechselte nur die Beschriftung oben, und wer bloss Sterne
+              vergab, sah gar keine Veränderung. Die Zeile steht immer im DOM
+              (min-h-5), damit nichts springt — Muster aus VisibilitySettings. */}
+          <p role="status" className="min-h-5 text-sm text-muted">
+            {pending ? "Wird gespeichert…" : !state.error && state.gespeichert ? "Gespeichert." : ""}
+          </p>
         </form>
       )}
 
