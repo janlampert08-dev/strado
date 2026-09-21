@@ -29,10 +29,14 @@ export default function PassFolgenButton({
   // Ohne Konto kein stilles Nichts: wer über einen geteilten Link hier
   // landet, soll sehen, dass man Änderungen verfolgen kann — und was dafür
   // fehlt. Der Status selbst bleibt frei sichtbar, nur die Meldung braucht
-  // das Konto.
+  // das Konto. Nach der Anmeldung geht es zurück zum Pass, nicht auf die
+  // Startseite.
   if (!angemeldet) {
     return (
-      <Link href="/anmelden" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+      <Link
+        href={`/anmelden?next=${encodeURIComponent(`/paesse#${passId}`)}`}
+        className={buttonVariants({ variant: "secondary", size: "sm" })}
+      >
         Anmelden, um zu folgen
       </Link>
     );

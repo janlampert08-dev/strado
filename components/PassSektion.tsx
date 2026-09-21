@@ -30,7 +30,7 @@ export default function PassSektion({
   if (kontexte.length === 0) return null;
 
   return (
-    <section className="flex flex-col gap-3">
+    <section id="pass" className="flex scroll-mt-6 flex-col gap-3">
       <SectionHeading icon={MapPinIcon}>
         {kontexte.length === 1 ? "Pass" : "Pässe auf dieser Strecke"}
       </SectionHeading>

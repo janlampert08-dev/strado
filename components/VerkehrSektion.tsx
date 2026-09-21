@@ -22,7 +22,7 @@ import {
 } from "@/lib/verkehrslage";
 import type { RouteGeoJSON } from "@/types/database";
 
-// Der Verkehrsblock im Reiter Details — nur für Strecken ohne Pass. Mit
+// Der Verkehrsblock im Reiter Fahren — nur für Strecken ohne Pass. Mit
 // Pass trägt die Pass-Sektion die Entscheidung ("kann ich los?"); ohne
 // Pass gab es bisher nur die Wochenprognose weiter unten und den Live-Chip
 // auf der Hintergrundkarte. Diese Sektion führt beides in einer
@@ -45,9 +45,9 @@ export default function VerkehrSektion({
   const coordinates = route.geometry_geojson.coordinates as [number, number][];
   const liveMoeglich = !!MAPBOX_TOKEN && coordinates.length >= 2;
 
-  // Dieselbe Live-Abfrage wie die Hintergrundkarte (lib/traffic.ts) — erst
-  // beim Öffnen des Reiters, nicht mit der Seite (AbschnittTabs montiert
-  // nur das aktive Panel).
+  // Dieselbe Live-Abfrage wie die Hintergrundkarte (lib/traffic.ts) — mit
+  // der Seite, nicht erst beim Öffnen eines Reiters: die Sektion steht im
+  // Reiter Fahren und trägt dort die Jetzt-Entscheidung.
   const [levels, setLevels] = useState<(CongestionLevel | null)[] | null>(null);
 
   useEffect(() => {
