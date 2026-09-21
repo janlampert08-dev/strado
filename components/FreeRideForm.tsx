@@ -94,6 +94,27 @@ export default function FreeRideForm({
     return new Map([...signatures].map(([id, sig]) => [id, sig.key]));
   }, [routes]);
 
+  // Standort schon auf dem Startbildschirm (/fahrten/neu) holen, nicht erst
+  // mit dem Start: Die Karte zentriert einmalig darauf (centerOnFirstLocation
+  // unten) und zeigt den Marker — derselbe Mechanismus wie während der Fahrt,
+  // nur dass dort der Recorder übernimmt. Einmalig per getCurrentPosition wie
+  // in ExploreView; ein Fehlschlag bleibt hier stumm, der Startversuch meldet
+  // ihn ohnehin über recorder.locationError.
+  const [standort, setStandort] = useState<[number, number] | null>(null);
+  const [standortGenauigkeitM, setStandortGenauigkeitM] = useState<number | null>(null);
+  useEffect(() => {
+    if (phase !== "idle" || standort !== null) return;
+    if (!("geolocation" in navigator)) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setStandort([pos.coords.longitude, pos.coords.latitude]);
+        setStandortGenauigkeitM(pos.coords.accuracy);
+      },
+      () => {},
+      { enableHighAccuracy: true, timeout: 10_000 },
+    );
+  }, [phase, standort]);
+
   // Rein informativer Live-Hinweis während der Fahrt — siehe
   // components/useLiveLapHint.ts. Massgeblich für die tatsächlich erkannten
   // Streckenabschnitte bleibt ausschliesslich die serverseitige Erkennung
@@ -430,6 +451,9 @@ export default function FreeRideForm({
             umlandSchleier
             fitRoutes={false}
             routesClickable={false}
+            userLocation={standort}
+            userAccuracyM={standortGenauigkeitM}
+            centerOnFirstLocation
           />
         </div>
         <div className="md:mx-auto md:w-full md:max-w-lg md:rounded-t-lg md:border-x flex shrink-0 flex-col gap-4 border-t border-border bg-background px-5 pt-5 pb-[calc(1.25rem+var(--safe-bottom))]">

@@ -580,9 +580,11 @@ export default function RouteMap({
   /** Zoom- und Kompass-Knöpfe weglassen (Vorschaukarten, z. B. im Fazit). */
   ohneBedienelemente?: boolean;
   /** Das Ausland unter einen Schleier legen, damit die Schweiz heraussticht.
-   *  Nur für die Entdecken-Karte: beim Aufzeichnen und auf der eigenen Fahrt
-   *  sind die Strassen jenseits der Grenze (Splügen, Vorarlberg, FL) die,
-   *  auf denen man gerade fährt, und dürfen nicht verblassen. */
+   *  Entdecken-Karte und freie Fahrt (Entscheid des Inhabers 2026-09-21):
+   *  beide sollen gleich aussehen. Auf der eigenen Fahrt nach Strecken
+   *  (LiveTrackingForm) bleibt er aus — dort sind die Strassen jenseits der
+   *  Grenze (Splügen, Vorarlberg, FL) die, auf denen man gerade fährt, und
+   *  dürfen nicht verblassen. */
   umlandSchleier?: boolean;
   // Pixel am unteren Rand der Karte, die von etwas anderem verdeckt werden —
   // auf Mobile das Bottom-Sheet plus die BottomNav darunter (gemeldet von
