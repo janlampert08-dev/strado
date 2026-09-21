@@ -23,6 +23,21 @@ export function worstCongestion(levels: CongestionLevel[]): CongestionLevel | nu
   return levels.reduce((worst, level) => (SEVERITY[level] > SEVERITY[worst] ? level : worst));
 }
 
+// Etwa ein Abfragepunkt pro 800m — genug, um Stauabschnitte sichtbar entlang
+// der Strecke einzufärben, ohne bei langen Alpenpässen Hunderte parallele
+// Tilequery-Aufrufe auszulösen. Eine Stelle (beide Detailkarten fragen
+// gleich): Hintergrundkarte und Verkehrs-Sektion teilen sich die Zahl, damit
+// ein Punkt hier exakt seiner Einfärbung dort entspricht.
+export const VERKEHR_MIN_SAMPLES = 6;
+export const VERKEHR_MAX_SAMPLES = 24;
+const VERKEHR_SAMPLES_PRO_KM = 1.2;
+
+export function verkehrSamplesFuerLaenge(laengeKm: number): number {
+  return Math.min(
+    VERKEHR_MAX_SAMPLES,
+    Math.max(VERKEHR_MIN_SAMPLES, Math.round(laengeKm * VERKEHR_SAMPLES_PRO_KM)),
+  );
+}
 // Gleichmässig verteilte Stichproben-Indizes statt jeden einzelnen
 // Koordinatenpunkt der (oft sehr dichten) Geometrie abzufragen — hält sowohl
 // die Anzahl API-Aufrufe als auch die Anzahl gezeichneter Farbabschnitte klein.

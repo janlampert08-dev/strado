@@ -2,9 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
+import Card from "@/components/ui/Card";
+import SectionHeading from "@/components/ui/SectionHeading";
+import { BergIcon } from "@/components/NavIcons";
+import { PassStatusMarke } from "@/components/PassStatusZeile";
 import PaesseListe, { type PassEintrag } from "@/components/PaesseListe";
 import { buttonVariants } from "@/components/ui/Button";
 import { getFeedStand, getPaesseMitStatus, HOCHALPIN_AB_M } from "@/lib/paesse";
+import { anzeigeFuerStatus } from "@/lib/passStatus";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { mitAnzahl } from "@/lib/format";
 
@@ -29,7 +34,7 @@ export default async function PaessePage() {
     getCurrentUser(),
   ]);
 
-  const eintraege: PassEintrag[] = paesse.map(({ pass, status, strecke, gefahren }) => ({
+  const eintraege: PassEintrag[] = paesse.map(({ pass, status, strecke, gefahren, folgtMan }) => ({
     id: pass.id,
     name: pass.name,
     hoeheM: pass.hoeheM,
@@ -46,12 +51,14 @@ export default async function PaessePage() {
       : null,
     strecke,
     gefahren,
+    folgtMan,
   }));
 
   const befahren = eintraege.filter((e) => e.gefahren).length;
   const hochalpin = eintraege.filter((e) => e.hochalpin);
   const hochalpinBefahren = hochalpin.filter((e) => e.gefahren).length;
   const ohneStrecke = eintraege.filter((e) => !e.strecke).length;
+  const gefolgt = eintraege.filter((e) => e.folgtMan);
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -91,6 +98,38 @@ export default async function PaessePage() {
             </Link>
             , dann siehst du hier, welche Pässe du schon gefahren bist.
           </p>
+        )}
+
+        {user && gefolgt.length > 0 && (
+          <section className="flex flex-col gap-2">
+            <SectionHeading icon={BergIcon}>Meine Pässe</SectionHeading>
+            <p className="text-sm text-muted">
+              Du folgst {gefolgt.length} von {eintraege.length} Pässen.
+            </p>
+            <Card as="ul" className="divide-y divide-border">
+              {gefolgt.map((eintrag) => {
+                const anzeige = anzeigeFuerStatus(eintrag.status, feedStand);
+                const ziel = eintrag.strecke
+                  ? `/strecken/${eintrag.strecke.id}`
+                  : `/paesse#${eintrag.id}`;
+                return (
+                  <li key={eintrag.id} className="flex items-center gap-3 px-4 py-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">
+                        <Link href={ziel} className="hover:text-accent">
+                          {eintrag.name}
+                        </Link>
+                      </p>
+                      <p className="truncate text-xs text-muted">
+                        {eintrag.hoeheM.toLocaleString("de-CH")} m · {eintrag.kantone.join(" / ")}
+                      </p>
+                    </div>
+                    <PassStatusMarke anzeige={anzeige} className="shrink-0" />
+                  </li>
+                );
+              })}
+            </Card>
+          </section>
         )}
 
         <PaesseListe eintraege={eintraege} feedStand={feedStand} angemeldet={Boolean(user)} />

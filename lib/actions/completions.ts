@@ -492,6 +492,10 @@ export async function logTrackedCompletion(
       // wie freie Fahrten (statt der Scheitelhöhe der Strecke) — deshalb
       // hier ab jetzt ebenfalls berechnet, nicht mehr nur bei logFreeRide.
       hoehenmeter_aufstieg: elevation.hoehenmeter_aufstieg,
+      // Herkunft des Fahrtenprofils (0120) — das Diagramm zeigt bei einer
+      // Streckenfahrt zwar das Routenprofil, die Quelle gehoert trotzdem an
+      // die Fahrt, damit spaetere Anzeigen nicht raten muessen.
+      hoehen_quelle: elevation.quelle,
       // Wo man wie schnell gefahren ist (0115) — aus dem rohen Trail, wie
       // alle Kennzahlen oben. Reine Anzeige für den Besitzer, keine Wertung.
       tempoprofil: buildTempoprofil(trail),
@@ -599,9 +603,16 @@ function belegteKlasse(
 // Streckenfahrten wird nur hoehenmeter_aufstieg verwendet (Bestenliste,
 // siehe 0054_freie_fahrten_in_bestenlisten.sql) — das Höhenprofil-Diagramm
 // zeigt dort weiterhin routes.hoehenprofil (app/fahrten/[id]/page.tsx).
+// quelle haelt fest, ob das Profil vermessen (swisstopo) oder ersatzweise
+// ausgefallen ist (geschaetzt) — route_completions.hoehen_quelle (0120),
+// damit die Anzeige ehrlich bleibt statt swisstopo zu behaupten.
 async function deriveElevation(
   coordinates: [number, number][],
-): Promise<{ hoehenmeter_aufstieg: number | null; hoehenprofil: { km: number; m: number }[] | null }> {
+): Promise<{
+  hoehenmeter_aufstieg: number | null;
+  hoehenprofil: { km: number; m: number }[] | null;
+  quelle: "swisstopo" | "geschaetzt";
+}> {
   try {
     // Stützpunktdichte an die Länge gekoppelt statt fest bei 300: sonst
     // untermeldet der summierte Anstieg lange Fahrten drastisch, und die
@@ -610,14 +621,15 @@ async function deriveElevation(
     // lib/elevation.ts.
     const profile = await fetchElevationProfile(coordinates, stuetzpunkteFuer(coordinates));
     if (!profile || profile.length < 2) {
-      return { hoehenmeter_aufstieg: null, hoehenprofil: null };
+      return { hoehenmeter_aufstieg: null, hoehenprofil: null, quelle: "geschaetzt" };
     }
     return {
       hoehenmeter_aufstieg: computeAscentM(profile),
       hoehenprofil: buildHoehenprofil(profile),
+      quelle: "swisstopo",
     };
   } catch {
-    return { hoehenmeter_aufstieg: null, hoehenprofil: null };
+    return { hoehenmeter_aufstieg: null, hoehenprofil: null, quelle: "geschaetzt" };
   }
 }
 
@@ -944,6 +956,9 @@ export async function logFreeRide(
     region: ort?.region ?? null,
     hoehenmeter_aufstieg: elevation.hoehenmeter_aufstieg,
     hoehenprofil: elevation.hoehenprofil,
+    // Herkunft des Profils (0120) — save_free_ride_with_segments schreibt sie
+    // aus diesem Schluessel in die Elternfahrt, Segmente tragen keine.
+    hoehen_quelle: elevation.quelle,
     // Wo man wie schnell gefahren ist (0115) — aus dem rohen Trail, wie alle
     // Kennzahlen dieser Fahrt. Reine Anzeige für den Besitzer, keine Wertung.
     tempoprofil: buildTempoprofil(trail),

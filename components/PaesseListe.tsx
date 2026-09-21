@@ -27,9 +27,10 @@ export interface PassEintrag {
   } | null;
   strecke: { id: string; name: string } | null;
   gefahren: { erstmals: string; fahrten: number } | null;
+  folgtMan: boolean;
 }
 
-type Auswahl = "alle" | "hochalpin" | "offen" | "fehlen";
+type Auswahl = "alle" | "hochalpin" | "offen" | "fehlen" | "gefolgt";
 
 export default function PaesseListe({
   eintraege,
@@ -59,6 +60,7 @@ export default function PaesseListe({
       if (auswahl === "hochalpin") return eintrag.hochalpin;
       if (auswahl === "offen") return anzeige.zustand === "offen";
       if (auswahl === "fehlen") return eintrag.gefahren === null;
+      if (auswahl === "gefolgt") return eintrag.folgtMan;
       return true;
     });
   }, [eintraege, feedStand, auswahl, kanton]);
@@ -68,6 +70,7 @@ export default function PaesseListe({
     { wert: "hochalpin", label: "Hochalpin" },
     { wert: "offen", label: "Offen" },
     ...(angemeldet ? [{ wert: "fehlen" as const, label: "Fehlt mir" }] : []),
+    ...(angemeldet ? [{ wert: "gefolgt" as const, label: "Gefolgt" }] : []),
   ];
 
   return (

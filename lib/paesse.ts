@@ -96,6 +96,8 @@ export interface PassMitStatus {
   strecke: { id: string; name: string } | null;
   /** Aus den eigenen Fahrten: wann zum ersten Mal, wie oft. */
   gefahren: { erstmals: string; fahrten: number } | null;
+  /** Ob das Konto diesem Pass folgt (pass_folgen). */
+  folgtMan: boolean;
 }
 
 /**
@@ -107,13 +109,16 @@ export async function getPaesseMitStatus(): Promise<PassMitStatus[]> {
   const supabase = await createClient();
   const user = await getCurrentUser();
 
-  const [katalog, status, verknuepfungen, sammlung] = await Promise.all([
+  const [katalog, status, verknuepfungen, sammlung, folgen] = await Promise.all([
     supabase.from("paesse").select(PASS_SPALTEN).order("hoehe_m", { ascending: false }),
     supabase.from("pass_status").select("*"),
     supabase.from("strecken_paesse").select("route_id, pass_id"),
     user
       ? supabase.rpc("meine_paesse")
       : Promise.resolve({ data: [] as { pass_id: string; erstmals: string; fahrten: number }[] }),
+    user
+      ? supabase.from("pass_folgen").select("pass_id")
+      : Promise.resolve({ data: [] as { pass_id: string }[] }),
   ]);
 
   // Ein Query-Fehler ist etwas anderes als "keine Zeilen" (lib/queryError.ts).
@@ -123,6 +128,7 @@ export async function getPaesseMitStatus(): Promise<PassMitStatus[]> {
   throwOnQueryError(status.error, "Der Passstatus");
   throwOnQueryError(verknuepfungen.error, "Die Strecken zu den Passhöhen");
   if ("error" in sammlung) throwOnQueryError(sammlung.error, "Die eigene Passsammlung");
+  if ("error" in folgen) throwOnQueryError(folgen.error, "Die gefolgten Pässe");
 
   const paesse = ((katalog.data as PassRoh[] | null) ?? []).map(alsPass);
   const statusJePass = new Map(
@@ -132,6 +138,9 @@ export async function getPaesseMitStatus(): Promise<PassMitStatus[]> {
     ((sammlung.data as { pass_id: string; erstmals: string; fahrten: number }[] | null) ?? []).map(
       (s) => [s.pass_id, { erstmals: s.erstmals, fahrten: s.fahrten }],
     ),
+  );
+  const gefolgt = new Set(
+    (((folgen as { data: { pass_id: string }[] | null }).data) ?? []).map((f) => f.pass_id),
   );
 
   // strecken_paesse zeigt dem Aufrufer auch eigene private und noch nicht
@@ -164,6 +173,7 @@ export async function getPaesseMitStatus(): Promise<PassMitStatus[]> {
     status: statusJePass.get(pass.id) ?? null,
     strecke: streckeJePass.get(pass.id) ?? null,
     gefahren: sammlungJePass.get(pass.id) ?? null,
+    folgtMan: gefolgt.has(pass.id),
   }));
 }
 

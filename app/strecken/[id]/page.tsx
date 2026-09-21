@@ -30,6 +30,7 @@ import { getPremiumStatus, maxFotosProFahrt } from "@/lib/premium";
 import { getRouteLeaderboard, getRouteLeaderboardKlassen } from "@/lib/leaderboard";
 import { fetchCurrentWeather } from "@/lib/weather";
 import PassSektion from "@/components/PassSektion";
+import VerkehrSektion from "@/components/VerkehrSektion";
 import { PassStatusMarke } from "@/components/PassStatusZeile";
 import { anzeigeFuerStatus } from "@/lib/passStatus";
 import RuhigeZeiten from "@/components/RuhigeZeiten";
@@ -517,6 +518,17 @@ export default async function StreckeDetailPage({
               welche Pässe sie führt. */}
           <div className="flex flex-col gap-5">
             <PassSektion kontexte={passKontexte} angemeldet={!!user} feedStand={feedStand} />
+            {/* Ohne Pass trägt nichts die Jetzt-Entscheidung: die
+                Pass-Sektion fällt weg (null), und die Wochenprognose steht
+                erst weiter unten. Die Verkehrs-Sektion schliesst die Lücke
+                mit Live plus Vorhersage für diese Stunde. */}
+            {passKontexte.length === 0 && (
+              <VerkehrSektion
+                route={route}
+                punkte={ruhigeZeiten.punkte}
+                startzeiten={ruhigeZeiten.startzeiten}
+              />
+            )}
             {route.hoehenprofil && route.hoehenprofil.length > 1 && (
               <ElevationProfile punkte={route.hoehenprofil} />
             )}
@@ -547,9 +559,10 @@ export default async function StreckeDetailPage({
                 gezeigt. Suspense, weil Open-Meteo bis zu einer Sekunde braucht
                 und der Rest der Seite darauf nicht warten soll.
 
-                Ohne Abo ein einziger Hinweis — und nur angemeldet: wer über
-                einen geteilten Link ohne Konto hier landet, entscheidet gerade
-                über die Strecke, nicht über ein Abo. */}
+                Ohne Abo ein einziger Hinweis — auch ohne Konto, aber dann als
+                Anmeldeweg: wer über einen geteilten Link hier landet, soll
+                sehen, dass es mehr gibt, ohne dass der Verkauf die
+                Streckenentscheidung zudeckt. */}
             {premiumStatus.aktiv ? (
               <Suspense fallback={<WetterfensterStreifenPlatzhalter />}>
                 <WetterfensterStreifen
@@ -557,12 +570,14 @@ export default async function StreckeDetailPage({
                   fahrzeug={wetterMassstab(vehicles.map((v) => v.typ))}
                 />
               </Suspense>
+            ) : user ? (
+              <PremiumHinweis>
+                Mit Premium siehst du, an welchen Tagen diese Woche die Strecke trocken ist
+              </PremiumHinweis>
             ) : (
-              user && (
-                <PremiumHinweis>
-                  Mit Premium siehst du, an welchen Tagen diese Woche die Strecke trocken ist
-                </PremiumHinweis>
-              )
+              <PremiumHinweis>
+                Mit Premium siehst du hier die trockenen Tage der Woche — melde dich an, um mehr zu sehen
+              </PremiumHinweis>
             )}
           </div>
         </details>
