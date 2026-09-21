@@ -1,8 +1,9 @@
 "use client";
 
 import { useOptimistic, useTransition } from "react";
+import Link from "next/link";
 import { passFolgenUmschalten } from "@/lib/actions/paesse";
-import Button from "@/components/ui/Button";
+import Button, { buttonVariants } from "@/components/ui/Button";
 
 /**
  * "Bei Änderungen melden" — folgt einem Pass, damit ein Wechsel von zu auf
@@ -25,7 +26,17 @@ export default function PassFolgenButton({
   const [laeuft, starteUebergang] = useTransition();
   const [optimistisch, setzeOptimistisch] = useOptimistic(folgtMan);
 
-  if (!angemeldet) return null;
+  // Ohne Konto kein stilles Nichts: wer über einen geteilten Link hier
+  // landet, soll sehen, dass man Änderungen verfolgen kann — und was dafür
+  // fehlt. Der Status selbst bleibt frei sichtbar, nur die Meldung braucht
+  // das Konto.
+  if (!angemeldet) {
+    return (
+      <Link href="/anmelden" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+        Anmelden, um zu folgen
+      </Link>
+    );
+  }
 
   return (
     <Button

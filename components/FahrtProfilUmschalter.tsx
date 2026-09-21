@@ -4,7 +4,7 @@ import { useState } from "react";
 import ElevationProfile from "@/components/ElevationProfile";
 import TempoDiagram from "@/components/TempoDiagram";
 import SegmentedControl from "@/components/ui/SegmentedControl";
-import type { HoehenprofilPunkt, TempoprofilPunkt } from "@/types/database";
+import type { HoehenprofilPunkt, HoehenQuelle, TempoprofilPunkt } from "@/types/database";
 
 // Höhenprofil oder Tempodiagramm — nie beides gleichzeitig. Der Umschalter
 // erscheint nur, wenn beide Profile vorliegen: Das Höhenprofil hat jede
@@ -13,10 +13,15 @@ import type { HoehenprofilPunkt, TempoprofilPunkt } from "@/types/database";
 // nichts zu wählen und das Diagramm steht wie bisher allein.
 export default function FahrtProfilUmschalter({
   hoehenprofil,
+  hoehenQuelle,
   tempoprofil,
   schnittKmh,
 }: {
   hoehenprofil: HoehenprofilPunkt[] | null;
+  // Herkunft des Hoehenprofils (0120) — bei Streckenfahrten immer swisstopo
+  // (Routenprofil), bei freien Fahrten die gespeicherte Quelle. undefined
+  // faellt auf den ElevationProfile-Standard (swisstopo) zurueck.
+  hoehenQuelle?: HoehenQuelle | null;
   // null heisst: zu alt oder fremde Fahrt — dann bleibt das Höhenprofil
   // allein, ohne Umschalter.
   tempoprofil: TempoprofilPunkt[] | null;
@@ -29,7 +34,7 @@ export default function FahrtProfilUmschalter({
 
   if (!hoehe && !tempo) return null;
   if (tempo && !hoehe) return <TempoDiagram punkte={tempo} schnittKmh={schnittKmh} />;
-  if (hoehe && !tempo) return <ElevationProfile punkte={hoehe} />;
+  if (hoehe && !tempo) return <ElevationProfile punkte={hoehe} quelle={hoehenQuelle} />;
   if (!hoehe || !tempo) return null;
 
   return (
@@ -46,7 +51,7 @@ export default function FahrtProfilUmschalter({
         />
       </div>
       {ansicht === "hoehe" ? (
-        <ElevationProfile punkte={hoehe} />
+        <ElevationProfile punkte={hoehe} quelle={hoehenQuelle} />
       ) : (
         <TempoDiagram punkte={tempo} schnittKmh={schnittKmh} />
       )}

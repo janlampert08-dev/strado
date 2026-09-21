@@ -187,6 +187,10 @@ export default async function FahrtDetailPage({
     completion.dauerSekunden - completion.bewegteZeitSekunden > 60;
 
   const hoehenprofil = istFreieFahrt ? completion.hoehenprofil : (route?.hoehenprofil ?? null);
+  // Routenprofile sind immer vermessen (swisstopo swissALTI3D,
+  // lib/actions/routes.ts) — nur freie Fahrten tragen ihre gespeicherte
+  // Quelle (0120), Bestand ohne Quelle rendert keine Zeile.
+  const hoehenQuelle = istFreieFahrt ? completion.hoehenQuelle : "swisstopo";
   const VehicleIcon = completion.vehicle?.typ === "motorrad" ? Bike : Car;
 
   // Tempo-Einfärbung der eigenen Spur (0115): nur für den Besitzer, nur wenn
@@ -384,6 +388,7 @@ export default async function FahrtDetailPage({
             <div className="border-t border-border px-4 py-3">
               <FahrtProfilUmschalter
                 hoehenprofil={hoehenprofil}
+                hoehenQuelle={hoehenQuelle}
                 tempoprofil={completion.isOwner ? completion.tempoprofil : null}
                 schnittKmh={avgKmh}
               />

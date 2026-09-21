@@ -1,6 +1,9 @@
 /** Woher die gewertete Dauer einer Fahrt stammt (0096/0098). */
 export type DauerQuelle = "trail" | "server";
 
+/** Woher das Hoehenprofil einer Fahrt stammt (0120). */
+export type HoehenQuelle = "swisstopo" | "geschaetzt";
+
 // Handgeschriebene Typen passend zum Schema in supabase/migrations/0001_init.sql.
 // Sobald ein Supabase-Projekt verknüpft ist, können diese durch
 // `npx supabase gen types typescript --linked` ersetzt/aktualisiert werden.
@@ -395,6 +398,11 @@ export interface RouteCompletion {
   // Bewusst nicht dasselbe wie routes.hoehe_m (Scheitelhöhe einer Strecke).
   hoehenmeter_aufstieg: number | null;
   hoehenprofil: HoehenprofilPunkt[] | null;
+  // Ab 0120_hoehen_quelle.sql: Herkunft des Profils — swisstopo (Profil aus
+  // swissALTI3D) oder geschaetzt (Fallback/kein swisstopo-Wert). NULL bei
+  // allen aelteren Fahrten (unbekannt, wird bewusst nicht rueckgefuellt).
+  // Nur fuer den Besitzer lesbar, in keiner oeffentlichen View, reine Anzeige.
+  hoehen_quelle: HoehenQuelle | null;
   // Ab 0115_tempoprofil.sql: geglättetes Tempo je Kilometer, beim Speichern
   // aus den Roh-Zeitstempeln berechnet. Nur für den Besitzer lesbar (in
   // keiner öffentlichen View), null bei allen älteren Fahrten. Reine

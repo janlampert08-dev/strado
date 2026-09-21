@@ -1,14 +1,25 @@
 "use client";
 
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import type { HoehenprofilPunkt } from "@/types/database";
+import type { HoehenprofilPunkt, HoehenQuelle } from "@/types/database";
 
 const WIDTH = 600;
 const HEIGHT = 120;
 const PADDING_TOP = 12;
 const PADDING_BOTTOM = 4;
 
-export default function ElevationProfile({ punkte }: { punkte: HoehenprofilPunkt[] }) {
+export default function ElevationProfile({
+  punkte,
+  quelle = "swisstopo",
+}: {
+  punkte: HoehenprofilPunkt[];
+  // Woher das Profil stammt: Routenprofile kommen immer von swisstopo
+  // swissALTI3D (lib/actions/routes.ts), Fahrtenprofile nur, wenn
+  // deriveElevation eins geliefert hat (route_completions.hoehen_quelle,
+  // 0120) — sonst heisst es ehrlich "geschaetzt". null heisst unbekannt
+  // (Bestand von vor 0120) und rendert keine Zeile, statt zu raten.
+  quelle?: HoehenQuelle | null;
+}) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
@@ -139,6 +150,15 @@ export default function ElevationProfile({ punkte }: { punkte: HoehenprofilPunkt
         </span>
         <span className="text-right">Ziel {punkte[punkte.length - 1].m} m</span>
       </div>
+      {/* Beleg statt Behauptung: Routenprofile kommen von swisstopo
+          swissALTI3D (lib/elevation.ts), Fahrtenprofile nur bei Quelle
+          swisstopo — sonst steht hier ehrlich "geschaetzt" bzw. bei
+          unbekannter Herkunft (NULL) gar nichts. */}
+      {quelle === "swisstopo" ? (
+        <p className="text-xs text-muted">Höhen: swisstopo swissALTI3D</p>
+      ) : quelle === "geschaetzt" ? (
+        <p className="text-xs text-muted">Höhen: geschätzt</p>
+      ) : null}
     </div>
   );
 }

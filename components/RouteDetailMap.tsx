@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { Box } from "lucide-react";
 import { type TrafficChipState } from "@/components/TrafficIndicator";
-import { SPEED_LEGEND } from "@/lib/speed";
+import { SPEED_LEGEND, tempolimitQuelle } from "@/lib/speed";
 import {
   CONGESTION_META,
   fetchCongestionLevels,
   sliceRouteByTraffic,
+  verkehrSamplesFuerLaenge,
   worstCongestion,
   type CongestionLevel,
 } from "@/lib/traffic";
@@ -26,13 +27,6 @@ const RouteMap = dynamic(() => import("@/components/RouteMap"), {
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
-// Etwa ein Abfragepunkt pro 800m — genug, um Stauabschnitte sichtbar entlang
-// der Strecke einzufärben, ohne bei langen Alpenpässen Hunderte parallele
-// Tilequery-Aufrufe auszulösen.
-const MIN_SAMPLES = 6;
-const MAX_SAMPLES = 24;
-const SAMPLES_PER_KM = 1.2;
-
 export default function RouteDetailMap({
   route,
   bottomInsetPx = 0,
@@ -47,6 +41,10 @@ export default function RouteDetailMap({
   const [showTraffic, setShowTraffic] = useState(false);
   const [show3D, setShow3D] = useState(false);
   const hasTempolimits = !!route.tempolimits?.length;
+  // Herkunft ehrlich benennen statt nur Farben zu zeigen: dieselbe
+  // Formulierung wie die öffentliche API (lib/speed.ts), damit Karte und
+  // API nicht zwei Wahrheiten erzählen.
+  const tempolimitHerkunft = route.tempolimits ? (tempolimitQuelle(route.tempolimits) ?? null) : null;
   // Die ODbL verlangt die Namensnennung überall, wo Werte aus
   // OpenStreetMap stehen — also nur, wenn diese Strecke welche trägt.
   const zeigtOsmTempolimits = !!route.tempolimits?.some((s) => s.quelle === "osm");
@@ -54,10 +52,12 @@ export default function RouteDetailMap({
   const coordinates = route.geometry_geojson.coordinates as [number, number][];
   const unavailable = !MAPBOX_TOKEN || coordinates.length < 2;
 
-  // Einzige Verkehrsabfrage der Seite (siehe lib/traffic.ts) — speist sowohl
+  // Verkehrsabfrage der Hintergrundkarte (siehe lib/traffic.ts) — speist sowohl
   // den Verkehrs-Indikator (worstCongestion) als auch die eingefärbten
   // Kartenabschnitte (sliceRouteByTraffic), statt wie zuvor zwei unabhängige
-  // Mechanismen zu pflegen. Kein manueller Reset beim Streckenwechsel nötig:
+  // Mechanismen zu pflegen. Die Verkehrs-Sektion im Reiter Details
+  // (VerkehrSektion.tsx, nur Strecken ohne Pass) fragt beim Öffnen des
+  // Reiters selbst ab — AbschnittTabs montiert nur das aktive Panel. Kein manueller Reset beim Streckenwechsel nötig:
   // die Seite rendert diese Komponente mit key={route.id} (siehe
   // app/strecken/[id]/page.tsx), ein Streckenwechsel montiert sie also neu.
   const [levels, setLevels] = useState<(CongestionLevel | null)[] | null>(null);
@@ -66,10 +66,7 @@ export default function RouteDetailMap({
     if (unavailable) return;
     let cancelled = false;
 
-    const sampleCount = Math.min(
-      MAX_SAMPLES,
-      Math.max(MIN_SAMPLES, Math.round(route.laenge_km * SAMPLES_PER_KM)),
-    );
+    const sampleCount = verkehrSamplesFuerLaenge(route.laenge_km);
 
     fetchCongestionLevels(coordinates, sampleCount, MAPBOX_TOKEN!).then((result) => {
       if (!cancelled) setLevels(result);
@@ -203,6 +200,11 @@ export default function RouteDetailMap({
             {zeigtOsmTempolimits && (
               <p className="mt-1 max-w-40 text-[0.6875rem] leading-tight text-muted-foreground">
                 Teils © OpenStreetMap-Mitwirkende (ODbL)
+              </p>
+            )}
+            {tempolimitHerkunft && (
+              <p className="mt-1 max-w-40 text-[0.6875rem] leading-tight text-muted-foreground">
+                {tempolimitHerkunft}
               </p>
             )}
           </Card>
