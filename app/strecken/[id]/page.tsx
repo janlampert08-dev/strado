@@ -306,8 +306,10 @@ export default async function StreckeDetailPage({
             )}
           </p>
           {/* Kompaktstatus je Pass — Punkt plus Wort, sonst nichts. Die volle
-              Sektion (Kalender, Folgen, Meldung) lebt im Reiter Details;
-              hier zählt nur die Antwort auf "kann ich los?". */}
+              Sektion (Kalender, Folgen, Meldung) steht weiter unten auf
+              dieser Seite (#pass); hier zählt nur die Antwort auf
+              "kann ich los?". Der Passname verweist auf die Passseite, der
+              Status springt zur Sektion unten. */}
           {passKontexte.length > 0 && (
             <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
               {passKontexte.map((kontext) => {
@@ -324,11 +326,9 @@ export default async function StreckeDetailPage({
                   feedStand,
                 );
                 return (
-                  <Link
+                  <span
                     key={kontext.pass.id}
-                    href={`/paesse#${kontext.pass.id}`}
-                    className="inline-flex items-center gap-1.5 rounded-full transition-opacity hover:opacity-70"
-                    title={`${kontext.pass.name}: ${anzeige.label}`}
+                    className="inline-flex items-center gap-1.5"
                   >
                     {/* Steht der Passname schon im Titel (eine Strecke, ein
                         Pass, derselbe Name — "Berninapass" über "Berninapass ·
@@ -337,10 +337,22 @@ export default async function StreckeDetailPage({
                         abweichendem Namen bleibt er stehen, sonst wäre der
                         Status nicht zuordenbar. */}
                     {!istNameSchonImTitel(route.name, kontext.pass.name, passKontexte.length) && (
-                      <span className="font-medium text-foreground">{kontext.pass.name}</span>
+                      <Link
+                        href={`/paesse#${kontext.pass.id}`}
+                        className="font-medium text-foreground transition-colors hover:text-accent"
+                        title={`${kontext.pass.name} auf der Passseite`}
+                      >
+                        {kontext.pass.name}
+                      </Link>
                     )}
-                    <PassStatusMarke anzeige={anzeige} />
-                  </Link>
+                    <a
+                      href="#pass"
+                      className="inline-flex items-center rounded-full transition-opacity hover:opacity-70"
+                      title={`${kontext.pass.name}: ${anzeige.label} — Details weiter unten`}
+                    >
+                      <PassStatusMarke anzeige={anzeige} />
+                    </a>
+                  </span>
                 );
               })}
             </p>
@@ -438,7 +450,21 @@ export default async function StreckeDetailPage({
         />
         </div>
 
-        {/* Kategorien und Charakter direkt unter dem Start: was die Strecke
+        {/* Der Passblock steht dort, wo er die Entscheidung trägt: nach dem
+            Start, vor Beschreibung und Zahlen — denn ob der Pass überhaupt
+            offen ist, kommt vor der Frage, wie steil er ist. Ohne Pass
+            schliesst die Verkehrs-Sektion die Lücke mit Live plus Vorhersage
+            für diese Stunde. */}
+        <PassSektion kontexte={passKontexte} angemeldet={!!user} feedStand={feedStand} />
+        {passKontexte.length === 0 && (
+          <VerkehrSektion
+            route={route}
+            punkte={ruhigeZeiten.punkte}
+            startzeiten={ruhigeZeiten.startzeiten}
+          />
+        )}
+
+        {/* Kategorien und Charakter nach Start und Passlage: was die Strecke
             IST, steht vor Profil und Zahlen — vorher erst nach der
             Bestenliste, also Beschreibung nach Wertung. */}
         <div className="flex flex-col gap-3">
@@ -513,22 +539,8 @@ export default async function StreckeDetailPage({
 
           </div>
           {/* Reiter Details: Profil und Zeitpunkt-Infos — Vertiefung für
-              nach dem Start, nicht Ballast davor. Der Pass steht auch hier:
-              unter Details wird die Strecke vertieft, und dazu gehört, über
-              welche Pässe sie führt. */}
+              nach dem Start, nicht Ballast davor. */}
           <div className="flex flex-col gap-5">
-            <PassSektion kontexte={passKontexte} angemeldet={!!user} feedStand={feedStand} />
-            {/* Ohne Pass trägt nichts die Jetzt-Entscheidung: die
-                Pass-Sektion fällt weg (null), und die Wochenprognose steht
-                erst weiter unten. Die Verkehrs-Sektion schliesst die Lücke
-                mit Live plus Vorhersage für diese Stunde. */}
-            {passKontexte.length === 0 && (
-              <VerkehrSektion
-                route={route}
-                punkte={ruhigeZeiten.punkte}
-                startzeiten={ruhigeZeiten.startzeiten}
-              />
-            )}
             {route.hoehenprofil && route.hoehenprofil.length > 1 && (
               <ElevationProfile punkte={route.hoehenprofil} />
             )}
