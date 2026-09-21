@@ -414,15 +414,17 @@ export default function FreeRideForm({
   // sagt, was gleich passiert, und trägt die eine Handlung.
   if (phase === "idle") {
     return (
-      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col bg-background">
-        <div className="min-h-0 flex-1">
+      // Scroll-Notausgang wie im Tracking-Dialog darunter: Titel, Hinweise,
+      // Fehler und Knöpfe stapeln sich auf kurzen Schirmen über die Höhe.
+      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-background">
+        <div className="flex-1 min-h-[30dvh]">
           {/* Ohne die kuratierten Strecken: auf dem Startschirm einer FREIEN
               Fahrt sind sie Beiwerk, und mit ihnen sprang der Ausschnitt auf
               die halbe Schweiz statt in die Umgebung. Die Orientierungshilfe
               beginnt mit der Aufzeichnung, wo die Karte dem Standort folgt. */}
           <RouteMap routes={KEINE_STRECKEN} fitRoutes={false} routesClickable={false} />
         </div>
-        <div className="md:mx-auto md:w-full md:max-w-lg md:rounded-t-lg md:border-x flex flex-col gap-4 border-t border-border bg-background px-5 pt-5 pb-[calc(1.25rem+var(--safe-bottom))]">
+        <div className="md:mx-auto md:w-full md:max-w-lg md:rounded-t-lg md:border-x flex shrink-0 flex-col gap-4 border-t border-border bg-background px-5 pt-5 pb-[calc(1.25rem+var(--safe-bottom))]">
           <div className="flex flex-col gap-1">
             <h1 className="text-title font-semibold tracking-tight">Freie Fahrt</h1>
             <p className="text-sm text-muted">
@@ -475,10 +477,12 @@ export default function FreeRideForm({
   }
 
   // Während der Fahrt. Die Watch läuft, die Messung beginnt mit dem ersten
-  // brauchbaren Fix (hasStarted).
+  // brauchbaren Fix (hasStarted). Scroll-Notausgang und Kartenmindesthöhe
+  // wie im Strecken-Tracking (LiveTrackingForm.tsx): Das Panel darf die
+  // Knöpfe nie aus dem Bild drücken.
   return (
-    <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col bg-background">
-      <div className="min-h-0 flex-1">
+    <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-background">
+      <div className="flex-1 min-h-[30dvh]">
         <RouteMap
           routes={routes}
           fitRoutes={false}
@@ -491,7 +495,7 @@ export default function FreeRideForm({
           userHeadingDeg={recorder.headingDeg}
         />
       </div>
-      <div className="md:mx-auto md:w-full md:max-w-lg md:rounded-t-lg md:border-x flex flex-col gap-4 border-t border-border bg-background px-5 pt-4 pb-[calc(1rem+var(--safe-bottom))]">
+      <div className="md:mx-auto md:w-full md:max-w-lg md:rounded-t-lg md:border-x flex shrink-0 flex-col gap-4 border-t border-border bg-background px-5 pt-4 pb-[calc(1rem+var(--safe-bottom))]">
         {/* Statuszeile in Satzschreibung statt versal in Mono: sie ist ein
             Zustand, kein Etikett. Der rote Punkt bleibt das Signal, dass
             wirklich aufgezeichnet wird. */}

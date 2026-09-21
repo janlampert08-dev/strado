@@ -259,9 +259,15 @@ export default function LiveTrackingForm({
     // Volle Bildschirmfläche statt eines Inline-Blocks in der Streckenansicht
     // — während einer laufenden Aufzeichnung sind die Streckendetails
     // ausgeblendet, stattdessen zeigt die Karte Route und Live-Standort.
+    //
+    // Scroll-Notausgang inklusive: Vor dem Start stapeln sich hier
+    // Statuszeile, Kennzahlen, Start-Hinweis, Gast-Hinweis und Wachhinweis
+    // über den Schaltflächen — auf kurzen Schirmen mehr als die Höhe hergibt.
+    // Ohne overflow drückte das Panel "Bin schon am Start"/"Abbrechen" aus
+    // dem Bild. Die Karte behält mindestens 30dvh, das Panel schrumpft nie.
     return (
-      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col bg-background">
-        <div className="min-h-0 flex-1">
+      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-background">
+        <div className="flex-1 min-h-[30dvh]">
           <RouteMap
             routes={routes}
             // Die Karte liegt hier im Vollbild über der Streckenseite. Ohne
@@ -289,7 +295,7 @@ export default function LiveTrackingForm({
             followLocation={recorder.hasStarted}
           />
         </div>
-        <div className="md:mx-auto md:w-full md:max-w-lg md:rounded-t-lg md:border-x flex flex-col gap-3 border-t border-border-strong bg-background p-4 pb-[calc(1rem+var(--safe-bottom))]">
+        <div className="md:mx-auto md:w-full md:max-w-lg md:rounded-t-lg md:border-x flex shrink-0 flex-col gap-3 border-t border-border-strong bg-background p-4 pb-[calc(1rem+var(--safe-bottom))]">
           {/* DER EINZIGE SCHIRM DER APP, DER IN BEWEGUNG GELESEN WIRD —
               und bis hierher beschriftete er seine Zahlen in text-xs, also
               12 px, und zeigte fünf Werte in grid-cols-3, davon zwei in
