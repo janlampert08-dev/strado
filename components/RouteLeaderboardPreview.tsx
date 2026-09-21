@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { formatDuration } from "@/lib/format";
+import { formatDuration, mitAnzahl } from "@/lib/format";
 import type { RouteTimeEntry } from "@/lib/leaderboard";
 import { MEDAL_COLORS } from "@/lib/constants";
 import Avatar from "@/components/Avatar";
@@ -70,7 +70,13 @@ export default function RouteLeaderboardPreview({
     };
   }, [klasse, routeId]);
 
-  const sichtbar = (klasse === null ? entries : gefiltert).slice(0, SICHTBAR);
+  const liste = klasse === null ? entries : gefiltert;
+  const sichtbar = liste.slice(0, SICHTBAR);
+  // Vorspann für den Wertungs-Reiter der Streckenseite: Wer die Liste nicht
+  // öffnet, sieht trotzdem, dass es Zeiten gibt — und welche die schnellste
+  // ist. Aus denselben Props wie die Liste, ohne zusätzliche Abfrage.
+  const beste =
+    liste.length > 0 ? Math.min(...liste.map((e) => e.dauerSekunden)) : null;
 
   return (
     <div className="flex flex-col gap-3">
@@ -82,6 +88,12 @@ export default function RouteLeaderboardPreview({
         onChange={setKlasse}
         label="Bestzeiten nach Fahrzeugtyp filtern"
       />
+
+      {beste !== null && (
+        <p className={cn("text-sm text-muted tabular-nums", laedt && "opacity-40")}>
+          Bestzeit {formatDuration(beste)} · {mitAnzahl(liste.length, "Zeit", "Zeiten")}
+        </p>
+      )}
 
       {sichtbar.length === 0 ? (
         <p className={cn("text-sm text-muted transition-opacity", laedt && "opacity-40")}>

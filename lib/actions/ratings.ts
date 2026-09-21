@@ -7,6 +7,9 @@ import { isValidUuid } from "@/lib/validation";
 
 export interface RatingFormState {
   error: string | null;
+  /** True, wenn der letzte Durchlauf gespeichert hat — für die
+   *  Erfolgsmeldung im Formular (Muster aus VisibilitySettings). */
+  gespeichert?: boolean;
 }
 
 const RATING_COOLDOWN_MS = 3000;
@@ -107,7 +110,7 @@ export async function submitRating(
   }
 
   revalidatePath(`/strecken/${routeId}`);
-  return { error: null };
+  return { error: null, gespeichert: true };
 }
 
 export interface DeleteRatingState {
