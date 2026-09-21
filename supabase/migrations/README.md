@@ -52,6 +52,15 @@ Was nach dem Einspielen zu prüfen ist:
 - Funktionaler Test, zurückgerollt: Fahrt speichern, Profil lesen (eigene
   Zeile sichtbar), als `anon` über `public_fahrten` unsichtbar.
 
+## Eingespielt: 0120_hoehen_quelle (2026-09-21, Produktion)
+
+Vom Inhaber eingespielt und gemeldet; der Katalog-Gegen check aus dem
+Migrationsheader (Spalte, Check-Constraint, Grants auf
+`save_free_ride_with_segments` und `anonymize_account`, Spalte in keiner
+öffentlichen View) steht noch aus — von hier aus gibt es keinen
+Datenbankzugang, nur das Wort. Wer ihn nachholt, ersetzt diesen Absatz
+durch das Gemessene.
+
 ## Eingespielt: 0101_anonymisierung_fahrtstarts (2026-09-16, Produktion)
 
 Nacharbeit zur Datenschutzerklärung (`strado`#255 / `stradoinfo`#19) und
