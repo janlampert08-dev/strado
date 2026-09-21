@@ -192,7 +192,18 @@ export default function ExploreSidebar({
           steht: vorher war der Leerzustand das einzige <li> der Liste
           ("Liste, 1 Element"), und dass das Tippen die Treffer auf null
           brachte, sagte ein Screenreader gar nicht an. */}
-      <div role="status">
+      <div role="status" className="flex flex-col gap-2">
+        {/* Sichtbare Trefferzahl für Sehende, dieselbe Live-Region für
+            Hilfstechnik: vorher sah man nur, dass die Liste kürzer wurde.
+            Eine Zeile in text-xs kostet im Peek-Fenster rund 16 px und macht
+            aus "die Liste ist kürzer" ein "3 von 9 Strecken". */}
+        {!loadError && (
+          <p className="text-xs tabular-nums text-muted">
+            {routes.length === anzahlStrecken
+              ? mitAnzahl(anzahlStrecken, "Strecke", "Strecken")
+              : `${routes.length} von ${mitAnzahl(anzahlStrecken, "Strecke", "Strecken")}`}
+          </p>
+        )}
         {routes.length === 0 && !loadError && (
           searchQuery.trim() ? (
             <EmptyState
