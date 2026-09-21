@@ -18,6 +18,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // sind offen?"). Täglich, weil der Status täglich anders sein kann.
     { url: `${origin}/paesse`, changeFrequency: "daily", priority: 0.7 },
     { url: `${origin}/premium`, changeFrequency: "weekly", priority: 0.5 },
+    // Der Erklärtext zum Verifiziert-Abzeichen: die kanonische Fassung einer
+    // Aussage, die sonst nur als Blatt über anderen Seiten liegt
+    // (components/VerifiziertAbzeichen.tsx). Selten ändernd, oft verlinkt.
+    { url: `${origin}/verifiziert`, changeFrequency: "monthly", priority: 0.4 },
     ...routes.map((route) => ({
       url: `${origin}/strecken/${route.id}`,
       lastModified: route.created_at,
