@@ -543,6 +543,24 @@ export default async function FahrtDetailPage({
           )}
           </div>
           </AbschnittTabs>
+
+          {/* Weiter statt Sackgasse: Wer über einen geteilten Link auf dieser
+              Seite landet, hat sonst keinen Weg zu Strecke, Feed oder nächster
+              Fahrt. Zwei Text-Handlungen, kein neuer Baustein. */}
+          <nav aria-label="Weiter" className="flex flex-wrap gap-x-5 gap-y-2 border-t border-border pt-4">
+            {!istFreieFahrt && route ? (
+              <Link href={`/strecken/${route.id}`} className={textAktionClassName()}>
+                Strecke ansehen →
+              </Link>
+            ) : (
+              <Link href="/" className={textAktionClassName()}>
+                Strecken entdecken →
+              </Link>
+            )}
+            <Link href="/feed" className={textAktionClassName()}>
+              Weitere Fahrten im Feed →
+            </Link>
+          </nav>
         </Seitenrahmen>
       </div>
     </div>
