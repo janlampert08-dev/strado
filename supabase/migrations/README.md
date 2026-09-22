@@ -61,6 +61,34 @@ Migrationsheader (Spalte, Check-Constraint, Grants auf
 Datenbankzugang, nur das Wort. Wer ihn nachholt, ersetzt diesen Absatz
 durch das Gemessene.
 
+## Noch nicht angewendet: 0121_premium_promo_link (geschrieben 2026-09-22)
+
+Signup-Link mit 7 Tagen Gratis-Premium (`app.strado.ch/registrieren?promo=7-tage-gratis`).
+Neue Tabellen `premium_promo_codes` und `premium_gratis`, neue Funktion
+`premium_gratis_gueltig(uuid)`, und Erweiterungen von
+`handle_new_user()` (0094-Koerper), `apply_subscription_state()` (0110),
+`premium_abgleich()` (0110), `saisonpass_erstatten()` (0110) und
+`anonymize_account()` (0120).
+
+Vor dem Einspielen den Live-Koerper von `anonymize_account` lesen und
+vergleichen (AGENTS.md, "create or replace auf einer Live-Funktion"):
+```sql
+select prosrc from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public' and p.proname = 'anonymize_account';
+```
+
+Nach dem Einspielen pruefen:
+```sql
+select code, tage, aktiv from public.premium_promo_codes;
+select has_function_privilege('anon', 'public.premium_gratis_gueltig(uuid)', 'execute') as anon,
+       has_function_privilege('authenticated', 'public.premium_gratis_gueltig(uuid)', 'execute') as authenticated,
+       has_function_privilege('service_role', 'public.premium_gratis_gueltig(uuid)', 'execute') as service_role;
+select position('premium_gratis' in pg_get_functiondef(p.oid)) > 0 as kennt_gratis
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+ where n.nspname = 'public' and p.proname in
+   ('handle_new_user', 'apply_subscription_state', 'premium_abgleich', 'saisonpass_erstatten', 'anonymize_account');
+```
+
 ## Eingespielt: 0101_anonymisierung_fahrtstarts (2026-09-16, Produktion)
 
 Nacharbeit zur Datenschutzerklärung (`strado`#255 / `stradoinfo`#19) und

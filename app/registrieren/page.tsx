@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { Metadata } from "next";
 import Header from "@/components/Header";
 import RegistrierenForm from "@/components/RegistrierenForm";
 import { safeInternalPath } from "@/lib/utils/url";
@@ -22,13 +22,19 @@ export const metadata: Metadata = {
 // anders landet. Die Prüfung hier ersetzt nicht die in signUp() — das
 // Formular ist ein öffentlich aufrufbarer Endpunkt, dessen FormData
 // unabhängig von diesem Markup gesetzt werden kann.
+//
+// ?promo= wird von RegistrierenForm als verstecktes Feld an signUp()
+// weitergereicht und dort in raw_user_meta_data.promo_code gelegt.
+// Der Trigger handle_new_user() (0121) prüft den Code gegen
+// premium_promo_codes und vergibt 7 Tage Premium.
 export default async function RegistrierenPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; promo?: string }>;
 }) {
-  const { next } = await searchParams;
+  const { next, promo } = await searchParams;
   const nextHref = safeInternalPath(next) ?? undefined;
+  const promoCode = promo ? promo.toLowerCase() : null;
 
   return (
     <div className="flex h-dvh flex-col">
@@ -45,7 +51,7 @@ export default async function RegistrierenPage({
           darüber hinaus in den Scrollbereich statt zu beschneiden. */}
       <div className="flex-1 overflow-y-auto">
         <Seitenrahmen breite="schmal" className="min-h-full justify-center">
-          <RegistrierenForm nextHref={nextHref} />
+          <RegistrierenForm nextHref={nextHref} promoCode={promoCode} />
         </Seitenrahmen>
       </div>
     </div>

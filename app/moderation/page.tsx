@@ -26,6 +26,13 @@ import { buttonVariants } from "@/components/ui/Button";
 import { MapPinIcon, ShieldIcon, LinkIcon, FeedbackIcon, MailIcon } from "@/components/NavIcons";
 import { POSTFACH_URL } from "@/lib/constants";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
+import { siteUrl } from "@/lib/siteUrl";
+import { promoSignupUrl } from "@/lib/promo";
+import CopyButton from "@/components/CopyButton";
+
+// Der Signup-Link fuer das 7-Tage-Gratis-Angebot (0121).
+// Derselbe Code steht in lib/promo.ts und als Zeile in premium_promo_codes.
+const signUpLink = promoSignupUrl(siteUrl());
 
 export const metadata = { title: "Moderation – Strado" };
 
@@ -249,6 +256,18 @@ export default async function ModerationPage() {
                 <LinkIcon className="h-4 w-4" aria-hidden="true" />
                 Creator-Links
               </Link>
+
+              {/* Der Signup-Link fuer das 7-Tage-Gratis-Angebot (0121).
+                  Der Link verweist auf /registrieren?promo=7-tage-gratis —
+                  die Registrierseite legt den Promo-Code in den
+                  raw_user_meta_data ab, und handle_new_user() (0121)
+                  vergibt die Gratis-Tage. */}
+              <div className="flex items-center gap-2">
+                <code className="max-w-[22rem] truncate text-xs font-mono text-muted">
+                  {signUpLink}
+                </code>
+                <CopyButton text={signUpLink} label="Link kopieren" />
+              </div>
             </div>
           </div>
 
