@@ -694,6 +694,29 @@ export interface RegistrierungHerkunft {
   erstellt_am: string;
 }
 
+// Zeilenform von public.premium_promo_codes (0121): die vergebenen
+// Promo-Codes fuer Gratis-Premium beim Signup. Ein aktiver Code in
+// raw_user_meta_data.promo_code loest in handle_new_user() tage
+// Tage Premium aus. Verwaltet per SQL, angezeigt im Moderations-
+// panel (nur Moderatoren).
+export interface PremiumPromoCode {
+  code: string;
+  tage: number;
+  aktiv: boolean;
+  erstellt_am: string;
+}
+
+// Zeilenform von public.premium_gratis (0121): vergebenes Gratis-
+// Premium je Konto, genau einmal. Geschrieben von handle_new_user()
+// und bei der Kontoloeschung von anonymize_account() entfernt.
+export interface PremiumGratis {
+  user_id: string;
+  code: string;
+  gueltig_ab: string;
+  gueltig_bis: string;
+  vergeben_am: string;
+}
+
 export type CreatorKonversionArt = "registrierung" | "abo_start" | "abo_ende";
 
 // Zeilenform von public.creator_konversionen (0088) — das

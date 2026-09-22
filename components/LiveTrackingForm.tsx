@@ -11,6 +11,8 @@ import {
   GUEST_TRACKING_USER_ID,
   issueGuestContinuationToken,
 } from "@/lib/trackingStorage";
+import { haversineKm } from "@/lib/geo";
+import { distanzZumNaechstenPunktKm } from "@/lib/tracking";
 import { interpolateElevation } from "@/lib/elevation";
 import { computeRouteCoverage, COVERAGE_THRESHOLD_PERCENT } from "@/lib/routeCoverage";
 import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
@@ -34,11 +36,24 @@ const RouteMap = dynamic(() => import("@/components/RouteMap"), {
 
 const initialState: CompletionFormState = { error: null };
 
+// Kurzdistanz für die Abstandsanzeige: unter einem Kilometer in Metern, sonst
+// in Kilometern mit einer Nachkommastelle — dieselbe Staffelung wie der
+// Anfahrt-Hinweis weiter unten.
+function formatiereKurzdistanz(km: number): string {
+  return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
+}
+
 // Aufzeichnung einer Streckenfahrt: Start und Stopp laufen automatisch über
 // die Nähe zu Start-/Zielpunkt der Strecke, und der Deckungsgrad entscheidet
 // darüber, ob die Fahrt öffentlich sein darf. Die GPS-Mechanik selbst steckt
 // in useRideRecorder, das Fazit-Formular in RideSummaryForm — beides teilt
 // sich diese Komponente mit FreeRideForm (freie Fahrt ohne Strecke).
+//
+// Der Tracking-Schirm ist bewusst derselbe wie bei der freien Fahrt (grosse
+// Tempo-/Distanz-Zahlen, Zeit in der Statuszeile, dieselbe Kartenkonfiguration
+// inkl. gefahrener Linie): einziger Unterschied ist die Abstandszeile zur
+// Strecke — Anfahrt zum Startpunkt, danach "noch … km" plus Luftlinie zum
+// Ziel oder, bei Rundfahrten, zum nächsten Routenpunkt.
 export default function LiveTrackingForm({
   route,
   kontextStrecken,
@@ -92,6 +107,13 @@ export default function LiveTrackingForm({
       startPoint: route.start_geojson.coordinates as [number, number],
       endPoint: route.ziel_geojson.coordinates as [number, number],
     }),
+    [route],
+  );
+  // Stabile Referenz für die Abstandsberechnung weiter unten (nächster
+  // Routenpunkt bei Rundfahrten) — dieselbe Geometrie, die die Karte
+  // zeichnet, kein zweiter Datensatz.
+  const streckenGeometrie = useMemo(
+    () => route.geometry_geojson.coordinates as [number, number][],
     [route],
   );
 
@@ -255,6 +277,29 @@ export default function LiveTrackingForm({
     const currentElevationM = route.hoehenprofil
       ? interpolateElevation(route.hoehenprofil, recorder.distanceKm)
       : null;
+    // Die einzige Extra-Information gegenüber der freien Fahrt: der Abstand
+    // zur Strecke als Luftlinie vom GPS-Standort. Bei Punkt-zu-Punkt-Strecken
+    // zum Zielpunkt, bei Rundfahrten zum nächsten Routenpunkt — Start und
+    // Ziel fallen dort zusammen, ein "Abstand zum Start" sagte nach den
+    // ersten Metern nichts mehr aus. "Noch … km" daneben läuft entlang der
+    // Strecke (gefahrene Distanz gegen offizielle Länge), nicht als Luftlinie.
+    const direktZumZielKm =
+      !route.ist_rundfahrt && recorder.position
+        ? haversineKm(recorder.position, gate.endPoint)
+        : null;
+    const naechsterPunktKm =
+      route.ist_rundfahrt && recorder.position
+        ? distanzZumNaechstenPunktKm(recorder.position, streckenGeometrie)
+        : null;
+    const abstandsTeile: string[] = [];
+    if (remainingKm !== null) abstandsTeile.push(`Noch ${remainingKm.toFixed(1)} km`);
+    if (route.ist_rundfahrt) {
+      if (naechsterPunktKm !== null)
+        abstandsTeile.push(`Route ${formatiereKurzdistanz(naechsterPunktKm)}`);
+    } else if (direktZumZielKm !== null) {
+      abstandsTeile.push(`Ziel ${formatiereKurzdistanz(direktZumZielKm)} Luftlinie`);
+    }
+    if (currentElevationM !== null) abstandsTeile.push(`${currentElevationM} m`);
 
     // Volle Bildschirmfläche statt eines Inline-Blocks in der Streckenansicht
     // — während einer laufenden Aufzeichnung sind die Streckendetails
@@ -288,6 +333,9 @@ export default function LiveTrackingForm({
             // zurücktreten — und hält vor allem den Kartenausschnitt auf der
             // gefahrenen Strecke, statt auf alle mitgezeichneten einzupassen.
             primaryRouteId={route.id}
+            // Die gefahrene Linie live mitzeichnen — wie bei der freien Fahrt
+            // (FreeRideForm.tsx). Vorher lief die Karte hier ohne sie.
+            trail={recorder.liveTrail}
             userLocation={recorder.position}
             userAccuracyM={recorder.accuracyM}
             userHeadingDeg={recorder.headingDeg}
@@ -303,28 +351,22 @@ export default function LiveTrackingForm({
           />
         </div>
         <div className="md:mx-auto md:w-full md:max-w-lg md:rounded-t-lg md:border-x flex shrink-0 flex-col gap-3 border-t border-border-strong bg-background p-4 pb-[calc(1rem+var(--safe-bottom))]">
-          {/* DER EINZIGE SCHIRM DER APP, DER IN BEWEGUNG GELESEN WIRD —
-              und bis hierher beschriftete er seine Zahlen in text-xs, also
-              12 px, und zeigte fünf Werte in grid-cols-3, davon zwei in
-              text-xl und drei in text-lg. Gleiche Rolle, zwei Grössen, und
-              auf 390 px rund 120 px Spaltenbreite je Wert.
-
-              Jetzt zwei Zahlen gross und der Rest in einer Zeile. Gross sind
-              die beiden HANDLUNGSLEITENDEN: die gefahrene Zeit — das, was
-              die Bestenliste misst — und "noch … km", der einzige Wert, aus
-              dem sich in dem Moment eine Entscheidung ableiten lässt.
-              Distanz, Tempo und Höhe sind interessant, aber nicht
-              handlungsleitend; sie stehen darunter in 15 px statt in eigenen
-              Spalten. Siehe docs/design-vereinfachung.md, Anhang B2. */}
-          {/* Satzschreibung statt versal in Mono — ein Zustand, kein
-              Etikett. Dieselbe Zeile wie bei der freien Fahrt. */}
-          <p className="flex items-center gap-2 text-sm font-medium">
-            <span
-              aria-hidden="true"
-              className={`h-2.5 w-2.5 shrink-0 rounded-full ${recorder.hasStarted && !recorder.pausiert ? "bg-danger" : "bg-muted"}`}
-            />
-            {recorder.pausiert ? "Pausiert" : recorder.hasStarted ? "Aufzeichnung läuft" : "Unterwegs zum Start"}
-          </p>
+          {/* Statuszeile in Satzschreibung statt versal in Mono: sie ist ein
+              Zustand, kein Etikett — dieselbe Zeile wie bei der freien Fahrt
+              (FreeRideForm.tsx), mit der Uhr rechts statt als grosser Zahl. */}
+          <div className="flex items-center justify-between gap-3">
+            <p className="flex items-center gap-2 text-sm font-medium">
+              <span
+                aria-hidden="true"
+                className={`h-2.5 w-2.5 shrink-0 rounded-full ${recorder.hasStarted && !recorder.pausiert ? "bg-danger" : "bg-muted"}`}
+              />
+              {recorder.pausiert ? "Pausiert" : recorder.hasStarted ? "Aufzeichnung läuft" : "Unterwegs zum Start"}
+            </p>
+            <p className="text-sm text-muted tabular-nums">
+              <span className="sr-only">Zeit </span>
+              {formatDuration(recorder.elapsedSeconds)}
+            </p>
+          </div>
           {/* Ehrlich zur Wertung: die Bestzeit misst der Server von Start bis
               Ziel als Wanduhr (0098). Eine Pause verschwindet aus der
               angezeigten Zeit, nicht aus der gewerteten. */}
@@ -333,53 +375,40 @@ export default function LiveTrackingForm({
               Pausen zählen für die Bestzeit auf dieser Strecke mit.
             </p>
           )}
-          <dl className="flex flex-wrap items-end gap-x-6 gap-y-2">
-            <div>
-              <dt className="text-xs text-muted">Zeit</dt>
+          {/* DIE GROSSEN ZAHLEN WIE BEI DER FREIEN FAHRT (FreeRideForm.tsx):
+              Tempo und Distanz tragen die Fläche — der Blick aufs Telefon in
+              der Halterung sucht das Tempo und wie weit man ist. Die Uhr
+              steht in der Statuszeile oben, "noch … km" und der Strecken-
+              abstand in der Zeile darunter. */}
+          <dl className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1">
+              <dt className="text-xs text-muted">Tempo</dt>
               <dd className="text-5xl leading-none font-semibold tracking-tight tabular-nums">
-                {formatDuration(recorder.elapsedSeconds)}
+                {recorder.speedKmh !== null ? recorder.speedKmh.toFixed(0) : "—"}
+                <span className="ml-1.5 text-base font-medium tracking-normal text-muted">km/h</span>
               </dd>
             </div>
-            {remainingKm !== null && (
-              <div>
-                <dt className="text-xs text-accent">noch</dt>
-                <dd className="text-5xl leading-none font-semibold tracking-tight tabular-nums text-accent">
-                  {remainingKm.toFixed(1)}
-                  <span className="ml-1.5 text-base font-medium tracking-normal"> km</span>
-                </dd>
-              </div>
-            )}
-            {/* Die drei übrigen Werte als Fliesstext statt als Spalten. Ein
-                sr-only-dt je Wert, damit Hilfstechnik die Paarung behält —
-                sichtbar trägt die Einheit die Bedeutung. */}
-            {/* Der Mittelpunkt steht IM folgenden <dd>, nicht daneben: ein
-                <div> in einem <dl> darf nur <dt> und <dd> enthalten, ein
-                <span> dazwischen ist ungültiges HTML. aria-hidden hält ihn
-                wie zuvor aus der Vorlesereihenfolge heraus. */}
-            <div className="flex w-full flex-wrap items-baseline gap-x-2 text-base text-foreground">
-              <dt className="sr-only">Distanz</dt>
-              <dd className="tabular-nums">{recorder.distanceKm.toFixed(2)} km gefahren</dd>
-              <dt className="sr-only">Tempo</dt>
-              <dd className="tabular-nums">
-                <span aria-hidden="true" className="mr-2">·</span>
-                {recorder.speedKmh !== null ? `${recorder.speedKmh.toFixed(0)} km/h` : "—"}
-              </dd>
-              <dt className="sr-only">Höhe</dt>
-              <dd className="tabular-nums">
-                <span aria-hidden="true" className="mr-2">·</span>
-                {currentElevationM !== null ? `${currentElevationM} m` : "—"}
+            <div className="flex flex-col gap-1">
+              <dt className="text-xs text-muted">Distanz</dt>
+              <dd className="text-5xl leading-none font-semibold tracking-tight tabular-nums">
+                {recorder.distanceKm.toFixed(1)}
+                <span className="ml-1.5 text-base font-medium tracking-normal text-muted">km</span>
               </dd>
             </div>
           </dl>
-          {!recorder.hasStarted && (
+          {/* Die einzige Extra-Zeile gegenüber der freien Fahrt: der Abstand
+              zur Strecke (siehe abstandsTeile oben). Vor dem Start die
+              Anfahrt zum Startpunkt — die Zeitmessung beginnt dort von
+              selbst. */}
+          {recorder.hasStarted ? (
+            abstandsTeile.length > 0 && (
+              <p className="text-sm text-muted">{abstandsTeile.join(" · ")}</p>
+            )
+          ) : (
             <p className="text-sm text-muted">
               <span className="font-medium text-foreground">Fahre zum Startpunkt</span> —{" "}
               {recorder.distanceToStartKm !== null
-                ? `noch ca. ${
-                    recorder.distanceToStartKm < 1
-                      ? `${Math.round(recorder.distanceToStartKm * 1000)} m`
-                      : `${recorder.distanceToStartKm.toFixed(1)} km`
-                  }, die Zeitmessung startet automatisch, sobald du dort bist.`
+                ? `noch ca. ${formatiereKurzdistanz(recorder.distanceToStartKm)}, die Zeitmessung startet automatisch, sobald du dort bist.`
                 : "Standort wird ermittelt…"}
             </p>
           )}

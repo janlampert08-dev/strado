@@ -205,13 +205,26 @@ export async function signUp(
   // gezählt wird. Was hier mitfährt, ist ein Vorschlag, keine Tatsache.
   const herkunft = await leseHerkunft();
 
+  // Der Promo-Code kommt als verstecktes Feld aus dem Signup-Form
+  // (app/registrieren/page.tsx liest ?promo= aus der URL). Der Code
+  // ist client-setzbar — genauso wie herkunft_code. Deshalb
+  // entscheidet handle_new_user() in der Datenbank (0121), nicht
+  // hier: wir schicken ihn nur als Vorschlag mit.
+  const promoCodeRaw = formData.get("promo_code")?.toString().trim();
+  const promoCode =
+    promoCodeRaw && /^[a-z0-9-]{2,32}$/.test(promoCodeRaw)
+      ? promoCodeRaw.toLowerCase()
+      : null;
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: herkunft
-        ? { display_name: displayName, herkunft_code: herkunft }
-        : { display_name: displayName },
+      data: {
+        display_name: displayName,
+        ...(herkunft ? { herkunft_code: herkunft } : {}),
+        ...(promoCode ? { promo_code: promoCode } : {}),
+      },
       emailRedirectTo,
     },
   });

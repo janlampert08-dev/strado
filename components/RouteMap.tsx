@@ -546,7 +546,8 @@ export default function RouteMap({
   // dieselben Farben wie die Tempolimit-Ebene, aber gefahren statt erlaubt.
   tempoSegmente?: { coords: [number, number][]; color: string }[];
   // Aufgezeichneter GPS-Track: live wachsend während einer Aufzeichnung
-  // (FreeRideForm) oder fertig auf der Fahrt-Detailseite (CompletionMap).
+  // (FreeRideForm, LiveTrackingForm) oder fertig auf der Fahrt-Detailseite
+  // (CompletionMap).
   trail?: [number, number][];
   // Kartenausschnitt auf den Track legen. Für einen fertigen Track gedacht —
   // während einer laufenden Aufzeichnung würde das den Ausschnitt bei jedem

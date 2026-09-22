@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { evaluateProximity, type ProximityState } from "@/lib/tracking";
+import {
+  distanzZumNaechstenPunktKm,
+  evaluateProximity,
+  type ProximityState,
+} from "@/lib/tracking";
 
 // ~1.1km östlich von START (grob, für "weit weg"-Fälle)
 const FAR: [number, number] = [8.55, 47.37];
@@ -95,5 +99,31 @@ describe("evaluateProximity", () => {
       0.1,
     );
     expect(result.hasLeftStart).toBe(false);
+  });
+});
+
+describe("distanzZumNaechstenPunktKm", () => {
+  it("returns null without any route points", () => {
+    expect(distanzZumNaechstenPunktKm(FAR, [])).toBeNull();
+  });
+
+  it("returns zero exactly on a route point", () => {
+    expect(distanzZumNaechstenPunktKm(START, [FAR, START, P2P_END])).toBe(0);
+  });
+
+  it("picks the nearest of several points", () => {
+    // FAR liegt ~0,75 km östlich von START — der nächste Punkt muss also
+    // deutlich unter einem Kilometer liegen und zu START gehören.
+    const distanz = distanzZumNaechstenPunktKm(FAR, [P2P_END, START]);
+    expect(distanz).not.toBeNull();
+    expect(distanz!).toBeCloseTo(0.753, 2);
+  });
+
+  it("measures a small offset in meters, not kilometers", () => {
+    // 0,001° östlich ≈ 75 m auf dieser Breite.
+    const distanz = distanzZumNaechstenPunktKm([8.541, 47.37], [START]);
+    expect(distanz).not.toBeNull();
+    expect(distanz!).toBeGreaterThan(0.05);
+    expect(distanz!).toBeLessThan(0.1);
   });
 });

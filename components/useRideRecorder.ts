@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { liveTempoKmh } from "@/lib/livetempo";
+import { FLUG_TEMPO_KMH } from "@/lib/bewegungsprofil";
 import { haversineKm, type TrailPoint } from "@/lib/geo";
 import { END_PROXIMITY_KM, evaluateProximity } from "@/lib/tracking";
 import { MAX_JUMP_KM } from "@/lib/track";
@@ -27,6 +28,11 @@ export const MIN_ACCURACY_M = 50;
 // Verhindert, dass GPS-Zittern im Stillstand als zurückgelegte Distanz
 // gezählt wird — gleiche Schwelle wie in computeTrailStats (lib/geo.ts).
 const MIN_SEGMENT_KM = 0.005;
+// Ohne nennenswerte Bewegung seit dieser Zeit zeigt die Tempoanzeige 0 statt
+// des letzten Fahrtempos (siehe Stillstand-Zweig im watchPosition-Callback).
+// Fünf Sekunden: lang genug, dass ein einzelner ungenauer Fix nicht auf 0
+// springt, kurz genug, dass ein Halt an der Ampel ehrlich angezeigt wird.
+const STILLSTAND_NULL_MS = 5_000;
 // Der Snapshot wird nicht mehr bei jedem GPS-Fix geschrieben: bis zur
 // Einführung freier Fahrten war eine Aufzeichnung eine Passfahrt von
 // zwanzig Minuten, jetzt kann sie Stunden dauern — und jeder Schreibvorgang
@@ -210,6 +216,11 @@ export function useRideRecorder({
   // mitten in der Fahrt per NTP korrigiert, würde dort sonst eine negative
   // Dauer erzeugen. Siehe lib/livetempo.ts.
   const lastPointMeasuredAtRef = useRef<number | null>(null);
+  // Wann zuletzt ein Segment über MIN_SEGMENT_KM zurückgelegt wurde —
+  // Grundlage für die Stillstand-Erkennung der Tempoanzeige (siehe
+  // STILLSTAND_NULL_MS). Reine Anzeigehilfe, kein Einfluss auf Distanz,
+  // Trail oder Wertung.
+  const letzteBewegungAtRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
   // Wann stop() lief — damit fortsetzen() die Zeit auf dem Fazit-Schirm aus
   // der angezeigten Fahrzeit herausrechnen kann (siehe dort).
@@ -548,6 +559,10 @@ export function useRideRecorder({
         startTimeRef.current = resume.startTimeMs;
         distanceKmRef.current = resume.distanceKm;
         hasLeftStartRef.current = resume.hasLeftStart;
+        // Nach einer Unterbrechung ist unbekannt, wann zuletzt gefahren wurde
+        // — jetzt annehmen statt null, damit die Tempoanzeige nicht beim
+        // ersten Fix auf 0 springt, bevor überhaupt ein Segment vorliegt.
+        letzteBewegungAtRef.current = Date.now();
         // Jede Wiederaufnahme ist eine Lücke: zwischen dem letzten Punkt im
         // Snapshot und dem ersten neuen Fix lief keine Aufzeichnung, und wer
         // in dieser Zeit weitergefahren ist, bringt einen Sprung mit, den der
@@ -579,6 +594,7 @@ export function useRideRecorder({
         startTimeRef.current = null;
         distanceKmRef.current = 0;
         hasLeftStartRef.current = false;
+        letzteBewegungAtRef.current = null;
         zielErstVerlassenRef.current = false;
         nachUnterbrechungRef.current = false;
         setLiveTrail([]);
@@ -707,11 +723,33 @@ export function useRideRecorder({
               // im nächsten Takt zurück. Bei 2 Hz Fix-Rate wäre das ein
               // Flackern im Blickfeld während der Fahrt.
               if (tempo !== null) setSpeedKmh(tempo);
+              letzteBewegungAtRef.current = now;
               distanceKmRef.current += segment;
               setDistanceKm(distanceKmRef.current);
               lastPointRef.current = point;
               lastPointTimeRef.current = now;
               lastPointMeasuredAtRef.current = gemessenAm;
+            } else {
+              // Stillstand (oder GPS-Zittern unter der Segment-Schwelle):
+              // Dieser Zweig aktualisierte bisher nichts, und die Anzeige
+              // fror auf dem letzten Fahrtempo ein — an der Ampel standen
+              // weiter "52 km/h". Was das Gerät selbst misst, gilt auch hier
+              // (0 km/h ist plausibel und wird übernommen); meldet es nichts,
+              // fällt die Anzeige nach kurzer Zeit ohne Bewegung auf 0, statt
+              // einen stehengebliebenen Wert zu zeigen. Distanz und Trail
+              // bleiben davon unberührt — es geht nur um die Anzeige.
+              if (
+                geraeteTempoKmh !== null &&
+                Number.isFinite(geraeteTempoKmh) &&
+                geraeteTempoKmh >= 0 &&
+                geraeteTempoKmh <= FLUG_TEMPO_KMH
+              ) {
+                setSpeedKmh(geraeteTempoKmh);
+              } else if (
+                now - (letzteBewegungAtRef.current ?? now) >= STILLSTAND_NULL_MS
+              ) {
+                setSpeedKmh(0);
+              }
             }
           } else {
             lastPointRef.current = point;

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import LiveTrackingForm from "@/components/LiveTrackingForm";
+import { useAufzeichnung } from "@/components/AufzeichnungsKontext";
 import type { KartenStrecke, RouteGeoJSON, Vehicle } from "@/types/database";
 import { buttonVariants } from "@/components/ui/Button";
 import { GUEST_TRACKING_USER_ID, loadTrackingSnapshot } from "@/lib/trackingStorage";
@@ -43,6 +44,18 @@ export default function GefahrenSection({
   // seiner eben gefahrenen Strecke nichts zeigt — LiveTrackingForm muss
   // mounten, damit die Aufzeichnung übernommen und das Fazit gezeigt wird.
   const [open, setOpen] = useState(guestContinuationToken !== null);
+
+  // Während der Aufzeichnung läuft auf dem Schirm genau eine Karte: die des
+  // Aufzeichnungs-Dialogs. Die Detailkarte dahinter hängt sich über den
+  // AufzeichnungProvider aus (siehe AufzeichnungsKontext.tsx) — sonst liefen
+  // zwei WebGL-Karten gleichzeitig, und genau das machte die
+  // Streckenaufzeichnung auf dem Telefon zäh, während die freie Fahrt mit
+  // einer Karte flüssig blieb.
+  const { setzeAktiv } = useAufzeichnung();
+  useEffect(() => {
+    setzeAktiv(open);
+    return () => setzeAktiv(false);
+  }, [open, setzeAktiv]);
 
   // Den verbrauchten Marker aus der Adressleiste nehmen, sobald er
   // weitergereicht ist: er ist einmalig einlösbar, ein Neuladen derselben
