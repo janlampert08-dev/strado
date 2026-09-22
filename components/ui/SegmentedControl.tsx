@@ -10,20 +10,11 @@ import { cn } from "@/lib/utils/cn";
 // der Unterschied zu einer Reihe einzelner Chips: man sieht auf einen Blick,
 // dass die Optionen zusammengehören und sich gegenseitig ausschliessen.
 //
-// ZUR GRÖSSE, weil der Kommentar hier zuerst mehr versprach, als das
-// Bedienelement hält: die Hülle ist mit 36 px Segment plus 2 × 4 px
-// Innenabstand 44 px hoch — die TIPPFLÄCHE ist aber das Segment, und das
-// sind 36 px. Die 8 px gehören der Hülle und lösen keine Auswahl aus.
-//
-// 36 px liegt über den 24 px aus WCAG 2.2 SC 2.5.8 und über den ~32 px,
-// die die fünf abgelösten Fassungen hatten, aber unter den 44 px, die
-// components/ui/IconButton.tsx als Mindestwert der App festschreibt. Das
-// ist hier vertretbar: keine dieser Leisten wird während der Fahrt bedient
-// (Farbschema in den Einstellungen, Feed-Reiter, Sichtbarkeit im Fazit am
-// Strassenrand), und auf 44 px hochgezogen wäre die Hülle 52 px hoch und
-// damit höher als jede Schaltfläche daneben. Wer es doch braucht, bekommt
-// einen Parameter — nicht ein angehängtes min-h-11, das lib/utils/cn.ts
-// nicht verlässlich durchsetzt.
+// ZUR GRÖSSE: die Hülle ist mit 44 px Segment plus 2 × 4 px Innenabstand
+// 52 px hoch — der Preis für Handschuh-Tauglichkeit. Alle Leisten werden
+// auch am Strassenrand bedient (Sichtbarkeit im Fazit, Rundfahrt,
+// Feed-Reiter), 36 px war dort eine Fehlgriff-Maschine. Mindestwert der App
+// ist 44 px (components/ui/IconButton.tsx), Segmente halten ihn ein.
 // max-w-full + overflow-x-auto: die Segmente tragen whitespace-nowrap, die
 // Hülle ist inline-flex — ohne diese beiden Klassen schiebt eine Leiste, die
 // nicht mehr passt, die ganze Seite nach rechts, statt selbst zu scrollen.
@@ -46,7 +37,7 @@ export function segmentHuelleClassName(className?: string): string {
 
 export function segmentClassName(aktiv: boolean, className?: string): string {
   return cn(
-    "inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-full px-4",
+    "inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-full px-4",
     "text-sm font-medium whitespace-nowrap transition-colors duration-fast",
     // ring-offset stand am abgelösten ThemeToggle und ging beim
     // Zusammenlegen verloren — ohne ihn liegt der Ring direkt auf der Kante

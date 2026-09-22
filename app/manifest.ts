@@ -14,9 +14,25 @@ export default function manifest(): MetadataRoute.Manifest {
     dir: "ltr",
     categories: ["travel", "navigation", "sports"],
     start_url: "/",
+    scope: "/",
     display: "standalone",
-    background_color: "#fafafa",
-    theme_color: "#fafafa",
+    // Dunkel als Splash/Task-Farbe: Dark ist der Fahrmodus, und ein weisser
+    // Blitz beim Start aus dem Homescreen fällt nachts stärker auf als ein
+    // dunkler bei Tag. Manifest kennt keine Media Queries — ein Wert gewinnt.
+    background_color: "#0b0b0d",
+    theme_color: "#0b0b0d",
+    // Homescreen-Shortcut: "Fahrt starten" ist der Handschuh-Flow — ein Tap
+    // vom Homescreen statt Nav-Mitte suchen.
+    shortcuts: [
+      {
+        name: "Fahrt starten",
+        url: "/fahrten/neu",
+      },
+      {
+        name: "Pässe",
+        url: "/paesse",
+      },
+    ],
     // Zwei Einträge, weil Android zwei verschiedene Dinge mit einem Icon
     // macht. "any" wird gezeigt wie geliefert (Chrome-Reiter, Verknüpfung
     // im Browser); "maskable" wird auf die Systemform beschnitten — Kreis,

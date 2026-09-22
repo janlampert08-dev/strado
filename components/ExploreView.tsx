@@ -35,6 +35,28 @@ function searchQueryHref(pathname: string, query: string): string {
   return trimmed ? `${pathname}?${new URLSearchParams({ q: trimmed })}` : pathname;
 }
 
+// Zwei Einstiege, eine Liste: Feierabend-Runden (Agglo-Loops, kurz,
+// ab Haustür) und Pässe & Berge (Wochenende, teilen). Die Unterscheidung
+// ist eine Heuristik über die kuratierten Felder — kein Schema, kein
+// Filter-Backend: hoehe/kehren/Name statt neuer Spalte, damit Bestand und
+// Teilen-Bild unangetastet bleiben. Agglo ist kein Second-Class-Bestand,
+// sondern der zweite Funnel neben dem Pass.
+export type ExploreArt = "alle" | "feierabend" | "berg";
+
+function istBergPass(route: ExploreRoute): boolean {
+  if ((route.hoehe_m ?? 0) >= 800) return true;
+  if ((route.kehren ?? 0) >= 8) return true;
+  return /pass/i.test(
+    `${route.name} ${route.region} ${route.start_ort} ${route.ziel_ort}`,
+  );
+}
+
+function passtZurArt(route: ExploreRoute, art: ExploreArt): boolean {
+  if (art === "alle") return true;
+  if (art === "berg") return istBergPass(route);
+  return route.laenge_km <= 70;
+}
+
 // mapbox-gl ist eine schwere Abhängigkeit (WebGL, eigenes CSS) — dynamisch
 // geladen, damit Suchfeld/Streckenliste interaktiv werden, ohne auf den
 // Kartencode zu warten, statt beides in einem Chunk zu bündeln. ssr:false,
@@ -48,34 +70,12 @@ const RouteMap = dynamic(() => import("@/components/RouteMap"), {
 // vollständig ab (siehe DragSheet.tsx) — der Kontext "wo bin ich?" hängt
 // dann an der Liste selbst, nicht mehr an einem Streifen Karte.
 //
-// 320 statt 272, und diesmal gemessen statt hergeleitet. Der alte Wert kam
-// aus der Kartenhöhe, die es vor dem Sheet gab (h-64 = 256 px, plus Griff);
-// er sagte nichts darüber, was im Fenster tatsächlich ankommt.
-//
-// Am Preview auf 390 x 844 nachgemessen, abgemeldet — also in dem Zustand,
-// in dem ein geteilter Link landet:
-//
-//   Inhaltsfläche des Peek-Fensters   235 px  (272 minus Ziehgriff)
-//   pt-3                               12
-//   Überschrift + Erklärabsatz         92
-//   gap-3                              12
-//   Suchzeile                          44
-//   gap-3 + Trennlinie + gap-3         25
-//   ------------------------------------------
-//   für die Liste übrig                50 px  —  eine Zeile ist 80 px hoch
-//
-// Es war also KEINE vollständige Streckenzeile zu sehen. Anhang A8 des
-// Konzepts rechnet mit "zwei volle plus Anschnitt" — das gilt für den
-// angemeldeten Fall, in dem der Erklärabsatz gar nicht erst gerendert wird.
-// Für den abgemeldeten, den derselbe Abschnitt ausdrücklich als den
-// wichtigen benennt, stimmte es nicht.
-//
-// 320 px gibt der Liste 98 px, und der auf zwei Zeilen gekürzte Absatz
-// (ExploreSidebar.tsx) weitere rund 21 — zusammen rund 119 px: eine volle
-// Zeile plus ein deutlicher Anschnitt der nächsten, der zeigt, dass es
-// weitergeht. Die Karte behält auf demselben Gerät rund 369 px und damit
-// mehr als die halbe Höhe.
-const SHEET_PEEK_PX = 320;
+// 360 statt 320: nachgemessen bleiben damit rund 159 px für die Liste —
+// zwei volle Zeilen plus Anschnitt statt einer plus Anschnitt. Die Karte
+// behält auf 390 x 844 noch rund 329 px. Agglo-Runde wie Pass teilen sich
+// dieselbe Liste: wer über einen Share-Link kommt, sieht Namen statt
+// Kacheln, egal ob Feierabend oder Wochenende.
+const SHEET_PEEK_PX = 360;
 
 // Wie lange der Zufallsvorschlag (siehe unten) stehen bleibt. Die Kamerafahrt
 // dorthin dauert 800 ms, danach bleiben gut vier Sekunden zum Lesen und
@@ -210,12 +210,16 @@ export default function ExploreView({
     () => new Map([...signatures].map(([id, sig]) => [id, sig.key])),
     [signatures],
   );
+  const [artFilter, setArtFilter] = useState<ExploreArt>("alle");
   const visibleRoutes = useMemo(() => {
     // searchInput statt des (debounced) URL-Werts: die Liste soll bei jedem
     // Tastendruck sofort reagieren, nicht erst nach dem URL-Sync-Delay.
+    // Art-Filter (Agglo vs. Pass) läuft davor — beides sind explizite
+    // Absichten, keine angeheftete Empfehlung.
+    const nachArt = artFilter === "alle" ? routes : routes.filter((r) => passtZurArt(r, artFilter));
     const filtered = searchInput.trim()
-      ? routes.filter((r) => matchesSearch(r, searchInput))
-      : routes;
+      ? nachArt.filter((r) => matchesSearch(r, searchInput))
+      : nachArt;
 
     if (!userLocation) return filtered;
 
@@ -224,7 +228,7 @@ export default function ExploreView({
         haversineKm(userLocation, a.start_geojson.coordinates) -
         haversineKm(userLocation, b.start_geojson.coordinates),
     );
-  }, [routes, searchInput, userLocation]);
+  }, [routes, searchInput, userLocation, artFilter]);
 
   // Genau eine Empfehlung für die Hierarchie der Liste — und sie steht ganz
   // oben, ausser der Nutzer filtert oder sortiert selbst: Bei Suche oder
@@ -232,7 +236,7 @@ export default function ExploreView({
   // die keine angeheftete Empfehlung gehört. Im Grundzustand (keine Suche,
   // kein Standort) ist es die bestbewertete Strecke (lib/empfehlung.ts),
   // an erster Stelle der angezeigten Liste.
-  const hatFilter = searchInput.trim() !== "";
+  const hatFilter = searchInput.trim() !== "" || artFilter !== "alle";
   const hatStandort = userLocation !== null;
   const empfehlung: Empfehlung | null = useMemo(() => {
     if (hatFilter || hatStandort || loadError) return null;
@@ -339,6 +343,8 @@ export default function ExploreView({
           anzahlStrecken={routes.length}
           searchQuery={searchInput}
           onSearchChange={setSearchInput}
+          artFilter={artFilter}
+          onArtFilterChange={setArtFilter}
           signatures={signatures}
           empfehlung={empfehlung}
           userLocation={userLocation}

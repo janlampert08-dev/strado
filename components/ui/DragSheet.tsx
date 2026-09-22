@@ -133,7 +133,7 @@ export default function DragSheet({
     heights: SheetHeights;
   } | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
-  const handleRef = useRef<HTMLDivElement>(null);
+  const handleRef = useRef<HTMLButtonElement>(null);
   // Ein Wisch, der auf einem Link oder Button beginnt und das Sheet zieht,
   // darf beim Loslassen nicht auch noch klicken. Browser unterdrücken den
   // Klick nach einem abgefangenen touchmove meist selbst — "meist" reicht
@@ -224,7 +224,7 @@ export default function DragSheet({
   }, [containerRef, snap, messeHoehen, onOccludedBottomChange]);
 
   const onPointerDown = useCallback(
-    (e: ReactPointerEvent<HTMLDivElement>) => {
+    (e: ReactPointerEvent<HTMLElement>) => {
       const heights = messeHoehen();
       const currentHeight = sheetHeightFor(snap, heights);
       dragRef.current = {
@@ -239,7 +239,7 @@ export default function DragSheet({
     [messeHoehen, snap],
   );
 
-  const onPointerMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+  const onPointerMove = useCallback((e: ReactPointerEvent<HTMLElement>) => {
     const drag = dragRef.current;
     if (!drag) return;
     const deltaY = drag.startY - e.clientY;
@@ -250,7 +250,7 @@ export default function DragSheet({
     setDragHeight(next);
   }, []);
 
-  const onPointerUp = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+  const onPointerUp = useCallback((e: ReactPointerEvent<HTMLElement>) => {
     const drag = dragRef.current;
     dragRef.current = null;
     e.currentTarget.releasePointerCapture(e.pointerId);
@@ -440,25 +440,28 @@ export default function DragSheet({
       } ${className}`}
       style={{ "--sheet-h": dragHeight !== null ? `${dragHeight}px` : sheetHeight } as CSSProperties}
     >
-      <div
+      <button
+        type="button"
         ref={handleRef}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        role="button"
-        tabIndex={0}
+        onClick={() => {
+          // Tap per Maus/Tastatur (ohne Zeiger-Geste): Pointer-Up hat ohne
+          // dragRef nichts umzuschalten — der Klick holt das nach. Nach einer
+          // echten Ziehgeste unterdrückt der Sheet-Container den Klick
+          // (onClickCapture oben), damit kein Tap nachfeuert.
+          if (!dragRef.current) setSnap(nextSnapOnTap);
+        }}
         aria-label={handleLabel}
         aria-expanded={snap === "voll"}
         // Nennt den Bereich, den der Griff auf- und zuzieht — ohne ihn ist
         // "Details ausklappen" eine Handlung ohne Gegenstand.
         aria-controls={inhaltId}
         onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setSnap(nextSnapOnTap);
-            return;
-          }
+          // Enter/Space löst nativ den Click oben aus — hier nur die
+          // Pfeiltasten, der einzige Weg ohne Wischgeste.
           // Die Pfeiltasten sind der einzige Weg, das Sheet ohne Wischgeste
           // ganz aus dem Weg zu räumen — ein Tap holt es bewusst nur zurück.
           if (e.key === "ArrowUp") {
@@ -478,7 +481,7 @@ export default function DragSheet({
         className="flex shrink-0 cursor-grab touch-none items-center justify-center rounded-t-lg py-5 active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-inset md:hidden"
       >
         <span aria-hidden="true" className="h-1 w-9 rounded-full bg-border-strong" />
-      </div>
+      </button>
       {/* display:contents, damit der Wrapper das Layout in keiner Breite
           verändert — weder die Flex-Spalte des Sheets noch, ab md, das
           Hochrutschen des Inhalts als direktes Flex-Kind von <main>. Er

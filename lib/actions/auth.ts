@@ -234,14 +234,16 @@ export async function signUp(
   }
 
   // Bei aktivierter E-Mail-Bestätigung liefert signUp() für eine bereits
-  // registrierte, bestätigte Adresse keinen Fehler (Supabase schützt so
-  // selbst gegen Enumeration) — erkennbar nur daran, dass identities leer
-  // bleibt statt eine neue Identity zu enthalten. Offiziell von Supabase
-  // dokumentierter Weg, das client-seitig zu unterscheiden, um dem Nutzer
-  // trotzdem eine Rückmeldung zu geben statt ihn auf eine nie versendete
-  // Bestätigungsmail warten zu lassen.
+  // registrierte, bestätigte Adresse keinen Fehler — erkennbar nur daran,
+  // dass identities leer bleibt. Um keine Konto-Enumeration zu ermöglichen,
+  // läuft dieser Fall durch denselben Pfad wie eine Neuregistrierung
+  // (Cookie + Redirect auf die Code-Seite, keine verräterische Meldung).
+  // Wer dort wirklich neu ist, bekommt den Code; wer schon registriert ist,
+  // kann über "Code erneut senden" bzw. die Anmeldung weiter — der
+  // Unterschied ist für einen Beobachter nicht sichtbar.
   if (data.user?.identities?.length === 0) {
-    return { error: "Diese E-Mail-Adresse ist bereits registriert." };
+    await merkeBestaetigung(email, next);
+    redirect(BESTAETIGUNG_PFAD);
   }
 
   // Ab hier ist das Konto angelegt und die Herkunft steht (oder steht
@@ -253,10 +255,10 @@ export async function signUp(
   // Aufräumen darf die Registrierung nicht kosten: das Konto existiert an
   // dieser Stelle bereits. Würde das Löschen des Cookies werfen, sähe der
   // Nutzer einen Fehler, wäre weder angemeldet noch weitergeleitet, und der
-  // zweite Versuch antwortete mit "Diese E-Mail-Adresse ist bereits
-  // registriert." Ein zurückgebliebenes Cookie ist dagegen folgenlos — es
-  // läuft ab, und ein zweites Konto legt dieselbe Person nicht an. Dieselbe
-  // Abwägung wie bei avatareEntfernen() in deleteAccount().
+  // zweite Versuch liefe erneut auf die Bestätigungsseite. Ein
+  // zurückgebliebenes Cookie ist dagegen folgenlos — es läuft ab, und ein
+  // zweites Konto legt dieselbe Person nicht an. Dieselbe Abwägung wie bei
+  // avatareEntfernen() in deleteAccount().
   try {
     await verbraucheHerkunft();
   } catch (fehler) {

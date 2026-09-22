@@ -82,13 +82,19 @@ describe("isRateLimitedByKey", () => {
 });
 
 describe("getClientIp", () => {
-  it("reads the first entry of x-forwarded-for", () => {
+  // Vercel hängt die echte Client-IP ans ENDE von x-forwarded-for an — das
+  // linkeste Element ist client-gesetzt und damit spoofbar. Es zählt das
+  // letzte Element, nie das erste.
+  it("liest das letzte Element von x-forwarded-for (Vercel hängt echt an)", () => {
     const headers = new Headers({ "x-forwarded-for": "1.2.3.4, 5.6.7.8" });
-    expect(getClientIp(headers)).toBe("1.2.3.4");
+    expect(getClientIp(headers)).toBe("5.6.7.8");
   });
 
-  it("falls back to x-real-ip", () => {
-    const headers = new Headers({ "x-real-ip": "9.9.9.9" });
+  it("bevorzugt x-real-ip vor x-forwarded-for", () => {
+    const headers = new Headers({
+      "x-forwarded-for": "1.2.3.4, 5.6.7.8",
+      "x-real-ip": "9.9.9.9",
+    });
     expect(getClientIp(headers)).toBe("9.9.9.9");
   });
 
