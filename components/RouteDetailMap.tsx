@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { Box } from "lucide-react";
+import { Box, Pause, Play } from "lucide-react";
 import { type TrafficChipState } from "@/components/TrafficIndicator";
 import { SPEED_LEGEND, tempolimitQuelle } from "@/lib/speed";
 import {
@@ -40,6 +40,10 @@ export default function RouteDetailMap({
   const [showSpeedLimits, setShowSpeedLimits] = useState(false);
   const [showTraffic, setShowTraffic] = useState(false);
   const [show3D, setShow3D] = useState(false);
+  // "Strecke abfahren": Kamera-Vorschau entlang der Linie — Kurven langsam,
+  // Geraden schnell. Remount je Strecke (key={route.id} auf der Seite),
+  // also kein Reset beim Streckenwechsel nötig.
+  const [flugAktiv, setFlugAktiv] = useState(false);
   const hasTempolimits = !!route.tempolimits?.length;
   // Herkunft ehrlich benennen statt nur Farben zu zeigen: dieselbe
   // Formulierung wie die öffentliche API (lib/speed.ts), damit Karte und
@@ -112,6 +116,9 @@ export default function RouteDetailMap({
           show3D={show3D}
           trafficSegments={trafficSegments}
           bottomInsetPx={bottomInsetPx}
+          flugKoordinaten={coordinates}
+          flugAktiv={flugAktiv}
+          onFlugBeendet={() => setFlugAktiv(false)}
         />
       </div>
       <div className="absolute top-4 left-4 flex flex-col items-start gap-2">
@@ -189,6 +196,23 @@ export default function RouteDetailMap({
           >
             <Box className="h-3.5 w-3.5" aria-hidden="true" />
             {show3D ? "2D-Ansicht" : "3D-Ansicht"}
+          </button>
+          {/* Kamera-Vorschau: fährt die Linie ab wie ein Auto — Kurven
+              langsam, Geraden schnell. Kein Autoplay (Bewegung nur auf
+              Knopfdruck), Stop jederzeit per Knopf oder Griff an die Karte. */}
+          <button
+            onClick={() => setFlugAktiv((v) => !v)}
+            aria-pressed={flugAktiv}
+            title={flugAktiv ? "Vorschau stoppen" : "Strecke abfahren: Kamera folgt der Linie"}
+            aria-label={flugAktiv ? "Vorschau stoppen" : "Strecke abfahren: Kamera folgt der Linie"}
+            className={buttonVariants({ variant: "secondary", size: "sm", className: "relative bg-background after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']" })}
+          >
+            {flugAktiv ? (
+              <Pause className="h-3.5 w-3.5" aria-hidden="true" />
+            ) : (
+              <Play className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+            {flugAktiv ? "Stopp" : "Abfahren"}
           </button>
         </div>
         {showSpeedLimits && (

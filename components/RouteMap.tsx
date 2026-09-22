@@ -10,6 +10,7 @@ import { sliceRouteBySpeed, speedColor } from "@/lib/speed";
 import { akzentFarbe, isDarkTheme, subscribeToThemeChange, tokenFarbe } from "@/lib/theme";
 import { SIGNATUR_RUECKFALL, SIGNATUR_TOKEN, type SignatureKey } from "@/lib/signature";
 import { MIN_ACCURACY_M } from "@/components/useRideRecorder";
+import { berechneFlugTabelle, positionBei } from "@/lib/fahrtVorschau";
 import type { KartenStrecke, TempolimitSegment } from "@/types/database";
 import Skeleton from "@/components/ui/Skeleton";
 
@@ -463,6 +464,9 @@ export default function RouteMap({
   hoveredRouteId = null,
   primaryRouteId = null,
   flyToRouteId = null,
+  flugKoordinaten = null,
+  flugAktiv = false,
+  onFlugBeendet,
   bottomInsetPx = 0,
   trafficSegments = KEINE_VERKEHRSSEGMENTE,
   tempoSegmente = KEINE_TEMPOSEGMENTE,
@@ -536,6 +540,15 @@ export default function RouteMap({
   // Liste folgt. Genutzt vom Zufallsvorschlag der Startseite
   // (ExploreView.tsx). null lässt die Kamera in Ruhe.
   flyToRouteId?: string | null;
+  // "Strecke abfahren": die Kamera folgt flugKoordinaten wie ein Auto —
+  // in Kurven langsam, auf Geraden schnell (Tempo-Tabelle aus
+  // lib/fahrtVorschau.ts). flugAktiv ein = von vorne abspielen, aus =
+  // stehenbleiben (Pause fängt beim nächsten Start wieder vorne an).
+  // Gesteuert von RouteDetailMap über den Vorschau-Knopf; null lässt die
+  // Kamera in Ruhe.
+  flugKoordinaten?: [number, number][] | null;
+  flugAktiv?: boolean;
+  onFlugBeendet?: () => void;
   // Fertig eingefärbte Stau-Abschnitte. RouteMap kennt Stau-Level und
   // -Farben nicht selbst — sie kommen aus lib/traffic.ts über
   // RouteDetailMap, genau wie die Signatur-Farben oben.
@@ -614,6 +627,13 @@ export default function RouteMap({
   // leere Kartenhintergrund. map.on("error") hebt das auf eine Fehlkarte
   // mit Retry statt stiller Fläche.
   const [kartenFehler, setKartenFehler] = useState<string | null>(null);
+  // Der Beendet-Rückruf als Ref: der Flug-Effekt unten darf nicht bei jedem
+  // Render des Aufrufers neu starten — ein Inline-Callback wäre bei jedem
+  // State-Wechsel neu und risse die Kamera an den Anfang zurück.
+  const onFlugBeendetRef = useRef(onFlugBeendet);
+  useEffect(() => {
+    onFlugBeendetRef.current = onFlugBeendet;
+  });
   const routesRef = useRef(routes);
   // Nur der Wert beim Aufbau zählt: die Knöpfe werden einmal angehängt.
   const ohneBedienelementeRef = useRef(ohneBedienelemente);
@@ -1296,6 +1316,83 @@ export default function RouteMap({
     // und läuft nach, sobald der Stil steht. Ohne das erschiene der
     // Vorschlag, aber die Kamera bliebe stehen.
   }, [flyToRouteId, stilGeneration]);
+
+  // "Strecke abfahren" — die Kamera fährt die Linie ab wie ein Auto: Tempo
+  // aus der Flug-Tabelle (Kurven langsam, Geraden schnell), Kurs in
+  // Fahrtrichtung, leicht geneigt, mit Wagenpunkt. Start immer von vorne;
+  // Pause (flugAktiv aus) lässt die Kamera stehen, wo sie ist.
+  //
+  // Eine Hand an die Karte beendet den Flug: movestart MIT Bedienereignis
+  // ist eine Nutzerin, unsere eigenen jumpTo-Sprünge tragen keines und
+  // lassen ihn laufen. reduced-motion greift hier bewusst nicht — der Flug
+  // startet nur auf ausdrücklichen Knopfdruck, nicht von allein.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !styleLoadedRef.current || !flugAktiv || !flugKoordinaten) return;
+    const tabelle = berechneFlugTabelle(flugKoordinaten);
+    if (tabelle.length < 2) {
+      onFlugBeendetRef.current?.();
+      return;
+    }
+
+    let abgebrochen = false;
+    let raf = 0;
+    let startMs: number | null = null;
+    const vorherigeNeigung = map.getPitch();
+
+    const punkt = document.createElement("div");
+    punkt.style.width = "16px";
+    punkt.style.height = "16px";
+    punkt.style.borderRadius = "9999px";
+    punkt.style.backgroundColor = akzentFarbe();
+    punkt.style.border = "3px solid #fff";
+    punkt.style.boxShadow = "0 1px 6px rgba(0,0,0,0.4)";
+    const marker = new mapboxgl.Marker({ element: punkt })
+      .setLngLat(tabelle[0].punkt)
+      .addTo(map);
+
+    map.easeTo({ pitch: 50, duration: bewegungsdauer(600) });
+
+    function beenden() {
+      if (abgebrochen) return;
+      abgebrochen = true;
+      cancelAnimationFrame(raf);
+      marker.remove();
+      if (mapRef.current) {
+        mapRef.current.easeTo({ pitch: vorherigeNeigung, duration: bewegungsdauer(600) });
+      }
+      onFlugBeendetRef.current?.();
+    }
+
+    function beiNutzerbewegung(e: { originalEvent?: unknown }) {
+      if (e.originalEvent) beenden();
+    }
+    map.on("movestart", beiNutzerbewegung);
+
+    function tick(jetztMs: number) {
+      if (abgebrochen) return;
+      if (startMs === null) startMs = jetztMs;
+      const pos = positionBei(tabelle, (jetztMs - startMs) / 1000);
+      const liveMap = mapRef.current;
+      if (!pos || !liveMap) {
+        beenden();
+        return;
+      }
+      // duration 0 + rAF-Takt statt easeTo-Kette: kein Warteschlangenstau,
+      // das Tempo bestimmt allein die Tabelle.
+      liveMap.jumpTo({ center: pos.punkt, bearing: pos.kurs });
+      marker.setLngLat(pos.punkt);
+      raf = requestAnimationFrame(tick);
+    }
+    raf = requestAnimationFrame(tick);
+
+    return () => {
+      map.off("movestart", beiNutzerbewegung);
+      beenden();
+    };
+    // stilGeneration wie beim Zufallsvorschlag: ein Start vor style.load
+    // läuft nach, sobald der Stil steht.
+  }, [flugAktiv, flugKoordinaten, stilGeneration]);
 
   // Hält die gezeichnete Track-Linie aktuell — während einer Aufzeichnung
   // bei jedem neuen GPS-Punkt, auf der Detailseite einmalig.

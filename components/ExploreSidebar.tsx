@@ -119,7 +119,7 @@ export default function ExploreSidebar({
               und die gehen im Peek-Fenster direkt an die Streckenliste
               (Rechnung in ExploreView.tsx bei SHEET_PEEK_PX). */}
           <p className="text-sm text-muted">
-            Feierabend-Runden wie Pässe — handverlesen. Aufzeichnen geht ohne Konto.
+            Kurze Runden wie Pässe — handverlesen. Aufzeichnen geht ohne Konto.
           </p>
         </div>
       )}
@@ -177,7 +177,7 @@ export default function ExploreSidebar({
         </IconButton>
       </div>
 
-      {/* Zwei Funnel, eine Liste: Feierabend (Agglo-Loops ab Haustür,
+      {/* Zwei Funnel, eine Liste: kurz & nah (Agglo-Runden ab Haustür,
           ≤70 km) und Pässe & Berge (Höhe/Kehren/Name-Heuristik in
           ExploreView.tsx). 44 px Chips, eine Zeile, horizontal scrollbar —
           kostet keine Listenhöhe im Peek, weil sie die Trennlinie ersetzt,
@@ -190,7 +190,7 @@ export default function ExploreSidebar({
         {(
           [
             { wert: "alle", label: "Alle" },
-            { wert: "feierabend", label: "Feierabend" },
+            { wert: "kurz", label: "Kurz & nah" },
             { wert: "berg", label: "Pässe & Berge" },
           ] as const
         ).map((chip) => {
@@ -275,8 +275,8 @@ export default function ExploreSidebar({
               kompakt
               icon={Route}
               title={
-                artFilter === "feierabend"
-                  ? "Noch keine Feierabend-Runde hier."
+                artFilter === "kurz"
+                  ? "Noch keine kurze Runde hier."
                   : "Noch kein Pass hier."
               }
               description="Kennst du eine Strasse, die man gefahren sein muss? Schlag sie vor — Agglo wie Pass zählen."

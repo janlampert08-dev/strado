@@ -46,9 +46,6 @@ export default function RegistrierenForm({
         {hatPromo && (
           <input type="hidden" name="promo_code" value={promoCode} />
         )}
-        {hatPromo && (
-          <input type="hidden" name="promo_code" value={promoCode} />
-        )}
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           Benutzername
           <Input

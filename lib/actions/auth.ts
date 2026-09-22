@@ -270,11 +270,12 @@ export async function signUp(
 
   // Ist "Confirm email" im Supabase-Projekt deaktiviert, liefert signUp
   // bereits eine aktive Session — dann direkt einloggen statt auf eine
-  // (nie versendete) Bestätigungsmail zu verweisen. Führt wie der
-  // E-Mail-Bestätigungslink (app/auth/callback/route.ts) zum next-Ziel,
-  // sonst unverändert zur Startseite.
+  // (nie versendete) Bestätigungsmail zu verweisen. Frische Konten ohne
+  // next-Ziel landen auf der Willkommen-Seite (erste Fahrt statt leerer
+  // Start), der Gast-Fahrt-Handoff mit next geht direkt zurück in den
+  // Recorder.
   if (data.session) {
-    redirect(next ?? "/");
+    redirect(next ?? "/willkommen");
   }
 
   // Adresse und Rücksprungziel für das Einlösen des Codes merken. MUSS vor
@@ -382,10 +383,12 @@ export async function bestaetigeRegistrierung(
 
   // Verbraucht, nicht ablaufen lassen: es gibt nichts mehr zu bestätigen,
   // und ein stehengebliebenes Cookie würde die Seite weiter anbieten. Vor
-  // dem redirect(), das wirft.
+  // dem redirect(), das wirft. Ohne next-Ziel geht es auf die
+  // Willkommen-Seite (erste Fahrt statt leerer Start) — mit next wie bisher
+  // dorthin, wofür das Konto angelegt wurde (Gast-Fahrt speichern).
   await verbraucheBestaetigung();
 
-  redirect(offen.next ?? "/");
+  redirect(offen.next ?? "/willkommen");
 }
 
 export interface ErneutSendenState {
