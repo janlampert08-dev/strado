@@ -5,6 +5,7 @@ import { ogMitBild } from "@/lib/openGraph";
 import Link from "next/link";
 import Header from "@/components/Header";
 import RouteDetailLayout from "@/components/RouteDetailLayout";
+import { AufzeichnungProvider } from "@/components/AufzeichnungsKontext";
 import FavoriteButton from "@/components/FavoriteButton";
 import RatingSection from "@/components/RatingSection";
 import GefahrenSection from "@/components/GefahrenSection";
@@ -294,6 +295,10 @@ export default async function StreckeDetailPage({
         }}
       />
       <Header back="/" />
+      {/* Trägt, ob gerade aufgezeichnet wird (GefahrenSection): Währenddessen
+          hängt die Detailkarte aus, damit nicht zwei WebGL-Karten gleichzeitig
+          laufen — siehe AufzeichnungsKontext.tsx. */}
+      <AufzeichnungProvider>
       <RouteDetailLayout route={route}>
         <div>
           <p className="text-sm text-muted">
@@ -648,6 +653,7 @@ export default async function StreckeDetailPage({
           </div>
         </AbschnittTabs>
       </RouteDetailLayout>
+      </AufzeichnungProvider>
     </div>
   );
 }

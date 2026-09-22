@@ -20,6 +20,29 @@ export interface ProximityResult {
   shouldAutoStop: boolean;
 }
 
+// Kürzester Abstand von der aktuellen Position zur Streckenlinie, als Minimum
+// über die Stützpunkte. Für Rundfahrten, bei denen Start- und Zielpunkt
+// zusammenfallen und deshalb kein einzelner Punkt als Ziel taugt: dort sagt
+// die Anzeige, wie weit der nächste Routenpunkt entfernt ist, statt einer
+// Entfernung zu einem Start, an dem man längst vorbeigefahren sein kann.
+//
+// Bewusst reine Stützpunkt-Näherung ohne Segmentprojektion: bei den
+// Stützpunktabständen kuratierter Strecken ist der Fehler gegenüber dem
+// echten Linienabstand vernachlässigbar, und die Anzeige braucht eine
+// Grössenordnung ("noch ca. 300 m bis zur Route"), kein Map-Matching.
+export function distanzZumNaechstenPunktKm(
+  position: [number, number],
+  punkte: [number, number][],
+): number | null {
+  if (punkte.length === 0) return null;
+  let min = Infinity;
+  for (const punkt of punkte) {
+    const distanz = haversineKm(position, punkt);
+    if (distanz < min) min = distanz;
+  }
+  return min;
+}
+
 // Reine Zustandslogik für Auto-Start/Auto-Stop beim Live-Tracking
 // (components/LiveTrackingForm.tsx), extrahiert für Testbarkeit. Verhindert
 // bei Rundstrecken (Start = Ziel), dass die Aufzeichnung sofort nach dem

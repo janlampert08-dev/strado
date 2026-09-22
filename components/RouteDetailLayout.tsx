@@ -3,6 +3,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import DragSheet from "@/components/ui/DragSheet";
 import RouteDetailMap from "@/components/RouteDetailMap";
+import { useAufzeichnung } from "@/components/AufzeichnungsKontext";
 import type { RouteGeoJSON } from "@/types/database";
 import { formatKm } from "@/lib/format";
 
@@ -30,6 +31,12 @@ export default function RouteDetailLayout({
   // hier ist der Wert bekannt, und die Seite ist eine Server Component, kann
   // also keine Callback-Prop durchreichen.
   const [verdecktUnten, setVerdecktUnten] = useState(0);
+  // Während einer laufenden Aufzeichnung (GefahrenSection geöffnet) hängt die
+  // Detailkarte aus — der Aufzeichnungs-Dialog bringt seine eigene Karte mit,
+  // und zwei WebGL-Instanzen gleichzeitig machen die Aufzeichnung auf dem
+  // Telefon zäh (siehe AufzeichnungsKontext.tsx). Der Platzhalter hält die
+  // Geometrie (absolute Fläche), damit beim Wieder-Einhängen nichts springt.
+  const { aktiv: aufzeichnungAktiv } = useAufzeichnung();
 
   return (
     <main ref={containerRef} className="relative flex flex-1 flex-col overflow-hidden md:flex-row">
@@ -48,7 +55,11 @@ export default function RouteDetailLayout({
           Hilfstechnik erreichbar, die Beschreibung steht daneben. */}
       <div className="absolute inset-0 md:static md:order-2 md:h-auto md:flex-1">
         <p className="sr-only">Kartenansicht der Strecke.</p>
-        <RouteDetailMap route={route} bottomInsetPx={verdecktUnten} key={route.id} />
+        {aufzeichnungAktiv ? (
+          <div className="h-full w-full bg-background" aria-hidden="true" />
+        ) : (
+          <RouteDetailMap route={route} bottomInsetPx={verdecktUnten} key={route.id} />
+        )}
       </div>
 
       {/* Die max-w- und border-r-Klassen sitzen auf dem inneren div, nicht
