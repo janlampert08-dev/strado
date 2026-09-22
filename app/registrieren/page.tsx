@@ -1,7 +1,9 @@
 import { Metadata } from "next";
 import Header from "@/components/Header";
 import RegistrierenForm from "@/components/RegistrierenForm";
+import GoogleLoginButton from "@/components/GoogleLoginButton";
 import { safeInternalPath } from "@/lib/utils/url";
+import { aktiveOAuthAnbieter } from "@/lib/oauth";
 import { NICHT_INDEXIEREN } from "@/lib/seo";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
@@ -35,6 +37,11 @@ export default async function RegistrierenPage({
   const { next, promo } = await searchParams;
   const nextHref = safeInternalPath(next) ?? undefined;
   const promoCode = promo ? promo.toLowerCase() : null;
+  // Google-Knopf wie auf /anmelden (lib/oauth.ts) — ein Tap statt Formular
+  // plus Code. Hinweis: Creator-Herkunft und Promo-Code reisen nur über das
+  // E-Mail-Formular mit (lib/actions/auth.ts); wer über Google kommt, bekommt
+  // vorerst weder Attribution noch Gratis-Tage.
+  const mitGoogle = aktiveOAuthAnbieter().includes("google");
 
   return (
     <div className="flex h-dvh flex-col">
@@ -51,6 +58,16 @@ export default async function RegistrierenPage({
           darüber hinaus in den Scrollbereich statt zu beschneiden. */}
       <div className="flex-1 overflow-y-auto">
         <Seitenrahmen breite="schmal" className="min-h-full justify-center">
+          {mitGoogle && (
+            <>
+              <GoogleLoginButton nextHref={nextHref} />
+              <div aria-hidden="true" className="flex items-center gap-3 text-xs text-muted">
+                <span className="h-px flex-1 bg-border" />
+                <span>oder mit E-Mail</span>
+                <span className="h-px flex-1 bg-border" />
+              </div>
+            </>
+          )}
           <RegistrierenForm nextHref={nextHref} promoCode={promoCode} />
         </Seitenrahmen>
       </div>

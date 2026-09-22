@@ -123,6 +123,18 @@ export default function ExploreSidebar({
           </p>
         </div>
       )}
+      {/* Der Gast-Loop ist der beste Funnel der App (aufzeichnen ohne Konto,
+          Konto erst beim Speichern) und stand bisher in einem Nebensatz. Für
+          Ausgeloggte eine volle Handlungsfläche direkt unter der Erklärung —
+          eine Zeile hoch, keine Listenhöhe verschenkt. */}
+      {!loggedIn && (
+        <Link
+          href="/fahrten/neu"
+          className={buttonVariants({ variant: "accent", size: "md", className: "w-full" })}
+        >
+          Probefahrt starten — ohne Konto
+        </Link>
+      )}
 
       {/* Suchfeld und Standort in EINER Zeile. Vorher standen sie
           untereinander, getrennt durch gap-5, und der Standort-Chip trug
@@ -258,13 +270,19 @@ export default function ExploreSidebar({
               // Die Zahl statt eines allgemeinen Tipps: wer "Klausen"
               // getippt hat, weiss schon, dass man nach Pässen suchen kann.
               // Was er nicht weiss, ist, wie klein der Bestand noch ist.
-              description={`Gesucht in Namen, Regionen, Start- und Zielorten von ${mitAnzahl(anzahlStrecken, "Strecke", "Strecken")}. Kennst du eine, die fehlt, schlag sie vor.`}
+              // Der Vorschlag trägt den Suchbegriff mit (?wunsch=): nach dem
+              // Login steht der Name schon im Formular — aus der Sackgasse
+              // wird eine Einladung statt einer Wand.
+              description={`Gesucht in Namen, Regionen, Start- und Zielorten von ${mitAnzahl(anzahlStrecken, "Strecke", "Strecken")}. Kennst du eine, die fehlt, schlag sie vor — dein Suchbegriff steht schon im Formular.`}
               action={
                 <div className="flex flex-wrap gap-3">
                   <Button variant="secondary" size="md" onClick={() => onSearchChange("")}>
                     Suche zurücksetzen
                   </Button>
-                  <Link href="/strecken/neu" className={buttonVariants({ variant: "ghost", size: "md" })}>
+                  <Link
+                    href={`/strecken/neu?wunsch=${encodeURIComponent(searchQuery.trim().slice(0, 80))}`}
+                    className={buttonVariants({ variant: "ghost", size: "md" })}
+                  >
                     Strecke vorschlagen
                   </Link>
                 </div>
