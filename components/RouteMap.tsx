@@ -660,6 +660,11 @@ export default function RouteMap({
   // vom bereits vorhandenen Skeleton für den Code-Split in RouteDetailMap/
   // ExploreView) — ohne das wäre die Karte für ein bis zwei Sekunden leer.
   const [isReady, setIsReady] = useState(false);
+  // Fehler statt ewigem Skelett: kommt "idle" nie (kein Netz, 401/Quota,
+  // CSP-Block, WebGL-Blacklist), stand bisher nach 6 s kommentarlos der
+  // leere Kartenhintergrund. map.on("error") hebt das auf eine Fehlkarte
+  // mit Retry statt stiller Fläche.
+  const [kartenFehler, setKartenFehler] = useState<string | null>(null);
   const routesRef = useRef(routes);
   // Nur der Wert beim Aufbau zählt: die Knöpfe werden einmal angehängt.
   const ohneBedienelementeRef = useRef(ohneBedienelemente);
@@ -1192,9 +1197,22 @@ export default function RouteMap({
       // sah man im Review als schwarze Fläche, wo eine Karte sein sollte.
       // Der Notnagel darunter hebt das Skelett auch dann, wenn "idle" nie
       // kommt (kein Netz, blockierte Kacheln) — dann steht wenigstens der
-      // leere Kartenhintergrund statt eines ewigen Skeletts.
+      // leere Kartenhintergrund statt eines ewigen Skeletts. Ein echter
+      // Fehler (Netz, Token, Quota, WebGL) landet zusätzlich auf der
+      // Fehlkarte unten statt kommentarlos leer.
       map.once("idle", () => setIsReady(true));
       window.setTimeout(() => setIsReady(true), 6000);
+    });
+
+    // Kartenfehler als Fläche statt Stille: "error" feuert u. a. bei
+    // fehlenden Tiles, 401/403 und WebGL-Problemen. Einmal gesetzt, bleibt
+    // die Meldung bis zum Reload — bewusst kein Auto-Retry im Sekundentakt,
+    // das bei Quota nur Kosten treibt.
+    map.on("error", () => {
+      setKartenFehler(
+        "Die Karte konnte nicht geladen werden. Prüfe deine Verbindung und lade neu.",
+      );
+      setIsReady(true);
     });
 
     // Delegierte Layer-Listener bleiben auch über einen Style-Wechsel hinweg
@@ -1552,8 +1570,22 @@ export default function RouteMap({
   return (
     <div className="relative h-full w-full">
       <div ref={containerRef} className="h-full w-full" />
-      {!isReady && (
+      {!isReady && !kartenFehler && (
         <Skeleton className="pointer-events-none absolute inset-0 h-full w-full" />
+      )}
+      {kartenFehler && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background p-6 text-center">
+          <p role="alert" className="text-sm text-muted">
+            {kartenFehler}
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="min-h-11 rounded-full border border-border px-4 text-sm font-medium"
+          >
+            Karte neu laden
+          </button>
+        </div>
       )}
     </div>
   );

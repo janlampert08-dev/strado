@@ -29,6 +29,8 @@ function kuerzen(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
 }
 
+import type { ExploreArt } from "@/components/ExploreView";
+
 export default function ExploreSidebar({
   routes,
   bewertungen,
@@ -38,6 +40,8 @@ export default function ExploreSidebar({
   anzahlStrecken,
   searchQuery,
   onSearchChange,
+  artFilter,
+  onArtFilterChange,
   signatures,
   empfehlung,
   userLocation,
@@ -57,6 +61,8 @@ export default function ExploreSidebar({
   anzahlStrecken: number;
   searchQuery: string;
   onSearchChange: (value: string) => void;
+  artFilter: ExploreArt;
+  onArtFilterChange: (art: ExploreArt) => void;
   signatures: Map<string, RouteSignature>;
   /** Genau eine Empfehlung (oder keine bei Suche/Fehler) — siehe lib/empfehlung.ts. */
   empfehlung: Empfehlung | null;
@@ -118,7 +124,7 @@ export default function ExploreSidebar({
               und die gehen im Peek-Fenster direkt an die Streckenliste
               (Rechnung in ExploreView.tsx bei SHEET_PEEK_PX). */}
           <p className="text-sm text-muted">
-            Kurven, Pässe, Aussicht — handverlesen. Aufzeichnen geht ohne Konto.
+            Feierabend-Runden wie Pässe — handverlesen. Aufzeichnen geht ohne Konto.
           </p>
         </div>
       )}
@@ -181,6 +187,42 @@ export default function ExploreSidebar({
         </IconButton>
       </div>
 
+      {/* Zwei Funnel, eine Liste: Feierabend (Agglo-Loops ab Haustür,
+          ≤70 km) und Pässe & Berge (Höhe/Kehren/Name-Heuristik in
+          ExploreView.tsx). 44 px Chips, eine Zeile, horizontal scrollbar —
+          kostet keine Listenhöhe im Peek, weil sie die Trennlinie ersetzt,
+          nicht ergänzt. */}
+      <div
+        role="group"
+        aria-label="Strecken filtern"
+        className="flex gap-2 overflow-x-auto pb-1"
+      >
+        {(
+          [
+            { wert: "alle", label: "Alle" },
+            { wert: "feierabend", label: "Feierabend" },
+            { wert: "berg", label: "Pässe & Berge" },
+          ] as const
+        ).map((chip) => {
+          const aktiv = artFilter === chip.wert;
+          return (
+            <button
+              key={chip.wert}
+              type="button"
+              aria-pressed={aktiv}
+              onClick={() => onArtFilterChange(chip.wert)}
+              className={`inline-flex min-h-11 shrink-0 items-center rounded-full border px-4 text-sm font-medium whitespace-nowrap transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
+                aktiv
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border text-muted hover:text-foreground"
+              }`}
+            >
+              {chip.label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Antwort auf eine gerade ausgelöste Nutzeraktion — role="alert",
           damit sie angesagt wird. */}
       {locationError && <p role="alert" className="text-sm text-danger">{locationError}</p>}
@@ -238,6 +280,27 @@ export default function ExploreSidebar({
                 </div>
               }
             />
+          ) : artFilter !== "alle" ? (
+            <EmptyState
+              kompakt
+              icon={Route}
+              title={
+                artFilter === "feierabend"
+                  ? "Noch keine Feierabend-Runde hier."
+                  : "Noch kein Pass hier."
+              }
+              description="Kennst du eine Strasse, die man gefahren sein muss? Schlag sie vor — Agglo wie Pass zählen."
+              action={
+                <div className="flex flex-wrap gap-3">
+                  <Button variant="secondary" size="md" onClick={() => onArtFilterChange("alle")}>
+                    Alle anzeigen
+                  </Button>
+                  <Link href="/strecken/neu" className={buttonVariants({ variant: "ghost", size: "md" })}>
+                    Strecke vorschlagen
+                  </Link>
+                </div>
+              }
+            />
           ) : (
             <EmptyState
               kompakt
@@ -256,8 +319,15 @@ export default function ExploreSidebar({
 
       <ul className="flex flex-col gap-1">
         {routes.length === 0 && loadError && (
-          <li role="alert" className="text-sm text-danger">
-            Strecken konnten nicht geladen werden. Bitte versuche es später erneut.
+          <li>
+            <div role="alert" className="flex flex-col gap-3 py-2">
+              <p className="text-sm text-danger">
+                Strecken konnten nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.
+              </p>
+              <Button variant="secondary" size="md" onClick={() => window.location.reload()}>
+                Erneut versuchen
+              </Button>
+            </div>
           </li>
         )}
         {routes.map((route) => {
