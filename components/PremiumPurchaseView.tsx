@@ -210,7 +210,7 @@ function PlanOption({
   return (
     <label
       className={`flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3.5 transition-colors duration-fast ease-standard ${
-        gewaehlt ? "border-accent bg-accent-subtle" : "border-border hover:border-border-strong"
+        gewaehlt ? "border-accent bg-accent-subtle" : "border-border hover:border-muted"
       }`}
     >
       <input
@@ -219,7 +219,7 @@ function PlanOption({
         value={angebot.plan}
         checked={gewaehlt}
         onChange={onWaehlen}
-        className="mt-1 h-4 w-4 shrink-0 accent-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="mt-1 h-4 w-4 shrink-0 accent-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       />
       <span className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="flex flex-wrap items-center gap-2">

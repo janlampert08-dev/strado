@@ -355,7 +355,11 @@ export default function LiveTrackingForm({
               Zustand, kein Etikett — dieselbe Zeile wie bei der freien Fahrt
               (FreeRideForm.tsx), mit der Uhr rechts statt als grosser Zahl. */}
           <div className="flex items-center justify-between gap-3">
-            <p className="flex items-center gap-2 text-sm font-medium">
+            {/* role="status": Start, Pause und das automatische Loslaufen der
+                Zeit am Startpunkt werden angesagt — wer fährt, schaut nicht
+                hin. Nur diese Zeile, nicht die Uhr daneben: die würde jede
+                Sekunde vorgelesen. */}
+            <p role="status" className="flex items-center gap-2 text-sm font-medium">
               <span
                 aria-hidden="true"
                 className={`h-2.5 w-2.5 shrink-0 rounded-full ${recorder.hasStarted && !recorder.pausiert ? "bg-danger" : "bg-muted"}`}

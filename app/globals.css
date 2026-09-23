@@ -22,7 +22,13 @@
      --color-border-control. Eine Karte ist Ordnung, ein Feld ist etwas zum
      Anfassen; das darf man sehen. */
   --color-border: color-mix(in oklch, var(--color-foreground) 8%, transparent);
-  --color-border-control: color-mix(in oklch, var(--color-foreground) 22%, transparent);
+  /* 48 %: ab hier erreicht der Umriss eines Feldes 3:1 gegen Hintergrund
+     (3.25) und Fläche (3.21) — WCAG 1.4.11 verlangt das für die Grenze
+     eines Bedienelements. 22 % ergaben 1.62:1: das Feld war als Feld kaum
+     zu erkennen. Der Hover-Rahmen der Bedienelemente nimmt dafür
+     --color-muted (hover:border-muted): strong trägt auch Trennlinien und
+     den Griff des Sheets und bleibt deshalb, wo er war. */
+  --color-border-control: color-mix(in oklch, var(--color-foreground) 48%, transparent);
   --color-border-strong: color-mix(in oklch, var(--color-foreground) 30%, transparent);
   --color-surface: color-mix(in oklch, var(--color-foreground) 3%, var(--color-background));
 
@@ -107,7 +113,7 @@
     --color-muted: #8f95a3;
 
     --color-border: color-mix(in oklch, var(--color-foreground) 9%, transparent);
-    --color-border-control: color-mix(in oklch, var(--color-foreground) 22%, transparent);
+    --color-border-control: color-mix(in oklch, var(--color-foreground) 40%, transparent);
     --color-border-strong: color-mix(in oklch, var(--color-foreground) 32%, transparent);
     --color-surface: color-mix(in oklch, var(--color-foreground) 6%, var(--color-background));
 
@@ -168,7 +174,8 @@
   --color-muted: #8f95a3;
 
   --color-border: color-mix(in oklch, var(--color-foreground) 9%, transparent);
-  --color-border-control: color-mix(in oklch, var(--color-foreground) 22%, transparent);
+  /* Dunkel: 40 % ergibt 3.51:1 gegen Hintergrund und 3.54:1 gegen Fläche. */
+  --color-border-control: color-mix(in oklch, var(--color-foreground) 40%, transparent);
   --color-border-strong: color-mix(in oklch, var(--color-foreground) 32%, transparent);
   --color-surface: color-mix(in oklch, var(--color-foreground) 6%, var(--color-background));
 

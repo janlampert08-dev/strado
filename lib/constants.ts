@@ -58,11 +58,6 @@ export const KATEGORIEN = [
   { value: "freie_fahrt", label: "Freie Fahrt" },
 ] as const;
 
-// Gold/Silber/Bronze für die Top 3 einer Bestenliste — an mehreren Stellen
-// verwendet (RouteLeaderboardPreview.tsx, app/ranglisten/page.tsx), daher
-// hier zentral statt mehrfach dupliziert.
-export const MEDAL_COLORS = ["#D4AF37", "#A8A9AD", "#CD7F32"] as const;
-
 // Feste Werte statt Freitext, damit die Moderationswarteschlange (siehe
 // lib/moderation.ts) filter-/auswertbar bleibt — ein optionaler
 // Freitextkommentar ergänzt bei Bedarf.
