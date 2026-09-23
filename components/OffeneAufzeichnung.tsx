@@ -80,7 +80,7 @@ export default function OffeneAufzeichnungStreifen({ userId }: { userId: string 
           {zusatz}
         </span>
       </span>
-      <span className="flex shrink-0 items-center gap-0.5 font-medium text-accent">
+      <span className="flex shrink-0 items-center gap-0.5 font-medium text-accent-ink">
         Zurück zur Fahrt
         <WeiterIcon className="h-4 w-4" aria-hidden="true" />
       </span>

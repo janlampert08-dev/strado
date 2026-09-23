@@ -330,7 +330,7 @@ export default function RouteActionsMenu({
               <Link
                 href="/profil/premium"
                 onClick={() => setOpen(false)}
-                className="text-sm font-medium text-accent hover:underline"
+                className="text-sm font-medium text-accent-ink hover:underline"
               >
                 Mehr zu Premium →
               </Link>

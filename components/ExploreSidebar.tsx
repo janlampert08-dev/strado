@@ -326,7 +326,7 @@ export default function ExploreSidebar({
                       {empfehlungsText}
                     </span>
                   )}
-                  <span className="truncate text-base font-medium transition-colors duration-fast group-hover:text-accent">
+                  <span className="truncate text-base font-medium transition-colors duration-fast group-hover:text-accent-ink">
                     {route.name}
                   </span>
                   <div className="flex items-center gap-2">

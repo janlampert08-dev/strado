@@ -1,5 +1,6 @@
 "use client";
 
+import KartePlatzhalter from "@/components/ui/KartePlatzhalter";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { mitAnzahl } from "@/lib/format";
 import { useEntwurfSchutz } from "@/components/useEntwurfSchutz";
@@ -15,7 +16,6 @@ import { proposeRoute, type ProposeRouteState } from "@/lib/actions/routes";
 import { Input, Textarea } from "@/components/ui/Input";
 import Button, { textAktionClassName } from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
-import Skeleton from "@/components/ui/Skeleton";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 
 // Gleiche Begründung wie bei RouteMap (ExploreView.tsx): mapbox-gl ist eine
@@ -26,7 +26,7 @@ import SegmentedControl from "@/components/ui/SegmentedControl";
 // ssr:false, da mapbox-gl direkten DOM-/WebGL-Zugriff braucht.
 const RoutePicker = dynamic(() => import("@/components/RoutePicker"), {
   ssr: false,
-  loading: () => <Skeleton className="h-full w-full" />,
+  loading: () => <KartePlatzhalter />,
 });
 
 const initialState: ProposeRouteState = { error: null };

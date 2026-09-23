@@ -1,5 +1,6 @@
 "use client";
 
+import KartePlatzhalter from "@/components/ui/KartePlatzhalter";
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -7,7 +8,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ZUFALLSSTRECKE_EVENT } from "@/components/LogoLink";
 import ExploreSidebar from "@/components/ExploreSidebar";
 import DragSheet from "@/components/ui/DragSheet";
-import Skeleton from "@/components/ui/Skeleton";
 import { haversineKm } from "@/lib/geo";
 import { brauchtUrlSync, echoEinordnen, matchesSearch } from "@/lib/search";
 import { computeSignatures } from "@/lib/signature";
@@ -42,7 +42,7 @@ function searchQueryHref(pathname: string, query: string): string {
 // da mapbox-gl direkten DOM-/WebGL-Zugriff braucht.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
   ssr: false,
-  loading: () => <Skeleton className="h-full w-full" />,
+  loading: () => <KartePlatzhalter />,
 });
 
 // Bottom-Sheet-Masse (Mobile). Aufgezogen deckt das Sheet die Karte
@@ -315,7 +315,7 @@ export default function ExploreView({
         <div className="pointer-events-none absolute inset-x-0 top-4 z-10 flex justify-center px-5">
           <Link
             href={`/strecken/${zufallsstrecke.id}`}
-            className="pointer-events-auto max-w-full truncate rounded-full border border-border bg-background/95 px-4 py-2 text-sm font-medium shadow-overlay backdrop-blur-xl transition-colors duration-fast hover:text-accent"
+            className="pointer-events-auto max-w-full truncate rounded-full border border-border bg-background/95 px-4 py-2 text-sm font-medium shadow-overlay backdrop-blur-xl transition-colors duration-fast hover:text-accent-ink"
           >
             Wie wär&rsquo;s mit … {zufallsstrecke.name}?
           </Link>

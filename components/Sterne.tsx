@@ -80,7 +80,7 @@ export default function Sterne({
         {SKALA.map((i) => (
           <SternIcon
             key={i}
-            className={cn("shrink-0 fill-current text-accent", sterneClassName)}
+            className={cn("shrink-0 fill-current text-accent-ink", sterneClassName)}
           />
         ))}
       </span>

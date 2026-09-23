@@ -1,12 +1,12 @@
 "use client";
 
+import KartePlatzhalter from "@/components/ui/KartePlatzhalter";
 import dynamic from "next/dynamic";
-import Skeleton from "@/components/ui/Skeleton";
 import { dauerTeile } from "@/lib/format";
 
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
   ssr: false,
-  loading: () => <Skeleton className="h-full w-full" />,
+  loading: () => <KartePlatzhalter />,
 });
 
 const KEINE_STRECKEN: never[] = [];

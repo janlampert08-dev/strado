@@ -119,7 +119,7 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
         <ul className="flex flex-col gap-2.5 text-sm text-foreground">
           {PREMIUM_VORTEILE.map((vorteil) => (
             <li key={vorteil} className="flex items-start gap-2.5">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+              <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent-ink" aria-hidden="true" />
               <span>{vorteil}</span>
             </li>
           ))}
@@ -228,7 +228,7 @@ function PlanOption({
               className={
                 istPass
                   ? "rounded-full border border-border-strong px-2 py-0.5 text-xs font-medium text-muted"
-                  : "rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-background"
+                  : "rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-on-accent"
               }
             >
               {abzeichen}

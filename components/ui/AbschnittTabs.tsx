@@ -66,7 +66,7 @@ export default function AbschnittTabs({
                   <span
                     aria-hidden="true"
                     className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums ${
-                      istAktiv ? "bg-background text-foreground" : "bg-accent text-background"
+                      istAktiv ? "bg-background text-foreground" : "bg-accent text-on-accent"
                     }`}
                   >
                     {tab.anzahl > 99 ? "99+" : tab.anzahl}

@@ -89,7 +89,7 @@ export default function FeedReiter({
                 className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold ${
                   r.ansicht === aktiv
                     ? "bg-background text-foreground"
-                    : "bg-accent text-background"
+                    : "bg-accent text-on-accent"
                 }`}
               >
                 {(r.zaehler ?? 0) > 9 ? "9+" : r.zaehler}

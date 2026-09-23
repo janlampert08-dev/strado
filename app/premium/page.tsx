@@ -103,7 +103,7 @@ export default async function PremiumTeaserPage() {
           <ul className="flex flex-col gap-2.5 text-sm text-foreground">
             {PREMIUM_VORTEILE.map((vorteil) => (
               <li key={vorteil} className="flex items-start gap-2.5">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent-ink" aria-hidden="true" />
                 <span>{vorteil}</span>
               </li>
             ))}

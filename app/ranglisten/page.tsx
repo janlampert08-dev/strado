@@ -144,14 +144,14 @@ function LeaderboardSection({
                   href={`/fahrer/${entry.userId}`}
                   // after: dehnt die Tippfläche über die ganze Zeilenhöhe
                   // (py-3 der Zeile), die Schrift allein war 20 px hoch.
-                  className={`relative flex min-w-0 flex-1 items-center transition-colors duration-fast hover:text-accent after:absolute after:-inset-y-3 after:inset-x-0 after:content-[''] ${
-                    isOwn ? "font-medium text-accent" : ""
+                  className={`relative flex min-w-0 flex-1 items-center transition-colors duration-fast hover:text-accent-ink after:absolute after:-inset-y-3 after:inset-x-0 after:content-[''] ${
+                    isOwn ? "font-medium text-accent-ink" : ""
                   }`}
                 >
                   <span className="truncate">{entry.name}</span>
                 </Link>
                 <span
-                  className={`shrink-0 tabular-nums ${isOwn ? "text-accent" : "text-muted"}`}
+                  className={`shrink-0 tabular-nums ${isOwn ? "text-accent-ink" : "text-muted"}`}
                 >
                   {format(entry.value)} {typeof unit === "function" ? unit(entry.value) : unit}
                 </span>

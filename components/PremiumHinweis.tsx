@@ -29,7 +29,7 @@ export default function PremiumHinweis({
 }) {
   return (
     <p className={`flex items-start gap-2 text-sm text-muted ${className}`}>
-      <SparklesIcon className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+      <SparklesIcon className="mt-0.5 h-4 w-4 shrink-0 text-accent-ink" aria-hidden="true" />
       <span>
         {children}.{" "}
         <Link href="/premium" className="text-foreground underline underline-offset-2">

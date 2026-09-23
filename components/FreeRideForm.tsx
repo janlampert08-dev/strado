@@ -1,5 +1,6 @@
 "use client";
 
+import KartePlatzhalter from "@/components/ui/KartePlatzhalter";
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import { useRouter } from "next/navigation";
@@ -23,7 +24,6 @@ import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
 import type { ExploreRoute, Vehicle } from "@/types/database";
 import { fieldClassName } from "@/components/ui/Input";
 import { buttonVariants } from "@/components/ui/Button";
-import Skeleton from "@/components/ui/Skeleton";
 import Card from "@/components/ui/Card";
 import FullscreenDialog from "@/components/ui/FullscreenDialog";
 import SectionHeading from "@/components/ui/SectionHeading";
@@ -48,7 +48,7 @@ const RouteMap = dynamic(
     })),
   {
     ssr: false,
-    loading: () => <Skeleton className="h-full w-full" />,
+    loading: () => <KartePlatzhalter />,
   },
 );
 
@@ -660,7 +660,7 @@ export default function FreeRideForm({
           {liveLapHint?.completed ? `Strecke ${liveLapHint.routeName} erkannt.` : ""}
         </p>
         {liveLapHint && (
-          <p className="flex items-center gap-1.5 text-sm text-accent">
+          <p className="flex items-center gap-1.5 text-sm text-accent-ink">
             <RouteIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
             {liveLapHint.completed
               ? `„${liveLapHint.routeName}" erkannt!`

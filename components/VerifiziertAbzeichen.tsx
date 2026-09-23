@@ -69,7 +69,7 @@ export default function VerifiziertAbzeichen({
   const basis =
     "inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium";
   const farbe = verifiziert
-    ? "bg-accent-subtle text-accent"
+    ? "bg-accent-subtle text-accent-ink"
     : "bg-surface text-muted border border-border";
 
   // Der Titel trägt die Kurzfassung für alle, die nicht auf die Erklärseite
@@ -110,7 +110,7 @@ export default function VerifiziertAbzeichen({
         <p className="mt-4 text-sm text-muted">
           <Link
             href="/verifiziert"
-            className="font-medium text-accent hover:underline"
+            className="font-medium text-accent-ink hover:underline"
             onClick={() => setOffen(false)}
           >
             Ganze Erklärung öffnen →

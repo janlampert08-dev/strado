@@ -613,7 +613,7 @@ export default async function ProfilPage() {
                           <li key={ride.id} className="group hover:bg-surface druckbar">
                             <div className="flex items-center justify-between gap-3 p-3">
                               <Link href={`/fahrten/${ride.id}`} className="flex min-w-0 flex-1 flex-col gap-1">
-                                <span className="min-w-0 truncate font-medium transition-colors duration-fast group-hover:text-accent">
+                                <span className="min-w-0 truncate font-medium transition-colors duration-fast group-hover:text-accent-ink">
                                   {ride.art === "frei"
                                     ? freieFahrtTitel(ride.titel, ride.start_ort)
                                     : (ride.routes?.name ?? "Strecke")}
@@ -664,7 +664,7 @@ export default async function ProfilPage() {
                     // für dieselbe Lücke lasen sich im Review als Wiederholung.
                     <p className="py-2 text-sm text-muted">
                       Noch keine Fahrten aufgezeichnet.{" "}
-                      <Link href="/" className="text-accent hover:underline">
+                      <Link href="/" className="text-accent-ink hover:underline">
                         Strecken entdecken
                       </Link>
                     </p>
@@ -707,7 +707,7 @@ export default async function ProfilPage() {
                               href={`/strecken/${f.route_id}`}
                               className="group flex items-baseline justify-between px-4 py-3 hover:bg-surface druckbar"
                             >
-                              <span className="transition-colors duration-fast group-hover:text-accent">
+                              <span className="transition-colors duration-fast group-hover:text-accent-ink">
                                 {f.routes.name}
                               </span>
                               <span className="text-sm tabular-nums text-muted">
@@ -777,7 +777,7 @@ export default async function ProfilPage() {
                     <Link
                       key={rolle.href}
                       href={rolle.href}
-                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors duration-fast hover:text-accent"
+                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors duration-fast hover:text-accent-ink"
                     >
                       <Icon className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
                       {rolle.label}

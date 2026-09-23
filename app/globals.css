@@ -3,7 +3,21 @@
 :root {
   --color-background: #fafafa;
   --color-foreground: #131316;
-  --color-accent: #3d5afe;
+  /* Die Markenfarbe #6B83FF gilt seit 2026-09-23 in beiden Schemas
+     (Eigentümerentscheid). Vorher trug das helle Schema #3d5afe, ein
+     Material-Blau, weil #6B83FF als SCHRIFT auf #fafafa nur 3.19:1 hat.
+     Die Lösung ist eine Aufteilung nach Rolle statt einer zweiten Marke:
+     - --color-accent: Flächen, Ränder, Ringe, Grafik — immer #6B83FF
+       (als Nicht-Text-Element 3.19:1, über der 3:1-Schwelle).
+     - --color-accent-ink: Akzent als SCHRIFT. Hell dieselbe Farbfamilie,
+       tiefer gesetzt: #4460e0, 5.04 auf Hintergrund, 4.65 auf accent-subtle,
+       4.74 auf Fläche. Dunkel ist es #6B83FF selbst.
+     - --color-on-accent: Schrift AUF einer Akzentfläche — in beiden Schemas
+       fast Schwarz (5.91:1), genau wie das dunkle Schema es schon hielt.
+       Weiss auf #6B83FF hätte 3.33:1. */
+  --color-accent: #6b83ff;
+  --color-accent-ink: #4460e0;
+  --color-on-accent: #0b0b0d;
   /* Trägt fast den gesamten Sekundärtext der App (Labels, Hinweise,
      Einheiten). Vorher #8a8f98 — 3.11:1 auf #fafafa und damit unter der
      AA-Schwelle von 4.5:1. Das ist genau der Text, der bei Sonnenlicht auf
@@ -116,6 +130,8 @@
     --color-background: #0b0b0d;
     --color-foreground: #f2f2f4;
     --color-accent: #6b83ff;
+    --color-accent-ink: #6b83ff;
+    --color-on-accent: #0b0b0d;
     --color-muted: #8f95a3;
 
     --color-border: color-mix(in oklch, var(--color-foreground) 9%, transparent);
@@ -182,6 +198,8 @@
   --color-background: #0b0b0d;
   --color-foreground: #f2f2f4;
   --color-accent: #6b83ff;
+  --color-accent-ink: #6b83ff;
+  --color-on-accent: #0b0b0d;
   --color-muted: #8f95a3;
 
   --color-border: color-mix(in oklch, var(--color-foreground) 9%, transparent);
@@ -243,6 +261,8 @@
   --color-background: var(--color-background);
   --color-foreground: var(--color-foreground);
   --color-accent: var(--color-accent);
+  --color-accent-ink: var(--color-accent-ink);
+  --color-on-accent: var(--color-on-accent);
   --color-accent-subtle: var(--color-accent-subtle);
   --color-accent-strong: var(--color-accent-strong);
   --color-muted: var(--color-muted);
@@ -450,6 +470,47 @@ main {
   filter: invert(1);
 }
 
+/* Zoom- und Kompassknöpfe im Stil der App statt Mapbox' weissen 29-px-
+   Kästchen, die auf der dunklen Karte als einziges Weiss aufleuchteten
+   (Re-Review 2026-09-23). 44 px wie jede Tippfläche der App; die Icons sind
+   in mapbox-gl.css feste dunkle SVGs und werden im dunklen Schema
+   invertiert, wie der ⓘ-Knopf oben. Nur Aussehen und Grösse — die Knöpfe
+   selbst und das Mapbox-Logo bleiben unangetastet. */
+.mapboxgl-map .mapboxgl-ctrl-group {
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: color-mix(in oklch, var(--color-background) 88%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-elevated);
+}
+.mapboxgl-map .mapboxgl-ctrl-group button {
+  width: 44px;
+  height: 44px;
+}
+.mapboxgl-map .mapboxgl-ctrl-group button + button {
+  border-top: 1px solid var(--color-border);
+}
+@media (hover: hover) and (pointer: fine) {
+  .mapboxgl-map .mapboxgl-ctrl-group button:not(:disabled):hover {
+    background-color: var(--color-surface);
+  }
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .mapboxgl-ctrl-group .mapboxgl-ctrl-icon {
+    filter: invert(1);
+  }
+}
+:root[data-theme="dark"] .mapboxgl-ctrl-group .mapboxgl-ctrl-icon {
+  filter: invert(1);
+}
+/* Die Fläche hinter der Karte, bis die ersten Kacheln da sind: die Fläche
+   der App statt Mapbox' Standardgrau. */
+.mapboxgl-map {
+  background-color: var(--color-surface);
+}
+
 /* Bewegung — die einzigen @keyframes der App.
    Bis hierher kam die App ohne eigene Keyframes aus: Bewegung entstand
    ausschliesslich aus Tailwind-Utilities (transition-colors, active:scale-95,
@@ -473,11 +534,11 @@ main {
   }
   30% {
     transform: skewX(-9deg);
-    color: var(--color-accent);
+    color: var(--color-accent-ink);
   }
   70% {
     transform: skewX(2deg);
-    color: var(--color-accent);
+    color: var(--color-accent-ink);
   }
   100% {
     transform: skewX(0deg);

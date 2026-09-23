@@ -33,7 +33,7 @@ export type IconButtonTon = "neutral" | "aktiv" | "gefahr" | "leise";
 
 const toene: Record<IconButtonTon, string> = {
   neutral: "border border-border text-muted hover:border-muted hover:text-foreground",
-  aktiv: "border border-accent bg-accent-subtle text-accent",
+  aktiv: "border border-accent bg-accent-subtle text-accent-ink",
   // Erst bei Hover rot: eine Melden-Schaltfläche, die dauerhaft rot
   // leuchtet, behauptet einen Missstand, den es noch gar nicht gibt.
   gefahr: "border border-border text-muted hover:border-danger hover:text-danger",

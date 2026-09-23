@@ -33,7 +33,7 @@ export default function DetectedSegmentsCard({ segments }: { segments: DetectedS
                   href={`/fahrten/${segment.id}`}
                   className="flex min-w-0 flex-1 flex-col gap-1"
                 >
-                  <span className="min-w-0 truncate font-medium transition-colors duration-fast group-hover:text-accent">
+                  <span className="min-w-0 truncate font-medium transition-colors duration-fast group-hover:text-accent-ink">
                     {segment.routeName}
                   </span>
                   <div className="flex items-center gap-2 text-xs tabular-nums text-muted">

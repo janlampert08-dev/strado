@@ -38,7 +38,7 @@ export default function AdvancedFiltersPanel({
           <SlidersHorizontal className="h-4 w-4 text-muted" aria-hidden="true" />
           Weitere Filter
           {activeCount > 0 && (
-            <span className="rounded-full bg-accent px-1.5 py-0.5 text-xs font-semibold text-background">
+            <span className="rounded-full bg-accent px-1.5 py-0.5 text-xs font-semibold text-on-accent">
               {activeCount}
             </span>
           )}

@@ -58,7 +58,7 @@ export default function PassSektion({
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h3 className="text-title font-semibold tracking-tight">
-                  <Link href={`/paesse#${kontext.pass.id}`} className="hover:text-accent">
+                  <Link href={`/paesse#${kontext.pass.id}`} className="hover:text-accent-ink">
                     {kontext.pass.name}
                   </Link>
                 </h3>

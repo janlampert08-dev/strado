@@ -35,8 +35,8 @@ export default function HeaderNavLink({
       href={href}
       aria-current={aktiv ? "page" : undefined}
       aria-label={ariaLabel}
-      className={`flex items-center gap-1.5 whitespace-nowrap transition-colors duration-fast hover:text-accent ${
-        aktiv ? "font-medium text-accent" : "text-foreground"
+      className={`flex items-center gap-1.5 whitespace-nowrap transition-colors duration-fast hover:text-accent-ink ${
+        aktiv ? "font-medium text-accent-ink" : "text-foreground"
       }`}
     >
       {children}
