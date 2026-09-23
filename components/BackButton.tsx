@@ -31,7 +31,7 @@ export default function BackButton({ fallbackHref }: { fallbackHref: string }) {
         // darunter hinaus — zusammen 46 px statt 30. Gemessen war der Knopf
         // 86 × 30, auf dem Schirm, auf dem man ihn mit dem Daumen oben links
         // am schwersten trifft.
-        className="relative flex shrink-0 items-center gap-1 rounded-full border border-border-control py-1 pr-3 pl-1.5 text-sm text-muted transition-colors duration-fast after:absolute after:-inset-y-2 after:inset-x-0 after:content-[''] hover:border-border-strong hover:text-foreground"
+        className="relative flex shrink-0 items-center gap-1 rounded-full border border-border-control py-1 pr-3 pl-1.5 text-sm text-muted transition-colors duration-fast after:absolute after:-inset-y-2 after:inset-x-0 after:content-[''] hover:border-muted hover:text-foreground"
       >
         <ChevronLeft className="h-4 w-4" aria-hidden="true" />
         <span className="whitespace-nowrap">Zurück</span>

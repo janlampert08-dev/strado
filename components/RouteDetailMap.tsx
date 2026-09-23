@@ -185,10 +185,17 @@ export default function RouteDetailMap({
           <button
             onClick={() => setShow3D((v) => !v)}
             aria-pressed={show3D}
-            className={buttonVariants({ variant: "secondary", size: "sm", className: "relative bg-background after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']" })}
+            // Feste Beschriftung, der Zustand liegt in aria-pressed und in der
+            // Akzentfüllung. "2D-Ansicht" als Text eines gedrückten Knopfes
+            // las sich als "2D-Ansicht, gedrückt" — also das Gegenteil.
+            className={buttonVariants({
+              variant: "secondary",
+              size: "sm",
+              className: show3D ? "border-accent bg-accent-subtle text-accent" : "bg-background",
+            })}
           >
             <Box className="h-3.5 w-3.5" aria-hidden="true" />
-            {show3D ? "2D-Ansicht" : "3D-Ansicht"}
+            3D-Ansicht
           </button>
         </div>
         {showSpeedLimits && (

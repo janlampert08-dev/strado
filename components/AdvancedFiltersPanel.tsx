@@ -33,7 +33,7 @@ export default function AdvancedFiltersPanel({
 
   return (
     <details className="group border-b border-border pb-6">
-      <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+      <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background">
         <span className="flex items-center gap-1.5">
           <SlidersHorizontal className="h-4 w-4 text-muted" aria-hidden="true" />
           Weitere Filter

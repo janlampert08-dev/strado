@@ -98,7 +98,7 @@ export default function SterneEingabe({
               aria-hidden="true"
               className={cn(
                 "h-7 w-7 rounded-sm transition-colors duration-fast",
-                "peer-focus-visible:ring-2 peer-focus-visible:ring-accent/40",
+                "peer-focus-visible:ring-2 peer-focus-visible:ring-accent",
                 // Gedeckt statt Rahmen-Ton für die noch nicht gewählten
                 // Sterne — Begründung samt Kontrastwerten in
                 // components/Sterne.tsx. Hier wiegt sie schwerer als dort:

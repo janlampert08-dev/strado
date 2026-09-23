@@ -100,6 +100,10 @@ export { Wrench as WartungIcon, CalendarClock as TerminIcon } from "lucide-react
 // von hier; das Raster mitzuziehen wäre eine Änderung ohne Anlass.
 export { Car as AutoIcon, Bike as MotorradIcon } from "lucide-react";
 
+// Die Stoppuhr vor einer gemessenen Dauer (Bestzeit-Streifen der
+// Streckenseite) — damit "14:12 min" nicht als Uhrzeit gelesen wird.
+export { Timer as TimerIcon } from "lucide-react";
+
 // Die Hinweise vor der ersten Fahrt (components/ErsteFahrtHinweise.tsx):
 // dasselbe Telefon, das FreeRideForm und LiveTrackingForm neben "Bildschirm
 // an lassen" zeigen — dort noch als direkter Import aus der Zeit vor dieser
