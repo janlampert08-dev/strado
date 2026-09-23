@@ -31,6 +31,12 @@
   --color-border-control: color-mix(in oklch, var(--color-foreground) 48%, transparent);
   --color-border-strong: color-mix(in oklch, var(--color-foreground) 30%, transparent);
   --color-surface: color-mix(in oklch, var(--color-foreground) 3%, var(--color-background));
+  /* Tempo-Skala (lib/speed.ts, TEMPO_FARBEN.hell): dieselben Werte wie dort. */
+  --data-speed-1: #e9967f;
+  --data-speed-2: #d9703b;
+  --data-speed-3: #b35d00;
+  --data-speed-4: #8a5000;
+  --data-speed-5: #5c4500;
 
   /* Abstufungen des Akzenttons statt verstreuter accent/5-, accent/10-
      Opacity-Utilities an einzelnen Stellen (z. B. Bestenlisten-Hervorhebung). */
@@ -116,6 +122,11 @@
     --color-border-control: color-mix(in oklch, var(--color-foreground) 40%, transparent);
     --color-border-strong: color-mix(in oklch, var(--color-foreground) 32%, transparent);
     --color-surface: color-mix(in oklch, var(--color-foreground) 6%, var(--color-background));
+    --data-speed-1: #a04034;
+    --data-speed-2: #c65d26;
+    --data-speed-3: #e38305;
+    --data-speed-4: #f2b036;
+    --data-speed-5: #f7dd7d;
 
     --color-accent-subtle: color-mix(in oklch, var(--color-accent) 14%, var(--color-background));
     --color-accent-strong: color-mix(in oklch, var(--color-accent) 80%, white);
@@ -178,6 +189,11 @@
   --color-border-control: color-mix(in oklch, var(--color-foreground) 40%, transparent);
   --color-border-strong: color-mix(in oklch, var(--color-foreground) 32%, transparent);
   --color-surface: color-mix(in oklch, var(--color-foreground) 6%, var(--color-background));
+  --data-speed-1: #a04034;
+  --data-speed-2: #c65d26;
+  --data-speed-3: #e38305;
+  --data-speed-4: #f2b036;
+  --data-speed-5: #f7dd7d;
 
   --color-accent-subtle: color-mix(in oklch, var(--color-accent) 14%, var(--color-background));
   --color-accent-strong: color-mix(in oklch, var(--color-accent) 80%, white);

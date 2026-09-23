@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { speedColor, TEMPO_LEGENDE } from "@/lib/speed";
+import { speedFarbeCss, speedStufe, TEMPO_LEGENDE } from "@/lib/speed";
 import type { TempoprofilPunkt } from "@/types/database";
 
 const WIDTH = 600;
@@ -41,7 +41,7 @@ export default function TempoDiagram({
   const laeufe: { punkte: TempoprofilPunkt[]; color: string }[] = [];
   for (let i = 0; i < punkte.length; i++) {
     const p = punkte[i];
-    const color = speedColor(p.kmh);
+    const color = speedFarbeCss(speedStufe(p.kmh));
     const lauf = laeufe[laeufe.length - 1];
     if (lauf && lauf.color === color) lauf.punkte.push(p);
     else laeufe.push({ punkte: i > 0 ? [punkte[i - 1], p] : [p], color });
@@ -112,13 +112,13 @@ export default function TempoDiagram({
               key={i}
               d={pfad.d}
               fill="none"
-              stroke={pfad.color}
+              style={{ stroke: pfad.color }}
               strokeWidth="2"
               strokeLinejoin="round"
               strokeLinecap="round"
             />
           ))}
-          <circle cx={x(spitze.km)} cy={y(spitze.kmh)} r="3" fill={speedColor(spitze.kmh)} />
+          <circle cx={x(spitze.km)} cy={y(spitze.kmh)} r="3" style={{ fill: speedFarbeCss(speedStufe(spitze.kmh)) }} />
           {hoverPunkt && (
             <>
               <line
@@ -134,8 +134,7 @@ export default function TempoDiagram({
                 cx={x(hoverPunkt.km)}
                 cy={y(hoverPunkt.kmh)}
                 r="4"
-                fill={speedColor(hoverPunkt.kmh)}
-                style={{ stroke: "var(--color-background)" }}
+                style={{ fill: speedFarbeCss(speedStufe(hoverPunkt.kmh)), stroke: "var(--color-background)" }}
                 strokeWidth="1.5"
               />
             </>
