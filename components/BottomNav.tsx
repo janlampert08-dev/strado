@@ -88,7 +88,10 @@ export default function BottomNav({
                   </span>
                 )}
               </span>
-              <span className={`transition-colors duration-fast ${active ? "text-accent" : "text-muted"}`}>
+              {/* whitespace-nowrap + tracking-tight: "Fahrt starten" brach mit Geist
+                  auf 360 px in zwei Zeilen (Re-Audit 2026-09-23). Der Name bleibt —
+                  er ist bewusst nach der Absicht gewählt (lib/nav.test.ts). */}
+              <span className={`whitespace-nowrap tracking-tight transition-colors duration-fast ${active ? "text-accent" : "text-muted"}`}>
                 {tab.label}
               </span>
             </Link>

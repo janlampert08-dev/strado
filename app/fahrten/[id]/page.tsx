@@ -179,10 +179,12 @@ export default async function FahrtDetailPage({
   //
   // Hat der Fahrer das Tempo verborgen (profiles.zeigt_tempo, 0125), rechnet
   // die Seite für fremde Betrachter gar nicht erst einen Schnitt aus.
-  const avgKmh = !completion.zeigtTempo ? null : stimmigerSchnitt(
+  const rohSchnittKmh =
     tempoSekunden && tempoSekunden > 0 && completion.distanzKm
       ? completion.distanzKm / (tempoSekunden / 3600)
-      : null,
+      : null;
+  const avgKmh = !completion.zeigtTempo ? null : stimmigerSchnitt(
+    rohSchnittKmh,
     completion.tempoprofil,
   );
 
@@ -468,7 +470,17 @@ export default async function FahrtDetailPage({
               // Die Kachel bleibt stehen, damit das Raster nicht springt; der
               // Zusatz sagt, warum dort nichts steht, statt eine fehlende
               // Messung vorzutäuschen.
-              zusatz={completion.zeigtTempo ? undefined : "Vom Fahrer verborgen"}
+              // Zwei Gründe für den Strich, beide ausgesprochen: verborgen
+              // (0125) oder von stimmigerSchnitt verworfen, weil die Zeit nicht
+              // zum eigenen Tempoprofil passt — vorher stand dann ein Strich
+              // ohne jede Erklärung (Re-Audit 2026-09-23).
+              zusatz={
+                !completion.zeigtTempo
+                  ? "Vom Fahrer verborgen"
+                  : rohSchnittKmh !== null && avgKmh === null
+                    ? "Zeitmessung unvollständig"
+                    : undefined
+              }
             />
             <Kennzahl
               beschriftung={
