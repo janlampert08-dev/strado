@@ -692,6 +692,12 @@ export default function LiveTrackingForm({
 // neutral — kein Rot: "langsamer als die Bestzeit" ist kein Fehler, und ein
 // roter Wert während der Fahrt drängte genau zu dem, was AGB und SVG nicht
 // wollen. Das Vorzeichen trägt die Richtung, die Farbe nur die Bestätigung.
+//
+// Abschaltbar durch den Fahrer selbst (AGB-Entwurf Ziff. 3.5.6), gemerkt im
+// Browser. Bedienen muss man dafür nichts während der Fahrt: der Knopf ist
+// für vor dem Losfahren gedacht, der Abstand selbst will nur einen Blick.
+const LIVE_SPLIT_AUS_SCHLUESSEL = "strado-live-abstand-aus";
+
 function LiveAbstand({
   verstrichenS,
   gefahrenKm,
@@ -705,26 +711,64 @@ function LiveAbstand({
   eigeneBestzeitS: number | null;
   streckenBestzeitS: number | null;
 }) {
+  const [aus, setAus] = useState(() => {
+    try {
+      return window.localStorage.getItem(LIVE_SPLIT_AUS_SCHLUESSEL) === "1";
+    } catch {
+      return false;
+    }
+  });
+  function umschalten(neu: boolean) {
+    setAus(neu);
+    try {
+      if (neu) window.localStorage.setItem(LIVE_SPLIT_AUS_SCHLUESSEL, "1");
+      else window.localStorage.removeItem(LIVE_SPLIT_AUS_SCHLUESSEL);
+    } catch {
+      // Ohne Speicher gilt die Wahl eben nur für diese Fahrt.
+    }
+  }
+
   const eigen = liveAbstandSekunden({ verstrichenS, gefahrenKm, laengeKm, referenzS: eigeneBestzeitS });
   const strecke = liveAbstandSekunden({ verstrichenS, gefahrenKm, laengeKm, referenzS: streckenBestzeitS });
+
+  if (aus) {
+    return (
+      <button
+        type="button"
+        onClick={() => umschalten(false)}
+        className="self-start text-xs text-muted underline-offset-4 hover:underline"
+      >
+        Abstand zur Bestzeit einblenden
+      </button>
+    );
+  }
   if (eigen === null && strecke === null) return null;
   const haupt = eigen ?? strecke!;
   return (
-    <dl className="flex items-end justify-between gap-4 rounded-lg bg-surface px-4 py-3">
-      <div className="flex flex-col gap-1">
-        <dt className="text-xs text-muted">{eigen !== null ? "Gegen deine Bestzeit" : "Gegen die Bestzeit"}</dt>
-        <dd
-          className={`text-4xl leading-none font-semibold tracking-tight tabular-nums ${haupt < 0 ? "text-success" : "text-foreground"}`}
-        >
-          {formatAbstand(haupt)}
-        </dd>
-      </div>
-      {eigen !== null && strecke !== null && (
-        <div className="flex flex-col items-end gap-1">
-          <dt className="text-xs text-muted">Bestzeit Strecke</dt>
-          <dd className="text-lg leading-none font-medium tabular-nums text-muted">{formatAbstand(strecke)}</dd>
+    <div className="flex flex-col gap-1">
+      <dl className="flex items-end justify-between gap-4 rounded-lg bg-surface px-4 py-3">
+        <div className="flex flex-col gap-1">
+          <dt className="text-xs text-muted">{eigen !== null ? "Gegen deine Bestzeit" : "Gegen die Bestzeit"}</dt>
+          <dd
+            className={`text-4xl leading-none font-semibold tracking-tight tabular-nums ${haupt < 0 ? "text-success" : "text-foreground"}`}
+          >
+            {formatAbstand(haupt)}
+          </dd>
         </div>
-      )}
-    </dl>
+        {eigen !== null && strecke !== null && (
+          <div className="flex flex-col items-end gap-1">
+            <dt className="text-xs text-muted">Bestzeit Strecke</dt>
+            <dd className="text-lg leading-none font-medium tabular-nums text-muted">{formatAbstand(strecke)}</dd>
+          </div>
+        )}
+      </dl>
+      <button
+        type="button"
+        onClick={() => umschalten(true)}
+        className="self-end text-xs text-muted underline-offset-4 hover:underline"
+      >
+        Ausblenden
+      </button>
+    </div>
   );
 }
