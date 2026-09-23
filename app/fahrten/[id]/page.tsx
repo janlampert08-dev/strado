@@ -176,7 +176,10 @@ export default async function FahrtDetailPage({
     : completion.dauerSekunden;
   // stimmigerSchnitt: ein Durchschnitt über dem Höchsttempo des eigenen
   // Profils widerlegt sich selbst und wird nicht gezeigt (lib/tempoprofil.ts).
-  const avgKmh = stimmigerSchnitt(
+  //
+  // Hat der Fahrer das Tempo verborgen (profiles.zeigt_tempo, 0125), rechnet
+  // die Seite für fremde Betrachter gar nicht erst einen Schnitt aus.
+  const avgKmh = !completion.zeigtTempo ? null : stimmigerSchnitt(
     tempoSekunden && tempoSekunden > 0 && completion.distanzKm
       ? completion.distanzKm / (tempoSekunden / 3600)
       : null,
@@ -462,6 +465,10 @@ export default async function FahrtDetailPage({
                 </>
               }
               wert={avgKmh !== null ? `${avgKmh.toFixed(0)} km/h` : "—"}
+              // Die Kachel bleibt stehen, damit das Raster nicht springt; der
+              // Zusatz sagt, warum dort nichts steht, statt eine fehlende
+              // Messung vorzutäuschen.
+              zusatz={completion.zeigtTempo ? undefined : "Vom Fahrer verborgen"}
             />
             <Kennzahl
               beschriftung={
