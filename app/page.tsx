@@ -3,6 +3,7 @@ import Header from "@/components/Header";
 import ExploreView from "@/components/ExploreView";
 import { getRoutes } from "@/lib/routes";
 import { getBewertungen } from "@/lib/ratings";
+import { getPassZustaendeJeStrecke } from "@/lib/paesse";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { BESCHREIBUNG, SLOGAN } from "@/lib/constants";
 
@@ -56,10 +57,17 @@ export default async function Home() {
   // ExploreView ist eine Client Component, und ein Objekt ist in der
   // RSC-Nutzlast ohne Rückfrage serialisierbar.
   //
-  // Kein Passzustand auf der Startseite: Auch gesperrt oder eingeschränkt
-  // wird in der Liste nicht als Abzeichen gezeigt — der Stand steht auf der
-  // Strecke und unter /paesse.
-  const bewertungenPaare = await getBewertungen(routes.map((r) => r.id));
+  // Passzustand nur, wenn er die Planung ändert (gesperrt, eingeschränkt,
+  // Wintersperre — zeigeInListe in lib/passStatus.ts). Am 2026-09-21 war er
+  // ganz von der Startseite genommen worden; am 2026-09-23 entschied der
+  // Eigentümer, Sperrungen dort wieder zu zeigen: "Ist der Pass offen?" ist
+  // die erste Frage, und sie soll ohne Öffnen der Strecke beantwortet sein.
+  // "Offen" bleibt ohne Abzeichen, sonst trüge fast jede Zeile eins.
+  // Beide Abfragen hängen am selben Streckenbestand, aber nicht aneinander.
+  const [bewertungenPaare, passZustaende] = await Promise.all([
+    getBewertungen(routes.map((r) => r.id)),
+    getPassZustaendeJeStrecke(routes.map((r) => r.id)),
+  ]);
   const bewertungen = Object.fromEntries(bewertungenPaare);
 
   return (
@@ -68,6 +76,7 @@ export default async function Home() {
       <ExploreView
         routes={routes}
         bewertungen={bewertungen}
+        passZustaende={Object.fromEntries(passZustaende)}
         loadError={error}
         loggedIn={!!user}
       />
