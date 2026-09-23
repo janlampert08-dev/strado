@@ -22,9 +22,21 @@
      --color-border-control. Eine Karte ist Ordnung, ein Feld ist etwas zum
      Anfassen; das darf man sehen. */
   --color-border: color-mix(in oklch, var(--color-foreground) 8%, transparent);
-  --color-border-control: color-mix(in oklch, var(--color-foreground) 22%, transparent);
+  /* 48 %: ab hier erreicht der Umriss eines Feldes 3:1 gegen Hintergrund
+     (3.25) und Fläche (3.21) — WCAG 1.4.11 verlangt das für die Grenze
+     eines Bedienelements. 22 % ergaben 1.62:1: das Feld war als Feld kaum
+     zu erkennen. Der Hover-Rahmen der Bedienelemente nimmt dafür
+     --color-muted (hover:border-muted): strong trägt auch Trennlinien und
+     den Griff des Sheets und bleibt deshalb, wo er war. */
+  --color-border-control: color-mix(in oklch, var(--color-foreground) 48%, transparent);
   --color-border-strong: color-mix(in oklch, var(--color-foreground) 30%, transparent);
   --color-surface: color-mix(in oklch, var(--color-foreground) 3%, var(--color-background));
+  /* Tempo-Skala (lib/speed.ts, TEMPO_FARBEN.hell): dieselben Werte wie dort. */
+  --data-speed-1: #e9967f;
+  --data-speed-2: #d9703b;
+  --data-speed-3: #b35d00;
+  --data-speed-4: #8a5000;
+  --data-speed-5: #5c4500;
 
   /* Abstufungen des Akzenttons statt verstreuter accent/5-, accent/10-
      Opacity-Utilities an einzelnen Stellen (z. B. Bestenlisten-Hervorhebung). */
@@ -107,9 +119,14 @@
     --color-muted: #8f95a3;
 
     --color-border: color-mix(in oklch, var(--color-foreground) 9%, transparent);
-    --color-border-control: color-mix(in oklch, var(--color-foreground) 22%, transparent);
+    --color-border-control: color-mix(in oklch, var(--color-foreground) 40%, transparent);
     --color-border-strong: color-mix(in oklch, var(--color-foreground) 32%, transparent);
     --color-surface: color-mix(in oklch, var(--color-foreground) 6%, var(--color-background));
+    --data-speed-1: #a04034;
+    --data-speed-2: #c65d26;
+    --data-speed-3: #e38305;
+    --data-speed-4: #f2b036;
+    --data-speed-5: #f7dd7d;
 
     --color-accent-subtle: color-mix(in oklch, var(--color-accent) 14%, var(--color-background));
     --color-accent-strong: color-mix(in oklch, var(--color-accent) 80%, white);
@@ -168,9 +185,15 @@
   --color-muted: #8f95a3;
 
   --color-border: color-mix(in oklch, var(--color-foreground) 9%, transparent);
-  --color-border-control: color-mix(in oklch, var(--color-foreground) 22%, transparent);
+  /* Dunkel: 40 % ergibt 3.51:1 gegen Hintergrund und 3.54:1 gegen Fläche. */
+  --color-border-control: color-mix(in oklch, var(--color-foreground) 40%, transparent);
   --color-border-strong: color-mix(in oklch, var(--color-foreground) 32%, transparent);
   --color-surface: color-mix(in oklch, var(--color-foreground) 6%, var(--color-background));
+  --data-speed-1: #a04034;
+  --data-speed-2: #c65d26;
+  --data-speed-3: #e38305;
+  --data-speed-4: #f2b036;
+  --data-speed-5: #f7dd7d;
 
   --color-accent-subtle: color-mix(in oklch, var(--color-accent) 14%, var(--color-background));
   --color-accent-strong: color-mix(in oklch, var(--color-accent) 80%, white);
@@ -248,17 +271,25 @@
   --shadow-overlay: var(--shadow-overlay);
 
   --text-display: var(--text-display);
+  /* Zeilenhöhe und Laufweite gehören zur Grösse: Titel standen mit dem
+     Standard von 1.5 (bei 25 px also 37 px Zeile) locker wie Fliesstext. */
+  --text-display--line-height: 1.1;
+  --text-display--letter-spacing: -0.02em;
   --text-title: var(--text-title);
+  --text-title--line-height: 1.2;
+  --text-title--letter-spacing: -0.01em;
 
   --ease-standard: var(--ease-standard);
   --duration-fast: var(--duration-fast);
   --duration-base: var(--duration-base);
 
-  --font-sans: var(--font-inter);
+  --font-sans: var(--font-geist);
+  /* Seitentitel in der Schrift der Wortmarke (app/layout.tsx). */
+  --font-display: var(--font-familjen);
   /* IBM Plex Mono bleibt geladen, trägt aber nur noch, was wirklich Code
      ist (Creator-Codes, Pfade unter /moderation/creator) — und das
      Teilen-Bild, das die Variable in lib/shareImage.ts direkt liest.
-     Zahlen setzt die Oberfläche in Inter mit tabellarischen Ziffern (siehe
+     Zahlen setzt die Oberfläche in Geist mit tabellarischen Ziffern (siehe
      body): Mono auf Messwerten las sich als Terminal, nicht als
      Präzisionsinstrument, und auf Wörtern ("Ohne Klasse",
      "Aufzeichnung läuft") als Kostüm. */
@@ -273,12 +304,50 @@ body {
      — km, km/h, Höhenmeter, Zeiten —, und Messwerte, die untereinander oder
      live stehen, dürfen nicht springen. Seit IBM Plex Mono nicht mehr die
      Zahlenschrift der Oberfläche ist (siehe --font-mono unten), übernimmt
-     Inter das, und Inter hat die Tabellenziffern eingebaut. */
+     Geist das, und Geist hat die Tabellenziffern eingebaut. */
   font-variant-numeric: tabular-nums;
   /* Kein blaues Antipp-Aufblitzen auf iOS/Android — eigene, dezente
      :active-Zustände (siehe Button-/Link-Klassen) übernehmen dieses Feedback. */
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
+}
+
+/* Plattformschicht fürs Telefon (Skill "mobile-native", 2026-09-23).
+   - text-size-adjust: keine Schriftvergrösserung im Querformat auf iOS.
+   - touch-action: manipulation: kein Doppeltipp-Zoom auf Bedienelementen,
+     damit der Klick ohne Wartezeit feuert — der Seitenzoom per zwei
+     Finger bleibt unberührt (kein user-scalable=no).
+   - user-select/-webkit-touch-callout nur auf BEDIENELEMENTEN: langes
+     Drücken auf einen Knopf markierte seine Beschriftung. Inhalt (Namen,
+     Zahlen, Adressen) bleibt markierbar. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+a,
+button,
+summary,
+label,
+[role="button"],
+[role="tab"],
+[role="radio"] {
+  touch-action: manipulation;
+}
+button,
+summary,
+[role="button"],
+[role="tab"],
+[role="radio"] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Seitentitel (die eine h1 je Seite und alles in text-display) in der
+   Schrift der Wortmarke. :where() hält die Spezifität bei null, damit eine
+   Utility-Klasse am Element weiterhin gewinnt. */
+:where(h1, .text-display) {
+  font-family: var(--font-display);
 }
 
 /* Sinnvoller Default für native Formularelemente, die nicht überall einzeln
@@ -499,9 +568,10 @@ main {
    KudosButton, das damit seine Klasse abräumt), bliebe hängen.
 
    Nicht erfasst sind Bewegungen, die nicht über CSS laufen: die Kamerafahrten
-   von Mapbox (dafür bewegungsdauer() in RouteMap.tsx), das Hochzählen in
-   CountUp.tsx und die Zeichen-Animation in PullToRefreshArea.tsx prüfen die
-   Abfrage jeweils selbst in JavaScript. */
+   von Mapbox (dafür bewegungsdauer() in RouteMap.tsx) und die
+   Zeichen-Animation in PullToRefreshArea.tsx prüfen die Abfrage jeweils
+   selbst in JavaScript. Die Seitenwechsel (::view-transition-*) matcht *
+   nicht; sie stehen unten eigens im selben Block. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -510,6 +580,118 @@ main {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  ::view-transition-old(.seite),
+  ::view-transition-new(.seite) {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Seitenwechsel (components/ui/Seitenrahmen.tsx, React <ViewTransition>).
+
+   Vorher tauschte jede Navigation den Inhalt schlagartig aus. Jetzt geht die
+   alte Seite schnell (120 ms, ausblenden), die neue kommt etwas ruhiger und
+   sechs Pixel von unten (220 ms, ease-out) — gerade genug, dass der Wechsel
+   als Bewegung gelesen wird, nicht als Flackern. Asymmetrisch mit Absicht:
+   was geht, soll nicht mit dem konkurrieren, was kommt. Kopf und Leiste
+   unten gehören zum Layout und bewegen sich nicht.
+   --------------------------------------------------------------------------- */
+::view-transition-old(.seite) {
+  animation: 120ms var(--ease-standard) both seite-raus;
+}
+::view-transition-new(.seite) {
+  animation: 220ms cubic-bezier(0.2, 0.8, 0.2, 1) 60ms both seite-rein;
+}
+@keyframes seite-raus {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes seite-rein {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Druckzustand für alles, was als ganze Zeile oder Karte antippbar ist.
+
+   Bisher reagierten nur Schaltflächen (active:scale-95 in ui/Button.tsx) und
+   die Entdecken-Zeilen; Ranglisten-, Feed-, Pass- und Fahrtenzeilen hatten
+   nur hover-Zustände, und die gibt es auf dem Telefon nicht. Ein Tipp ohne
+   Antwort fühlt sich an wie ein verfehlter Tipp. Leicht eingefärbt und um
+   zwei Prozent eingezogen, 100 ms — sichtbar unter dem Daumen, ohne dass
+   die Liste wackelt.
+   --------------------------------------------------------------------------- */
+@utility druckbar {
+  transition-property: background-color, transform;
+  transition-duration: 100ms;
+  transition-timing-function: var(--ease-standard);
+  -webkit-tap-highlight-color: transparent;
+  &:active {
+    background-color: var(--color-surface);
+    transform: scale(0.98);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Dialoge (components/ui/Dialog.tsx) erscheinen, statt aufzuploppen.
+
+   Natives <dialog> mit @starting-style: auf dem Telefon als Blatt von unten
+   (translateY), ab sm mittig mit leichtem Einzoomen; der Hintergrund blendet
+   mit. allow-discrete, damit auch das Schliessen animiert — display und
+   overlay würden sonst sofort umspringen. Browser ohne @starting-style
+   zeigen den Dialog wie bisher sofort.
+   --------------------------------------------------------------------------- */
+dialog.dialog-animiert {
+  transition:
+    opacity 200ms var(--ease-standard),
+    transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    overlay 240ms allow-discrete,
+    display 240ms allow-discrete;
+  opacity: 0;
+  transform: scale(0.96);
+}
+dialog.dialog-animiert[open] {
+  opacity: 1;
+  transform: none;
+}
+@starting-style {
+  dialog.dialog-animiert[open] {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+@media (width < 40rem) {
+  dialog.dialog-animiert.dialog-blatt {
+    transform: translateY(100%);
+    opacity: 1;
+  }
+  dialog.dialog-animiert.dialog-blatt[open] {
+    transform: none;
+  }
+  @starting-style {
+    dialog.dialog-animiert.dialog-blatt[open] {
+      transform: translateY(100%);
+      opacity: 1;
+    }
+  }
+}
+dialog.dialog-animiert::backdrop {
+  transition:
+    background-color 200ms var(--ease-standard),
+    overlay 240ms allow-discrete,
+    display 240ms allow-discrete;
+  background-color: transparent;
+}
+dialog.dialog-animiert[open]::backdrop {
+  background-color: rgb(0 0 0 / 0.6);
+}
+@starting-style {
+  dialog.dialog-animiert[open]::backdrop {
+    background-color: transparent;
   }
 }
 

@@ -122,7 +122,7 @@ export default async function EinstellungenPage() {
                 <li key={a.id}>
                   <a
                     href={`#${a.id}`}
-                    className="inline-flex min-h-9 items-center rounded-full border border-border-control px-3 text-sm whitespace-nowrap text-muted transition-colors duration-fast hover:border-border-strong hover:text-foreground"
+                    className="inline-flex min-h-9 items-center rounded-full border border-border-control px-3 text-sm whitespace-nowrap text-muted transition-colors duration-fast hover:border-muted hover:text-foreground"
                   >
                     {a.label}
                   </a>
@@ -135,8 +135,8 @@ export default async function EinstellungenPage() {
             <SectionHeading icon={Lock}>Privatsphäre</SectionHeading>
             <p className="text-sm text-muted">
               Legt fest, was andere auf deinem Profil sehen. Ob eine einzelne
-              Fahrt öffentlich ist, entscheidest du beim Speichern oder in
-              &bdquo;Getrackte Fahrten&ldquo;.
+              Fahrt öffentlich ist, entscheidest du beim Speichern oder später
+              im Profil unter &bdquo;Getrackte Fahrten&ldquo;.
             </p>
             <VisibilitySettings
               zeigtFahrzeuge={profile?.zeigt_fahrzeuge ?? true}
@@ -305,7 +305,7 @@ export default async function EinstellungenPage() {
                   ? premiumStatus.quelle === "saisonpass"
                     ? "Premium verwalten"
                     : "Abo verwalten"
-                  : "Premium ansehen"}
+                  : "Mehr zu Premium"}
               </Link>
             </Card>
           </section>

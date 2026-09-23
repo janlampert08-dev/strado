@@ -72,7 +72,7 @@ export default function PasswortVergessenForm({
       <form ref={formRef} action={formAction} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           E-Mail
-          <Input type="email" name="email" required autoComplete="email" />
+          <Input type="email" name="email" required autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} />
         </label>
         {state.error && (
           <p role="alert" className="text-sm text-danger">

@@ -101,7 +101,7 @@ export interface RideRecorder {
   // Fahrt mit dauer_quelle = "trail" gespeichert und zählt nicht für die
   // Bestenliste — siehe lib/fahrtstart.ts.
   ticketJson: string;
-  // Manueller Start ("Bin schon am Start"), falls die GPS-Genauigkeit am
+  // Manueller Start ("Ich bin am Start"), falls die GPS-Genauigkeit am
   // Startpunkt nicht für den automatischen Start reicht.
   beginNow: () => void;
   /**
@@ -166,7 +166,7 @@ export function useRideRecorder({
   /**
    * true (Vorgabe): die GPS-Watch startet beim Mount. Richtig für die
    * Streckenfahrt — dort IST das Öffnen schon die bewusste Handlung
-   * ("Strecke starten" auf der Streckenseite), und die Zeitmessung beginnt
+   * ("Strecke fahren" auf der Streckenseite), und die Zeitmessung beginnt
    * ohnehin erst am Startpunkt.
    *
    * false: der Recorder wartet auf starten(). Für die freie Fahrt, deren
@@ -409,7 +409,7 @@ export function useRideRecorder({
     hasStartedRef.current = true;
     setHasStarted(true);
     // Kurzer Impuls zum tatsächlichen Start der Zeitmessung — im
-    // Streckenmodus fällt der nicht mit dem Tippen auf "Strecke starten"
+    // Streckenmodus fällt der nicht mit dem Tippen auf "Strecke fahren"
     // zusammen, sondern mit dem Erreichen des Startpunkts, und genau dieser
     // Moment ist am Lenker sonst nicht zu bemerken. Die Vibration API kennen
     // praktisch nur Android-Browser; auf iOS und Desktop ist der optionale
@@ -418,7 +418,7 @@ export function useRideRecorder({
     startTimeRef.current = Date.now();
 
     // Der serverseitig aufgezeichnete Start (lib/fahrtstart.ts). Bewusst
-    // hier und nicht beim Tippen auf "Strecke starten": im Streckenmodus
+    // hier und nicht beim Tippen auf "Strecke fahren": im Streckenmodus
     // liegen zwischen beidem die Minuten der Anfahrt zum Startpunkt, und
     // gemessen werden soll, was die Anzeige auch misst.
     //

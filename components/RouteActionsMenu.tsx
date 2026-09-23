@@ -22,7 +22,7 @@ const TCS_PORTAL_URL = TCS_PASS_PORTAL_URL;
 // min-h-11: jeder Eintrag ist eine Tippfläche (44 px, siehe ui/IconButton).
 // Mit py-2 allein waren es rund 36 px.
 const ITEM_CLASS =
-  "flex min-h-11 items-center border-t border-border px-3 py-2 text-left text-sm text-foreground transition-colors duration-fast hover:bg-surface first:border-t-0";
+  "flex min-h-11 items-center border-t border-border px-3 py-2 text-left text-sm text-foreground transition-colors duration-fast hover:bg-surface druckbar first:border-t-0";
 
 export default function RouteActionsMenu({
   route,
@@ -307,7 +307,7 @@ export default function RouteActionsMenu({
                 onClick={() => setOpen(false)}
                 className="text-sm font-medium text-accent hover:underline"
               >
-                Premium ansehen →
+                Mehr zu Premium →
               </Link>
             </div>
           )}

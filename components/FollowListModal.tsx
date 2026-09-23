@@ -29,7 +29,7 @@ export default function FollowListModal({
   hidden?: boolean;
 }) {
   return (
-    <Dialog open={open} onClose={onClose} title={title} className="max-h-[70vh] overflow-y-auto">
+    <Dialog open={open} onClose={onClose} title={title} className="max-h-[70dvh] overflow-y-auto overscroll-y-contain">
       {hidden ? (
         <EmptyState icon={Lock} title="Diese Liste ist privat." />
       ) : profiles.length === 0 ? (

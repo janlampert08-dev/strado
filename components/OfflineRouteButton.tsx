@@ -124,7 +124,7 @@ export default function OfflineRouteButton({
   // die drei Strecken wirklich voll sind. Nur die Beschriftung nahm das
   // vorweg. Jetzt trägt sie es nicht mehr; der Hinweis bleibt unverändert.
   // Siehe docs/design-vereinfachung.md, Anhang C2, Regel 1.
-  const label = saved ? "Offline entfernen" : "Offline speichern";
+  const label = saved ? "Offline-Kopie löschen" : "Offline verfügbar machen";
 
   return (
     <div className="flex flex-col items-start gap-1.5">

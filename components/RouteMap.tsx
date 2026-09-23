@@ -6,7 +6,7 @@ import mapboxgl from "mapbox-gl";
 import type { DataDrivenPropertyValueSpecification } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { SCHWEIZ_ZENTRUM, DEFAULT_ZOOM } from "@/lib/constants";
-import { sliceRouteBySpeed, speedColor } from "@/lib/speed";
+import { sliceRouteBySpeed, speedColor, TEMPO_FARBEN } from "@/lib/speed";
 import { akzentFarbe, isDarkTheme, subscribeToThemeChange, tokenFarbe } from "@/lib/theme";
 import { SIGNATUR_RUECKFALL, SIGNATUR_TOKEN, type SignatureKey } from "@/lib/signature";
 import { MIN_ACCURACY_M } from "@/components/useRideRecorder";
@@ -55,7 +55,7 @@ const TRACK_LINE_LAYER = "ride-track-line";
 // laufende WebGL-Neuzeichnung ohne jede Änderung, auf dem Gerät im Auto.
 // Dieselbe Lösung wie NO_ROUTES in CompletionMap.tsx.
 const KEINE_VERKEHRSSEGMENTE: { coords: [number, number][]; color: string }[] = [];
-const KEINE_TEMPOSEGMENTE: { coords: [number, number][]; color: string }[] = [];
+const KEINE_TEMPOSEGMENTE: { coords: [number, number][]; stufe: number }[] = [];
 const KEIN_TRACK: [number, number][] = [];
 
 const TERRAIN_SOURCE = "mapbox-dem";
@@ -212,7 +212,26 @@ function toSpeedFeatureCollection(
     features: sliceRouteBySpeed(coords, segments).map((s) => ({
       type: "Feature",
       geometry: { type: "LineString", coordinates: s.coords },
-      properties: { kmh: s.kmh, color: speedColor(s.kmh) },
+      // Farbschema beim Bauen gelesen: die Sammlung wird nach jedem
+      // "style.load" (also auch nach einem Themenwechsel) neu gesetzt.
+      properties: { kmh: s.kmh, color: speedColor(s.kmh, isDarkTheme() ? "dunkel" : "hell") },
+    })),
+  };
+}
+
+// Die eigene Spur nach gefahrenem Tempo (lib/tempoprofil.ts). Die Abschnitte
+// tragen die Stufe, nicht die Farbe — der Server, der sie schneidet, kennt
+// das Farbschema des Betrachters nicht.
+function toTempoFeatureCollection(
+  segments: { coords: [number, number][]; stufe: number }[],
+): GeoJSON.FeatureCollection {
+  const schema = isDarkTheme() ? "dunkel" : "hell";
+  return {
+    type: "FeatureCollection",
+    features: segments.map((s) => ({
+      type: "Feature",
+      geometry: { type: "LineString", coordinates: s.coords },
+      properties: { color: TEMPO_FARBEN[schema][s.stufe] ?? TEMPO_FARBEN[schema][0] },
     })),
   };
 }
@@ -481,6 +500,7 @@ export default function RouteMap({
   centerOnFirstLocation = false,
   followLocation = false,
   ohneBedienelemente = false,
+  kooperativeGesten = false,
   umlandSchleier = false,
 }: {
   // Alle Strecken, die gezeichnet werden. Die Reihenfolge ist gleichgültig,
@@ -552,7 +572,7 @@ export default function RouteMap({
   // lib/tempoprofil.ts: tempoAbschnitte). Werden sie übergeben, tritt die
   // einfarbige Track-Linie zurück und die Abschnitte tragen die Linie —
   // dieselben Farben wie die Tempolimit-Ebene, aber gefahren statt erlaubt.
-  tempoSegmente?: { coords: [number, number][]; color: string }[];
+  tempoSegmente?: { coords: [number, number][]; stufe: number }[];
   // Aufgezeichneter GPS-Track: live wachsend während einer Aufzeichnung
   // (FreeRideForm, LiveTrackingForm) oder fertig auf der Fahrt-Detailseite
   // (CompletionMap).
@@ -588,6 +608,11 @@ export default function RouteMap({
   followLocation?: boolean;
   /** Zoom- und Kompass-Knöpfe weglassen (Vorschaukarten, z. B. im Fazit). */
   ohneBedienelemente?: boolean;
+  /** Karte mitten in einer scrollenden Seite: ein Finger scrollt die Seite,
+   *  zwei bewegen die Karte (Mapbox cooperativeGestures). Ohne das fing die
+   *  Karte auf der Fahrtseite jeden Wisch ab, der an ihr vorbeiscrollen
+   *  wollte. Nicht für Vollbildkarten (Entdecken, Strecke, Aufzeichnung). */
+  kooperativeGesten?: boolean;
   /** Das Ausland unter einen Schleier legen, damit die Schweiz heraussticht.
    *  Entdecken-Karte und freie Fahrt (Entscheid des Inhabers 2026-09-21):
    *  beide sollen gleich aussehen. Auf der eigenen Fahrt nach Strecken
@@ -620,6 +645,8 @@ export default function RouteMap({
   const routesRef = useRef(routes);
   // Nur der Wert beim Aufbau zählt: die Knöpfe werden einmal angehängt.
   const ohneBedienelementeRef = useRef(ohneBedienelemente);
+  // Nur beim Aufbau gelesen, wie ohneBedienelemente.
+  const kooperativeGestenRef = useRef(kooperativeGesten);
   // Ebenso nur beim Aufbau: der Schleier wird bei jedem style.load neu
   // angelegt, und welche Karte ihn trägt, ändert sich nicht.
   const umlandSchleierRef = useRef(umlandSchleier);
@@ -742,6 +769,7 @@ export default function RouteMap({
       // `attributionControl: false` samt der AttributionControl-Zeile unten
       // (dann greift wieder das responsive Standardverhalten).
       attributionControl: false,
+      cooperativeGestures: kooperativeGestenRef.current,
       // Ohne locale melden sich die Bedienelemente englisch ("Zoom in",
       // "Reset bearing to north") in einem lang="de"-Dokument.
       locale: {
@@ -951,7 +979,7 @@ export default function RouteMap({
       // Strichstärke wie die Stau-Ebene, Sichtbarkeit folgt den Daten.
       map.addSource(TEMPO_SOURCE, {
         type: "geojson",
-        data: toTrafficFeatureCollection(tempoSegmenteRef.current),
+        data: toTempoFeatureCollection(tempoSegmenteRef.current),
       });
       map.addLayer(
         {
@@ -1316,7 +1344,7 @@ export default function RouteMap({
     const map = mapRef.current;
     if (!map || !styleLoadedRef.current) return;
     const source = map.getSource(TEMPO_SOURCE) as mapboxgl.GeoJSONSource | undefined;
-    source?.setData(toTrafficFeatureCollection(tempoSegmente));
+    source?.setData(toTempoFeatureCollection(tempoSegmente));
     if (!map.getLayer(TEMPO_LINE_LAYER) || !map.getLayer(TRACK_LINE_LAYER)) return;
     const sichtbar = tempoSegmente.length > 0 ? "visible" : "none";
     map.setLayoutProperty(TEMPO_LINE_LAYER, "visibility", sichtbar);

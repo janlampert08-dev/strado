@@ -84,13 +84,22 @@ export const AKTIVITAET_LIMIT = 30;
 // bzw. 0100). Die gemeinsamen letzten 30 können aus einer Quelle höchstens
 // 30 Einträge enthalten — es kann also kein Eintrag fehlen, der es in die
 // gemischte Liste geschafft hätte.
+//
+// eigeneId: die eigene Reaktion ist keine Neuigkeit. recent_kudos_received
+// (0057) filtert nur auf die Fahrt des Aufrufers, nicht auf den Gebenden —
+// wer seiner eigenen Fahrt Kudos gab, las danach "Jan hat deiner Fahrt
+// Kudos gegeben" über sich selbst. Gefiltert wird hier und nicht in der
+// Datenbank, weil das eine Frage der Anzeige ist und keine neue Migration
+// rechtfertigt; gefiltert wird VOR dem Kappen, damit die eigene Zeile keinen
+// der 30 Plätze belegt.
 export function mischeAktivitaet(
   kudos: ReceivedKudos[],
   follower: ReceivedFollower[],
   passMeldungen: PassEintrag[] = [],
+  eigeneId: string | null = null,
 ): AktivitaetsEintrag[] {
   const eintraege: AktivitaetsEintrag[] = [
-    ...kudos.map(
+    ...kudos.filter((k) => eigeneId === null || k.giverId !== eigeneId).map(
       (k): KudosEintrag => ({
         art: "kudos",
         completionId: k.completionId,
@@ -101,7 +110,7 @@ export function mischeAktivitaet(
         neu: k.neu,
       }),
     ),
-    ...follower.map(
+    ...follower.filter((f) => eigeneId === null || f.followerId !== eigeneId).map(
       (f): FollowerEintrag => ({
         art: "follower",
         personId: f.followerId,

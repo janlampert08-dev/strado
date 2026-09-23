@@ -181,14 +181,14 @@ export default function NeueStreckeForm() {
           <div>
             <h1 className="text-display font-semibold">Strecke erstellen</h1>
             <p className="mt-1 text-sm text-muted">
-              Setze nacheinander Wegpunkte auf der Karte — die Route wird automatisch entlang
+              Setze nacheinander Wegpunkte auf der Karte — der Verlauf wird automatisch entlang
               echter Strassen berechnet. Öffentliche Strecken prüft ein Moderator, bevor sie
               sichtbar werden.
             </p>
           </div>
 
           <ol className="flex flex-wrap items-center gap-1.5 text-xs" aria-label="Fortschritt">
-            <StepLabel index={1} label="Route" state={routeStepState} />
+            <StepLabel index={1} label="Verlauf" state={routeStepState} />
             <span className="h-px w-3 shrink-0 bg-border" aria-hidden="true" />
             <StepLabel index={2} label="Benennen" state={nameStepState} />
             <span className="h-px w-3 shrink-0 bg-border" aria-hidden="true" />
@@ -214,8 +214,8 @@ export default function NeueStreckeForm() {
             />
             <p className="mt-1 text-xs text-muted">
               {rundfahrt
-                ? "Die Route endet automatisch wieder am Startpunkt."
-                : "Die Route endet am zuletzt gesetzten Punkt."}
+                ? "Die Strecke endet automatisch wieder am Startpunkt."
+                : "Die Strecke endet am zuletzt gesetzten Punkt."}
             </p>
           </div>
 
@@ -248,7 +248,7 @@ export default function NeueStreckeForm() {
 
           <ConfirmDialog
             open={resetConfirmOpen}
-            title="Route zurücksetzen"
+            title="Verlauf zurücksetzen"
             description="Alle gesetzten Wegpunkte werden entfernt — das lässt sich nicht rückgängig machen."
             confirmLabel="Zurücksetzen"
             variant="danger"
@@ -259,9 +259,9 @@ export default function NeueStreckeForm() {
           <p className="text-xs text-muted">
             {waypoints.length === 0 && "Klicke auf die Karte, um den Startpunkt zu setzen."}
             {waypoints.length === 1 && "Klicke weitere Punkte entlang der gewünschten Strecke."}
-            {waypoints.length > 1 && routing && "Route wird berechnet…"}
+            {waypoints.length > 1 && routing && "Streckenverlauf wird berechnet…"}
             {waypoints.length > 1 && !routing && activeDirections && (
-              <>Strassenroute gefunden: ca. {activeDirections.distanceKm.toFixed(1)} km</>
+              <>Streckenverlauf gefunden: ca. {activeDirections.distanceKm.toFixed(1)} km</>
             )}
             {routingError && <span className="text-danger">{routingError}</span>}
           </p>
@@ -326,7 +326,7 @@ export default function NeueStreckeForm() {
                       className={`rounded-full border px-3 py-1.5 text-sm transition-colors duration-fast ${
                         tags.includes(k.value)
                           ? "border-foreground bg-foreground text-background"
-                          : "border-border text-muted hover:border-border-strong"
+                          : "border-border text-muted hover:border-muted"
                       }`}
                     >
                       {k.label}
@@ -401,7 +401,7 @@ export default function NeueStreckeForm() {
                   </p>
                 )}
                 <Button type="submit" disabled={pending || !activeDirections} className="w-full">
-                  {pending ? "Speichern…" : istPrivat ? "Privat speichern" : "Zur Prüfung einreichen"}
+                  {pending ? "Wird gespeichert…" : istPrivat ? "Privat speichern" : "Zur Prüfung einreichen"}
                 </Button>
               </div>
             </>

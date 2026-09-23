@@ -14,13 +14,15 @@ import PublishRouteButton from "@/components/PublishRouteButton";
 import ElevationProfile from "@/components/ElevationProfile";
 import PhotoGallery from "@/components/PhotoGallery";
 import RouteLeaderboardPreview from "@/components/RouteLeaderboardPreview";
+import BestzeitStreifen from "@/components/BestzeitStreifen";
+import { liveSplitEingeschaltet } from "@/lib/liveSplit";
 import OfflineRouteButton from "@/components/OfflineRouteButton";
 import { getKontextStrecken, getRoute, getSignaturbestand } from "@/lib/routes";
 import { computeSignatures } from "@/lib/signature";
 import { SIGNATURE_ICONS, SIGNATUR_KLASSEN } from "@/components/signaturStil";
 import PremiumHinweis from "@/components/PremiumHinweis";
 import { WetterfensterStreifen, WetterfensterStreifenPlatzhalter } from "@/components/Wetterfenster";
-import { formatKm } from "@/lib/format";
+import { formatKm, formatMeter } from "@/lib/format";
 import { getRatings, getOwnRating } from "@/lib/ratings";
 import { bewertungAusSternen } from "@/lib/bewertungen";
 import { getPersonalBestSeconds } from "@/lib/completions";
@@ -79,7 +81,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const route = await getRoute(id);
-  if (!route) return { title: "Strecke – Strado" };
+  // Dieselbe Überschrift wie app/not-found.tsx: die Seite antwortet unten
+  // mit notFound(), und der Tab soll dasselbe sagen wie der Inhalt, nicht
+  // einen Streckentitel ankündigen, den es nicht gibt.
+  if (!route) return { title: "Seite nicht gefunden – Strado" };
 
   const beschreibung =
     route.charakter_text ??
@@ -460,9 +465,16 @@ export default async function StreckeDetailPage({
             wo ein Besucher ohne Konto zuerst ankommt. Der Kommentar-Teil des
             alten Hinweises lebt jetzt in RatingSection weiter, wo er
             hingehört. */}
+        {/* Die Bestzeit vor den Reitern: sie beantwortet die zweite Frage,
+            mit der man eine Strecke öffnet ("was wurde hier gefahren?"),
+            und stand bisher erst im dritten Reiter. */}
+        <BestzeitStreifen beste={leaderboard[0] ?? null} eigeneSekunden={personalBestSeconds} />
+
         {/* Reiter statt Stapel: Fahren (die Entscheidung), Details
-            (Vertiefung), Wertung (Community). */}
-        <AbschnittTabs tabs={[{ titel: "Fahren" }, { titel: "Details" }, { titel: "Wertung", anzahl: ratings.length }]}>
+            (Vertiefung samt Bewertungen und Fotos), Bestzeiten. Der dritte
+            Reiter hiess "Wertung" und zählte die Bewertungen, obwohl er mit
+            der Bestenliste begann — Bestzeit und Sterne sind zwei Fragen. */}
+        <AbschnittTabs tabs={[{ titel: "Fahren" }, { titel: "Details" }, { titel: "Bestzeiten", anzahl: leaderboard.length }]}>
           <div className="flex flex-col gap-5">
         {/* Sprungziel für "Zum Start" in der leeren Bestenliste. scroll-mt:
             sonst endet der Sprung mit dem Knopf an der oberen Kante. */}
@@ -475,8 +487,22 @@ export default async function StreckeDetailPage({
           personalBestSeconds={personalBestSeconds}
           guestContinuationToken={fortsetzen ?? null}
           maxPhotos={maxFotosProFahrt(premiumStatus.aktiv)}
+          // Aus, bis die neuen AGB gelten (lib/liveSplit.ts). Server-Variable,
+          // damit Ausschalten ohne neuen Build geht.
+          liveSplit={
+            liveSplitEingeschaltet(process.env.STRADO_LIVE_SPLIT)
+              ? { streckenBestzeitS: leaderboard[0]?.dauerSekunden ?? null }
+              : null
+          }
         />
         </div>
+
+        {/* Das Höhenprofil als Hauptbild der Strecke, direkt unter dem
+            Start: die Höhe ist das, was einen Pass von einer Landstrasse
+            unterscheidet, und stand bisher im zweiten Reiter. */}
+        {route.hoehenprofil && route.hoehenprofil.length > 1 && (
+          <ElevationProfile punkte={route.hoehenprofil} gross />
+        )}
 
         {/* Der Passblock steht dort, wo er die Entscheidung trägt: nach dem
             Start, vor Beschreibung und Zahlen — denn ob der Pass überhaupt
@@ -516,7 +542,8 @@ export default async function StreckeDetailPage({
         </div>
 
         {/* Fakten in zwei Stufen: 4 Kacheln für die Auswahl, der Rest als
-            ruhige Detailzeile. Das Höhenprofil lebt im Reiter Details. */}
+            ruhige Detailzeile. Das Höhenprofil steht darüber, direkt unter
+            dem Start. */}
         <Kennzahlen>
           <Kennzahl beschriftung="Länge" wert={`${formatKm(route.laenge_km)} km`} />
           <Kennzahl
@@ -530,9 +557,9 @@ export default async function StreckeDetailPage({
             // Schirm. Das Profil ist die Quelle, die man sieht.
             wert={
               route.hoehenprofil && route.hoehenprofil.length > 1
-                ? `${Math.max(...route.hoehenprofil.map((p) => p.m))} m`
+                ? formatMeter(Math.max(...route.hoehenprofil.map((p) => p.m)))
                 : route.hoehe_m !== null
-                  ? `${route.hoehe_m} m`
+                  ? formatMeter(route.hoehe_m)
                   : "—"
             }
           />
@@ -566,18 +593,16 @@ export default async function StreckeDetailPage({
         />
 
           </div>
-          {/* Reiter Details: Profil und Zeitpunkt-Infos — Vertiefung für
-              nach dem Start, nicht Ballast davor. */}
+          {/* Reiter Details: Zeitpunkt-Infos — Vertiefung für nach dem
+              Start, nicht Ballast davor. Das Höhenprofil steht seit
+              2026-09-23 vorne im Reiter Fahren. */}
           <div className="flex flex-col gap-5">
-            {route.hoehenprofil && route.hoehenprofil.length > 1 && (
-              <ElevationProfile punkte={route.hoehenprofil} />
-            )}
-            {/* Standardmässig offen: der Reiter wäre sonst nur Profil plus
+            {/* Standardmässig offen: der Reiter wäre sonst nur eine
                 eine geschlossene Klappe — zu leer für eine eigene Ansicht. */}
             <details open className="group rounded-xl border border-border">
           <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium marker:content-none">
             <span>
-              Beste Zeit & Wetterwoche{" "}
+              Ruhige Zeiten & Wetter{" "}
               <span className="font-normal text-muted">— Details</span>
             </span>
             <ChevronDown
@@ -622,16 +647,6 @@ export default async function StreckeDetailPage({
           </div>
         </details>
 
-          </div>
-          {/* Reiter Wertung: Bestenliste, Meinung, Bilder — die Community
-              als eigene Ansicht. */}
-          <div className="flex flex-col gap-5">
-            <RouteLeaderboardPreview
-              routeId={id}
-              entries={leaderboard}
-              klassen={leaderboardKlassen}
-            />
-
         <RatingSection
           routeId={id}
           ratings={ratings}
@@ -650,6 +665,14 @@ export default async function StreckeDetailPage({
             Meinung zuerst, Galerie als Vertiefung — nicht zwischen
             Bestenliste und Bewertungen. */}
         <PhotoGallery photos={photos} />
+          </div>
+          {/* Reiter Bestzeiten: die Bestenliste allein. */}
+          <div className="flex flex-col gap-5">
+            <RouteLeaderboardPreview
+              routeId={id}
+              entries={leaderboard}
+              klassen={leaderboardKlassen}
+            />
           </div>
         </AbschnittTabs>
       </RouteDetailLayout>

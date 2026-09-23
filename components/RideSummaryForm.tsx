@@ -43,6 +43,11 @@ export const MAX_NOTIZ_LENGTH = 280;
  */
 export const FAZIT_ABSCHNITT = "flex flex-col gap-2 border-t border-border pt-4 text-sm";
 
+// Beschriftung über jedem Feld des Fahrzeug-Schnellformulars. text-xs statt
+// text-sm wie in NeuesFahrzeugForm: das Formular steht eingerückt im Fazit
+// und soll dort nicht lauter werden als die Fahrt, die gerade gespeichert wird.
+const FAHRZEUG_FELD = "flex flex-col gap-1 text-xs font-medium text-muted";
+
 export interface VisibilityChoice {
   // Verhindert die Auswahl "öffentlich" (z.B. Deckungsgrad unterschritten).
   publicDisabled: boolean;
@@ -305,72 +310,100 @@ export default function RideSummaryForm({
           // erlaubt keine geschachtelten Formulare. handleAddVehicle baut
           // die FormData manuell und ruft die Server Action direkt auf.
           <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
+            {/* Sichtbare Beschriftungen statt reiner Platzhalter: ein
+                Platzhalter verschwindet beim ersten Tippen, und wer dann
+                zwischen "Marke" und "Modell" zurückspringt, sieht zwei
+                gefüllte Felder ohne Namen. Die Platzhalter sind jetzt
+                Beispiele — dieselbe Beschriftung wie in NeuesFahrzeugForm. */}
             <div className="grid grid-cols-2 gap-2">
-              <Select
-                value={newVehicleTyp}
-                onChange={(e) => {
-                  setNewVehicleTyp(e.target.value as FahrzeugTyp);
-                  // Die Zahl im Leistungsfeld bedeutet je nach Typ etwas
-                  // anderes — stehen zu lassen hiesse, aus 150 PS still
-                  // 150 kW zu machen.
-                  setNewVehicleLeistung("");
-                }}
-                className={fieldClassName()}
-              >
-                <option value="auto">Auto</option>
-                <option value="motorrad">Motorrad</option>
-              </Select>
-              <Select
-                value={newVehicleGetriebe}
-                onChange={(e) => setNewVehicleGetriebe(e.target.value)}
-              >
-                <option value="manuell">Manuell</option>
-                <option value="automatik">Automatik</option>
-              </Select>
+              <label className={FAHRZEUG_FELD}>
+                Typ
+                <Select
+                  value={newVehicleTyp}
+                  onChange={(e) => {
+                    setNewVehicleTyp(e.target.value as FahrzeugTyp);
+                    // Die Zahl im Leistungsfeld bedeutet je nach Typ etwas
+                    // anderes — stehen zu lassen hiesse, aus 150 PS still
+                    // 150 kW zu machen.
+                    setNewVehicleLeistung("");
+                  }}
+                  className={fieldClassName()}
+                >
+                  <option value="auto">Auto</option>
+                  <option value="motorrad">Motorrad</option>
+                </Select>
+              </label>
+              <label className={FAHRZEUG_FELD}>
+                Getriebe
+                <Select
+                  value={newVehicleGetriebe}
+                  onChange={(e) => setNewVehicleGetriebe(e.target.value)}
+                >
+                  <option value="manuell">Manuell</option>
+                  <option value="automatik">Automatik</option>
+                </Select>
+              </label>
             </div>
-            <input
-              type="text"
-              placeholder="Marke"
-              value={newVehicleMarke}
-              onChange={(e) => setNewVehicleMarke(e.target.value)}
-              className={fieldClassName()}
-            />
-            <input
-              type="text"
-              placeholder="Modell"
-              value={newVehicleModell}
-              onChange={(e) => setNewVehicleModell(e.target.value)}
-              className={fieldClassName()}
-            />
-            <input
-              type="number"
-              placeholder="Baujahr (optional)"
-              min={1900}
-              max={2100}
-              value={newVehicleBaujahr}
-              onChange={(e) => setNewVehicleBaujahr(e.target.value)}
-              className={fieldClassName()}
-            />
-            {newVehicleTyp === "motorrad" && (
+            <label className={FAHRZEUG_FELD}>
+              Marke
               <input
-                type="number"
-                placeholder="Hubraum in cm³ (optional)"
-                min={1}
-                max={10000}
-                inputMode="numeric"
-                value={newVehicleHubraum}
-                onChange={(e) => setNewVehicleHubraum(e.target.value)}
+                type="text"
+                placeholder={newVehicleTyp === "motorrad" ? "z. B. Ducati" : "z. B. Porsche"}
+                value={newVehicleMarke}
+                onChange={(e) => setNewVehicleMarke(e.target.value)}
                 className={fieldClassName()}
               />
+            </label>
+            <label className={FAHRZEUG_FELD}>
+              Modell
+              <input
+                type="text"
+                placeholder={newVehicleTyp === "motorrad" ? "z. B. Monster" : "z. B. 911 Carrera"}
+                value={newVehicleModell}
+                onChange={(e) => setNewVehicleModell(e.target.value)}
+                className={fieldClassName()}
+              />
+            </label>
+            <label className={FAHRZEUG_FELD}>
+              Baujahr (optional)
+              <input
+                type="number"
+                // Ziffernblock statt Zahlen-und-Zeichen-Tastatur (iOS).
+                inputMode="numeric"
+                placeholder="z. B. 2019"
+                min={1900}
+                max={2100}
+                value={newVehicleBaujahr}
+                onChange={(e) => setNewVehicleBaujahr(e.target.value)}
+                className={fieldClassName()}
+              />
+            </label>
+            {newVehicleTyp === "motorrad" && (
+              <label className={FAHRZEUG_FELD}>
+                Hubraum in cm³ (optional)
+                <input
+                  type="number"
+                  placeholder="z. B. 937"
+                  min={1}
+                  max={10000}
+                  inputMode="numeric"
+                  value={newVehicleHubraum}
+                  onChange={(e) => setNewVehicleHubraum(e.target.value)}
+                  className={fieldClassName()}
+                />
+              </label>
             )}
-            <input
-              type="text"
-              placeholder={`Leistung in ${neueFahrzeugEinheit} (optional)`}
-              inputMode="decimal"
-              value={newVehicleLeistung}
-              onChange={(e) => setNewVehicleLeistung(e.target.value)}
-              className={fieldClassName()}
-            />
+            <label className={FAHRZEUG_FELD}>
+              Leistung in {neueFahrzeugEinheit} (optional)
+              <input
+                type="text"
+                placeholder={neueFahrzeugEinheit === "PS" ? "z. B. 150" : "z. B. 81"}
+                inputMode="decimal"
+                value={newVehicleLeistung}
+                onChange={(e) => setNewVehicleLeistung(e.target.value)}
+                className={fieldClassName()}
+              />
+            </label>
             <MotorklasseBadge klasse={neueFahrzeugKlasse} regelAnzeigen />
             {addVehicleError && (
               <p role="alert" className="text-xs text-danger">
@@ -384,7 +417,7 @@ export default function RideSummaryForm({
                 disabled={addVehiclePending || !newVehicleMarke.trim() || !newVehicleModell.trim()}
                 className={buttonVariants({ size: "sm" })}
               >
-                {addVehiclePending ? "Speichern…" : "Speichern"}
+                {addVehiclePending ? "Wird gespeichert…" : "Speichern"}
               </button>
               <button
                 type="button"
@@ -474,7 +507,7 @@ export default function RideSummaryForm({
           fehlt hier bewusst, weil die Summary mit min-h-11 ihre eigene
           Höhe mitbringt und der Text darin mittig sitzt. */}
       <details className="group border-t border-border">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
           <span>
             Notiz &amp; Fotos <span className="font-normal text-muted">— optional</span>
           </span>
@@ -505,7 +538,7 @@ export default function RideSummaryForm({
             maxLength={MAX_NOTIZ_LENGTH}
             value={notiz}
             onChange={(e) => setNotiz(e.target.value)}
-            placeholder="z.B. nasse Fahrbahn, mit der Ducati…"
+            placeholder="z. B. nasse Fahrbahn, mit der Ducati…"
             className={fieldClassName()}
           />
         </div>
@@ -547,7 +580,7 @@ export default function RideSummaryForm({
           disabled={pending}
           className={buttonVariants({ variant: "accent", size: "lg", className: "w-full" })}
         >
-          {pending ? "Speichern…" : "Fahrt speichern"}
+          {pending ? "Wird gespeichert…" : "Fahrt speichern"}
         </button>
         {/* FORTSETZEN UND VERWERFEN SEHEN NICHT MEHR GLEICH AUS. Beide
             standen als gleich grosse graue Textknöpfe nebeneinander — der
@@ -583,7 +616,8 @@ export default function RideSummaryForm({
         open={discardConfirmOpen}
         title="Fahrt verwerfen?"
         description="Die aufgezeichnete Fahrt wurde noch nicht gespeichert und geht dabei endgültig verloren."
-        confirmLabel="Verwerfen"
+        confirmLabel="Fahrt verwerfen"
+        cancelLabel="Fahrt behalten"
         variant="danger"
         onConfirm={onDiscard}
         onCancel={() => setDiscardConfirmOpen(false)}

@@ -71,7 +71,7 @@ export default async function PremiumTeaserPage() {
     : user
       ? "/profil/premium"
       : `/anmelden?next=${encodeURIComponent("/profil/premium")}`;
-  const ctaText = hatPremium ? "Zum Profil" : user ? "Premium wählen" : "Anmelden und Premium wählen";
+  const ctaText = hatPremium ? "Zum Profil" : user ? "Premium wählen" : "Anmelden, um Premium zu wählen";
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -99,7 +99,7 @@ export default async function PremiumTeaserPage() {
         </div>
 
         <section className="flex flex-col gap-3">
-          <SectionHeading icon={SparklesIcon}>Was Premium dazugibt</SectionHeading>
+          <SectionHeading icon={SparklesIcon}>In Premium enthalten</SectionHeading>
           <ul className="flex flex-col gap-2.5 text-sm text-foreground">
             {PREMIUM_VORTEILE.map((vorteil) => (
               <li key={vorteil} className="flex items-start gap-2.5">
@@ -130,7 +130,7 @@ export default async function PremiumTeaserPage() {
               ))}
             </ul>
             <p className="text-xs text-muted">
-              Bezahlen mit TWINT oder Karte · Preise in CHF inkl. MWST · Kündigung im Kundenportal
+              Bezahlen mit TWINT oder Karte · Endpreise in CHF · Kündigung im Kundenportal
             </p>
           </section>
         )}

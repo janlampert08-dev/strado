@@ -15,6 +15,7 @@ export default function GefahrenSection({
   personalBestSeconds,
   guestContinuationToken = null,
   maxPhotos,
+  liveSplit = null,
 }: {
   route: RouteGeoJSON;
   // Umliegende freigegebene Strecken, die auf der Aufzeichnungskarte zur
@@ -32,6 +33,8 @@ export default function GefahrenSection({
   // Aus ?fortsetzen=<token>: der Besucher kommt gerade aus dem Anmelde-Gate
   // einer als Gast aufgezeichneten Fahrt zurück.
   guestContinuationToken?: string | null;
+  /** Live-Abstand zur Bestzeit (lib/liveSplit.ts); null = ausgeschaltet. */
+  liveSplit?: { streckenBestzeitS: number | null } | null;
 }) {
   // Standardmässig eingeklappt, damit die Seite beim blossen Ansehen einer
   // Strecke nicht durch ein immer offenes Formular überladen wirkt. Bleibt
@@ -67,7 +70,7 @@ export default function GefahrenSection({
   // selbst auf. Hierher führt der Streifen "Aufzeichnung unterbrochen"
   // (components/OffeneAufzeichnung.tsx) — ohne das stünde man nach dem Tipp
   // darauf vor einer Streckenseite, auf der von der Fahrt nichts zu sehen
-  // ist, und erst "Strecke starten" hätte sie wiederaufgenommen. Das ist
+  // ist, und erst "Strecke fahren" hätte sie wiederaufgenommen. Das ist
   // dieselbe Wiederaufnahme wie nach einem Tab-Kill, nur ohne den Umweg:
   // LiveTrackingForm findet den Snapshot beim Mount und setzt ihn fort.
   useEffect(() => {
@@ -92,9 +95,12 @@ export default function GefahrenSection({
       <div className="sticky bottom-0 z-10 -mx-1 px-1 pt-2 pb-1">
         <div className="flex items-center gap-3 rounded-2xl border border-border bg-background/95 p-3 shadow-elevated backdrop-blur">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">Bereit?</p>
+            <p className="truncate text-sm font-semibold">Strecke fahren</p>
+            {/* "ohne Konto" nur für Gäste: angemeldet ist der Satz keine
+                Information mehr, sondern eine Falschaussage über den Zustand. */}
             <p className="truncate text-xs text-muted">
-              {route.laenge_km.toFixed(0)} km · GPS-Aufzeichnung ohne Konto
+              {route.laenge_km.toFixed(0)} km · Zeitmessung startet am Startpunkt
+              {userId === null && " · auch ohne Konto"}
             </p>
           </div>
           {/* Handgebaute Pille durch die Design-System-Variante ersetzt (Kernregel
@@ -107,7 +113,7 @@ export default function GefahrenSection({
             onClick={() => setOpen(true)}
             className={buttonVariants({ variant: "accent", size: "lg", className: "shrink-0 px-8" })}
           >
-            Strecke starten
+            Strecke fahren
           </button>
         </div>
       </div>
@@ -123,6 +129,7 @@ export default function GefahrenSection({
       personalBestSeconds={personalBestSeconds}
       guestContinuationToken={guestContinuationToken}
       maxPhotos={maxPhotos}
+      liveSplit={liveSplit}
       onExit={() => setOpen(false)}
     />
   );

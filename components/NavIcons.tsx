@@ -187,3 +187,13 @@ export { Monitor, Moon, Sun } from "lucide-react";
 // Fotos einer Fahrt; Aufrufer benennen es ImageIcon, damit es nicht mit
 // next/image verwechselt wird.
 export { Image } from "lucide-react";
+
+// Ebenfalls kein Nav-Icon: der Streckenvorschlag auf dem Startschirm der
+// freien Fahrt (components/FreeRideForm.tsx, lib/streckenvorschlag.ts).
+// Dasselbe Zeichen, das FreeRideForm für den Live-Hinweis einer erkannten
+// Strecke schon direkt importiert — neuer Code nimmt es von hier.
+export { Route as StreckeIcon } from "lucide-react";
+
+// Die Stoppuhr vor einer gemessenen Dauer (Bestzeit-Streifen der
+// Streckenseite) — damit "14:12 min" nicht als Uhrzeit gelesen wird.
+export { Timer as TimerIcon } from "lucide-react";

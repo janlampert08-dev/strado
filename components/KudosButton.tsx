@@ -84,7 +84,11 @@ export default function KudosButton({
         onClick={handleClick}
         disabled={pending}
         aria-pressed={given}
-        aria-label={given ? "Kudos zurückziehen" : "Kudos geben"}
+        // Feste Beschriftung samt Zahl, der Zustand steckt in aria-pressed.
+        // Vorher wechselte das Label auf "Kudos zurückziehen" UND stand auf
+        // gedrückt — vorgelesen als "Kudos zurückziehen, gedrückt", und die
+        // Zahl im Knopf verschwand hinter dem aria-label.
+        aria-label={`Kudos geben, ${count}`}
         className={cn(
           // min-h-11/min-w-11: das ist die Reaktion des Kernloops (AGENTS.md,
           // Schritt 7) und stand mit px-2 py-1 auf 24 px Höhe — unter jeder
