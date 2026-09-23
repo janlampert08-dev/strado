@@ -69,12 +69,16 @@ function StepLabel({ index, label, state }: { index: number; label: string; stat
   );
 }
 
-export default function NeueStreckeForm() {
+export default function NeueStreckeForm({ startName = "" }: { startName?: string } = {}) {
   const containerRef = useRef<HTMLElement>(null);
   const [state, formAction, pending] = useActionState(proposeRoute, initialState);
   const [waypoints, setWaypoints] = useState<[number, number][]>([]);
   const [rundfahrt, setRundfahrt] = useState(false);
-  const [name, setName] = useState("");
+  // Vorausgefüllt aus der erfolglosen Suche (?wunsch=, siehe
+  // ExploreSidebar.tsx): wer "Klausen" tippte und nichts fand, muss den
+  // Namen nach dem Login nicht erneut tippen — aus der Sackgasse wird ein
+  // Vorschlag. Gekürzt wie jede Eingabe, gesetzt nur einmalig am Anfang.
+  const [name, setName] = useState(startName.slice(0, 80));
   const [tags, setTags] = useState<string[]>([]);
   const [directions, setDirections] = useState<DirectionsResult | null>(null);
   const [fetchedKey, setFetchedKey] = useState<string | null>(null);

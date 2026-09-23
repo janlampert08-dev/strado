@@ -36,13 +36,13 @@ function searchQueryHref(pathname: string, query: string): string {
   return trimmed ? `${pathname}?${new URLSearchParams({ q: trimmed })}` : pathname;
 }
 
-// Zwei Einstiege, eine Liste: Feierabend-Runden (Agglo-Loops, kurz,
-// ab Haustür) und Pässe & Berge (Wochenende, teilen). Die Unterscheidung
+// Zwei Einstiege, eine Liste: kurze Runden ab Haustür (Agglo-Loops,
+// ≤70 km) und Pässe & Berge (Wochenende, teilen). Die Unterscheidung
 // ist eine Heuristik über die kuratierten Felder — kein Schema, kein
 // Filter-Backend: hoehe/kehren/Name statt neuer Spalte, damit Bestand und
 // Teilen-Bild unangetastet bleiben. Agglo ist kein Second-Class-Bestand,
 // sondern der zweite Funnel neben dem Pass.
-export type ExploreArt = "alle" | "feierabend" | "berg";
+export type ExploreArt = "alle" | "kurz" | "berg";
 
 function istBergPass(route: ExploreRoute): boolean {
   if ((route.hoehe_m ?? 0) >= 800) return true;
@@ -75,7 +75,7 @@ const RouteMap = dynamic(() => import("@/components/RouteMap"), {
 // zwei volle Zeilen plus Anschnitt statt einer plus Anschnitt. Die Karte
 // behält auf 390 x 844 noch rund 329 px. Agglo-Runde wie Pass teilen sich
 // dieselbe Liste: wer über einen Share-Link kommt, sieht Namen statt
-// Kacheln, egal ob Feierabend oder Wochenende.
+// Kacheln, egal ob kurze Runde oder Wochenende.
 const SHEET_PEEK_PX = 360;
 
 // Wie lange der Zufallsvorschlag (siehe unten) stehen bleibt. Die Kamerafahrt

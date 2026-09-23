@@ -38,7 +38,7 @@ import MotorklasseBadge from "@/components/MotorklasseBadge";
 import { motorklasseLabel } from "@/lib/motorklassen";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
 import AbschnittTabs from "@/components/ui/AbschnittTabs";
-import { textAktionClassName } from "@/components/ui/Button";
+import { buttonVariants, textAktionClassName } from "@/components/ui/Button";
 
 export async function generateMetadata({
   params,
@@ -570,6 +570,46 @@ export default async function FahrtDetailPage({
           )}
           </div>
           </AbschnittTabs>
+
+          {/* Empfang für geteilte Links: wer über eine Fahrt kommt und kein
+              Konto hat, sieht bisher eine Detailseite ohne nächsten Schritt.
+              Der Block verkauft die eine Handlung, die diese Seite beweist —
+              fahren — plus den Weg dorthin (Konto erst beim Speichern,
+              Aufzeichnen geht ohne). Für Angemeldete steht hier nichts: sie
+              kennen den Weg. */}
+          {!user && (
+            <section
+              aria-label="Fahr sie nach"
+              className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4"
+            >
+              <h2 className="text-base font-semibold">Fahr sie nach</h2>
+              <p className="text-sm text-muted">
+                {completion.displayName ?? "Jemand"} ist hier gefahren — zeichne
+                deine eigene Fahrt auf, ganz ohne Konto, und vergleich deine
+                Zeit auf echten Strecken.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  href={`/registrieren?next=${encodeURIComponent(`/fahrten/${completion.id}`)}`}
+                  className={buttonVariants({ variant: "accent", size: "md" })}
+                >
+                  Konto erstellen
+                </Link>
+                {!istFreieFahrt && route ? (
+                  <Link
+                    href={`/strecken/${route.id}`}
+                    className={buttonVariants({ variant: "secondary", size: "md" })}
+                  >
+                    Strecke ansehen
+                  </Link>
+                ) : (
+                  <Link href="/fahrten/neu" className={buttonVariants({ variant: "secondary", size: "md" })}>
+                    Freie Fahrt starten
+                  </Link>
+                )}
+              </div>
+            </section>
+          )}
 
           {/* Weiter statt Sackgasse: Wer über einen geteilten Link auf dieser
               Seite landet, hat sonst keinen Weg zu Strecke, Feed oder nächster

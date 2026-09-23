@@ -243,6 +243,16 @@ describe("saisonpassAusSession", () => {
     expect(saisonpassAusSession(pass({ amount_total: 0 }), "cus_ich")).toBeNull();
     expect(saisonpassAusSession(pass({ amount_total: null }), "cus_ich")).toBeNull();
   });
+
+  it("prüft die Preis-ID, sobald eine erwartete konfiguriert ist", () => {
+    expect(saisonpassAusSession(pass(), "cus_ich", "price_pass")?.preisId).toBe("price_pass");
+    expect(saisonpassAusSession(pass(), "cus_ich", "price_anderer")).toBeNull();
+  });
+
+  it("prüft ohne konfigurierte Preis-ID nur die Session selbst", () => {
+    expect(saisonpassAusSession(pass(), "cus_ich", undefined)?.preisId).toBe("price_pass");
+    expect(saisonpassAusSession(pass(), "cus_ich", "")?.preisId).toBe("price_pass");
+  });
 });
 
 describe("istUnbekannterCustomer", () => {

@@ -14,12 +14,21 @@ export const metadata: Metadata = {
   robots: NICHT_INDEXIEREN,
 };
 
-export default async function NeueStreckePage() {
+export default async function NeueStreckePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ wunsch?: string }>;
+}) {
   const user = await getCurrentUser();
+  const { wunsch } = await searchParams;
+  const wunschName = typeof wunsch === "string" ? wunsch.trim().slice(0, 80) : "";
 
   // next: wer über "Strecke vorschlagen" abgemeldet hier landet, soll nach
-  // der Anmeldung im Formular ankommen und nicht auf der Startseite.
-  if (!user) redirect("/anmelden?next=/strecken/neu");
+  // der Anmeldung im Formular ankommen und nicht auf der Startseite — der
+  // Suchwunsch (?wunsch= aus der erfolglosen Suche) reist dabei mit, damit
+  // der Name nach dem Login schon dasteht.
+  const zurueck = wunschName ? `/strecken/neu?wunsch=${encodeURIComponent(wunschName)}` : "/strecken/neu";
+  if (!user) redirect(`/anmelden?next=${encodeURIComponent(zurueck)}`);
 
   // Bis 0086 stand hier eine Premium-Weiche: wer kein Abo hatte, sah statt
   // des Formulars eine Werbekarte (components/PremiumGate.tsx, mit dieser
@@ -42,7 +51,7 @@ export default async function NeueStreckePage() {
   return (
     <div className="flex h-dvh flex-col">
       <Header back="/" />
-      <NeueStreckeForm />
+      <NeueStreckeForm startName={wunschName} />
     </div>
   );
 }
