@@ -28,6 +28,7 @@ import FullscreenDialog from "@/components/ui/FullscreenDialog";
 import HalteKnopf from "@/components/ui/HalteKnopf";
 import FazitKopf from "@/components/FazitKopf";
 import { zeigeHinweis } from "@/components/Hinweis";
+import GpsBereitschaft from "@/components/GpsBereitschaft";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
@@ -440,6 +441,16 @@ export default function LiveTrackingForm({
                 ? `noch ca. ${formatiereKurzdistanz(recorder.distanceToStartKm)}, die Zeitmessung startet automatisch, sobald du dort bist.`
                 : "Standort wird ermittelt…"}
             </p>
+          )}
+          {/* Vor dem Start dieselbe Bereitschaftszeile wie bei der freien
+              Fahrt (components/GpsBereitschaft.tsx), aus der Watch, die der
+              Recorder hier ohnehin schon für die Anfahrt führt. Wer am Start
+              wartet, sieht so, ob die automatische Zeitmessung einen
+              brauchbaren Fix hat. Neben einer Standort-Fehlermeldung fehlt
+              sie: "wird gesucht" unter "Zugriff verweigert" widerspräche
+              sich. Nach dem Start trägt die Statuszeile oben diese Rolle. */}
+          {!recorder.hasStarted && !recorder.locationError && (
+            <GpsBereitschaft genauigkeitM={recorder.accuracyM} />
           )}
           {recorder.locationError && <p role="alert" className="text-sm text-danger">{recorder.locationError}</p>}
           {/* Zug/Flug erkannt: lieber jetzt sagen, dass diese Aufzeichnung
