@@ -29,6 +29,7 @@ import HalteKnopf from "@/components/ui/HalteKnopf";
 import FazitKopf from "@/components/FazitKopf";
 import { zeigeHinweis } from "@/components/Hinweis";
 import GpsBereitschaft from "@/components/GpsBereitschaft";
+import { useVolleGeometrie } from "@/components/VolleGeometrie";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
@@ -57,7 +58,7 @@ function formatiereKurzdistanz(km: number): string {
 // Strecke — Anfahrt zum Startpunkt, danach "noch … km" plus Luftlinie zum
 // Ziel oder, bei Rundfahrten, zum nächsten Routenpunkt.
 export default function LiveTrackingForm({
-  route,
+  route: hereingereicht,
   kontextStrecken,
   userId,
   vehicles,
@@ -94,6 +95,12 @@ export default function LiveTrackingForm({
   liveSplit?: { streckenBestzeitS: number | null } | null;
   onExit: () => void;
 }) {
+  // Auf der Streckenseite kommt die Strecke mit der Übersichtslinie (0117)
+  // herein; die volle lädt dieselbe Seite ohnehin für die Detailkarte, und
+  // useVolleGeometrie teilt sich diesen Abruf. Karte und Abstandsanzeige
+  // nehmen, was da ist; der Deckungsgrad wartet auf die volle Linie (siehe
+  // coveragePercent).
+  const { strecke: route, stand: geometrieStand } = useVolleGeometrie(hereingereicht);
   const router = useRouter();
   const istGast = userId === null;
   const action = logTrackedCompletion.bind(null, route.id);
@@ -108,12 +115,15 @@ export default function LiveTrackingForm({
   // primaryRouteId (RouteMap), das zugleich den Kartenausschnitt auf sie
   // allein einpasst.
   const routes = useMemo(() => [route, ...kontextStrecken], [route, kontextStrecken]);
+  // An der hereingereichten Strecke, nicht an der mit voller Linie: Start
+  // und Ziel sind dieselben, und das Nachladen der Linie soll dem Recorder
+  // kein neues Gate-Objekt unterschieben.
   const gate = useMemo(
     () => ({
-      startPoint: route.start_geojson.coordinates as [number, number],
-      endPoint: route.ziel_geojson.coordinates as [number, number],
+      startPoint: hereingereicht.start_geojson.coordinates as [number, number],
+      endPoint: hereingereicht.ziel_geojson.coordinates as [number, number],
     }),
-    [route],
+    [hereingereicht],
   );
   // Stabile Referenz für die Abstandsberechnung weiter unten (nächster
   // Routenpunkt bei Rundfahrten) — dieselbe Geometrie, die die Karte
@@ -176,13 +186,21 @@ export default function LiveTrackingForm({
     return { blockiert: profil.blockiert, text: profil.begruendung };
   }, [phase, finishedTrail]);
 
+  // Nur auf der vollen Linie: die Übersicht weicht bis ~50 m von der
+  // Strasse ab und würde den Deckungsgrad in Kehren zu tief schätzen — und
+  // damit das Veröffentlichen sperren, obwohl der Server es erlaubte. Ohne
+  // volle Linie (noch unterwegs oder kein Empfang) bleibt die Vorschau leer
+  // und sperrt nichts; massgeblich ist ohnehin der Server
+  // (logTrackedCompletion, 0052), der ist_oeffentlich nur verengen kann.
+  // "ohne-quelle" heisst: die Strecke kam schon exakt herein.
+  const deckungsLinieExakt = geometrieStand === "voll" || geometrieStand === "ohne-quelle";
   const coveragePercent = useMemo(() => {
-    if (phase !== "finished") return null;
+    if (phase !== "finished" || !deckungsLinieExakt) return null;
     return computeRouteCoverage(
       route.geometry_geojson.coordinates as [number, number][],
       finishedTrail.map((p) => [p.lng, p.lat] as [number, number]),
     );
-  }, [phase, finishedTrail, route]);
+  }, [phase, finishedTrail, route, deckungsLinieExakt]);
 
   const belowCoverageThreshold =
     coveragePercent !== null && coveragePercent < COVERAGE_THRESHOLD_PERCENT;

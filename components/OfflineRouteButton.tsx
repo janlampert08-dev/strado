@@ -12,6 +12,7 @@ import {
 } from "@/lib/offlineRoutes";
 import { MAX_OFFLINE_STRECKEN_GRATIS } from "@/lib/premiumLimits";
 import IconButton from "@/components/ui/IconButton";
+import { useVolleLinieLaden } from "@/components/VolleGeometrie";
 
 // route wird bereits fertig auf das schlanke OfflineRoute-Shape reduziert
 // von der Seite übergeben (app/strecken/[id]/page.tsx) — eine reine
@@ -57,6 +58,12 @@ export default function OfflineRouteButton({
   // (nur noch in den .then()/.catch()-Callbacks, siehe unten).
   const [saved, setSaved] = useState<boolean | null>(() => (isIndexedDbAvailable() ? null : false));
   const [pending, setPending] = useState(false);
+  // Die Seite reicht nur die Übersichtslinie herein (0117); gespeichert wird
+  // die volle, die hier beim Antippen nachgeladen wird — meist schon aus dem
+  // Abruf der Detailkarte. Ohne Empfang bleibt es bei der Übersicht: für die
+  // Offline-Ansicht (Linie als SVG, lib/routeShape.ts) reicht sie, und eine
+  // Strecke gar nicht speichern zu können wäre der schlechtere Ausgang.
+  const volleLinieLaden = useVolleLinieLaden(route.id);
   const [hinweis, setHinweis] = useState<string | null>(null);
 
   useEffect(() => {
@@ -79,8 +86,16 @@ export default function OfflineRouteButton({
         await removeOfflineRoute(route.id);
         setSaved(false);
       } else {
+        let geometryCoordinates = route.geometryCoordinates;
+        if (volleLinieLaden) {
+          try {
+            geometryCoordinates = await volleLinieLaden();
+          } catch {
+            // Übersichtslinie behalten, siehe oben.
+          }
+        }
         const ergebnis = await saveOfflineRouteMitGrenze(
-          route,
+          { ...route, geometryCoordinates },
           istPremium ? null : MAX_OFFLINE_STRECKEN_GRATIS,
         );
         if (ergebnis === "kontingent_erschoepft") {

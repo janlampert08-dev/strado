@@ -444,6 +444,16 @@ function fitPadding(map: mapboxgl.Map, basis: number, bottomInsetPx: number) {
   return { top: oben, bottom: unten, left: basis, right: basis };
 }
 
+// Welche Strecken eingepasst wurden — Ids plus hervorgehobene Strecke, ohne
+// die Linien selbst. Die Streckenseite reicht erst die Übersichtslinie und
+// Sekunden später die volle derselben Strecke herein (components/
+// VolleGeometrie.tsx). Das ist eine feinere Linie, keine neue Auswahl, und
+// darf den Ausschnitt nicht zurücksetzen: wer in der Zwischenzeit gezoomt
+// hat, verlöre sonst seinen Ausschnitt.
+function auswahlSchluessel(routes: KartenStrecke[], primaryRouteId: string | null | undefined): string {
+  return `${routes.map((r) => r.id).join(",")}|${primaryRouteId ?? ""}`;
+}
+
 function fitToRoutes(
   map: mapboxgl.Map,
   routes: KartenStrecke[],
@@ -674,6 +684,8 @@ export default function RouteMap({
   // bottomInsetPx unten direkt nach dem Erstaufbau eine zweite, identische
   // Kamerafahrt nach — er läuft mit, sobald stilGeneration steigt.
   const eingepasstMitInsetRef = useRef<number | null>(null);
+  // Welche Auswahl zuletzt eingepasst wurde (siehe auswahlSchluessel).
+  const eingepassteAuswahlRef = useRef<string | null>(null);
 
   // Wie routesRef: setupLayers() läuft nach jedem "style.load" und liest
   // die Sammlungen aus Refs statt aus den Props, weil es ausserhalb des
@@ -1108,6 +1120,10 @@ export default function RouteMap({
             false,
             bottomInsetRef.current,
           );
+          eingepassteAuswahlRef.current = auswahlSchluessel(
+            routesRef.current,
+            primaryRouteIdRef.current,
+          );
         } else {
           fitToTrail(map, trailRef.current, false, bottomInsetRef.current);
         }
@@ -1229,12 +1245,17 @@ export default function RouteMap({
     map.setPaintProperty(ENDPOINTS_LAYER, "circle-opacity", routeOpacity(primaryRouteId));
     map.setPaintProperty(ENDPOINTS_LAYER, "circle-stroke-opacity", routeOpacity(primaryRouteId));
 
-    if (fitRoutes) {
+    const schluessel = auswahlSchluessel(routes, primaryRouteId);
+    if (fitRoutes && eingepassteAuswahlRef.current !== schluessel) {
       // Eine neue Streckenauswahl ist ein neuer Ausschnitt — das überschreibt
       // ein Hineinzoomen von Hand, und die Sperre dafür fällt damit auch.
       nutzerBewegteKameraRef.current = false;
       fitToRoutes(map, fitTargets(routes, primaryRouteId), true, bottomInsetRef.current);
       eingepasstMitInsetRef.current = bottomInsetRef.current;
+      eingepassteAuswahlRef.current = schluessel;
+    } else if (!fitRoutes) {
+      // Wird fitRoutes später wieder eingeschaltet, passt die Karte neu ein.
+      eingepassteAuswahlRef.current = null;
     }
   }, [routes, signaturen, fitRoutes, primaryRouteId]);
 

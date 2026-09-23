@@ -21,6 +21,7 @@ import {
   prognoseFuerStunde,
 } from "@/lib/verkehrslage";
 import type { RouteGeoJSON } from "@/types/database";
+import { useVolleGeometrie } from "@/components/VolleGeometrie";
 
 // Der Verkehrsblock im Reiter Fahren — nur für Strecken ohne Pass. Mit
 // Pass trägt die Pass-Sektion die Entscheidung ("kann ich los?"); ohne
@@ -34,7 +35,7 @@ import type { RouteGeoJSON } from "@/types/database";
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
 export default function VerkehrSektion({
-  route,
+  route: hereingereicht,
   punkte,
   startzeiten,
 }: {
@@ -42,6 +43,11 @@ export default function VerkehrSektion({
   punkte: VerkehrsPunkt[];
   startzeiten: Startzeit[];
 }) {
+  // Die Stichproben liegen je Index (lib/traffic.ts) — auf der vollen Linie
+  // wie vor 2026-09-23, deshalb wird auf sie gewartet (sie lädt ohnehin für
+  // die Detailkarte, derselbe Abruf). Scheitert sie, gilt die Übersicht.
+  const { strecke: route, stand } = useVolleGeometrie(hereingereicht);
+  const linieSteht = stand !== "laedt";
   const coordinates = route.geometry_geojson.coordinates as [number, number][];
   const liveMoeglich = !!MAPBOX_TOKEN && coordinates.length >= 2;
 
@@ -51,7 +57,7 @@ export default function VerkehrSektion({
   const [levels, setLevels] = useState<(CongestionLevel | null)[] | null>(null);
 
   useEffect(() => {
-    if (!liveMoeglich) return;
+    if (!liveMoeglich || !linieSteht) return;
     let abgebrochen = false;
     fetchCongestionLevels(
       coordinates,
@@ -64,7 +70,7 @@ export default function VerkehrSektion({
       abgebrochen = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [route.id]);
+  }, [route.id, linieSteht]);
 
   const live = useMemo(
     () =>
