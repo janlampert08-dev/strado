@@ -478,6 +478,13 @@ export default async function StreckeDetailPage({
         />
         </div>
 
+        {/* Das Höhenprofil als Hauptbild der Strecke, direkt unter dem
+            Start: die Höhe ist das, was einen Pass von einer Landstrasse
+            unterscheidet, und stand bisher im zweiten Reiter. */}
+        {route.hoehenprofil && route.hoehenprofil.length > 1 && (
+          <ElevationProfile punkte={route.hoehenprofil} gross />
+        )}
+
         {/* Der Passblock steht dort, wo er die Entscheidung trägt: nach dem
             Start, vor Beschreibung und Zahlen — denn ob der Pass überhaupt
             offen ist, kommt vor der Frage, wie steil er ist. Ohne Pass
@@ -516,7 +523,8 @@ export default async function StreckeDetailPage({
         </div>
 
         {/* Fakten in zwei Stufen: 4 Kacheln für die Auswahl, der Rest als
-            ruhige Detailzeile. Das Höhenprofil lebt im Reiter Details. */}
+            ruhige Detailzeile. Das Höhenprofil steht darüber, direkt unter
+            dem Start. */}
         <Kennzahlen>
           <Kennzahl beschriftung="Länge" wert={`${formatKm(route.laenge_km)} km`} />
           <Kennzahl
@@ -566,13 +574,11 @@ export default async function StreckeDetailPage({
         />
 
           </div>
-          {/* Reiter Details: Profil und Zeitpunkt-Infos — Vertiefung für
-              nach dem Start, nicht Ballast davor. */}
+          {/* Reiter Details: Zeitpunkt-Infos — Vertiefung für nach dem
+              Start, nicht Ballast davor. Das Höhenprofil steht seit
+              2026-09-23 vorne im Reiter Fahren. */}
           <div className="flex flex-col gap-5">
-            {route.hoehenprofil && route.hoehenprofil.length > 1 && (
-              <ElevationProfile punkte={route.hoehenprofil} />
-            )}
-            {/* Standardmässig offen: der Reiter wäre sonst nur Profil plus
+            {/* Standardmässig offen: der Reiter wäre sonst nur eine
                 eine geschlossene Klappe — zu leer für eine eigene Ansicht. */}
             <details open className="group rounded-xl border border-border">
           <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium marker:content-none">
