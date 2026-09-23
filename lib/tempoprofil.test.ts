@@ -3,6 +3,7 @@ import {
   MAX_TEMPOPROFIL_PUNKTE,
   alsTempoprofil,
   buildTempoprofil,
+  stimmigerSchnitt,
   tempoAbschnitte,
 } from "@/lib/tempoprofil";
 import { haversineKm, type TrailPoint } from "@/lib/geo";
@@ -133,5 +134,35 @@ describe("alsTempoprofil", () => {
     expect(alsTempoprofil([{ km: 0, kmh: 1 }])).toBeNull();
     expect(alsTempoprofil([{ km: 0, kmh: 1 }, { km: "1", kmh: 2 }])).toBeNull();
     expect(alsTempoprofil([{ km: 0, kmh: 1 }, { km: 1, kmh: 2 }])).toHaveLength(2);
+  });
+});
+
+describe("stimmigerSchnitt", () => {
+  const profil = [
+    { km: 0, kmh: 40 },
+    { km: 5, kmh: 74 },
+    { km: 10, kmh: 50 },
+  ];
+
+  it("keeps an average below the profile peak", () => {
+    expect(stimmigerSchnitt(49, profil)).toBe(49);
+  });
+
+  it("tolerates rounding right at the peak", () => {
+    expect(stimmigerSchnitt(75.5, profil)).toBe(75.5);
+  });
+
+  // Live gesehen auf Fahrt 77992c64: "Ø 86 km/h" neben "Spitze 74 km/h".
+  it("drops an average above the profile peak", () => {
+    expect(stimmigerSchnitt(86, profil)).toBeNull();
+  });
+
+  it("keeps the average when there is no profile to check against", () => {
+    expect(stimmigerSchnitt(86, null)).toBe(86);
+  });
+
+  it("passes null and non-finite values through as null", () => {
+    expect(stimmigerSchnitt(null, profil)).toBeNull();
+    expect(stimmigerSchnitt(Number.POSITIVE_INFINITY, profil)).toBeNull();
   });
 });

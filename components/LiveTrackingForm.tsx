@@ -16,7 +16,7 @@ import { distanzZumNaechstenPunktKm } from "@/lib/tracking";
 import { interpolateElevation } from "@/lib/elevation";
 import { computeRouteCoverage, COVERAGE_THRESHOLD_PERCENT } from "@/lib/routeCoverage";
 import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
-import { formatDuration } from "@/lib/format";
+import { formatDauer, formatDuration } from "@/lib/format";
 import RideSummaryForm from "@/components/RideSummaryForm";
 import type { KartenStrecke, RouteGeoJSON, Vehicle } from "@/types/database";
 import { Smartphone } from "lucide-react";
@@ -540,17 +540,17 @@ export default function LiveTrackingForm({
             <p className="rounded-lg border border-accent bg-accent/5 px-3 py-2 text-sm font-medium text-accent">
               {personalBestSeconds === null
                 ? "Erste erfasste Zeit für diese Strecke."
-                : `Neue persönliche Bestzeit — bisher ${formatDuration(personalBestSeconds)}.`}
+                : `Neue persönliche Bestzeit — bisher ${formatDauer(personalBestSeconds)}.`}
             </p>
           ) : (
             <p className="text-sm text-muted">
-              Bisherige Bestzeit: {formatDuration(personalBestSeconds ?? 0)}
+              Bisherige Bestzeit: {formatDauer(personalBestSeconds ?? 0)}
             </p>
           ))}
         {mitPausen && (
           <p className="text-sm text-muted">
             Zeit oben ohne Pausen. Für Bestzeit und Rangliste zählt die Zeit samt Pausen:{" "}
-            {formatDuration(gewerteteSekunden)}.
+            {formatDauer(gewerteteSekunden)}.
           </p>
         )}
 

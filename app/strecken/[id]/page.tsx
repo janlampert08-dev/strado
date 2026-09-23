@@ -20,7 +20,7 @@ import { computeSignatures } from "@/lib/signature";
 import { SIGNATURE_ICONS, SIGNATUR_KLASSEN } from "@/components/signaturStil";
 import PremiumHinweis from "@/components/PremiumHinweis";
 import { WetterfensterStreifen, WetterfensterStreifenPlatzhalter } from "@/components/Wetterfenster";
-import { formatKm } from "@/lib/format";
+import { formatKm, formatMeter } from "@/lib/format";
 import { getRatings, getOwnRating } from "@/lib/ratings";
 import { bewertungAusSternen } from "@/lib/bewertungen";
 import { getPersonalBestSeconds } from "@/lib/completions";
@@ -530,9 +530,9 @@ export default async function StreckeDetailPage({
             // Schirm. Das Profil ist die Quelle, die man sieht.
             wert={
               route.hoehenprofil && route.hoehenprofil.length > 1
-                ? `${Math.max(...route.hoehenprofil.map((p) => p.m))} m`
+                ? formatMeter(Math.max(...route.hoehenprofil.map((p) => p.m)))
                 : route.hoehe_m !== null
-                  ? `${route.hoehe_m} m`
+                  ? formatMeter(route.hoehe_m)
                   : "—"
             }
           />

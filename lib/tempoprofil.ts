@@ -187,3 +187,33 @@ export function alsTempoprofil(wert: unknown): TempoprofilPunkt[] | null {
   );
   return ok ? (wert as TempoprofilPunkt[]) : null;
 }
+
+// Toleranz, bevor ein Durchschnitt als unvereinbar mit dem eigenen Profil
+// gilt. Das Profil ist auf ganze km/h gerundet und über ±200 m geglättet;
+// zwei km/h fangen Rundung und Randfenster ab.
+const SCHNITT_TOLERANZ_KMH = 2;
+
+/**
+ * Der Durchschnitt, sofern er zum eigenen Tempoprofil passt — sonst null.
+ *
+ * Aus denselben Trailpunkten gerechnet kann der Durchschnitt über die ganze
+ * Fahrt nie über dem höchsten Fensterwert liegen: jedes Fenster braucht
+ * mindestens seine Länge geteilt durch das Höchsttempo an Zeit, also die
+ * ganze Fahrt auch. Liegt er trotzdem darüber, stimmen Dauer und Profil
+ * nicht zusammen (live gesehen: Fahrt 77992c64, "Ø 86 km/h" neben "Spitze
+ * 74 km/h"), und dann ist die Zeit die schwächere der beiden Zahlen — die
+ * Distanz prüft 0059 gegen die Geometrie. Lieber kein Durchschnitt als einer,
+ * der sich selbst widerlegt.
+ *
+ * Ohne Profil (fremde Fahrt, ältere Fahrt) gibt es nichts zu prüfen, dann
+ * bleibt der Durchschnitt stehen.
+ */
+export function stimmigerSchnitt(
+  schnittKmh: number | null,
+  profil: TempoprofilPunkt[] | null,
+): number | null {
+  if (schnittKmh === null || !Number.isFinite(schnittKmh)) return null;
+  if (!profil || profil.length < 2) return schnittKmh;
+  const spitze = Math.max(...profil.map((p) => p.kmh));
+  return schnittKmh > spitze + SCHNITT_TOLERANZ_KMH ? null : schnittKmh;
+}

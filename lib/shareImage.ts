@@ -34,7 +34,7 @@
 // ist eine Kontur (lib/marke.ts). IBM Plex Mono wird hier nicht mehr
 // gebraucht; Zahlen stehen in Inter.
 
-import { formatDuration } from "@/lib/format";
+import { dauerTeile, formatDuration } from "@/lib/format";
 import { WORTMARKE } from "@/lib/marke";
 import { massstab, profilPunkte, projectRoute } from "@/lib/shareLayout";
 import { bboxFuerRoute, kartenPunkte, ladeKartenbild, staticKartenUrl } from "@/lib/shareMap";
@@ -398,7 +398,7 @@ export async function renderShareImage(data: ShareRideData): Promise<Blob> {
     {
       beschriftung: "Zeit",
       wert: data.durationSeconds !== null ? formatDuration(data.durationSeconds) : "—",
-      einheit: "",
+      einheit: data.durationSeconds !== null ? dauerTeile(data.durationSeconds).einheit : "",
     },
     { beschriftung: "Ø Tempo", wert: avgKmh !== null ? avgKmh.toFixed(0) : "—", einheit: avgKmh !== null ? "km/h" : "" },
   ];

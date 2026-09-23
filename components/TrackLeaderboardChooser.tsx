@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { formatDuration } from "@/lib/format";
+import { formatDauer } from "@/lib/format";
 import { meldeClientFehler } from "@/lib/fehlerbericht";
 import type { RouteTimeEntry } from "@/lib/leaderboard";
 import Card from "@/components/ui/Card";
@@ -141,8 +141,8 @@ export default function TrackLeaderboardChooser({
                     <span className="truncate">{entry.name}</span>
                   </Link>
                 </span>
-                <span className="tabular-nums text-accent">
-                  {formatDuration(entry.dauerSekunden)}
+                <span className="shrink-0 font-medium tabular-nums text-foreground">
+                  {formatDauer(entry.dauerSekunden)}
                 </span>
               </li>
             ))}
