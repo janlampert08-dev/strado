@@ -52,14 +52,24 @@ export default function VerifiziertAbzeichen({
         className={`h-3.5 w-3.5 shrink-0 ${verifiziert ? "" : "opacity-60"}`}
         aria-hidden="true"
       />
-      {verifiziert ? "Zeit verifiziert" : "Zeit nicht verifiziert"}
+      {/* "Zeit nicht verifiziert" bleibt wörtlich (an AGB Ziff. 12.6
+          gebunden); der Zusatz sagt die Folge, damit niemand erst die
+          Erklärung öffnen muss, um zu wissen, was ihm entgeht. Dünner
+          gesetzt, damit er als Nachsatz liest und nicht als zweites Etikett. */}
+      {verifiziert ? (
+        "Zeit verifiziert"
+      ) : (
+        <span>
+          Zeit nicht verifiziert<span className="font-normal"> · zählt nicht für Bestzeiten</span>
+        </span>
+      )}
     </>
   );
 
   const basis =
     "inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium";
   const farbe = verifiziert
-    ? "bg-accent-subtle text-accent"
+    ? "bg-accent-subtle text-accent-ink"
     : "bg-surface text-muted border border-border";
 
   // Der Titel trägt die Kurzfassung für alle, die nicht auf die Erklärseite
@@ -100,7 +110,7 @@ export default function VerifiziertAbzeichen({
         <p className="mt-4 text-sm text-muted">
           <Link
             href="/verifiziert"
-            className="font-medium text-accent hover:underline"
+            className="font-medium text-accent-ink hover:underline"
             onClick={() => setOffen(false)}
           >
             Ganze Erklärung öffnen →

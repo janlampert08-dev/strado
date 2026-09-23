@@ -25,7 +25,7 @@ export default function AnmeldenForm({ nextHref }: { nextHref?: string } = {}) {
         {nextHref && <input type="hidden" name="next" value={nextHref} />}
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           E-Mail
-          <Input type="email" name="email" required autoComplete="email" />
+          <Input type="email" name="email" required autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} />
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           Passwort
@@ -59,7 +59,7 @@ export default function AnmeldenForm({ nextHref }: { nextHref?: string } = {}) {
           // Tippfläche, ohne den Satz auseinanderzuziehen — derselbe Griff
           // wie beim Fahrernamen im Feed. Registrieren ist der Weg für jeden,
           // der hier zum ersten Mal steht.
-          className="relative font-medium text-accent hover:underline after:absolute after:-inset-x-2 after:-inset-y-3.5 after:content-['']"
+          className="relative font-medium text-accent-ink hover:underline after:absolute after:-inset-x-2 after:-inset-y-3.5 after:content-['']"
         >
           Registrieren
         </Link>

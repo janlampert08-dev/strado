@@ -11,17 +11,13 @@ import { cn } from "@/lib/utils/cn";
 // 44 px ist deshalb keine Empfehlung, sondern der Mindestwert: min-h-11 und
 // min-w-11 stehen fest in `basis`.
 //
-// Was dieser Kommentar bis zur Review von PR #254 behauptete — "Tailwind
-// würde eine zweite min-h-* zwar gewinnen lassen" — stimmt nicht, und der
-// Satz hätte den Nächsten in die Irre geführt: lib/utils/cn.ts ist ein
-// reiner String-Join und kein tailwind-merge. Stehen zwei Utilities
-// derselben Eigenschaft im class-Attribut, entscheidet die Reihenfolge im
-// erzeugten CSS und nicht die im Attribut — welche gewinnt, hängt also
-// davon ab, wie Tailwind sortiert, und nicht davon, wer sie zuletzt
-// hinschreibt. Ein Unterbieten über className ist damit weder verlässlich
-// möglich noch verlässlich verhindert. Wer eine andere Grösse braucht,
-// bekommt einen Parameter (so wie chipClassName einen hat), statt sie
-// anzuhängen.
+// Seit 2026-09-23 ist lib/utils/cn.ts tailwind-merge: ein über className
+// angehängtes min-h-* GEWINNT jetzt gegen das eingebaute (vorher entschied
+// die Reihenfolge im erzeugten CSS, und ein Unterbieten war weder
+// verlässlich möglich noch verlässlich verhindert). Umso mehr gilt: die
+// 44 px werden hier nicht unterboten. Wer eine andere Grösse braucht,
+// bekommt einen Parameter (so wie chipClassName einen hat) — dann steht die
+// Ausnahme an einer Stelle, statt an der Aufrufstelle zu verschwinden.
 //
 // Der sichtbare Rahmen im Ruhezustand ist Absicht: ein Icon ohne Fläche
 // liest sich wie ein Textzeichen, das versehentlich in eine Kopfzeile
@@ -30,14 +26,14 @@ const basis =
   "inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full " +
   "transition-[transform,opacity,border-color,background-color,color] duration-fast ease-standard " +
   "active:scale-95 disabled:pointer-events-none disabled:opacity-50 " +
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent " +
   "focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 export type IconButtonTon = "neutral" | "aktiv" | "gefahr" | "leise";
 
 const toene: Record<IconButtonTon, string> = {
-  neutral: "border border-border text-muted hover:border-border-strong hover:text-foreground",
-  aktiv: "border border-accent bg-accent-subtle text-accent",
+  neutral: "border border-border text-muted hover:border-muted hover:text-foreground",
+  aktiv: "border border-accent bg-accent-subtle text-accent-ink",
   // Erst bei Hover rot: eine Melden-Schaltfläche, die dauerhaft rot
   // leuchtet, behauptet einen Missstand, den es noch gar nicht gibt.
   gefahr: "border border-border text-muted hover:border-danger hover:text-danger",

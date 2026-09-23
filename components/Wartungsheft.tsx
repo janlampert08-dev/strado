@@ -6,7 +6,8 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Dialog, { ConfirmDialog } from "@/components/ui/Dialog";
 import EmptyState from "@/components/ui/EmptyState";
-import { Input, Textarea, fieldClassName } from "@/components/ui/Input";
+import { Input, Textarea } from "@/components/ui/Input";
+import Select from "@/components/ui/Select";
 import { WartungIcon } from "@/components/NavIcons";
 import {
   addWartungseintrag,
@@ -60,13 +61,13 @@ function Felder({
     <>
       <label className="flex flex-col gap-1.5 text-sm font-medium">
         Was wurde gemacht?
-        <select name="art" required defaultValue={eintrag?.art ?? "service"} className={fieldClassName()}>
+        <Select name="art" required defaultValue={eintrag?.art ?? "service"}>
           {arten.map((art) => (
             <option key={art} value={art}>
               {WARTUNGSART_LABEL[art]}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-medium">
         Datum
@@ -153,7 +154,7 @@ function EintragFormular({
           Abbrechen
         </Button>
         <Button type="submit" size="sm" disabled={pending}>
-          {pending ? "Speichern…" : "Speichern"}
+          {pending ? "Wird gespeichert…" : "Speichern"}
         </Button>
       </div>
     </form>

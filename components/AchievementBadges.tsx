@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { Compass, Mountain, TrendingUp } from "lucide-react";
+import { Compass, Mountain, TrendingUp } from "@/components/NavIcons";
 import Card from "@/components/ui/Card";
 import { mitAnzahl } from "@/lib/format";
 import {
@@ -73,7 +73,7 @@ export default function AchievementBadges({
   if (badges.length === 0) {
     return (
       <p className="text-sm text-muted">
-        Noch keine Auszeichnungen — die erste Fahrt eintragen, um loszulegen.
+        Noch keine Auszeichnungen. Die erste gibt es nach deiner ersten Fahrt.
       </p>
     );
   }

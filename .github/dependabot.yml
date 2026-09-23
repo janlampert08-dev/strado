@@ -1,12 +1,27 @@
 version: 2
 updates:
+  # Zielzweig ist staging, nicht der Standardzweig main. AGENTS.md
+  # ("Release Flow", Kernregeln 2 und 3) laesst main ausschliesslich ueber eine
+  # gebuendelte Foerderung aus einem getesteten staging vorruecken — ein
+  # einzelner Zweig, der direkt nach main gemergt wird, ist genau der Fall, den
+  # die Regel ausschliesst. Ohne diese Zeile zielt Dependabot auf den
+  # Standardzweig, und jede Abhaengigkeitserhoehung waere so ein Einzelmerge in
+  # den Auslieferungszweig.
+  #
+  # Was das nicht aendert: Sicherheitsaktualisierungen von Dependabot laufen
+  # laut GitHub-Dokumentation immer gegen den Standardzweig und benutzen einen
+  # Block mit abweichendem target-branch nicht. Sie landen also weiterhin auf
+  # main. Das ist unveraendert gegenueber vorher und von hier aus nicht
+  # steuerbar.
   - package-ecosystem: npm
     directory: /
+    target-branch: staging
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
 
   - package-ecosystem: github-actions
     directory: /
+    target-branch: staging
     schedule:
       interval: weekly

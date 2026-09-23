@@ -134,6 +134,94 @@ three views, with no view losing a row. The row counts and the exact checks are
 in `supabase/migrations/README.md`. A1's second leg stays open regardless: it
 needs a server-recorded ride start, not a migration.
 
+### New finding, 2026-09-23 — `routes.tempolimits` is writable straight past its validator
+
+`parseTempolimits()` in `lib/actions/routes.ts` is the control that keeps
+speed limits honest. It range-checks `kmh` (`lib/tempolimitEingabe.ts`,
+added by #310) and — the part that matters here — **drops `amtlich` and
+`quelle` from client input**, so that only the server-side match against
+`amtliche_tempolimits` can mark a segment official. `AGENTS.md` states that
+rule explicitly.
+
+It is reachable only from `proposeRoute()`. The table is not behind it.
+
+| New finding | Status | Where |
+| --- | --- | --- |
+| A route's own creator can PATCH `routes.tempolimits` directly over PostgREST while the route is still pending, bypassing `parseTempolimits()` entirely — setting any `kmh` and, worse, `amtlich: true` with a `quelle` of their choosing. Once a moderator approves the route, the public CORS-open API reports `tempolimit_quelle: "Amtliche Daten (Kanton/Stadt)"` for numbers the user invented | **Open** — needs a product decision on the mechanism, see below | `supabase/migrations/0001_init.sql` (the UPDATE policy), `lib/actions/routes.ts:95` (the validator that is bypassed), `lib/speed.ts:84` (the claim that is forged) |
+
+**Measured against production on 2026-09-23**, read-only:
+
+- `information_schema.role_table_grants` — `authenticated` *and* `anon` hold
+  `INSERT`, `UPDATE` and `DELETE` on `public.routes`, table-wide and
+  unrestricted by column. `0072`'s header said so on 2026-09-08 ("die
+  Tabellen-Grants stehen damit auf Supabases Default"); it is still true.
+- `pg_policies` — the UPDATE policy `"Nutzer können eigene unverifizierte
+  Strecken bearbeiten"` has `qual = (erstellt_von = auth.uid() AND status_ok
+  = false)` and **`with_check = null`**. With no `WITH CHECK`, PostgreSQL
+  applies the `USING` expression to the new row as well, so the creator
+  cannot flip `status_ok` — but every other column, `tempolimits` included,
+  is theirs to set.
+- Nothing guards the column itself: `0005` adds `routes.tempolimits` as a
+  plain nullable `jsonb`, and of the twelve migrations that mention
+  tempolimits at all, none puts a trigger, a constraint or a column grant on
+  it. (`0102` does create a trigger, but on the `amtliche_tempolimits`
+  *source* table, to repair its geometry — nothing on `routes`.) `0072`
+  closed exactly this class for `laenge_km`, `start_coord` and `ziel_coord`
+  with a `BEFORE` trigger and did not cover this column.
+
+**Not measured, deliberately:** the PATCH itself was never executed. There is
+one database and it is production (see `AGENTS.md` → Release Flow), so
+demonstrating the write would mean forging data in the live table. The path is
+established from the grants, the policy and the code; the exploit is not
+demonstrated, and this row should not be read as though it were.
+
+**Impact is provenance, not ranking.** `averageTempolimit()` feeds the route
+page, `estimateRouteDurationMinutes()` and `lib/signature.ts`; nothing in
+`lib/leaderboard.ts` reads it, so no ride time or position moves. What moves
+is a claim about a public authority — and `lib/speed.ts` takes visible care
+over exactly that claim, capping the mixed-source percentage at 99 so the
+sentence never overstates its own source. The forgery makes that care
+pointless from a direction the file does not defend against.
+
+**Why there is no patch attached.** The obvious fix — a `BEFORE INSERT OR
+UPDATE` trigger in `0072`'s shape — runs into the problem `0072` itself
+names: `propose_route_full` is `SECURITY INVOKER`, so the legitimate and the
+illegitimate write hold the same right, and the trigger has to tell them
+apart by what they write rather than by who writes it. For `laenge_km` that
+was easy, because the honest value is derivable from the geometry in one
+`ST_Length()`. For `tempolimits` it is not: `amtliche_tempolimits_entlang()`
+(`0102`/`0103`) returns only the candidate limits along a geometry, and the
+assembly into segments — sampling, nearest match inside `rand_m`, gap
+filling, merging — lives in `lib/tempolimitAbgleich.ts`. Re-deriving
+`amtlich` inside a trigger means that logic in PL/pgSQL as well, in two
+languages, drifting apart.
+
+Three mechanisms are worth weighing, and picking between them is a product
+decision rather than a cleanup:
+
+1. **A transaction-local marker.** `propose_route_full` sets
+   `set_config('app.tempolimit_geprueft', '1', true)`; the trigger forces
+   `amtlich = false` and `quelle = null` on every segment when the marker is
+   absent. Small and it closes both halves. It rests on a client being unable
+   to set that GUC through PostgREST — which is the thing to verify before
+   choosing it, not after.
+2. **Narrow the write right.** Revoke `UPDATE` on `routes` from `anon` and
+   `authenticated` and re-grant it column-by-column, leaving `tempolimits`
+   out. `0072` argued against the equivalent for `INSERT` because
+   `propose_route_full` would lose the same right — but that function only
+   inserts, so an `UPDATE`-side revoke does not touch it. This closes the
+   PATCH path completely and leaves the direct-`POST` path open, which
+   mechanism 1 or 3 would still have to cover.
+3. **Move the column out of the client's reach entirely** — a separate table
+   written only by a `SECURITY DEFINER` function, the way the pass system
+   keeps `pass_status` behind `pass_status_anwenden`. The largest change and
+   the only one that makes the guarantee structural.
+
+Until one is chosen, the honest reading of `tempolimit_quelle` on the public
+API is "what the route's author last wrote", not "what a canton published"
+— for pending routes at least, and for approved ones whose pending phase
+nobody watched.
+
 | Report | Scope |
 | --- | --- |
 | [`security.md`](./security.md) | Auth, Server Actions, RLS bypass, Stripe, secrets, uploads |

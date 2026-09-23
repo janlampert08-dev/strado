@@ -53,7 +53,7 @@ export default function StatusPage({
     >
       {/* Über allem, auch über dem eyebrow: erst das Zeichen, dann der Name,
           dann die Nachricht. */}
-      {marke && <Signet className="h-8 w-auto text-accent" />}
+      {marke && <Signet className="h-8 w-auto text-accent-ink" />}
       {eyebrow && (
         <SectionHeading as="p">{eyebrow}</SectionHeading>
       )}

@@ -117,7 +117,7 @@ function Sprungmarke({ href, label, count }: { href: string; label: string; coun
   return (
     <a
       href={href}
-      className="flex flex-col gap-0.5 rounded-lg border border-border px-3 py-2.5 transition-colors duration-fast hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className="flex flex-col gap-0.5 rounded-lg border border-border px-3 py-2.5 transition-colors duration-fast hover:border-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       <span className="text-xs text-muted">{label}</span>
       <span
@@ -288,7 +288,7 @@ export default async function ModerationPage() {
                   <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                     <Link
                       href={`/strecken/${route.id}`}
-                      className="-my-1.5 py-1.5 font-medium transition-colors duration-fast hover:text-accent"
+                      className="-my-1.5 py-1.5 font-medium transition-colors duration-fast hover:text-accent-ink"
                     >
                       {route.name}
                     </Link>
@@ -329,7 +329,7 @@ export default async function ModerationPage() {
                   </div>
                   <Link
                     href={meldung.href}
-                    className="-my-1.5 py-1.5 font-medium transition-colors duration-fast hover:text-accent"
+                    className="-my-1.5 py-1.5 font-medium transition-colors duration-fast hover:text-accent-ink"
                   >
                     {meldung.titel}
                   </Link>

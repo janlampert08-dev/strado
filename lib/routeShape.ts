@@ -49,7 +49,22 @@ export function routeShapePath(
   viewHeight = 64,
   padding = 6,
 ): string {
-  if (coordinates.length < 2) return "";
+  const points = routeShapePoints(coordinates, viewWidth, viewHeight, padding);
+  if (points.length < 2) return "";
+  return `M${points.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" L")}`;
+}
+
+// Dieselbe Projektion wie routeShapePath, aber als Punkte statt als fertiger
+// Pfad — für Ansichten, die Start und Ziel zusätzlich markieren (die
+// Offline-Detailansicht in components/OfflineRoutesList.tsx, die anstelle der
+// Karte nur diese Linie hat).
+export function routeShapePoints(
+  coordinates: [number, number][],
+  viewWidth = 160,
+  viewHeight = 64,
+  padding = 6,
+): [number, number][] {
+  if (coordinates.length < 2) return [];
 
   const lons = coordinates.map((c) => c[0]);
   const lats = coordinates.map((c) => c[1]);
@@ -73,12 +88,9 @@ export function routeShapePath(
   const offsetX = padding + (availW - w * scale) / 2;
   const offsetY = padding + (availH - h * scale) / 2;
 
-  const points = coordinates.map(([lon, lat]) => {
-    const x = offsetX + (lon - minLon) * lonScale * scale;
+  return coordinates.map(([lon, lat]): [number, number] => [
+    offsetX + (lon - minLon) * lonScale * scale,
     // SVG-y wächst nach unten, Breitengrad nach Norden — invertieren.
-    const y = offsetY + (maxLat - lat) * scale;
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  });
-
-  return `M${points.join(" L")}`;
+    offsetY + (maxLat - lat) * scale,
+  ]);
 }

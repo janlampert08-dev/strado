@@ -10,7 +10,7 @@ import { SparklesIcon } from "@/components/NavIcons";
 // hat (Kernregel 14).
 export default function PremiumBadge({ label = "Premium" }: { label?: string } = {}) {
   return (
-    <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-accent-subtle px-3 py-1 text-xs font-semibold tracking-wide text-accent uppercase">
+    <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-accent-subtle px-3 py-1 text-xs font-semibold tracking-wide text-accent-ink uppercase">
       <SparklesIcon className="h-3.5 w-3.5" aria-hidden="true" />
       {label}
     </span>

@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { Crosshair, Route, SearchX } from "lucide-react";
+import { Crosshair, Route, SearchX } from "@/components/NavIcons";
 import { routeShapePath } from "@/lib/routeShape";
 import { type Empfehlung } from "@/lib/empfehlung";
 import { formatKmGerundet, mitAnzahl } from "@/lib/format";
 import { type RouteSignature } from "@/lib/signature";
 import type { ExploreRoute } from "@/types/database";
+import { PassStatusMarke } from "@/components/PassStatusZeile";
+import { ZUSTAND_LABEL, ZUSTAND_TON, zeigeInListe, type PassZustand } from "@/lib/passStatus";
 import { anzahlText, type Streckenbewertung } from "@/lib/bewertungen";
 import Sternschnitt from "@/components/Sternschnitt";
 import { fieldClassName } from "@/components/ui/Input";
@@ -32,6 +34,7 @@ import type { ExploreArt } from "@/components/ExploreView";
 export default function ExploreSidebar({
   routes,
   bewertungen,
+  passZustaende,
   loadError = false,
   loggedIn,
   anzahlStrecken,
@@ -50,6 +53,8 @@ export default function ExploreSidebar({
   routes: ExploreRoute[];
   /** Sternenschnitt je Strecken-ID; Strecken ohne Wertung fehlen darin. */
   bewertungen: Record<string, Streckenbewertung>;
+  /** Schwerwiegendster Passzustand je Strecke; Strecken ohne Pass fehlen. */
+  passZustaende: Record<string, PassZustand>;
   loadError?: boolean;
   loggedIn: boolean;
   /** Der ganze Bestand, ungefiltert — routes ist schon die Trefferliste. */
@@ -153,6 +158,11 @@ export default function ExploreSidebar({
       <div className="flex items-center gap-2">
         <input
           type="search"
+          // Suchtaste statt Eingabetaste (Android), keine Autokorrektur:
+          // sie machte aus "Klausen" ein "Klausel".
+          enterKeyHint="search"
+          autoCorrect="off"
+          spellCheck={false}
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Strecke oder Ort"
@@ -404,7 +414,7 @@ export default function ExploreSidebar({
                       {empfehlungsText}
                     </span>
                   )}
-                  <span className="truncate text-base font-medium transition-colors duration-fast group-hover:text-accent">
+                  <span className="truncate text-base font-medium transition-colors duration-fast group-hover:text-accent-ink">
                     {route.name}
                   </span>
                   <div className="flex items-center gap-2">
@@ -423,7 +433,12 @@ export default function ExploreSidebar({
                         {formatKmGerundet(route.laenge_km)} km
                       </span>
                     )}
-                    {signature && (
+                    {/* Eine Sperrung verdrängt das Signatur-Label: beide
+                        zusammen mit Länge und Sternen passten auf 360 px nicht,
+                        und das Label schrumpfte auf 0 px, zurück blieb ein
+                        verwaistes Icon (Gotthard, Re-Audit 2026-09-23). Ob
+                        der Pass zu ist, zählt dann mehr als sein Charakter. */}
+                    {signature && !zeigeInListe(passZustaende[route.id] ?? null) && (
                       <span className="flex min-w-0 items-center gap-1.5">
                         {/* Icon und Label im Signaturton. Bei text-xs ist die
                             Schwelle 4,5:1 — genau daran war die alte Palette
@@ -464,9 +479,22 @@ export default function ExploreSidebar({
                         <span className="sr-only">{anzahlText(bewertung.anzahl)}</span>
                       </Sternschnitt>
                     )}
-                    {/* Kein Passzustand auf der Startseite: Auch gesperrt oder
-                        eingeschränkt wird hier nicht als Abzeichen gezeigt —
-                        der Stand steht auf der Strecke und unter /paesse. */}
+                    {/* Der Passzustand steht nur hier, wenn er die Planung
+                        ändert: gesperrt, Wintersperre, eingeschränkt. "Offen"
+                        ist die Erwartung und bekäme sonst in jeder Zeile ein
+                        Abzeichen, das nichts sagt (lib/passStatus.ts). */}
+                    {zeigeInListe(passZustaende[route.id] ?? null) && (
+                      <PassStatusMarke
+                        className="shrink-0"
+                        anzeige={{
+                          zustand: passZustaende[route.id],
+                          label: ZUSTAND_LABEL[passZustaende[route.id]],
+                          ton: ZUSTAND_TON[passZustaende[route.id]],
+                          text: "",
+                          herkunft: "",
+                        }}
+                      />
+                    )}
                   </div>
                 </div>
 

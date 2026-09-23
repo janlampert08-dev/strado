@@ -1,8 +1,9 @@
 "use client";
 
+import KartePlatzhalter from "@/components/ui/KartePlatzhalter";
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { Box } from "lucide-react";
+import { Box } from "@/components/NavIcons";
 import { type TrafficChipState } from "@/components/TrafficIndicator";
 import { SPEED_LEGEND, tempolimitQuelle } from "@/lib/speed";
 import {
@@ -17,26 +18,34 @@ import type { RouteGeoJSON } from "@/types/database";
 import { buttonVariants } from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import { segmentClassName, segmentHuelleClassName } from "@/components/ui/SegmentedControl";
-import Skeleton from "@/components/ui/Skeleton";
+import { useVolleGeometrie } from "@/components/VolleGeometrie";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
   ssr: false,
-  loading: () => <Skeleton className="h-full w-full" />,
+  loading: () => <KartePlatzhalter />,
 });
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
 export default function RouteDetailMap({
-  route,
+  route: hereingereicht,
   bottomInsetPx = 0,
 }: {
+  // Auf der Streckenseite mit der Übersichtslinie (0117) — die volle Linie
+  // kommt über useVolleGeometrie nach und ersetzt sie auf der Karte.
   route: RouteGeoJSON;
   // Von RouteDetailLayout gemeldet: wie viel der Karte das Detail-Sheet auf
   // Mobile gerade verdeckt. Nur durchgereicht — gebraucht wird der Wert in
   // RouteMap, wo der Kartenausschnitt berechnet wird.
   bottomInsetPx?: number;
 }) {
+  const { strecke: route, stand } = useVolleGeometrie(hereingereicht);
+  // Verkehr wird erst abgefragt, wenn feststeht, auf welcher Linie: die
+  // Stichproben liegen je Index (lib/traffic.ts, sampleIndices), und die
+  // Übersichtslinie hat ihre Punkte woanders als die volle. Schlägt das
+  // Nachladen fehl, gilt die Übersicht — Verkehr gibt es dann trotzdem.
+  const linieSteht = stand !== "laedt";
   const [showSpeedLimits, setShowSpeedLimits] = useState(false);
   const [showTraffic, setShowTraffic] = useState(false);
   const [show3D, setShow3D] = useState(false);
@@ -60,23 +69,31 @@ export default function RouteDetailMap({
   // Reiters selbst ab — AbschnittTabs montiert nur das aktive Panel. Kein manueller Reset beim Streckenwechsel nötig:
   // die Seite rendert diese Komponente mit key={route.id} (siehe
   // app/strecken/[id]/page.tsx), ein Streckenwechsel montiert sie also neu.
-  const [levels, setLevels] = useState<(CongestionLevel | null)[] | null>(null);
+  //
+  // Die Stufen merken sich die Linie, auf der sie abgefragt wurden, damit
+  // das Einfärben (sliceRouteByTraffic) dieselben Indizes schneidet.
+  const [verkehr, setVerkehr] = useState<{
+    levels: (CongestionLevel | null)[];
+    linie: [number, number][];
+  } | null>(null);
+  const levels = verkehr?.levels ?? null;
 
   useEffect(() => {
-    if (unavailable) return;
+    if (unavailable || !linieSteht) return;
     let cancelled = false;
 
     const sampleCount = verkehrSamplesFuerLaenge(route.laenge_km);
+    const linie = coordinates;
 
-    fetchCongestionLevels(coordinates, sampleCount, MAPBOX_TOKEN!).then((result) => {
-      if (!cancelled) setLevels(result);
+    fetchCongestionLevels(linie, sampleCount, MAPBOX_TOKEN!).then((result) => {
+      if (!cancelled) setVerkehr({ levels: result, linie });
     });
 
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [route.id]);
+  }, [route.id, linieSteht]);
 
   const trafficState: TrafficChipState = unavailable
     ? "none"
@@ -93,12 +110,11 @@ export default function RouteDetailMap({
   const routesForMap = useMemo(() => [route], [route]);
 
   const trafficSegments = useMemo(() => {
-    if (!levels) return [];
-    return sliceRouteByTraffic(coordinates, levels)
+    if (!verkehr) return [];
+    return sliceRouteByTraffic(verkehr.linie, verkehr.levels)
       .filter((s): s is { coords: [number, number][]; level: CongestionLevel } => s.level !== null)
       .map((s) => ({ coords: s.coords, color: CONGESTION_META[s.level].color }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [levels]);
+  }, [verkehr]);
 
   return (
     <div className="relative h-full w-full">
@@ -138,7 +154,9 @@ export default function RouteDetailMap({
               }}
               className={segmentClassName(!showSpeedLimits && !showTraffic)}
             >
-              Keine
+              {/* "Standard" statt "Keine": die Karte zeigt ja weiterhin die
+                  Strecke, nur ohne eingefärbte Zusatzebene. */}
+              Standard
             </button>
             {hasTempolimits && (
               <button
@@ -185,10 +203,17 @@ export default function RouteDetailMap({
           <button
             onClick={() => setShow3D((v) => !v)}
             aria-pressed={show3D}
-            className={buttonVariants({ variant: "secondary", size: "sm", className: "relative bg-background after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']" })}
+            // Feste Beschriftung, der Zustand liegt in aria-pressed und in der
+            // Akzentfüllung. "2D-Ansicht" als Text eines gedrückten Knopfes
+            // las sich als "2D-Ansicht, gedrückt" — also das Gegenteil.
+            className={buttonVariants({
+              variant: "secondary",
+              size: "sm",
+              className: show3D ? "border-accent bg-accent-subtle text-accent-ink" : "bg-background",
+            })}
           >
             <Box className="h-3.5 w-3.5" aria-hidden="true" />
-            {show3D ? "2D-Ansicht" : "3D-Ansicht"}
+            3D-Ansicht
           </button>
         </div>
         {showSpeedLimits && (

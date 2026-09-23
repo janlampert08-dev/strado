@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2 } from "@/components/NavIcons";
 import { deleteRating } from "@/lib/actions/ratings";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 
