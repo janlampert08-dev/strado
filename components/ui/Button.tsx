@@ -6,7 +6,7 @@ export type ButtonVariant = "primary" | "accent" | "secondary" | "ghost" | "dang
 export type ButtonSize = "sm" | "md" | "lg";
 
 const base =
-  "inline-flex items-center justify-center gap-1.5 font-medium transition-[transform,opacity,border-color,background-color] duration-fast ease-standard active:scale-95 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+  "inline-flex items-center justify-center gap-1.5 text-center font-medium transition-[transform,opacity,border-color,background-color] duration-fast ease-standard active:scale-95 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 // Alle fünf tragen dieselbe Silhouette. Vorher waren primary/accent/danger
 // Pillen und secondary/ghost Rechtecke — und im grid-cols-2 der Profilseite
