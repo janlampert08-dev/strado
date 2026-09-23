@@ -1,4 +1,7 @@
 import { notFound } from "next/navigation";
+import NachDerFahrt from "@/components/NachDerFahrt";
+import { premiumSatzZurFahrt } from "@/lib/nachDerFahrt";
+import { getPremiumStatus, MAX_FOTOS_GRATIS, MAX_FOTOS_PREMIUM } from "@/lib/premium";
 import type { Metadata } from "next";
 import { OG_GEERBT } from "@/lib/openGraph";
 import Link from "next/link";
@@ -224,6 +227,18 @@ export default async function FahrtDetailPage({
   // Klasse tragen — und dann gehört sie angezeigt, sonst verschwindet für den
   // Fahrer die Information, in welcher Rangliste seine Zeit steht.
   const gewerteteKlasse = completion.isOwner ? completion.motorklasseGewertet : null;
+
+  // Der Premium-Satz unter der eigenen Fahrt, nur für Konten ohne Abo.
+  // getPremiumStatus() ist request-weit gecacht (der Header fragt ohnehin).
+  const premiumSatz =
+    completion.isOwner && !(await getPremiumStatus()).aktiv
+      ? premiumSatzZurFahrt({
+          streckenfahrt: !istFreieFahrt,
+          fotos: completion.photos.length,
+          maxFotosGratis: MAX_FOTOS_GRATIS,
+          maxFotosPremium: MAX_FOTOS_PREMIUM,
+        })
+      : null;
 
   // Diskrete Fahrtrichtung (keine Wertung, nur Anzeige): Bei einer
   // Punkt-zu-Punkt-Strecke steht hier, von wo aus gefahren wurde — die
@@ -515,6 +530,10 @@ export default async function FahrtDetailPage({
             canRemove={completion.isOwner}
             displayName={completion.displayName}
           />
+
+          {/* Nur unter der eigenen Fahrt: das Nächste — Home-Bildschirm oder
+              ein passender Premium-Satz, nie beides (NachDerFahrt.tsx). */}
+          {completion.isOwner && <NachDerFahrt premiumSatz={premiumSatz} />}
 
           </div>
           <div className="flex flex-col gap-5">

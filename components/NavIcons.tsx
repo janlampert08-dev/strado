@@ -205,3 +205,8 @@ export { Timer as TimerIcon } from "lucide-react";
 // an lassen" zeigen — dort noch als direkter Import aus der Zeit vor dieser
 // Regel.
 export { Smartphone as TelefonIcon } from "lucide-react";
+
+// Das Teilen-Symbol von iOS (Kasten mit Pfeil nach oben), in der Anleitung
+// "Zum Home-Bildschirm" (components/NachDerFahrt.tsx): wer es sucht, sucht
+// genau diese Form in der Safari-Leiste.
+export { Share as TeilenIcon } from "lucide-react";

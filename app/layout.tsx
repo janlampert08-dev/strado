@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Familjen_Grotesk, Geist, IBM_Plex_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { INSTALLATION_INIT_SCRIPT } from "@/lib/installation";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import HinweisLeiste from "@/components/Hinweis";
 import ThemaFarbe from "@/components/ThemaFarbe";
@@ -147,6 +148,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: INSTALLATION_INIT_SCRIPT }} />
       </head>
       <body className="min-h-full flex flex-col font-sans">
         {children}
