@@ -30,7 +30,7 @@ import PremiumCard from "@/components/PremiumCard";
 import FahrtStatistik from "@/components/FahrtStatistik";
 import { WetterfensterFavoriten, WetterfensterFavoritenPlatzhalter } from "@/components/Wetterfenster";
 import PassSammlung, { PassSammlungHinweis } from "@/components/PassSammlung";
-import { ChartIcon, PassIcon, RecordIcon, ShieldIcon } from "@/components/NavIcons";
+import { ChartIcon, ImportIcon, PassIcon, RecordIcon, ShieldIcon } from "@/components/NavIcons";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
 import { getPassSammlungsDaten } from "@/lib/passSammlungDaten";
@@ -434,9 +434,21 @@ export default async function ProfilPage() {
               icon={RecordIcon}
               title="Noch keine Fahrt aufgezeichnet — deine Kennzahlen entstehen mit der ersten."
               action={
-                <Link href="/fahrten/neu" className={buttonVariants({ variant: "accent", size: "sm" })}>
-                  Erste Fahrt aufzeichnen
-                </Link>
+                // Der Import steht daneben, weil er im Winter der einzige
+                // Weg zu einer ersten Fahrt ist: aufzeichnen kann man erst,
+                // wenn die Pässe offen sind, frühere Fahrten liegen meist
+                // schon in einer anderen App.
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Link href="/fahrten/neu" className={buttonVariants({ variant: "accent", size: "sm" })}>
+                    Erste Fahrt aufzeichnen
+                  </Link>
+                  <Link
+                    href="/fahrten/importieren"
+                    className={buttonVariants({ variant: "secondary", size: "sm" })}
+                  >
+                    Frühere Fahrten importieren
+                  </Link>
+                </div>
               }
             />
           ) : (
@@ -565,7 +577,13 @@ export default async function ProfilPage() {
               eigener Grossabschnitt unter den Kennzahlen, jetzt eine Ansicht
               neben ihnen. */}
           <section className="flex flex-col gap-3">
-            <SectionHeading icon={RouteIcon}>Meine Fahrten</SectionHeading>
+            <div className="flex items-center justify-between">
+              <SectionHeading icon={RouteIcon}>Meine Fahrten</SectionHeading>
+              <Link href="/fahrten/importieren" className={textAktionClassName()}>
+                <ImportIcon className="h-4 w-4" aria-hidden="true" />
+                GPX importieren
+              </Link>
+            </div>
             {/* Flach wie der Kennzahlen-Block darüber, nicht in einer Card.
                 Die Card hier war die dritte Rahmenebene, die Abschnitt 3.9
                 des Konzepts eigentlich abschaffen wollte — sie ist bei den

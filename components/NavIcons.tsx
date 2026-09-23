@@ -99,3 +99,7 @@ export { Wrench as WartungIcon, CalendarClock as TerminIcon } from "lucide-react
 // vor dieser Wrapper-Regel. Neuer Code (app/profil/fahrzeuge/[id]) nimmt sie
 // von hier; das Raster mitzuziehen wäre eine Änderung ohne Anlass.
 export { Car as AutoIcon, Bike as MotorradIcon } from "lucide-react";
+
+// GPX-Import früherer Fahrten (app/fahrten/importieren): der Pfeil in die
+// Ablage, weil etwas von aussen hereinkommt — nicht der Kreis der Aufnahme.
+export { FileUp as ImportIcon } from "lucide-react";

@@ -45,13 +45,15 @@ export function datumCH(d: Date): string {
 // (z.B. 00:30 Uhr CEST im Sommer ist noch 22:30 Uhr UTC des Vortags).
 // en-CA formatiert direkt als YYYY-MM-DD, ohne die Teile manuell wieder
 // zusammensetzen zu müssen.
-export function todayInZurich(): string {
+// Mit Argument das Kalenderdatum eines beliebigen Zeitpunkts, etwa des
+// ersten Punkts einer importierten Fahrt.
+export function todayInZurich(zeitpunkt: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Zurich",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).formatToParts(new Date());
+  }).formatToParts(zeitpunkt);
   const get = (type: string) => parts.find((p) => p.type === type)?.value;
   return `${get("year")}-${get("month")}-${get("day")}`;
 }

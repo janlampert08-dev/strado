@@ -317,7 +317,9 @@ export default async function FahrtDetailPage({
                   isPublic={completion.istOeffentlich}
                   coveragePercent={completion.abdeckungProzent}
                   blockedReason={
-                    istFreieFahrt
+                    completion.importiert
+                      ? "Importierte Fahrten bleiben privat."
+                      : istFreieFahrt
                       ? publicationBlockReason(
                           completion.distanzKm ?? 0,
                           completion.bewegteZeitSekunden ?? completion.dauerSekunden ?? 0,
@@ -438,8 +440,18 @@ export default async function FahrtDetailPage({
               // Verifikation betrifft genau diese eine Zahl und keine andere.
               // Distanz, Höhenmeter und Abdeckung sind serverseitig
               // abgesichert (0052/0059/0074/0078) und brauchen kein Abzeichen.
+              // Eine importierte Fahrt hat keine Serverzeit, aus einem
+              // anderen Grund als ein Funkloch: sie stammt aus einer Datei
+              // (0124). Das sagt die Pille statt "nicht verifiziert".
               fuss={
-                completion.dauerSekunden !== null ? (
+                completion.importiert ? (
+                  <span
+                    className="inline-flex w-fit items-center rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-medium text-muted"
+                    title="Aus einer GPX-Datei importiert. Bleibt privat und erscheint in keiner Rangliste."
+                  >
+                    Importiert
+                  </span>
+                ) : completion.dauerSekunden !== null ? (
                   <VerifiziertAbzeichen quelle={completion.dauerQuelle} />
                 ) : undefined
               }
