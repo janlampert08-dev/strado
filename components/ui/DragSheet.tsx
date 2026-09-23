@@ -16,10 +16,12 @@ import {
   DRAG_TAP_THRESHOLD_PX,
   clampSheetHeight,
   decideSheetGesture,
+  gummibandHoehe,
   nextSnapOnTap,
   sheetHeightFor,
-  snapAfterDrag,
+  snapAfterFling,
   snapStep,
+  wischGeschwindigkeit,
   type SheetGesture,
   type SheetHeights,
   type SheetSnap,
@@ -131,6 +133,7 @@ export default function DragSheet({
     height: number;
     moved: boolean;
     heights: SheetHeights;
+    proben: { t: number; h: number }[];
   } | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<HTMLDivElement>(null);
@@ -223,20 +226,44 @@ export default function DragSheet({
     return () => window.removeEventListener("resize", melde);
   }, [containerRef, snap, messeHoehen, onOccludedBottomChange]);
 
+  // Die Höhe, auf der das Sheet GERADE steht — nicht die des Rastpunkts.
+  // Greift man es mitten im Einrasten, soll es unter dem Finger bleiben,
+  // statt erst auf den Zielwert zu springen. offsetHeight liefert während
+  // der CSS-Transition den laufenden Wert.
+  const aktuelleHoehe = useCallback(
+    (heights: SheetHeights) => sheetRef.current?.offsetHeight || sheetHeightFor(snap, heights),
+    [snap],
+  );
+
+  // Rastet nach einer Geste ein — mit Schwung und einem kurzen Tick, wenn
+  // sich der Rastpunkt ändert (nur Android vibriert; iOS kennt die API nicht).
+  const einrasten = useCallback(
+    (hoehe: number, proben: { t: number; h: number }[], heights: SheetHeights) => {
+      const ziel = snapAfterFling(hoehe, wischGeschwindigkeit(proben), heights);
+      setSnap((vorher) => {
+        if (vorher !== ziel) navigator.vibrate?.(8);
+        return ziel;
+      });
+      setDragHeight(null);
+    },
+    [],
+  );
+
   const onPointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
       const heights = messeHoehen();
-      const currentHeight = sheetHeightFor(snap, heights);
+      const currentHeight = aktuelleHoehe(heights);
       dragRef.current = {
         startY: e.clientY,
         startHeight: currentHeight,
         height: currentHeight,
         moved: false,
         heights,
+        proben: [{ t: performance.now(), h: currentHeight }],
       };
       e.currentTarget.setPointerCapture(e.pointerId);
     },
-    [messeHoehen, snap],
+    [messeHoehen, aktuelleHoehe],
   );
 
   const onPointerMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
@@ -245,9 +272,12 @@ export default function DragSheet({
     const deltaY = drag.startY - e.clientY;
     if (Math.abs(deltaY) > DRAG_TAP_THRESHOLD_PX) drag.moved = true;
 
-    const next = clampSheetHeight(drag.startHeight + deltaY, drag.heights);
-    drag.height = next;
-    setDragHeight(next);
+    const roh = drag.startHeight + deltaY;
+    drag.height = clampSheetHeight(roh, drag.heights);
+    drag.proben.push({ t: performance.now(), h: roh });
+    if (drag.proben.length > 12) drag.proben.shift();
+    // Angezeigt wird die gedehnte Höhe, eingerastet wird nach der echten.
+    setDragHeight(gummibandHoehe(roh, drag.heights));
   }, []);
 
   const onPointerUp = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
@@ -265,9 +295,8 @@ export default function DragSheet({
       return;
     }
 
-    setSnap(snapAfterDrag(drag.height, drag.heights));
-    setDragHeight(null);
-  }, []);
+    einrasten(drag.height, drag.proben, drag.heights);
+  }, [einrasten]);
 
   // Die Wischgeste im Inhalt hängt an nativen touch-Listenern statt an den
   // React-Handlern: touchmove muss `passive: false` sein, damit
@@ -288,6 +317,7 @@ export default function DragSheet({
       scroller: HTMLElement | null;
       mode: SheetGesture | null;
       heights: SheetHeights;
+      proben: { t: number; h: number }[];
     } | null = null;
 
     // Das gescrollte Element unter dem Finger — dessen scrollTop entscheidet,
@@ -317,8 +347,7 @@ export default function DragSheet({
       const current = gesture;
       gesture = null;
       if (!current || current.mode !== "sheet") return;
-      setSnap(snapAfterDrag(current.height, current.heights));
-      setDragHeight(null);
+      einrasten(current.height, current.proben, current.heights);
     }
 
     function onTouchStart(e: TouchEvent) {
@@ -336,7 +365,7 @@ export default function DragSheet({
 
       const touch = e.touches[0];
       const heights = messeHoehen();
-      const startHeight = sheetHeightFor(snap, heights);
+      const startHeight = aktuelleHoehe(heights);
       gesture = {
         startX: touch.clientX,
         startY: touch.clientY,
@@ -345,6 +374,7 @@ export default function DragSheet({
         heights,
         scroller: findScroller(sheet, e.target),
         mode: null,
+        proben: [{ t: performance.now(), h: startHeight }],
       };
     }
 
@@ -388,9 +418,11 @@ export default function DragSheet({
       // ein paar Pixeln Wackeln soll das Sheet nicht sichtbar zucken lassen.
       if (Math.abs(deltaY) <= DRAG_TAP_THRESHOLD_PX) return;
       suppressClickUntilRef.current = Date.now() + CLICK_SUPPRESSION_MS;
-      const next = clampSheetHeight(gesture.startHeight + deltaY, gesture.heights);
-      gesture.height = next;
-      setDragHeight(next);
+      const roh = gesture.startHeight + deltaY;
+      gesture.height = clampSheetHeight(roh, gesture.heights);
+      gesture.proben.push({ t: performance.now(), h: roh });
+      if (gesture.proben.length > 12) gesture.proben.shift();
+      setDragHeight(gummibandHoehe(roh, gesture.heights));
     }
 
     function onTouchEnd() {
@@ -407,7 +439,7 @@ export default function DragSheet({
       sheet.removeEventListener("touchend", onTouchEnd);
       sheet.removeEventListener("touchcancel", onTouchEnd);
     };
-  }, [snap, messeHoehen]);
+  }, [snap, messeHoehen, aktuelleHoehe, einrasten]);
 
   // Der Griff beschreibt, was seine Aktivierung tut — und die führt nie nach
   // unten aus dem Blickfeld (siehe nextSnapOnTap): aus "versteckt" und "peek"
@@ -436,7 +468,10 @@ export default function DragSheet({
         e.stopPropagation();
       }}
       className={`absolute inset-x-0 bottom-[var(--bottom-nav-h)] z-10 flex h-[var(--sheet-h)] flex-col overflow-hidden rounded-t-lg border-t border-border bg-background shadow-overlay md:contents ${
-        dragHeight === null ? "transition-[height] duration-base ease-standard" : ""
+        // Einrasten mit leichtem Überschwingen (y2 > 1): das Sheet kommt an
+        // wie ein Körper, nicht wie ein Aufzug. 320 ms statt 200: mit
+        // Schwung legt es jetzt längere Wege zurück.
+        dragHeight === null ? "transition-[height] duration-[320ms] ease-[cubic-bezier(0.2,0.9,0.25,1.06)]" : ""
       } ${className}`}
       style={{ "--sheet-h": dragHeight !== null ? `${dragHeight}px` : sheetHeight } as CSSProperties}
     >
