@@ -81,7 +81,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const route = await getRoute(id);
-  if (!route) return { title: "Strecke – Strado" };
+  // Dieselbe Überschrift wie app/not-found.tsx: die Seite antwortet unten
+  // mit notFound(), und der Tab soll dasselbe sagen wie der Inhalt, nicht
+  // einen Streckentitel ankündigen, den es nicht gibt.
+  if (!route) return { title: "Seite nicht gefunden – Strado" };
 
   const beschreibung =
     route.charakter_text ??

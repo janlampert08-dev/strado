@@ -52,7 +52,17 @@ export default function VerifiziertAbzeichen({
         className={`h-3.5 w-3.5 shrink-0 ${verifiziert ? "" : "opacity-60"}`}
         aria-hidden="true"
       />
-      {verifiziert ? "Zeit verifiziert" : "Zeit nicht verifiziert"}
+      {/* "Zeit nicht verifiziert" bleibt wörtlich (an AGB Ziff. 12.6
+          gebunden); der Zusatz sagt die Folge, damit niemand erst die
+          Erklärung öffnen muss, um zu wissen, was ihm entgeht. Dünner
+          gesetzt, damit er als Nachsatz liest und nicht als zweites Etikett. */}
+      {verifiziert ? (
+        "Zeit verifiziert"
+      ) : (
+        <span>
+          Zeit nicht verifiziert<span className="font-normal"> · zählt nicht für Bestzeiten</span>
+        </span>
+      )}
     </>
   );
 

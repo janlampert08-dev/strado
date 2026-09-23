@@ -14,8 +14,8 @@ export default function NotFound() {
       <Header />
       <StatusPage
         marke
-        title="Seite nicht gefunden."
-        description="Diese Strecke oder Seite existiert nicht (mehr)."
+        title="Diese Seite gibt es nicht."
+        description="Vielleicht wurde die Strecke entfernt oder der Link ist unvollständig. Alle Strecken findest du auf der Karte."
         actions={[
           { label: "Strecken ansehen", href: "/" },
           { label: "Zum Feed", href: "/feed" },

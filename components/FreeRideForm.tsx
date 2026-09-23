@@ -312,7 +312,7 @@ export default function FreeRideForm({
               <p className="font-medium text-foreground">
                 {bewegungsbefund.blockiert
                   ? "Diese Fahrt lässt sich nicht speichern."
-                  : "Sieht das nach einer Autofahrt aus?"}
+                  : "War das eine Fahrt mit Auto oder Motorrad?"}
               </p>
               <p className="text-muted">{bewegungsbefund.text}</p>
             </Card>
@@ -374,7 +374,8 @@ export default function FreeRideForm({
               open={gastVerwerfenOffen}
               title="Fahrt verwerfen?"
               description="Die aufgezeichnete Fahrt wurde noch nicht gespeichert und geht dabei endgültig verloren."
-              confirmLabel="Verwerfen"
+              confirmLabel="Fahrt verwerfen"
+              cancelLabel="Fahrt behalten"
               variant="danger"
               onConfirm={handleDiscard}
               onCancel={() => setGastVerwerfenOffen(false)}
@@ -444,7 +445,7 @@ export default function FreeRideForm({
                   maxLength={MAX_TITEL_LENGTH}
                   value={titel}
                   onChange={(e) => setTitel(e.target.value)}
-                  placeholder="z.B. Sonntagsrunde Klausenpass"
+                  placeholder="z. B. Sonntagsrunde Klausenpass"
                   className={fieldClassName()}
                 />
               </div>
@@ -480,14 +481,14 @@ export default function FreeRideForm({
           <div className="flex flex-col gap-1">
             <h1 className="text-title font-semibold tracking-tight">Freie Fahrt</h1>
             <p className="text-sm text-muted">
-              Ohne Strecke, einfach losfahren. Gemessen wird ab dem ersten GPS-Signal nach dem
-              Start — beendet wird die Fahrt von dir.
+              Fahr los, wohin du willst. Die Messung beginnt mit dem ersten GPS-Signal und endet,
+              wenn du die Fahrt beendest.
             </p>
           </div>
           <ul className="flex flex-col gap-2 text-sm">
             <li className="flex items-start gap-2">
               <Smartphone className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
-              <span>Bildschirm an lassen — sonst pausiert die Aufzeichnung.</span>
+              <span>Bildschirm eingeschaltet lassen – sonst unterbricht der Browser das GPS.</span>
             </li>
             {istGast && (
               <li className="text-muted">
@@ -563,7 +564,7 @@ export default function FreeRideForm({
               aria-hidden="true"
               className={`h-2.5 w-2.5 shrink-0 rounded-full ${recorder.hasStarted && !recorder.pausiert ? "bg-danger" : "bg-muted"}`}
             />
-            {recorder.pausiert ? "Pausiert" : recorder.hasStarted ? "Aufzeichnung läuft" : "Warte auf GPS…"}
+            {recorder.pausiert ? "Pausiert" : recorder.hasStarted ? "Aufzeichnung läuft" : "GPS-Signal wird gesucht…"}
           </p>
           <p className="text-sm text-muted tabular-nums">
             <span className="sr-only">Zeit </span>
@@ -632,7 +633,7 @@ export default function FreeRideForm({
             weitere Fläche auf einem Schirm, der zwei Zahlen tragen soll. */}
         <p className="flex items-start gap-2 text-sm leading-snug text-muted">
           <Smartphone className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
-          <span>Bildschirm an lassen — sonst pausiert die Aufzeichnung.</span>
+          <span>Bildschirm eingeschaltet lassen – sonst unterbricht der Browser das GPS.</span>
         </p>
         {recorder.hasStarted ? (
           // Pause neben dem Beenden: ein Tankstopp oder ein Aussichtspunkt

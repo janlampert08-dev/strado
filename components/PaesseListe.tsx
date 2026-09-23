@@ -69,7 +69,7 @@ export default function PaesseListe({
     { wert: "alle", label: "Alle" },
     { wert: "hochalpin", label: "Hochalpin" },
     { wert: "offen", label: "Offen" },
-    ...(angemeldet ? [{ wert: "fehlen" as const, label: "Fehlt mir" }] : []),
+    ...(angemeldet ? [{ wert: "fehlen" as const, label: "Nicht befahren" }] : []),
     ...(angemeldet ? [{ wert: "gefolgt" as const, label: "Gefolgt" }] : []),
   ];
 
@@ -80,7 +80,7 @@ export default function PaesseListe({
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1 overflow-x-auto reiter-scroller">
           <SegmentedControl
-            label="Auswahl"
+            label="Pässe filtern"
             wert={auswahl}
             onChange={setzeAuswahl}
             segmente={filter.map((f) => ({ wert: f.wert, label: f.label }))}
