@@ -258,7 +258,7 @@ export default function CompletionActionsMenu({
             value={notizDraft}
             onChange={(e) => setNotizDraft(e.target.value)}
             placeholder="z.B. nasse Fahrbahn, mit der Ducati…"
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-base text-foreground transition-shadow duration-fast focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 md:text-sm"
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-base text-foreground transition-shadow duration-fast focus:outline-none focus-visible:ring-2 focus-visible:ring-accent md:text-sm"
           />
           <div className="mt-2 flex justify-end gap-2">
             <Button type="button" variant="secondary" size="sm" onClick={() => setEditOpen(false)}>

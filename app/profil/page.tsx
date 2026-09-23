@@ -79,7 +79,7 @@ function SectionSummary({
   count?: number;
 }) {
   return (
-    <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+    <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background">
       <span className="flex items-center gap-1.5">
         <Icon className="h-4 w-4 text-muted" aria-hidden="true" />
         {label}

@@ -475,7 +475,7 @@ export default function DragSheet({
         // des Sechs-Punkte-Symbols: das Punkteraster las sich im Test als
         // "weitere Aktionen", die Pille ist das Zeichen, das iOS und Android
         // für "zieh mich" verwenden.
-        className="flex shrink-0 cursor-grab touch-none items-center justify-center rounded-t-lg py-5 active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-inset md:hidden"
+        className="flex shrink-0 cursor-grab touch-none items-center justify-center rounded-t-lg py-5 active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset md:hidden"
       >
         <span aria-hidden="true" className="h-1 w-9 rounded-full bg-border-strong" />
       </div>
