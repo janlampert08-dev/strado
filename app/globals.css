@@ -613,6 +613,27 @@ main {
   animation: abschluss-ring 900ms var(--ease-standard) 160ms both;
 }
 
+/* Schrittwechsel der Einrichtung (components/Einrichtung.tsx): der neue
+   Schritt kommt von unten nach, kurz und ohne Nachfedern. Der Anlass ist
+   derselbe wie oben — eine Quittung für "Weiter": ohne sie wechselt der
+   Inhalt an Ort und Stelle, und ob der Tipp gegriffen hat, sieht man nur am
+   Fortschrittsbalken ganz oben. Läuft einmal pro Schritt; der
+   prefers-reduced-motion-Block unten erfasst ihn wie die übrigen. */
+@keyframes einrichtung-schritt {
+  from {
+    transform: translateY(0.5rem);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.einrichtung-schritt {
+  animation: einrichtung-schritt var(--duration-base) var(--ease-standard) both;
+}
+
 /* Reduzierte Bewegung — App-weit, und bis hierher gab es das nirgends
    (docs/audit/uiux.md §6.4). Betroffen ist praktisch jede Bewegung im
    Projekt: animate-pulse auf jedem Skeleton (also auf jedem Ladebildschirm),

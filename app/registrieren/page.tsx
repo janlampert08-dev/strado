@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import Header from "@/components/Header";
 import RegistrierenForm from "@/components/RegistrierenForm";
 import GoogleLoginButton from "@/components/GoogleLoginButton";
+import WartendeFahrt from "@/components/WartendeFahrt";
 import { safeInternalPath } from "@/lib/utils/url";
 import { aktiveOAuthAnbieter } from "@/lib/oauth";
 import { NICHT_INDEXIEREN } from "@/lib/seo";
@@ -58,6 +59,9 @@ export default async function RegistrierenPage({
           darüber hinaus in den Scrollbereich statt zu beschneiden. */}
       <div className="flex-1 overflow-y-auto">
         <Seitenrahmen breite="schmal" className="min-h-full justify-center">
+          {/* Nur wer aus dem Fazit einer Gastfahrt kommt: seine Fahrt über
+              dem Formular statt eines Formulars ohne Grund. */}
+          <WartendeFahrt ziel={nextHref} />
           {mitGoogle && (
             <>
               <GoogleLoginButton nextHref={nextHref} />

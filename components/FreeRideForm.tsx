@@ -33,6 +33,13 @@ import { merkeHinweis } from "@/components/Hinweis";
 import GpsBereitschaft from "@/components/GpsBereitschaft";
 import { StreckeIcon, WeiterIcon } from "@/components/NavIcons";
 import { naechsteStreckeAmStart, vorschlagsText } from "@/lib/streckenvorschlag";
+import ErsteFahrtHinweise from "@/components/ErsteFahrtHinweise";
+import {
+  useErsteFahrtHinweiseGesehen,
+  useGeraet,
+  useStandortFreigabe,
+} from "@/components/useStandortFreigabe";
+import { merkeErsteFahrtHinweiseGesehen } from "@/lib/ersteFahrt";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 //
@@ -131,14 +138,26 @@ export default function FreeRideForm({
   // Start ihre eigene an wie bisher. Trail, Distanz und Snapshot sehen von
   // diesen Fixes nichts.
   //
+  // ABER NUR, WENN DER STANDORT SCHON FREI IST. Vorher lief das bei jedem
+  // Öffnen — beim ersten Besuch stand damit die Browserfrage nach dem
+  // Standort im Raum, bevor irgendwer etwas getan hatte, ohne Zusammenhang
+  // und ohne Erklärung. Ein "Nein" darauf ist auf dem iPhone praktisch
+  // endgültig. Jetzt erklärt das Panel zuerst (ErsteFahrtHinweise), und die
+  // Frage kommt mit dem Tippen auf "Aufzeichnung starten" — dem Moment, in
+  // dem sie einleuchtet. Die Karte bleibt bis dahin auf der Schweiz.
+  //
   // Ein Fehlschlag bleibt hier stumm, der Startversuch meldet ihn ohnehin
   // über recorder.locationError. Nur "verweigert" merkt sich der Schirm:
   // dann kommt kein Fix mehr, und "GPS-Signal wird gesucht…" wäre gelogen.
+  const standortFreigabe = useStandortFreigabe();
+  const geraet = useGeraet();
+  const ersteFahrtHinweiseGesehen = useErsteFahrtHinweiseGesehen();
   const [standort, setStandort] = useState<[number, number] | null>(null);
   const [standortGenauigkeitM, setStandortGenauigkeitM] = useState<number | null>(null);
   const [standortVerweigert, setStandortVerweigert] = useState(false);
   useEffect(() => {
     if (phase !== "idle") return;
+    if (standortFreigabe !== "granted") return;
     if (!("geolocation" in navigator)) return;
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
@@ -152,7 +171,7 @@ export default function FreeRideForm({
       { enableHighAccuracy: true },
     );
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [phase]);
+  }, [phase, standortFreigabe]);
 
   // Steht man am Start einer freigegebenen Strecke, bietet der Schirm die
   // Streckenfahrt an (lib/streckenvorschlag.ts). Aus den Strecken, die die
@@ -511,28 +530,36 @@ export default function FreeRideForm({
         <div className="md:mx-auto md:w-full md:max-w-lg md:rounded-t-lg md:border-x flex shrink-0 flex-col gap-4 border-t border-border bg-background px-5 pt-5 pb-[calc(1.25rem+var(--safe-bottom))]">
           <div className="flex flex-col gap-1">
             <h1 className="text-title font-semibold tracking-tight">Freie Fahrt</h1>
-            <p className="text-sm text-muted">
-              Fahr los, wohin du willst. Die Messung beginnt mit dem ersten GPS-Signal und endet,
-              wenn du die Fahrt beendest.
-            </p>
+            {/* Bei der ersten Fahrt stehen stattdessen die Hinweise darunter —
+                beides zusammen schob "Aufzeichnung starten" auf einem iPhone
+                SE im Safari-Tab unter den Rand. Die Hinweise sagen fürs erste
+                Mal mehr als die allgemeine Beschreibung. */}
+            {(ersteFahrtHinweiseGesehen || standortFreigabe === "denied") && (
+              <p className="text-sm text-muted">
+                Fahr los, wohin du willst. Die Messung beginnt mit dem ersten GPS-Signal und endet,
+                wenn du die Fahrt beendest.
+              </p>
+            )}
           </div>
           {/* Ist GPS schon brauchbar? Die Frage, die man am Passcafé vor dem
               Losfahren hat. Nur eine Auskunft — der Startknopf bleibt auch
               bei "wird gesucht" bedienbar, die Messung beginnt dann eben mit
-              dem ersten brauchbaren Fix. Bei verweigertem Standort fehlt die
-              Zeile, statt ewig zu "suchen". */}
-          {!standortVerweigert && <GpsBereitschaft genauigkeitM={standortGenauigkeitM} wartetAufSignal />}
-          <ul className="flex flex-col gap-2 text-sm">
-            <li className="flex items-start gap-2">
-              <Smartphone className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
-              <span>Bildschirm eingeschaltet lassen – sonst unterbricht der Browser das GPS.</span>
-            </li>
-            {istGast && (
-              <li className="text-muted">
-                Ohne Konto: aufzeichnen geht, zum Speichern brauchst du am Ende eine Anmeldung.
-              </li>
-            )}
-          </ul>
+              dem ersten brauchbaren Fix. Nur bei freigegebenem Standort: ohne
+              Freigabe läuft hier keine Watch (siehe oben), und "wird gesucht"
+              wäre gelogen. */}
+          {standortFreigabe === "granted" && !standortVerweigert && (
+            <GpsBereitschaft genauigkeitM={standortGenauigkeitM} wartetAufSignal />
+          )}
+          <ErsteFahrtHinweise
+            freigabe={standortFreigabe}
+            geraet={geraet}
+            gesehen={ersteFahrtHinweiseGesehen}
+          />
+          {istGast && (
+            <p className="text-sm text-muted">
+              Ohne Konto: aufzeichnen geht, zum Speichern brauchst du am Ende eine Anmeldung.
+            </p>
+          )}
           {/* Leise Karte statt Knopf: die Handlung auf diesem Schirm bleibt
               "Aufzeichnung starten". Der Link führt auf die Streckenseite,
               gestartet wird dort — hier startet nichts von selbst. */}
@@ -564,7 +591,12 @@ export default function FreeRideForm({
           <div className="flex flex-col gap-2">
             <button
               type="button"
-              onClick={recorder.starten}
+              onClick={() => {
+                // Gesehen ist, wer losfährt — nicht, wer die Seite nur
+                // geöffnet und wieder geschlossen hat.
+                merkeErsteFahrtHinweiseGesehen();
+                recorder.starten();
+              }}
               className={buttonVariants({ variant: "accent", size: "lg", className: "w-full" })}
             >
               Aufzeichnung starten
