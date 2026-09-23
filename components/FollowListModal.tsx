@@ -4,7 +4,7 @@ import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import { Dialog } from "@/components/ui/Dialog";
 import EmptyState from "@/components/ui/EmptyState";
-import { Lock, Users } from "lucide-react";
+import { Lock, Users } from "@/components/NavIcons";
 import type { FollowProfile } from "@/lib/follows";
 
 // Popup für die Follower/Following-Zahlen auf Profilseiten (eigenes und
@@ -29,7 +29,7 @@ export default function FollowListModal({
   hidden?: boolean;
 }) {
   return (
-    <Dialog open={open} onClose={onClose} title={title} className="max-h-[70vh] overflow-y-auto">
+    <Dialog open={open} onClose={onClose} title={title} className="max-h-[70dvh] overflow-y-auto overscroll-y-contain">
       {hidden ? (
         <EmptyState icon={Lock} title="Diese Liste ist privat." />
       ) : profiles.length === 0 ? (
@@ -41,7 +41,7 @@ export default function FollowListModal({
               <Link
                 href={`/fahrer/${profile.id}`}
                 onClick={onClose}
-                className="flex items-center gap-3 py-2.5 transition-colors duration-fast hover:text-accent"
+                className="flex items-center gap-3 py-2.5 transition-colors duration-fast hover:text-accent-ink"
               >
                 <Avatar url={profile.avatarUrl} name={profile.displayName} size={36} />
                 <span className="truncate text-sm font-medium">

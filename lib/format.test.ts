@@ -1,5 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { datumCH, formatDuration, formatKmGerundet, mitAnzahl, nomen, todayInZurich } from "@/lib/format";
+import {
+  datumCH,
+  dauerTeile,
+  formatDauer,
+  formatDuration,
+  formatKmGerundet,
+  formatMeter,
+  mitAnzahl,
+  nomen,
+  todayInZurich,
+} from "@/lib/format";
 
 describe("formatDuration", () => {
   it("formats sub-hour durations as mm:ss", () => {
@@ -12,6 +22,31 @@ describe("formatDuration", () => {
 
   it("pads single-digit minutes and seconds", () => {
     expect(formatDuration(5)).toBe("00:05");
+  });
+});
+
+describe("formatDauer", () => {
+  // Ohne Einheit las sich "15:27" neben einem Datum wie eine Uhrzeit.
+  it("adds min below one hour", () => {
+    expect(formatDauer(927)).toBe("15:27 min");
+  });
+
+  it("adds h from one hour on", () => {
+    expect(formatDauer(3600)).toBe("1:00:00 h");
+    expect(formatDauer(3912)).toBe("1:05:12 h");
+  });
+
+  it("splits value and unit for tiles", () => {
+    expect(dauerTeile(59)).toEqual({ wert: "00:59", einheit: "min" });
+    expect(dauerTeile(7200)).toEqual({ wert: "2:00:00", einheit: "h" });
+  });
+});
+
+describe("formatMeter", () => {
+  it("groups thousands the Swiss way and rounds", () => {
+    expect(formatMeter(2315)).toBe(`${(2315).toLocaleString("de-CH")} m`);
+    expect(formatMeter(2315)).not.toBe("2315 m");
+    expect(formatMeter(460.6)).toBe("461 m");
   });
 });
 

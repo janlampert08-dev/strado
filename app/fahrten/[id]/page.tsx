@@ -11,7 +11,7 @@ import {
   MapPin,
   Mountain,
   Ruler,
-} from "lucide-react";
+} from "@/components/NavIcons";
 import Header from "@/components/Header";
 import Avatar from "@/components/Avatar";
 import KudosButton from "@/components/KudosButton";
@@ -19,7 +19,7 @@ import ShareRideButton from "@/components/ShareRideButton";
 import CompletionActionsMenu from "@/components/CompletionActionsMenu";
 import CompletionReportButton from "@/components/CompletionReportButton";
 import FahrtProfilUmschalter from "@/components/FahrtProfilUmschalter";
-import { tempoAbschnitte } from "@/lib/tempoprofil";
+import { stimmigerSchnitt, tempoAbschnitte } from "@/lib/tempoprofil";
 import CompletionMap from "@/components/CompletionMap";
 import CompletionPhotoGallery from "@/components/CompletionPhotoGallery";
 import DetectedSegmentsCard from "@/components/DetectedSegmentsCard";
@@ -28,7 +28,7 @@ import { getRoute } from "@/lib/routes";
 import { getKudosForCompletions } from "@/lib/kudos";
 import { featuredMilestone, getUserAchievementStats } from "@/lib/achievements";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { formatDuration } from "@/lib/format";
+import { formatDauer, formatMeter } from "@/lib/format";
 import VerifiziertAbzeichen from "@/components/VerifiziertAbzeichen";
 import { publicationBlockReason } from "@/lib/track";
 import { erkannteFahrtrichtung } from "@/lib/richtung";
@@ -58,7 +58,7 @@ export async function generateMetadata({
   // geladen bereit.
   const kennzahlen = [
     completion.distanzKm != null ? `${completion.distanzKm.toFixed(0)} km` : null,
-    completion.dauerSekunden ? formatDuration(completion.dauerSekunden) : null,
+    completion.dauerSekunden ? formatDauer(completion.dauerSekunden) : null,
   ]
     .filter(Boolean)
     .join(" in ");
@@ -174,10 +174,19 @@ export default async function FahrtDetailPage({
   const tempoSekunden = istFreieFahrt
     ? (completion.bewegteZeitSekunden ?? completion.dauerSekunden)
     : completion.dauerSekunden;
-  const avgKmh =
+  // stimmigerSchnitt: ein Durchschnitt über dem Höchsttempo des eigenen
+  // Profils widerlegt sich selbst und wird nicht gezeigt (lib/tempoprofil.ts).
+  //
+  // Hat der Fahrer das Tempo verborgen (profiles.zeigt_tempo, 0125), rechnet
+  // die Seite für fremde Betrachter gar nicht erst einen Schnitt aus.
+  const rohSchnittKmh =
     tempoSekunden && tempoSekunden > 0 && completion.distanzKm
       ? completion.distanzKm / (tempoSekunden / 3600)
       : null;
+  const avgKmh = !completion.zeigtTempo ? null : stimmigerSchnitt(
+    rohSchnittKmh,
+    completion.tempoprofil,
+  );
 
   // Nur zeigen, wenn sich die beiden Zeiten spürbar unterscheiden — sonst
   // steht dieselbe Zahl zweimal da.
@@ -245,7 +254,7 @@ export default async function FahrtDetailPage({
             >
               <Avatar url={completion.avatarUrl} name={completion.displayName} size={44} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium transition-colors duration-fast group-hover:text-accent">
+                <p className="truncate text-sm font-medium transition-colors duration-fast group-hover:text-accent-ink">
                   {completion.isOwner ? "Deine Fahrt" : (completion.displayName ?? "Fahrer")}
                 </p>
                 <p className="text-xs text-muted">
@@ -341,7 +350,7 @@ export default async function FahrtDetailPage({
                 href={`/strecken/${route!.id}`}
                 className="group inline-flex items-baseline gap-1.5"
               >
-                <h1 className="text-display font-semibold tracking-tight group-hover:text-accent">
+                <h1 className="text-display font-semibold tracking-tight group-hover:text-accent-ink">
                   {route!.name}
                 </h1>
               </Link>
@@ -378,6 +387,12 @@ export default async function FahrtDetailPage({
               (Kleingedrucktes) nebeneinander. */}
           <AbschnittTabs tabs={[{ titel: "Übersicht" }, { titel: "Details" }]}>
           <div className="flex flex-col gap-5">
+          {/* Das Ergebnis zuerst: die auf dieser Fahrt erkannten Strecken
+              samt Zeit standen im Reiter "Details" unter Fahrzeug und
+              Abdeckung — also das, weswegen man die Fahrt öffnet, hinter dem
+              Kleingedruckten. Nur für den Besitzer (getDetectedSegments). */}
+          {detectedSegments.length > 0 && <DetectedSegmentsCard segments={detectedSegments} />}
+
           {/* Karte + Profil als eine Visualisierung: ein Rahmen, ein Gedanke.
               Vorher zwei gleich grosse Blöcke mit eigenem Gewicht plus
               erklärender Kleinstzeile dazwischen. */}
@@ -427,11 +442,11 @@ export default async function FahrtDetailPage({
                 </>
               }
               wert={
-                completion.dauerSekunden !== null ? formatDuration(completion.dauerSekunden) : "—"
+                completion.dauerSekunden !== null ? formatDauer(completion.dauerSekunden) : "—"
               }
               zusatz={
                 zeigtBewegtzeit
-                  ? `${formatDuration(completion.bewegteZeitSekunden!)} in Bewegung`
+                  ? `${formatDauer(completion.bewegteZeitSekunden!)} in Bewegung`
                   : undefined
               }
               // Steht bewusst in der Zeit-Kachel und nicht im Seitenkopf: die
@@ -452,6 +467,20 @@ export default async function FahrtDetailPage({
                 </>
               }
               wert={avgKmh !== null ? `${avgKmh.toFixed(0)} km/h` : "—"}
+              // Die Kachel bleibt stehen, damit das Raster nicht springt; der
+              // Zusatz sagt, warum dort nichts steht, statt eine fehlende
+              // Messung vorzutäuschen.
+              // Zwei Gründe für den Strich, beide ausgesprochen: verborgen
+              // (0125) oder von stimmigerSchnitt verworfen, weil die Zeit nicht
+              // zum eigenen Tempoprofil passt — vorher stand dann ein Strich
+              // ohne jede Erklärung (Re-Audit 2026-09-23).
+              zusatz={
+                !completion.zeigtTempo
+                  ? "Vom Fahrer verborgen"
+                  : rohSchnittKmh !== null && avgKmh === null
+                    ? "Zeitmessung unvollständig"
+                    : undefined
+              }
             />
             <Kennzahl
               beschriftung={
@@ -463,10 +492,10 @@ export default async function FahrtDetailPage({
               wert={
                 istFreieFahrt
                   ? completion.hoehenmeterAufstieg !== null
-                    ? `${completion.hoehenmeterAufstieg} m`
+                    ? formatMeter(completion.hoehenmeterAufstieg)
                     : "—"
                   : route!.hoehe_m !== null
-                    ? `${route!.hoehe_m} m`
+                    ? formatMeter(route!.hoehe_m)
                     : "—"
               }
             />
@@ -489,8 +518,6 @@ export default async function FahrtDetailPage({
 
           </div>
           <div className="flex flex-col gap-5">
-          {detectedSegments.length > 0 && <DetectedSegmentsCard segments={detectedSegments} />}
-
           {/* Entflochten: Fahrzeug, Abdeckung und Notiz waren eine Karte mit
               vier Gedanken. Jetzt: Fahrzeug als stille Zeile, Abdeckung als
               schmaler Fortschritt, Notiz als Zitat — drei Stimmen statt einer. */}

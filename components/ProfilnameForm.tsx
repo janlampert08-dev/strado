@@ -40,7 +40,7 @@ export default function ProfilnameForm({ aktuellerName }: { aktuellerName: strin
           aria-describedby="display_name_hinweis"
         />
         <Button type="submit" variant="secondary" disabled={pending} className="shrink-0">
-          {pending ? "Speichern…" : "Speichern"}
+          {pending ? "Wird gespeichert…" : "Speichern"}
         </Button>
       </div>
       <p id="display_name_hinweis" role="status" className="min-h-5 text-xs text-muted">

@@ -2,7 +2,7 @@
 
 import { useActionState, useRef, useState } from "react";
 import Link from "next/link";
-import { Flag } from "lucide-react";
+import { Flag, SternIcon } from "@/components/NavIcons";
 import { submitRating, type RatingFormState } from "@/lib/actions/ratings";
 import { reportRating } from "@/lib/actions/reports";
 import type { RatingWithAuthor } from "@/lib/ratings";
@@ -15,7 +15,6 @@ import SterneEingabe from "@/components/SterneEingabe";
 import ReportDialog from "@/components/ReportDialog";
 import DeleteRatingButton from "@/components/DeleteRatingButton";
 import useEingabenBewahren from "@/components/useEingabenBewahren";
-import { SternIcon } from "@/components/NavIcons";
 import SectionHeading from "@/components/ui/SectionHeading";
 import IconButton from "@/components/ui/IconButton";
 
@@ -73,7 +72,7 @@ export default function RatingSection({
         <p className="border-b border-border pb-4 text-sm text-muted">
           <Link
             href={`/anmelden?next=${encodeURIComponent(`/strecken/${routeId}`)}`}
-            className="font-medium text-accent hover:underline"
+            className="font-medium text-accent-ink hover:underline"
           >
             Melde dich an
           </Link>
@@ -147,7 +146,7 @@ export default function RatingSection({
                     // 24. Am Preview auf 390 px gemessen waren es 24 × 20.
                     // Die 12 px Polsterung heben das auf 32 und das
                     // negative Aussenmass nimmt sie optisch wieder weg.
-                    className="relative -my-1.5 py-1.5 font-medium transition-colors duration-fast after:absolute after:-inset-x-3 after:-inset-y-1.5 after:content-[''] hover:text-accent"
+                    className="relative -my-1.5 py-1.5 font-medium transition-colors duration-fast after:absolute after:-inset-x-3 after:-inset-y-1.5 after:content-[''] hover:text-accent-ink"
                   >
                     {r.display_name ?? "Anonym"}
                   </Link>

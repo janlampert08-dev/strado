@@ -29,6 +29,24 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Noch nicht angewendet: 0123_ranglisten_ohne_abschnitte (geschrieben 2026-09-23)
+
+Ranglisten zählen erkannte Streckenabschnitte nicht mehr als eigene Fahrten.
+`leaderboard_completions` bekommt eine angehängte Spalte `ist_abschnitt`, die
+drei Aggregate (`leaderboard_user_totals`, `…_klassen_totals`,
+`…_typ_totals`) zählen Fahrten, Kilometer und Höhenmeter mit
+`filter (where not ist_abschnitt)`; `strecken_count` bleibt ungefiltert.
+Entscheid des Eigentümers vom 2026-09-23 (PR #274 hatte ihn offen gelassen).
+
+- **Reihenfolge:** unabhängig vom Code, kein Code liest die neue Spalte.
+- **Wirkung am 2026-09-23:** ein Konto mit einem öffentlichen Abschnitt,
+  211.1 → 199.6 km und 8 → 7 Fahrten; alle anderen unverändert. Vorher als
+  reine Abfrage nachgerechnet, die Aggregat-SQL gegen die Live-Daten geprüft.
+- **Prüfung danach** und **Weg zurück:** stehen im Kopf und am Ende der Datei.
+- **Grenzfall:** Wer nur einen öffentlichen Abschnitt, aber keine öffentliche
+  Elternfahrt hat, steht danach mit 0 Fahrten / 0 km in den Mengenlisten
+  (für "Meiste Strecken" zählt er richtig). Heute betrifft das niemanden.
+
 ## 0115 — noch nicht angewendet (Stand 2026-09-20)
 
 `0115_tempoprofil.sql` legt `route_completions.tempoprofil` an ([{km, kmh}],

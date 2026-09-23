@@ -66,7 +66,7 @@ export default function Sternschnitt({
         {schnittText(schnitt)}
       </span>
       <SternIcon
-        className={cn("shrink-0 fill-current text-accent", sternClassName)}
+        className={cn("shrink-0 fill-current text-accent-ink", sternClassName)}
         aria-hidden="true"
       />
       <span className="sr-only">von 5 Sternen</span>

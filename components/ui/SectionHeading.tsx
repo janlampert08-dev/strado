@@ -91,7 +91,7 @@ export default function SectionHeading({
     >
       {/* shrink-0, weil eine lange Beschriftung neben dem Icon sonst das
           Symbol staucht statt selbst umzubrechen — auf 390 px passiert das
-          bei "Auf dieser Fahrt erkannt" oder "Was Premium dazugibt". */}
+          bei "Auf dieser Fahrt erkannt" oder "In Premium enthalten". */}
       {Icon && <Icon className={cn("shrink-0", groesse === "xs" ? "h-3.5 w-3.5" : "h-4 w-4")} aria-hidden="true" />}
       {children}
     </Component>

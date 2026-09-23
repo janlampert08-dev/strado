@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { Pencil } from "lucide-react";
+import { Pencil } from "@/components/NavIcons";
 import { uploadAvatar, type ProfileActionState } from "@/lib/actions/profile";
 import Avatar from "@/components/Avatar";
 
@@ -30,12 +30,15 @@ export default function AvatarUpload({
           id="avatar-input"
           accept="image/*"
           onChange={(e) => e.target.form?.requestSubmit()}
-          className="sr-only"
+          className="peer sr-only"
         />
         <label
           htmlFor="avatar-input"
           title="Profilbild ändern"
-          className={`absolute -right-1 -bottom-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm transition-colors duration-fast hover:border-border-strong ${
+          // peer-focus-visible: das Feld selbst ist unsichtbar (sr-only), der
+          // Fokus muss am sichtbaren Knopf erscheinen. after: 44-px-Tippfläche
+          // um den 24-px-Knopf.
+          className={`absolute -right-1 -bottom-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm transition-colors duration-fast hover:border-muted after:absolute after:-inset-2.5 after:content-[''] peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background ${
             pending ? "pointer-events-none opacity-50" : ""
           }`}
         >

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { X } from "@/components/NavIcons";
 import { ladeFotosDirektHoch, loescheDirektUpload } from "@/lib/fotoUpload";
 import { meldeClientFehler } from "@/lib/fehlerbericht";
 
@@ -285,7 +285,7 @@ export default function MultiPhotoInput({
       {entries.length < maxPhotos && (
         <label
           htmlFor={id}
-          className="cursor-pointer rounded-md border border-dashed border-border px-3 py-3 text-center text-muted transition-colors duration-fast hover:border-border-strong hover:text-foreground"
+          className="cursor-pointer rounded-md border border-dashed border-border px-3 py-3 text-center text-muted transition-colors duration-fast hover:border-muted hover:text-foreground"
         >
           + Foto hinzufügen
         </label>

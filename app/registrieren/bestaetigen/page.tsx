@@ -77,13 +77,13 @@ export default async function BestaetigenPage() {
               <div className="flex flex-col gap-2 text-sm">
                 <Link
                   href="/anmelden"
-                  className="font-medium text-accent hover:underline"
+                  className="font-medium text-accent-ink hover:underline"
                 >
                   Zur Anmeldung
                 </Link>
                 <Link
                   href="/registrieren"
-                  className="font-medium text-accent hover:underline"
+                  className="font-medium text-accent-ink hover:underline"
                 >
                   Neues Konto anlegen
                 </Link>

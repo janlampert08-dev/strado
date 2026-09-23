@@ -6,8 +6,16 @@ import mapboxgl from "mapbox-gl";
 import type { DataDrivenPropertyValueSpecification } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { SCHWEIZ_ZENTRUM, DEFAULT_ZOOM } from "@/lib/constants";
-import { sliceRouteBySpeed, speedColor } from "@/lib/speed";
+import { sliceRouteBySpeed, speedColor, TEMPO_FARBEN } from "@/lib/speed";
 import { akzentFarbe, isDarkTheme, subscribeToThemeChange, tokenFarbe } from "@/lib/theme";
+import {
+  ersteStrassenEbene,
+  helleBeruhigung,
+  konturLayer,
+  konturSource,
+  KONTUR_SOURCE,
+  reliefLayer,
+} from "@/lib/kartenStil";
 import { SIGNATUR_RUECKFALL, SIGNATUR_TOKEN, type SignatureKey } from "@/lib/signature";
 import { MIN_ACCURACY_M } from "@/components/useRideRecorder";
 import type { KartenStrecke, TempolimitSegment } from "@/types/database";
@@ -32,6 +40,14 @@ const TEMPO_LINE_LAYER = "tempo-segments-line";
 const HIGHLIGHT_SOURCE = "route-highlight";
 const HIGHLIGHT_HALO_LAYER = "route-highlight-halo";
 const HIGHLIGHT_LINE_LAYER = "route-highlight-line";
+// Der helle Rand um alles, was auf der Karte hervortreten soll: Halo der
+// gewählten Strecke, Rand der Start-/Zielpunkte, Rand des Standortpunkts.
+// Bewusst KEIN Token über tokenFarbe(): der naheliegende Kandidat
+// --color-background ist im Dunkelmodus #0b0b0d, und ein dunkler Rand auf
+// der dunklen Karte trennt die Linie nicht mehr vom Grund — genau dafür ist
+// er da. Ein themenfestes Weiss gibt es unter den Tokens nicht. Eine
+// Konstante statt dreimal derselben Hex-Zahl, damit sie nicht auseinanderläuft.
+const KARTEN_RAND_FARBE = "#FAFAFA";
 // Aufgezeichneter GPS-Track einer Fahrt (freie Fahrt oder Detailkarte einer
 // Aufzeichnung) — unabhängig von den kuratierten Strecken, die über
 // ROUTES_SOURCE laufen.
@@ -47,7 +63,7 @@ const TRACK_LINE_LAYER = "ride-track-line";
 // laufende WebGL-Neuzeichnung ohne jede Änderung, auf dem Gerät im Auto.
 // Dieselbe Lösung wie NO_ROUTES in CompletionMap.tsx.
 const KEINE_VERKEHRSSEGMENTE: { coords: [number, number][]; color: string }[] = [];
-const KEINE_TEMPOSEGMENTE: { coords: [number, number][]; color: string }[] = [];
+const KEINE_TEMPOSEGMENTE: { coords: [number, number][]; stufe: number }[] = [];
 const KEIN_TRACK: [number, number][] = [];
 
 const TERRAIN_SOURCE = "mapbox-dem";
@@ -204,7 +220,26 @@ function toSpeedFeatureCollection(
     features: sliceRouteBySpeed(coords, segments).map((s) => ({
       type: "Feature",
       geometry: { type: "LineString", coordinates: s.coords },
-      properties: { kmh: s.kmh, color: speedColor(s.kmh) },
+      // Farbschema beim Bauen gelesen: die Sammlung wird nach jedem
+      // "style.load" (also auch nach einem Themenwechsel) neu gesetzt.
+      properties: { kmh: s.kmh, color: speedColor(s.kmh, isDarkTheme() ? "dunkel" : "hell") },
+    })),
+  };
+}
+
+// Die eigene Spur nach gefahrenem Tempo (lib/tempoprofil.ts). Die Abschnitte
+// tragen die Stufe, nicht die Farbe — der Server, der sie schneidet, kennt
+// das Farbschema des Betrachters nicht.
+function toTempoFeatureCollection(
+  segments: { coords: [number, number][]; stufe: number }[],
+): GeoJSON.FeatureCollection {
+  const schema = isDarkTheme() ? "dunkel" : "hell";
+  return {
+    type: "FeatureCollection",
+    features: segments.map((s) => ({
+      type: "Feature",
+      geometry: { type: "LineString", coordinates: s.coords },
+      properties: { color: TEMPO_FARBEN[schema][s.stufe] ?? TEMPO_FARBEN[schema][0] },
     })),
   };
 }
@@ -334,7 +369,7 @@ function createLocationMarkerElement(): StandortMarker {
   dotEl.style.width = "12px";
   dotEl.style.height = "12px";
   dotEl.style.borderRadius = "50%";
-  dotEl.style.border = "2.5px solid #FAFAFA";
+  dotEl.style.border = `2.5px solid ${KARTEN_RAND_FARBE}`;
   dotEl.style.boxShadow = "0 0 0 1px rgba(19,19,22,0.25), 0 1px 3px rgba(19,19,22,0.35)";
   dotEl.style.transform = "translate(-50%, -50%)";
 
@@ -417,6 +452,16 @@ function fitPadding(map: mapboxgl.Map, basis: number, bottomInsetPx: number) {
   return { top: oben, bottom: unten, left: basis, right: basis };
 }
 
+// Welche Strecken eingepasst wurden — Ids plus hervorgehobene Strecke, ohne
+// die Linien selbst. Die Streckenseite reicht erst die Übersichtslinie und
+// Sekunden später die volle derselben Strecke herein (components/
+// VolleGeometrie.tsx). Das ist eine feinere Linie, keine neue Auswahl, und
+// darf den Ausschnitt nicht zurücksetzen: wer in der Zwischenzeit gezoomt
+// hat, verlöre sonst seinen Ausschnitt.
+function auswahlSchluessel(routes: KartenStrecke[], primaryRouteId: string | null | undefined): string {
+  return `${routes.map((r) => r.id).join(",")}|${primaryRouteId ?? ""}`;
+}
+
 function fitToRoutes(
   map: mapboxgl.Map,
   routes: KartenStrecke[],
@@ -473,6 +518,7 @@ export default function RouteMap({
   centerOnFirstLocation = false,
   followLocation = false,
   ohneBedienelemente = false,
+  kooperativeGesten = false,
   umlandSchleier = false,
 }: {
   // Alle Strecken, die gezeichnet werden. Die Reihenfolge ist gleichgültig,
@@ -544,7 +590,7 @@ export default function RouteMap({
   // lib/tempoprofil.ts: tempoAbschnitte). Werden sie übergeben, tritt die
   // einfarbige Track-Linie zurück und die Abschnitte tragen die Linie —
   // dieselben Farben wie die Tempolimit-Ebene, aber gefahren statt erlaubt.
-  tempoSegmente?: { coords: [number, number][]; color: string }[];
+  tempoSegmente?: { coords: [number, number][]; stufe: number }[];
   // Aufgezeichneter GPS-Track: live wachsend während einer Aufzeichnung
   // (FreeRideForm, LiveTrackingForm) oder fertig auf der Fahrt-Detailseite
   // (CompletionMap).
@@ -580,6 +626,11 @@ export default function RouteMap({
   followLocation?: boolean;
   /** Zoom- und Kompass-Knöpfe weglassen (Vorschaukarten, z. B. im Fazit). */
   ohneBedienelemente?: boolean;
+  /** Karte mitten in einer scrollenden Seite: ein Finger scrollt die Seite,
+   *  zwei bewegen die Karte (Mapbox cooperativeGestures). Ohne das fing die
+   *  Karte auf der Fahrtseite jeden Wisch ab, der an ihr vorbeiscrollen
+   *  wollte. Nicht für Vollbildkarten (Entdecken, Strecke, Aufzeichnung). */
+  kooperativeGesten?: boolean;
   /** Das Ausland unter einen Schleier legen, damit die Schweiz heraussticht.
    *  Entdecken-Karte und freie Fahrt (Entscheid des Inhabers 2026-09-21):
    *  beide sollen gleich aussehen. Auf der eigenen Fahrt nach Strecken
@@ -617,6 +668,8 @@ export default function RouteMap({
   const routesRef = useRef(routes);
   // Nur der Wert beim Aufbau zählt: die Knöpfe werden einmal angehängt.
   const ohneBedienelementeRef = useRef(ohneBedienelemente);
+  // Nur beim Aufbau gelesen, wie ohneBedienelemente.
+  const kooperativeGestenRef = useRef(kooperativeGesten);
   // Ebenso nur beim Aufbau: der Schleier wird bei jedem style.load neu
   // angelegt, und welche Karte ihn trägt, ändert sich nicht.
   const umlandSchleierRef = useRef(umlandSchleier);
@@ -644,6 +697,8 @@ export default function RouteMap({
   // bottomInsetPx unten direkt nach dem Erstaufbau eine zweite, identische
   // Kamerafahrt nach — er läuft mit, sobald stilGeneration steigt.
   const eingepasstMitInsetRef = useRef<number | null>(null);
+  // Welche Auswahl zuletzt eingepasst wurde (siehe auswahlSchluessel).
+  const eingepassteAuswahlRef = useRef<string | null>(null);
 
   // Wie routesRef: setupLayers() läuft nach jedem "style.load" und liest
   // die Sammlungen aus Refs statt aus den Props, weil es ausserhalb des
@@ -739,6 +794,7 @@ export default function RouteMap({
       // `attributionControl: false` samt der AttributionControl-Zeile unten
       // (dann greift wieder das responsive Standardverhalten).
       attributionControl: false,
+      cooperativeGestures: kooperativeGestenRef.current,
       // Ohne locale melden sich die Bedienelemente englisch ("Zoom in",
       // "Reset bearing to north") in einem lang="de"-Dokument.
       locale: {
@@ -779,6 +835,23 @@ export default function RouteMap({
       // Themenwechsel) erneut gesetzt werden, da ein Style-Wechsel die
       // Sprachauswahl der Text-Layer zurücksetzt.
       map.setLanguage("de");
+
+      // Helles Schema: Strassen neutral, Grün zurückgenommen (lib/kartenStil.ts).
+      // Einzeln abgesichert — ein Mapbox-Stilupdate, das eine Ebene umbenennt
+      // oder eine Eigenschaft nicht kennt, soll die Karte nicht anhalten.
+      if (!isDarkTheme()) {
+        for (const layer of map.getStyle().layers ?? []) {
+          const aenderung = helleBeruhigung(layer);
+          if (!aenderung) continue;
+          for (const [eigenschaft, wert] of Object.entries(aenderung)) {
+            try {
+              map.setPaintProperty(layer.id, eigenschaft as never, wert as never);
+            } catch {
+              // Ebene ohne diese Eigenschaft: bleibt, wie Mapbox sie zeichnet.
+            }
+          }
+        }
+      }
 
       // Knapp unterhalb der Strassennummern-Schilder (z.B. A1-Schild) einfügen:
       // road-label (Strassennamen-Text) liegt in der Streets-v12-Style-
@@ -855,6 +928,8 @@ export default function RouteMap({
           source: ROUTES_SOURCE,
           layout: { "line-join": "round", "line-cap": "round" },
           paint: {
+            // Nie zu sehen (line-opacity 0), also auch kein Token: Mapbox
+            // verlangt nur irgendeine gültige Farbe.
             "line-color": "#000000",
             "line-opacity": 0,
             "line-width": ["interpolate", ["linear"], ["zoom"], 8, 20, 14, 28],
@@ -946,7 +1021,7 @@ export default function RouteMap({
       // Strichstärke wie die Stau-Ebene, Sichtbarkeit folgt den Daten.
       map.addSource(TEMPO_SOURCE, {
         type: "geojson",
-        data: toTrafficFeatureCollection(tempoSegmenteRef.current),
+        data: toTempoFeatureCollection(tempoSegmenteRef.current),
       });
       map.addLayer(
         {
@@ -1000,7 +1075,7 @@ export default function RouteMap({
           source: HIGHLIGHT_SOURCE,
           layout: { "line-join": "round", "line-cap": "round" },
           paint: {
-            "line-color": "#FAFAFA",
+            "line-color": KARTEN_RAND_FARBE,
             "line-width": ["interpolate", ["linear"], ["zoom"], 8, 6, 14, 11],
           },
         },
@@ -1033,7 +1108,7 @@ export default function RouteMap({
             "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 3.5, 14, 5.5],
             "circle-color": ["get", "color"],
             "circle-stroke-width": 1.5,
-            "circle-stroke-color": "#FAFAFA",
+            "circle-stroke-color": KARTEN_RAND_FARBE,
             // Auch die Start-/Zielpunkte der Kontext-Strecken treten zurück;
             // ohne das blieben ausgerechnet die auffälligsten Elemente der
             // fremden Strecken in voller Deckkraft stehen.
@@ -1054,6 +1129,35 @@ export default function RouteMap({
         tileSize: 512,
         maxzoom: 14,
       });
+
+      // Relief und Höhenlinien unter Strassen und Strecken (lib/kartenStil.ts):
+      // die alpine Schicht, solange es keinen eigenen Mapbox-Stil gibt.
+      {
+        const schema = isDarkTheme() ? "dunkel" : "hell";
+        const unter = ersteStrassenEbene((map.getStyle().layers ?? []).map((l) => l.id));
+        // Ohne Anker gar nicht erst einfügen. mapbox-gl prüft beforeId nur
+        // hinter `if (before)`; ein undefined überspringt den Zweig und hängt
+        // die Ebene ganz OBEN an (mapbox-gl-dev.js, Style#addLayer) — ohne
+        // Fehler, den das catch unten sehen könnte. Relief und Höhenlinien
+        // lägen dann über der gefahrenen Linie, den Verkehrsabschnitten und
+        // allen Beschriftungen, also genau andersherum als beabsichtigt.
+        // Tritt ein, wenn ein Mapbox-Stilupdate die Strassenebenen umbenennt.
+        // Bewusst `if (unter)` statt eines frühen return: dieser Block steht
+        // mitten im Kartenaufbau, ein return würde auch die Himmelsebene und
+        // das 3D-Gelände darunter überspringen.
+        if (unter) {
+          try {
+            map.addLayer(reliefLayer(schema, TERRAIN_SOURCE) as Parameters<typeof map.addLayer>[0], unter);
+            map.addSource(KONTUR_SOURCE, konturSource());
+            for (const ebene of konturLayer(schema)) {
+              map.addLayer(ebene as Parameters<typeof map.addLayer>[0], unter);
+            }
+          } catch {
+            // Ohne Relief bleibt die Karte, wie sie war — kein Grund, den Rest
+            // des Aufbaus abzubrechen.
+          }
+        }
+      }
       map.addLayer({
         id: SKY_LAYER,
         type: "sky",
@@ -1074,6 +1178,10 @@ export default function RouteMap({
             fitTargets(routesRef.current, primaryRouteIdRef.current),
             false,
             bottomInsetRef.current,
+          );
+          eingepassteAuswahlRef.current = auswahlSchluessel(
+            routesRef.current,
+            primaryRouteIdRef.current,
           );
         } else {
           fitToTrail(map, trailRef.current, false, bottomInsetRef.current);
@@ -1209,12 +1317,17 @@ export default function RouteMap({
     map.setPaintProperty(ENDPOINTS_LAYER, "circle-opacity", routeOpacity(primaryRouteId));
     map.setPaintProperty(ENDPOINTS_LAYER, "circle-stroke-opacity", routeOpacity(primaryRouteId));
 
-    if (fitRoutes) {
+    const schluessel = auswahlSchluessel(routes, primaryRouteId);
+    if (fitRoutes && eingepassteAuswahlRef.current !== schluessel) {
       // Eine neue Streckenauswahl ist ein neuer Ausschnitt — das überschreibt
       // ein Hineinzoomen von Hand, und die Sperre dafür fällt damit auch.
       nutzerBewegteKameraRef.current = false;
       fitToRoutes(map, fitTargets(routes, primaryRouteId), true, bottomInsetRef.current);
       eingepasstMitInsetRef.current = bottomInsetRef.current;
+      eingepassteAuswahlRef.current = schluessel;
+    } else if (!fitRoutes) {
+      // Wird fitRoutes später wieder eingeschaltet, passt die Karte neu ein.
+      eingepassteAuswahlRef.current = null;
     }
   }, [routes, signaturen, fitRoutes, primaryRouteId]);
 
@@ -1324,7 +1437,7 @@ export default function RouteMap({
     const map = mapRef.current;
     if (!map || !styleLoadedRef.current) return;
     const source = map.getSource(TEMPO_SOURCE) as mapboxgl.GeoJSONSource | undefined;
-    source?.setData(toTrafficFeatureCollection(tempoSegmente));
+    source?.setData(toTempoFeatureCollection(tempoSegmente));
     if (!map.getLayer(TEMPO_LINE_LAYER) || !map.getLayer(TRACK_LINE_LAYER)) return;
     const sichtbar = tempoSegmente.length > 0 ? "visible" : "none";
     map.setLayoutProperty(TEMPO_LINE_LAYER, "visibility", sichtbar);

@@ -3,8 +3,10 @@ import {
   abfrageZeitpunkte,
   faktorenAusDauern,
   isoWochentag,
+  istPlausibleDistanz,
   MAX_STUETZPUNKTE,
   PROFIL_STUNDEN,
+  streckeGesperrt,
   stuetzpunkte,
 } from "@/lib/verkehrsprofil";
 
@@ -54,6 +56,73 @@ describe("abfrageZeitpunkte", () => {
   it("gibt jedem Zeitpunkt den Wochentag seines Datums", () => {
     const freitag = zeitpunkte.find((z) => z.abfahrtLokal.startsWith("2026-09-18"));
     expect(freitag?.wochentag).toBe(5);
+  });
+});
+
+describe("abfrageZeitpunkte über die Zeitumstellung", () => {
+  // Der Cron läuft um 04:41 UTC (vercel.json). In der Woche mit dem Wechsel
+  // auf Winterzeit (Sonntag, 25. Oktober 2026) muss jeder Tag trotzdem genau
+  // einmal vorkommen, und die Stunde bleibt die Schweizer Ortszeit —
+  // depart_at liest sie am Startpunkt (Mapbox: "the timezone is calculated
+  // from the route origin").
+  const zeitpunkte = abfrageZeitpunkte(new Date("2026-10-21T04:41:00Z"));
+
+  it("nimmt jeden Wochentag genau einmal", () => {
+    const tage = [...new Set(zeitpunkte.map((z) => z.abfahrtLokal.slice(0, 10)))];
+    expect(tage).toEqual([
+      "2026-10-22", "2026-10-23", "2026-10-24", "2026-10-25",
+      "2026-10-26", "2026-10-27", "2026-10-28",
+    ]);
+    expect(new Set(zeitpunkte.map((z) => z.wochentag)).size).toBe(7);
+  });
+
+  it("verschiebt die Stunde am Umstellungstag nicht", () => {
+    const sonntag = zeitpunkte.filter((z) => z.abfahrtLokal.startsWith("2026-10-25"));
+    expect(sonntag[0]).toMatchObject({ wochentag: 7, stunde: 6, abfahrtLokal: "2026-10-25T06:00" });
+  });
+});
+
+describe("istPlausibleDistanz", () => {
+  it("nimmt eine Antwort, die zur Strecke passt", () => {
+    expect(istPlausibleDistanz(22_900, 22.6)).toBe(true);
+    expect(istPlausibleDistanz(26_000, 22.6)).toBe(true);
+  });
+
+  it("verwirft einen Umweg um eine Sperrung", () => {
+    // Furka gesperrt: Realp–Gletsch über Andermatt, Oberalp, Disentis … ist
+    // ein Vielfaches der Passstrasse.
+    expect(istPlausibleDistanz(95_000, 22.6)).toBe(false);
+  });
+
+  it("verwirft eine Antwort, die viel kürzer ist als die Strecke", () => {
+    expect(istPlausibleDistanz(9_000, 22.6)).toBe(false);
+    expect(istPlausibleDistanz(0, 22.6)).toBe(false);
+  });
+
+  it("prüft nicht, wenn die Länge der Strecke unbekannt ist", () => {
+    expect(istPlausibleDistanz(12_000, 0)).toBe(true);
+  });
+});
+
+describe("streckeGesperrt", () => {
+  const zustand = new Map([
+    ["furka", "wintersperre"],
+    ["grimsel", "offen"],
+    ["gotthard", "eingeschraenkt"],
+    ["susten", "gesperrt"],
+  ]);
+
+  it("überspringt Strecken an einem gesperrten Pass", () => {
+    expect(streckeGesperrt(["furka"], zustand)).toBe(true);
+    expect(streckeGesperrt(["grimsel", "susten"], zustand)).toBe(true);
+  });
+
+  it("misst offene, eingeschränkte und passlose Strecken weiter", () => {
+    expect(streckeGesperrt(["grimsel"], zustand)).toBe(false);
+    expect(streckeGesperrt(["gotthard"], zustand)).toBe(false);
+    expect(streckeGesperrt([], zustand)).toBe(false);
+    // Kein Stand ist kein Beleg für eine Sperre.
+    expect(streckeGesperrt(["klausen"], zustand)).toBe(false);
   });
 });
 
