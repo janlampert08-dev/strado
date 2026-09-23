@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import {
   gpsStufe,
   gpsBereitschaftsText,
@@ -25,7 +28,21 @@ export default function GpsBereitschaft({
 }) {
   const stufe = gpsStufe(genauigkeitM);
   const bereit = stufe === "bereit";
+  // Nach 20 s ohne Fix ein Rat statt einer ewig pulsierenden Zeile — unter
+  // einem Dach oder in einem Tal kommt der erste Fix spät, und das Warten
+  // sah sonst aus wie ein Fehler (Re-Audit 2026-09-23). Der Rat nennt auch,
+  // dass Losfahren trotzdem geht: die Aufzeichnung wartet selbst aufs Signal.
+  const [langeGesucht, setLangeGesucht] = useState(false);
+  useEffect(() => {
+    if (stufe !== "sucht") return;
+    const t = window.setTimeout(() => setLangeGesucht(true), 20_000);
+    return () => {
+      window.clearTimeout(t);
+      setLangeGesucht(false);
+    };
+  }, [stufe]);
   return (
+    <>
     <p className={`flex items-center gap-2 text-sm tabular-nums ${bereit ? "text-success" : "text-muted"} ${className}`}>
       <span
         aria-hidden="true"
@@ -36,5 +53,11 @@ export default function GpsBereitschaft({
         {gpsBereitschaftsAnsage(genauigkeitM)}
       </span>
     </p>
+    {stufe === "sucht" && langeGesucht && (
+      <p className={`text-xs text-muted ${className}`}>
+        Unter freiem Himmel geht es schneller. Du kannst trotzdem starten – die Aufzeichnung wartet aufs Signal.
+      </p>
+    )}
+    </>
   );
 }

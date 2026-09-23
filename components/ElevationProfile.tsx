@@ -41,12 +41,16 @@ export default function ElevationProfile({
   const mMin = achse.unten;
   const mRange = Math.max(achse.oben - achse.unten, 1);
 
-  const x = (km: number) => (km / kmMax) * WIDTH;
+  // In der grossen Fassung endet die Kurve vor dem rechten Rand: dort stehen
+  // die Höhenlinien-Beschriftungen. Vorher lief die Linie durch die Zahlen
+  // hindurch ("1'700" auf dem Furka, Re-Audit 2026-09-23).
+  const plotBreite = gross ? WIDTH * 0.87 : WIDTH;
+  const x = (km: number) => (km / kmMax) * plotBreite;
   const y = (m: number) =>
     PADDING_TOP + (1 - (m - mMin) / mRange) * (HEIGHT - PADDING_TOP - PADDING_BOTTOM);
 
   const linePath = punkte.map((p, i) => `${i === 0 ? "M" : "L"} ${x(p.km).toFixed(1)} ${y(p.m).toFixed(1)}`).join(" ");
-  const areaPath = `${linePath} L ${WIDTH} ${HEIGHT} L 0 ${HEIGHT} Z`;
+  const areaPath = `${linePath} L ${plotBreite} ${HEIGHT} L 0 ${HEIGHT} Z`;
 
   const gipfel = punkte.reduce((a, b) => (b.m > a.m ? b : a));
 
@@ -56,7 +60,8 @@ export default function ElevationProfile({
   // selbst eine Drag-to-inspect-Geste.
   function nearestIndex(clientX: number): number {
     const rect = svgRef.current!.getBoundingClientRect();
-    const fraction = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    const plotPx = rect.width * (plotBreite / WIDTH);
+    const fraction = Math.min(1, Math.max(0, (clientX - rect.left) / plotPx));
     const km = fraction * kmMax;
 
     let closest = 0;
@@ -84,7 +89,7 @@ export default function ElevationProfile({
           ref={svgRef}
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
           preserveAspectRatio="none"
-          className={`${gross ? "h-44" : "h-28"} w-full cursor-crosshair touch-none`}
+          className={`${gross ? "h-44" : "h-28"} w-full cursor-crosshair touch-pan-y`}
           role="img"
           aria-label={`Höhenprofil, Scheitelpunkt ${gipfel.m} m bei km ${gipfel.km}${
             hoverPunkt ? `, ausgewählt: ${hoverPunkt.m} m bei km ${hoverPunkt.km.toFixed(1)}` : ""
@@ -93,6 +98,7 @@ export default function ElevationProfile({
           onPointerDown={onPointerActivity}
           onPointerLeave={() => setHoverIndex(null)}
           onPointerUp={() => setHoverIndex(null)}
+          onPointerCancel={() => setHoverIndex(null)}
         >
           <defs>
             {/* stopColor über style statt Attribut, damit var(--color-accent) im
@@ -127,7 +133,6 @@ export default function ElevationProfile({
             strokeLinejoin="round"
             strokeLinecap="round"
           />
-          <circle cx={x(gipfel.km)} cy={y(gipfel.m)} r="3" style={{ fill: "var(--color-accent)" }} />
           {hoverPunkt && (
             <>
               <line
@@ -139,16 +144,23 @@ export default function ElevationProfile({
                 strokeWidth="1"
                 strokeDasharray="3,3"
               />
-              <circle
-                cx={x(hoverPunkt.km)}
-                cy={y(hoverPunkt.m)}
-                r="4"
-                style={{ fill: "var(--color-accent)", stroke: "var(--color-background)" }}
-                strokeWidth="1.5"
-              />
             </>
           )}
         </svg>
+        {/* Punkte als HTML statt <circle>: preserveAspectRatio="none" zog die
+            Kreise zu Ellipsen. Positioniert in Prozent derselben Koordinaten. */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent"
+          style={{ left: `${(x(gipfel.km) / WIDTH) * 100}%`, top: `${(y(gipfel.m) / HEIGHT) * 100}%` }}
+        />
+        {hoverPunkt && (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-background bg-accent"
+            style={{ left: `${(x(hoverPunkt.km) / WIDTH) * 100}%`, top: `${(y(hoverPunkt.m) / HEIGHT) * 100}%` }}
+          />
+        )}
         {/* Beschriftung der Höhenlinien als HTML über der Grafik: Text in
             einem verzerrten SVG würde mitverzerrt. Nur in der grossen
             Fassung — in 112 px Höhe wären die Zahlen Rauschen. */}
@@ -181,7 +193,7 @@ export default function ElevationProfile({
         <div className="flex justify-between gap-2 whitespace-nowrap text-xs tabular-nums text-muted">
           <span>Start {formatMeter(punkte[0].m)}</span>
           <span className="truncate text-center">
-            Höchster Punkt {formatMeter(gipfel.m)} · km {gipfel.km.toFixed(0)}
+            Höchster Punkt {formatMeter(gipfel.m)}
           </span>
           <span className="text-right">Ziel {formatMeter(punkte[punkte.length - 1].m)}</span>
         </div>

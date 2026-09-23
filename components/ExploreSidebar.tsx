@@ -345,7 +345,12 @@ export default function ExploreSidebar({
                         {formatKmGerundet(route.laenge_km)} km
                       </span>
                     )}
-                    {signature && (
+                    {/* Eine Sperrung verdrängt das Signatur-Label: beide
+                        zusammen mit Länge und Sternen passten auf 360 px nicht,
+                        und das Label schrumpfte auf 0 px, zurück blieb ein
+                        verwaistes Icon (Gotthard, Re-Audit 2026-09-23). Ob
+                        der Pass zu ist, zählt dann mehr als sein Charakter. */}
+                    {signature && !zeigeInListe(passZustaende[route.id] ?? null) && (
                       <span className="flex min-w-0 items-center gap-1.5">
                         {/* Icon und Label im Signaturton. Bei text-xs ist die
                             Schwelle 4,5:1 — genau daran war die alte Palette

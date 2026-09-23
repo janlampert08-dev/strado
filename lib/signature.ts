@@ -128,7 +128,7 @@ function formatSignature(key: SignatureKey, route: SignaturStrecke): string {
       // "m hoch", nicht "Höhenmeter": routes.hoehe_m ist die Scheitelhöhe der
       // Strecke, nicht der gesammelte Anstieg. Unter demselben Wort standen
       // beide Grössen nebeneinander — siehe lib/hoehenmeter.ts.
-      return `${route.hoehe_m} m hoch`;
+      return `${(route.hoehe_m ?? 0).toLocaleString("de-CH")} m hoch`;
     case "tempo": {
       const avg = averageTempolimit(route.tempolimits);
       // "Limit" vor der Zahl: routes.tempolimits sind die signalisierten
