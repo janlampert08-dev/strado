@@ -71,6 +71,11 @@ export default function ProfileSearch() {
         />
         <Input
           type="search"
+          // Suchtaste statt Eingabetaste (Android), keine Autokorrektur:
+          // sie machte aus "Klausen" ein "Klausel".
+          enterKeyHint="search"
+          autoCorrect="off"
+          spellCheck={false}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => results.length > 0 && setOpen(true)}

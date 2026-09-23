@@ -25,7 +25,7 @@ export default function AnmeldenForm({ nextHref }: { nextHref?: string } = {}) {
         {nextHref && <input type="hidden" name="next" value={nextHref} />}
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           E-Mail
-          <Input type="email" name="email" required autoComplete="email" />
+          <Input type="email" name="email" required autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} />
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           Passwort

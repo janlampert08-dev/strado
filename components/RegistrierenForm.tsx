@@ -62,7 +62,7 @@ export default function RegistrierenForm({
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           E-Mail
-          <Input type="email" name="email" required autoComplete="email" />
+          <Input type="email" name="email" required autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} />
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           Passwort

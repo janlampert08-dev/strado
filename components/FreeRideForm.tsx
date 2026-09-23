@@ -473,6 +473,7 @@ export default function FreeRideForm({
                   name="titel"
                   type="text"
                   maxLength={MAX_TITEL_LENGTH}
+                  enterKeyHint="done"
                   value={titel}
                   onChange={(e) => setTitel(e.target.value)}
                   placeholder="z. B. Sonntagsrunde Klausenpass"

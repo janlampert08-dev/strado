@@ -140,6 +140,11 @@ export default function ExploreSidebar({
       <div className="flex items-center gap-2">
         <input
           type="search"
+          // Suchtaste statt Eingabetaste (Android), keine Autokorrektur:
+          // sie machte aus "Klausen" ein "Klausel".
+          enterKeyHint="search"
+          autoCorrect="off"
+          spellCheck={false}
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Strecke oder Ort"
