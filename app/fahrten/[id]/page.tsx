@@ -19,7 +19,7 @@ import ShareRideButton from "@/components/ShareRideButton";
 import CompletionActionsMenu from "@/components/CompletionActionsMenu";
 import CompletionReportButton from "@/components/CompletionReportButton";
 import FahrtProfilUmschalter from "@/components/FahrtProfilUmschalter";
-import { tempoAbschnitte } from "@/lib/tempoprofil";
+import { stimmigerSchnitt, tempoAbschnitte } from "@/lib/tempoprofil";
 import CompletionMap from "@/components/CompletionMap";
 import CompletionPhotoGallery from "@/components/CompletionPhotoGallery";
 import DetectedSegmentsCard from "@/components/DetectedSegmentsCard";
@@ -28,7 +28,7 @@ import { getRoute } from "@/lib/routes";
 import { getKudosForCompletions } from "@/lib/kudos";
 import { featuredMilestone, getUserAchievementStats } from "@/lib/achievements";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { formatDuration } from "@/lib/format";
+import { formatDauer, formatMeter } from "@/lib/format";
 import VerifiziertAbzeichen from "@/components/VerifiziertAbzeichen";
 import { publicationBlockReason } from "@/lib/track";
 import { erkannteFahrtrichtung } from "@/lib/richtung";
@@ -58,7 +58,7 @@ export async function generateMetadata({
   // geladen bereit.
   const kennzahlen = [
     completion.distanzKm != null ? `${completion.distanzKm.toFixed(0)} km` : null,
-    completion.dauerSekunden ? formatDuration(completion.dauerSekunden) : null,
+    completion.dauerSekunden ? formatDauer(completion.dauerSekunden) : null,
   ]
     .filter(Boolean)
     .join(" in ");
@@ -174,10 +174,14 @@ export default async function FahrtDetailPage({
   const tempoSekunden = istFreieFahrt
     ? (completion.bewegteZeitSekunden ?? completion.dauerSekunden)
     : completion.dauerSekunden;
-  const avgKmh =
+  // stimmigerSchnitt: ein Durchschnitt über dem Höchsttempo des eigenen
+  // Profils widerlegt sich selbst und wird nicht gezeigt (lib/tempoprofil.ts).
+  const avgKmh = stimmigerSchnitt(
     tempoSekunden && tempoSekunden > 0 && completion.distanzKm
       ? completion.distanzKm / (tempoSekunden / 3600)
-      : null;
+      : null,
+    completion.tempoprofil,
+  );
 
   // Nur zeigen, wenn sich die beiden Zeiten spürbar unterscheiden — sonst
   // steht dieselbe Zahl zweimal da.
@@ -427,11 +431,11 @@ export default async function FahrtDetailPage({
                 </>
               }
               wert={
-                completion.dauerSekunden !== null ? formatDuration(completion.dauerSekunden) : "—"
+                completion.dauerSekunden !== null ? formatDauer(completion.dauerSekunden) : "—"
               }
               zusatz={
                 zeigtBewegtzeit
-                  ? `${formatDuration(completion.bewegteZeitSekunden!)} in Bewegung`
+                  ? `${formatDauer(completion.bewegteZeitSekunden!)} in Bewegung`
                   : undefined
               }
               // Steht bewusst in der Zeit-Kachel und nicht im Seitenkopf: die
@@ -463,10 +467,10 @@ export default async function FahrtDetailPage({
               wert={
                 istFreieFahrt
                   ? completion.hoehenmeterAufstieg !== null
-                    ? `${completion.hoehenmeterAufstieg} m`
+                    ? formatMeter(completion.hoehenmeterAufstieg)
                     : "—"
                   : route!.hoehe_m !== null
-                    ? `${route!.hoehe_m} m`
+                    ? formatMeter(route!.hoehe_m)
                     : "—"
               }
             />

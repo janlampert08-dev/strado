@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { formatMeter } from "@/lib/format";
 import type { HoehenprofilPunkt, HoehenQuelle } from "@/types/database";
 
 const WIDTH = 600;
@@ -123,33 +124,29 @@ export default function ElevationProfile({
             </>
           )}
         </svg>
-        {hoverPunkt && (
-          <div
-            className="pointer-events-none absolute rounded-md border border-border bg-background px-2 py-1 text-xs tabular-nums shadow-elevated"
-            // Unter der Kurve statt darüber: oben lag die Blase über
-            // "Strecke starten" — der Hinweis verdeckte die Handlung, für die
-            // die Seite da ist.
-            style={{
-              left: `${(hoverPunkt.km / kmMax) * 100}%`,
-              bottom: 0,
-              transform: "translate(-50%, calc(100% + 6px))",
-            }}
-          >
-            {hoverPunkt.m} m · km {hoverPunkt.km.toFixed(1)}
-          </div>
-        )}
       </div>
       {/* Start · höchster Punkt · Ziel, statt Minimum · Gipfel · Maximum.
           Der Gipfel IST das Maximum — rechts stand also zweimal dieselbe
           Zahl, und an der Stelle, an der man das Streckenende erwartet,
           las sie sich als Zielhöhe, während die Linie darüber abfiel. */}
-      <div className="flex justify-between gap-2 text-xs tabular-nums text-muted">
-        <span>Start {punkte[0].m} m</span>
-        <span className="text-center">
-          Höchster Punkt {gipfel.m} m · km {gipfel.km.toFixed(0)}
-        </span>
-        <span className="text-right">Ziel {punkte[punkte.length - 1].m} m</span>
-      </div>
+      {/* Der Messwert unter dem Finger steht in derselben Zeile wie Start,
+          höchster Punkt und Ziel und ersetzt sie, solange gewischt wird.
+          Vorher lag eine Blase unter der Kurve — genau über dieser Zeile,
+          sodass der Wert die Werte verdeckte, mit denen man ihn vergleicht.
+          Über der Kurve ging nicht: dort liegt "Strecke starten". */}
+      {hoverPunkt ? (
+        <p className="text-center text-xs font-medium tabular-nums text-foreground">
+          {formatMeter(hoverPunkt.m)} · km {hoverPunkt.km.toFixed(1)}
+        </p>
+      ) : (
+        <div className="flex justify-between gap-2 whitespace-nowrap text-xs tabular-nums text-muted">
+          <span>Start {formatMeter(punkte[0].m)}</span>
+          <span className="truncate text-center">
+            Höchster Punkt {formatMeter(gipfel.m)} · km {gipfel.km.toFixed(0)}
+          </span>
+          <span className="text-right">Ziel {formatMeter(punkte[punkte.length - 1].m)}</span>
+        </div>
+      )}
       {/* Beleg statt Behauptung: Routenprofile kommen von swisstopo
           swissALTI3D (lib/elevation.ts), Fahrtenprofile nur bei Quelle
           swisstopo — sonst steht hier ehrlich "geschaetzt" bzw. bei

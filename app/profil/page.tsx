@@ -41,7 +41,7 @@ import { getRollenItems } from "@/lib/nav";
 import { getUnseenKudosCount } from "@/lib/kudos";
 import { markKudosSeen } from "@/lib/actions/kudos";
 import { getFollowCounts, getFollowerProfiles, getFollowingProfiles } from "@/lib/follows";
-import { formatDuration, formatKm, datumCH } from "@/lib/format";
+import { formatDauer, formatKm, datumCH } from "@/lib/format";
 import {
   FAHRTEN_MILESTONES,
   HOEHENMETER_MILESTONES,
@@ -626,10 +626,10 @@ export default async function ProfilPage() {
                                       Farbe wie der Text (kein Akzent), bewusst unauffällig. */}
                                   <span className="flex items-center gap-1">
                                     <Timer className="h-3 w-3" aria-hidden="true" />
-                                    {formatDuration(ride.dauer_sekunden)}
+                                    {formatDauer(ride.dauer_sekunden)}
                                   </span>
                                   <span aria-hidden="true">·</span>
-                                  <span>{avgKmh.toFixed(0)} km/h</span>
+                                  <span>Ø {avgKmh.toFixed(0)} km/h</span>
                                 </div>
                               </Link>
                               {/* Beide Fahrtarten lassen sich hier teilen —

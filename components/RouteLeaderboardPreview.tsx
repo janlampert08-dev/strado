@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { formatDuration, mitAnzahl } from "@/lib/format";
+import { formatDauer, mitAnzahl } from "@/lib/format";
 import type { RouteTimeEntry } from "@/lib/leaderboard";
 import { MEDAL_COLORS } from "@/lib/constants";
 import Avatar from "@/components/Avatar";
@@ -91,7 +91,7 @@ export default function RouteLeaderboardPreview({
 
       {beste !== null && (
         <p className={cn("text-sm text-muted tabular-nums", laedt && "opacity-40")}>
-          Bestzeit {formatDuration(beste)} · {mitAnzahl(liste.length, "Zeit", "Zeiten")}
+          Bestzeit {formatDauer(beste)} · {mitAnzahl(liste.length, "Zeit", "Zeiten")}
         </p>
       )}
 
@@ -140,7 +140,7 @@ export default function RouteLeaderboardPreview({
                 </span>
               )}
               <span className="shrink-0 tabular-nums text-muted">
-                {formatDuration(entry.dauerSekunden)}
+                {formatDauer(entry.dauerSekunden)}
               </span>
             </li>
           ))}
