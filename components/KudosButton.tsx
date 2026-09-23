@@ -96,7 +96,7 @@ export default function KudosButton({
           // begründet die 44). Optik unverändert: kein Rahmen, keine Füllung,
           // nur die Fläche stimmt.
           "inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full px-2 text-xs font-medium transition-colors duration-fast disabled:pointer-events-none disabled:opacity-50",
-          given ? "text-accent" : "text-muted hover:text-foreground",
+          given ? "text-accent-ink" : "text-muted hover:text-foreground",
         )}
       >
         {/* Die Klasse wird am Ende der Animation wieder abgeräumt, damit ein

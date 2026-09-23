@@ -157,7 +157,7 @@ export default async function PaessePage() {
                   <li key={eintrag.id} className="druckbar relative flex items-center gap-3 px-4 py-3">
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">
-                        <Link href={ziel} className="hover:text-accent after:absolute after:inset-0 after:content-['']">
+                        <Link href={ziel} className="hover:text-accent-ink after:absolute after:inset-0 after:content-['']">
                           {eintrag.name}
                         </Link>
                       </p>

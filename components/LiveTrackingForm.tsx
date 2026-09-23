@@ -1,5 +1,6 @@
 "use client";
 
+import KartePlatzhalter from "@/components/ui/KartePlatzhalter";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import dynamic from "next/dynamic";
@@ -23,7 +24,6 @@ import type { KartenStrecke, RouteGeoJSON, Vehicle } from "@/types/database";
 import { Smartphone } from "@/components/NavIcons";
 import { buttonVariants } from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
-import Skeleton from "@/components/ui/Skeleton";
 import FullscreenDialog from "@/components/ui/FullscreenDialog";
 import HalteKnopf from "@/components/ui/HalteKnopf";
 import FazitKopf from "@/components/FazitKopf";
@@ -34,7 +34,7 @@ import { useVolleGeometrie } from "@/components/VolleGeometrie";
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
   ssr: false,
-  loading: () => <Skeleton className="h-full w-full" />,
+  loading: () => <KartePlatzhalter />,
 });
 
 const initialState: CompletionFormState = { error: null };
@@ -595,7 +595,7 @@ export default function LiveTrackingForm({
             nicht gibt. */}
         {!istGast &&
           (isNewBest ? (
-            <p className="rounded-lg border border-accent bg-accent/5 px-3 py-2 text-sm font-medium text-accent">
+            <p className="rounded-lg border border-accent bg-accent/5 px-3 py-2 text-sm font-medium text-accent-ink">
               {personalBestSeconds === null
                 ? "Erste erfasste Zeit für diese Strecke."
                 : `Neue persönliche Bestzeit — bisher ${formatDauer(personalBestSeconds)}.`}

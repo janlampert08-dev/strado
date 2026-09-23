@@ -41,7 +41,7 @@ export default function FollowListModal({
               <Link
                 href={`/fahrer/${profile.id}`}
                 onClick={onClose}
-                className="flex items-center gap-3 py-2.5 transition-colors duration-fast hover:text-accent"
+                className="flex items-center gap-3 py-2.5 transition-colors duration-fast hover:text-accent-ink"
               >
                 <Avatar url={profile.avatarUrl} name={profile.displayName} size={36} />
                 <span className="truncate text-sm font-medium">

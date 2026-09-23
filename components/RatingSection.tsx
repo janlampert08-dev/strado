@@ -72,7 +72,7 @@ export default function RatingSection({
         <p className="border-b border-border pb-4 text-sm text-muted">
           <Link
             href={`/anmelden?next=${encodeURIComponent(`/strecken/${routeId}`)}`}
-            className="font-medium text-accent hover:underline"
+            className="font-medium text-accent-ink hover:underline"
           >
             Melde dich an
           </Link>
@@ -146,7 +146,7 @@ export default function RatingSection({
                     // 24. Am Preview auf 390 px gemessen waren es 24 × 20.
                     // Die 12 px Polsterung heben das auf 32 und das
                     // negative Aussenmass nimmt sie optisch wieder weg.
-                    className="relative -my-1.5 py-1.5 font-medium transition-colors duration-fast after:absolute after:-inset-x-3 after:-inset-y-1.5 after:content-[''] hover:text-accent"
+                    className="relative -my-1.5 py-1.5 font-medium transition-colors duration-fast after:absolute after:-inset-x-3 after:-inset-y-1.5 after:content-[''] hover:text-accent-ink"
                   >
                     {r.display_name ?? "Anonym"}
                   </Link>

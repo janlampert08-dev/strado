@@ -132,7 +132,7 @@ export default function PaesseListe({
                 className={cn(
                   "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border",
                   eintrag.gefahren
-                    ? "border-accent bg-accent-subtle text-accent"
+                    ? "border-accent bg-accent-subtle text-accent-ink"
                     : "border-dashed border-border text-muted",
                 )}
               >
@@ -149,7 +149,7 @@ export default function PaesseListe({
                   {eintrag.strecke ? (
                     <Link
                       href={`/strecken/${eintrag.strecke.id}`}
-                      className="hover:text-accent after:absolute after:inset-0 after:content-['']"
+                      className="hover:text-accent-ink after:absolute after:inset-0 after:content-['']"
                     >
                       {eintrag.name}
                     </Link>

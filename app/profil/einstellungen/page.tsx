@@ -180,7 +180,7 @@ export default async function EinstellungenPage() {
                         ? "Abgelehnt"
                         : "Ausstehend";
                   const color = route.status_ok
-                    ? "text-accent"
+                    ? "text-accent-ink"
                     : route.abgelehnt_am
                       ? "text-danger"
                       : "text-muted";
@@ -204,7 +204,7 @@ export default async function EinstellungenPage() {
                       <div className="flex min-w-0 items-center justify-between gap-3 sm:justify-start">
                         <Link
                           href={`/strecken/${route.id}`}
-                          className="truncate transition-colors duration-fast hover:text-accent"
+                          className="truncate transition-colors duration-fast hover:text-accent-ink"
                         >
                           {route.name}
                         </Link>
@@ -406,7 +406,7 @@ export default async function EinstellungenPage() {
                     href={eintrag.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex min-h-11 items-center justify-between gap-3 px-4 py-3 text-sm transition-colors duration-fast hover:text-accent"
+                    className="flex min-h-11 items-center justify-between gap-3 px-4 py-3 text-sm transition-colors duration-fast hover:text-accent-ink"
                   >
                     {eintrag.label}
                     <ExternalLink className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />

@@ -35,7 +35,7 @@ const base =
 // weil 14 Aufrufer in sechs Dateien ihn tragen — ausgerechnet die
 // Aufzeichnungsschirme (FreeRideForm, LiveTrackingForm, HalteKnopf), an
 // denen gleichzeitig andere Zweige arbeiten. Neuer Code schreibt "primary".
-const primary = "rounded-full border border-accent bg-accent text-background hover:opacity-90";
+const primary = "rounded-full border border-accent bg-accent text-on-accent hover:opacity-90";
 const variants: Record<ButtonVariant, string> = {
   primary,
   accent: primary,
@@ -155,7 +155,7 @@ export function textAktionClassName({
   return cn(
     "inline-flex min-h-11 items-center gap-1 rounded-sm font-medium",
     groesse === "xs" ? "text-xs" : "text-sm",
-    ton === "gedaempft" ? "text-muted hover:text-foreground" : "text-accent",
+    ton === "gedaempft" ? "text-muted hover:text-foreground" : "text-accent-ink",
     "transition-colors duration-fast hover:underline",
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
     "focus-visible:ring-offset-2 focus-visible:ring-offset-background",

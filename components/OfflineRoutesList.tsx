@@ -128,7 +128,7 @@ export default function OfflineRoutesList() {
               onClick={() => setSelectedId(route.id)}
               className="flex flex-1 items-center gap-3 px-4 py-3 text-left hover:bg-surface druckbar"
             >
-              <svg viewBox="0 0 64 48" className="h-8 w-11 shrink-0 text-accent" aria-hidden="true">
+              <svg viewBox="0 0 64 48" className="h-8 w-11 shrink-0 text-accent-ink" aria-hidden="true">
                 <path
                   d={shape}
                   fill="none"
@@ -173,7 +173,7 @@ function StreckenVerlauf({ coordinates, name }: { coordinates: [number, number][
     <Card surface className="p-2">
       <svg
         viewBox="0 0 320 200"
-        className="h-auto w-full text-accent"
+        className="h-auto w-full text-accent-ink"
         role="img"
         aria-label={`Streckenverlauf ${name}`}
       >

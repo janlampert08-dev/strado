@@ -48,7 +48,7 @@ export default function PasswortVergessenForm({
           unterwegs. Schau auch im Spam-Ordner nach.
         </p>
         <p className="text-sm text-muted">
-          <Link href="/anmelden" className="font-medium text-accent hover:underline">
+          <Link href="/anmelden" className="font-medium text-accent-ink hover:underline">
             Zurück zur Anmeldung
           </Link>
         </p>
@@ -84,7 +84,7 @@ export default function PasswortVergessenForm({
         </Button>
       </form>
       <p className="text-sm text-muted">
-        <Link href="/anmelden" className="font-medium text-accent hover:underline">
+        <Link href="/anmelden" className="font-medium text-accent-ink hover:underline">
           Zurück zur Anmeldung
         </Link>
       </p>

@@ -200,7 +200,7 @@ export default async function FahrerPage({
                         href={`/fahrten/${f.completion_id}`}
                         // min-h-11: die Zeile ist ein Link auf die Fahrt, war
                         // aber nur so hoch wie ihre Schrift (20 px).
-                        className="flex min-h-11 min-w-0 flex-1 items-center justify-between text-sm transition-colors duration-fast hover:text-accent"
+                        className="flex min-h-11 min-w-0 flex-1 items-center justify-between text-sm transition-colors duration-fast hover:text-accent-ink"
                       >
                         <span className="truncate">
                           {f.art === "frei"

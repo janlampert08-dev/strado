@@ -164,7 +164,7 @@ export default function PassSammlung({
                 >
                   <span className="flex min-w-0 flex-col gap-0.5">
                     <span className="flex min-w-0 items-baseline gap-2">
-                      <span className="truncate font-medium transition-colors duration-fast group-hover:text-accent">
+                      <span className="truncate font-medium transition-colors duration-fast group-hover:text-accent-ink">
                         {pass.name}
                       </span>
                       {pass.region && (

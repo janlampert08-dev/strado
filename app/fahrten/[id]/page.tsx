@@ -254,7 +254,7 @@ export default async function FahrtDetailPage({
             >
               <Avatar url={completion.avatarUrl} name={completion.displayName} size={44} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium transition-colors duration-fast group-hover:text-accent">
+                <p className="truncate text-sm font-medium transition-colors duration-fast group-hover:text-accent-ink">
                   {completion.isOwner ? "Deine Fahrt" : (completion.displayName ?? "Fahrer")}
                 </p>
                 <p className="text-xs text-muted">
@@ -350,7 +350,7 @@ export default async function FahrtDetailPage({
                 href={`/strecken/${route!.id}`}
                 className="group inline-flex items-baseline gap-1.5"
               >
-                <h1 className="text-display font-semibold tracking-tight group-hover:text-accent">
+                <h1 className="text-display font-semibold tracking-tight group-hover:text-accent-ink">
                   {route!.name}
                 </h1>
               </Link>

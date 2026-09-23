@@ -193,7 +193,7 @@ export default async function FeedPage({
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <Link
                       href={`/fahrten/${item.completion_id}`}
-                      className="flex items-baseline gap-2 transition-colors duration-fast hover:text-accent after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-accent"
+                      className="flex items-baseline gap-2 transition-colors duration-fast hover:text-accent-ink after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-accent"
                     >
                       <span className="min-w-0 truncate text-base font-medium">
                         {item.art === "frei"

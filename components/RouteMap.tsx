@@ -8,6 +8,14 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { SCHWEIZ_ZENTRUM, DEFAULT_ZOOM } from "@/lib/constants";
 import { sliceRouteBySpeed, speedColor, TEMPO_FARBEN } from "@/lib/speed";
 import { akzentFarbe, isDarkTheme, subscribeToThemeChange, tokenFarbe } from "@/lib/theme";
+import {
+  ersteStrassenEbene,
+  helleBeruhigung,
+  konturLayer,
+  konturSource,
+  KONTUR_SOURCE,
+  reliefLayer,
+} from "@/lib/kartenStil";
 import { SIGNATUR_RUECKFALL, SIGNATUR_TOKEN, type SignatureKey } from "@/lib/signature";
 import { MIN_ACCURACY_M } from "@/components/useRideRecorder";
 import type { KartenStrecke, TempolimitSegment } from "@/types/database";
@@ -823,6 +831,23 @@ export default function RouteMap({
       // Sprachauswahl der Text-Layer zurücksetzt.
       map.setLanguage("de");
 
+      // Helles Schema: Strassen neutral, Grün zurückgenommen (lib/kartenStil.ts).
+      // Einzeln abgesichert — ein Mapbox-Stilupdate, das eine Ebene umbenennt
+      // oder eine Eigenschaft nicht kennt, soll die Karte nicht anhalten.
+      if (!isDarkTheme()) {
+        for (const layer of map.getStyle().layers ?? []) {
+          const aenderung = helleBeruhigung(layer);
+          if (!aenderung) continue;
+          for (const [eigenschaft, wert] of Object.entries(aenderung)) {
+            try {
+              map.setPaintProperty(layer.id, eigenschaft as never, wert as never);
+            } catch {
+              // Ebene ohne diese Eigenschaft: bleibt, wie Mapbox sie zeichnet.
+            }
+          }
+        }
+      }
+
       // Knapp unterhalb der Strassennummern-Schilder (z.B. A1-Schild) einfügen:
       // road-label (Strassennamen-Text) liegt in der Streets-v12-Style-
       // Reihenfolge VOR road-number-shield, also landet unsere Strecke über
@@ -1099,6 +1124,23 @@ export default function RouteMap({
         tileSize: 512,
         maxzoom: 14,
       });
+
+      // Relief und Höhenlinien unter Strassen und Strecken (lib/kartenStil.ts):
+      // die alpine Schicht, solange es keinen eigenen Mapbox-Stil gibt.
+      {
+        const schema = isDarkTheme() ? "dunkel" : "hell";
+        const unter = ersteStrassenEbene((map.getStyle().layers ?? []).map((l) => l.id));
+        try {
+          map.addLayer(reliefLayer(schema, TERRAIN_SOURCE) as Parameters<typeof map.addLayer>[0], unter);
+          map.addSource(KONTUR_SOURCE, konturSource());
+          for (const ebene of konturLayer(schema)) {
+            map.addLayer(ebene as Parameters<typeof map.addLayer>[0], unter);
+          }
+        } catch {
+          // Ohne Relief bleibt die Karte, wie sie war — kein Grund, den Rest
+          // des Aufbaus abzubrechen.
+        }
+      }
       map.addLayer({
         id: SKY_LAYER,
         type: "sky",

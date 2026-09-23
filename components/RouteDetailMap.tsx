@@ -1,5 +1,6 @@
 "use client";
 
+import KartePlatzhalter from "@/components/ui/KartePlatzhalter";
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { Box } from "@/components/NavIcons";
@@ -17,13 +18,12 @@ import type { RouteGeoJSON } from "@/types/database";
 import { buttonVariants } from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import { segmentClassName, segmentHuelleClassName } from "@/components/ui/SegmentedControl";
-import Skeleton from "@/components/ui/Skeleton";
 import { useVolleGeometrie } from "@/components/VolleGeometrie";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
   ssr: false,
-  loading: () => <Skeleton className="h-full w-full" />,
+  loading: () => <KartePlatzhalter />,
 });
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -209,7 +209,7 @@ export default function RouteDetailMap({
             className={buttonVariants({
               variant: "secondary",
               size: "sm",
-              className: show3D ? "border-accent bg-accent-subtle text-accent" : "bg-background",
+              className: show3D ? "border-accent bg-accent-subtle text-accent-ink" : "bg-background",
             })}
           >
             <Box className="h-3.5 w-3.5" aria-hidden="true" />
