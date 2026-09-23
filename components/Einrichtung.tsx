@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState, useTransition, type FormEvent } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
+import { useFormStatus } from "react-dom";
 import { addVehicleInline } from "@/lib/actions/vehicles";
 import { passFolgenUmschalten } from "@/lib/actions/paesse";
 import { einrichtungAbschliessen } from "@/lib/actions/einrichtung";
@@ -48,14 +47,17 @@ export default function Einrichtung({
   /** Geprüftes Ziel danach (zielNachEinrichtung), "/" ohne eigenes. */
   ziel: string;
 }) {
-  const router = useRouter();
-  // Ein Schritt, der nichts zu fragen hat, entfällt ganz — auch aus dem
-  // Fortschrittsbalken, damit "2 von 3" nicht lügt.
-  const schritte: Schritt[] = [
+  // Die Schritte einmal festlegen, nicht bei jedem Rendern neu: Folgen und
+  // Fahrzeug-Speichern revalidieren die Seite, und mit einem inzwischen
+  // gespeicherten Fahrzeug fiele "fahrzeug" mitten im Ablauf aus der Liste —
+  // der Balken spränge von drei auf zwei Segmente. Ein Schritt ohne Inhalt
+  // entfällt von Anfang an, damit "2 von 3" nicht lügt. (Gibt es gar nichts
+  // zu fragen, schickt die Seite schon auf dem Server weiter.)
+  const [schritte] = useState<Schritt[]>(() => [
     ...(hatFahrzeug ? [] : (["fahrzeug"] as const)),
     ...(paesse.length > 0 ? (["paesse"] as const) : []),
     "fertig",
-  ];
+  ]);
   const [schritt, setSchritt] = useState<Schritt>(schritte[0]);
   const index = schritte.indexOf(schritt);
 
@@ -63,31 +65,23 @@ export default function Einrichtung({
   const [gefolgt, setGefolgt] = useState<Set<string>>(
     () => new Set(paesse.filter((p) => p.folgtMan).map((p) => p.id)),
   );
-  const [beendet, starteBeenden] = useTransition();
 
-  // Gibt es nichts zu fragen (Fahrzeug schon da, Passkatalog nicht
-  // erreichbar), beginnt die Seite gleich bei "fertig" — weiter() läuft dann
-  // nie, also hier festhalten.
-  const nurFertig = schritte.length === 1;
+  // Nach einem Schrittwechsel läge der Fokus sonst auf <body>, und ein
+  // Screenreader erführe nicht, dass eine neue Frage dasteht. Nicht beim
+  // ersten Rendern: da gehört der Fokus dem Browser.
+  const ersterSchritt = useRef(true);
   useEffect(() => {
-    if (nurFertig) void einrichtungAbschliessen();
-  }, [nurFertig]);
-
-  function weiter() {
-    const naechster = schritte[index + 1];
-    if (naechster === "fertig") {
-      // Schon beim Erreichen festhalten, nicht erst beim Klick auf einen der
-      // Wege hinaus: wer hier den Tab schliesst, ist trotzdem durch.
-      void einrichtungAbschliessen();
+    if (ersterSchritt.current) {
+      ersterSchritt.current = false;
+      return;
     }
-    setSchritt(naechster);
-  }
+    document.getElementById("einrichtung-titel")?.focus();
+  }, [schritt]);
 
-  function spaeter() {
-    starteBeenden(async () => {
-      await einrichtungAbschliessen();
-      router.push(ziel);
-    });
+  // Gespeichert wird erst beim Verlassen (einrichtungAbschliessen) — siehe
+  // dort, warum nicht schon beim Erreichen von "fertig".
+  function weiter() {
+    setSchritt(schritte[index + 1]);
   }
 
   return (
@@ -111,20 +105,25 @@ export default function Einrichtung({
           ))}
         </ol>
         {schritt !== "fertig" && (
-          <button
-            type="button"
-            onClick={spaeter}
-            disabled={beendet}
-            className="-mr-2 min-h-11 px-2 text-sm font-medium text-foreground transition-opacity duration-fast hover:opacity-70 disabled:opacity-50"
-          >
-            Später
-          </button>
+          <form action={einrichtungAbschliessen}>
+            <AbschlussKnopf
+              ziel={ziel}
+              className="-mr-2 min-h-11 px-2 text-sm font-medium text-foreground transition-opacity duration-fast hover:opacity-70 disabled:opacity-50"
+            >
+              Später
+            </AbschlussKnopf>
+          </form>
         )}
       </div>
 
       {/* Unten ausgerichtet: auf dem Telefon liegt die Frage da, wo der
-          Daumen ist, und der Knopf darunter immer an derselben Stelle. */}
-      <main
+          Daumen ist, und der Knopf darunter immer an derselben Stelle.
+          role="main" statt <main>: die globale Regel für <main> in
+          globals.css hält unten Platz für die BottomNav frei, und die gibt es
+          auf dieser Seite nicht — unter dem Knopf stünden sonst rund 4rem
+          leer. */}
+      <div
+        role="main"
         key={schritt}
         className="einrichtung-schritt mx-auto flex w-full max-w-md flex-1 flex-col justify-end gap-8 px-5 pt-10 pb-6 sm:justify-center"
       >
@@ -152,15 +151,42 @@ export default function Einrichtung({
             ziel={ziel}
           />
         )}
-      </main>
+      </div>
     </div>
+  );
+}
+
+/** Ein Absende-Knopf für den Abschluss. Sperrt sich, solange gespeichert
+ *  wird — sonst löst ein zweiter Tipp auf langsamem Netz eine zweite Aktion
+ *  aus. Das Ziel reist als Wert des Knopfs mit, so kann ein Formular mehrere
+ *  Wege hinaus haben. */
+function AbschlussKnopf({
+  children,
+  className,
+  ziel,
+}: {
+  children: React.ReactNode;
+  className: string;
+  ziel: string;
+}) {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" name="ziel" value={ziel} disabled={pending} className={className}>
+      {children}
+    </button>
   );
 }
 
 function Kopf({ titel, text }: { titel: string; text: string }) {
   return (
     <div className="flex flex-col gap-2">
-      <h1 className="text-3xl font-semibold tracking-tight text-balance">{titel}</h1>
+      <h1
+        id="einrichtung-titel"
+        tabIndex={-1}
+        className="text-3xl font-semibold tracking-tight text-balance focus:outline-none"
+      >
+        {titel}
+      </h1>
       <p className="text-sm text-muted text-pretty">{text}</p>
     </div>
   );
@@ -424,29 +450,34 @@ function FertigSchritt({
         titel="Alles bereit."
         text={
           echo.length > 0
-            ? `${echo.join(" · ")}. Nach deiner ersten Fahrt siehst du hier deine Zeit, dein Tempo und wo du in der Rangliste stehst.`
+            ? `${echo.join(" · ")}. Nach deiner ersten Fahrt siehst du deine Zeit, dein Tempo und wo du in der Rangliste stehst.`
             : "Fahrzeug und Pässe kannst du jederzeit im Profil ergänzen. Nach deiner ersten Fahrt siehst du deine Zeit, dein Tempo und wo du in der Rangliste stehst."
         }
       />
-      <div className="flex flex-col gap-2">
+      {/* Jeder Weg hinaus hält den Abschluss fest und führt dann dorthin —
+          beides in einer Server Action (siehe einrichtungAbschliessen). */}
+      <form action={einrichtungAbschliessen} className="flex flex-col gap-2">
         {eigenesZiel ? (
-          <Link href={ziel} className={buttonVariants({ variant: "accent", size: "lg", className: "w-full" })}>
+          <AbschlussKnopf
+            ziel={ziel}
+            className={buttonVariants({ variant: "accent", size: "lg", className: "w-full" })}
+          >
             Weiter
-          </Link>
+          </AbschlussKnopf>
         ) : (
           <>
-            <Link
-              href="/fahrten/neu"
+            <AbschlussKnopf
+              ziel="/fahrten/neu"
               className={buttonVariants({ variant: "accent", size: "lg", className: "w-full" })}
             >
               Erste Fahrt aufzeichnen
-            </Link>
-            <Link href="/" className={buttonVariants({ variant: "secondary", className: "w-full" })}>
+            </AbschlussKnopf>
+            <AbschlussKnopf ziel="/" className={buttonVariants({ variant: "secondary", className: "w-full" })}>
               Strecken entdecken
-            </Link>
+            </AbschlussKnopf>
           </>
         )}
-      </div>
+      </form>
     </>
   );
 }

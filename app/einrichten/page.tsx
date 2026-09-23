@@ -65,6 +65,14 @@ export default async function EinrichtenPage({
     })),
   );
 
+  // Nichts zu fragen (Fahrzeug schon da, Passkatalog nicht erreichbar): dann
+  // gleich weiter, ohne einen "Alles bereit."-Schirm, der nichts quittiert.
+  // Festgehalten wird dabei nichts — ein Render darf keine Cookies schreiben,
+  // und es gibt ohnehin keine Frage, die ein zweiter Besuch wiederholen würde.
+  if (fahrzeuge.length > 0 && vorschlaege.length === 0) {
+    redirect(ziel);
+  }
+
   return (
     <Einrichtung
       hatFahrzeug={fahrzeuge.length > 0}
