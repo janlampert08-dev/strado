@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
 import SegmentedControl from "@/components/ui/SegmentedControl";
+import Select from "@/components/ui/Select";
 import { PassStatusMarke } from "@/components/PassStatusZeile";
 import { HakenIcon } from "@/components/NavIcons";
 import { anzeigeFuerStatus, type PassZustand } from "@/lib/passStatus";
@@ -69,7 +70,7 @@ export default function PaesseListe({
     { wert: "alle", label: "Alle" },
     { wert: "hochalpin", label: "Hochalpin" },
     { wert: "offen", label: "Offen" },
-    ...(angemeldet ? [{ wert: "fehlen" as const, label: "Fehlt mir" }] : []),
+    ...(angemeldet ? [{ wert: "fehlen" as const, label: "Nicht befahren" }] : []),
     ...(angemeldet ? [{ wert: "gefolgt" as const, label: "Gefolgt" }] : []),
   ];
 
@@ -80,7 +81,7 @@ export default function PaesseListe({
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1 overflow-x-auto reiter-scroller">
           <SegmentedControl
-            label="Auswahl"
+            label="Pässe filtern"
             wert={auswahl}
             onChange={setzeAuswahl}
             segmente={filter.map((f) => ({ wert: f.wert, label: f.label }))}
@@ -89,11 +90,17 @@ export default function PaesseListe({
 
         <label className="flex shrink-0 items-center gap-1.5 text-sm text-muted">
           <span className="sr-only">Kanton</span>
-          <select
+          {/* Das Feld der App statt eines eigenen <select>: Rahmen in
+              border-border-control wie jedes Feld und 16 px Schrift unter md,
+              sonst zoomt iOS beim Antippen in die Seite. rounded-full und
+              w-auto bleiben von vorher, weil es als Filter in der Reihe der
+              Pillen steht und nicht als Formularfeld die Zeile füllt — seit
+              cn tailwind-merge ist, setzen sie sich gegen die Vorgabe durch. */}
+          <Select
             value={kanton}
             onChange={(e) => setzeKanton(e.target.value)}
             aria-label="Nach Kanton filtern"
-            className="rounded-full border border-border bg-background px-3 py-2 text-sm text-foreground"
+            className="w-auto rounded-full text-foreground"
           >
             <option value="">CH</option>
             {kantone.map((k) => (
@@ -101,7 +108,7 @@ export default function PaesseListe({
                 {k}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       </div>
 
@@ -112,14 +119,20 @@ export default function PaesseListe({
       ) : (
         <Card as="ul" className="divide-y divide-border">
           {gezeigt.map(({ eintrag, anzeige }) => (
-            <li key={eintrag.id} id={eintrag.id} className="flex items-center gap-3 px-4 py-3">
+            <li
+              key={eintrag.id}
+              id={eintrag.id}
+              // relative + after:inset-0 am Link: die ganze Zeile ist die
+              // Tippfläche, nicht nur der 21 px hohe Name (Audit 2026-09-23).
+              className={cn("flex items-center gap-3 px-4 py-3", eintrag.strecke && "druckbar relative")}
+            >
               {/* Der Stempel: befahren oder nicht. Er steht vorn, weil die
                   Sammlung die Frage ist, mit der man diese Liste liest. */}
               <span
                 className={cn(
                   "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border",
                   eintrag.gefahren
-                    ? "border-accent bg-accent-subtle text-accent"
+                    ? "border-accent bg-accent-subtle text-accent-ink"
                     : "border-dashed border-border text-muted",
                 )}
               >
@@ -134,7 +147,10 @@ export default function PaesseListe({
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">
                   {eintrag.strecke ? (
-                    <Link href={`/strecken/${eintrag.strecke.id}`} className="hover:text-accent">
+                    <Link
+                      href={`/strecken/${eintrag.strecke.id}`}
+                      className="hover:text-accent-ink after:absolute after:inset-0 after:content-['']"
+                    >
                       {eintrag.name}
                     </Link>
                   ) : (

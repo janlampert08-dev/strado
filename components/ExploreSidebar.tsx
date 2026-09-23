@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { Crosshair, Route, SearchX } from "lucide-react";
+import { Crosshair, Route, SearchX } from "@/components/NavIcons";
 import { routeShapePath } from "@/lib/routeShape";
 import { type Empfehlung } from "@/lib/empfehlung";
 import { formatKmGerundet, mitAnzahl } from "@/lib/format";
@@ -29,6 +29,8 @@ function kuerzen(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
 }
 
+import type { ExploreArt } from "@/components/ExploreView";
+
 export default function ExploreSidebar({
   routes,
   bewertungen,
@@ -38,6 +40,8 @@ export default function ExploreSidebar({
   anzahlStrecken,
   searchQuery,
   onSearchChange,
+  artFilter,
+  onArtFilterChange,
   signatures,
   empfehlung,
   userLocation,
@@ -57,6 +61,8 @@ export default function ExploreSidebar({
   anzahlStrecken: number;
   searchQuery: string;
   onSearchChange: (value: string) => void;
+  artFilter: ExploreArt;
+  onArtFilterChange: (art: ExploreArt) => void;
   signatures: Map<string, RouteSignature>;
   /** Genau eine Empfehlung (oder keine bei Suche/Fehler) — siehe lib/empfehlung.ts. */
   empfehlung: Empfehlung | null;
@@ -118,9 +124,21 @@ export default function ExploreSidebar({
               und die gehen im Peek-Fenster direkt an die Streckenliste
               (Rechnung in ExploreView.tsx bei SHEET_PEEK_PX). */}
           <p className="text-sm text-muted">
-            Kurven, Pässe, Aussicht — handverlesen. Aufzeichnen geht ohne Konto.
+            Kurze Runden wie Pässe — handverlesen. Aufzeichnen geht ohne Konto.
           </p>
         </div>
+      )}
+      {/* Der Gast-Loop ist der beste Funnel der App (aufzeichnen ohne Konto,
+          Konto erst beim Speichern) und stand bisher in einem Nebensatz. Für
+          Ausgeloggte eine volle Handlungsfläche direkt unter der Erklärung —
+          eine Zeile hoch, keine Listenhöhe verschenkt. */}
+      {!loggedIn && (
+        <Link
+          href="/fahrten/neu"
+          className={buttonVariants({ variant: "accent", size: "md", className: "w-full" })}
+        >
+          Probefahrt starten — ohne Konto
+        </Link>
       )}
 
       {/* Suchfeld und Standort in EINER Zeile. Vorher standen sie
@@ -140,6 +158,11 @@ export default function ExploreSidebar({
       <div className="flex items-center gap-2">
         <input
           type="search"
+          // Suchtaste statt Eingabetaste (Android), keine Autokorrektur:
+          // sie machte aus "Klausen" ein "Klausel".
+          enterKeyHint="search"
+          autoCorrect="off"
+          spellCheck={false}
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Strecke oder Ort"
@@ -174,6 +197,42 @@ export default function ExploreSidebar({
         >
           <Crosshair className={`h-5 w-5 ${locating ? "animate-pulse" : ""}`} aria-hidden="true" />
         </IconButton>
+      </div>
+
+      {/* Zwei Funnel, eine Liste: kurz & nah (Agglo-Runden ab Haustür,
+          ≤70 km) und Pässe & Berge (Höhe/Kehren/Name-Heuristik in
+          ExploreView.tsx). 44 px Chips, eine Zeile, horizontal scrollbar —
+          kostet keine Listenhöhe im Peek, weil sie die Trennlinie ersetzt,
+          nicht ergänzt. */}
+      <div
+        role="group"
+        aria-label="Strecken filtern"
+        className="flex gap-2 overflow-x-auto pb-1"
+      >
+        {(
+          [
+            { wert: "alle", label: "Alle" },
+            { wert: "kurz", label: "Kurz & nah" },
+            { wert: "berg", label: "Pässe & Berge" },
+          ] as const
+        ).map((chip) => {
+          const aktiv = artFilter === chip.wert;
+          return (
+            <button
+              key={chip.wert}
+              type="button"
+              aria-pressed={aktiv}
+              onClick={() => onArtFilterChange(chip.wert)}
+              className={`inline-flex min-h-11 shrink-0 items-center rounded-full border px-4 text-sm font-medium whitespace-nowrap transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
+                aktiv
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border text-muted hover:text-foreground"
+              }`}
+            >
+              {chip.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Antwort auf eine gerade ausgelöste Nutzeraktion — role="alert",
@@ -221,11 +280,38 @@ export default function ExploreSidebar({
               // Die Zahl statt eines allgemeinen Tipps: wer "Klausen"
               // getippt hat, weiss schon, dass man nach Pässen suchen kann.
               // Was er nicht weiss, ist, wie klein der Bestand noch ist.
-              description={`Gesucht in Namen, Regionen, Start- und Zielorten von ${mitAnzahl(anzahlStrecken, "Strecke", "Strecken")}. Kennst du eine, die fehlt, schlag sie vor.`}
+              // Der Vorschlag trägt den Suchbegriff mit (?wunsch=): nach dem
+              // Login steht der Name schon im Formular — aus der Sackgasse
+              // wird eine Einladung statt einer Wand.
+              description={`Gesucht in Namen, Regionen, Start- und Zielorten von ${mitAnzahl(anzahlStrecken, "Strecke", "Strecken")}. Kennst du eine, die fehlt, schlag sie vor — dein Suchbegriff steht schon im Formular.`}
               action={
                 <div className="flex flex-wrap gap-3">
                   <Button variant="secondary" size="md" onClick={() => onSearchChange("")}>
                     Suche zurücksetzen
+                  </Button>
+                  <Link
+                    href={`/strecken/neu?wunsch=${encodeURIComponent(searchQuery.trim().slice(0, 80))}`}
+                    className={buttonVariants({ variant: "ghost", size: "md" })}
+                  >
+                    Strecke vorschlagen
+                  </Link>
+                </div>
+              }
+            />
+          ) : artFilter !== "alle" ? (
+            <EmptyState
+              kompakt
+              icon={Route}
+              title={
+                artFilter === "kurz"
+                  ? "Noch keine kurze Runde hier."
+                  : "Noch kein Pass hier."
+              }
+              description="Kennst du eine Strasse, die man gefahren sein muss? Schlag sie vor — Agglo wie Pass zählen."
+              action={
+                <div className="flex flex-wrap gap-3">
+                  <Button variant="secondary" size="md" onClick={() => onArtFilterChange("alle")}>
+                    Alle anzeigen
                   </Button>
                   <Link href="/strecken/neu" className={buttonVariants({ variant: "ghost", size: "md" })}>
                     Strecke vorschlagen
@@ -251,8 +337,15 @@ export default function ExploreSidebar({
 
       <ul className="flex flex-col gap-1">
         {routes.length === 0 && loadError && (
-          <li role="alert" className="text-sm text-danger">
-            Strecken konnten nicht geladen werden. Bitte versuche es später erneut.
+          <li>
+            <div role="alert" className="flex flex-col gap-3 py-2">
+              <p className="text-sm text-danger">
+                Strecken konnten nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.
+              </p>
+              <Button variant="secondary" size="md" onClick={() => window.location.reload()}>
+                Erneut versuchen
+              </Button>
+            </div>
           </li>
         )}
         {routes.map((route) => {
@@ -321,7 +414,7 @@ export default function ExploreSidebar({
                       {empfehlungsText}
                     </span>
                   )}
-                  <span className="truncate text-base font-medium transition-colors duration-fast group-hover:text-accent">
+                  <span className="truncate text-base font-medium transition-colors duration-fast group-hover:text-accent-ink">
                     {route.name}
                   </span>
                   <div className="flex items-center gap-2">
@@ -340,7 +433,12 @@ export default function ExploreSidebar({
                         {formatKmGerundet(route.laenge_km)} km
                       </span>
                     )}
-                    {signature && (
+                    {/* Eine Sperrung verdrängt das Signatur-Label: beide
+                        zusammen mit Länge und Sternen passten auf 360 px nicht,
+                        und das Label schrumpfte auf 0 px, zurück blieb ein
+                        verwaistes Icon (Gotthard, Re-Audit 2026-09-23). Ob
+                        der Pass zu ist, zählt dann mehr als sein Charakter. */}
+                    {signature && !zeigeInListe(passZustaende[route.id] ?? null) && (
                       <span className="flex min-w-0 items-center gap-1.5">
                         {/* Icon und Label im Signaturton. Bei text-xs ist die
                             Schwelle 4,5:1 — genau daran war die alte Palette

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { Check } from "@/components/NavIcons";
 import Card from "@/components/ui/Card";
 import { Signet } from "@/components/Wortmarke";
 import PremiumBadge from "@/components/PremiumBadge";
@@ -68,7 +68,7 @@ export default function PremiumWillkommen({
             und dass die Zahlung durch ist, sagen "Premium aktiv", die
             Überschrift und die Liste darunter bereits dreimal. Das Häkchen
             quittierte also etwas, was nirgends offen war. */}
-        <span className="abschluss-abzeichen flex h-20 w-20 items-center justify-center rounded-full bg-accent text-background">
+        <span className="abschluss-abzeichen flex h-20 w-20 items-center justify-center rounded-full bg-accent text-on-accent">
           <Signet className="h-7 w-auto" />
         </span>
       </div>
@@ -92,7 +92,7 @@ export default function PremiumWillkommen({
       <Card surface as="ul" className="flex w-full flex-col gap-2.5 px-4 py-4 text-left">
         {PREMIUM_VORTEILE.map((vorteil) => (
           <li key={vorteil} className="flex items-start gap-2.5 text-sm text-foreground">
-            <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+            <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent-ink" aria-hidden="true" />
             <span>{vorteil}</span>
           </li>
         ))}

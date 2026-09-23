@@ -4,6 +4,20 @@ const SEVERITY: Record<CongestionLevel, number> = { low: 0, moderate: 1, heavy: 
 
 // Einzige Quelle für Label/Farbe je Stau-Level — vorher in TrafficIndicator,
 // RouteMap und RouteDetailMap dreifach dupliziert.
+//
+// WARUM HEX UND KEINE TOKENS: Die Farben zeichnet zuerst Mapbox — als
+// Linienabschnitte der Strecke (RouteDetailMap → trafficSegments →
+// RouteMap), und ein Mapbox-Layer nimmt nur fertige Farben, kein
+// var(--…). Im DOM stehen sie nur als Legende dieser Linien (Punkt am
+// Verkehr-Schalter, Legendenkarte), und eine Legende muss exakt die Farbe
+// der Linie tragen. Die vorhandenen Tokens taugen dafür nicht:
+// --color-success/-warning/-danger haben andere Werte, wechseln mit dem
+// Thema und kennen kein "stark" zwischen gelb und rot. Die Verkehrsfarben
+// sind eine Konvention der Kartendarstellung (grün → rot), keine
+// App-Semantik. Wer sie zu Tokens macht, braucht vier neue in
+// app/globals.css und liest sie für die Karte über tokenFarbe()
+// (lib/theme.ts) — beides zusammen, sonst läuft die Legende von der Linie
+// weg.
 export const CONGESTION_META: Record<CongestionLevel, { label: string; color: string }> = {
   low: { label: "Frei", color: "#22C55E" },
   moderate: { label: "Mässig", color: "#F59E0B" },

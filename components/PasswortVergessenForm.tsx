@@ -48,7 +48,7 @@ export default function PasswortVergessenForm({
           unterwegs. Schau auch im Spam-Ordner nach.
         </p>
         <p className="text-sm text-muted">
-          <Link href="/anmelden" className="font-medium text-accent hover:underline">
+          <Link href="/anmelden" className="font-medium text-accent-ink hover:underline">
             Zurück zur Anmeldung
           </Link>
         </p>
@@ -72,7 +72,7 @@ export default function PasswortVergessenForm({
       <form ref={formRef} action={formAction} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           E-Mail
-          <Input type="email" name="email" required autoComplete="email" />
+          <Input type="email" name="email" required autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} />
         </label>
         {state.error && (
           <p role="alert" className="text-sm text-danger">
@@ -84,7 +84,7 @@ export default function PasswortVergessenForm({
         </Button>
       </form>
       <p className="text-sm text-muted">
-        <Link href="/anmelden" className="font-medium text-accent hover:underline">
+        <Link href="/anmelden" className="font-medium text-accent-ink hover:underline">
           Zurück zur Anmeldung
         </Link>
       </p>

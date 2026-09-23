@@ -170,6 +170,9 @@ export async function updateVisibilitySettings(
       zeigt_hoehenmeter: formData.get("zeigt_hoehenmeter") === "true",
       zeigt_distanz: formData.get("zeigt_distanz") === "true",
       zeigt_follower_liste: formData.get("zeigt_follower_liste") === "true",
+      // 0125: Durchschnittstempo auf geteilten Fahrten. Der Besitzer sieht
+      // es immer; das Flag entscheidet nur, ob Strado es anderen ausweist.
+      zeigt_tempo: formData.get("zeigt_tempo") === "true",
     })
     .eq("id", user.id);
 

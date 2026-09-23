@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 };
 
 // Einstieg für eine freie Fahrt (ohne Strecke). Das Gegenstück zur
-// Streckenfahrt, die über "Strecke starten" auf der Streckenseite beginnt
+// Streckenfahrt, die über "Strecke fahren" auf der Streckenseite beginnt
 // (components/GefahrenSection.tsx) — beide landen im selben Recorder, nur
 // mit bzw. ohne Streckenbezug.
 //

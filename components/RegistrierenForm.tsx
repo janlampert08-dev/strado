@@ -33,7 +33,7 @@ export default function RegistrierenForm({
   return (
     <>
       {hatPromo && (
-        <p className="rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-xs text-accent">
+        <p className="rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-xs text-accent-ink">
           Dein Link beinhaltet 7 Tage Premium kostenlos — sie werden nach
           der Registrierung aktiv und enden automatisch.
         </p>
@@ -43,9 +43,6 @@ export default function RegistrierenForm({
             validiert den Wert erneut, bevor daraus ein Redirect bzw. ein
             Bestätigungslink wird. */}
         {nextHref && <input type="hidden" name="next" value={nextHref} />}
-        {hatPromo && (
-          <input type="hidden" name="promo_code" value={promoCode} />
-        )}
         {hatPromo && (
           <input type="hidden" name="promo_code" value={promoCode} />
         )}
@@ -62,7 +59,7 @@ export default function RegistrierenForm({
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           E-Mail
-          <Input type="email" name="email" required autoComplete="email" />
+          <Input type="email" name="email" required autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} />
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           Passwort
@@ -89,7 +86,7 @@ export default function RegistrierenForm({
           href={LEGAL_URLS.agb}
           target="_blank"
           rel="noopener noreferrer"
-          className="underline hover:text-accent"
+          className="underline hover:text-accent-ink"
         >
           AGB
         </a>{" "}
@@ -98,7 +95,7 @@ export default function RegistrierenForm({
           href={LEGAL_URLS.datenschutz}
           target="_blank"
           rel="noopener noreferrer"
-          className="underline hover:text-accent"
+          className="underline hover:text-accent-ink"
         >
           Datenschutzerklärung
         </a>
@@ -108,7 +105,7 @@ export default function RegistrierenForm({
         Schon ein Konto?{" "}
         <Link
           href={nextHref ? `/anmelden?next=${encodeURIComponent(nextHref)}` : "/anmelden"}
-          className="font-medium text-accent hover:underline"
+          className="font-medium text-accent-ink hover:underline"
         >
           Anmelden
         </Link>

@@ -102,7 +102,7 @@ export default function RouteLeaderboardPreview({
           {/* Der Startknopf steht weiter oben auf derselben Seite (#fahren in
               app/strecken/[id]/page.tsx); auf dem Telefon ist er bis hierher
               meist aus dem Bild gescrollt. */}
-          <a href="#fahren" className="text-accent underline-offset-4 hover:underline">
+          <a href="#fahren" className="text-accent-ink underline-offset-4 hover:underline">
             Zum Start
           </a>
         </p>
@@ -127,7 +127,7 @@ export default function RouteLeaderboardPreview({
               <Avatar url={entry.avatarUrl} name={entry.name} size={24} />
               <Link
                 href={`/fahrer/${entry.userId}`}
-                className="relative flex min-w-0 flex-1 items-center transition-colors duration-fast hover:text-accent after:absolute after:-inset-y-3 after:inset-x-0 after:content-['']"
+                className="relative flex min-w-0 flex-1 items-center transition-colors duration-fast hover:text-accent-ink after:absolute after:-inset-y-3 after:inset-x-0 after:content-['']"
               >
                 <span className="truncate">{entry.name}</span>
               </Link>

@@ -110,7 +110,7 @@ export default function WartungserinnerungenForm({
 
       <div className="flex justify-end">
         <Button type="submit" variant="secondary" size="sm" disabled={pending}>
-          {pending ? "Speichern…" : "Erinnerungen speichern"}
+          {pending ? "Wird gespeichert…" : "Erinnerungen speichern"}
         </Button>
       </div>
     </form>

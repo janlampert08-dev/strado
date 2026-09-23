@@ -41,11 +41,14 @@ export default function AbschnittTabs({
   return (
     <div className="flex flex-col gap-3">
       {/* Dieselbe Hülle wie der Feed-Reiter (FeedReiter.tsx): eine Leiste,
-          ein Stil — egal ob die Reiter Adressen oder Ansichten schalten. */}
+          ein Stil — egal ob die Reiter Adressen oder Ansichten schalten.
+          overflow-y-hidden: die Hülle ist mit overflow-x-auto ein
+          Scroll-Container, der sonst auch die senkrechte Achse beschneidet
+          (Rahmen, Fokusring). */}
       <div
         role="tablist"
         aria-label="Abschnitte dieser Seite"
-        className={segmentHuelleClassName("overflow-x-auto reiter-scroller")}
+        className={segmentHuelleClassName("overflow-y-hidden reiter-scroller")}
       >
         {tabs.map((tab, i) => {
             const istAktiv = aktiv === i;
@@ -63,7 +66,7 @@ export default function AbschnittTabs({
                   <span
                     aria-hidden="true"
                     className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums ${
-                      istAktiv ? "bg-background text-foreground" : "bg-accent text-background"
+                      istAktiv ? "bg-background text-foreground" : "bg-accent text-on-accent"
                     }`}
                   >
                     {tab.anzahl > 99 ? "99+" : tab.anzahl}

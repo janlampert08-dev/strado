@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore, type ComponentType } from "react";
-import { Monitor, Moon, Sun } from "lucide-react";
+import { Monitor, Moon, Sun } from "@/components/NavIcons";
 import { THEME_CHANGE_EVENT } from "@/lib/theme";
 import { segmentClassName, segmentHuelleClassName } from "@/components/ui/SegmentedControl";
 

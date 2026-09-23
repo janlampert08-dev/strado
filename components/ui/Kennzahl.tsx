@@ -29,41 +29,30 @@ export default function Kennzahl({
   fuss?: React.ReactNode;
   className?: string;
 }) {
-  // Beschriftung, Wert und Zusatz stehen oben zusammen; nur der `fuss`
-  // wird nach unten geschoben (mt-auto).
+  // Subgrid statt Flex: jede Kachel belegt vier Zeilen des umgebenden
+  // Rasters (Beschriftung, Wert, Zusatz, Fuss), und alle Kacheln einer Reihe
+  // teilen sich diese Zeilen. Damit stehen die Werte auf einer Linie, auch
+  // wenn eine Beschriftung umbricht ("Höchster Punkt") oder eine Kachel als
+  // einzige ein Abzeichen trägt.
   //
-  // Vorher stand hier justify-between, und das ging gut, solange alle
-  // Kacheln einer Zeile gleich gebaut waren: dann sind sie gleich hoch,
-  // es bleibt kein freier Platz, und die Verteilung fällt nicht auf.
-  // Sobald eine Kachel eine Zeile mehr trägt, streckt das Raster die
-  // übrigen mit — und justify-between schob deren Wert an den unteren
-  // Rand. Auf /fahrten/[id] (eine Zeit-Kachel mit Zusatz und Abzeichen,
-  // drei ohne) standen die vier Zahlen damit auf zwei Höhen; auf
-  // /creator, wo die erste Trichterstufe keinen Prozentwert hat und die
-  // drei Zahlen genau zum Vergleich nebeneinander stehen, wäre es der
-  // Unterschied zwischen einer Reihe und drei Kacheln gewesen.
-  //
-  // Für gleich gebaute Zeilen (Strecken- und Profilseite) ändert sich
-  // nichts: ohne freien Platz verteilt justify-between nichts.
+  // Vorher zwei mt-auto (Wert und Fuss) in einer Flex-Spalte: der freie
+  // Platz ging an beide, und auf /fahrten/[id] stand "22.2 km" unten in
+  // seiner Kachel, "15:27 min" daneben oben (Re-Audit 2026-09-23). Die
+  // leeren Zeilen werden immer gerendert — ein Subgrid braucht in jeder
+  // Kachel gleich viele Kinder, sonst verrutschen die Zeilen.
   return (
     <div
       className={cn(
-        "flex flex-col gap-1 rounded-lg border border-border bg-surface p-4",
+        "row-span-4 grid grid-rows-subgrid gap-y-1 rounded-lg border border-border bg-surface p-4",
         className,
       )}
     >
-      <dt className="flex items-center gap-1.5 text-sm text-muted">{beschriftung}</dt>
+      <dt className="flex items-start gap-1.5 text-sm text-muted">{beschriftung}</dt>
       {/* whitespace-nowrap: "33.1 km" und "~22 min" brachen in der
           Vierer-Reihe der Streckenseite zwischen Zahl und Einheit um. */}
-      {/* mt-auto: in einer Reihe von Kacheln bricht eine längere
-          Beschriftung ("Höchster Punkt") auf zwei Zeilen um, und die Werte
-          standen danach auf verschiedenen Grundlinien. Jetzt sitzen sie alle
-          an der Unterkante ihrer Kachel. */}
-      <dd className="mt-auto text-title font-semibold whitespace-nowrap tabular-nums">{wert}</dd>
-      {zusatz !== undefined && zusatz !== null && (
-        <dd className="text-xs tabular-nums text-muted">{zusatz}</dd>
-      )}
-      {fuss !== undefined && fuss !== null && <dd className="mt-auto pt-1">{fuss}</dd>}
+      <dd className="self-end text-title font-semibold whitespace-nowrap tabular-nums">{wert}</dd>
+      <dd className="row-start-3 text-xs tabular-nums text-muted empty:hidden">{zusatz ?? null}</dd>
+      <dd className="row-start-4 self-end empty:hidden">{fuss ?? null}</dd>
     </div>
   );
 }
@@ -77,11 +66,10 @@ export default function Kennzahl({
 // im Standardraster bräche er auf dem Telefon in 2 + 1 um, und zwei plus
 // eins liest sich nicht als Trichter, sondern als Kachel, die übrig blieb.
 //
-// Nicht über className, weil lib/utils/cn.ts kein tailwind-merge ist: ein
-// angehängtes grid-cols-3 höbe das eingebaute grid-cols-2 nicht auf,
-// sondern überliesse die Entscheidung der Reihenfolge im Stylesheet. Wer
-// eine Vorgabe ändern muss, bekommt einen Parameter — dieselbe Regel, die
-// dort ausgeschrieben steht.
+// Nicht über className: entstanden, als lib/utils/cn.ts noch kein
+// tailwind-merge war und ein angehängtes grid-cols-3 das eingebaute
+// grid-cols-2 nicht aufhob. Seit 2026-09-23 ginge es; der Parameter bleibt,
+// weil er die eine erlaubte Abweichung benennt, statt jede zuzulassen.
 const raster = {
   /** Der Normalfall: zwei Kacheln je Zeile auf dem Telefon, vier ab sm. */
   2: "grid-cols-2 sm:grid-cols-4",
@@ -98,7 +86,7 @@ export function Kennzahlen({
   children: React.ReactNode;
   className?: string;
 }) {
-  return <dl className={cn("grid gap-3", raster[spalten], className)}>{children}</dl>;
+  return <dl className={cn("grid gap-x-3 gap-y-3", raster[spalten], className)}>{children}</dl>;
 }
 
 // Der Rest, der nicht als Kachel taugt: eine Zeile aus Wertpaaren, mit

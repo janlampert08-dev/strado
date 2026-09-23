@@ -2,7 +2,7 @@
 
 import IconButton from "@/components/ui/IconButton";
 import { useState } from "react";
-import { Share2 } from "lucide-react";
+import { Share2 } from "@/components/NavIcons";
 import { createClient } from "@/lib/supabase/client";
 import { renderShareImage } from "@/lib/shareImage";
 import type { GeoLineString } from "@/types/database";
