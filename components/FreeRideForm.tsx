@@ -31,10 +31,30 @@ import FazitKopf from "@/components/FazitKopf";
 import { merkeHinweis } from "@/components/Hinweis";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
-const RouteMap = dynamic(() => import("@/components/RouteMap"), {
-  ssr: false,
-  loading: () => <Skeleton className="h-full w-full" />,
-});
+//
+// Das catch ist für den Start ohne Empfang: der Service Worker hält diese
+// Seite vorgeladen bereit (public/sw.js), die nachgeladene Karte aber bewusst
+// nicht (1,8 MB, offline ohne Kacheln ohnehin leer). Ohne catch landete der
+// gescheiterte Chunk-Abruf in der Fehlergrenze und risse die ganze
+// Aufzeichnung mit — so fehlt nur die Karte.
+const RouteMap = dynamic(
+  () =>
+    import("@/components/RouteMap").catch(() => ({
+      default: KarteOhneVerbindung as (typeof import("@/components/RouteMap"))["default"],
+    })),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-full w-full" />,
+  },
+);
+
+function KarteOhneVerbindung() {
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-surface p-6 text-center text-sm text-muted">
+      Ohne Verbindung keine Karte. Die Aufzeichnung läuft trotzdem.
+    </div>
+  );
+}
 
 const initialState: FreeRideFormState = { error: null };
 const MAX_TITEL_LENGTH = 80;
@@ -535,7 +555,11 @@ export default function FreeRideForm({
             Zustand, kein Etikett. Der rote Punkt bleibt das Signal, dass
             wirklich aufgezeichnet wird. */}
         <div className="flex items-center justify-between gap-3">
-          <p className="flex items-center gap-2 text-sm font-medium">
+          {/* role="status": Start, Pause und das automatische Loslaufen der
+                Zeit am Startpunkt werden angesagt — wer fährt, schaut nicht
+                hin. Nur diese Zeile, nicht die Uhr daneben: die würde jede
+                Sekunde vorgelesen. */}
+            <p role="status" className="flex items-center gap-2 text-sm font-medium">
             <span
               aria-hidden="true"
               className={`h-2.5 w-2.5 shrink-0 rounded-full ${recorder.hasStarted && !recorder.pausiert ? "bg-danger" : "bg-muted"}`}
@@ -576,6 +600,12 @@ export default function FreeRideForm({
         {/* Reiner Komfort-Hinweis, keine Wertung — die tatsächlich erkannten
             Streckenabschnitte entscheidet ausschliesslich der Server beim
             Speichern (siehe useLiveLapHint.ts). */}
+        {/* Angesagt wird nur das Erkannt, nicht der laufende Prozentwert —
+            der änderte sich mit jedem Fix. Die Region steht immer im DOM,
+            damit ein Vorleser den Wechsel auf "erkannt" überhaupt bemerkt. */}
+        <p role="status" className="sr-only">
+          {liveLapHint?.completed ? `Strecke ${liveLapHint.routeName} erkannt.` : ""}
+        </p>
         {liveLapHint && (
           <p className="flex items-center gap-1.5 text-sm text-accent">
             <RouteIcon className="h-4 w-4 shrink-0" aria-hidden="true" />

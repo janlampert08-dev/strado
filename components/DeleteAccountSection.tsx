@@ -24,7 +24,7 @@ export default function DeleteAccountSection() {
     // Profilseite (app/profil/page.tsx, SectionSummary) — gleiche Klassen,
     // kein eigener State.
     <details className="group mt-2 border-t border-border pt-3">
-      <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+      <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background">
         Konto löschen
         <ChevronDown
           className="h-4 w-4 text-muted transition-transform duration-fast group-open:rotate-180"

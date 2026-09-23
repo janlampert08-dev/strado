@@ -326,7 +326,7 @@ export default function NeueStreckeForm() {
                       className={`rounded-full border px-3 py-1.5 text-sm transition-colors duration-fast ${
                         tags.includes(k.value)
                           ? "border-foreground bg-foreground text-background"
-                          : "border-border text-muted hover:border-border-strong"
+                          : "border-border text-muted hover:border-muted"
                       }`}
                     >
                       {k.label}

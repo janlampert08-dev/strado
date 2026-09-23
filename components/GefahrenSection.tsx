@@ -15,6 +15,7 @@ export default function GefahrenSection({
   personalBestSeconds,
   guestContinuationToken = null,
   maxPhotos,
+  liveSplit = null,
 }: {
   route: RouteGeoJSON;
   // Umliegende freigegebene Strecken, die auf der Aufzeichnungskarte zur
@@ -32,6 +33,8 @@ export default function GefahrenSection({
   // Aus ?fortsetzen=<token>: der Besucher kommt gerade aus dem Anmelde-Gate
   // einer als Gast aufgezeichneten Fahrt zurück.
   guestContinuationToken?: string | null;
+  /** Live-Abstand zur Bestzeit (lib/liveSplit.ts); null = ausgeschaltet. */
+  liveSplit?: { streckenBestzeitS: number | null } | null;
 }) {
   // Standardmässig eingeklappt, damit die Seite beim blossen Ansehen einer
   // Strecke nicht durch ein immer offenes Formular überladen wirkt. Bleibt
@@ -126,6 +129,7 @@ export default function GefahrenSection({
       personalBestSeconds={personalBestSeconds}
       guestContinuationToken={guestContinuationToken}
       maxPhotos={maxPhotos}
+      liveSplit={liveSplit}
       onExit={() => setOpen(false)}
     />
   );

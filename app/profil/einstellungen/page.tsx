@@ -122,7 +122,7 @@ export default async function EinstellungenPage() {
                 <li key={a.id}>
                   <a
                     href={`#${a.id}`}
-                    className="inline-flex min-h-9 items-center rounded-full border border-border-control px-3 text-sm whitespace-nowrap text-muted transition-colors duration-fast hover:border-border-strong hover:text-foreground"
+                    className="inline-flex min-h-9 items-center rounded-full border border-border-control px-3 text-sm whitespace-nowrap text-muted transition-colors duration-fast hover:border-muted hover:text-foreground"
                   >
                     {a.label}
                   </a>

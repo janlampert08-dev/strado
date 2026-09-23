@@ -27,7 +27,6 @@ import {
 } from "@/lib/motorklassen";
 import type { Klassenfilter } from "@/lib/motorklassen";
 import type { Motorklasse, Vehicle } from "@/types/database";
-import { MEDAL_COLORS } from "@/lib/constants";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import { buttonVariants } from "@/components/ui/Button";
@@ -126,18 +125,21 @@ function LeaderboardSection({
             return (
               <li
                 key={entry.userId}
-                className={`flex items-center gap-2 px-4 py-3 text-sm ${
+                className={`druckbar flex items-center gap-2 px-4 py-3 text-sm ${
                   isOwn ? "bg-accent/5" : ""
                 }`}
               >
-                {i < 3 ? (
-                  <span className="flex w-4 shrink-0 justify-center">
-                    <RankingIcon className="h-4 w-4" style={{ color: MEDAL_COLORS[i] }} aria-hidden="true" />
-                    <span className="sr-only">Platz {i + 1}</span>
-                  </span>
-                ) : (
-                  <span className="w-4 shrink-0 text-center text-xs text-muted">{i + 1}.</span>
-                )}
+                {/* Der Rang als Zahl in jeder Zeile. Vorher trugen die ersten drei
+                    je einen gleich geformten Pokal, unterschieden nur durch Gold, Silber
+                    und Bronze — Silber hatte auf hellem Grund 2.3:1, und wer die Farben
+                    nicht trennt, sah dreimal dasselbe (WCAG 1.4.1). Die ersten drei
+                    sind betont, nicht eingefärbt. */}
+                <span
+                  className={`w-5 shrink-0 text-center text-xs tabular-nums ${i < 3 ? "font-semibold text-foreground" : "text-muted"}`}
+                >
+                  <span className="sr-only">Platz </span>
+                  {i + 1}
+                </span>
                 <Avatar url={entry.avatarUrl} name={entry.name} size={24} />
                 <Link
                   href={`/fahrer/${entry.userId}`}
