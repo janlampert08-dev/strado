@@ -19,6 +19,17 @@ export interface InstallationsAngebot extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
+/**
+ * Fängt das Angebot ab, bevor React da ist. Chrome feuert
+ * beforeinstallprompt oft noch während des ersten Seitenaufbaus; ein
+ * Listener aus einem useEffect kommt auf einem langsamen Telefon zu spät,
+ * und bei späteren Client-Navigationen feuert es nicht erneut. Das Skript
+ * steht deshalb inline im <head> (app/layout.tsx, wie das Theme-Skript) und
+ * legt das Ereignis auf window ab; lauscheAufInstallationsAngebot() holt es
+ * dort ab.
+ */
+export const INSTALLATION_INIT_SCRIPT = `window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__stradoInstallation=e;});`;
+
 let angebot: InstallationsAngebot | null = null;
 const zuhoerer = new Set<() => void>();
 
@@ -39,6 +50,11 @@ export function lauscheAufInstallationsAngebot(): () => void {
     angebot = null;
     merkeInstallationErledigt();
   };
+  const frueh = (window as Window & { __stradoInstallation?: InstallationsAngebot }).__stradoInstallation;
+  if (frueh && !angebot) {
+    angebot = frueh;
+    melden();
+  }
   window.addEventListener("beforeinstallprompt", beiAngebot);
   window.addEventListener("appinstalled", beiInstallation);
   return () => {
@@ -57,11 +73,20 @@ export async function installieren(): Promise<boolean> {
   if (!aktuell) return false;
   // Ein Angebot lässt sich nur einmal zeigen — danach ist es verbraucht.
   angebot = null;
-  await aktuell.prompt();
-  const { outcome } = await aktuell.userChoice;
-  if (outcome === "accepted") merkeInstallationErledigt();
-  melden();
-  return outcome === "accepted";
+  (window as Window & { __stradoInstallation?: InstallationsAngebot }).__stradoInstallation = undefined;
+  try {
+    await aktuell.prompt();
+    const { outcome } = await aktuell.userChoice;
+    return outcome === "accepted";
+  } catch {
+    // prompt() wirft, wenn der Browser das Angebot inzwischen verworfen hat.
+    // Kein Grund für eine Fehlerseite — der Hinweis verschwindet einfach.
+    return false;
+  } finally {
+    // Zugestimmt oder im Dialog des Browsers abgelehnt: beides ist eine
+    // Antwort, nach der nicht bei jeder Fahrt erneut gefragt wird.
+    merkeInstallationErledigt();
+  }
 }
 
 // "Nicht jetzt" oder installiert: in beiden Fällen nicht wieder fragen, auf

@@ -55,14 +55,16 @@ export default function NachDerFahrt({ premiumSatz }: { premiumSatz: string | nu
         <p className="text-sm text-muted text-pretty">
           {weg === "ios-anleitung" ? (
             <>
-              Dann ist die nächste Fahrt einen Tipp entfernt, ohne Browserleiste. Tippe in Safari
-              auf{" "}
-              <TeilenIcon
-                className="inline h-4 w-4 -translate-y-px align-middle text-foreground"
-                role="img"
-                aria-label="Teilen"
-              />{" "}
-              und dann auf <span className="text-foreground">«Zum Home-Bildschirm»</span>.
+              Dann ist die nächste Fahrt einen Tipp entfernt, ohne Browserleiste. Tippe auf{" "}
+              <span className="whitespace-nowrap text-foreground">
+                Teilen{" "}
+                <TeilenIcon
+                  className="inline h-4 w-4 -translate-y-px align-middle"
+                  aria-hidden="true"
+                />
+              </span>{" "}
+              — auf neueren iPhones im Menü <span className="text-foreground">«•••»</span> — und
+              dann auf <span className="text-foreground">«Zum Home-Bildschirm»</span>.
             </>
           ) : (
             "Dann ist die nächste Fahrt einen Tipp entfernt, ohne Browserleiste."
