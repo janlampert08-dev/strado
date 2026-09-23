@@ -32,7 +32,7 @@
 //
 // Schriften kommen von der Seite (next/font, app/layout.tsx), die Wortmarke
 // ist eine Kontur (lib/marke.ts). IBM Plex Mono wird hier nicht mehr
-// gebraucht; Zahlen stehen in Inter.
+// gebraucht; Zahlen stehen in Geist.
 
 import { formatDuration } from "@/lib/format";
 import { WORTMARKE } from "@/lib/marke";
@@ -86,7 +86,7 @@ const MONO_FALLBACK = "ui-monospace, monospace";
 
 async function loadFont(): Promise<string> {
   const style = getComputedStyle(document.documentElement);
-  const sans = style.getPropertyValue("--font-inter").trim() || SANS_FALLBACK;
+  const sans = style.getPropertyValue("--font-geist").trim() || SANS_FALLBACK;
   try {
     await Promise.all([
       document.fonts.load(`400 28px ${sans}`),
@@ -178,7 +178,7 @@ function strich(ctx: CanvasRenderingContext2D, punkte: [number, number][]) {
 // Mono 600 ist auf der Fahrtseite nicht zwingend schon in Gebrauch.
 export async function loadFonts(): Promise<{ sans: string; mono: string }> {
   const style = getComputedStyle(document.documentElement);
-  const sans = style.getPropertyValue("--font-inter").trim() || SANS_FALLBACK;
+  const sans = style.getPropertyValue("--font-geist").trim() || SANS_FALLBACK;
   const mono = style.getPropertyValue("--font-ibm-plex-mono").trim() || MONO_FALLBACK;
   try {
     await Promise.all([

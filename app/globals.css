@@ -248,17 +248,25 @@
   --shadow-overlay: var(--shadow-overlay);
 
   --text-display: var(--text-display);
+  /* Zeilenhöhe und Laufweite gehören zur Grösse: Titel standen mit dem
+     Standard von 1.5 (bei 25 px also 37 px Zeile) locker wie Fliesstext. */
+  --text-display--line-height: 1.1;
+  --text-display--letter-spacing: -0.02em;
   --text-title: var(--text-title);
+  --text-title--line-height: 1.2;
+  --text-title--letter-spacing: -0.01em;
 
   --ease-standard: var(--ease-standard);
   --duration-fast: var(--duration-fast);
   --duration-base: var(--duration-base);
 
-  --font-sans: var(--font-inter);
+  --font-sans: var(--font-geist);
+  /* Seitentitel in der Schrift der Wortmarke (app/layout.tsx). */
+  --font-display: var(--font-familjen);
   /* IBM Plex Mono bleibt geladen, trägt aber nur noch, was wirklich Code
      ist (Creator-Codes, Pfade unter /moderation/creator) — und das
      Teilen-Bild, das die Variable in lib/shareImage.ts direkt liest.
-     Zahlen setzt die Oberfläche in Inter mit tabellarischen Ziffern (siehe
+     Zahlen setzt die Oberfläche in Geist mit tabellarischen Ziffern (siehe
      body): Mono auf Messwerten las sich als Terminal, nicht als
      Präzisionsinstrument, und auf Wörtern ("Ohne Klasse",
      "Aufzeichnung läuft") als Kostüm. */
@@ -273,12 +281,19 @@ body {
      — km, km/h, Höhenmeter, Zeiten —, und Messwerte, die untereinander oder
      live stehen, dürfen nicht springen. Seit IBM Plex Mono nicht mehr die
      Zahlenschrift der Oberfläche ist (siehe --font-mono unten), übernimmt
-     Inter das, und Inter hat die Tabellenziffern eingebaut. */
+     Geist das, und Geist hat die Tabellenziffern eingebaut. */
   font-variant-numeric: tabular-nums;
   /* Kein blaues Antipp-Aufblitzen auf iOS/Android — eigene, dezente
      :active-Zustände (siehe Button-/Link-Klassen) übernehmen dieses Feedback. */
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
+}
+
+/* Seitentitel (die eine h1 je Seite und alles in text-display) in der
+   Schrift der Wortmarke. :where() hält die Spezifität bei null, damit eine
+   Utility-Klasse am Element weiterhin gewinnt. */
+:where(h1, .text-display) {
+  font-family: var(--font-display);
 }
 
 /* Sinnvoller Default für native Formularelemente, die nicht überall einzeln
