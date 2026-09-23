@@ -12,6 +12,7 @@ import Card from "@/components/ui/Card";
 import IconButton from "@/components/ui/IconButton";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import ReportDialog from "@/components/ReportDialog";
+import { useVolleGeometrie } from "@/components/VolleGeometrie";
 import { TCS_PASS_PORTAL_URL } from "@/lib/constants";
 
 // Die Adresse steht in lib/constants.ts, weil die Moderation dieselbe Seite
@@ -25,7 +26,7 @@ const ITEM_CLASS =
   "flex min-h-11 items-center border-t border-border px-3 py-2 text-left text-sm text-foreground transition-colors duration-fast hover:bg-surface druckbar first:border-t-0";
 
 export default function RouteActionsMenu({
-  route,
+  route: hereingereicht,
   moderator = false,
   isOwner = false,
   canReport = false,
@@ -44,8 +45,9 @@ export default function RouteActionsMenu({
    * ACHTUNG, und das ist keine Nachlässigkeit, sondern die Lage: das hier
    * ist eine BEQUEMLICHKEITSSCHRANKE, keine Zugriffsschranke. Die
    * Streckengeometrie liegt ohnehin vollständig im Browser — RouteDetailMap
-   * zeichnet die Karte daraus, OfflineRouteButton bekommt dieselben
-   * Koordinaten. Wer sie will, hat sie bereits.
+   * lädt sie für die Karte nach (app/strecken/[id]/geometrie, seit
+   * 2026-09-23 nicht mehr in der Seite selbst), OfflineRouteButton speichert
+   * dieselben Koordinaten. Wer sie will, hat sie bereits.
    *
    * Ein serverseitiger GPX-Endpunkt würde daran nichts ändern und wäre
    * blosses Theater: er müsste Daten schützen, die die Seite eine Zeile
@@ -78,6 +80,13 @@ export default function RouteActionsMenu({
   // Der Premium-Hinweis zum GPX-Export — erscheint erst beim Antippen,
   // nicht als Dauerzustand am Eintrag (siehe unten).
   const [gpxHinweis, setGpxHinweis] = useState(false);
+  // Die Seite reicht die Übersichtslinie herein (0117); Google-Maps-Link und
+  // GPX nehmen die volle, sobald sie da ist. Für den Export wird notfalls
+  // darauf gewartet — ein GPX aus der Übersicht schnitte Kehren um bis zu
+  // 50 m ab, und nach so einer Datei navigiert jemand.
+  const { strecke: route, stand: linienStand, laden: volleStreckeLaden } =
+    useVolleGeometrie(hereingereicht);
+  const [gpxFehler, setGpxFehler] = useState(false);
   const [deleting, startDelete] = useTransition();
   const containerRef = useRef<HTMLDivElement>(null);
   const ausloeserRef = useRef<HTMLButtonElement>(null);
@@ -204,8 +213,18 @@ export default function RouteActionsMenu({
     }
   }
 
-  function handleGpxExport() {
-    const blob = new Blob([buildGpx(route)], { type: "application/gpx+xml" });
+  async function handleGpxExport() {
+    setGpxFehler(false);
+    let quelle = route;
+    if (linienStand === "laedt" || linienStand === "fehlgeschlagen") {
+      try {
+        quelle = await volleStreckeLaden();
+      } catch {
+        setGpxFehler(true);
+        return;
+      }
+    }
+    const blob = new Blob([buildGpx(quelle)], { type: "application/gpx+xml" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -251,6 +270,7 @@ export default function RouteActionsMenu({
           }
           setOpen((v) => !v);
           setGpxHinweis(false);
+          setGpxFehler(false);
         }}
         aria-label="Weitere Aktionen"
         aria-expanded={open}
@@ -296,6 +316,11 @@ export default function RouteActionsMenu({
           >
             GPX exportieren
           </button>
+          {gpxFehler && (
+            <p role="status" className="border-t border-border bg-surface px-3 py-2.5 text-sm leading-relaxed text-muted">
+              Die Streckenlinie liess sich gerade nicht laden. Versuch es mit Empfang noch einmal.
+            </p>
+          )}
           {gpxHinweis && (
             <div className="flex flex-col gap-2 border-t border-border bg-surface px-3 py-2.5">
               <p className="text-sm leading-relaxed text-muted">

@@ -17,6 +17,8 @@ import RouteLeaderboardPreview from "@/components/RouteLeaderboardPreview";
 import BestzeitStreifen from "@/components/BestzeitStreifen";
 import { liveSplitEingeschaltet } from "@/lib/liveSplit";
 import OfflineRouteButton from "@/components/OfflineRouteButton";
+import { VolleGeometrieProvider } from "@/components/VolleGeometrie";
+import { geometrieUrl, kodiereGeometrie, mitUebersichtsgeometrie } from "@/lib/streckenGeometrie";
 import { getKontextStrecken, getRoute, getSignaturbestand } from "@/lib/routes";
 import { computeSignatures } from "@/lib/signature";
 import { SIGNATURE_ICONS, SIGNATUR_KLASSEN } from "@/components/signaturStil";
@@ -211,6 +213,15 @@ export default async function StreckeDetailPage({
 
   const signatur = computeSignatures(signaturbestand).get(route.id) ?? null;
 
+  // Die exakte Linie bleibt auf dem Server (Wetterfenster, strukturierte
+  // Daten); an Client-Komponenten geht nur die Übersichtslinie aus 0117.
+  // Die volle Linie holt der Browser nach dem ersten Aufbau unter einer
+  // versionierten Adresse (lib/streckenGeometrie.ts,
+  // app/strecken/[id]/geometrie/route.ts). Vorher stand sie hier in der
+  // Nutzlast — und über dieselbe Referenz in fünf Client-Props.
+  const leichteRoute = mitUebersichtsgeometrie(route);
+  const linienUrl = geometrieUrl(route.id, kodiereGeometrie(route.geometry_geojson).v);
+
   // Strukturierte Daten für die Streckenseite — der einzige öffentlich
   // indexierbare Evergreen-Inhalt der Plattform (app/sitemap.ts listet
   // Strecken mit priority 0.8, Profile bewusst gar nicht).
@@ -304,7 +315,8 @@ export default async function StreckeDetailPage({
           hängt die Detailkarte aus, damit nicht zwei WebGL-Karten gleichzeitig
           laufen — siehe AufzeichnungsKontext.tsx. */}
       <AufzeichnungProvider>
-      <RouteDetailLayout route={route}>
+      <VolleGeometrieProvider streckenId={route.id} url={linienUrl}>
+      <RouteDetailLayout route={leichteRoute}>
         <div>
           <p className="text-sm text-muted">
             {route.region}
@@ -434,13 +446,16 @@ export default async function StreckeDetailPage({
               kehren: route.kehren,
               charakterText: route.charakter_text,
               hoehenprofil: route.hoehenprofil,
-              geometryCoordinates: route.geometry_geojson.coordinates as [number, number][],
+              // Übersichtslinie — der Knopf holt beim Speichern die volle
+              // (siehe OfflineRouteButton), fällt ohne Empfang aber auf
+              // diese zurück.
+              geometryCoordinates: leichteRoute.geometry_geojson.coordinates as [number, number][],
               gespeichertAm: new Date().toISOString(),
             }}
             istPremium={premiumStatus.aktiv}
           />
           <RouteActionsMenu
-            route={route}
+            route={leichteRoute}
             moderator={moderator}
             isOwner={!moderator && user?.id === route.erstellt_von && !route.status_ok}
             canReport={!!user && user.id !== route.erstellt_von}
@@ -480,7 +495,7 @@ export default async function StreckeDetailPage({
             sonst endet der Sprung mit dem Knopf an der oberen Kante. */}
         <div id="fahren" className="scroll-mt-6">
         <GefahrenSection
-          route={route}
+          route={leichteRoute}
           kontextStrecken={kontextStrecken}
           userId={user?.id ?? null}
           vehicles={vehicles}
@@ -512,7 +527,7 @@ export default async function StreckeDetailPage({
         <PassSektion kontexte={passKontexte} angemeldet={!!user} feedStand={feedStand} />
         {passKontexte.length === 0 && (
           <VerkehrSektion
-            route={route}
+            route={leichteRoute}
             punkte={ruhigeZeiten.punkte}
             startzeiten={ruhigeZeiten.startzeiten}
           />
@@ -676,6 +691,7 @@ export default async function StreckeDetailPage({
           </div>
         </AbschnittTabs>
       </RouteDetailLayout>
+      </VolleGeometrieProvider>
       </AufzeichnungProvider>
     </div>
   );
