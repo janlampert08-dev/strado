@@ -1,5 +1,5 @@
 import { haversineKm, type TrailPoint } from "@/lib/geo";
-import { speedColor } from "@/lib/speed";
+import { speedStufe } from "@/lib/speed";
 
 // Das Tempo entlang einer Fahrt: wie schnell man wo war. Die Grundlage für
 // die eingefärbte Linie auf der Fahrtkarte und das Tempodiagramm neben dem
@@ -129,7 +129,7 @@ export function buildTempoprofil(trail: TrailPoint[]): TempoprofilPunkt[] | null
 export function tempoAbschnitte(
   coords: [number, number][],
   profil: TempoprofilPunkt[],
-): { coords: [number, number][]; color: string }[] {
+): { coords: [number, number][]; stufe: number }[] {
   if (coords.length < 2 || profil.length < 2) return [];
 
   const kum: number[] = [0];
@@ -143,14 +143,16 @@ export function tempoAbschnitte(
 
   // Jeder Stützpunkt gilt bis zur Mitte zum nächsten; gleichfarbige
   // Nachbarn werden zu einem Lauf zusammengelegt.
-  const laeufe: { von: number; bis: number; color: string }[] = [];
+  // Die Stufe statt der Farbe: berechnet wird das auf dem Server, der das
+  // Farbschema des Betrachters nicht kennt. Gefärbt wird in RouteMap.
+  const laeufe: { von: number; bis: number; stufe: number }[] = [];
   for (let i = 0; i < profil.length; i++) {
     const von = i === 0 ? 0 : (profil[i - 1].km + profil[i].km) / 2;
     const bis = i === profil.length - 1 ? profilLaenge : (profil[i].km + profil[i + 1].km) / 2;
-    const color = speedColor(profil[i].kmh);
+    const stufe = speedStufe(profil[i].kmh);
     const vorher = laeufe[laeufe.length - 1];
-    if (vorher && vorher.color === color) vorher.bis = bis;
-    else laeufe.push({ von, bis, color });
+    if (vorher && vorher.stufe === stufe) vorher.bis = bis;
+    else laeufe.push({ von, bis, stufe });
   }
 
   function punktBei(x: number): [number, number] {
@@ -170,7 +172,7 @@ export function tempoAbschnitte(
       const von = lauf.von * massstab;
       const bis = lauf.bis * massstab;
       const innen = coords.filter((_, i) => kum[i] > von && kum[i] < bis);
-      return { coords: [punktBei(von), ...innen, punktBei(bis)], color: lauf.color };
+      return { coords: [punktBei(von), ...innen, punktBei(bis)], stufe: lauf.stufe };
     })
     .filter((a) => a.coords.length >= 2);
 }

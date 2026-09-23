@@ -6,7 +6,7 @@ import {
   tempoAbschnitte,
 } from "@/lib/tempoprofil";
 import { haversineKm, type TrailPoint } from "@/lib/geo";
-import { speedColor } from "@/lib/speed";
+import { speedStufe } from "@/lib/speed";
 
 // Ost-West-Verlauf auf 47.37° N, ein Punkt je Sekunde. Die Schrittweite in
 // Grad wird aus dem gewünschten Tempo abgeleitet, damit die Tests in km/h
@@ -102,7 +102,7 @@ describe("tempoAbschnitte", () => {
       { km: 6, kmh: 30 },
       { km: 10, kmh: 30 },
     ]);
-    expect(abschnitte.map((a) => a.color)).toEqual([speedColor(100), speedColor(30)]);
+    expect(abschnitte.map((a) => a.stufe)).toEqual([speedStufe(100), speedStufe(30)]);
     // Die Grenze liegt zwischen km 4 und 6, also bei km 5 — der Mitte.
     const grenzeLng = abschnitte[0].coords[abschnitte[0].coords.length - 1][0];
     expect(haversineKm(linie[0], [grenzeLng, 47.37])).toBeCloseTo(5, 1);
