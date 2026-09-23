@@ -13,6 +13,7 @@ import {
   leseAboIdAusRechnung,
   leseAboZustand,
   preisHerkunft,
+  saisonpassPreisId,
   vollstaendigErstatteterPaymentIntent,
   type KulanzAktion,
 } from "@/lib/stripeWebhook";
@@ -94,9 +95,9 @@ async function schreibeAboZustand(
 //
 // Die Prüfungen stehen in saisonpassAusSession(): eigener Modus, Session
 // abgeschlossen UND bezahlt, unsere eigene plan-Markierung in den
-// Metadaten, ein Betrag über null. Ohne sie wäre jede Einmalzahlung auf
-// diesem Stripe-Konto ein halbes Jahr Premium — dieselbe Verwechslung, die
-// preisHerkunft() für Abos verhindert.
+// Metadaten, die konfigurierte Preis-ID und ein Betrag über null. Ohne sie
+// wäre jede Einmalzahlung auf diesem Stripe-Konto ein halbes Jahr Premium —
+// dieselbe Verwechslung, die preisHerkunft() für Abos verhindert.
 //
 // Idempotent über die Session-ID: apply_saisonpass trägt jede Session
 // höchstens einmal ein, und genau darauf verlässt sich diese Stelle, weil
@@ -106,7 +107,7 @@ async function schreibeSaisonpass(
   supabase: AdminClient,
   session: Stripe.Checkout.Session,
 ): Promise<void> {
-  const pass = saisonpassAusSession(session, null);
+  const pass = saisonpassAusSession(session, null, saisonpassPreisId());
   if (!pass) return;
 
   const { data, error } = await supabase.rpc("apply_saisonpass", {

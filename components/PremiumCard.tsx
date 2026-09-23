@@ -101,7 +101,7 @@ export default function PremiumCard({ status }: { status: PremiumStatus }) {
 
               Zwei Gründe, beide aus docs/design-vereinfachung.md Anhang C2.
               Erstens: der gefüllte Akzent gehört den Handlungen des Nutzers
-              ("Strecke starten", "Fahrt speichern"). Ein Verkauf im selben
+              ("Strecke fahren", "Fahrt speichern"). Ein Verkauf im selben
               Gewicht wie die Kernhandlung ist zu laut für eine Seite, die
               die Selbstdarstellung des Nutzers ist. Zweitens: die Vorteile
               standen hier in einer dritten Kopie neben lib/premiumVorteile.ts
@@ -117,7 +117,7 @@ export default function PremiumCard({ status }: { status: PremiumStatus }) {
               href="/profil/premium"
               className={buttonVariants({ variant: "secondary", size: "sm", className: "shrink-0" })}
             >
-              Premium ansehen
+              Mehr zu Premium
             </Link>
           </div>
         </>

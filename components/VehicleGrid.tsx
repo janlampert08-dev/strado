@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bike, Car, ChevronRight } from "lucide-react";
+import { Bike, Car, ChevronRight } from "@/components/NavIcons";
 import type { Vehicle } from "@/types/database";
 import MotorklasseBadge from "@/components/MotorklasseBadge";
 import { motorklasseFor } from "@/lib/motorklassen";

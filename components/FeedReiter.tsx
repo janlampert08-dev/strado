@@ -60,8 +60,11 @@ export default function FeedReiter({
   // als ein Sonderfall"; im Re-Review las es sich als kaputter Filter.)
   if (reiter.length === 1) return null;
 
+  // overflow-y-hidden: die Hülle ist mit overflow-x-auto ein
+  // Scroll-Container, der sonst auch die senkrechte Achse beschneidet
+  // (Rahmen, Fokusring).
   return (
-    <nav aria-label="Ansicht" className={segmentHuelleClassName("self-start")}>
+    <nav aria-label="Ansicht" className={segmentHuelleClassName("self-start overflow-y-hidden")}>
       {reiter.map((r) => {
         const zeigtZaehler = (r.zaehler ?? 0) > 0;
         return (
@@ -86,7 +89,7 @@ export default function FeedReiter({
                 className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold ${
                   r.ansicht === aktiv
                     ? "bg-background text-foreground"
-                    : "bg-accent text-background"
+                    : "bg-accent text-on-accent"
                 }`}
               >
                 {(r.zaehler ?? 0) > 9 ? "9+" : r.zaehler}

@@ -125,14 +125,23 @@ export function decideSheetGesture({
   deltaX,
   snap,
   scrollTop,
+  waagrechtScrollbar = true,
 }: {
   deltaY: number;
   deltaX: number;
   snap: SheetSnap;
   scrollTop: number;
+  /**
+   * Ob unter dem Finger etwas waagrecht scrollt (Reiter, Karussell). Nur dann
+   * darf eine waagrechte Absicht die Geste abgeben. Vorher reichte jede
+   * Schräge: entschieden wird nach 4 px, und ein leicht schräg angesetzter
+   * Wisch nach oben galt als waagrecht — in der Startliste, wo nichts
+   * waagrecht scrollt, passierte dann für die ganze Berührung gar nichts.
+   */
+  waagrechtScrollbar?: boolean;
 }): SheetGesture {
-  // Waagrechte Absicht (Karussell, Textauswahl) fasst das Sheet nicht an.
-  if (Math.abs(deltaX) > Math.abs(deltaY)) return "scroll";
+  // Waagrechte Absicht (Karussell, Reiter) fasst das Sheet nicht an.
+  if (waagrechtScrollbar && Math.abs(deltaX) > Math.abs(deltaY)) return "scroll";
 
   if (deltaY > 0) return snap === "voll" ? "scroll" : "sheet";
 
@@ -208,4 +217,61 @@ export function wischGeschwindigkeit(proben: readonly { t: number; h: number }[]
   const dt = letzte.t - erste.t;
   if (dt <= 0) return 0;
   return ((letzte.h - erste.h) / dt) * 1000;
+}
+
+// ---------------------------------------------------------------------------
+// Feder: das Einrasten nach dem Loslassen
+// ---------------------------------------------------------------------------
+// Bis 2026-09-23 rastete das Sheet per CSS-Transition ein: immer 320 ms, immer
+// dieselbe Kurve mit Überschwingen. Ein langsam abgelegtes Sheet schwang
+// damit genauso nach wie ein geworfenes, und ein schneller Wurf verlor beim
+// Loslassen schlagartig sein Tempo — die Transition kennt die
+// Fingergeschwindigkeit nicht. Die Feder übernimmt sie als Startwert, läuft
+// vom aktuellen Wert aus (also auch mitten im Einrasten greifbar) und hat
+// keine feste Dauer. Parameter wie bei Apple: Dämpfungsverhältnis
+// (1 = kein Überschwingen) und Antwortzeit in Sekunden.
+
+export type Feder = { daempfung: number; antwort: number };
+
+/** Ruhiges Einrasten ohne Überschwingen — Tap, Taste, langsames Ablegen. */
+export const FEDER_RUHIG: Feder = { daempfung: 1, antwort: 0.32 };
+
+/** Nach einem Wurf: ein Hauch Überschwingen, weil Schwung vorausging. */
+export const FEDER_WURF: Feder = { daempfung: 0.82, antwort: 0.34 };
+
+/** Ab dieser Loslass-Geschwindigkeit (px/s) gilt die Geste als Wurf. */
+export const WURF_AB_PX_S = 400;
+
+export function federFuer(geschwindigkeit: number): Feder {
+  return Math.abs(geschwindigkeit) >= WURF_AB_PX_S ? FEDER_WURF : FEDER_RUHIG;
+}
+
+export type FederZustand = { x: number; v: number };
+
+/**
+ * Ein Zeitschritt der Feder (Masse 1). `dt` in Sekunden; intern in
+ * Teilschritten von höchstens 4 ms gerechnet, damit ein verspäteter Frame
+ * die Feder nicht aufschaukelt.
+ */
+export function federSchritt(
+  zustand: FederZustand,
+  ziel: number,
+  dt: number,
+  { daempfung, antwort }: Feder,
+): FederZustand {
+  const steifigkeit = ((2 * Math.PI) / antwort) ** 2;
+  const reibung = (4 * Math.PI * daempfung) / antwort;
+  let { x, v } = zustand;
+  const schritte = Math.max(1, Math.ceil(dt / 0.004));
+  const h = dt / schritte;
+  for (let i = 0; i < schritte; i++) {
+    v += (-steifigkeit * (x - ziel) - reibung * v) * h;
+    x += v * h;
+  }
+  return { x, v };
+}
+
+/** Ob die Feder zur Ruhe gekommen ist (unter einem halben Pixel, fast still). */
+export function federRuht({ x, v }: FederZustand, ziel: number): boolean {
+  return Math.abs(x - ziel) < 0.5 && Math.abs(v) < 10;
 }

@@ -82,10 +82,21 @@ export function isRateLimitedByKey(key: string, limit: number, windowMs: number)
   return false;
 }
 
-// Ermittelt die Client-IP aus Proxy-Headern (Vercel setzt x-forwarded-for)
-// für IP-basiertes Rate Limiting dort, wo keine Session/user_id existiert.
+// Ermittelt die Client-IP für IP-basiertes Rate Limiting dort, wo keine
+// Session/user_id existiert. Vercel hängt die echte Client-IP ANS ENDE von
+// x-forwarded-for an — das linkeste Element ist vom Client gesetzt und damit
+// spoofbar. Deshalb: x-real-ip zuerst, sonst das LETZTE Element von
+// x-forwarded-for, nie das erste.
 export function getClientIp(headers: { get(name: string): string | null }): string {
+  const real = headers.get("x-real-ip")?.trim();
+  if (real) return real;
   const forwarded = headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  return headers.get("x-real-ip") ?? "unknown";
+  if (forwarded) {
+    const teile = forwarded
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (teile.length > 0) return teile[teile.length - 1];
+  }
+  return "unknown";
 }

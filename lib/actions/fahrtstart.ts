@@ -18,7 +18,7 @@ import { isValidUuid } from "@/lib/validation";
 //
 // Aufgerufen aus useRideRecorder -> beginActualTracking, also im
 // Streckenmodus beim Erreichen des Startpunkts und bei einer freien Fahrt mit
-// dem ersten GPS-Fix — nicht beim Tippen auf "Strecke starten". Der
+// dem ersten GPS-Fix — nicht beim Tippen auf "Strecke fahren". Der
 // Unterschied ist der ganze Punkt: gemessen wird ab dem Moment, ab dem auch
 // die Anzeige läuft.
 //

@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 import Header from "@/components/Header";
 import Card from "@/components/ui/Card";
-import { CreditCard, Scale } from "lucide-react";
-import { SparklesIcon } from "@/components/NavIcons";
+import { CreditCard, Scale, SparklesIcon } from "@/components/NavIcons";
 import SectionHeading from "@/components/ui/SectionHeading";
 import PremiumBadge from "@/components/PremiumBadge";
 import PremiumCheckoutForm from "@/components/PremiumCheckoutForm";

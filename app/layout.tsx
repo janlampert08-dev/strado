@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { INSTALLATION_INIT_SCRIPT } from "@/lib/installation";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import HinweisLeiste from "@/components/Hinweis";
+import ThemaFarbe from "@/components/ThemaFarbe";
 import { BESCHREIBUNG, SLOGAN } from "@/lib/constants";
 import { siteUrl } from "@/lib/siteUrl";
 import { startbildEintraege } from "@/lib/startbilder";
@@ -29,10 +30,19 @@ const familjen = Familjen_Grotesk({
 
 // Für tabellarische Zahlen (Ränge, km, Höhenmeter) — Instrument-Cluster-artige
 // Präzision statt einer Grotesk als De-facto-Mono-Attrappe (siehe globals.css).
+//
+// preload: false, weil die Schrift nur an wenigen Stellen gebraucht wird
+// (Creator-Codes, Bestätigungscode, einzelne Kennzahlen) — vorgeladen wurden
+// die zwei Schnitte (2× ~10 KB) aber auf jeder Seite, mit derselben Priorität
+// wie die Oberflächenschrift. Ohne Vorladen holt der Browser sie erst, wenn
+// ein Element sie tatsächlich verwendet; bis dahin steht dort kurz die
+// Ersatzschrift (next/font setzt display: swap und eine grössenangeglichene
+// Fallback-Schrift).
 const ibmPlexMono = IBM_Plex_Mono({
   variable: "--font-ibm-plex-mono",
   subsets: ["latin"],
   weight: ["500", "600"],
+  preload: false,
 });
 
 // Basis für jede relative URL in den Metadaten: opengraph-image,
@@ -107,11 +117,14 @@ export const viewport: Viewport = {
   // laufen — erst dadurch greifen die env(safe-area-inset-*)-Werte, die
   // globals.css und die Bottom-Nav für Abstände dort nutzen.
   viewportFit: "cover",
+  // Die Bildschirmtastatur verkleinert auf Android das Layout, wie sie es
+  // auf iOS ohnehin tut — sonst lägen unten angeheftete Felder und
+  // Schaltflächen (Fazit, Suche im Sheet) unter der Tastatur.
+  interactiveWidget: "resizes-content",
   // Folgt der Systemeinstellung für die Browser-Chrome-Farbe (Statusleiste/
-  // Adresszeile). Deckt nicht den seltenen Fall ab, dass jemand über
-  // ThemeToggle.tsx manuell gegen sein Systemschema übersteuert — die
-  // Chrome-Farbe würde dann kurz nicht zum Seiteninhalt passen, rein
-  // kosmetisch und nicht funktional relevant.
+  // Adresszeile). Wer über ThemeToggle.tsx gegen sein Systemschema
+  // übersteuert, bekommt die passende Farbe von components/ThemaFarbe.tsx,
+  // sobald die Seite geladen ist.
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#FAFAFA" },
     { media: "(prefers-color-scheme: dark)", color: "#0B0B0D" },
@@ -139,6 +152,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full flex flex-col font-sans">
         {children}
+        <ThemaFarbe />
         <HinweisLeiste />
         <ServiceWorkerRegister />
         <Analytics />

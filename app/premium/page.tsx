@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { Check, SparklesIcon } from "@/components/NavIcons";
 import Header from "@/components/Header";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
 import SectionHeading from "@/components/ui/SectionHeading";
 import PremiumBadge from "@/components/PremiumBadge";
 import { buttonVariants } from "@/components/ui/Button";
-import { SparklesIcon } from "@/components/NavIcons";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
 import { getOeffentlichesAngebot } from "@/lib/actions/billing";
@@ -72,7 +71,7 @@ export default async function PremiumTeaserPage() {
     : user
       ? "/profil/premium"
       : `/anmelden?next=${encodeURIComponent("/profil/premium")}`;
-  const ctaText = hatPremium ? "Zum Profil" : user ? "Premium wählen" : "Anmelden und Premium wählen";
+  const ctaText = hatPremium ? "Zum Profil" : user ? "Premium wählen" : "Anmelden, um Premium zu wählen";
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -100,11 +99,11 @@ export default async function PremiumTeaserPage() {
         </div>
 
         <section className="flex flex-col gap-3">
-          <SectionHeading icon={SparklesIcon}>Was Premium dazugibt</SectionHeading>
+          <SectionHeading icon={SparklesIcon}>In Premium enthalten</SectionHeading>
           <ul className="flex flex-col gap-2.5 text-sm text-foreground">
             {PREMIUM_VORTEILE.map((vorteil) => (
               <li key={vorteil} className="flex items-start gap-2.5">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent-ink" aria-hidden="true" />
                 <span>{vorteil}</span>
               </li>
             ))}

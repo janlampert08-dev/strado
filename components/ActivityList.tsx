@@ -73,7 +73,7 @@ export default function ActivityList({
             </span>
             <Link
               href={`/paesse#${eintrag.passId}`}
-              className="min-w-0 flex-1 transition-colors duration-fast hover:text-accent"
+              className="min-w-0 flex-1 transition-colors duration-fast hover:text-accent-ink"
             >
               <p className="flex items-center text-sm">
                 <span className="truncate font-medium">{eintrag.passName}</span>
@@ -104,7 +104,7 @@ export default function ActivityList({
                 ? `/fahrten/${eintrag.completionId}`
                 : `/fahrer/${eintrag.personId}`
             }
-            className="min-w-0 flex-1 transition-colors duration-fast hover:text-accent"
+            className="min-w-0 flex-1 transition-colors duration-fast hover:text-accent-ink"
           >
             {/* Flex statt eines einzelnen truncate-<p>: in einem Block mit
                 truncate wirkt shrink-0 am Abzeichen nicht, weil es keinen

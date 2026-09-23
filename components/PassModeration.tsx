@@ -5,6 +5,7 @@ import Card from "@/components/ui/Card";
 import useEingabenBewahren from "@/components/useEingabenBewahren";
 import Button from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Input";
+import Select from "@/components/ui/Select";
 import { PassStatusMarke } from "@/components/PassStatusZeile";
 import {
   gibPassStatusFrei,
@@ -52,17 +53,13 @@ function PassWahl({ paesse, name }: { paesse: ModerationsPass[]; name: string })
   return (
     <label className="flex flex-col gap-1.5 text-sm font-medium">
       Pass
-      <select
-        name={name}
-        required
-        className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-      >
+      <Select name={name} required>
         {paesse.map((pass) => (
           <option key={pass.id} value={pass.id}>
             {pass.name}
           </option>
         ))}
-      </select>
+      </Select>
     </label>
   );
 }
@@ -198,17 +195,16 @@ export default function PassModeration({
 
           <label className="flex flex-col gap-1.5 text-sm font-medium">
             Zustand
-            <select
+            <Select
               name="zustand"
               required
               defaultValue="gesperrt"
-              className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
             >
               <option value="offen">Offen</option>
               <option value="eingeschraenkt">Eingeschränkt</option>
               <option value="gesperrt">Gesperrt</option>
               <option value="wintersperre">Wintersperre</option>
-            </select>
+            </Select>
           </label>
 
           <label className="flex flex-col gap-1.5 text-sm font-medium">
@@ -256,18 +252,17 @@ export default function PassModeration({
 
           <label className="flex flex-col gap-1.5 text-sm font-medium">
             Art
-            <select
+            <Select
               name="art"
               required
               defaultValue="autofrei"
-              className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
             >
               {(Object.keys(ART_LABEL) as SperrtagArt[]).map((art) => (
                 <option key={art} value={art}>
                   {ART_LABEL[art]}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
 
           <label className="flex flex-col gap-1.5 text-sm font-medium">

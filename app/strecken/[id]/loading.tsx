@@ -38,7 +38,7 @@ export default function Loading() {
               <Skeleton className="h-8 w-8 rounded-lg" />
             </div>
 
-            {/* "Strecke starten" — auf der echten Seite die auffälligste
+            {/* "Strecke fahren" — auf der echten Seite die auffälligste
                 Fläche im Peek-Bereich. */}
             <Skeleton className="h-[50px] rounded-lg" />
 

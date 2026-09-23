@@ -104,7 +104,7 @@ export default function SterneEingabe({
                 // components/Sterne.tsx. Hier wiegt sie schwerer als dort:
                 // das ist ein Bedienelement, seine Zustandsgrenze fällt
                 // unter WCAG 1.4.11.
-                stufe <= gezeigt ? "fill-current text-accent" : "text-muted",
+                stufe <= gezeigt ? "fill-current text-accent-ink" : "text-muted",
               )}
             />
           </label>

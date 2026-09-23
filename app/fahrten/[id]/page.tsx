@@ -14,7 +14,7 @@ import {
   MapPin,
   Mountain,
   Ruler,
-} from "lucide-react";
+} from "@/components/NavIcons";
 import Header from "@/components/Header";
 import Avatar from "@/components/Avatar";
 import KudosButton from "@/components/KudosButton";
@@ -41,7 +41,7 @@ import MotorklasseBadge from "@/components/MotorklasseBadge";
 import { motorklasseLabel } from "@/lib/motorklassen";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
 import AbschnittTabs from "@/components/ui/AbschnittTabs";
-import { textAktionClassName } from "@/components/ui/Button";
+import { buttonVariants, textAktionClassName } from "@/components/ui/Button";
 
 export async function generateMetadata({
   params,
@@ -179,10 +179,15 @@ export default async function FahrtDetailPage({
     : completion.dauerSekunden;
   // stimmigerSchnitt: ein Durchschnitt über dem Höchsttempo des eigenen
   // Profils widerlegt sich selbst und wird nicht gezeigt (lib/tempoprofil.ts).
-  const avgKmh = stimmigerSchnitt(
+  //
+  // Hat der Fahrer das Tempo verborgen (profiles.zeigt_tempo, 0125), rechnet
+  // die Seite für fremde Betrachter gar nicht erst einen Schnitt aus.
+  const rohSchnittKmh =
     tempoSekunden && tempoSekunden > 0 && completion.distanzKm
       ? completion.distanzKm / (tempoSekunden / 3600)
-      : null,
+      : null;
+  const avgKmh = !completion.zeigtTempo ? null : stimmigerSchnitt(
+    rohSchnittKmh,
     completion.tempoprofil,
   );
 
@@ -264,7 +269,7 @@ export default async function FahrtDetailPage({
             >
               <Avatar url={completion.avatarUrl} name={completion.displayName} size={44} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium transition-colors duration-fast group-hover:text-accent">
+                <p className="truncate text-sm font-medium transition-colors duration-fast group-hover:text-accent-ink">
                   {completion.isOwner ? "Deine Fahrt" : (completion.displayName ?? "Fahrer")}
                 </p>
                 <p className="text-xs text-muted">
@@ -360,7 +365,7 @@ export default async function FahrtDetailPage({
                 href={`/strecken/${route!.id}`}
                 className="group inline-flex items-baseline gap-1.5"
               >
-                <h1 className="text-display font-semibold tracking-tight group-hover:text-accent">
+                <h1 className="text-display font-semibold tracking-tight group-hover:text-accent-ink">
                   {route!.name}
                 </h1>
               </Link>
@@ -477,6 +482,20 @@ export default async function FahrtDetailPage({
                 </>
               }
               wert={avgKmh !== null ? `${avgKmh.toFixed(0)} km/h` : "—"}
+              // Die Kachel bleibt stehen, damit das Raster nicht springt; der
+              // Zusatz sagt, warum dort nichts steht, statt eine fehlende
+              // Messung vorzutäuschen.
+              // Zwei Gründe für den Strich, beide ausgesprochen: verborgen
+              // (0125) oder von stimmigerSchnitt verworfen, weil die Zeit nicht
+              // zum eigenen Tempoprofil passt — vorher stand dann ein Strich
+              // ohne jede Erklärung (Re-Audit 2026-09-23).
+              zusatz={
+                !completion.zeigtTempo
+                  ? "Vom Fahrer verborgen"
+                  : rohSchnittKmh !== null && avgKmh === null
+                    ? "Zeitmessung unvollständig"
+                    : undefined
+              }
             />
             <Kennzahl
               beschriftung={
@@ -570,6 +589,46 @@ export default async function FahrtDetailPage({
           )}
           </div>
           </AbschnittTabs>
+
+          {/* Empfang für geteilte Links: wer über eine Fahrt kommt und kein
+              Konto hat, sieht bisher eine Detailseite ohne nächsten Schritt.
+              Der Block verkauft die eine Handlung, die diese Seite beweist —
+              fahren — plus den Weg dorthin (Konto erst beim Speichern,
+              Aufzeichnen geht ohne). Für Angemeldete steht hier nichts: sie
+              kennen den Weg. */}
+          {!user && (
+            <section
+              aria-label="Fahr sie nach"
+              className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4"
+            >
+              <h2 className="text-base font-semibold">Fahr sie nach</h2>
+              <p className="text-sm text-muted">
+                {completion.displayName ?? "Jemand"} ist hier gefahren — zeichne
+                deine eigene Fahrt auf, ganz ohne Konto, und vergleich deine
+                Zeit auf echten Strecken.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  href={`/registrieren?next=${encodeURIComponent(`/fahrten/${completion.id}`)}`}
+                  className={buttonVariants({ variant: "accent", size: "md" })}
+                >
+                  Konto erstellen
+                </Link>
+                {!istFreieFahrt && route ? (
+                  <Link
+                    href={`/strecken/${route.id}`}
+                    className={buttonVariants({ variant: "secondary", size: "md" })}
+                  >
+                    Strecke ansehen
+                  </Link>
+                ) : (
+                  <Link href="/fahrten/neu" className={buttonVariants({ variant: "secondary", size: "md" })}>
+                    Freie Fahrt starten
+                  </Link>
+                )}
+              </div>
+            </section>
+          )}
 
           {/* Weiter statt Sackgasse: Wer über einen geteilten Link auf dieser
               Seite landet, hat sonst keinen Weg zu Strecke, Feed oder nächster

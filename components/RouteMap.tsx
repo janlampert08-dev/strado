@@ -8,6 +8,14 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { SCHWEIZ_ZENTRUM, DEFAULT_ZOOM } from "@/lib/constants";
 import { sliceRouteBySpeed, speedColor, TEMPO_FARBEN } from "@/lib/speed";
 import { akzentFarbe, isDarkTheme, subscribeToThemeChange, tokenFarbe } from "@/lib/theme";
+import {
+  ersteStrassenEbene,
+  helleBeruhigung,
+  konturLayer,
+  konturSource,
+  KONTUR_SOURCE,
+  reliefLayer,
+} from "@/lib/kartenStil";
 import { SIGNATUR_RUECKFALL, SIGNATUR_TOKEN, type SignatureKey } from "@/lib/signature";
 import { MIN_ACCURACY_M } from "@/components/useRideRecorder";
 import type { KartenStrecke, TempolimitSegment } from "@/types/database";
@@ -32,6 +40,14 @@ const TEMPO_LINE_LAYER = "tempo-segments-line";
 const HIGHLIGHT_SOURCE = "route-highlight";
 const HIGHLIGHT_HALO_LAYER = "route-highlight-halo";
 const HIGHLIGHT_LINE_LAYER = "route-highlight-line";
+// Der helle Rand um alles, was auf der Karte hervortreten soll: Halo der
+// gewählten Strecke, Rand der Start-/Zielpunkte, Rand des Standortpunkts.
+// Bewusst KEIN Token über tokenFarbe(): der naheliegende Kandidat
+// --color-background ist im Dunkelmodus #0b0b0d, und ein dunkler Rand auf
+// der dunklen Karte trennt die Linie nicht mehr vom Grund — genau dafür ist
+// er da. Ein themenfestes Weiss gibt es unter den Tokens nicht. Eine
+// Konstante statt dreimal derselben Hex-Zahl, damit sie nicht auseinanderläuft.
+const KARTEN_RAND_FARBE = "#FAFAFA";
 // Aufgezeichneter GPS-Track einer Fahrt (freie Fahrt oder Detailkarte einer
 // Aufzeichnung) — unabhängig von den kuratierten Strecken, die über
 // ROUTES_SOURCE laufen.
@@ -353,7 +369,7 @@ function createLocationMarkerElement(): StandortMarker {
   dotEl.style.width = "12px";
   dotEl.style.height = "12px";
   dotEl.style.borderRadius = "50%";
-  dotEl.style.border = "2.5px solid #FAFAFA";
+  dotEl.style.border = `2.5px solid ${KARTEN_RAND_FARBE}`;
   dotEl.style.boxShadow = "0 0 0 1px rgba(19,19,22,0.25), 0 1px 3px rgba(19,19,22,0.35)";
   dotEl.style.transform = "translate(-50%, -50%)";
 
@@ -436,6 +452,16 @@ function fitPadding(map: mapboxgl.Map, basis: number, bottomInsetPx: number) {
   return { top: oben, bottom: unten, left: basis, right: basis };
 }
 
+// Welche Strecken eingepasst wurden — Ids plus hervorgehobene Strecke, ohne
+// die Linien selbst. Die Streckenseite reicht erst die Übersichtslinie und
+// Sekunden später die volle derselben Strecke herein (components/
+// VolleGeometrie.tsx). Das ist eine feinere Linie, keine neue Auswahl, und
+// darf den Ausschnitt nicht zurücksetzen: wer in der Zwischenzeit gezoomt
+// hat, verlöre sonst seinen Ausschnitt.
+function auswahlSchluessel(routes: KartenStrecke[], primaryRouteId: string | null | undefined): string {
+  return `${routes.map((r) => r.id).join(",")}|${primaryRouteId ?? ""}`;
+}
+
 function fitToRoutes(
   map: mapboxgl.Map,
   routes: KartenStrecke[],
@@ -492,6 +518,7 @@ export default function RouteMap({
   centerOnFirstLocation = false,
   followLocation = false,
   ohneBedienelemente = false,
+  kooperativeGesten = false,
   umlandSchleier = false,
 }: {
   // Alle Strecken, die gezeichnet werden. Die Reihenfolge ist gleichgültig,
@@ -599,6 +626,11 @@ export default function RouteMap({
   followLocation?: boolean;
   /** Zoom- und Kompass-Knöpfe weglassen (Vorschaukarten, z. B. im Fazit). */
   ohneBedienelemente?: boolean;
+  /** Karte mitten in einer scrollenden Seite: ein Finger scrollt die Seite,
+   *  zwei bewegen die Karte (Mapbox cooperativeGestures). Ohne das fing die
+   *  Karte auf der Fahrtseite jeden Wisch ab, der an ihr vorbeiscrollen
+   *  wollte. Nicht für Vollbildkarten (Entdecken, Strecke, Aufzeichnung). */
+  kooperativeGesten?: boolean;
   /** Das Ausland unter einen Schleier legen, damit die Schweiz heraussticht.
    *  Entdecken-Karte und freie Fahrt (Entscheid des Inhabers 2026-09-21):
    *  beide sollen gleich aussehen. Auf der eigenen Fahrt nach Strecken
@@ -628,9 +660,16 @@ export default function RouteMap({
   // vom bereits vorhandenen Skeleton für den Code-Split in RouteDetailMap/
   // ExploreView) — ohne das wäre die Karte für ein bis zwei Sekunden leer.
   const [isReady, setIsReady] = useState(false);
+  // Fehler statt ewigem Skelett: kommt "idle" nie (kein Netz, 401/Quota,
+  // CSP-Block, WebGL-Blacklist), stand bisher nach 6 s kommentarlos der
+  // leere Kartenhintergrund. map.on("error") hebt das auf eine Fehlkarte
+  // mit Retry statt stiller Fläche.
+  const [kartenFehler, setKartenFehler] = useState<string | null>(null);
   const routesRef = useRef(routes);
   // Nur der Wert beim Aufbau zählt: die Knöpfe werden einmal angehängt.
   const ohneBedienelementeRef = useRef(ohneBedienelemente);
+  // Nur beim Aufbau gelesen, wie ohneBedienelemente.
+  const kooperativeGestenRef = useRef(kooperativeGesten);
   // Ebenso nur beim Aufbau: der Schleier wird bei jedem style.load neu
   // angelegt, und welche Karte ihn trägt, ändert sich nicht.
   const umlandSchleierRef = useRef(umlandSchleier);
@@ -658,6 +697,8 @@ export default function RouteMap({
   // bottomInsetPx unten direkt nach dem Erstaufbau eine zweite, identische
   // Kamerafahrt nach — er läuft mit, sobald stilGeneration steigt.
   const eingepasstMitInsetRef = useRef<number | null>(null);
+  // Welche Auswahl zuletzt eingepasst wurde (siehe auswahlSchluessel).
+  const eingepassteAuswahlRef = useRef<string | null>(null);
 
   // Wie routesRef: setupLayers() läuft nach jedem "style.load" und liest
   // die Sammlungen aus Refs statt aus den Props, weil es ausserhalb des
@@ -753,6 +794,7 @@ export default function RouteMap({
       // `attributionControl: false` samt der AttributionControl-Zeile unten
       // (dann greift wieder das responsive Standardverhalten).
       attributionControl: false,
+      cooperativeGestures: kooperativeGestenRef.current,
       // Ohne locale melden sich die Bedienelemente englisch ("Zoom in",
       // "Reset bearing to north") in einem lang="de"-Dokument.
       locale: {
@@ -793,6 +835,23 @@ export default function RouteMap({
       // Themenwechsel) erneut gesetzt werden, da ein Style-Wechsel die
       // Sprachauswahl der Text-Layer zurücksetzt.
       map.setLanguage("de");
+
+      // Helles Schema: Strassen neutral, Grün zurückgenommen (lib/kartenStil.ts).
+      // Einzeln abgesichert — ein Mapbox-Stilupdate, das eine Ebene umbenennt
+      // oder eine Eigenschaft nicht kennt, soll die Karte nicht anhalten.
+      if (!isDarkTheme()) {
+        for (const layer of map.getStyle().layers ?? []) {
+          const aenderung = helleBeruhigung(layer);
+          if (!aenderung) continue;
+          for (const [eigenschaft, wert] of Object.entries(aenderung)) {
+            try {
+              map.setPaintProperty(layer.id, eigenschaft as never, wert as never);
+            } catch {
+              // Ebene ohne diese Eigenschaft: bleibt, wie Mapbox sie zeichnet.
+            }
+          }
+        }
+      }
 
       // Knapp unterhalb der Strassennummern-Schilder (z.B. A1-Schild) einfügen:
       // road-label (Strassennamen-Text) liegt in der Streets-v12-Style-
@@ -869,6 +928,8 @@ export default function RouteMap({
           source: ROUTES_SOURCE,
           layout: { "line-join": "round", "line-cap": "round" },
           paint: {
+            // Nie zu sehen (line-opacity 0), also auch kein Token: Mapbox
+            // verlangt nur irgendeine gültige Farbe.
             "line-color": "#000000",
             "line-opacity": 0,
             "line-width": ["interpolate", ["linear"], ["zoom"], 8, 20, 14, 28],
@@ -1014,7 +1075,7 @@ export default function RouteMap({
           source: HIGHLIGHT_SOURCE,
           layout: { "line-join": "round", "line-cap": "round" },
           paint: {
-            "line-color": "#FAFAFA",
+            "line-color": KARTEN_RAND_FARBE,
             "line-width": ["interpolate", ["linear"], ["zoom"], 8, 6, 14, 11],
           },
         },
@@ -1047,7 +1108,7 @@ export default function RouteMap({
             "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 3.5, 14, 5.5],
             "circle-color": ["get", "color"],
             "circle-stroke-width": 1.5,
-            "circle-stroke-color": "#FAFAFA",
+            "circle-stroke-color": KARTEN_RAND_FARBE,
             // Auch die Start-/Zielpunkte der Kontext-Strecken treten zurück;
             // ohne das blieben ausgerechnet die auffälligsten Elemente der
             // fremden Strecken in voller Deckkraft stehen.
@@ -1068,6 +1129,35 @@ export default function RouteMap({
         tileSize: 512,
         maxzoom: 14,
       });
+
+      // Relief und Höhenlinien unter Strassen und Strecken (lib/kartenStil.ts):
+      // die alpine Schicht, solange es keinen eigenen Mapbox-Stil gibt.
+      {
+        const schema = isDarkTheme() ? "dunkel" : "hell";
+        const unter = ersteStrassenEbene((map.getStyle().layers ?? []).map((l) => l.id));
+        // Ohne Anker gar nicht erst einfügen. mapbox-gl prüft beforeId nur
+        // hinter `if (before)`; ein undefined überspringt den Zweig und hängt
+        // die Ebene ganz OBEN an (mapbox-gl-dev.js, Style#addLayer) — ohne
+        // Fehler, den das catch unten sehen könnte. Relief und Höhenlinien
+        // lägen dann über der gefahrenen Linie, den Verkehrsabschnitten und
+        // allen Beschriftungen, also genau andersherum als beabsichtigt.
+        // Tritt ein, wenn ein Mapbox-Stilupdate die Strassenebenen umbenennt.
+        // Bewusst `if (unter)` statt eines frühen return: dieser Block steht
+        // mitten im Kartenaufbau, ein return würde auch die Himmelsebene und
+        // das 3D-Gelände darunter überspringen.
+        if (unter) {
+          try {
+            map.addLayer(reliefLayer(schema, TERRAIN_SOURCE) as Parameters<typeof map.addLayer>[0], unter);
+            map.addSource(KONTUR_SOURCE, konturSource());
+            for (const ebene of konturLayer(schema)) {
+              map.addLayer(ebene as Parameters<typeof map.addLayer>[0], unter);
+            }
+          } catch {
+            // Ohne Relief bleibt die Karte, wie sie war — kein Grund, den Rest
+            // des Aufbaus abzubrechen.
+          }
+        }
+      }
       map.addLayer({
         id: SKY_LAYER,
         type: "sky",
@@ -1089,6 +1179,10 @@ export default function RouteMap({
             false,
             bottomInsetRef.current,
           );
+          eingepassteAuswahlRef.current = auswahlSchluessel(
+            routesRef.current,
+            primaryRouteIdRef.current,
+          );
         } else {
           fitToTrail(map, trailRef.current, false, bottomInsetRef.current);
         }
@@ -1103,9 +1197,22 @@ export default function RouteMap({
       // sah man im Review als schwarze Fläche, wo eine Karte sein sollte.
       // Der Notnagel darunter hebt das Skelett auch dann, wenn "idle" nie
       // kommt (kein Netz, blockierte Kacheln) — dann steht wenigstens der
-      // leere Kartenhintergrund statt eines ewigen Skeletts.
+      // leere Kartenhintergrund statt eines ewigen Skeletts. Ein echter
+      // Fehler (Netz, Token, Quota, WebGL) landet zusätzlich auf der
+      // Fehlkarte unten statt kommentarlos leer.
       map.once("idle", () => setIsReady(true));
       window.setTimeout(() => setIsReady(true), 6000);
+    });
+
+    // Kartenfehler als Fläche statt Stille: "error" feuert u. a. bei
+    // fehlenden Tiles, 401/403 und WebGL-Problemen. Einmal gesetzt, bleibt
+    // die Meldung bis zum Reload — bewusst kein Auto-Retry im Sekundentakt,
+    // das bei Quota nur Kosten treibt.
+    map.on("error", () => {
+      setKartenFehler(
+        "Die Karte konnte nicht geladen werden. Prüfe deine Verbindung und lade neu.",
+      );
+      setIsReady(true);
     });
 
     // Delegierte Layer-Listener bleiben auch über einen Style-Wechsel hinweg
@@ -1210,12 +1317,17 @@ export default function RouteMap({
     map.setPaintProperty(ENDPOINTS_LAYER, "circle-opacity", routeOpacity(primaryRouteId));
     map.setPaintProperty(ENDPOINTS_LAYER, "circle-stroke-opacity", routeOpacity(primaryRouteId));
 
-    if (fitRoutes) {
+    const schluessel = auswahlSchluessel(routes, primaryRouteId);
+    if (fitRoutes && eingepassteAuswahlRef.current !== schluessel) {
       // Eine neue Streckenauswahl ist ein neuer Ausschnitt — das überschreibt
       // ein Hineinzoomen von Hand, und die Sperre dafür fällt damit auch.
       nutzerBewegteKameraRef.current = false;
       fitToRoutes(map, fitTargets(routes, primaryRouteId), true, bottomInsetRef.current);
       eingepasstMitInsetRef.current = bottomInsetRef.current;
+      eingepassteAuswahlRef.current = schluessel;
+    } else if (!fitRoutes) {
+      // Wird fitRoutes später wieder eingeschaltet, passt die Karte neu ein.
+      eingepassteAuswahlRef.current = null;
     }
   }, [routes, signaturen, fitRoutes, primaryRouteId]);
 
@@ -1458,8 +1570,22 @@ export default function RouteMap({
   return (
     <div className="relative h-full w-full">
       <div ref={containerRef} className="h-full w-full" />
-      {!isReady && (
+      {!isReady && !kartenFehler && (
         <Skeleton className="pointer-events-none absolute inset-0 h-full w-full" />
+      )}
+      {kartenFehler && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background p-6 text-center">
+          <p role="alert" className="text-sm text-muted">
+            {kartenFehler}
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="min-h-11 rounded-full border border-border px-4 text-sm font-medium"
+          >
+            Karte neu laden
+          </button>
+        </div>
       )}
     </div>
   );

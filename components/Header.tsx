@@ -122,7 +122,7 @@ export default async function Header({ back }: { back?: string } = {}) {
                   {item.href === "/feed" && ungeseheneAktivitaet > 0 && (
                     <span
                       aria-hidden="true"
-                      className="flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-background"
+                      className="flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-on-accent"
                     >
                       {ungeseheneAktivitaet > 9 ? "9+" : ungeseheneAktivitaet}
                     </span>

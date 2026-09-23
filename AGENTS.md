@@ -691,9 +691,18 @@ is what should be corrected.
   outlines). `components/Wortmarke.tsx`, `app/icon.tsx`,
   `app/apple-icon.tsx`, both `opengraph-image.tsx` files and the canvas in
   `lib/shareImage.ts` all draw from it, so the mark survives Satori and
-  Canvas, which cannot use a CSS webfont. The app still loads only Inter and
-  IBM Plex Mono — do not add a third font to render the logo. Note the
-  wordmark is set lowercase while running copy says "Strado".
+  Canvas, which cannot use a CSS webfont — so the rule that matters is
+  **never render the logo from a webfont**, whatever the app happens to
+  load. Since 2026-09-23 (PR #366) it loads **three**: Geist for running
+  copy, Familjen Grotesk for page titles, IBM Plex Mono for figures. The
+  sentence here said "only Inter and IBM Plex Mono" until then; #366
+  replaced Inter with Geist and did not correct it, which is the drift this
+  file warns about twice elsewhere — this is the only automatically loaded
+  document, so a stale fact here outranks the correct detail in
+  `app/layout.tsx`. That Familjen Grotesk is now also a webfont changes
+  nothing about `lib/marke.ts`: the mark stays outlines, because Satori and
+  Canvas still cannot use one. Note the wordmark is set lowercase while
+  running copy says "Strado".
   - **The signet is no longer the "s".** As of 2026-09-14 it is the "o",
     flattened into a closed circuit — and drawn geometry (two ellipses),
     not the glyph scaled: squashing a typeface thins its horizontals while
@@ -881,7 +890,11 @@ breaking changes from earlier versions (see the block at the top of this file).
   `@stripe/react-stripe-js` ^6.9.0 (client, Payment Element)
 - **Mapbox GL** ^3.30.0 (routing/maps, `mapbox-gl` + `@types/mapbox-gl`)
 - **lucide-react** ^1.43.0 (icons — wrapped in `components/NavIcons.tsx` /
-  `components/VisibilityIcons.tsx`, don't import it directly in new code)
+  `components/VisibilityIcons.tsx`; since 2026-09-23 nothing else imports
+  it directly — keep it that way)
+- **tailwind-merge** ^3.7.0 (inside `lib/utils/cn.ts` only — later class
+  wins; the project's own `--text-*`/`--shadow-*`/`--ease-*`/`--duration-*`
+  tokens must be registered there, see its comment)
 - **@vercel/analytics** ^2.0.1 (`<Analytics />` in `app/layout.tsx`; the only
   telemetry in the app — there is no Sentry or other error reporting)
 - **Vitest** ^5.0.0 (unit tests, `environment: "node"` project-wide).

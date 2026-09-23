@@ -1,12 +1,12 @@
 "use client";
 
+import KartePlatzhalter from "@/components/ui/KartePlatzhalter";
 import dynamic from "next/dynamic";
-import Skeleton from "@/components/ui/Skeleton";
 import type { GeoLineString, RouteGeoJSON } from "@/types/database";
 
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
   ssr: false,
-  loading: () => <Skeleton className="h-full w-full" />,
+  loading: () => <KartePlatzhalter />,
 });
 
 const NO_ROUTES: never[] = [];
@@ -27,10 +27,16 @@ export default function CompletionMap({
   track?: GeoLineString | null;
   tempoSegmente?: { coords: [number, number][]; stufe: number }[] | null;
 }) {
-  if (route) return <RouteMap routes={[route]} />;
+  // Die Karte steht mitten in der Fahrtseite: kooperative Gesten, damit
+  // ein Wisch die Seite scrollt statt die Karte, und keine Zoomknöpfe —
+  // gezoomt wird mit zwei Fingern, die Knöpfe waren drei weisse 32-px-
+  // Flächen auf der dunklen Karte.
+  if (route) return <RouteMap routes={[route]} kooperativeGesten ohneBedienelemente />;
 
   return (
     <RouteMap
+      kooperativeGesten
+      ohneBedienelemente
       routes={NO_ROUTES}
       trail={(track?.coordinates as [number, number][]) ?? []}
       tempoSegmente={tempoSegmente ?? NO_TEMPO}

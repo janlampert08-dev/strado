@@ -121,10 +121,52 @@ function mapboxToken(): string | null {
   return process.env.MAPBOX_SERVER_TOKEN ?? process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? null;
 }
 
-/** Fahrzeit für einen Abfahrtszeitpunkt, oder null. */
+/**
+ * Wie weit die Distanz, die Mapbox fährt, von der Linie der Strecke abweichen
+ * darf. Die 25 Stützpunkte liegen auf der Strecke, eine Antwort mit ganz
+ * anderer Länge ist also nicht dieselbe Strasse: ein Umweg um eine Sperrung
+ * (ein Pass in der Wintersperre, eine Baustelle mit Vollsperrung) oder ein
+ * Stützpunkt, der auf die Gegenfahrbahn einer Autobahn geschnappt ist. Eine
+ * solche Fahrzeit ins Profil zu schreiben hiesse, einen Umweg über den
+ * Gotthard-Strassentunnel als "zähen Verkehr am Furka" auszugeben.
+ *
+ * Grosszügig, weil die Linie selbst geglättet ist und Mapbox an jedem
+ * Stützpunkt ein paar Meter Anfahrt addiert.
+ */
+export const DISTANZ_TOLERANZ = { min: 0.8, max: 1.25 } as const;
+
+export function istPlausibleDistanz(distanzMeter: number, erwartetKm: number): boolean {
+  if (!Number.isFinite(distanzMeter) || distanzMeter <= 0) return false;
+  if (!Number.isFinite(erwartetKm) || erwartetKm <= 0) return true;
+  const verhaeltnis = distanzMeter / 1000 / erwartetKm;
+  return verhaeltnis >= DISTANZ_TOLERANZ.min && verhaeltnis <= DISTANZ_TOLERANZ.max;
+}
+
+/**
+ * Zustände aus pass_status (0104), in denen ein Profil nicht gemessen wird.
+ * Mapbox kennt eine Wintersperre nicht zuverlässig: entweder routet es über
+ * die gesperrte Strasse (dann ist die Fahrzeit erfunden) oder um sie herum
+ * (dann ist sie ein Umweg). In beiden Fällen bleibt das alte Profil aus der
+ * offenen Zeit stehen — es ist die bessere Aussage für den nächsten Sommer.
+ */
+export const GESPERRTE_ZUSTAENDE = new Set(["gesperrt", "wintersperre"]);
+
+/** Liegt die Strecke an einem Pass, der gerade gesperrt ist? */
+export function streckeGesperrt(passIds: string[], zustandJePass: Map<string, string>): boolean {
+  return passIds.some((pass) => GESPERRTE_ZUSTAENDE.has(zustandJePass.get(pass) ?? ""));
+}
+
+/**
+ * Fahrzeit für einen Abfahrtszeitpunkt, oder null.
+ *
+ * Mit `erwartetKm` wird eine Antwort verworfen, deren Distanz nicht zur
+ * Strecke passt (siehe DISTANZ_TOLERANZ) — lieber eine Lücke im Raster als
+ * eine Zelle, die einen Umweg misst.
+ */
 export async function fahrzeitFuer(
   koordinaten: [number, number][],
   abfahrt: string,
+  erwartetKm?: number,
 ): Promise<number | null> {
   const token = mapboxToken();
   if (!token || koordinaten.length < 2) return null;
@@ -139,9 +181,12 @@ export async function fahrzeitFuer(
   try {
     const antwort = await fetch(url, { signal: AbortSignal.timeout(15_000), cache: "no-store" });
     if (!antwort.ok) return null;
-    const daten = (await antwort.json()) as { routes?: { duration?: number }[] };
-    const dauer = daten.routes?.[0]?.duration;
-    return typeof dauer === "number" && dauer > 0 ? dauer : null;
+    const daten = (await antwort.json()) as { routes?: { duration?: number; distance?: number }[] };
+    const route = daten.routes?.[0];
+    const dauer = route?.duration;
+    if (typeof dauer !== "number" || dauer <= 0) return null;
+    if (erwartetKm !== undefined && !istPlausibleDistanz(route?.distance ?? 0, erwartetKm)) return null;
+    return dauer;
   } catch {
     return null;
   }

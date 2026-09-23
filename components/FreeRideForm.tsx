@@ -1,10 +1,12 @@
 "use client";
 
+import KartePlatzhalter from "@/components/ui/KartePlatzhalter";
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Route as RouteIcon, Smartphone } from "lucide-react";
+import Link from "next/link";
+import { Route as RouteIcon, Smartphone } from "@/components/NavIcons";
 import { logFreeRide, type FreeRideFormState } from "@/lib/actions/completions";
 import { useRideRecorder } from "@/components/useRideRecorder";
 import { useLiveLapHint } from "@/components/useLiveLapHint";
@@ -22,13 +24,15 @@ import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
 import type { ExploreRoute, Vehicle } from "@/types/database";
 import { fieldClassName } from "@/components/ui/Input";
 import { buttonVariants } from "@/components/ui/Button";
-import Skeleton from "@/components/ui/Skeleton";
 import Card from "@/components/ui/Card";
 import FullscreenDialog from "@/components/ui/FullscreenDialog";
 import SectionHeading from "@/components/ui/SectionHeading";
 import HalteKnopf from "@/components/ui/HalteKnopf";
 import FazitKopf from "@/components/FazitKopf";
 import { merkeHinweis } from "@/components/Hinweis";
+import GpsBereitschaft from "@/components/GpsBereitschaft";
+import { StreckeIcon, WeiterIcon } from "@/components/NavIcons";
+import { naechsteStreckeAmStart, vorschlagsText } from "@/lib/streckenvorschlag";
 import ErsteFahrtHinweise from "@/components/ErsteFahrtHinweise";
 import {
   useErsteFahrtHinweiseGesehen,
@@ -38,10 +42,30 @@ import {
 import { merkeErsteFahrtHinweiseGesehen } from "@/lib/ersteFahrt";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
-const RouteMap = dynamic(() => import("@/components/RouteMap"), {
-  ssr: false,
-  loading: () => <Skeleton className="h-full w-full" />,
-});
+//
+// Das catch ist für den Start ohne Empfang: der Service Worker hält diese
+// Seite vorgeladen bereit (public/sw.js), die nachgeladene Karte aber bewusst
+// nicht (1,8 MB, offline ohne Kacheln ohnehin leer). Ohne catch landete der
+// gescheiterte Chunk-Abruf in der Fehlergrenze und risse die ganze
+// Aufzeichnung mit — so fehlt nur die Karte.
+const RouteMap = dynamic(
+  () =>
+    import("@/components/RouteMap").catch(() => ({
+      default: KarteOhneVerbindung as (typeof import("@/components/RouteMap"))["default"],
+    })),
+  {
+    ssr: false,
+    loading: () => <KartePlatzhalter />,
+  },
+);
+
+function KarteOhneVerbindung() {
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-surface p-6 text-center text-sm text-muted">
+      Ohne Verbindung keine Karte. Die Aufzeichnung läuft trotzdem.
+    </div>
+  );
+}
 
 const initialState: FreeRideFormState = { error: null };
 const MAX_TITEL_LENGTH = 80;
@@ -104,9 +128,15 @@ export default function FreeRideForm({
   // Standort schon auf dem Startbildschirm (/fahrten/neu) holen, nicht erst
   // mit dem Start: Die Karte zentriert einmalig darauf (centerOnFirstLocation
   // unten) und zeigt den Marker — derselbe Mechanismus wie während der Fahrt,
-  // nur dass dort der Recorder übernimmt. Einmalig per getCurrentPosition wie
-  // in ExploreView; ein Fehlschlag bleibt hier stumm, der Startversuch meldet
-  // ihn ohnehin über recorder.locationError.
+  // nur dass dort der Recorder übernimmt.
+  //
+  // Eine Watch statt des früheren einmaligen getCurrentPosition: die
+  // Bereitschaftszeile ("GPS ±6 m – bereit") soll zeigen, wie das Signal
+  // besser wird, und ein einzelner Fix bliebe beim ersten, meist groben Wert
+  // stehen. Die Watch gehört diesem Schirm, nicht dem Recorder — sie endet
+  // mit der Phase "idle" (Cleanup unten), und die Aufzeichnung fragt beim
+  // Start ihre eigene an wie bisher. Trail, Distanz und Snapshot sehen von
+  // diesen Fixes nichts.
   //
   // ABER NUR, WENN DER STANDORT SCHON FREI IST. Vorher lief das bei jedem
   // Öffnen — beim ersten Besuch stand damit die Browserfrage nach dem
@@ -115,24 +145,44 @@ export default function FreeRideForm({
   // endgültig. Jetzt erklärt das Panel zuerst (ErsteFahrtHinweise), und die
   // Frage kommt mit dem Tippen auf "Aufzeichnung starten" — dem Moment, in
   // dem sie einleuchtet. Die Karte bleibt bis dahin auf der Schweiz.
+  //
+  // Ein Fehlschlag bleibt hier stumm, der Startversuch meldet ihn ohnehin
+  // über recorder.locationError. Nur "verweigert" merkt sich der Schirm:
+  // dann kommt kein Fix mehr, und "GPS-Signal wird gesucht…" wäre gelogen.
   const standortFreigabe = useStandortFreigabe();
   const geraet = useGeraet();
   const ersteFahrtHinweiseGesehen = useErsteFahrtHinweiseGesehen();
   const [standort, setStandort] = useState<[number, number] | null>(null);
   const [standortGenauigkeitM, setStandortGenauigkeitM] = useState<number | null>(null);
+  const [standortVerweigert, setStandortVerweigert] = useState(false);
   useEffect(() => {
-    if (phase !== "idle" || standort !== null) return;
+    if (phase !== "idle") return;
     if (standortFreigabe !== "granted") return;
     if (!("geolocation" in navigator)) return;
-    navigator.geolocation.getCurrentPosition(
+    const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         setStandort([pos.coords.longitude, pos.coords.latitude]);
         setStandortGenauigkeitM(pos.coords.accuracy);
+        setStandortVerweigert(false);
       },
-      () => {},
-      { enableHighAccuracy: true, timeout: 10_000 },
+      (fehler) => {
+        if (fehler.code === fehler.PERMISSION_DENIED) setStandortVerweigert(true);
+      },
+      { enableHighAccuracy: true },
     );
-  }, [phase, standort, standortFreigabe]);
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [phase, standortFreigabe]);
+
+  // Steht man am Start einer freigegebenen Strecke, bietet der Schirm die
+  // Streckenfahrt an (lib/streckenvorschlag.ts). Aus den Strecken, die die
+  // Karte ohnehin schon hat — ExploreRoute trägt start_geojson, also keine
+  // zusätzliche Abfrage. Solange kein genauer Standort da ist, gibt es
+  // schlicht keinen Vorschlag; der Start der freien Fahrt wartet darauf nie.
+  const streckenvorschlag = useMemo(
+    () =>
+      phase === "idle" ? naechsteStreckeAmStart(standort, standortGenauigkeitM, routes) : null,
+    [phase, standort, standortGenauigkeitM, routes],
+  );
 
   // Rein informativer Live-Hinweis während der Fahrt — siehe
   // components/useLiveLapHint.ts. Massgeblich für die tatsächlich erkannten
@@ -244,7 +294,7 @@ export default function FreeRideForm({
   // sei einfach verschwunden.
   if (recorder.uebernahmeGescheitert) {
     return (
-      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)]">
+      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto overscroll-y-contain bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)]">
         <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-5 py-8 sm:px-6 sm:py-10">
           <Card surface className="flex flex-col gap-3 p-4 text-sm">
             <p className="font-medium text-foreground">
@@ -291,7 +341,7 @@ export default function FreeRideForm({
     // dem Knopf. Der Streifen deckt die untere Kante ohnehin immer ab,
     // also gehört der Zuschlag dorthin und nicht hierher.
     return (
-      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)]">
+      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto overscroll-y-contain bg-background pt-[var(--safe-top)]">
         <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-5 py-8 sm:px-6 sm:py-10">
           <FazitKopf
             titel={"Fahrt beendet"}
@@ -311,7 +361,7 @@ export default function FreeRideForm({
               <p className="font-medium text-foreground">
                 {bewegungsbefund.blockiert
                   ? "Diese Fahrt lässt sich nicht speichern."
-                  : "Sieht das nach einer Autofahrt aus?"}
+                  : "War das eine Fahrt mit Auto oder Motorrad?"}
               </p>
               <p className="text-muted">{bewegungsbefund.text}</p>
             </Card>
@@ -373,7 +423,8 @@ export default function FreeRideForm({
               open={gastVerwerfenOffen}
               title="Fahrt verwerfen?"
               description="Die aufgezeichnete Fahrt wurde noch nicht gespeichert und geht dabei endgültig verloren."
-              confirmLabel="Verwerfen"
+              confirmLabel="Fahrt verwerfen"
+              cancelLabel="Fahrt behalten"
               variant="danger"
               onConfirm={handleDiscard}
               onCancel={() => setGastVerwerfenOffen(false)}
@@ -441,9 +492,10 @@ export default function FreeRideForm({
                   name="titel"
                   type="text"
                   maxLength={MAX_TITEL_LENGTH}
+                  enterKeyHint="done"
                   value={titel}
                   onChange={(e) => setTitel(e.target.value)}
-                  placeholder="z.B. Sonntagsrunde Klausenpass"
+                  placeholder="z. B. Sonntagsrunde Klausenpass"
                   className={fieldClassName()}
                 />
               </div>
@@ -462,7 +514,7 @@ export default function FreeRideForm({
     return (
       // Scroll-Notausgang wie im Tracking-Dialog darunter: Titel, Hinweise,
       // Fehler und Knöpfe stapeln sich auf kurzen Schirmen über die Höhe.
-      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-background">
+      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col overflow-y-auto overscroll-y-contain bg-background">
         <div className="flex-1 min-h-[30dvh]">
           <RouteMap
             routes={routes}
@@ -484,11 +536,20 @@ export default function FreeRideForm({
                 Mal mehr als die allgemeine Beschreibung. */}
             {(ersteFahrtHinweiseGesehen || standortFreigabe === "denied") && (
               <p className="text-sm text-muted">
-                Ohne Strecke, einfach losfahren. Gemessen wird ab dem ersten GPS-Signal nach dem
-                Start — beendet wird die Fahrt von dir.
+                Fahr los, wohin du willst. Die Messung beginnt mit dem ersten GPS-Signal und endet,
+                wenn du die Fahrt beendest.
               </p>
             )}
           </div>
+          {/* Ist GPS schon brauchbar? Die Frage, die man am Passcafé vor dem
+              Losfahren hat. Nur eine Auskunft — der Startknopf bleibt auch
+              bei "wird gesucht" bedienbar, die Messung beginnt dann eben mit
+              dem ersten brauchbaren Fix. Nur bei freigegebenem Standort: ohne
+              Freigabe läuft hier keine Watch (siehe oben), und "wird gesucht"
+              wäre gelogen. */}
+          {standortFreigabe === "granted" && !standortVerweigert && (
+            <GpsBereitschaft genauigkeitM={standortGenauigkeitM} wartetAufSignal />
+          )}
           <ErsteFahrtHinweise
             freigabe={standortFreigabe}
             geraet={geraet}
@@ -498,6 +559,22 @@ export default function FreeRideForm({
             <p className="text-sm text-muted">
               Ohne Konto: aufzeichnen geht, zum Speichern brauchst du am Ende eine Anmeldung.
             </p>
+          )}
+          {/* Leise Karte statt Knopf: die Handlung auf diesem Schirm bleibt
+              "Aufzeichnung starten". Der Link führt auf die Streckenseite,
+              gestartet wird dort — hier startet nichts von selbst. */}
+          {streckenvorschlag && (
+            // Die Flächenklassen von ui/Card (surface) direkt am Link: Card
+            // kennt über `as` kein href, und ein Link in einer Card-div wäre
+            // eine zweite, unsichtbare Fläche um dieselbe Tippzone.
+            <Link
+              href={`/strecken/${streckenvorschlag.id}`}
+              className="flex min-h-11 items-center gap-3 rounded-lg border border-border bg-surface p-3 text-sm transition-colors duration-fast hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            >
+              <StreckeIcon className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
+              <span className="flex-1">{vorschlagsText(streckenvorschlag)}</span>
+              <WeiterIcon className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
+            </Link>
           )}
           {/* gap-2 statt gap-1: zwischen dem Start- und dem Abbrechen-Knopf
               lagen 4 px. Das ist das einzige Knopfpaar der App, bei dem ein
@@ -542,7 +619,7 @@ export default function FreeRideForm({
   // wie im Strecken-Tracking (LiveTrackingForm.tsx): Das Panel darf die
   // Knöpfe nie aus dem Bild drücken.
   return (
-    <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-background">
+    <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col overflow-y-auto overscroll-y-contain bg-background">
       <div className="flex-1 min-h-[30dvh]">
         <RouteMap
           routes={routes}
@@ -572,7 +649,7 @@ export default function FreeRideForm({
               aria-hidden="true"
               className={`h-2.5 w-2.5 shrink-0 rounded-full ${recorder.hasStarted && !recorder.pausiert ? "bg-danger" : "bg-muted"}`}
             />
-            {recorder.pausiert ? "Pausiert" : recorder.hasStarted ? "Aufzeichnung läuft" : "Warte auf GPS…"}
+            {recorder.pausiert ? "Pausiert" : recorder.hasStarted ? "Aufzeichnung läuft" : "GPS-Signal wird gesucht…"}
           </p>
           <p className="text-sm text-muted tabular-nums">
             <span className="sr-only">Zeit </span>
@@ -615,7 +692,7 @@ export default function FreeRideForm({
           {liveLapHint?.completed ? `Strecke ${liveLapHint.routeName} erkannt.` : ""}
         </p>
         {liveLapHint && (
-          <p className="flex items-center gap-1.5 text-sm text-accent">
+          <p className="flex items-center gap-1.5 text-sm text-accent-ink">
             <RouteIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
             {liveLapHint.completed
               ? `„${liveLapHint.routeName}" erkannt!`
@@ -641,7 +718,7 @@ export default function FreeRideForm({
             weitere Fläche auf einem Schirm, der zwei Zahlen tragen soll. */}
         <p className="flex items-start gap-2 text-sm leading-snug text-muted">
           <Smartphone className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
-          <span>Bildschirm an lassen — sonst pausiert die Aufzeichnung.</span>
+          <span>Bildschirm eingeschaltet lassen – sonst unterbricht der Browser das GPS.</span>
         </p>
         {recorder.hasStarted ? (
           // Pause neben dem Beenden: ein Tankstopp oder ein Aussichtspunkt

@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Header from "@/components/Header";
 import AnmeldenForm from "@/components/AnmeldenForm";
+import GoogleLoginButton from "@/components/GoogleLoginButton";
 import { LEGAL_URLS } from "@/lib/constants";
 import { safeInternalPath } from "@/lib/utils/url";
 import { authFehlerText } from "@/lib/authFehler";
+import { aktiveOAuthAnbieter } from "@/lib/oauth";
 import { NICHT_INDEXIEREN } from "@/lib/seo";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
@@ -47,6 +49,13 @@ export default async function AnmeldenPage({
   // festen Zuordnung (lib/authFehler.ts), nie aus der Adresszeile.
   const fehlerText = authFehlerText(fehler);
 
+  // Google-Knopf nur, wenn der Anbieter per NEXT_PUBLIC_OAUTH_ANBIETER
+  // eingeschaltet UND im Supabase-Dashboard konfiguriert ist. Fehlt die
+  // Dashboard-Hälfte, meldet die Action lesbar statt ins Leere zu
+  // springen (lib/actions/auth.ts) — das Flag hier steuert nur, ob der
+  // Knopf überhaupt steht.
+  const mitGoogle = aktiveOAuthAnbieter().includes("google");
+
   return (
     <div className="flex h-dvh flex-col">
       <Header back="/" />
@@ -72,6 +81,16 @@ export default async function AnmeldenPage({
             <p className="rounded-lg border border-danger/40 px-4 py-3 text-sm text-danger">
               {fehlerText}
             </p>
+          )}
+          {mitGoogle && (
+            <>
+              <GoogleLoginButton nextHref={nextHref} />
+              <div aria-hidden="true" className="flex items-center gap-3 text-xs text-muted">
+                <span className="h-px flex-1 bg-border" />
+                <span>oder mit E-Mail</span>
+                <span className="h-px flex-1 bg-border" />
+              </div>
+            </>
           )}
           <AnmeldenForm nextHref={nextHref} />
         </Seitenrahmen>
