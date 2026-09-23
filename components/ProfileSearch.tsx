@@ -71,6 +71,11 @@ export default function ProfileSearch() {
         />
         <Input
           type="search"
+          // Suchtaste statt Eingabetaste (Android), keine Autokorrektur:
+          // sie machte aus "Klausen" ein "Klausel".
+          enterKeyHint="search"
+          autoCorrect="off"
+          spellCheck={false}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => results.length > 0 && setOpen(true)}
@@ -119,7 +124,7 @@ export default function ProfileSearch() {
           id={listId}
           role="listbox"
           aria-label="Gefundene Fahrer"
-          className="absolute top-full right-0 left-0 z-30 mt-1 max-h-80 overflow-y-auto rounded-lg border border-border bg-background shadow-elevated"
+          className="absolute top-full right-0 left-0 z-30 mt-1 max-h-80 overflow-y-auto overscroll-y-contain rounded-lg border border-border bg-background shadow-elevated"
         >
           {isPending && results.length === 0 && (
             <p className="px-3 py-2.5 text-sm text-muted">Suche…</p>

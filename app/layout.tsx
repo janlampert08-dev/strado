@@ -3,6 +3,7 @@ import { Familjen_Grotesk, Geist, IBM_Plex_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import HinweisLeiste from "@/components/Hinweis";
+import ThemaFarbe from "@/components/ThemaFarbe";
 import { BESCHREIBUNG, SLOGAN } from "@/lib/constants";
 import { siteUrl } from "@/lib/siteUrl";
 import { startbildEintraege } from "@/lib/startbilder";
@@ -115,11 +116,14 @@ export const viewport: Viewport = {
   // laufen — erst dadurch greifen die env(safe-area-inset-*)-Werte, die
   // globals.css und die Bottom-Nav für Abstände dort nutzen.
   viewportFit: "cover",
+  // Die Bildschirmtastatur verkleinert auf Android das Layout, wie sie es
+  // auf iOS ohnehin tut — sonst lägen unten angeheftete Felder und
+  // Schaltflächen (Fazit, Suche im Sheet) unter der Tastatur.
+  interactiveWidget: "resizes-content",
   // Folgt der Systemeinstellung für die Browser-Chrome-Farbe (Statusleiste/
-  // Adresszeile). Deckt nicht den seltenen Fall ab, dass jemand über
-  // ThemeToggle.tsx manuell gegen sein Systemschema übersteuert — die
-  // Chrome-Farbe würde dann kurz nicht zum Seiteninhalt passen, rein
-  // kosmetisch und nicht funktional relevant.
+  // Adresszeile). Wer über ThemeToggle.tsx gegen sein Systemschema
+  // übersteuert, bekommt die passende Farbe von components/ThemaFarbe.tsx,
+  // sobald die Seite geladen ist.
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#FAFAFA" },
     { media: "(prefers-color-scheme: dark)", color: "#0B0B0D" },
@@ -146,6 +150,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full flex flex-col font-sans">
         {children}
+        <ThemaFarbe />
         <HinweisLeiste />
         <ServiceWorkerRegister />
         <Analytics />

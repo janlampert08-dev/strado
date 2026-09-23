@@ -368,6 +368,8 @@ export default function RideSummaryForm({
               Baujahr (optional)
               <input
                 type="number"
+                // Ziffernblock statt Zahlen-und-Zeichen-Tastatur (iOS).
+                inputMode="numeric"
                 placeholder="z. B. 2019"
                 min={1900}
                 max={2100}
