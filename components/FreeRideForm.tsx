@@ -4,6 +4,7 @@ import { useActionState, useEffect, useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { Route as RouteIcon, Smartphone } from "lucide-react";
 import { logFreeRide, type FreeRideFormState } from "@/lib/actions/completions";
 import { useRideRecorder } from "@/components/useRideRecorder";
@@ -29,6 +30,9 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import HalteKnopf from "@/components/ui/HalteKnopf";
 import FazitKopf from "@/components/FazitKopf";
 import { merkeHinweis } from "@/components/Hinweis";
+import GpsBereitschaft from "@/components/GpsBereitschaft";
+import { StreckeIcon, WeiterIcon } from "@/components/NavIcons";
+import { naechsteStreckeAmStart, vorschlagsText } from "@/lib/streckenvorschlag";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
@@ -97,23 +101,49 @@ export default function FreeRideForm({
   // Standort schon auf dem Startbildschirm (/fahrten/neu) holen, nicht erst
   // mit dem Start: Die Karte zentriert einmalig darauf (centerOnFirstLocation
   // unten) und zeigt den Marker — derselbe Mechanismus wie während der Fahrt,
-  // nur dass dort der Recorder übernimmt. Einmalig per getCurrentPosition wie
-  // in ExploreView; ein Fehlschlag bleibt hier stumm, der Startversuch meldet
-  // ihn ohnehin über recorder.locationError.
+  // nur dass dort der Recorder übernimmt.
+  //
+  // Eine Watch statt des früheren einmaligen getCurrentPosition: die
+  // Bereitschaftszeile ("GPS ±6 m – bereit") soll zeigen, wie das Signal
+  // besser wird, und ein einzelner Fix bliebe beim ersten, meist groben Wert
+  // stehen. Die Watch gehört diesem Schirm, nicht dem Recorder — sie endet
+  // mit der Phase "idle" (Cleanup unten), und die Aufzeichnung fragt beim
+  // Start ihre eigene an wie bisher. Trail, Distanz und Snapshot sehen von
+  // diesen Fixes nichts.
+  //
+  // Ein Fehlschlag bleibt hier stumm, der Startversuch meldet ihn ohnehin
+  // über recorder.locationError. Nur "verweigert" merkt sich der Schirm:
+  // dann kommt kein Fix mehr, und "GPS-Signal wird gesucht…" wäre gelogen.
   const [standort, setStandort] = useState<[number, number] | null>(null);
   const [standortGenauigkeitM, setStandortGenauigkeitM] = useState<number | null>(null);
+  const [standortVerweigert, setStandortVerweigert] = useState(false);
   useEffect(() => {
-    if (phase !== "idle" || standort !== null) return;
+    if (phase !== "idle") return;
     if (!("geolocation" in navigator)) return;
-    navigator.geolocation.getCurrentPosition(
+    const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         setStandort([pos.coords.longitude, pos.coords.latitude]);
         setStandortGenauigkeitM(pos.coords.accuracy);
+        setStandortVerweigert(false);
       },
-      () => {},
-      { enableHighAccuracy: true, timeout: 10_000 },
+      (fehler) => {
+        if (fehler.code === fehler.PERMISSION_DENIED) setStandortVerweigert(true);
+      },
+      { enableHighAccuracy: true },
     );
-  }, [phase, standort]);
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [phase]);
+
+  // Steht man am Start einer freigegebenen Strecke, bietet der Schirm die
+  // Streckenfahrt an (lib/streckenvorschlag.ts). Aus den Strecken, die die
+  // Karte ohnehin schon hat — ExploreRoute trägt start_geojson, also keine
+  // zusätzliche Abfrage. Solange kein genauer Standort da ist, gibt es
+  // schlicht keinen Vorschlag; der Start der freien Fahrt wartet darauf nie.
+  const streckenvorschlag = useMemo(
+    () =>
+      phase === "idle" ? naechsteStreckeAmStart(standort, standortGenauigkeitM, routes) : null,
+    [phase, standort, standortGenauigkeitM, routes],
+  );
 
   // Rein informativer Live-Hinweis während der Fahrt — siehe
   // components/useLiveLapHint.ts. Massgeblich für die tatsächlich erkannten
@@ -464,6 +494,12 @@ export default function FreeRideForm({
               Start — beendet wird die Fahrt von dir.
             </p>
           </div>
+          {/* Ist GPS schon brauchbar? Die Frage, die man am Passcafé vor dem
+              Losfahren hat. Nur eine Auskunft — der Startknopf bleibt auch
+              bei "wird gesucht" bedienbar, die Messung beginnt dann eben mit
+              dem ersten brauchbaren Fix. Bei verweigertem Standort fehlt die
+              Zeile, statt ewig zu "suchen". */}
+          {!standortVerweigert && <GpsBereitschaft genauigkeitM={standortGenauigkeitM} />}
           <ul className="flex flex-col gap-2 text-sm">
             <li className="flex items-start gap-2">
               <Smartphone className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
@@ -475,6 +511,22 @@ export default function FreeRideForm({
               </li>
             )}
           </ul>
+          {/* Leise Karte statt Knopf: die Handlung auf diesem Schirm bleibt
+              "Aufzeichnung starten". Der Link führt auf die Streckenseite,
+              gestartet wird dort — hier startet nichts von selbst. */}
+          {streckenvorschlag && (
+            // Die Flächenklassen von ui/Card (surface) direkt am Link: Card
+            // kennt über `as` kein href, und ein Link in einer Card-div wäre
+            // eine zweite, unsichtbare Fläche um dieselbe Tippzone.
+            <Link
+              href={`/strecken/${streckenvorschlag.id}`}
+              className="flex min-h-11 items-center gap-3 rounded-lg border border-border bg-surface p-3 text-sm transition-colors duration-fast hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            >
+              <StreckeIcon className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
+              <span className="flex-1">{vorschlagsText(streckenvorschlag)}</span>
+              <WeiterIcon className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
+            </Link>
+          )}
           {/* gap-2 statt gap-1: zwischen dem Start- und dem Abbrechen-Knopf
               lagen 4 px. Das ist das einzige Knopfpaar der App, bei dem ein
               Fehlgriff etwas kostet — wer starten will und abbricht, steht

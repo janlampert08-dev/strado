@@ -99,3 +99,9 @@ export { Wrench as WartungIcon, CalendarClock as TerminIcon } from "lucide-react
 // vor dieser Wrapper-Regel. Neuer Code (app/profil/fahrzeuge/[id]) nimmt sie
 // von hier; das Raster mitzuziehen wäre eine Änderung ohne Anlass.
 export { Car as AutoIcon, Bike as MotorradIcon } from "lucide-react";
+
+// Ebenfalls kein Nav-Icon: der Streckenvorschlag auf dem Startschirm der
+// freien Fahrt (components/FreeRideForm.tsx, lib/streckenvorschlag.ts).
+// Dasselbe Zeichen, das FreeRideForm für den Live-Hinweis einer erkannten
+// Strecke schon direkt importiert — neuer Code nimmt es von hier.
+export { Route as StreckeIcon } from "lucide-react";
