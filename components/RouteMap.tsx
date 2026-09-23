@@ -1130,15 +1130,27 @@ export default function RouteMap({
       {
         const schema = isDarkTheme() ? "dunkel" : "hell";
         const unter = ersteStrassenEbene((map.getStyle().layers ?? []).map((l) => l.id));
-        try {
-          map.addLayer(reliefLayer(schema, TERRAIN_SOURCE) as Parameters<typeof map.addLayer>[0], unter);
-          map.addSource(KONTUR_SOURCE, konturSource());
-          for (const ebene of konturLayer(schema)) {
-            map.addLayer(ebene as Parameters<typeof map.addLayer>[0], unter);
+        // Ohne Anker gar nicht erst einfügen. mapbox-gl prüft beforeId nur
+        // hinter `if (before)`; ein undefined überspringt den Zweig und hängt
+        // die Ebene ganz OBEN an (mapbox-gl-dev.js, Style#addLayer) — ohne
+        // Fehler, den das catch unten sehen könnte. Relief und Höhenlinien
+        // lägen dann über der gefahrenen Linie, den Verkehrsabschnitten und
+        // allen Beschriftungen, also genau andersherum als beabsichtigt.
+        // Tritt ein, wenn ein Mapbox-Stilupdate die Strassenebenen umbenennt.
+        // Bewusst `if (unter)` statt eines frühen return: dieser Block steht
+        // mitten im Kartenaufbau, ein return würde auch die Himmelsebene und
+        // das 3D-Gelände darunter überspringen.
+        if (unter) {
+          try {
+            map.addLayer(reliefLayer(schema, TERRAIN_SOURCE) as Parameters<typeof map.addLayer>[0], unter);
+            map.addSource(KONTUR_SOURCE, konturSource());
+            for (const ebene of konturLayer(schema)) {
+              map.addLayer(ebene as Parameters<typeof map.addLayer>[0], unter);
+            }
+          } catch {
+            // Ohne Relief bleibt die Karte, wie sie war — kein Grund, den Rest
+            // des Aufbaus abzubrechen.
           }
-        } catch {
-          // Ohne Relief bleibt die Karte, wie sie war — kein Grund, den Rest
-          // des Aufbaus abzubrechen.
         }
       }
       map.addLayer({

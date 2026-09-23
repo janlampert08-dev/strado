@@ -521,7 +521,7 @@ export default function FreeRideForm({
               bei "wird gesucht" bedienbar, die Messung beginnt dann eben mit
               dem ersten brauchbaren Fix. Bei verweigertem Standort fehlt die
               Zeile, statt ewig zu "suchen". */}
-          {!standortVerweigert && <GpsBereitschaft genauigkeitM={standortGenauigkeitM} />}
+          {!standortVerweigert && <GpsBereitschaft genauigkeitM={standortGenauigkeitM} wartetAufSignal />}
           <ul className="flex flex-col gap-2 text-sm">
             <li className="flex items-start gap-2">
               <Smartphone className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
