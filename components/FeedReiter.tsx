@@ -60,13 +60,11 @@ export default function FeedReiter({
   // als ein Sonderfall"; im Re-Review las es sich als kaputter Filter.)
   if (reiter.length === 1) return null;
 
-  // w-fit + self-center: die Hülle schmiegt sich an die Segmente und steht
-  // mittig (Seitenrahmen ist eine Flex-Spalte; auf /feed zentriert der
-  // sticky-Wrapper per justify-center). overflow-y-hidden: die Hülle ist mit
-  // overflow-x-auto ein Scroll-Container, der sonst auch die senkrechte
-  // Achse beschneidet (Rahmen, Fokusring).
+  // overflow-y-hidden: die Hülle ist mit overflow-x-auto ein
+  // Scroll-Container, der sonst auch die senkrechte Achse beschneidet
+  // (Rahmen, Fokusring).
   return (
-    <nav aria-label="Ansicht" className={segmentHuelleClassName("w-fit self-center overflow-y-hidden")}>
+    <nav aria-label="Ansicht" className={segmentHuelleClassName("self-start overflow-y-hidden")}>
       {reiter.map((r) => {
         const zeigtZaehler = (r.zaehler ?? 0) > 0;
         return (
