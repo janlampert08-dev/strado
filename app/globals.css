@@ -312,6 +312,37 @@ body {
   overscroll-behavior-y: none;
 }
 
+/* Plattformschicht fürs Telefon (Skill "mobile-native", 2026-09-23).
+   - text-size-adjust: keine Schriftvergrösserung im Querformat auf iOS.
+   - touch-action: manipulation: kein Doppeltipp-Zoom auf Bedienelementen,
+     damit der Klick ohne Wartezeit feuert — der Seitenzoom per zwei
+     Finger bleibt unberührt (kein user-scalable=no).
+   - user-select/-webkit-touch-callout nur auf BEDIENELEMENTEN: langes
+     Drücken auf einen Knopf markierte seine Beschriftung. Inhalt (Namen,
+     Zahlen, Adressen) bleibt markierbar. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+a,
+button,
+summary,
+label,
+[role="button"],
+[role="tab"],
+[role="radio"] {
+  touch-action: manipulation;
+}
+button,
+summary,
+[role="button"],
+[role="tab"],
+[role="radio"] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
 /* Seitentitel (die eine h1 je Seite und alles in text-display) in der
    Schrift der Wortmarke. :where() hält die Spezifität bei null, damit eine
    Utility-Klasse am Element weiterhin gewinnt. */

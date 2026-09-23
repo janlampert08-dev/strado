@@ -275,7 +275,7 @@ export default function FreeRideForm({
   // sei einfach verschwunden.
   if (recorder.uebernahmeGescheitert) {
     return (
-      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)]">
+      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto overscroll-y-contain bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)]">
         <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-5 py-8 sm:px-6 sm:py-10">
           <Card surface className="flex flex-col gap-3 p-4 text-sm">
             <p className="font-medium text-foreground">
@@ -322,7 +322,7 @@ export default function FreeRideForm({
     // dem Knopf. Der Streifen deckt die untere Kante ohnehin immer ab,
     // also gehört der Zuschlag dorthin und nicht hierher.
     return (
-      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto bg-background pt-[var(--safe-top)]">
+      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 overflow-y-auto overscroll-y-contain bg-background pt-[var(--safe-top)]">
         <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-5 py-8 sm:px-6 sm:py-10">
           <FazitKopf
             titel={"Fahrt beendet"}
@@ -494,7 +494,7 @@ export default function FreeRideForm({
     return (
       // Scroll-Notausgang wie im Tracking-Dialog darunter: Titel, Hinweise,
       // Fehler und Knöpfe stapeln sich auf kurzen Schirmen über die Höhe.
-      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-background">
+      <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col overflow-y-auto overscroll-y-contain bg-background">
         <div className="flex-1 min-h-[30dvh]">
           <RouteMap
             routes={routes}
@@ -586,7 +586,7 @@ export default function FreeRideForm({
   // wie im Strecken-Tracking (LiveTrackingForm.tsx): Das Panel darf die
   // Knöpfe nie aus dem Bild drücken.
   return (
-    <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-background">
+    <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col overflow-y-auto overscroll-y-contain bg-background">
       <div className="flex-1 min-h-[30dvh]">
         <RouteMap
           routes={routes}

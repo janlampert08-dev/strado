@@ -207,7 +207,7 @@ export default function NutzerWahl({
           id={listenId}
           role="listbox"
           aria-label="Gefundene Konten"
-          className="absolute top-full right-0 left-0 z-20 mt-1 max-h-64 overflow-y-auto rounded-lg border border-border bg-background shadow-elevated"
+          className="absolute top-full right-0 left-0 z-20 mt-1 max-h-64 overflow-y-auto overscroll-y-contain rounded-lg border border-border bg-background shadow-elevated"
         >
           {results.length === 0 ? (
             <li className="px-3 py-2 text-sm font-normal text-muted">
