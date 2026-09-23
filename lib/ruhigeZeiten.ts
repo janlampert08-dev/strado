@@ -64,9 +64,27 @@ export interface Skala {
 /**
  * Unter acht Prozentpunkten Spannweite wäre eine Empfehlung aus Rauschen
  * gerechnet: gespeichert wird auf zwei Stellen, und gleiche Stunden an
- * verschiedenen Werktagen weichen um 0.01–0.03 ab. Dieselbe Grenze wie das
- * frühere "Maximum unter 1.08", jetzt auf die Spannweite bezogen statt auf den
- * Abstand zur einen schnellsten Stunde.
+ * verschiedenen Werktagen weichen um 0.01–0.03 ab.
+ *
+ * ACHTUNG, das ist NICHT dieselbe Grenze wie das frühere "Maximum unter
+ * 1.08" — hier stand bis zur Nacharbeit, sie sei es. Gemessen ist sie es
+ * nicht: die Spannweite läuft von p10 bis p90, und bei 98 Zellen greift p90
+ * auf die Indizes 87/88. Die obersten neun Zellen sieht die Skala also nie.
+ * Neun Zellen dürfen damit auf der DB-Obergrenze 5.0 stehen, und weil
+ * stufeFuerFaktor() bei `flach` bedingungslos "ruhig" zurückgibt, sagt
+ * components/RuhigeZeiten.tsx trotzdem "hier ist selten etwas los"
+ * (gemessen: 9 × 5.0 → {unten:1, oben:1, flach:true}; erst ab 10 kippt es).
+ * Ein realer Fall ist Sonntagnachmittag: acht Zellen mit Faktor 1.6 (+60 %
+ * Fahrzeit) verschwinden vollständig, samt Legende und "am vollsten".
+ * Spiegelbildlich verschwinden fünf ruhige Stunden in einer sonst vollen
+ * Woche.
+ *
+ * Bewusst NICHT hier repariert: die alte Grenze war ausreisserempfindlich,
+ * diese ist blind für alles unter rund zehn Prozent der Woche. Welche der
+ * beiden Schwächen das Produkt will, ist eine Entscheidung des Inhabers
+ * (Core Rule 16), keine Reparatur nebenbei. Naheliegende Mitten: ein höheres
+ * Perzentil für die Flach-Entscheidung, oder `flach` zusätzlich an den
+ * Abstand des Maximums binden.
  */
 export const FLACH_SPANNE = 0.08;
 

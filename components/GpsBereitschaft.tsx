@@ -21,9 +21,19 @@ import {
 // kann, und darf nicht schon beim Suchen aufleuchten.
 export default function GpsBereitschaft({
   genauigkeitM,
+  wartetAufSignal = false,
   className = "",
 }: {
   genauigkeitM: number | null;
+  /**
+   * Ob die Zeitmessung dieser Oberfläche tatsächlich auf den ersten Fix
+   * wartet. Nur bei der freien Fahrt: dort ist beginActualTracking() allein
+   * aus dem Erfolgs-Callback der Watch erreichbar (useRideRecorder.ts). Im
+   * Streckenmodus startet "Ich bin am Start – Zeit jetzt starten" dieselbe
+   * Funktion sofort, setzt startTimeRef auf jetzt und legt das serverseitige
+   * Ticket an — dort wartet nichts, und der Rat würde gewertete Zeit kosten.
+   */
+  wartetAufSignal?: boolean;
   className?: string;
 }) {
   const stufe = gpsStufe(genauigkeitM);
@@ -31,7 +41,8 @@ export default function GpsBereitschaft({
   // Nach 20 s ohne Fix ein Rat statt einer ewig pulsierenden Zeile — unter
   // einem Dach oder in einem Tal kommt der erste Fix spät, und das Warten
   // sah sonst aus wie ein Fehler (Re-Audit 2026-09-23). Der Rat nennt auch,
-  // dass Losfahren trotzdem geht: die Aufzeichnung wartet selbst aufs Signal.
+  // dass Losfahren trotzdem geht — aber nur dort, wo das auch stimmt
+  // (wartetAufSignal).
   const [langeGesucht, setLangeGesucht] = useState(false);
   useEffect(() => {
     if (stufe !== "sucht") return;
@@ -55,7 +66,8 @@ export default function GpsBereitschaft({
     </p>
     {stufe === "sucht" && langeGesucht && (
       <p className={`text-xs text-muted ${className}`}>
-        Unter freiem Himmel geht es schneller. Du kannst trotzdem starten – die Aufzeichnung wartet aufs Signal.
+        Unter freiem Himmel geht es schneller.
+        {wartetAufSignal && " Du kannst trotzdem starten – die Aufzeichnung wartet aufs Signal."}
       </p>
     )}
     </>

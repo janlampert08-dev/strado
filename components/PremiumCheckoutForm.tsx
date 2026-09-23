@@ -103,17 +103,17 @@ function appearance(dunkel: boolean): ElementsOptionen["appearance"] {
         // 3.11:1 auf dem Hintergrund ausdrücklich ersetzt hat; er stand
         // hier noch, weil diese Palette beim Wechsel übersehen wurde.
         textSecondary: "#666B74",
-        accent: "#3D5AFE",
+        accent: "#6B83FF",
         // --color-border: 12 % der Vordergrundfarbe (vorher 30 %).
         border: "rgba(19,19,22,0.12)",
         borderStrong: "rgba(19,19,22,0.30)",
-        ring: "rgba(61,90,254,0.15)",
-        ringStark: "rgba(61,90,254,0.4)",
+        ring: "rgba(107,131,255,0.15)",
+        ringStark: "rgba(107,131,255,0.4)",
         danger: "#DC2626",
         dangerRing: "rgba(220,38,38,0.15)",
         success: "#1A7F37",
         warning: "#B45309",
-        accentSubtle: "#EBEDFA",
+        accentSubtle: "#EEF1FC",
         surface: "#F3F3F4",
       };
 
@@ -134,9 +134,15 @@ function appearance(dunkel: boolean): ElementsOptionen["appearance"] {
       colorDanger: farben.danger,
       colorSuccess: farben.success,
       colorWarning: farben.warning,
-      // Auf einer Akzentfläche liegt in der App immer die Hintergrundfarbe
-      // (bg-accent text-background, siehe ui/Button.tsx) — nicht Weiss.
-      accessibleColorOnColorPrimary: farben.background,
+      // Auf einer Akzentfläche liegt in der App --color-on-accent
+      // (bg-accent text-on-accent, siehe ui/Button.tsx) — in BEIDEN Schemas
+      // dasselbe Fastschwarz, nicht die jeweilige Hintergrundfarbe. Hier
+      // stand bis zum Markenblau-Wechsel farben.background; mit #6B83FF wäre
+      // daraus im hellen Schema #FAFAFA auf #6B83FF geworden, gemessen
+      // 3.19:1 — also genau der Fall, für den globals.css
+      // --color-on-accent überhaupt eingeführt hat. Betroffen wären der
+      // Bezahlknopf und der Haken einer gemerkten Zahlungsart.
+      accessibleColorOnColorPrimary: "#0B0B0D",
 
       fontFamily: "'Geist', ui-sans-serif, system-ui, sans-serif",
       fontSizeBase: "14px",

@@ -69,5 +69,5 @@ export function tokenFarbe(name: string, rueckfall: string): string {
  * aber still veralten kann er trotzdem.
  */
 export function akzentFarbe(): string {
-  return tokenFarbe("--color-accent", "#3d5afe");
+  return tokenFarbe("--color-accent", "#6b83ff");
 }
