@@ -67,7 +67,7 @@ export default async function EinstellungenPage() {
     supabase
       .from("profiles")
       .select(
-        "display_name, zeigt_fahrzeuge, zeigt_avatar, zeigt_paesse, zeigt_hoehenmeter, zeigt_distanz, zeigt_follower_liste, privatzone_radius_m",
+        "display_name, zeigt_fahrzeuge, zeigt_avatar, zeigt_paesse, zeigt_hoehenmeter, zeigt_distanz, zeigt_follower_liste, zeigt_tempo, privatzone_radius_m",
       )
       .eq("id", user.id)
       .single(),
@@ -145,6 +145,7 @@ export default async function EinstellungenPage() {
               zeigtHoehenmeter={profile?.zeigt_hoehenmeter ?? true}
               zeigtDistanz={profile?.zeigt_distanz ?? true}
               zeigtFollowerListe={profile?.zeigt_follower_liste ?? true}
+              zeigtTempo={profile?.zeigt_tempo ?? false}
               privatzoneRadiusM={
                 profile?.privatzone_radius_m ?? DEFAULT_PRIVACY_RADIUS_M
               }

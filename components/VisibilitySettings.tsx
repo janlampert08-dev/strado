@@ -17,6 +17,7 @@ export interface VisibilityFlags {
   zeigtHoehenmeter: boolean;
   zeigtDistanz: boolean;
   zeigtFollowerListe: boolean;
+  zeigtTempo: boolean;
 }
 
 export interface VisibilitySettingsProps extends VisibilityFlags {
@@ -48,6 +49,16 @@ const FIELDS: Field[] = [
     formKey: "zeigt_follower_liste",
     label: "Follower-/Gefolgt-Liste zeigen",
     description: "Die Anzahl bleibt für andere immer sichtbar, unabhängig von dieser Einstellung.",
+  },
+  {
+    name: "zeigtTempo",
+    formKey: "zeigt_tempo",
+    label: "Durchschnittstempo auf geteilten Fahrten zeigen",
+    // Ehrlich über die Grenze: Distanz und Zeit bleiben öffentlich, der
+    // Schnitt lässt sich also ausrechnen. Der Schalter entscheidet, ob
+    // Strado ihn ausweist (0125).
+    description:
+      "Deine Zeit bleibt in den Ranglisten sichtbar, und du selbst siehst dein Tempo immer. Distanz und Zeit geteilter Fahrten bleiben öffentlich.",
   },
 ];
 
