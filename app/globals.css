@@ -766,3 +766,13 @@ dialog.dialog-animiert[open]::backdrop {
 .reiter-scroller::-webkit-scrollbar {
   display: none;
 }
+
+/* Reiter-Segmente sind Pillen — ausdrücklich auch für <button>: die globale
+   button-Regel weiter oben (border-radius: var(--radius-md)) ist unlayered
+   und sticht damit jede Tailwind-Schicht aus, also auch rounded-full auf den
+   Segmenten. Ohne diese Zeile wären die aktiven Reiter eckiger als ihre
+   Hülle. Steht hier als Regel statt als Utility, damit sie unabhängig von
+   der Klassenreihenfolge und der globalen button-Regel gilt. */
+.reiter-scroller > button {
+  border-radius: 9999px;
+}
