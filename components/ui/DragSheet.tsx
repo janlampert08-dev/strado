@@ -178,12 +178,16 @@ export default function DragSheet({
   // Kopfleiste (unten steht es mit bottom: var(--bottom-nav-h) auf der
   // Inhaltskante auf). Derselbe Wert, den messeHoehen() unten für die
   // Ziehmathematik rechnet — sonst driften CSS und Geste auseinander.
-  const sheetHeight =
-    snap === "voll"
-      ? "calc(100% - var(--bottom-nav-h))"
-      : snap === "peek"
-        ? `${peekPx}px`
-        : `${handleHeight + (hatKompakt ? KOMPAKT_PX : 0)}px`;
+  const ruheHoeheFuer = useCallback(
+    (s: SheetSnap) =>
+      s === "voll"
+        ? "calc(100% - var(--bottom-nav-h))"
+        : s === "peek"
+          ? `${peekPx}px`
+          : `${handleHeight + (hatKompakt ? KOMPAKT_PX : 0)}px`,
+    [peekPx, handleHeight, hatKompakt],
+  );
+  const sheetHeight = ruheHoeheFuer(snap);
   // Für die Feder, die erst nach ihrem letzten Frame den Ruhewert schreibt —
   // dann ist React mit dem neuen Rastpunkt längst durch.
   const ruheHoeheRef = useRef(sheetHeight);
@@ -254,7 +258,17 @@ export default function DragSheet({
       const heights = messeHoehen();
       const zielPx = sheetHeightFor(ziel, heights);
       if (reduzierteBewegung()) {
-        sheet.style.setProperty("--sheet-h", `${zielPx}px`);
+        // Der Ruhewert des ZIELS, nicht die gemessene Pixelzahl. Für "voll"
+        // ist das ein calc(), das Änderungen der Containerhöhe ohne JS folgt;
+        // mit einer festen Pixelzahl blieb das Sheet daran hängen, sobald es
+        // auf denselben Rastpunkt zurückrastete: setSnap bailt dann, und die
+        // Abhängigkeiten des Layout-Effekts unten ändern sich nicht, er
+        // stellt den Ruhewert also nicht wieder her. Auf dem Telefon ändert
+        // schon die ein- und ausblendende Adressleiste die Viewporthöhe.
+        //
+        // Nicht ruheHoeheRef: die steht für den Rastpunkt, den React GERADE
+        // hat — hier ist setSnap(ziel) noch nicht gelaufen.
+        sheet.style.setProperty("--sheet-h", ruheHoeheFuer(ziel));
         return;
       }
       const parameter = feder ?? federFuer(geschwindigkeit);
@@ -276,7 +290,7 @@ export default function DragSheet({
       };
       federRef.current = requestAnimationFrame(schritt);
     },
-    [messeHoehen, schreibeHoehe, stoppeBewegung],
+    [messeHoehen, ruheHoeheFuer, schreibeHoehe, stoppeBewegung],
   );
 
   // Rastpunktwechsel, die keine Geste ausgelöst hat (Pfeiltasten,
@@ -547,6 +561,17 @@ export default function DragSheet({
 
       const touch = e.touches[0];
       const heights = messeHoehen();
+      // Trägheit der Liste hält eine neue Berührung IMMER an — auch ein
+      // blosser Tipp, denn genau so hält man auf dem Telefon eine
+      // nachlaufende Liste an. Bewusst getrennt von `gefangen`: das steht für
+      // "der Finger hat ein laufendes Sheet erwischt" und lässt die Geste beim
+      // Loslassen einrasten; ein Tipp in die Liste soll das Sheet nicht
+      // bewegen. Ohne diese Zeile lief die Liste unter dem Finger weiter und
+      // der Klick landete auf der Zeile, die beim Loslassen gerade dort stand.
+      if (nachlaufRef.current !== null) {
+        cancelAnimationFrame(nachlaufRef.current);
+        nachlaufRef.current = null;
+      }
       // Läuft das Sheet noch, fängt der Finger es sofort — es bleibt stehen,
       // wo es gerade ist, statt erst fertig einzurasten.
       const gefangen = federRef.current !== null;
@@ -612,6 +637,14 @@ export default function DragSheet({
         // diese Pixel nach: ein spürbares Rucken zu Beginn jedes Wischs.
         gesture.startY = touch.clientY;
         if (!gesture.gefangen) gesture.startHeight = greife(gesture.heights);
+        // Die Proben ebenso: die aus touchstart trägt den Zeitstempel des
+        // Aufsetzens, aber keinen Weg — bis hierher stand das Sheet still.
+        // wischGeschwindigkeit() mittelt über 100 ms, und diese Totzeit ging
+        // als Zeit ohne Weg in den Mittelwert. Gemessen: ein 40-px-Wisch in
+        // 50 ms (800 px/s) kam bei 30 ms Totzeit als 500 px/s heraus und
+        // rastete auf Peek zurück statt auf Voll — nötig sind dort 754 px/s.
+        // Genau der kurze schnelle Wisch, den snapAfterFling auffangen soll.
+        gesture.proben = [{ t: performance.now(), h: gesture.startHeight }];
         haeltRef.current = true;
         setZieht(true);
       }
