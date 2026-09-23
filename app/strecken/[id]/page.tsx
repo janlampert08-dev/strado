@@ -15,6 +15,7 @@ import ElevationProfile from "@/components/ElevationProfile";
 import PhotoGallery from "@/components/PhotoGallery";
 import RouteLeaderboardPreview from "@/components/RouteLeaderboardPreview";
 import BestzeitStreifen from "@/components/BestzeitStreifen";
+import { liveSplitEingeschaltet } from "@/lib/liveSplit";
 import OfflineRouteButton from "@/components/OfflineRouteButton";
 import { getKontextStrecken, getRoute, getSignaturbestand } from "@/lib/routes";
 import { computeSignatures } from "@/lib/signature";
@@ -483,6 +484,13 @@ export default async function StreckeDetailPage({
           personalBestSeconds={personalBestSeconds}
           guestContinuationToken={fortsetzen ?? null}
           maxPhotos={maxFotosProFahrt(premiumStatus.aktiv)}
+          // Aus, bis die neuen AGB gelten (lib/liveSplit.ts). Server-Variable,
+          // damit Ausschalten ohne neuen Build geht.
+          liveSplit={
+            liveSplitEingeschaltet(process.env.STRADO_LIVE_SPLIT)
+              ? { streckenBestzeitS: leaderboard[0]?.dauerSekunden ?? null }
+              : null
+          }
         />
         </div>
 
