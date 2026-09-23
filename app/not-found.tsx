@@ -10,9 +10,15 @@ export const metadata = { title: "Seite nicht gefunden – Strado" };
 
 export default function NotFound() {
   return (
-    <>
+    // min-h-dvh liegt am Rahmen, nicht an der Statusfläche. Sonst ist die
+    // Seite um die Kopfhöhe zu hoch: Kopf plus volle Ansichtshöhe ergibt
+    // einen Rollbalken auf einer Seite ganz ohne Inhalt, und die zentrierte
+    // Spalte sitzt sichtbar unter der Mitte. Seit cn() mit tailwind-merge
+    // arbeitet, hebt die mitgegebene Klasse die eingebaute verlässlich auf.
+    <div className="flex min-h-dvh flex-col">
       <Header />
       <StatusPage
+        className="min-h-0 flex-1"
         marke
         title="Diese Seite gibt es nicht."
         description="Vielleicht wurde die Strecke entfernt oder der Link ist unvollständig. Alle Strecken findest du auf der Karte."
@@ -21,6 +27,6 @@ export default function NotFound() {
           { label: "Zum Feed", href: "/feed" },
         ]}
       />
-    </>
+    </div>
   );
 }
