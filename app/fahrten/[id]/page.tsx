@@ -378,6 +378,12 @@ export default async function FahrtDetailPage({
               (Kleingedrucktes) nebeneinander. */}
           <AbschnittTabs tabs={[{ titel: "Übersicht" }, { titel: "Details" }]}>
           <div className="flex flex-col gap-5">
+          {/* Das Ergebnis zuerst: die auf dieser Fahrt erkannten Strecken
+              samt Zeit standen im Reiter "Details" unter Fahrzeug und
+              Abdeckung — also das, weswegen man die Fahrt öffnet, hinter dem
+              Kleingedruckten. Nur für den Besitzer (getDetectedSegments). */}
+          {detectedSegments.length > 0 && <DetectedSegmentsCard segments={detectedSegments} />}
+
           {/* Karte + Profil als eine Visualisierung: ein Rahmen, ein Gedanke.
               Vorher zwei gleich grosse Blöcke mit eigenem Gewicht plus
               erklärender Kleinstzeile dazwischen. */}
@@ -489,8 +495,6 @@ export default async function FahrtDetailPage({
 
           </div>
           <div className="flex flex-col gap-5">
-          {detectedSegments.length > 0 && <DetectedSegmentsCard segments={detectedSegments} />}
-
           {/* Entflochten: Fahrzeug, Abdeckung und Notiz waren eine Karte mit
               vier Gedanken. Jetzt: Fahrzeug als stille Zeile, Abdeckung als
               schmaler Fortschritt, Notiz als Zitat — drei Stimmen statt einer. */}
