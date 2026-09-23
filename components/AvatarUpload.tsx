@@ -35,7 +35,7 @@ export default function AvatarUpload({
         <label
           htmlFor="avatar-input"
           title="Profilbild ändern"
-          className={`absolute -right-1 -bottom-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm transition-colors duration-fast hover:border-border-strong ${
+          className={`absolute -right-1 -bottom-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm transition-colors duration-fast hover:border-muted ${
             pending ? "pointer-events-none opacity-50" : ""
           }`}
         >

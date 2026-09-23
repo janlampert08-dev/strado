@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Mono, Inter } from "next/font/google";
+import { Familjen_Grotesk, Geist, IBM_Plex_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import HinweisLeiste from "@/components/Hinweis";
@@ -8,20 +8,34 @@ import { siteUrl } from "@/lib/siteUrl";
 import { startbildEintraege } from "@/lib/startbilder";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
+// Oberfläche und Zahlen: Geist, eine Neo-Grotesk in der Linie der Neuen
+// Haas — ruhig, eng gebaut, mit echten Tabellenziffern. Sie löst Inter ab
+// (Eigentümerentscheid 2026-09-23): Inter ist die Standardschrift jeder
+// zweiten App und trug nichts von "Schweizer Präzision". latin-ext, weil
+// Orts- und Passnamen aus drei Landessprachen kommen.
+const geist = Geist({
+  variable: "--font-geist",
+  subsets: ["latin", "latin-ext"],
+});
+
+// Seitentitel: Familjen Grotesk — dieselbe Schrift, aus der die Wortmarke
+// gezeichnet ist (lib/marke.ts). Titel und Marke sprechen damit eine
+// Sprache, ohne dass die Marke als Schrift geladen werden muss.
+const familjen = Familjen_Grotesk({
+  variable: "--font-familjen",
+  subsets: ["latin", "latin-ext"],
 });
 
 // Für tabellarische Zahlen (Ränge, km, Höhenmeter) — Instrument-Cluster-artige
-// Präzision statt Inter als De-facto-Mono-Attrappe (siehe globals.css).
+// Präzision statt einer Grotesk als De-facto-Mono-Attrappe (siehe globals.css).
 //
 // preload: false, weil die Schrift nur an wenigen Stellen gebraucht wird
 // (Creator-Codes, Bestätigungscode, einzelne Kennzahlen) — vorgeladen wurden
 // die zwei Schnitte (2× ~10 KB) aber auf jeder Seite, mit derselben Priorität
-// wie Inter. Ohne Vorladen holt der Browser sie erst, wenn ein Element sie
-// tatsächlich verwendet; bis dahin steht dort kurz die Ersatzschrift
-// (next/font setzt display: swap und eine grössenangeglichene Fallback-Schrift).
+// wie die Oberflächenschrift. Ohne Vorladen holt der Browser sie erst, wenn
+// ein Element sie tatsächlich verwendet; bis dahin steht dort kurz die
+// Ersatzschrift (next/font setzt display: swap und eine grössenangeglichene
+// Fallback-Schrift).
 const ibmPlexMono = IBM_Plex_Mono({
   variable: "--font-ibm-plex-mono",
   subsets: ["latin"],
@@ -125,7 +139,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       // Kontrolle — ohne dies würde React beim Hydratisieren fälschlich vor
       // einem Mismatch warnen.
       suppressHydrationWarning
-      className={`${inter.variable} ${ibmPlexMono.variable} h-full antialiased`}
+      className={`${geist.variable} ${familjen.variable} ${ibmPlexMono.variable} h-full antialiased`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />

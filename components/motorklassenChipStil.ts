@@ -49,7 +49,7 @@ export function chipClassName(aktiv: boolean, gross = false): string {
     // aus", nicht "ist gewählt".
     aktiv
       ? "border-foreground bg-foreground text-background"
-      : "border-border-control text-muted hover:border-border-strong hover:text-foreground",
+      : "border-border-control text-muted hover:border-muted hover:text-foreground",
   );
 }
 
@@ -66,6 +66,6 @@ export function unterChipClassName(aktiv: boolean): string {
     "relative inline-flex min-h-8 shrink-0 items-center rounded-full border px-2.5 text-xs font-medium whitespace-nowrap transition-colors duration-fast after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-['']",
     aktiv
       ? "border-foreground bg-surface text-foreground"
-      : "border-border-control text-muted hover:border-border-strong hover:text-foreground",
+      : "border-border-control text-muted hover:border-muted hover:text-foreground",
   );
 }

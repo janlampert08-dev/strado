@@ -71,12 +71,12 @@ function appearance(dunkel: boolean): ElementsOptionen["appearance"] {
         // deutlich kantiger wirken als jedes Feld der App daneben.
         border: "rgba(242,242,244,0.14)",
         // --color-border-strong: der Rahmen beim Zeigen auf einen Reiter,
-        // wie hover:border-border-strong an PlanOption.
+        // wie hover:border-muted an PlanOption.
         borderStrong: "rgba(242,242,244,0.32)",
         // Fokusring wie ring-accent/15.
         ring: "rgba(107,131,255,0.15)",
         // Der kräftigere Ring, den die App auf anklickbaren Flächen statt
-        // auf Eingabefeldern zeigt: focus-visible:ring-accent/40 aus
+        // auf Eingabefeldern zeigt: focus-visible:ring-accent aus
         // components/ui/Button.tsx.
         ringStark: "rgba(107,131,255,0.4)",
         // --color-danger im Dunkelmodus. #DC2626 (der helle Wert) kommt
@@ -138,7 +138,7 @@ function appearance(dunkel: boolean): ElementsOptionen["appearance"] {
       // (bg-accent text-background, siehe ui/Button.tsx) — nicht Weiss.
       accessibleColorOnColorPrimary: farben.background,
 
-      fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
+      fontFamily: "'Geist', ui-sans-serif, system-ui, sans-serif",
       fontSizeBase: "14px",
       fontWeightMedium: "500",
       fontWeightBold: "600",
@@ -273,7 +273,7 @@ function appearance(dunkel: boolean): ElementsOptionen["appearance"] {
 }
 
 const FONTS: NonNullable<ElementsOptionen["fonts"]> = [
-  { cssSrc: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" },
+  { cssSrc: "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" },
 ];
 
 // Liest das wirksame Farbschema und folgt jedem Wechsel — der manuellen Wahl
