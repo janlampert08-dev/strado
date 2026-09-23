@@ -27,7 +27,6 @@ import {
 } from "@/lib/motorklassen";
 import type { Klassenfilter } from "@/lib/motorklassen";
 import type { Motorklasse, Vehicle } from "@/types/database";
-import { MEDAL_COLORS } from "@/lib/constants";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import { buttonVariants } from "@/components/ui/Button";
@@ -100,8 +99,8 @@ function LeaderboardSection({
   format?: (value: number) => string;
   currentUserId: string | null;
 }) {
-  // Einträge mit dem Wert 0 sind keine Platzierung. "Entdecker · Platz 1 ·
-  // Jan · 0 Strecken" las sich wie eine kaputte Liste: Platz 1 für nichts.
+  // Einträge mit dem Wert 0 sind keine Platzierung. "Meiste Strecken · Platz 1
+  // · Jan · 0 Strecken" las sich wie eine kaputte Liste: Platz 1 für nichts.
   // Wer noch nichts hat, steht nicht auf dem Podest, sondern fehlt — und
   // bleiben nur solche übrig, greift der ehrliche Leerzustand darunter.
   const platzierte = entries.filter((entry) => entry.value > 0);
@@ -126,18 +125,21 @@ function LeaderboardSection({
             return (
               <li
                 key={entry.userId}
-                className={`flex items-center gap-2 px-4 py-3 text-sm ${
+                className={`druckbar flex items-center gap-2 px-4 py-3 text-sm ${
                   isOwn ? "bg-accent/5" : ""
                 }`}
               >
-                {i < 3 ? (
-                  <span className="flex w-4 shrink-0 justify-center">
-                    <RankingIcon className="h-4 w-4" style={{ color: MEDAL_COLORS[i] }} aria-hidden="true" />
-                    <span className="sr-only">Platz {i + 1}</span>
-                  </span>
-                ) : (
-                  <span className="w-4 shrink-0 text-center text-xs text-muted">{i + 1}.</span>
-                )}
+                {/* Der Rang als Zahl in jeder Zeile. Vorher trugen die ersten drei
+                    je einen gleich geformten Pokal, unterschieden nur durch Gold, Silber
+                    und Bronze — Silber hatte auf hellem Grund 2.3:1, und wer die Farben
+                    nicht trennt, sah dreimal dasselbe (WCAG 1.4.1). Die ersten drei
+                    sind betont, nicht eingefärbt. */}
+                <span
+                  className={`w-5 shrink-0 text-center text-xs tabular-nums ${i < 3 ? "font-semibold text-foreground" : "text-muted"}`}
+                >
+                  <span className="sr-only">Platz </span>
+                  {i + 1}
+                </span>
                 <Avatar url={entry.avatarUrl} name={entry.name} size={24} />
                 <Link
                   href={`/fahrer/${entry.userId}`}
@@ -281,7 +283,7 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
           (Eigentümerentscheid): Wer bis hierher scrollt, will Ranglisten
           sehen. */}
       <LeaderboardSection
-        title={`Meiste km gefahren${klassenZusatz}`}
+        title={`Meiste Kilometer${klassenZusatz}`}
         icon={Ruler}
         entries={meisteKm}
         unit="km"
@@ -305,7 +307,7 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
           currentUserId={currentUserId}
         />
         <LeaderboardSection
-          title={`Entdecker${klassenZusatz}`}
+          title={`Meiste Strecken${klassenZusatz}`}
           icon={Compass}
           entries={meisteStrecken}
           unit={(n) => nomen(n, "Strecke", "Strecken")}
@@ -353,7 +355,7 @@ export default async function LeaderboardsPage({
           <div>
             <h1 className="text-display font-semibold">Ranglisten</h1>
             <p className="mt-1 text-sm text-muted">
-              Wer am meisten unterwegs war — und die schnellsten Zeiten je Strecke.
+              Wer am meisten fährt – und die Bestzeiten je Strecke.
             </p>
           </div>
           <MotorklassenChips
@@ -375,8 +377,10 @@ export default async function LeaderboardsPage({
             lassen, bis die neuen da sind. */}
         {/* Zwei Ansichten statt einer Säule: Volumenlisten und
             Streckenbestzeiten hatten je ein eigenes Filtersystem auf
-            derselben Seite. Jetzt Reiter — der Chooser lebt im zweiten. */}
-        <AbschnittTabs tabs={[{ titel: "Ranglisten" }, { titel: "Bestzeiten" }]}>
+            derselben Seite. Jetzt Reiter — der Chooser lebt im zweiten.
+            "Gesamt" statt "Ranglisten": der erste Reiter wiederholte die
+            Überschrift direkt darüber, als wäre der zweite keine Rangliste. */}
+        <AbschnittTabs tabs={[{ titel: "Gesamt" }, { titel: "Bestzeiten" }]}>
           <div>
             <Suspense key={klasse ?? "alle"} fallback={<LeaderboardListsSkeleton />}>
               <Ranglisten klasse={klasse} />

@@ -161,7 +161,7 @@ export default function PassSammlung({
                   // -mx-2/px-2: die Fläche für Hover und Fokus darf ein
                   // Stück über die Textkante hinausgehen, ohne die Flucht
                   // der Liste zum Seitenrand zu verlieren.
-                  className="group -mx-2 flex items-center justify-between gap-3 rounded-md px-2 py-3 transition-colors duration-fast hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/40"
+                  className="group -mx-2 flex items-center justify-between gap-3 rounded-md px-2 py-3 transition-colors duration-fast hover:bg-surface druckbar focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
                 >
                   <span className="flex min-w-0 flex-col gap-0.5">
                     <span className="flex min-w-0 items-baseline gap-2">
@@ -212,7 +212,7 @@ export default function PassSammlung({
               <li key={pass.id}>
                 <Link
                   href={`/paesse#${pass.id}`}
-                  className="-mx-2 flex min-h-11 items-center justify-between gap-3 rounded-md px-2 py-2 text-muted transition-colors duration-fast hover:bg-surface hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/40"
+                  className="-mx-2 flex min-h-11 items-center justify-between gap-3 rounded-md px-2 py-2 text-muted transition-colors duration-fast hover:bg-surface druckbar hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
                 >
                   <span className="flex min-w-0 items-baseline gap-2">
                     <span className="truncate">{pass.name}</span>

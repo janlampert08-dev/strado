@@ -13,7 +13,7 @@ import { SparklesIcon } from "@/components/NavIcons";
 // Bewusst leise: eine Zeile in text-muted, das Funkeln als einziges Zeichen,
 // der Link unterstrichen statt als Knopf. Der gefüllte Akzent gehört den
 // Handlungen des Nutzers (docs/design-vereinfachung.md, Anhang C2) — ein
-// Verkauf in derselben Lautstärke wie "Strecke starten" wäre zu laut.
+// Verkauf in derselben Lautstärke wie "Strecke fahren" wäre zu laut.
 //
 // Der Text sagt, was man bekäme, nicht dass etwas gesperrt ist. Ein
 // Schloss-Symbol liest sich als Wegnahme; additives Gating
@@ -33,7 +33,7 @@ export default function PremiumHinweis({
       <span>
         {children}.{" "}
         <Link href="/premium" className="text-foreground underline underline-offset-2">
-          Premium ansehen
+          Mehr zu Premium
         </Link>
       </span>
     </p>

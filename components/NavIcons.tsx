@@ -105,3 +105,7 @@ export { Car as AutoIcon, Bike as MotorradIcon } from "lucide-react";
 // Dasselbe Zeichen, das FreeRideForm für den Live-Hinweis einer erkannten
 // Strecke schon direkt importiert — neuer Code nimmt es von hier.
 export { Route as StreckeIcon } from "lucide-react";
+
+// Die Stoppuhr vor einer gemessenen Dauer (Bestzeit-Streifen der
+// Streckenseite) — damit "14:12 min" nicht als Uhrzeit gelesen wird.
+export { Timer as TimerIcon } from "lucide-react";

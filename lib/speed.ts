@@ -4,22 +4,50 @@ import type { TempolimitSegment } from "@/types/database";
 // Schweizer Standard-Tempolimits: Zone 30, Ortsdurchfahrt 50, Kantonsstrasse
 // 60, ausserorts 80, Autobahn/-strasse 120.
 const SPEED_BUCKETS = [
-  { max: 30, kmh: 30, color: "#6B7280", label: "30 km/h" },
-  { max: 50, kmh: 50, color: "#3D5AFE", label: "50 km/h" },
-  { max: 60, kmh: 60, color: "#0EA5A5", label: "60 km/h" },
-  { max: 80, kmh: 80, color: "#F59E0B", label: "80 km/h" },
-  { max: Infinity, kmh: 120, color: "#DC2626", label: "≥ 100 km/h" },
+  { max: 30, kmh: 30, label: "30 km/h" },
+  { max: 50, kmh: 50, label: "50 km/h" },
+  { max: 60, kmh: 60, label: "60 km/h" },
+  { max: 80, kmh: 80, label: "80 km/h" },
+  { max: Infinity, kmh: 120, label: "≥ 100 km/h" },
 ];
 
-function bucketFor(kmh: number) {
-  return SPEED_BUCKETS.find((b) => kmh <= b.max) ?? SPEED_BUCKETS[SPEED_BUCKETS.length - 1];
+export type Farbschema = "hell" | "dunkel";
+
+// Eine Tonfamilie, deren Helligkeit mit dem Tempo steigt (dunkel) bzw.
+// fällt (hell) — eine geordnete Grösse, also eine geordnete Skala. Vorher
+// waren es fünf Kategorienfarben: Grau, das alte Akzentblau #3D5AFE, Türkis,
+// Amber, Rot. Deren Helligkeit sprang (in OKLCH 0.55 / 0.56 / 0.66 / 0.77 /
+// 0.58 — das Schnellste dunkler als 80 km/h), Blau hiess in dieser App
+// "antippbar" und Rot "Fehler", und Blau/Türkis sowie Amber/Rot fielen bei
+// Farbfehlsichtigkeit zusammen. Die Stufen hier sind in OKLCH gerechnet und
+// monoton; kein Blau, kein reines Rot.
+//
+// Im DOM (Diagramm, Legenden) über die Tokens --data-speed-1…5 aus
+// app/globals.css, damit ein Themenwechsel ohne Neuzeichnen greift. Mapbox
+// kennt keine CSS-Variablen; dort gelten die Hexwerte, gewählt beim Aufbau
+// der Ebenen (RouteMap liest das Schema nach jedem "style.load" neu).
+// Beide Stellen müssen dieselben Werte tragen — lib/speed.test.ts prüft es.
+export const TEMPO_FARBEN: Record<Farbschema, readonly string[]> = {
+  dunkel: ["#a04034", "#c65d26", "#e38305", "#f2b036", "#f7dd7d"],
+  hell: ["#e9967f", "#d9703b", "#b35d00", "#8a5000", "#5c4500"],
+};
+
+/** Stufe 0–4 eines Tempos auf der Skala oben. */
+export function speedStufe(kmh: number): number {
+  const i = SPEED_BUCKETS.findIndex((b) => kmh <= b.max);
+  return i === -1 ? SPEED_BUCKETS.length - 1 : i;
 }
 
-export function speedColor(kmh: number): string {
-  return bucketFor(kmh).color;
+export function speedColor(kmh: number, schema: Farbschema = "dunkel"): string {
+  return TEMPO_FARBEN[schema][speedStufe(kmh)];
 }
 
-export const SPEED_LEGEND = SPEED_BUCKETS.map((b) => ({ label: b.label, color: b.color }));
+/** Die Farbe einer Stufe als CSS-Wert, der dem aktiven Farbschema folgt. */
+export function speedFarbeCss(stufe: number): string {
+  return `var(--data-speed-${stufe + 1})`;
+}
+
+export const SPEED_LEGEND = SPEED_BUCKETS.map((b, i) => ({ label: b.label, color: speedFarbeCss(i) }));
 
 // Dieselben Farben für das GEFAHRENE Tempo (lib/tempoprofil.ts). Die
 // Beschriftung ist eine andere: dort steht ein Limit, hier ein Bereich —
@@ -27,7 +55,7 @@ export const SPEED_LEGEND = SPEED_BUCKETS.map((b) => ({ label: b.label, color: b
 export const TEMPO_LEGENDE = SPEED_BUCKETS.map((b, i) => ({
   label:
     b.max === Infinity ? `über ${SPEED_BUCKETS[i - 1].max} km/h` : `bis ${b.max} km/h`,
-  color: b.color,
+  color: speedFarbeCss(i),
 }));
 
 // Anteil der Streckenlänge, der mit dem amtlichen "Signalisierte

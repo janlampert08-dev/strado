@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { MapPin, Trash2 } from "lucide-react";
 import ElevationProfile from "@/components/ElevationProfile";
 import Card from "@/components/ui/Card";
-import { routeShapePath } from "@/lib/routeShape";
+import { angefragteStreckenId } from "@/lib/offlineAnsicht";
+import { routeShapePath, routeShapePoints } from "@/lib/routeShape";
 import {
   getAllOfflineRoutes,
   isIndexedDbAvailable,
@@ -31,7 +32,13 @@ export default function OfflineRoutesList() {
   useEffect(() => {
     if (!isIndexedDbAvailable()) return;
     getAllOfflineRoutes()
-      .then(setRoutes)
+      .then((gespeichert) => {
+        setRoutes(gespeichert);
+        // Kam diese Seite als Ersatz für eine gespeicherte Streckenseite,
+        // gleich deren Detail zeigen (siehe lib/offlineAnsicht.ts).
+        const angefragt = angefragteStreckenId(window.location.pathname);
+        if (angefragt && gespeichert.some((r) => r.id === angefragt)) setSelectedId(angefragt);
+      })
       .catch(() => setRoutes([]));
   }, []);
 
@@ -71,6 +78,7 @@ export default function OfflineRoutesList() {
             {selected.startOrt} → {selected.zielOrt}
           </p>
         </div>
+        <StreckenVerlauf coordinates={selected.geometryCoordinates} name={selected.name} />
         {selected.hoehenprofil && selected.hoehenprofil.length > 1 && (
           <ElevationProfile punkte={selected.hoehenprofil} />
         )}
@@ -103,7 +111,7 @@ export default function OfflineRoutesList() {
           className="inline-flex items-center gap-1.5 self-start text-sm text-muted hover:text-danger"
         >
           <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-          Von Offline entfernen
+          Offline-Kopie löschen
         </button>
       </div>
     );
@@ -118,7 +126,7 @@ export default function OfflineRoutesList() {
             <button
               type="button"
               onClick={() => setSelectedId(route.id)}
-              className="flex flex-1 items-center gap-3 px-4 py-3 text-left transition-colors duration-fast hover:bg-surface"
+              className="flex flex-1 items-center gap-3 px-4 py-3 text-left transition-colors duration-fast hover:bg-surface druckbar"
             >
               <svg viewBox="0 0 64 48" className="h-8 w-11 shrink-0 text-accent" aria-hidden="true">
                 <path
@@ -138,7 +146,7 @@ export default function OfflineRoutesList() {
             <button
               type="button"
               onClick={() => handleRemove(route.id)}
-              aria-label={`${route.name} von Offline entfernen`}
+              aria-label={`Offline-Kopie von ${route.name} löschen`}
               className="shrink-0 px-3 text-muted hover:text-danger"
             >
               <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -146,6 +154,40 @@ export default function OfflineRoutesList() {
           </li>
         );
       })}
+    </Card>
+  );
+}
+
+// Ersatz für die Karte: Mapbox-Kacheln werden bewusst nicht offline
+// gehalten (Nutzungsbedingungen, siehe lib/offlineRoutes.ts), die Geometrie
+// liegt aber ohnehin in IndexedDB. Die Linie zeigt Form und Richtung der
+// Strecke — Start als offener, Ziel als gefüllter Punkt —, nicht den Ort.
+function StreckenVerlauf({ coordinates, name }: { coordinates: [number, number][]; name: string }) {
+  const punkte = routeShapePoints(coordinates, 320, 200, 14);
+  if (punkte.length < 2) return null;
+  const pfad = `M${punkte.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" L")}`;
+  const [startX, startY] = punkte[0];
+  const [zielX, zielY] = punkte[punkte.length - 1];
+
+  return (
+    <Card surface className="p-2">
+      <svg
+        viewBox="0 0 320 200"
+        className="h-auto w-full text-accent"
+        role="img"
+        aria-label={`Streckenverlauf ${name}`}
+      >
+        <path
+          d={pfad}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={3}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <circle cx={startX} cy={startY} r={5} className="fill-background" stroke="currentColor" strokeWidth={2.5} />
+        <circle cx={zielX} cy={zielY} r={5} fill="currentColor" />
+      </svg>
     </Card>
   );
 }

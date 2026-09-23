@@ -142,3 +142,70 @@ export function decideSheetGesture({
   if (scrollTop > 0) return "scroll";
   return "sheet";
 }
+
+// ---------------------------------------------------------------------------
+// Physik: Schwung, Gummiband, Geschwindigkeit
+// ---------------------------------------------------------------------------
+// Bis 2026-09-23 rastete das Sheet dort ein, wo der Finger losliess, und
+// stoppte an den Enden hart. Ein kurzer, schneller Wisch nach oben blieb
+// damit auf Peek liegen, weil der Finger nur 40 px geschafft hatte — auf
+// dem Telefon genau die Geste, mit der man ein Sheet aufwirft. Jetzt zählt,
+// wohin der Schwung das Sheet getragen hätte.
+
+/**
+ * Wie stark ein Wisch nachläuft. Die Projektion ist die Strecke, die ein
+ * Körper mit der Anfangsgeschwindigkeit v bei exponentiellem Abbremsen um
+ * diesen Faktor je Millisekunde noch zurücklegt: v · r / (1 − r) / 1000.
+ * 0.995 liegt zwischen UIScrollView "fast" (0.99) und "normal" (0.998):
+ * ein Wisch mit 1000 px/s trägt rund 200 px weiter.
+ */
+export const SHEET_ABBREMSUNG = 0.995;
+
+/** Wie weit ein Wisch mit `geschwindigkeit` (px/s, positiv = nach oben) noch trägt. */
+export function projizierterWeg(geschwindigkeit: number, abbremsung = SHEET_ABBREMSUNG): number {
+  return ((geschwindigkeit / 1000) * abbremsung) / (1 - abbremsung);
+}
+
+/**
+ * Rastpunkt nach einem Wisch: der nächste zur projizierten Höhe, nicht zur
+ * Höhe beim Loslassen. Die Projektion wird auf den Bereich der Rastpunkte
+ * begrenzt, damit ein sehr schneller Wisch nicht "über" Voll hinaus zählt.
+ */
+export function snapAfterFling(height: number, geschwindigkeit: number, heights: SheetHeights): SheetSnap {
+  const h = sheetSnapHeights(heights);
+  const ziel = Math.min(Math.max(height + projizierterWeg(geschwindigkeit), h.versteckt), h.voll);
+  return snapAfterDrag(ziel, heights);
+}
+
+/**
+ * Gummiband an den Enden: statt hart zu stoppen, folgt das Sheet über
+ * Voll hinaus und unter den Griff hinab mit wachsendem Widerstand. Die
+ * Kurve ist die von iOS: (1 − 1 / (x·c/d + 1)) · d — anfangs fast linear
+ * mit Faktor c, nie weiter als d. `d` ist die Containerhöhe als Mass.
+ */
+export const GUMMIBAND_FAKTOR = 0.55;
+
+export function gummibandHoehe(height: number, heights: SheetHeights): number {
+  const h = sheetSnapHeights(heights);
+  const d = Math.max(1, h.voll);
+  const dehnen = (x: number) => (1 - 1 / ((x * GUMMIBAND_FAKTOR) / d + 1)) * d;
+  if (height > h.voll) return h.voll + dehnen(height - h.voll);
+  if (height < h.versteckt) return h.versteckt - dehnen(h.versteckt - height);
+  return height;
+}
+
+/**
+ * Geschwindigkeit in px/s aus den letzten Bewegungsproben (Zeit in ms,
+ * Höhe in px). Nur die letzten 100 ms zählen: wer zieht, anhält und dann
+ * loslässt, hat keinen Schwung mehr — die Geschwindigkeit vom Anfang der
+ * Geste wäre dann eine Lüge.
+ */
+export function wischGeschwindigkeit(proben: readonly { t: number; h: number }[]): number {
+  if (proben.length < 2) return 0;
+  const letzte = proben[proben.length - 1];
+  const fenster = proben.filter((p) => letzte.t - p.t <= 100);
+  const erste = fenster[0];
+  const dt = letzte.t - erste.t;
+  if (dt <= 0) return 0;
+  return ((letzte.h - erste.h) / dt) * 1000;
+}

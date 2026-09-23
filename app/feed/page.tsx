@@ -22,7 +22,7 @@ import Seitenrahmen from "@/components/ui/Seitenrahmen";
 export const metadata: Metadata = {
   title: "Feed – Strado",
   description:
-    "Die zuletzt gefahrenen Strecken und Touren der Strado-Community aus der ganzen Schweiz.",
+    "Die neuesten Fahrten der Strado-Community aus der ganzen Schweiz.",
   // Kanonische Adresse. Die App wird unter mehr als einem Hostnamen
   // ausgeliefert — app.strado.ch, die Vorschau-Adressen jedes Deployments,
   // dazu Staging — und lieferte bis hierher auf keiner davon ein Canonical
@@ -171,7 +171,7 @@ export default async function FeedPage({
               <Card
                 as="li"
                 key={item.completion_id}
-                className="group relative overflow-hidden transition-colors duration-fast hover:border-border-strong has-[a:active]:bg-surface"
+                className="group relative overflow-hidden transition-colors duration-fast hover:border-muted has-[a:active]:bg-surface"
               >
                 {/* Zwei Zeilen statt vier. Vorher trug die Karte Fahrer mit
                     Avatar und Datum, dann Titel mit Distanz, dann Region mit
@@ -193,7 +193,7 @@ export default async function FeedPage({
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <Link
                       href={`/fahrten/${item.completion_id}`}
-                      className="flex items-baseline gap-2 transition-colors duration-fast hover:text-accent after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-accent/40"
+                      className="flex items-baseline gap-2 transition-colors duration-fast hover:text-accent after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-accent"
                     >
                       <span className="min-w-0 truncate text-base font-medium">
                         {item.art === "frei"

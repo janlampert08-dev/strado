@@ -17,7 +17,7 @@ import Button from "@/components/ui/Button";
 import SectionHeading from "@/components/ui/SectionHeading";
 
 const ITEM_CLASS =
-  "border-t border-border px-3 py-2 text-left text-sm text-foreground transition-colors duration-fast hover:bg-surface first:border-t-0 disabled:pointer-events-none disabled:opacity-50";
+  "border-t border-border px-3 py-2 text-left text-sm text-foreground transition-colors duration-fast hover:bg-surface druckbar first:border-t-0 disabled:pointer-events-none disabled:opacity-50";
 
 const MAX_NOTIZ_LENGTH = 280;
 
@@ -218,7 +218,7 @@ export default function CompletionActionsMenu({
       <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} title="Fahrt löschen">
         <div className="flex flex-col gap-3">
           <p className="text-sm text-muted">
-            Die Aufzeichnung wird mit allen Fotos, Kudos und dem gespeicherten GPS-Track
+            Die Aufzeichnung wird mit allen Fotos, Kudos und der gespeicherten Fahrtspur
             endgültig gelöscht. Das lässt sich nicht rückgängig machen.
           </p>
           {/* Der Fehlertext muss hier stehen und nicht in der Card unten:
@@ -257,15 +257,15 @@ export default function CompletionActionsMenu({
             maxLength={MAX_NOTIZ_LENGTH}
             value={notizDraft}
             onChange={(e) => setNotizDraft(e.target.value)}
-            placeholder="z.B. nasse Fahrbahn, mit der Ducati…"
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-base text-foreground transition-shadow duration-fast focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 md:text-sm"
+            placeholder="z. B. nasse Fahrbahn, mit der Ducati…"
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-base text-foreground transition-shadow duration-fast focus:outline-none focus-visible:ring-2 focus-visible:ring-accent md:text-sm"
           />
           <div className="mt-2 flex justify-end gap-2">
             <Button type="button" variant="secondary" size="sm" onClick={() => setEditOpen(false)}>
               Abbrechen
             </Button>
             <Button type="button" variant="primary" size="sm" disabled={saving} onClick={handleSaveNotiz}>
-              {saving ? "Speichern…" : "Speichern"}
+              {saving ? "Wird gespeichert…" : "Speichern"}
             </Button>
           </div>
         </div>

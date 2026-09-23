@@ -40,7 +40,7 @@ export async function generateMetadata({
   // entscheiden die zeigt_*-Schalter des Nutzers (lib/profile.ts). Sie in
   // die Beschreibung zu ziehen würde diese Entscheidung an Suchmaschinen
   // vorbei aushebeln — deshalb bewusst nur der Name.
-  const beschreibung = `Profil von ${name} auf Strado: gefahrene Strecken und Touren.`;
+  const beschreibung = `Profil von ${name} auf Strado: Fahrten und Strecken.`;
   return {
     title: `${name} – Strado`,
     description: beschreibung,

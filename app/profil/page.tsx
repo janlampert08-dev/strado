@@ -41,7 +41,7 @@ import { getRollenItems } from "@/lib/nav";
 import { getUnseenKudosCount } from "@/lib/kudos";
 import { markKudosSeen } from "@/lib/actions/kudos";
 import { getFollowCounts, getFollowerProfiles, getFollowingProfiles } from "@/lib/follows";
-import { formatDuration, formatKm, datumCH } from "@/lib/format";
+import { formatDauer, formatKm, datumCH } from "@/lib/format";
 import {
   FAHRTEN_MILESTONES,
   HOEHENMETER_MILESTONES,
@@ -79,7 +79,7 @@ function SectionSummary({
   count?: number;
 }) {
   return (
-    <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+    <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background">
       <span className="flex items-center gap-1.5">
         <Icon className="h-4 w-4 text-muted" aria-hidden="true" />
         {label}
@@ -143,7 +143,7 @@ export default async function ProfilPage() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
     // Beide Fahrtarten: freie Fahrten stehen in derselben Liste wie
-    // Streckenfahrten und zählen in "Km gefahren"/"Anzahl Fahrten" mit —
+    // Streckenfahrten und zählen in "Kilometer"/"Anzahl Fahrten" mit —
     // anders als in den globalen Bestenlisten, die streckenbasiert bleiben
     // (siehe 0044_freie_fahrten.sql).
     //
@@ -164,7 +164,7 @@ export default async function ProfilPage() {
     // stimmen, wenn ein Abschnitt eines Tages einen Anstieg bekommt.
     //
     // Betroffen war damit alles, was Kilometer oder Fahrten aus dieser
-    // Abfrage zieht: die Kacheln "Km gefahren" und "Fahrten", der
+    // Abfrage zieht: die Kacheln "Kilometer" und "Fahrten", der
     // Aktivitätskalender, die Fahrten-Auszeichnungen und die
     // Premium-Auswertung.
     //
@@ -184,7 +184,7 @@ export default async function ProfilPage() {
     // Zähler sagt es nichts, weil damals keiner auf die Spalte filterte.
     // Die Folge ist deshalb hier zu notieren und nicht dort: eine freie
     // Fahrt mit drei Abschnitten steht als "Fahrten 1"; wird sie gelöscht,
-    // steht dort "Fahrten 3", während "Km gefahren" gleichzeitig sinkt und
+    // steht dort "Fahrten 3", während "Kilometer" gleichzeitig sinkt und
     // im Aktivitätskalender drei Punkte an einem eben geleerten Tag wieder
     // auftauchen. Selten und nicht falsch — die Abschnitte SIND dann
     // eigenständige Fahrten —, aber überraschend genug, um es
@@ -300,7 +300,7 @@ export default async function ProfilPage() {
   // jede gefahrene Strecke, auch eine Runde ums Dorf, und stand damit neben
   // einer zweiten, anderen Pass-Zahl.
   const passCount = sammlung?.befahren ?? 0;
-  // Höhenmeter über dieselbe Fahrtenliste wie "Km gefahren" und "Anzahl
+  // Höhenmeter über dieselbe Fahrtenliste wie "Kilometer" und "Anzahl
   // Fahrten" darunter, damit die vier Kacheln denselben Bestand beschreiben.
   // Gezählt wird der kumulierte Anstieg, nicht mehr die Scheitelhöhe der
   // Strecke — siehe lib/hoehenmeter.ts.
@@ -373,7 +373,7 @@ export default async function ProfilPage() {
               href={`/fahrer/${user.id}`}
               className="w-fit text-xs text-muted transition-colors hover:text-foreground"
             >
-              Öffentliches Profil ansehen →
+              So sehen dich andere →
             </Link>
           </div>
           {/* Nebeneinander, Rangfolge über die Fläche: Aufzeichnen (Accent)
@@ -453,11 +453,11 @@ export default async function ProfilPage() {
                 }
               />
               <Kennzahl
-                beschriftung="Höhenmeter gesammelt"
+                beschriftung="Höhenmeter"
                 wert={<CountUp value={hoehenmeter} unit="m" />}
               />
               <Kennzahl
-                beschriftung="Km gefahren"
+                beschriftung="Kilometer"
                 wert={<CountUp value={getrackteDistanzGesamt} unit="km" />}
               />
               <Kennzahl beschriftung="Fahrten" wert={<CountUp value={trackedRides?.length ?? 0} />} />
@@ -607,7 +607,7 @@ export default async function ProfilPage() {
                               ? ride.distanz_km / (tempoSekunden / 3600)
                               : 0;
                         return (
-                          <li key={ride.id} className="group transition-colors duration-fast hover:bg-surface">
+                          <li key={ride.id} className="group transition-colors duration-fast hover:bg-surface druckbar">
                             <div className="flex items-center justify-between gap-3 p-3">
                               <Link href={`/fahrten/${ride.id}`} className="flex min-w-0 flex-1 flex-col gap-1">
                                 <span className="min-w-0 truncate font-medium transition-colors duration-fast group-hover:text-accent">
@@ -626,10 +626,10 @@ export default async function ProfilPage() {
                                       Farbe wie der Text (kein Akzent), bewusst unauffällig. */}
                                   <span className="flex items-center gap-1">
                                     <Timer className="h-3 w-3" aria-hidden="true" />
-                                    {formatDuration(ride.dauer_sekunden)}
+                                    {formatDauer(ride.dauer_sekunden)}
                                   </span>
                                   <span aria-hidden="true">·</span>
-                                  <span>{avgKmh.toFixed(0)} km/h</span>
+                                  <span>Ø {avgKmh.toFixed(0)} km/h</span>
                                 </div>
                               </Link>
                               {/* Beide Fahrtarten lassen sich hier teilen —
@@ -702,7 +702,7 @@ export default async function ProfilPage() {
                           <li key={f.route_id}>
                             <Link
                               href={`/strecken/${f.route_id}`}
-                              className="group flex items-baseline justify-between px-4 py-3 transition-colors duration-fast hover:bg-surface"
+                              className="group flex items-baseline justify-between px-4 py-3 transition-colors duration-fast hover:bg-surface druckbar"
                             >
                               <span className="transition-colors duration-fast group-hover:text-accent">
                                 {f.routes.name}
@@ -766,7 +766,7 @@ export default async function ProfilPage() {
               Stripe-Portal sind einer zu viel. */}
           {rollen.length > 0 && (
             <section className="flex flex-col gap-2 md:hidden">
-              <SectionHeading icon={ShieldIcon}>Deine Bereiche</SectionHeading>
+              <SectionHeading icon={ShieldIcon}>Verwaltung</SectionHeading>
               <Card className="flex flex-col divide-y divide-border">
                 {rollen.map((rolle) => {
                   const Icon = rolle.icon;
