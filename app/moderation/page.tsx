@@ -117,7 +117,7 @@ function Sprungmarke({ href, label, count }: { href: string; label: string; coun
   return (
     <a
       href={href}
-      className="flex flex-col gap-0.5 rounded-lg border border-border px-3 py-2.5 transition-colors duration-fast hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className="flex flex-col gap-0.5 rounded-lg border border-border px-3 py-2.5 transition-colors duration-fast hover:border-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       <span className="text-xs text-muted">{label}</span>
       <span

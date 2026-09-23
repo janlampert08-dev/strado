@@ -534,7 +534,11 @@ export default function FreeRideForm({
             Zustand, kein Etikett. Der rote Punkt bleibt das Signal, dass
             wirklich aufgezeichnet wird. */}
         <div className="flex items-center justify-between gap-3">
-          <p className="flex items-center gap-2 text-sm font-medium">
+          {/* role="status": Start, Pause und das automatische Loslaufen der
+                Zeit am Startpunkt werden angesagt — wer fährt, schaut nicht
+                hin. Nur diese Zeile, nicht die Uhr daneben: die würde jede
+                Sekunde vorgelesen. */}
+            <p role="status" className="flex items-center gap-2 text-sm font-medium">
             <span
               aria-hidden="true"
               className={`h-2.5 w-2.5 shrink-0 rounded-full ${recorder.hasStarted && !recorder.pausiert ? "bg-danger" : "bg-muted"}`}
@@ -575,6 +579,12 @@ export default function FreeRideForm({
         {/* Reiner Komfort-Hinweis, keine Wertung — die tatsächlich erkannten
             Streckenabschnitte entscheidet ausschliesslich der Server beim
             Speichern (siehe useLiveLapHint.ts). */}
+        {/* Angesagt wird nur das Erkannt, nicht der laufende Prozentwert —
+            der änderte sich mit jedem Fix. Die Region steht immer im DOM,
+            damit ein Vorleser den Wechsel auf "erkannt" überhaupt bemerkt. */}
+        <p role="status" className="sr-only">
+          {liveLapHint?.completed ? `Strecke ${liveLapHint.routeName} erkannt.` : ""}
+        </p>
         {liveLapHint && (
           <p className="flex items-center gap-1.5 text-sm text-accent">
             <RouteIcon className="h-4 w-4 shrink-0" aria-hidden="true" />

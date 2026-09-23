@@ -10,7 +10,7 @@ const RouteMap = dynamic(() => import("@/components/RouteMap"), {
 });
 
 const NO_ROUTES: never[] = [];
-const NO_TEMPO: { coords: [number, number][]; color: string }[] = [];
+const NO_TEMPO: { coords: [number, number][]; stufe: number }[] = [];
 
 // Zwei Fälle: eine Streckenfahrt zeigt die Streckengeometrie, eine freie
 // Fahrt den aufgezeichneten GPS-Track (die einzige Geometrie, die sie hat).
@@ -25,7 +25,7 @@ export default function CompletionMap({
 }: {
   route?: RouteGeoJSON | null;
   track?: GeoLineString | null;
-  tempoSegmente?: { coords: [number, number][]; color: string }[] | null;
+  tempoSegmente?: { coords: [number, number][]; stufe: number }[] | null;
 }) {
   // Die Karte steht mitten in der Fahrtseite: kooperative Gesten, damit
   // ein Wisch die Seite scrollt statt die Karte, und keine Zoomknöpfe —

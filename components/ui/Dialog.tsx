@@ -93,7 +93,7 @@ export function Dialog({ open, onClose, title, ariaLabel, children, className }:
             type="button"
             aria-label="Schliessen"
             onClick={() => ref.current?.close()}
-            className="-mt-1 -mr-2 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-muted transition-colors duration-fast hover:bg-surface hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            className="-mt-1 -mr-2 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-muted transition-colors duration-fast hover:bg-surface hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <SchliessenIcon className="h-5 w-5" aria-hidden="true" />
           </button>

@@ -9,6 +9,7 @@ import {
   WetterWindIcon,
 } from "@/components/NavIcons";
 import Skeleton from "@/components/ui/Skeleton";
+import { formatMeter } from "@/lib/format";
 import { cn } from "@/lib/utils/cn";
 import {
   besteTage,
@@ -71,7 +72,7 @@ export async function WetterfensterStreifen({
   const { tage, heute, hoechsterPunktM } = fenster;
   const beste = besteTage(tage);
   const massstab = fahrzeug === "motorrad" ? "fürs Motorrad" : "fürs Auto";
-  const ort = hoechsterPunktM !== null ? `Start und ${hoechsterPunktM} m` : "am Start";
+  const ort = hoechsterPunktM !== null ? `Wetter am Start und auf ${formatMeter(hoechsterPunktM)}` : "Wetter am Start";
 
   return (
     <div className="flex flex-col gap-2">
