@@ -99,3 +99,9 @@ export { Wrench as WartungIcon, CalendarClock as TerminIcon } from "lucide-react
 // vor dieser Wrapper-Regel. Neuer Code (app/profil/fahrzeuge/[id]) nimmt sie
 // von hier; das Raster mitzuziehen wäre eine Änderung ohne Anlass.
 export { Car as AutoIcon, Bike as MotorradIcon } from "lucide-react";
+
+// Die Hinweise vor der ersten Fahrt (components/ErsteFahrtHinweise.tsx):
+// dasselbe Telefon, das FreeRideForm und LiveTrackingForm neben "Bildschirm
+// an lassen" zeigen — dort noch als direkter Import aus der Zeit vor dieser
+// Regel.
+export { Smartphone as TelefonIcon } from "lucide-react";

@@ -316,3 +316,22 @@ export function clearTrackingSnapshot(userId: string, storageKey: string): void 
     // ohnehin durch einen neuen überschrieben.
   }
 }
+
+/**
+ * Aus dem Rücksprungziel des Anmelde-Gates (siehe goToAuth in
+ * FreeRideForm.tsx und LiveTrackingForm.tsx), unter welchem Schlüssel die
+ * wartende Gastfahrt liegt: "/fahrten/neu?fortsetzen=…" ist die freie Fahrt,
+ * "/strecken/<id>?fortsetzen=…" die Fahrt auf dieser Strecke. Alles andere —
+ * auch ein Ziel ohne Marker — heisst: hier wartet keine Fahrt.
+ *
+ * Nur für die Anzeige auf /registrieren ("Deine Fahrt wartet"). Übernommen
+ * wird weiterhin ausschliesslich über adoptGuestTrackingSnapshot mit Token.
+ */
+export function gastfahrtSchluesselAusZiel(ziel: string | null | undefined): string | null {
+  if (!ziel) return null;
+  const [pfad, suche = ""] = ziel.split("?", 2);
+  if (!new URLSearchParams(suche).get("fortsetzen")) return null;
+  if (pfad === "/fahrten/neu") return FREE_RIDE_STORAGE_KEY;
+  const strecke = /^\/strecken\/([0-9a-f-]{36})$/i.exec(pfad);
+  return strecke ? strecke[1] : null;
+}

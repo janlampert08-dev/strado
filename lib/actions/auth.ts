@@ -17,6 +17,7 @@ import {
   verbraucheWiederherstellung,
 } from "@/lib/passwortWiederherstellung";
 import { OTP_SIGNUP } from "@/lib/otpTyp";
+import { EINRICHTUNG_PFAD } from "@/lib/einrichtung";
 import {
   BESTAETIGUNG_PFAD,
   CODE_LAENGE,
@@ -270,9 +271,10 @@ export async function signUp(
   // bereits eine aktive Session — dann direkt einloggen statt auf eine
   // (nie versendete) Bestätigungsmail zu verweisen. Führt wie der
   // E-Mail-Bestätigungslink (app/auth/callback/route.ts) zum next-Ziel,
-  // sonst unverändert zur Startseite.
+  // sonst in die Einrichtung (app/einrichten) statt ohne ein Wort auf die
+  // Startseite. Ein fester interner Pfad — safeInternalPath betrifft ihn nicht.
   if (data.session) {
-    redirect(next ?? "/");
+    redirect(next ?? EINRICHTUNG_PFAD);
   }
 
   // Adresse und Rücksprungziel für das Einlösen des Codes merken. MUSS vor
@@ -383,7 +385,11 @@ export async function bestaetigeRegistrierung(
   // dem redirect(), das wirft.
   await verbraucheBestaetigung();
 
-  redirect(offen.next ?? "/");
+  // Ohne eigenes Ziel in die Einrichtung (Fahrzeug, Pässe) — dieselbe
+  // Regel wie beim sofortigen Login in signUp() oben. Ein next aus dem
+  // Fazit einer Gastfahrt gewinnt weiterhin: die Fahrt zu speichern ist
+  // wichtiger als alles, was die Einrichtung fragt.
+  redirect(offen.next ?? EINRICHTUNG_PFAD);
 }
 
 export interface ErneutSendenState {

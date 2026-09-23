@@ -6,6 +6,14 @@ import { useAufzeichnung } from "@/components/AufzeichnungsKontext";
 import type { KartenStrecke, RouteGeoJSON, Vehicle } from "@/types/database";
 import { buttonVariants } from "@/components/ui/Button";
 import { GUEST_TRACKING_USER_ID, loadTrackingSnapshot } from "@/lib/trackingStorage";
+import FullscreenDialog from "@/components/ui/FullscreenDialog";
+import ErsteFahrtHinweise from "@/components/ErsteFahrtHinweise";
+import {
+  useErsteFahrtHinweiseGesehen,
+  useGeraet,
+  useStandortFreigabe,
+} from "@/components/useStandortFreigabe";
+import { merkeErsteFahrtHinweiseGesehen } from "@/lib/ersteFahrt";
 
 export default function GefahrenSection({
   route,
@@ -44,6 +52,16 @@ export default function GefahrenSection({
   // seiner eben gefahrenen Strecke nichts zeigt — LiveTrackingForm muss
   // mounten, damit die Aufzeichnung übernommen und das Fazit gezeigt wird.
   const [open, setOpen] = useState(guestContinuationToken !== null);
+
+  // Die erste Streckenfahrt auf diesem Gerät bekommt einen Schritt davor.
+  // Anders als die freie Fahrt startet LiveTrackingForm sofort und fragt
+  // dabei nach dem Standort — für die Hinweise (was gleich gefragt wird,
+  // warum der Bildschirm an bleiben muss) bliebe sonst keine Stelle. Ab der
+  // zweiten Fahrt führt "Strecke starten" wieder direkt in die Aufzeichnung.
+  const [vorbereitung, setVorbereitung] = useState(false);
+  const standortFreigabe = useStandortFreigabe();
+  const geraet = useGeraet();
+  const ersteFahrtHinweiseGesehen = useErsteFahrtHinweiseGesehen();
 
   // Während der Aufzeichnung läuft auf dem Schirm genau eine Karte: die des
   // Aufzeichnungs-Dialogs. Die Detailkarte dahinter hängt sich über den
@@ -87,6 +105,40 @@ export default function GefahrenSection({
     window.history.replaceState(null, "", `/strecken/${route.id}`);
   }, [guestContinuationToken, route.id]);
 
+  if (!open && vorbereitung) {
+    return (
+      <FullscreenDialog
+        label="Vor der ersten Fahrt"
+        className="fixed inset-0 z-50 flex flex-col justify-end overflow-y-auto bg-background pt-[var(--safe-top)]"
+      >
+        <div className="mx-auto flex w-full max-w-lg flex-col gap-6 px-5 pt-8 pb-[calc(1.25rem+var(--safe-bottom))]">
+          <h1 className="text-title font-semibold tracking-tight text-balance">{route.name}</h1>
+          <ErsteFahrtHinweise freigabe={standortFreigabe} geraet={geraet} gesehen={false} />
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                merkeErsteFahrtHinweiseGesehen();
+                setVorbereitung(false);
+                setOpen(true);
+              }}
+              className={buttonVariants({ variant: "accent", size: "lg", className: "w-full" })}
+            >
+              Strecke starten
+            </button>
+            <button
+              type="button"
+              onClick={() => setVorbereitung(false)}
+              className="min-h-11 text-sm text-muted transition-colors duration-fast hover:text-foreground"
+            >
+              Abbrechen
+            </button>
+          </div>
+        </div>
+      </FullscreenDialog>
+    );
+  }
+
   if (!open) {
     return (
       <div className="sticky bottom-0 z-10 -mx-1 px-1 pt-2 pb-1">
@@ -104,7 +156,7 @@ export default function GefahrenSection({
               steht als die im Vollbild. */}
           <button
             type="button"
-            onClick={() => setOpen(true)}
+            onClick={() => (ersteFahrtHinweiseGesehen ? setOpen(true) : setVorbereitung(true))}
             className={buttonVariants({ variant: "accent", size: "lg", className: "shrink-0 px-8" })}
           >
             Strecke starten

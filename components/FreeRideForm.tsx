@@ -29,6 +29,13 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import HalteKnopf from "@/components/ui/HalteKnopf";
 import FazitKopf from "@/components/FazitKopf";
 import { merkeHinweis } from "@/components/Hinweis";
+import ErsteFahrtHinweise from "@/components/ErsteFahrtHinweise";
+import {
+  useErsteFahrtHinweiseGesehen,
+  useGeraet,
+  useStandortFreigabe,
+} from "@/components/useStandortFreigabe";
+import { merkeErsteFahrtHinweiseGesehen } from "@/lib/ersteFahrt";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
@@ -100,10 +107,22 @@ export default function FreeRideForm({
   // nur dass dort der Recorder übernimmt. Einmalig per getCurrentPosition wie
   // in ExploreView; ein Fehlschlag bleibt hier stumm, der Startversuch meldet
   // ihn ohnehin über recorder.locationError.
+  //
+  // ABER NUR, WENN DER STANDORT SCHON FREI IST. Vorher lief das bei jedem
+  // Öffnen — beim ersten Besuch stand damit die Browserfrage nach dem
+  // Standort im Raum, bevor irgendwer etwas getan hatte, ohne Zusammenhang
+  // und ohne Erklärung. Ein "Nein" darauf ist auf dem iPhone praktisch
+  // endgültig. Jetzt erklärt das Panel zuerst (ErsteFahrtHinweise), und die
+  // Frage kommt mit dem Tippen auf "Aufzeichnung starten" — dem Moment, in
+  // dem sie einleuchtet. Die Karte bleibt bis dahin auf der Schweiz.
+  const standortFreigabe = useStandortFreigabe();
+  const geraet = useGeraet();
+  const ersteFahrtHinweiseGesehen = useErsteFahrtHinweiseGesehen();
   const [standort, setStandort] = useState<[number, number] | null>(null);
   const [standortGenauigkeitM, setStandortGenauigkeitM] = useState<number | null>(null);
   useEffect(() => {
     if (phase !== "idle" || standort !== null) return;
+    if (standortFreigabe !== "granted") return;
     if (!("geolocation" in navigator)) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -113,7 +132,7 @@ export default function FreeRideForm({
       () => {},
       { enableHighAccuracy: true, timeout: 10_000 },
     );
-  }, [phase, standort]);
+  }, [phase, standort, standortFreigabe]);
 
   // Rein informativer Live-Hinweis während der Fahrt — siehe
   // components/useLiveLapHint.ts. Massgeblich für die tatsächlich erkannten
@@ -464,17 +483,16 @@ export default function FreeRideForm({
               Start — beendet wird die Fahrt von dir.
             </p>
           </div>
-          <ul className="flex flex-col gap-2 text-sm">
-            <li className="flex items-start gap-2">
-              <Smartphone className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
-              <span>Bildschirm an lassen — sonst pausiert die Aufzeichnung.</span>
-            </li>
-            {istGast && (
-              <li className="text-muted">
-                Ohne Konto: aufzeichnen geht, zum Speichern brauchst du am Ende eine Anmeldung.
-              </li>
-            )}
-          </ul>
+          <ErsteFahrtHinweise
+            freigabe={standortFreigabe}
+            geraet={geraet}
+            gesehen={ersteFahrtHinweiseGesehen}
+          />
+          {istGast && (
+            <p className="text-sm text-muted">
+              Ohne Konto: aufzeichnen geht, zum Speichern brauchst du am Ende eine Anmeldung.
+            </p>
+          )}
           {/* gap-2 statt gap-1: zwischen dem Start- und dem Abbrechen-Knopf
               lagen 4 px. Das ist das einzige Knopfpaar der App, bei dem ein
               Fehlgriff etwas kostet — wer starten will und abbricht, steht
@@ -490,7 +508,12 @@ export default function FreeRideForm({
           <div className="flex flex-col gap-2">
             <button
               type="button"
-              onClick={recorder.starten}
+              onClick={() => {
+                // Gesehen ist, wer losfährt — nicht, wer die Seite nur
+                // geöffnet und wieder geschlossen hat.
+                merkeErsteFahrtHinweiseGesehen();
+                recorder.starten();
+              }}
               className={buttonVariants({ variant: "accent", size: "lg", className: "w-full" })}
             >
               Aufzeichnung starten

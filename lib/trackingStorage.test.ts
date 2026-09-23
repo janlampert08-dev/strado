@@ -7,6 +7,7 @@ import {
   clearTrackingSnapshot,
   loadTrackingSnapshot,
   saveTrackingSnapshot,
+  gastfahrtSchluesselAusZiel,
   type TrackingSnapshot,
 } from "@/lib/trackingStorage";
 
@@ -219,5 +220,21 @@ describe("trackingStorage", () => {
     expect(() => saveTrackingSnapshot(USER_A, FREE_RIDE_STORAGE_KEY, snapshot())).not.toThrow();
     expect(loadTrackingSnapshot(USER_A, FREE_RIDE_STORAGE_KEY)).toBeNull();
     expect(() => clearTrackingSnapshot(USER_A, FREE_RIDE_STORAGE_KEY)).not.toThrow();
+  });
+});
+
+describe("gastfahrtSchluesselAusZiel", () => {
+  it("findet die freie Fahrt und die Streckenfahrt am Rücksprungziel", () => {
+    expect(gastfahrtSchluesselAusZiel("/fahrten/neu?fortsetzen=abc")).toBe(FREE_RIDE_STORAGE_KEY);
+    expect(
+      gastfahrtSchluesselAusZiel("/strecken/0b6f7c1e-2a8d-4d0e-9a51-4c1b7a2f9e10?fortsetzen=abc"),
+    ).toBe("0b6f7c1e-2a8d-4d0e-9a51-4c1b7a2f9e10");
+  });
+
+  it("sieht ohne Marker keine wartende Fahrt", () => {
+    expect(gastfahrtSchluesselAusZiel("/fahrten/neu")).toBeNull();
+    expect(gastfahrtSchluesselAusZiel("/profil/premium")).toBeNull();
+    expect(gastfahrtSchluesselAusZiel("/strecken/kein-uuid?fortsetzen=abc")).toBeNull();
+    expect(gastfahrtSchluesselAusZiel(undefined)).toBeNull();
   });
 });

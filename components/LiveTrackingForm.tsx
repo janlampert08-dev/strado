@@ -27,6 +27,8 @@ import FullscreenDialog from "@/components/ui/FullscreenDialog";
 import HalteKnopf from "@/components/ui/HalteKnopf";
 import FazitKopf from "@/components/FazitKopf";
 import { zeigeHinweis } from "@/components/Hinweis";
+import { useGeraet, useStandortFreigabe } from "@/components/useStandortFreigabe";
+import { standortAnleitung } from "@/lib/geraet";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
@@ -116,6 +118,10 @@ export default function LiveTrackingForm({
     () => route.geometry_geojson.coordinates as [number, number][],
     [route],
   );
+
+  // Nur für die Anleitung beim verweigerten Standort (siehe Idle-Zweig).
+  const standortFreigabe = useStandortFreigabe();
+  const geraet = useGeraet();
 
   // Der Schlüssel ist die Strecken-ID: eine Gastfahrt auf dieser Strecke
   // landet damit unter cornice:tracking:gast:<strecke> und kollidiert weder
@@ -250,6 +256,12 @@ export default function LiveTrackingForm({
         {recorder.locationError ? (
           <>
             <p role="alert" className="text-sm text-danger">{recorder.locationError}</p>
+            {/* Beim verweigerten Standort zusätzlich, wo man ihn auf diesem
+                Gerät wieder freigibt — die Meldung darüber sagt nur "in den
+                Einstellungen". */}
+            {standortFreigabe === "denied" && geraet && (
+              <p className="max-w-sm text-sm text-muted">{standortAnleitung(geraet)}</p>
+            )}
             <button
               type="button"
               onClick={onExit}
