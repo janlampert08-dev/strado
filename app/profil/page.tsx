@@ -41,7 +41,7 @@ import { getRollenItems } from "@/lib/nav";
 import { getUnseenKudosCount } from "@/lib/kudos";
 import { markKudosSeen } from "@/lib/actions/kudos";
 import { getFollowCounts, getFollowerProfiles, getFollowingProfiles } from "@/lib/follows";
-import { formatDuration, formatKm, datumCH } from "@/lib/format";
+import { formatDauer, formatKm, datumCH } from "@/lib/format";
 import {
   FAHRTEN_MILESTONES,
   HOEHENMETER_MILESTONES,
@@ -79,7 +79,7 @@ function SectionSummary({
   count?: number;
 }) {
   return (
-    <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+    <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background">
       <span className="flex items-center gap-1.5">
         <Icon className="h-4 w-4 text-muted" aria-hidden="true" />
         {label}
@@ -626,10 +626,10 @@ export default async function ProfilPage() {
                                       Farbe wie der Text (kein Akzent), bewusst unauffällig. */}
                                   <span className="flex items-center gap-1">
                                     <Timer className="h-3 w-3" aria-hidden="true" />
-                                    {formatDuration(ride.dauer_sekunden)}
+                                    {formatDauer(ride.dauer_sekunden)}
                                   </span>
                                   <span aria-hidden="true">·</span>
-                                  <span>{avgKmh.toFixed(0)} km/h</span>
+                                  <span>Ø {avgKmh.toFixed(0)} km/h</span>
                                 </div>
                               </Link>
                               {/* Beide Fahrtarten lassen sich hier teilen —

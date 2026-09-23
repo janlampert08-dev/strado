@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { speedColor, TEMPO_LEGENDE } from "@/lib/speed";
+import { speedFarbeCss, speedStufe, TEMPO_LEGENDE } from "@/lib/speed";
 import type { TempoprofilPunkt } from "@/types/database";
 
 const WIDTH = 600;
@@ -41,7 +41,7 @@ export default function TempoDiagram({
   const laeufe: { punkte: TempoprofilPunkt[]; color: string }[] = [];
   for (let i = 0; i < punkte.length; i++) {
     const p = punkte[i];
-    const color = speedColor(p.kmh);
+    const color = speedFarbeCss(speedStufe(p.kmh));
     const lauf = laeufe[laeufe.length - 1];
     if (lauf && lauf.color === color) lauf.punkte.push(p);
     else laeufe.push({ punkte: i > 0 ? [punkte[i - 1], p] : [p], color });
@@ -112,13 +112,13 @@ export default function TempoDiagram({
               key={i}
               d={pfad.d}
               fill="none"
-              stroke={pfad.color}
+              style={{ stroke: pfad.color }}
               strokeWidth="2"
               strokeLinejoin="round"
               strokeLinecap="round"
             />
           ))}
-          <circle cx={x(spitze.km)} cy={y(spitze.kmh)} r="3" fill={speedColor(spitze.kmh)} />
+          <circle cx={x(spitze.km)} cy={y(spitze.kmh)} r="3" style={{ fill: speedFarbeCss(speedStufe(spitze.kmh)) }} />
           {hoverPunkt && (
             <>
               <line
@@ -134,35 +134,30 @@ export default function TempoDiagram({
                 cx={x(hoverPunkt.km)}
                 cy={y(hoverPunkt.kmh)}
                 r="4"
-                fill={speedColor(hoverPunkt.kmh)}
-                style={{ stroke: "var(--color-background)" }}
+                style={{ fill: speedFarbeCss(speedStufe(hoverPunkt.kmh)), stroke: "var(--color-background)" }}
                 strokeWidth="1.5"
               />
             </>
           )}
         </svg>
-        {hoverPunkt && (
-          <div
-            className="pointer-events-none absolute rounded-md border border-border bg-background px-2 py-1 text-xs tabular-nums shadow-elevated"
-            style={{
-              left: `${(hoverPunkt.km / kmMax) * 100}%`,
-              bottom: 0,
-              transform: "translate(-50%, calc(100% + 6px))",
-            }}
-          >
-            {hoverPunkt.kmh} km/h · km {hoverPunkt.km.toFixed(1)}
-          </div>
-        )}
       </div>
-      <div className="flex justify-between gap-2 text-xs tabular-nums text-muted">
-        <span>Start {punkte[0].kmh} km/h</span>
-        <span className="text-center">
-          Spitze {spitze.kmh} km/h · km {spitze.km.toFixed(0)}
-        </span>
-        <span className="text-right">
-          {schnittKmh !== null && schnittKmh !== undefined ? `Ø ${schnittKmh.toFixed(0)} km/h` : `Ziel ${punkte[punkte.length - 1].kmh} km/h`}
-        </span>
-      </div>
+      {/* Wie im Höhenprofil: der Wert unter dem Finger ersetzt die Zeile,
+          statt als Blase über ihr zu liegen. "Start 34 km/h" fällt weg —
+          das Tempo im ersten Fenster sagt über eine Fahrt nichts. */}
+      {hoverPunkt ? (
+        <p className="text-center text-xs font-medium tabular-nums text-foreground">
+          {hoverPunkt.kmh} km/h · km {hoverPunkt.km.toFixed(1)}
+        </p>
+      ) : (
+        <div className="flex justify-between gap-2 whitespace-nowrap text-xs tabular-nums text-muted">
+          <span>
+            Höchsttempo {spitze.kmh} km/h · km {spitze.km.toFixed(0)}
+          </span>
+          {schnittKmh !== null && schnittKmh !== undefined && (
+            <span className="text-right">Ø {schnittKmh.toFixed(0)} km/h</span>
+          )}
+        </div>
+      )}
       <div className="flex flex-wrap gap-x-3 gap-y-1 pt-1" aria-label="Tempo-Farben">
         {TEMPO_LEGENDE.map((eintrag) => (
           <span key={eintrag.label} className="flex items-center gap-1.5 text-xs text-muted">

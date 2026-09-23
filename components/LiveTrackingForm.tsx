@@ -16,7 +16,7 @@ import { distanzZumNaechstenPunktKm } from "@/lib/tracking";
 import { interpolateElevation } from "@/lib/elevation";
 import { computeRouteCoverage, COVERAGE_THRESHOLD_PERCENT } from "@/lib/routeCoverage";
 import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
-import { formatDuration } from "@/lib/format";
+import { formatDauer, formatDuration } from "@/lib/format";
 import { formatAbstand, liveAbstandSekunden, markeUeberschritten } from "@/lib/liveSplit";
 import RideSummaryForm from "@/components/RideSummaryForm";
 import type { KartenStrecke, RouteGeoJSON, Vehicle } from "@/types/database";
@@ -371,7 +371,11 @@ export default function LiveTrackingForm({
               Zustand, kein Etikett — dieselbe Zeile wie bei der freien Fahrt
               (FreeRideForm.tsx), mit der Uhr rechts statt als grosser Zahl. */}
           <div className="flex items-center justify-between gap-3">
-            <p className="flex items-center gap-2 text-sm font-medium">
+            {/* role="status": Start, Pause und das automatische Loslaufen der
+                Zeit am Startpunkt werden angesagt — wer fährt, schaut nicht
+                hin. Nur diese Zeile, nicht die Uhr daneben: die würde jede
+                Sekunde vorgelesen. */}
+            <p role="status" className="flex items-center gap-2 text-sm font-medium">
               <span
                 aria-hidden="true"
                 className={`h-2.5 w-2.5 shrink-0 rounded-full ${recorder.hasStarted && !recorder.pausiert ? "bg-danger" : "bg-muted"}`}
@@ -565,17 +569,17 @@ export default function LiveTrackingForm({
             <p className="rounded-lg border border-accent bg-accent/5 px-3 py-2 text-sm font-medium text-accent">
               {personalBestSeconds === null
                 ? "Erste erfasste Zeit für diese Strecke."
-                : `Neue persönliche Bestzeit — bisher ${formatDuration(personalBestSeconds)}.`}
+                : `Neue persönliche Bestzeit — bisher ${formatDauer(personalBestSeconds)}.`}
             </p>
           ) : (
             <p className="text-sm text-muted">
-              Bisherige Bestzeit: {formatDuration(personalBestSeconds ?? 0)}
+              Bisherige Bestzeit: {formatDauer(personalBestSeconds ?? 0)}
             </p>
           ))}
         {mitPausen && (
           <p className="text-sm text-muted">
             Zeit oben ohne Pausen. Für Bestzeit und Rangliste zählt die Zeit samt Pausen:{" "}
-            {formatDuration(gewerteteSekunden)}.
+            {formatDauer(gewerteteSekunden)}.
           </p>
         )}
 

@@ -99,3 +99,7 @@ export { Wrench as WartungIcon, CalendarClock as TerminIcon } from "lucide-react
 // vor dieser Wrapper-Regel. Neuer Code (app/profil/fahrzeuge/[id]) nimmt sie
 // von hier; das Raster mitzuziehen wäre eine Änderung ohne Anlass.
 export { Car as AutoIcon, Bike as MotorradIcon } from "lucide-react";
+
+// Die Stoppuhr vor einer gemessenen Dauer (Bestzeit-Streifen der
+// Streckenseite) — damit "14:12 min" nicht als Uhrzeit gelesen wird.
+export { Timer as TimerIcon } from "lucide-react";
