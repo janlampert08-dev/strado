@@ -31,10 +31,30 @@ import FazitKopf from "@/components/FazitKopf";
 import { merkeHinweis } from "@/components/Hinweis";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
-const RouteMap = dynamic(() => import("@/components/RouteMap"), {
-  ssr: false,
-  loading: () => <Skeleton className="h-full w-full" />,
-});
+//
+// Das catch ist für den Start ohne Empfang: der Service Worker hält diese
+// Seite vorgeladen bereit (public/sw.js), die nachgeladene Karte aber bewusst
+// nicht (1,8 MB, offline ohne Kacheln ohnehin leer). Ohne catch landete der
+// gescheiterte Chunk-Abruf in der Fehlergrenze und risse die ganze
+// Aufzeichnung mit — so fehlt nur die Karte.
+const RouteMap = dynamic(
+  () =>
+    import("@/components/RouteMap").catch(() => ({
+      default: KarteOhneVerbindung as (typeof import("@/components/RouteMap"))["default"],
+    })),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-full w-full" />,
+  },
+);
+
+function KarteOhneVerbindung() {
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-surface p-6 text-center text-sm text-muted">
+      Ohne Verbindung keine Karte. Die Aufzeichnung läuft trotzdem.
+    </div>
+  );
+}
 
 const initialState: FreeRideFormState = { error: null };
 const MAX_TITEL_LENGTH = 80;
