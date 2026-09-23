@@ -607,7 +607,7 @@ export default async function ProfilPage() {
                               ? ride.distanz_km / (tempoSekunden / 3600)
                               : 0;
                         return (
-                          <li key={ride.id} className="group transition-colors duration-fast hover:bg-surface">
+                          <li key={ride.id} className="group transition-colors duration-fast hover:bg-surface druckbar">
                             <div className="flex items-center justify-between gap-3 p-3">
                               <Link href={`/fahrten/${ride.id}`} className="flex min-w-0 flex-1 flex-col gap-1">
                                 <span className="min-w-0 truncate font-medium transition-colors duration-fast group-hover:text-accent">
@@ -702,7 +702,7 @@ export default async function ProfilPage() {
                           <li key={f.route_id}>
                             <Link
                               href={`/strecken/${f.route_id}`}
-                              className="group flex items-baseline justify-between px-4 py-3 transition-colors duration-fast hover:bg-surface"
+                              className="group flex items-baseline justify-between px-4 py-3 transition-colors duration-fast hover:bg-surface druckbar"
                             >
                               <span className="transition-colors duration-fast group-hover:text-accent">
                                 {f.routes.name}

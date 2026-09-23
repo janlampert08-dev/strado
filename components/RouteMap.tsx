@@ -473,6 +473,7 @@ export default function RouteMap({
   centerOnFirstLocation = false,
   followLocation = false,
   ohneBedienelemente = false,
+  kooperativeGesten = false,
   umlandSchleier = false,
 }: {
   // Alle Strecken, die gezeichnet werden. Die Reihenfolge ist gleichgültig,
@@ -580,6 +581,11 @@ export default function RouteMap({
   followLocation?: boolean;
   /** Zoom- und Kompass-Knöpfe weglassen (Vorschaukarten, z. B. im Fazit). */
   ohneBedienelemente?: boolean;
+  /** Karte mitten in einer scrollenden Seite: ein Finger scrollt die Seite,
+   *  zwei bewegen die Karte (Mapbox cooperativeGestures). Ohne das fing die
+   *  Karte auf der Fahrtseite jeden Wisch ab, der an ihr vorbeiscrollen
+   *  wollte. Nicht für Vollbildkarten (Entdecken, Strecke, Aufzeichnung). */
+  kooperativeGesten?: boolean;
   /** Das Ausland unter einen Schleier legen, damit die Schweiz heraussticht.
    *  Entdecken-Karte und freie Fahrt (Entscheid des Inhabers 2026-09-21):
    *  beide sollen gleich aussehen. Auf der eigenen Fahrt nach Strecken
@@ -612,6 +618,8 @@ export default function RouteMap({
   const routesRef = useRef(routes);
   // Nur der Wert beim Aufbau zählt: die Knöpfe werden einmal angehängt.
   const ohneBedienelementeRef = useRef(ohneBedienelemente);
+  // Nur beim Aufbau gelesen, wie ohneBedienelemente.
+  const kooperativeGestenRef = useRef(kooperativeGesten);
   // Ebenso nur beim Aufbau: der Schleier wird bei jedem style.load neu
   // angelegt, und welche Karte ihn trägt, ändert sich nicht.
   const umlandSchleierRef = useRef(umlandSchleier);
@@ -734,6 +742,7 @@ export default function RouteMap({
       // `attributionControl: false` samt der AttributionControl-Zeile unten
       // (dann greift wieder das responsive Standardverhalten).
       attributionControl: false,
+      cooperativeGestures: kooperativeGestenRef.current,
       // Ohne locale melden sich die Bedienelemente englisch ("Zoom in",
       // "Reset bearing to north") in einem lang="de"-Dokument.
       locale: {

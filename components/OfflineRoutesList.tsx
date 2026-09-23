@@ -118,7 +118,7 @@ export default function OfflineRoutesList() {
             <button
               type="button"
               onClick={() => setSelectedId(route.id)}
-              className="flex flex-1 items-center gap-3 px-4 py-3 text-left transition-colors duration-fast hover:bg-surface"
+              className="flex flex-1 items-center gap-3 px-4 py-3 text-left transition-colors duration-fast hover:bg-surface druckbar"
             >
               <svg viewBox="0 0 64 48" className="h-8 w-11 shrink-0 text-accent" aria-hidden="true">
                 <path
