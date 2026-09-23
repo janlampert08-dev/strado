@@ -66,7 +66,7 @@ export default function OffeneAufzeichnungStreifen({ userId }: { userId: string 
   return (
     <Link
       href={offen.href}
-      className="flex min-h-11 items-center gap-3 border-b border-border bg-accent-subtle px-4 py-2 text-sm transition-colors duration-fast hover:bg-surface sm:px-6"
+      className="flex min-h-11 items-center gap-3 border-b border-border bg-accent-subtle px-4 py-2 text-sm transition-colors duration-fast hover:bg-surface druckbar sm:px-6"
     >
       <span
         aria-hidden="true"

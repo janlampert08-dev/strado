@@ -219,7 +219,7 @@ export default function NutzerWahl({
                 <button
                   type="button"
                   onClick={() => waehle(profil)}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-normal hover:bg-surface"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-normal hover:bg-surface druckbar"
                 >
                   <Avatar
                     url={profil.avatarUrl}

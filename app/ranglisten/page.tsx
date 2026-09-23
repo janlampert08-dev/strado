@@ -125,7 +125,7 @@ function LeaderboardSection({
             return (
               <li
                 key={entry.userId}
-                className={`flex items-center gap-2 px-4 py-3 text-sm ${
+                className={`druckbar flex items-center gap-2 px-4 py-3 text-sm ${
                   isOwn ? "bg-accent/5" : ""
                 }`}
               >

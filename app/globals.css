@@ -537,9 +537,10 @@ main {
    KudosButton, das damit seine Klasse abräumt), bliebe hängen.
 
    Nicht erfasst sind Bewegungen, die nicht über CSS laufen: die Kamerafahrten
-   von Mapbox (dafür bewegungsdauer() in RouteMap.tsx), das Hochzählen in
-   CountUp.tsx und die Zeichen-Animation in PullToRefreshArea.tsx prüfen die
-   Abfrage jeweils selbst in JavaScript. */
+   von Mapbox (dafür bewegungsdauer() in RouteMap.tsx) und die
+   Zeichen-Animation in PullToRefreshArea.tsx prüfen die Abfrage jeweils
+   selbst in JavaScript. Die Seitenwechsel (::view-transition-*) matcht *
+   nicht; sie stehen unten eigens im selben Block. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -548,6 +549,118 @@ main {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  ::view-transition-old(.seite),
+  ::view-transition-new(.seite) {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Seitenwechsel (components/ui/Seitenrahmen.tsx, React <ViewTransition>).
+
+   Vorher tauschte jede Navigation den Inhalt schlagartig aus. Jetzt geht die
+   alte Seite schnell (120 ms, ausblenden), die neue kommt etwas ruhiger und
+   sechs Pixel von unten (220 ms, ease-out) — gerade genug, dass der Wechsel
+   als Bewegung gelesen wird, nicht als Flackern. Asymmetrisch mit Absicht:
+   was geht, soll nicht mit dem konkurrieren, was kommt. Kopf und Leiste
+   unten gehören zum Layout und bewegen sich nicht.
+   --------------------------------------------------------------------------- */
+::view-transition-old(.seite) {
+  animation: 120ms var(--ease-standard) both seite-raus;
+}
+::view-transition-new(.seite) {
+  animation: 220ms cubic-bezier(0.2, 0.8, 0.2, 1) 60ms both seite-rein;
+}
+@keyframes seite-raus {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes seite-rein {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Druckzustand für alles, was als ganze Zeile oder Karte antippbar ist.
+
+   Bisher reagierten nur Schaltflächen (active:scale-95 in ui/Button.tsx) und
+   die Entdecken-Zeilen; Ranglisten-, Feed-, Pass- und Fahrtenzeilen hatten
+   nur hover-Zustände, und die gibt es auf dem Telefon nicht. Ein Tipp ohne
+   Antwort fühlt sich an wie ein verfehlter Tipp. Leicht eingefärbt und um
+   zwei Prozent eingezogen, 100 ms — sichtbar unter dem Daumen, ohne dass
+   die Liste wackelt.
+   --------------------------------------------------------------------------- */
+@utility druckbar {
+  transition-property: background-color, transform;
+  transition-duration: 100ms;
+  transition-timing-function: var(--ease-standard);
+  -webkit-tap-highlight-color: transparent;
+  &:active {
+    background-color: var(--color-surface);
+    transform: scale(0.98);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Dialoge (components/ui/Dialog.tsx) erscheinen, statt aufzuploppen.
+
+   Natives <dialog> mit @starting-style: auf dem Telefon als Blatt von unten
+   (translateY), ab sm mittig mit leichtem Einzoomen; der Hintergrund blendet
+   mit. allow-discrete, damit auch das Schliessen animiert — display und
+   overlay würden sonst sofort umspringen. Browser ohne @starting-style
+   zeigen den Dialog wie bisher sofort.
+   --------------------------------------------------------------------------- */
+dialog.dialog-animiert {
+  transition:
+    opacity 200ms var(--ease-standard),
+    transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    overlay 240ms allow-discrete,
+    display 240ms allow-discrete;
+  opacity: 0;
+  transform: scale(0.96);
+}
+dialog.dialog-animiert[open] {
+  opacity: 1;
+  transform: none;
+}
+@starting-style {
+  dialog.dialog-animiert[open] {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+@media (width < 40rem) {
+  dialog.dialog-animiert.dialog-blatt {
+    transform: translateY(100%);
+    opacity: 1;
+  }
+  dialog.dialog-animiert.dialog-blatt[open] {
+    transform: none;
+  }
+  @starting-style {
+    dialog.dialog-animiert.dialog-blatt[open] {
+      transform: translateY(100%);
+      opacity: 1;
+    }
+  }
+}
+dialog.dialog-animiert::backdrop {
+  transition:
+    background-color 200ms var(--ease-standard),
+    overlay 240ms allow-discrete,
+    display 240ms allow-discrete;
+  background-color: transparent;
+}
+dialog.dialog-animiert[open]::backdrop {
+  background-color: rgb(0 0 0 / 0.6);
+}
+@starting-style {
+  dialog.dialog-animiert[open]::backdrop {
+    background-color: transparent;
   }
 }
 

@@ -17,7 +17,7 @@ import Button from "@/components/ui/Button";
 import SectionHeading from "@/components/ui/SectionHeading";
 
 const ITEM_CLASS =
-  "border-t border-border px-3 py-2 text-left text-sm text-foreground transition-colors duration-fast hover:bg-surface first:border-t-0 disabled:pointer-events-none disabled:opacity-50";
+  "border-t border-border px-3 py-2 text-left text-sm text-foreground transition-colors duration-fast hover:bg-surface druckbar first:border-t-0 disabled:pointer-events-none disabled:opacity-50";
 
 const MAX_NOTIZ_LENGTH = 280;
 
