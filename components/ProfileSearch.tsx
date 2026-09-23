@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { Search } from "@/components/NavIcons";
 import Avatar from "@/components/Avatar";
 import { Input } from "@/components/ui/Input";
 import { searchProfiles, type ProfileSearchResult } from "@/lib/actions/profile";

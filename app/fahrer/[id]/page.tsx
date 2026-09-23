@@ -3,7 +3,7 @@ import { datumCH } from "@/lib/format";
 import type { Metadata } from "next";
 import { OG_GEERBT } from "@/lib/openGraph";
 import Link from "next/link";
-import { Car, Route as RouteIcon } from "lucide-react";
+import { Car, Route as RouteIcon } from "@/components/NavIcons";
 import Header from "@/components/Header";
 import Avatar from "@/components/Avatar";
 import KudosButton from "@/components/KudosButton";

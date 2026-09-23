@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import { hatOffenenEntwurf } from "@/components/useEntwurfSchutz";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft } from "@/components/NavIcons";
 
 export default function BackButton({ fallbackHref }: { fallbackHref: string }) {
   const router = useRouter();

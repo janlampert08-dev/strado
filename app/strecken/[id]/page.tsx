@@ -43,7 +43,7 @@ import { KATEGORIEN } from "@/lib/constants";
 import { siteUrl } from "@/lib/siteUrl";
 import { averageTempolimit, estimateRouteDurationMinutes, formatMinutes } from "@/lib/geo";
 import type { Vehicle } from "@/types/database";
-import { ChevronDown, Pencil } from "lucide-react";
+import { ChevronDown, Pencil } from "@/components/NavIcons";
 import Card from "@/components/ui/Card";
 import AbschnittTabs from "@/components/ui/AbschnittTabs";
 import Kennzahl, { Kennzahlen, Kennzahlenzeile } from "@/components/ui/Kennzahl";

@@ -32,6 +32,14 @@ const TEMPO_LINE_LAYER = "tempo-segments-line";
 const HIGHLIGHT_SOURCE = "route-highlight";
 const HIGHLIGHT_HALO_LAYER = "route-highlight-halo";
 const HIGHLIGHT_LINE_LAYER = "route-highlight-line";
+// Der helle Rand um alles, was auf der Karte hervortreten soll: Halo der
+// gewählten Strecke, Rand der Start-/Zielpunkte, Rand des Standortpunkts.
+// Bewusst KEIN Token über tokenFarbe(): der naheliegende Kandidat
+// --color-background ist im Dunkelmodus #0b0b0d, und ein dunkler Rand auf
+// der dunklen Karte trennt die Linie nicht mehr vom Grund — genau dafür ist
+// er da. Ein themenfestes Weiss gibt es unter den Tokens nicht. Eine
+// Konstante statt dreimal derselben Hex-Zahl, damit sie nicht auseinanderläuft.
+const KARTEN_RAND_FARBE = "#FAFAFA";
 // Aufgezeichneter GPS-Track einer Fahrt (freie Fahrt oder Detailkarte einer
 // Aufzeichnung) — unabhängig von den kuratierten Strecken, die über
 // ROUTES_SOURCE laufen.
@@ -334,7 +342,7 @@ function createLocationMarkerElement(): StandortMarker {
   dotEl.style.width = "12px";
   dotEl.style.height = "12px";
   dotEl.style.borderRadius = "50%";
-  dotEl.style.border = "2.5px solid #FAFAFA";
+  dotEl.style.border = `2.5px solid ${KARTEN_RAND_FARBE}`;
   dotEl.style.boxShadow = "0 0 0 1px rgba(19,19,22,0.25), 0 1px 3px rgba(19,19,22,0.35)";
   dotEl.style.transform = "translate(-50%, -50%)";
 
@@ -850,6 +858,8 @@ export default function RouteMap({
           source: ROUTES_SOURCE,
           layout: { "line-join": "round", "line-cap": "round" },
           paint: {
+            // Nie zu sehen (line-opacity 0), also auch kein Token: Mapbox
+            // verlangt nur irgendeine gültige Farbe.
             "line-color": "#000000",
             "line-opacity": 0,
             "line-width": ["interpolate", ["linear"], ["zoom"], 8, 20, 14, 28],
@@ -995,7 +1005,7 @@ export default function RouteMap({
           source: HIGHLIGHT_SOURCE,
           layout: { "line-join": "round", "line-cap": "round" },
           paint: {
-            "line-color": "#FAFAFA",
+            "line-color": KARTEN_RAND_FARBE,
             "line-width": ["interpolate", ["linear"], ["zoom"], 8, 6, 14, 11],
           },
         },
@@ -1028,7 +1038,7 @@ export default function RouteMap({
             "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 3.5, 14, 5.5],
             "circle-color": ["get", "color"],
             "circle-stroke-width": 1.5,
-            "circle-stroke-color": "#FAFAFA",
+            "circle-stroke-color": KARTEN_RAND_FARBE,
             // Auch die Start-/Zielpunkte der Kontext-Strecken treten zurück;
             // ohne das blieben ausgerechnet die auffälligsten Elemente der
             // fremden Strecken in voller Deckkraft stehen.

@@ -4,7 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { mitAnzahl } from "@/lib/format";
 import { useEntwurfSchutz } from "@/components/useEntwurfSchutz";
 import dynamic from "next/dynamic";
-import { Check } from "lucide-react";
+import { Check } from "@/components/NavIcons";
 import DragSheet from "@/components/ui/DragSheet";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import { GlobeIcon, LockIcon } from "@/components/VisibilityIcons";

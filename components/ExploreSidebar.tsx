@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { Crosshair, Route, SearchX } from "lucide-react";
+import { Crosshair, Route, SearchX } from "@/components/NavIcons";
 import { routeShapePath } from "@/lib/routeShape";
 import { type Empfehlung } from "@/lib/empfehlung";
 import { formatKmGerundet, mitAnzahl } from "@/lib/format";

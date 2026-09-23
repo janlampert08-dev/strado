@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { Pencil } from "lucide-react";
+import { Pencil } from "@/components/NavIcons";
 import { uploadAvatar, type ProfileActionState } from "@/lib/actions/profile";
 import Avatar from "@/components/Avatar";
 

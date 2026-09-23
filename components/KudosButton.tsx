@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Flame } from "lucide-react";
+import { Flame } from "@/components/NavIcons";
 import { toggleKudos } from "@/lib/actions/kudos";
 import { cn } from "@/lib/utils/cn";
 

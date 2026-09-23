@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, MapPinIcon } from "@/components/NavIcons";
 import Card from "@/components/ui/Card";
 import SectionHeading from "@/components/ui/SectionHeading";
-import { MapPinIcon } from "@/components/NavIcons";
 import PassStatusZeile from "@/components/PassStatusZeile";
 import PassFolgenButton from "@/components/PassFolgenButton";
 import PassKalenderAbschnitt from "@/components/PassKalenderAbschnitt";

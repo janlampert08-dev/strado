@@ -11,7 +11,7 @@ import {
   MapPin,
   Mountain,
   Ruler,
-} from "lucide-react";
+} from "@/components/NavIcons";
 import Header from "@/components/Header";
 import Avatar from "@/components/Avatar";
 import KudosButton from "@/components/KudosButton";

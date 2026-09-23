@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, SlidersHorizontal } from "@/components/NavIcons";
 import { countActiveFilters, EMPTY_ADVANCED_FILTERS, type AdvancedFilters } from "@/lib/exploreFilters";
 import { fieldClassName } from "@/components/ui/Input";
 import { textAktionClassName } from "@/components/ui/Button";

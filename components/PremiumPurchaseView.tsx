@@ -2,10 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, Sparkles } from "lucide-react";
+import { Check, Sparkles, CreditCard, SparklesIcon } from "@/components/NavIcons";
 import EmptyState from "@/components/ui/EmptyState";
-import { CreditCard } from "lucide-react";
-import { SparklesIcon } from "@/components/NavIcons";
 import SectionHeading from "@/components/ui/SectionHeading";
 import PremiumBadge from "@/components/PremiumBadge";
 import { buttonVariants } from "@/components/ui/Button";

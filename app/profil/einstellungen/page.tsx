@@ -11,7 +11,7 @@ import {
   Palette,
   Scale,
   Sparkles,
-} from "lucide-react";
+} from "@/components/NavIcons";
 import Header from "@/components/Header";
 import VisibilitySettings from "@/components/VisibilitySettings";
 import { DEFAULT_PRIVACY_RADIUS_M } from "@/lib/track";

@@ -4,7 +4,7 @@ import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import { Dialog } from "@/components/ui/Dialog";
 import EmptyState from "@/components/ui/EmptyState";
-import { Lock, Users } from "lucide-react";
+import { Lock, Users } from "@/components/NavIcons";
 import type { FollowProfile } from "@/lib/follows";
 
 // Popup für die Follower/Following-Zahlen auf Profilseiten (eigenes und

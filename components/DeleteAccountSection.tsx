@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown } from "@/components/NavIcons";
 import { Dialog } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Input";
 import Button from "@/components/ui/Button";

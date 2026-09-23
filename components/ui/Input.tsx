@@ -6,7 +6,7 @@ import {
   type Ref,
   type TextareaHTMLAttributes,
 } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "@/components/NavIcons";
 import { cn } from "@/lib/utils/cn";
 
 // Gemeinsame Feld-Klassen — auch direkt verwendbar für native Elemente ohne
