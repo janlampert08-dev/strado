@@ -15,10 +15,18 @@ const inter = Inter({
 
 // Für tabellarische Zahlen (Ränge, km, Höhenmeter) — Instrument-Cluster-artige
 // Präzision statt Inter als De-facto-Mono-Attrappe (siehe globals.css).
+//
+// preload: false, weil die Schrift nur an wenigen Stellen gebraucht wird
+// (Creator-Codes, Bestätigungscode, einzelne Kennzahlen) — vorgeladen wurden
+// die zwei Schnitte (2× ~10 KB) aber auf jeder Seite, mit derselben Priorität
+// wie Inter. Ohne Vorladen holt der Browser sie erst, wenn ein Element sie
+// tatsächlich verwendet; bis dahin steht dort kurz die Ersatzschrift
+// (next/font setzt display: swap und eine grössenangeglichene Fallback-Schrift).
 const ibmPlexMono = IBM_Plex_Mono({
   variable: "--font-ibm-plex-mono",
   subsets: ["latin"],
   weight: ["500", "600"],
+  preload: false,
 });
 
 // Basis für jede relative URL in den Metadaten: opengraph-image,

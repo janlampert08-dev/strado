@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { MapPin, Trash2 } from "lucide-react";
 import ElevationProfile from "@/components/ElevationProfile";
 import Card from "@/components/ui/Card";
-import { routeShapePath } from "@/lib/routeShape";
+import { angefragteStreckenId } from "@/lib/offlineAnsicht";
+import { routeShapePath, routeShapePoints } from "@/lib/routeShape";
 import {
   getAllOfflineRoutes,
   isIndexedDbAvailable,
@@ -31,7 +32,13 @@ export default function OfflineRoutesList() {
   useEffect(() => {
     if (!isIndexedDbAvailable()) return;
     getAllOfflineRoutes()
-      .then(setRoutes)
+      .then((gespeichert) => {
+        setRoutes(gespeichert);
+        // Kam diese Seite als Ersatz für eine gespeicherte Streckenseite,
+        // gleich deren Detail zeigen (siehe lib/offlineAnsicht.ts).
+        const angefragt = angefragteStreckenId(window.location.pathname);
+        if (angefragt && gespeichert.some((r) => r.id === angefragt)) setSelectedId(angefragt);
+      })
       .catch(() => setRoutes([]));
   }, []);
 
@@ -71,6 +78,7 @@ export default function OfflineRoutesList() {
             {selected.startOrt} → {selected.zielOrt}
           </p>
         </div>
+        <StreckenVerlauf coordinates={selected.geometryCoordinates} name={selected.name} />
         {selected.hoehenprofil && selected.hoehenprofil.length > 1 && (
           <ElevationProfile punkte={selected.hoehenprofil} />
         )}
@@ -146,6 +154,40 @@ export default function OfflineRoutesList() {
           </li>
         );
       })}
+    </Card>
+  );
+}
+
+// Ersatz für die Karte: Mapbox-Kacheln werden bewusst nicht offline
+// gehalten (Nutzungsbedingungen, siehe lib/offlineRoutes.ts), die Geometrie
+// liegt aber ohnehin in IndexedDB. Die Linie zeigt Form und Richtung der
+// Strecke — Start als offener, Ziel als gefüllter Punkt —, nicht den Ort.
+function StreckenVerlauf({ coordinates, name }: { coordinates: [number, number][]; name: string }) {
+  const punkte = routeShapePoints(coordinates, 320, 200, 14);
+  if (punkte.length < 2) return null;
+  const pfad = `M${punkte.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" L")}`;
+  const [startX, startY] = punkte[0];
+  const [zielX, zielY] = punkte[punkte.length - 1];
+
+  return (
+    <Card surface className="p-2">
+      <svg
+        viewBox="0 0 320 200"
+        className="h-auto w-full text-accent"
+        role="img"
+        aria-label={`Streckenverlauf ${name}`}
+      >
+        <path
+          d={pfad}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={3}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <circle cx={startX} cy={startY} r={5} className="fill-background" stroke="currentColor" strokeWidth={2.5} />
+        <circle cx={zielX} cy={zielY} r={5} fill="currentColor" />
+      </svg>
     </Card>
   );
 }

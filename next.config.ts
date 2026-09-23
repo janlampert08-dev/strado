@@ -1,10 +1,19 @@
 import type { NextConfig } from "next";
 import path from "path";
 import { contentSecurityPolicy } from "./lib/csp";
+import { buildKennung } from "./lib/serviceWorker";
 
 const nextConfig: NextConfig = {
   turbopack: {
     root: path.join(__dirname),
+  },
+  // Die Kennung, unter der components/ServiceWorkerRegister.tsx den Service
+  // Worker registriert (/sw.js?v=…) und nach der public/sw.js seine Caches
+  // benennt. Über `env` statt NEXT_PUBLIC_*: der Wert entsteht hier beim
+  // Build und nicht in der Vercel-Oberfläche. Warum überhaupt:
+  // lib/serviceWorker.ts.
+  env: {
+    STRADO_BUILD_KENNUNG: buildKennung(process.env, Date.now()),
   },
   experimental: {
     serverActions: {
