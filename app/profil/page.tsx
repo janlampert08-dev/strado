@@ -82,7 +82,7 @@ function SectionSummary({
   count?: number;
 }) {
   return (
-    <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+    <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background">
       <span className="flex items-center gap-1.5">
         <Icon className="h-4 w-4 text-muted" aria-hidden="true" />
         {label}
@@ -374,7 +374,7 @@ export default async function ProfilPage() {
                 will, findet es hier — es ist kein Weg des Kernloops. */}
             <Link
               href={`/fahrer/${user.id}`}
-              className="w-fit text-xs text-muted transition-colors hover:text-foreground"
+              className="relative w-fit text-xs text-muted transition-colors hover:text-foreground after:absolute after:-inset-x-1 after:-inset-y-3.5 after:content-['']"
             >
               So sehen dich andere →
             </Link>
@@ -449,7 +449,7 @@ export default async function ProfilPage() {
                 wert={sammlung ? <CountUp value={passCount} /> : "–"}
                 zusatz={
                   sammlung && sammlung.gesamt > 0 ? (
-                    <Link href="/paesse" className="hover:text-foreground hover:underline">
+                    <Link href="/paesse" className="relative hover:text-foreground hover:underline after:absolute after:-inset-x-1 after:-inset-y-3.5 after:content-['']">
                       von {sammlung.gesamt} Passhöhen
                     </Link>
                   ) : undefined
@@ -610,7 +610,7 @@ export default async function ProfilPage() {
                               ? ride.distanz_km / (tempoSekunden / 3600)
                               : 0;
                         return (
-                          <li key={ride.id} className="group transition-colors duration-fast hover:bg-surface druckbar">
+                          <li key={ride.id} className="group hover:bg-surface druckbar">
                             <div className="flex items-center justify-between gap-3 p-3">
                               <Link href={`/fahrten/${ride.id}`} className="flex min-w-0 flex-1 flex-col gap-1">
                                 <span className="min-w-0 truncate font-medium transition-colors duration-fast group-hover:text-accent">
@@ -705,7 +705,7 @@ export default async function ProfilPage() {
                           <li key={f.route_id}>
                             <Link
                               href={`/strecken/${f.route_id}`}
-                              className="group flex items-baseline justify-between px-4 py-3 transition-colors duration-fast hover:bg-surface druckbar"
+                              className="group flex items-baseline justify-between px-4 py-3 hover:bg-surface druckbar"
                             >
                               <span className="transition-colors duration-fast group-hover:text-accent">
                                 {f.routes.name}

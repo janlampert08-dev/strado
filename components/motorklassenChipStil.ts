@@ -42,6 +42,10 @@ export function chipClassName(aktiv: boolean, gross = false): string {
     // relative + after: auch in der 36-px-Fassung eine 44-px-Tippfläche,
     // ohne die zwei Chipzeilen der Ranglisten höher zu machen.
     "relative inline-flex shrink-0 items-center rounded-full border px-3 text-sm font-medium whitespace-nowrap transition-colors duration-fast after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']",
+    // Eigener Fokusring: ohne ihn blieb nur die Browser-Umrandung, und die
+    // lag beim gewählten (vordergrundgefüllten) Chip in Hintergrundfarbe auf
+    // Hintergrund — rund 1:1, also unsichtbar (Audit 2026-09-23).
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background",
     gross ? "min-h-11" : "min-h-9",
     // Gewählt = gefüllt in der Vordergrundfarbe, wie ein Segment in
     // ui/SegmentedControl. Vorher blau gefüllt: dieselbe Rolle ("das ist

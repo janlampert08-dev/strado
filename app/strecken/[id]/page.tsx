@@ -384,7 +384,7 @@ export default async function StreckeDetailPage({
                     {!istNameSchonImTitel(route.name, kontext.pass.name, passKontexte.length) && (
                       <Link
                         href={`/paesse#${kontext.pass.id}`}
-                        className="font-medium text-foreground transition-colors hover:text-accent"
+                        className="relative font-medium text-foreground transition-colors hover:text-accent after:absolute after:-inset-x-1 after:-inset-y-3 after:content-['']"
                         title={`${kontext.pass.name} auf der Passseite`}
                       >
                         {kontext.pass.name}
@@ -392,7 +392,7 @@ export default async function StreckeDetailPage({
                     )}
                     <a
                       href="#pass"
-                      className="inline-flex items-center rounded-full transition-opacity hover:opacity-70"
+                      className="relative inline-flex items-center rounded-full transition-opacity hover:opacity-70 after:absolute after:-inset-x-1 after:-inset-y-3.5 after:content-['']"
                       title={`${kontext.pass.name}: ${anzeige.label} — Details weiter unten`}
                     >
                       <PassStatusMarke anzeige={anzeige} />

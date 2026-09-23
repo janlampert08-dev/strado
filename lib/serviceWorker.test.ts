@@ -312,6 +312,46 @@ describe("public/sw.js — Navigation", () => {
     expect(await r!.text()).toBe(OFFLINE_HTML);
   });
 
+  // Staging-Kaltstart am 2026-09-23: eine Seite brauchte über 3,5 s, und
+  // der Worker zeigte "Offline" bei voller Verbindung. Ausserhalb der
+  // Aufzeichnung gibt es keine gesicherte Kopie — dort wird gewartet.
+  it("zeigt bei einer langsamen gewöhnlichen Seite die Seite, nicht /offline", async () => {
+    let langsam = false;
+    const basis = server();
+    const sw = ladeServiceWorker((url, init) =>
+      langsam
+        ? new Promise<Response>((resolve) => setTimeout(() => resolve(antwort("seite")), 8))
+        : basis(url, init),
+    );
+    await sw.install();
+    langsam = true;
+    const r = await sw.navigation("/premium");
+    expect(await r!.text()).toBe("seite");
+  });
+
+  // Next 16.3 liefert die Build-Dateien unter /_next/static/immutable/ aus.
+  // Die Fixtures oben nutzen noch den alten Pfad; ohne diesen Fall blieb
+  // unbemerkt, dass die Offline-Hülle kein einziges Skript enthielt.
+  it("sichert auch Assets unter /_next/static/immutable/", async () => {
+    const html = `<html><body><script src="/_next/static/immutable/chunks/abc123.js"></script>
+<script>self.__next_f.push([1,"\\"static/immutable/chunks/rsc.js\\""])</script></body></html>`;
+    const sw = ladeServiceWorker(
+      server({
+        "/fahrten/neu": async () => antwort(html),
+        "/_next/static/immutable/chunks/abc123.js": async () => antwort("a"),
+        "/_next/static/immutable/chunks/rsc.js": async () => antwort("b"),
+      }),
+    );
+    await sw.install();
+    const shell = await sw.caches.open("cornice-shell-build-a");
+    expect(shell.urls()).toEqual(
+      expect.arrayContaining([
+        "/_next/static/immutable/chunks/abc123.js",
+        "/_next/static/immutable/chunks/rsc.js",
+      ]),
+    );
+  });
+
   it("wartet mit ?fortsetzen= bei blosser Langsamkeit weiter auf das Netz", async () => {
     let langsam = false;
     const basis = server();

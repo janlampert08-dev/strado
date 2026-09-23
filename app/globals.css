@@ -283,9 +283,12 @@
   --duration-fast: var(--duration-fast);
   --duration-base: var(--duration-base);
 
-  --font-sans: var(--font-geist);
+  /* Mit generischem Schluss: fällt eine Webschrift aus und gibt es kein
+     lokales Arial (Android), griffe der Browser sonst zu seiner Standard-
+     schrift — oft einer Serifenschrift. */
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
   /* Seitentitel in der Schrift der Wortmarke (app/layout.tsx). */
-  --font-display: var(--font-familjen);
+  --font-display: var(--font-familjen), ui-sans-serif, system-ui, sans-serif;
   /* IBM Plex Mono bleibt geladen, trägt aber nur noch, was wirklich Code
      ist (Creator-Codes, Pfade unter /moderation/creator) — und das
      Teilen-Bild, das die Variable in lib/shareImage.ts direkt liest.
@@ -293,7 +296,7 @@
      body): Mono auf Messwerten las sich als Terminal, nicht als
      Präzisionsinstrument, und auf Wörtern ("Ohne Klasse",
      "Aufzeichnung läuft") als Kostüm. */
-  --font-mono: var(--font-ibm-plex-mono);
+  --font-mono: var(--font-ibm-plex-mono), ui-monospace, monospace;
 }
 
 body {
@@ -626,7 +629,11 @@ main {
    die Liste wackelt.
    --------------------------------------------------------------------------- */
 @utility druckbar {
-  transition-property: background-color, transform;
+  /* Farbe und Rand gehören mit in die Liste: druckbar ersetzt an seinen
+     Stellen transition-colors. Beide nebeneinander liessen die Klasse, die
+     im Stylesheet später steht, die ganze transition-property bestimmen —
+     und das Einziehen sprang statt zu gleiten (Audit 2026-09-23). */
+  transition-property: color, background-color, border-color, transform;
   transition-duration: 100ms;
   transition-timing-function: var(--ease-standard);
   -webkit-tap-highlight-color: transparent;

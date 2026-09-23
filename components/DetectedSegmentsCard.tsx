@@ -27,7 +27,7 @@ export default function DetectedSegmentsCard({ segments }: { segments: DetectedS
               ? segment.distanzKm / (segment.dauerSekunden / 3600)
               : null;
           return (
-            <li key={segment.id} className="group transition-colors duration-fast hover:bg-surface druckbar">
+            <li key={segment.id} className="group hover:bg-surface druckbar">
               <div className="flex items-center justify-between gap-3 p-3">
                 <Link
                   href={`/fahrten/${segment.id}`}
