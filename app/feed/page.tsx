@@ -90,7 +90,7 @@ export default async function FeedPage({
             Für Abgemeldete bleibt genau ein Reiter übrig ("Alle") — die
             Leiste rendert dann eine einzelne Pille, was als Zustandsanzeige
             immer noch stimmt und billiger ist als ein Sonderfall. */}
-        <div className="sticky top-0 z-10 -mx-1 bg-background/95 px-1 py-2 backdrop-blur">
+        <div className="sticky top-0 z-10 -mx-1 flex justify-center bg-background/95 px-1 py-2 backdrop-blur">
           <FeedReiter
             aktiv={scope === "following" ? "following" : "global"}
             angemeldet={!!user}
