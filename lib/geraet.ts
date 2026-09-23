@@ -73,19 +73,22 @@ export interface FahrHinweis {
 export function fahrHinweise(geraet: Geraet): FahrHinweis[] {
   const bildschirm =
     geraet.plattform === "ios"
-      ? "Auf dem iPhone stoppt die Aufzeichnung, sobald der Bildschirm ausgeht oder du die App wechselst. Stell die automatische Sperre für die Fahrt auf «Nie» (Einstellungen › Anzeige & Helligkeit)."
-      : "Strado hält den Bildschirm an, solange die Aufzeichnung offen ist. Wechselst du die App, pausiert sie.";
+      ? "Auf dem iPhone stoppt die Aufzeichnung, wenn der Bildschirm ausgeht. Automatische Sperre für die Fahrt auf «Nie» (Einstellungen › Anzeige & Helligkeit)."
+      : "Strado hält ihn an, solange aufgezeichnet wird. Wechselst du die App, pausiert die Aufzeichnung.";
+  // Knapp mit Absicht: die Hinweise stehen über "Aufzeichnung starten", und
+  // auf einem kleinen Telefon (iPhone SE, 667 px) darf der Knopf nicht unter
+  // den Rand rutschen.
   return [
     {
       id: "standort",
       titel: "Standort",
-      text: "Gleich fragt dein Browser nach dem Standort. Ohne ihn gibt es keine Fahrt: Strecke, Tempo und Zeit kommen aus dem GPS.",
+      text: "Gleich fragt dein Browser danach. Ohne GPS keine Fahrt.",
     },
     { id: "bildschirm", titel: "Bildschirm an", text: bildschirm },
     {
       id: "halterung",
-      titel: "In die Halterung",
-      text: "Handy fest montieren, bevor du losfährst. Bedienen musst du während der Fahrt nichts.",
+      titel: "Halterung",
+      text: "Handy fest montieren, bevor du losfährst.",
     },
   ];
 }
