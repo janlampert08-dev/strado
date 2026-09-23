@@ -11,6 +11,7 @@ import {
   type CongestionLevel,
 } from "@/lib/traffic";
 import {
+  skalaFuerPunkte,
   startzeitenSatz,
   type Startzeit,
   type VerkehrsPunkt,
@@ -88,16 +89,19 @@ export default function VerkehrSektion({
     [punkte, wochentag, stunde],
   );
 
+  const skala = useMemo(() => skalaFuerPunkte(punkte), [punkte]);
+
   const einschaetzung = useMemo(
     () =>
       baueVerkehrseinschaetzung({
         live,
         prognoseFaktor,
+        skala,
         hatPrognose: punkte.length > 0,
         hatGemeinschaft: startzeitenSatz(startzeiten) !== null,
         liveLaedt: liveMoeglich && levels === null,
       }),
-    [live, prognoseFaktor, punkte.length, startzeiten, liveMoeglich, levels],
+    [live, prognoseFaktor, skala, punkte.length, startzeiten, liveMoeglich, levels],
   );
 
   return (
