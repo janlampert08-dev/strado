@@ -699,12 +699,12 @@ export default function DragSheet({
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        onClick={() => {
-          // Tap per Maus/Tastatur (ohne Zeiger-Geste): Pointer-Up hat ohne
-          // dragRef nichts umzuschalten — der Klick holt das nach. Nach einer
-          // echten Ziehgeste unterdrückt der Sheet-Container den Klick
-          // (onClickCapture oben), damit kein Tap nachfeuert.
-          if (!dragRef.current) setSnap(nextSnapOnTap);
+        onClick={(e) => {
+          // Nur die Tastatur (Enter/Leertaste, detail === 0): Tap und
+          // Ziehen per Finger oder Maus hat onPointerUp schon erledigt —
+          // ein zweites Umschalten hier liesse das Sheet nach jedem Tap
+          // zurückfedern.
+          if (e.detail === 0) setSnap(nextSnapOnTap);
         }}
         aria-label={handleLabel}
         aria-expanded={snap === "voll"}

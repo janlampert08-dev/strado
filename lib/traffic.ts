@@ -103,13 +103,38 @@ const TILEQUERY_RADIUS_M = 30;
 // für sowohl die Gesamt-Einschätzung (worstCongestion über das Ergebnis) als
 // auch die eingefärbten Kartenabschnitte (sliceRouteByTraffic) — ersetzt die
 // vorherige, komplett separate Verkehrs-Kachelebene auf der Karte.
-export async function fetchCongestionLevels(
+//
+// Kurz zwischengespeichert (je Stichprobenlinie, eine Minute): auf der
+// Streckenseite fragen die Detailkarte (RouteDetailMap) und der FahrCheck
+// dieselbe Linie mit derselben Stichprobenzahl ab. Ohne den Speicher ginge
+// jede Tilequery doppelt an Mapbox — doppelte Kosten für dieselbe Antwort.
+// Ein laufender Abruf wird geteilt, nicht zweimal gestartet.
+const VERKEHR_CACHE_MS = 60_000;
+const verkehrCache = new Map<string, { bis: number; ergebnis: Promise<(CongestionLevel | null)[]> }>();
+
+export function fetchCongestionLevels(
   coordinates: [number, number][],
   sampleCount: number,
   mapboxToken: string,
 ): Promise<(CongestionLevel | null)[]> {
   const points = sampleRoutePoints(coordinates, sampleCount);
+  const schluessel = points.map(([lon, lat]) => `${lon},${lat}`).join(";");
+  const jetzt = Date.now();
+  const bekannt = verkehrCache.get(schluessel);
+  if (bekannt && bekannt.bis > jetzt) return bekannt.ergebnis;
 
+  for (const [k, eintrag] of verkehrCache) {
+    if (eintrag.bis <= jetzt) verkehrCache.delete(k);
+  }
+  const ergebnis = frageVerkehrAb(points, mapboxToken);
+  verkehrCache.set(schluessel, { bis: jetzt + VERKEHR_CACHE_MS, ergebnis });
+  return ergebnis;
+}
+
+function frageVerkehrAb(
+  points: [number, number][],
+  mapboxToken: string,
+): Promise<(CongestionLevel | null)[]> {
   return Promise.all(
     points.map(async ([lon, lat]) => {
       try {

@@ -592,6 +592,11 @@ export async function fordereCodeFuerAdresse(
     isRateLimitedByKey(`code-anfordern:ip:${ip}`, 5, 10 * 60_000) ||
     isRateLimitedByKey(`code-anfordern:email:${email.toLowerCase()}`, 3, 10 * 60_000)
   ) {
+    // Das Cookie trotzdem setzen: sonst lädt die Seite nach der
+    // "Code ist unterwegs"-Antwort wieder ins Adressformular statt ins
+    // Code-Formular — ein früher verschickter Code liesse sich nicht
+    // eingeben, und der Nutzer stünde fest.
+    await merkeBestaetigung(email, null);
     return { error: null, gesendet: true };
   }
 

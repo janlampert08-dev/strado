@@ -3,17 +3,12 @@ import { getOrigin } from "@/lib/utils/url";
 import { siteUrl } from "@/lib/siteUrl";
 import { listRoutesForSitemap, type RouteSitemapEintrag } from "@/lib/routes";
 
-// Die Sitemap wird stündlich neu gebaut, nicht bei jedem Abruf. Ohne das
-// hier trägt die Antwort Cache-Control: max-age=0 (X-Vercel-Cache: MISS bei
-// jedem Abruf) — jeder Googlebot-Besuch wartet dann auf ein volles
-// Server-Render inklusive Supabase-Abfrage, und ein kurzer DB-Schluckauf
-// wird in der Search Console zum "Couldn't fetch".
-export const revalidate = 3600;
-
-// Immer zur Anfragezeit rendern (dann je revalidate zwischengespeichert):
-// die Streckenliste hängt an cookies() und ist ohnehin nie statisch
-// vorberechenbar — ohne das versucht der Build ein Prerender, das nur in
-// den statischen Fallback läuft.
+// Immer zur Anfragezeit rendern: die Origin hängt an den Request-Headern
+// und die Streckenliste an cookies() — beides ist nie statisch
+// vorberechenbar, ohne das versucht der Build ein Prerender, das nur in den
+// statischen Fallback läuft. Ein `revalidate` daneben wäre wirkungslos
+// (force-dynamic rendert jeden Abruf neu); was Googlebot vor "Couldn't
+// fetch" schützt, ist das Zeitbudget mit Rückfall unten, nicht ein Cache.
 export const dynamic = "force-dynamic";
 
 // Zeitbudget für die Streckenabfrage: reisst die DB, antwortet die Sitemap
