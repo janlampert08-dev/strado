@@ -42,15 +42,13 @@ export default function AbschnittTabs({
     <div className="flex flex-col gap-3">
       {/* Dieselbe Hülle wie der Feed-Reiter (FeedReiter.tsx): eine Leiste,
           ein Stil — egal ob die Reiter Adressen oder Ansichten schalten.
-          self-center + w-fit: die Hülle schmiegt sich an die Segmente und
-          steht mittig, statt sich über die volle Breite zu strecken und
-          rechts eine leere Bordüre zu zeigen. overflow-y-hidden: die Hülle
-          ist mit overflow-x-auto ein Scroll-Container, der sonst auch die
-          senkrechte Achse beschneidet (Rahmen, Fokusring). */}
+          overflow-y-hidden: die Hülle ist mit overflow-x-auto ein
+          Scroll-Container, der sonst auch die senkrechte Achse beschneidet
+          (Rahmen, Fokusring). */}
       <div
         role="tablist"
         aria-label="Abschnitte dieser Seite"
-        className={segmentHuelleClassName("w-fit self-center overflow-y-hidden reiter-scroller")}
+        className={segmentHuelleClassName("overflow-y-hidden reiter-scroller")}
       >
         {tabs.map((tab, i) => {
             const istAktiv = aktiv === i;

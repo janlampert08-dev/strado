@@ -22,7 +22,7 @@ export default function Loading() {
 
           Vorher standen hier zwei Pillen mit border-b: der Umschalter, den
           es vor der Umstellung gab. */}
-      <div className="inline-flex w-fit items-center gap-1 self-center rounded-full border border-border p-1">
+      <div className="inline-flex w-fit items-center gap-1 rounded-full border border-border p-1">
         <Skeleton className="h-9 w-16 rounded-full" />
         <Skeleton className="h-9 w-24 rounded-full" />
         <Skeleton className="h-9 w-24 rounded-full" />
