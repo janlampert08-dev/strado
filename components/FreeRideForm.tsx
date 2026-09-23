@@ -478,10 +478,16 @@ export default function FreeRideForm({
         <div className="md:mx-auto md:w-full md:max-w-lg md:rounded-t-lg md:border-x flex shrink-0 flex-col gap-4 border-t border-border bg-background px-5 pt-5 pb-[calc(1.25rem+var(--safe-bottom))]">
           <div className="flex flex-col gap-1">
             <h1 className="text-title font-semibold tracking-tight">Freie Fahrt</h1>
-            <p className="text-sm text-muted">
-              Ohne Strecke, einfach losfahren. Gemessen wird ab dem ersten GPS-Signal nach dem
-              Start — beendet wird die Fahrt von dir.
-            </p>
+            {/* Bei der ersten Fahrt stehen stattdessen die Hinweise darunter —
+                beides zusammen schob "Aufzeichnung starten" auf einem iPhone
+                SE im Safari-Tab unter den Rand. Die Hinweise sagen fürs erste
+                Mal mehr als die allgemeine Beschreibung. */}
+            {(ersteFahrtHinweiseGesehen || standortFreigabe === "denied") && (
+              <p className="text-sm text-muted">
+                Ohne Strecke, einfach losfahren. Gemessen wird ab dem ersten GPS-Signal nach dem
+                Start — beendet wird die Fahrt von dir.
+              </p>
+            )}
           </div>
           <ErsteFahrtHinweise
             freigabe={standortFreigabe}
