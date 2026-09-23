@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/Input";
 import { segmentClassName, segmentHuelleClassName } from "@/components/ui/SegmentedControl";
 import { AutoIcon, HakenIcon, MotorradIcon } from "@/components/NavIcons";
 import { cn } from "@/lib/utils/cn";
+import { formatMeter } from "@/lib/format";
 
 export interface EinrichtungPass {
   id: string;
@@ -408,7 +409,7 @@ function PaesseSchritt({
                 </span>
                 <span className="flex-1 text-base font-medium">{pass.name}</span>
                 <span className="text-sm tabular-nums text-muted">
-                  {pass.hoeheM.toLocaleString("de-CH")} m
+                  {formatMeter(pass.hoeheM)}
                 </span>
               </button>
             </li>

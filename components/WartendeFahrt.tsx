@@ -6,7 +6,7 @@ import {
   gastfahrtSchluesselAusZiel,
   loadTrackingSnapshot,
 } from "@/lib/trackingStorage";
-import { formatDuration } from "@/lib/format";
+import { formatDauer, formatKm } from "@/lib/format";
 
 interface Stand {
   distanzKm: number;
@@ -54,8 +54,8 @@ export default function WartendeFahrt({ ziel }: { ziel: string | undefined }) {
       <p className="text-title font-semibold tracking-tight">Deine Fahrt wartet</p>
       <p className="text-sm text-muted">
         <span className="tabular-nums text-foreground">
-          {stand.distanzKm.toFixed(1)} km
-          {stand.sekunden !== null && <> · {formatDuration(Math.round(stand.sekunden))}</>}
+          {formatKm(stand.distanzKm)} km
+          {stand.sekunden !== null && <> · {formatDauer(Math.round(stand.sekunden))}</>}
         </span>{" "}
         — mit einem Konto landet sie in deinem Profil und in den Ranglisten.
       </p>
