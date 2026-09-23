@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import HinweisLeiste from "@/components/Hinweis";
 import { BESCHREIBUNG, SLOGAN } from "@/lib/constants";
@@ -127,6 +128,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <HinweisLeiste />
         <ServiceWorkerRegister />
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
