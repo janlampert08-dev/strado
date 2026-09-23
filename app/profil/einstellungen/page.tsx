@@ -134,7 +134,7 @@ export default async function EinstellungenPage() {
           <section id="privatsphaere" className="flex scroll-mt-20 flex-col gap-3">
             <SectionHeading icon={Lock}>Privatsphäre</SectionHeading>
             <p className="text-sm text-muted">
-              Legt fest, was andere auf deinem Profil sehen. Ob eine einzelne
+              Legt fest, was andere auf deinem Profil und deinen geteilten Fahrten sehen. Ob eine einzelne
               Fahrt öffentlich ist, entscheidest du beim Speichern oder später
               im Profil unter &bdquo;Getrackte Fahrten&ldquo;.
             </p>
