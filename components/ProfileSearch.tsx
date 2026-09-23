@@ -141,7 +141,7 @@ export default function ProfileSearch() {
               href={`/fahrer/${profile.id}`}
               onClick={() => setOpen(false)}
               onMouseEnter={() => setAktiv(index)}
-              className={`flex min-h-14 items-center gap-3 px-3 py-2 text-sm transition-colors duration-fast hover:bg-surface druckbar ${
+              className={`flex min-h-14 items-center gap-3 px-3 py-2 text-sm hover:bg-surface druckbar ${
                 index === aktiv ? "bg-surface" : ""
               }`}
             >

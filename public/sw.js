@@ -64,6 +64,15 @@ const SHELL_SEITEN = [OFFLINE_URL, AUFZEICHNUNG_URL];
 // genug, dass niemand vorher entnervt neu lädt.
 const NAVIGATIONS_TIMEOUT_MS = 3500;
 
+// Für alle ANDEREN Seiten gilt eine viel längere Grenze. Mit 3,5 s für alles
+// zeigte staging.strado.ch nach einem Kaltstart (Serverfunktion wacht auf)
+// "Offline" mit voller Verbindung — für eine Seite, von der es ohnehin keine
+// gesicherte Kopie gibt, also für einen Ersatz, der nichts ersetzt. Die
+// kurze Grenze lohnt sich nur, wo eine Kopie bereitliegt: bei der
+// Aufzeichnung (SHELL_SEITEN). Sonst ist eine langsame Seite besser als die
+// Offline-Seite; erst wenn nach 15 s gar nichts kommt, ist das Netz weg.
+const SEITEN_TIMEOUT_MS = 15000;
+
 // Obergrenze für den Laufzeit-Cache. Ein einzelner Build hat weit weniger
 // Chunks, die man beim normalen Surfen tatsächlich lädt; die Grenze fängt nur
 // ab, was sich trotzdem anhäuft. Getrimmt wird nach Einfügereihenfolge (der
@@ -99,6 +108,8 @@ self.addEventListener("activate", (event) => {
             .map((key) => caches.delete(key)),
         ),
       )
+      .then(() => self.registration.navigationPreload?.enable())
+      .catch(() => {})
       .then(() => self.clients.claim()),
   );
 });
@@ -136,7 +147,12 @@ self.addEventListener("fetch", (event) => {
 // authentifizierte Seite sehen. Die gesicherte Seite springt ein, wenn das
 // Netz scheitert ODER nach NAVIGATIONS_TIMEOUT_MS noch nicht geantwortet hat.
 async function navigation(event, url) {
-  const netz = fetch(event.request);
+  // Navigation Preload (im activate-Handler eingeschaltet): der Browser hat
+  // die Seite schon angefragt, während der Worker aufwachte. Ohne das kam
+  // die Anfrage erst nach dem Start des Workers los.
+  const netz = Promise.resolve(event.preloadResponse)
+    .catch(() => undefined)
+    .then((vorab) => vorab ?? fetch(event.request));
 
   const shellPfad = SHELL_SEITEN.includes(url.pathname) ? url.pathname : null;
   if (shellPfad) {
@@ -156,7 +172,7 @@ async function navigation(event, url) {
       (antwort) => ({ art: "netz", antwort }),
       () => ({ art: "fehler" }),
     ),
-    warte(NAVIGATIONS_TIMEOUT_MS).then(() => ({ art: "zeit" })),
+    warte(shellPfad ? NAVIGATIONS_TIMEOUT_MS : SEITEN_TIMEOUT_MS).then(() => ({ art: "zeit" })),
   ]);
   if (ausgang.art === "netz") return ausgang.antwort;
 
@@ -278,7 +294,11 @@ async function assetHolen(cache, assetUrl) {
 // die ein deutschsprachiges Telefon nie anfordert.
 function assetUrlsAus(text, origin) {
   const gefunden = new Set();
-  const muster = /(?:\/_next\/)?static\/(?:chunks|media|css)\/[A-Za-z0-9._~%\-/[\]]+?\.(?:js|css|woff2?)/g;
+  // "immutable/": Next 16.3 legt die Build-Dateien unter
+  // /_next/static/immutable/chunks|media/ ab. Ohne diesen Zweig fand das
+  // Muster in der Aufzeichnungsseite NICHTS, und die Offline-Hülle bestand
+  // aus zwei HTML-Seiten ohne ein einziges Skript (Audit 2026-09-23).
+  const muster = /(?:\/_next\/)?static\/(?:immutable\/)?(?:chunks|media|css)\/[A-Za-z0-9._~%\-/[\]]+?\.(?:js|css|woff2?)/g;
   for (const treffer of text.matchAll(muster)) {
     const pfad = treffer[0].startsWith("/_next/") ? treffer[0] : `/_next/${treffer[0]}`;
     gefunden.add(new URL(pfad, origin).href);

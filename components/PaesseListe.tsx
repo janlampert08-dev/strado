@@ -119,7 +119,13 @@ export default function PaesseListe({
       ) : (
         <Card as="ul" className="divide-y divide-border">
           {gezeigt.map(({ eintrag, anzeige }) => (
-            <li key={eintrag.id} id={eintrag.id} className="flex items-center gap-3 px-4 py-3">
+            <li
+              key={eintrag.id}
+              id={eintrag.id}
+              // relative + after:inset-0 am Link: die ganze Zeile ist die
+              // Tippfläche, nicht nur der 21 px hohe Name (Audit 2026-09-23).
+              className={cn("flex items-center gap-3 px-4 py-3", eintrag.strecke && "druckbar relative")}
+            >
               {/* Der Stempel: befahren oder nicht. Er steht vorn, weil die
                   Sammlung die Frage ist, mit der man diese Liste liest. */}
               <span
@@ -141,7 +147,10 @@ export default function PaesseListe({
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">
                   {eintrag.strecke ? (
-                    <Link href={`/strecken/${eintrag.strecke.id}`} className="hover:text-accent">
+                    <Link
+                      href={`/strecken/${eintrag.strecke.id}`}
+                      className="hover:text-accent after:absolute after:inset-0 after:content-['']"
+                    >
                       {eintrag.name}
                     </Link>
                   ) : (

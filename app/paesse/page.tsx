@@ -154,10 +154,10 @@ export default async function PaessePage() {
                   ? `/strecken/${eintrag.strecke.id}`
                   : `/paesse#${eintrag.id}`;
                 return (
-                  <li key={eintrag.id} className="flex items-center gap-3 px-4 py-3">
+                  <li key={eintrag.id} className="druckbar relative flex items-center gap-3 px-4 py-3">
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">
-                        <Link href={ziel} className="hover:text-accent">
+                        <Link href={ziel} className="hover:text-accent after:absolute after:inset-0 after:content-['']">
                           {eintrag.name}
                         </Link>
                       </p>
