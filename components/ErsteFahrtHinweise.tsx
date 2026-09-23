@@ -10,7 +10,7 @@ import type { StandortFreigabe } from "@/components/useStandortFreigabe";
  * - Standort gesperrt: nichts anderes zählt. Statt "Bitte in den
  *   Einstellungen erlauben" steht da, wo auf diesem Gerät.
  * - Erste Fahrt auf diesem Gerät: die drei Punkte, die eine Fahrt retten
- *   (Standort, Bildschirm, Halterung), je ein Titel und ein Satz.
+ *   (Standort, Bildschirm, Halterung), je ein fetter Anlauf und ein Satz.
  * - Danach: die eine Zeile, die vorher schon hier stand.
  *
  * Keine Karte und kein Kasten: das Panel darunter trägt den Startknopf, und
@@ -60,15 +60,14 @@ export default function ErsteFahrtHinweise({
   );
 
   return (
-    <section aria-labelledby="erste-fahrt-titel" className="flex flex-col gap-3">
+    <section aria-labelledby="erste-fahrt-titel" className="flex flex-col gap-2">
       <h2 id="erste-fahrt-titel" className="text-sm font-semibold">
         Vor der ersten Fahrt
       </h2>
-      <ul className="flex flex-col gap-2.5">
+      <ul className="flex flex-col gap-1.5">
         {hinweise.map((hinweis) => (
-          <li key={hinweis.id} className="flex flex-col gap-0.5 text-sm leading-snug">
-            <span className="font-medium text-foreground">{hinweis.titel}</span>
-            <span className="text-muted">{hinweis.text}</span>
+          <li key={hinweis.id} className="text-sm leading-snug text-muted">
+            <span className="font-medium text-foreground">{hinweis.titel}.</span> {hinweis.text}
           </li>
         ))}
       </ul>

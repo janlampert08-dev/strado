@@ -98,7 +98,9 @@ export { Wrench as WartungIcon, CalendarClock as TerminIcon } from "lucide-react
 // und app/profil/page.tsx, dort aber als direkter lucide-Import aus der Zeit
 // vor dieser Wrapper-Regel. Neuer Code (app/profil/fahrzeuge/[id]) nimmt sie
 // von hier; das Raster mitzuziehen wäre eine Änderung ohne Anlass.
-export { Car as AutoIcon, Bike as MotorradIcon } from "lucide-react";
+// Seit 2026-09-23 das Motorrad (Motorbike) statt des Fahrrads (Bike): auf
+// der Kachel "Motorrad" der Einrichtung las sich das Fahrrad als Fehler.
+export { Car as AutoIcon, Motorbike as MotorradIcon } from "lucide-react";
 
 // Die Stoppuhr vor einer gemessenen Dauer (Bestzeit-Streifen der
 // Streckenseite) — damit "14:12 min" nicht als Uhrzeit gelesen wird.
