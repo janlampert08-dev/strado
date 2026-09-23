@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Bookmark } from "lucide-react";
+import { Bookmark } from "@/components/NavIcons";
 import { toggleFavorite } from "@/lib/actions/favorites";
 import IconButton from "@/components/ui/IconButton";
 

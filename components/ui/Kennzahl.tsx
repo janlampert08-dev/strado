@@ -77,11 +77,10 @@ export default function Kennzahl({
 // im Standardraster bräche er auf dem Telefon in 2 + 1 um, und zwei plus
 // eins liest sich nicht als Trichter, sondern als Kachel, die übrig blieb.
 //
-// Nicht über className, weil lib/utils/cn.ts kein tailwind-merge ist: ein
-// angehängtes grid-cols-3 höbe das eingebaute grid-cols-2 nicht auf,
-// sondern überliesse die Entscheidung der Reihenfolge im Stylesheet. Wer
-// eine Vorgabe ändern muss, bekommt einen Parameter — dieselbe Regel, die
-// dort ausgeschrieben steht.
+// Nicht über className: entstanden, als lib/utils/cn.ts noch kein
+// tailwind-merge war und ein angehängtes grid-cols-3 das eingebaute
+// grid-cols-2 nicht aufhob. Seit 2026-09-23 ginge es; der Parameter bleibt,
+// weil er die eine erlaubte Abweichung benennt, statt jede zuzulassen.
 const raster = {
   /** Der Normalfall: zwei Kacheln je Zeile auf dem Telefon, vier ab sm. */
   2: "grid-cols-2 sm:grid-cols-4",

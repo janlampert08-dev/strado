@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { X } from "@/components/NavIcons";
 import { ladeFotosDirektHoch, loescheDirektUpload } from "@/lib/fotoUpload";
 import { meldeClientFehler } from "@/lib/fehlerbericht";
 

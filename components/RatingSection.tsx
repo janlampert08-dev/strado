@@ -2,7 +2,7 @@
 
 import { useActionState, useRef, useState } from "react";
 import Link from "next/link";
-import { Flag } from "lucide-react";
+import { Flag, SternIcon } from "@/components/NavIcons";
 import { submitRating, type RatingFormState } from "@/lib/actions/ratings";
 import { reportRating } from "@/lib/actions/reports";
 import type { RatingWithAuthor } from "@/lib/ratings";
@@ -15,7 +15,6 @@ import SterneEingabe from "@/components/SterneEingabe";
 import ReportDialog from "@/components/ReportDialog";
 import DeleteRatingButton from "@/components/DeleteRatingButton";
 import useEingabenBewahren from "@/components/useEingabenBewahren";
-import { SternIcon } from "@/components/NavIcons";
 import SectionHeading from "@/components/ui/SectionHeading";
 import IconButton from "@/components/ui/IconButton";
 

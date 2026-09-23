@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight, Rss } from "lucide-react";
+import { ChevronRight, Rss } from "@/components/NavIcons";
 import Header from "@/components/Header";
 import PullToRefreshArea from "@/components/PullToRefreshArea";
 import Avatar from "@/components/Avatar";

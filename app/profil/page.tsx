@@ -14,7 +14,11 @@ import {
   Route as RouteIcon,
   Settings,
   Timer,
-} from "lucide-react";
+  ChartIcon,
+  PassIcon,
+  RecordIcon,
+  ShieldIcon,
+} from "@/components/NavIcons";
 import Header from "@/components/Header";
 import PullToRefreshArea from "@/components/PullToRefreshArea";
 import MarkSeen from "@/components/MarkSeen";
@@ -30,7 +34,6 @@ import PremiumCard from "@/components/PremiumCard";
 import FahrtStatistik from "@/components/FahrtStatistik";
 import { WetterfensterFavoriten, WetterfensterFavoritenPlatzhalter } from "@/components/Wetterfenster";
 import PassSammlung, { PassSammlungHinweis } from "@/components/PassSammlung";
-import { ChartIcon, PassIcon, RecordIcon, ShieldIcon } from "@/components/NavIcons";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
 import { getPassSammlungsDaten } from "@/lib/passSammlungDaten";

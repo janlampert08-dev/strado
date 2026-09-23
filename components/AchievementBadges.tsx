@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { Compass, Mountain, TrendingUp } from "lucide-react";
+import { Compass, Mountain, TrendingUp } from "@/components/NavIcons";
 import Card from "@/components/ui/Card";
 import { mitAnzahl } from "@/lib/format";
 import {

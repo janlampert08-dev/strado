@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { Check, SparklesIcon } from "@/components/NavIcons";
 import Header from "@/components/Header";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
 import SectionHeading from "@/components/ui/SectionHeading";
 import PremiumBadge from "@/components/PremiumBadge";
 import { buttonVariants } from "@/components/ui/Button";
-import { SparklesIcon } from "@/components/NavIcons";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
 import { getOeffentlichesAngebot } from "@/lib/actions/billing";

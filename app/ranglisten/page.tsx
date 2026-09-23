@@ -1,9 +1,8 @@
 import { Suspense, type ComponentType } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Compass, Route, Ruler, TrendingUp } from "lucide-react";
+import { Compass, Route, Ruler, TrendingUp, RankingIcon } from "@/components/NavIcons";
 import Header from "@/components/Header";
-import { RankingIcon } from "@/components/NavIcons";
 import PullToRefreshArea from "@/components/PullToRefreshArea";
 import TrackLeaderboardChooser from "@/components/TrackLeaderboardChooser";
 import Avatar from "@/components/Avatar";

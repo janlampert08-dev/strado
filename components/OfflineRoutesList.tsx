@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MapPin, Trash2 } from "lucide-react";
+import { MapPin, Trash2 } from "@/components/NavIcons";
 import ElevationProfile from "@/components/ElevationProfile";
 import Card from "@/components/ui/Card";
 import { angefragteStreckenId } from "@/lib/offlineAnsicht";

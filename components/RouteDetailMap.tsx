@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { Box } from "lucide-react";
+import { Box } from "@/components/NavIcons";
 import { type TrafficChipState } from "@/components/TrafficIndicator";
 import { SPEED_LEGEND, tempolimitQuelle } from "@/lib/speed";
 import {

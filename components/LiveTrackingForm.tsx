@@ -20,7 +20,7 @@ import { formatDauer, formatDuration } from "@/lib/format";
 import { formatAbstand, liveAbstandSekunden, markeUeberschritten } from "@/lib/liveSplit";
 import RideSummaryForm from "@/components/RideSummaryForm";
 import type { KartenStrecke, RouteGeoJSON, Vehicle } from "@/types/database";
-import { Smartphone } from "lucide-react";
+import { Smartphone } from "@/components/NavIcons";
 import { buttonVariants } from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Skeleton from "@/components/ui/Skeleton";

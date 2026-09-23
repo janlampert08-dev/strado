@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { Check } from "@/components/NavIcons";
 import Card from "@/components/ui/Card";
 import { Signet } from "@/components/Wortmarke";
 import PremiumBadge from "@/components/PremiumBadge";

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
 import SegmentedControl from "@/components/ui/SegmentedControl";
+import Select from "@/components/ui/Select";
 import { PassStatusMarke } from "@/components/PassStatusZeile";
 import { HakenIcon } from "@/components/NavIcons";
 import { anzeigeFuerStatus, type PassZustand } from "@/lib/passStatus";
@@ -89,11 +90,17 @@ export default function PaesseListe({
 
         <label className="flex shrink-0 items-center gap-1.5 text-sm text-muted">
           <span className="sr-only">Kanton</span>
-          <select
+          {/* Das Feld der App statt eines eigenen <select>: Rahmen in
+              border-border-control wie jedes Feld und 16 px Schrift unter md,
+              sonst zoomt iOS beim Antippen in die Seite. rounded-full und
+              w-auto bleiben von vorher, weil es als Filter in der Reihe der
+              Pillen steht und nicht als Formularfeld die Zeile füllt — seit
+              cn tailwind-merge ist, setzen sie sich gegen die Vorgabe durch. */}
+          <Select
             value={kanton}
             onChange={(e) => setzeKanton(e.target.value)}
             aria-label="Nach Kanton filtern"
-            className="rounded-full border border-border bg-background px-3 py-2 text-sm text-foreground"
+            className="w-auto rounded-full text-foreground"
           >
             <option value="">CH</option>
             {kantone.map((k) => (
@@ -101,7 +108,7 @@ export default function PaesseListe({
                 {k}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       </div>
 

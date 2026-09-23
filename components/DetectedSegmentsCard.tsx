@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Route as RouteIcon, Timer } from "lucide-react";
+import { Route as RouteIcon, Timer } from "@/components/NavIcons";
 import RideVisibilityToggle from "@/components/RideVisibilityToggle";
 import { formatDauer } from "@/lib/format";
 import type { DetectedSegment } from "@/lib/completions";

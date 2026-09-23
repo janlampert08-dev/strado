@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, PassIcon } from "@/components/NavIcons";
 import PremiumHinweis from "@/components/PremiumHinweis";
 import SaisonrueckblickTeilen from "@/components/SaisonrueckblickTeilen";
-import { PassIcon } from "@/components/NavIcons";
 import { mitAnzahl, todayInZurich } from "@/lib/format";
 import {
   baueSammlung,

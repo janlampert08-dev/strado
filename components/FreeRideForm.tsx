@@ -5,7 +5,7 @@ import { ConfirmDialog } from "@/components/ui/Dialog";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Route as RouteIcon, Smartphone } from "lucide-react";
+import { Route as RouteIcon, Smartphone } from "@/components/NavIcons";
 import { logFreeRide, type FreeRideFormState } from "@/lib/actions/completions";
 import { useRideRecorder } from "@/components/useRideRecorder";
 import { useLiveLapHint } from "@/components/useLiveLapHint";

@@ -12,7 +12,7 @@ import {
   motorklasseLabel,
   psInKw,
 } from "@/lib/motorklassen";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown } from "@/components/NavIcons";
 import { fieldClassName } from "@/components/ui/Input";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import { chipClassName } from "@/components/motorklassenChipStil";

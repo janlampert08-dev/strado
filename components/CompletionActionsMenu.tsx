@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { MoreHorizontal, Trash2 } from "lucide-react";
+import { MoreHorizontal, Trash2 } from "@/components/NavIcons";
 import {
   deleteCompletion,
   toggleCompletionVisibility,
@@ -14,6 +14,7 @@ import Card from "@/components/ui/Card";
 import IconButton from "@/components/ui/IconButton";
 import { Dialog } from "@/components/ui/Dialog";
 import Button from "@/components/ui/Button";
+import { Textarea } from "@/components/ui/Input";
 import SectionHeading from "@/components/ui/SectionHeading";
 
 const ITEM_CLASS =
@@ -251,14 +252,13 @@ export default function CompletionActionsMenu({
               {notizDraft.length}/{MAX_NOTIZ_LENGTH}
             </span>
           </div>
-          <textarea
+          <Textarea
             id="notiz-edit"
             rows={3}
             maxLength={MAX_NOTIZ_LENGTH}
             value={notizDraft}
             onChange={(e) => setNotizDraft(e.target.value)}
             placeholder="z. B. nasse Fahrbahn, mit der Ducati…"
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-base text-foreground transition-shadow duration-fast focus:outline-none focus-visible:ring-2 focus-visible:ring-accent md:text-sm"
           />
           <div className="mt-2 flex justify-end gap-2">
             <Button type="button" variant="secondary" size="sm" onClick={() => setEditOpen(false)}>

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal } from "@/components/NavIcons";
 import { buildGoogleMapsUrl } from "@/lib/googleMaps";
 import { buildGpx, gpxFileName } from "@/lib/gpx";
 import { deleteRouteAsModerator } from "@/lib/actions/routes";
