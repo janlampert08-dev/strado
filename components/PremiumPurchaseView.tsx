@@ -162,7 +162,7 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
           Anzeigewert vom Laden dieser Seite — abgebucht wird, was Stripe für
           die Session tatsächlich vergibt (siehe PremiumCheckoutForm). */}
       <p className="text-xs text-muted">
-        Bezahlen mit TWINT oder Karte · Preise in CHF inkl. MWST · Kündigung im Kundenportal
+        Bezahlen mit TWINT oder Karte · Endpreise in CHF · Kündigung im Kundenportal
       </p>
       <Link
         href={`/profil/premium/zahlung?plan=${gewaehlt}&preis=${aktiv.betragRappen}`}

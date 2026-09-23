@@ -131,7 +131,7 @@ export default async function PremiumTeaserPage() {
               ))}
             </ul>
             <p className="text-xs text-muted">
-              Bezahlen mit TWINT oder Karte · Preise in CHF inkl. MWST · Kündigung im Kundenportal
+              Bezahlen mit TWINT oder Karte · Endpreise in CHF · Kündigung im Kundenportal
             </p>
           </section>
         )}
