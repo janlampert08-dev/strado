@@ -474,7 +474,7 @@ export default function RideSummaryForm({
           fehlt hier bewusst, weil die Summary mit min-h-11 ihre eigene
           Höhe mitbringt und der Text darin mittig sitzt. */}
       <details className="group border-t border-border">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
           <span>
             Notiz &amp; Fotos <span className="font-normal text-muted">— optional</span>
           </span>

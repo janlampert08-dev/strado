@@ -30,13 +30,13 @@ const basis =
   "inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full " +
   "transition-[transform,opacity,border-color,background-color,color] duration-fast ease-standard " +
   "active:scale-95 disabled:pointer-events-none disabled:opacity-50 " +
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent " +
   "focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 export type IconButtonTon = "neutral" | "aktiv" | "gefahr" | "leise";
 
 const toene: Record<IconButtonTon, string> = {
-  neutral: "border border-border text-muted hover:border-border-strong hover:text-foreground",
+  neutral: "border border-border text-muted hover:border-muted hover:text-foreground",
   aktiv: "border border-accent bg-accent-subtle text-accent",
   // Erst bei Hover rot: eine Melden-Schaltfläche, die dauerhaft rot
   // leuchtet, behauptet einen Missstand, den es noch gar nicht gibt.

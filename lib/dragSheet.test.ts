@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   clampSheetHeight,
   decideSheetGesture,
+  gummibandHoehe,
+  projizierterWeg,
+  snapAfterFling,
+  wischGeschwindigkeit,
   nextSnapOnTap,
   sheetHeightFor,
   sheetSnapHeights,
@@ -152,5 +156,49 @@ describe("decideSheetGesture", () => {
     expect(decideSheetGesture({ deltaY: -10, deltaX: -40, snap: "voll", scrollTop: 0 })).toBe(
       "scroll",
     );
+  });
+});
+
+describe("Sheet-Physik", () => {
+  const heights = { minPx: 40, peekPx: 280, maxPx: 800 };
+
+  it("throws a short fast flick up to full instead of staying on peek", () => {
+    // 40 px über Peek losgelassen: ohne Schwung bliebe es auf Peek.
+    expect(snapAfterDrag(320, heights)).toBe("peek");
+    expect(snapAfterFling(320, 2500, heights)).toBe("voll");
+  });
+
+  it("keeps a slow release where the finger left it", () => {
+    expect(snapAfterFling(320, 50, heights)).toBe("peek");
+  });
+
+  it("flicks down to hidden", () => {
+    expect(snapAfterFling(260, -2500, heights)).toBe("versteckt");
+  });
+
+  it("projects about 200 px for 1000 px/s", () => {
+    expect(projizierterWeg(1000)).toBeCloseTo(199, 0);
+  });
+
+  it("resists past the ends but never passes the container height", () => {
+    expect(gummibandHoehe(500, heights)).toBe(500);
+    const drueber = gummibandHoehe(900, heights);
+    expect(drueber).toBeGreaterThan(800);
+    expect(drueber).toBeLessThan(900);
+    expect(gummibandHoehe(100000, heights)).toBeLessThan(1600);
+    const drunter = gummibandHoehe(0, heights);
+    expect(drunter).toBeLessThan(40);
+    expect(drunter).toBeGreaterThan(0);
+  });
+
+  it("measures speed from the last 100 ms only", () => {
+    const proben = [
+      { t: 0, h: 100 },
+      { t: 400, h: 400 }, // schneller Anfang, dann Stillstand:
+      { t: 480, h: 400 },
+      { t: 560, h: 400 },
+    ];
+    expect(wischGeschwindigkeit(proben)).toBe(0);
+    expect(wischGeschwindigkeit([{ t: 0, h: 100 }, { t: 50, h: 200 }])).toBe(2000);
   });
 });
