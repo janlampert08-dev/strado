@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -17,6 +17,7 @@ import { interpolateElevation } from "@/lib/elevation";
 import { computeRouteCoverage, COVERAGE_THRESHOLD_PERCENT } from "@/lib/routeCoverage";
 import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
 import { formatDuration } from "@/lib/format";
+import { formatAbstand, liveAbstandSekunden, markeUeberschritten } from "@/lib/liveSplit";
 import RideSummaryForm from "@/components/RideSummaryForm";
 import type { KartenStrecke, RouteGeoJSON, Vehicle } from "@/types/database";
 import { Smartphone } from "lucide-react";
@@ -62,6 +63,7 @@ export default function LiveTrackingForm({
   personalBestSeconds,
   guestContinuationToken = null,
   maxPhotos,
+  liveSplit = null,
   onExit,
 }: {
   route: RouteGeoJSON;
@@ -86,6 +88,9 @@ export default function LiveTrackingForm({
   guestContinuationToken?: string | null;
   /** Fotos pro Fahrt, aus dem Abo-Zustand (lib/premium.ts). */
   maxPhotos: number;
+  /** Live-Abstand zur Bestzeit; null = ausgeschaltet (Schalter und AGB,
+   *  siehe lib/liveSplit.ts). */
+  liveSplit?: { streckenBestzeitS: number | null } | null;
   onExit: () => void;
 }) {
   const router = useRouter();
@@ -126,6 +131,17 @@ export default function LiveTrackingForm({
     gate,
     guestContinuationToken,
   });
+
+  // Ein kurzer Tick bei einem Viertel, der Hälfte und drei Vierteln der
+  // Strecke — nur mit eingeschaltetem Live-Abstand. Der Blick aufs Telefon
+  // soll dort hingehen, wo es eine neue Zahl gibt, nicht laufend.
+  const vorherKmRef = useRef(0);
+  useEffect(() => {
+    if (!liveSplit || !recorder.hasStarted) return;
+    const jetztKm = recorder.distanceKm;
+    if (markeUeberschritten(vorherKmRef.current, jetztKm, route.laenge_km)) navigator.vibrate?.(12);
+    vorherKmRef.current = jetztKm;
+  }, [liveSplit, recorder.hasStarted, recorder.distanceKm, route.laenge_km]);
   const { phase, result, finishedTrail, clearSnapshot, discard } = recorder;
 
   // VOREINGESTELLT ÖFFENTLICH, Entscheid des Inhabers vom 2026-09-17. Bis
@@ -396,6 +412,15 @@ export default function LiveTrackingForm({
               </dd>
             </div>
           </dl>
+          {liveSplit && recorder.hasStarted && (
+            <LiveAbstand
+              verstrichenS={recorder.elapsedSeconds}
+              gefahrenKm={recorder.distanceKm}
+              laengeKm={route.laenge_km}
+              eigeneBestzeitS={personalBestSeconds}
+              streckenBestzeitS={liveSplit.streckenBestzeitS}
+            />
+          )}
           {/* Die einzige Extra-Zeile gegenüber der freien Fahrt: der Abstand
               zur Strecke (siehe abstandsTeile oben). Vor dem Start die
               Anfahrt zum Startpunkt — die Zeitmessung beginnt dort von
@@ -658,5 +683,48 @@ export default function LiveTrackingForm({
         )}
       </div>
     </FullscreenDialog>
+  );
+}
+
+
+// Der Live-Abstand unter Tempo und Distanz: gegen die eigene Bestzeit gross,
+// gegen die Bestzeit der Strecke klein daneben. Grün = schneller, sonst
+// neutral — kein Rot: "langsamer als die Bestzeit" ist kein Fehler, und ein
+// roter Wert während der Fahrt drängte genau zu dem, was AGB und SVG nicht
+// wollen. Das Vorzeichen trägt die Richtung, die Farbe nur die Bestätigung.
+function LiveAbstand({
+  verstrichenS,
+  gefahrenKm,
+  laengeKm,
+  eigeneBestzeitS,
+  streckenBestzeitS,
+}: {
+  verstrichenS: number;
+  gefahrenKm: number;
+  laengeKm: number;
+  eigeneBestzeitS: number | null;
+  streckenBestzeitS: number | null;
+}) {
+  const eigen = liveAbstandSekunden({ verstrichenS, gefahrenKm, laengeKm, referenzS: eigeneBestzeitS });
+  const strecke = liveAbstandSekunden({ verstrichenS, gefahrenKm, laengeKm, referenzS: streckenBestzeitS });
+  if (eigen === null && strecke === null) return null;
+  const haupt = eigen ?? strecke!;
+  return (
+    <dl className="flex items-end justify-between gap-4 rounded-lg bg-surface px-4 py-3">
+      <div className="flex flex-col gap-1">
+        <dt className="text-xs text-muted">{eigen !== null ? "Gegen deine Bestzeit" : "Gegen die Bestzeit"}</dt>
+        <dd
+          className={`text-4xl leading-none font-semibold tracking-tight tabular-nums ${haupt < 0 ? "text-success" : "text-foreground"}`}
+        >
+          {formatAbstand(haupt)}
+        </dd>
+      </div>
+      {eigen !== null && strecke !== null && (
+        <div className="flex flex-col items-end gap-1">
+          <dt className="text-xs text-muted">Bestzeit Strecke</dt>
+          <dd className="text-lg leading-none font-medium tabular-nums text-muted">{formatAbstand(strecke)}</dd>
+        </div>
+      )}
+    </dl>
   );
 }
