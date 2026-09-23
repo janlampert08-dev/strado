@@ -308,7 +308,7 @@ export default function LiveTrackingForm({
     // Scroll-Notausgang inklusive: Vor dem Start stapeln sich hier
     // Statuszeile, Kennzahlen, Start-Hinweis, Gast-Hinweis und Wachhinweis
     // über den Schaltflächen — auf kurzen Schirmen mehr als die Höhe hergibt.
-    // Ohne overflow drückte das Panel "Bin schon am Start"/"Abbrechen" aus
+    // Ohne overflow drückte das Panel "Ich bin am Start"/"Abbrechen" aus
     // dem Bild. Die Karte behält mindestens 30dvh, das Panel schrumpft nie.
     return (
       <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-background">
@@ -445,7 +445,7 @@ export default function LiveTrackingForm({
               docs/audit/uiux.md §5.4. */}
           <p className="flex items-start gap-2 text-sm leading-snug text-muted">
             <Smartphone className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
-            <span>Bildschirm an lassen — sonst pausiert die Aufzeichnung.</span>
+            <span>Bildschirm eingeschaltet lassen – sonst unterbricht der Browser das GPS.</span>
           </p>
           <div className="flex flex-wrap items-center gap-3">
             {recorder.hasStarted ? (
@@ -479,7 +479,7 @@ export default function LiveTrackingForm({
                   onClick={recorder.beginNow}
                   className={buttonVariants({ variant: "accent", size: "lg", className: "flex-1" })}
                 >
-                  Bin schon am Start
+                  Ich bin am Start – Zeit jetzt starten
                 </button>
                 <button
                   type="button"
@@ -563,7 +563,7 @@ export default function LiveTrackingForm({
             <p className="font-medium text-foreground">
               {bewegungsbefund.blockiert
                 ? "Diese Fahrt lässt sich nicht speichern."
-                : "Sieht das nach einer Autofahrt aus?"}
+                : "War das eine Fahrt mit Auto oder Motorrad?"}
             </p>
             <p className="text-muted">{bewegungsbefund.text}</p>
           </Card>
@@ -622,7 +622,8 @@ export default function LiveTrackingForm({
             open={gastVerwerfenOffen}
             title="Fahrt verwerfen?"
             description="Die aufgezeichnete Fahrt wurde noch nicht gespeichert und geht dabei endgültig verloren."
-            confirmLabel="Verwerfen"
+            confirmLabel="Fahrt verwerfen"
+            cancelLabel="Fahrt behalten"
             variant="danger"
             onConfirm={handleDiscard}
             onCancel={() => setGastVerwerfenOffen(false)}

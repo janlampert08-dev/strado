@@ -33,7 +33,7 @@ export default function DeleteAccountSection() {
       </summary>
       <div className="mt-3 flex flex-col gap-3">
         <p className="text-sm text-muted">
-          Entfernt dein Profil und deine GPS-Tracks endgültig; Fahrten und Bewertungen bleiben anonym.
+          Entfernt dein Profil und deine aufgezeichneten Fahrtspuren endgültig; Fahrten und Bewertungen bleiben anonym.
         </p>
         <Button type="button" variant="danger" size="sm" className="self-start" onClick={() => setOpen(true)}>
           Konto löschen
@@ -42,10 +42,10 @@ export default function DeleteAccountSection() {
 
       <Dialog open={open} onClose={() => setOpen(false)} title="Konto endgültig löschen">
         <p className="mb-4 text-sm text-muted">
-          Dein Profil wird geleert — Name, Foto, Fahrzeuge und deine aufgezeichneten GPS-Tracks
+          Dein Profil wird geleert — Name, Foto, Fahrzeuge und deine aufgezeichneten Fahrtspuren
           werden entfernt, alle Profil-Anzeigen abgeschaltet — und du wirst abgemeldet; mit deinen
           bisherigen Zugangsdaten kannst du dich danach nicht mehr anmelden. Fahrten und
-          Bewertungen bleiben anonym erhalten und zählen weiterhin für Leaderboards. Diese Aktion
+          Bewertungen bleiben anonym erhalten und zählen weiterhin für die Ranglisten. Diese Aktion
           kann nicht rückgängig gemacht werden.
         </p>
         <form action={formAction} className="flex flex-col gap-4">

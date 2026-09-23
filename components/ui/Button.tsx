@@ -51,9 +51,9 @@ const sizes: Record<ButtonSize, string> = {
   sm: "min-h-9 px-3 py-1.5 text-xs",
   md: "min-h-11 px-4 py-2 text-sm",
   // Nur für die Bedienelemente während einer laufenden Aufzeichnung
-  // (LiveTrackingForm, FreeRideForm, "Strecke starten"). Dort wird mit
+  // (LiveTrackingForm, FreeRideForm, "Strecke fahren"). Dort wird mit
   // Handschuhen, in Bewegung und mit einem Blick von einer halben Sekunde
-  // getippt; 52 px ist die Höhe, die die "Strecke starten"-Schaltfläche
+  // getippt; 52 px ist die Höhe, die die "Strecke fahren"-Schaltfläche
   // schon vorher von Hand hatte.
   lg: "min-h-[3.25rem] px-6 py-3.5 text-base",
 };

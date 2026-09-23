@@ -138,7 +138,9 @@ export default function RouteDetailMap({
               }}
               className={segmentClassName(!showSpeedLimits && !showTraffic)}
             >
-              Keine
+              {/* "Standard" statt "Keine": die Karte zeigt ja weiterhin die
+                  Strecke, nur ohne eingefärbte Zusatzebene. */}
+              Standard
             </button>
             {hasTempolimits && (
               <button

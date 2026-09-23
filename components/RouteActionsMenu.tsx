@@ -307,7 +307,7 @@ export default function RouteActionsMenu({
                 onClick={() => setOpen(false)}
                 className="text-sm font-medium text-accent hover:underline"
               >
-                Premium ansehen →
+                Mehr zu Premium →
               </Link>
             </div>
           )}

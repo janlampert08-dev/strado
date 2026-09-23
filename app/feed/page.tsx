@@ -22,7 +22,7 @@ import Seitenrahmen from "@/components/ui/Seitenrahmen";
 export const metadata: Metadata = {
   title: "Feed – Strado",
   description:
-    "Die zuletzt gefahrenen Strecken und Touren der Strado-Community aus der ganzen Schweiz.",
+    "Die neuesten Fahrten der Strado-Community aus der ganzen Schweiz.",
   // Kanonische Adresse. Die App wird unter mehr als einem Hostnamen
   // ausgeliefert — app.strado.ch, die Vorschau-Adressen jedes Deployments,
   // dazu Staging — und lieferte bis hierher auf keiner davon ein Canonical

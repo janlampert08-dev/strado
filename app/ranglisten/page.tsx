@@ -100,8 +100,8 @@ function LeaderboardSection({
   format?: (value: number) => string;
   currentUserId: string | null;
 }) {
-  // Einträge mit dem Wert 0 sind keine Platzierung. "Entdecker · Platz 1 ·
-  // Jan · 0 Strecken" las sich wie eine kaputte Liste: Platz 1 für nichts.
+  // Einträge mit dem Wert 0 sind keine Platzierung. "Meiste Strecken · Platz 1
+  // · Jan · 0 Strecken" las sich wie eine kaputte Liste: Platz 1 für nichts.
   // Wer noch nichts hat, steht nicht auf dem Podest, sondern fehlt — und
   // bleiben nur solche übrig, greift der ehrliche Leerzustand darunter.
   const platzierte = entries.filter((entry) => entry.value > 0);
@@ -281,7 +281,7 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
           (Eigentümerentscheid): Wer bis hierher scrollt, will Ranglisten
           sehen. */}
       <LeaderboardSection
-        title={`Meiste km gefahren${klassenZusatz}`}
+        title={`Meiste Kilometer${klassenZusatz}`}
         icon={Ruler}
         entries={meisteKm}
         unit="km"
@@ -305,7 +305,7 @@ async function Ranglisten({ klasse }: { klasse: Klassenfilter | null }) {
           currentUserId={currentUserId}
         />
         <LeaderboardSection
-          title={`Entdecker${klassenZusatz}`}
+          title={`Meiste Strecken${klassenZusatz}`}
           icon={Compass}
           entries={meisteStrecken}
           unit={(n) => nomen(n, "Strecke", "Strecken")}
@@ -353,7 +353,7 @@ export default async function LeaderboardsPage({
           <div>
             <h1 className="text-display font-semibold">Ranglisten</h1>
             <p className="mt-1 text-sm text-muted">
-              Wer am meisten unterwegs war — und die schnellsten Zeiten je Strecke.
+              Wer am meisten fährt – und die Bestzeiten je Strecke.
             </p>
           </div>
           <MotorklassenChips
@@ -375,8 +375,10 @@ export default async function LeaderboardsPage({
             lassen, bis die neuen da sind. */}
         {/* Zwei Ansichten statt einer Säule: Volumenlisten und
             Streckenbestzeiten hatten je ein eigenes Filtersystem auf
-            derselben Seite. Jetzt Reiter — der Chooser lebt im zweiten. */}
-        <AbschnittTabs tabs={[{ titel: "Ranglisten" }, { titel: "Bestzeiten" }]}>
+            derselben Seite. Jetzt Reiter — der Chooser lebt im zweiten.
+            "Gesamt" statt "Ranglisten": der erste Reiter wiederholte die
+            Überschrift direkt darüber, als wäre der zweite keine Rangliste. */}
+        <AbschnittTabs tabs={[{ titel: "Gesamt" }, { titel: "Bestzeiten" }]}>
           <div>
             <Suspense key={klasse ?? "alle"} fallback={<LeaderboardListsSkeleton />}>
               <Ranglisten klasse={klasse} />

@@ -103,7 +103,7 @@ export default function OfflineRoutesList() {
           className="inline-flex items-center gap-1.5 self-start text-sm text-muted hover:text-danger"
         >
           <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-          Von Offline entfernen
+          Offline-Kopie löschen
         </button>
       </div>
     );
@@ -138,7 +138,7 @@ export default function OfflineRoutesList() {
             <button
               type="button"
               onClick={() => handleRemove(route.id)}
-              aria-label={`${route.name} von Offline entfernen`}
+              aria-label={`Offline-Kopie von ${route.name} löschen`}
               className="shrink-0 px-3 text-muted hover:text-danger"
             >
               <Trash2 className="h-4 w-4" aria-hidden="true" />

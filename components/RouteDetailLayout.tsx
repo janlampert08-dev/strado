@@ -42,7 +42,7 @@ export default function RouteDetailLayout({
     <main ref={containerRef} className="relative flex flex-1 flex-col overflow-hidden md:flex-row">
       {/* Sprunglink für die Tastatur: die Karte steht im DOM vor dem Sheet,
           und Tab lief erst durch alle Mapbox-Bedienelemente und die drei
-          Ebenen-Knöpfe, bevor "Strecke starten" kam. Unsichtbar, bis er den
+          Ebenen-Knöpfe, bevor "Strecke fahren" kam. Unsichtbar, bis er den
           Fokus hat. */}
       <a
         href="#streckeninfo"

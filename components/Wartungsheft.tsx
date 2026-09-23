@@ -153,7 +153,7 @@ function EintragFormular({
           Abbrechen
         </Button>
         <Button type="submit" size="sm" disabled={pending}>
-          {pending ? "Speichern…" : "Speichern"}
+          {pending ? "Wird gespeichert…" : "Speichern"}
         </Button>
       </div>
     </form>

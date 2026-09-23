@@ -127,7 +127,7 @@ export default function ElevationProfile({
           <div
             className="pointer-events-none absolute rounded-md border border-border bg-background px-2 py-1 text-xs tabular-nums shadow-elevated"
             // Unter der Kurve statt darüber: oben lag die Blase über
-            // "Strecke starten" — der Hinweis verdeckte die Handlung, für die
+            // "Strecke fahren" — der Hinweis verdeckte die Handlung, für die
             // die Seite da ist.
             style={{
               left: `${(hoverPunkt.km / kmMax) * 100}%`,

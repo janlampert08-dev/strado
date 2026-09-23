@@ -218,7 +218,7 @@ export default function CompletionActionsMenu({
       <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} title="Fahrt löschen">
         <div className="flex flex-col gap-3">
           <p className="text-sm text-muted">
-            Die Aufzeichnung wird mit allen Fotos, Kudos und dem gespeicherten GPS-Track
+            Die Aufzeichnung wird mit allen Fotos, Kudos und der gespeicherten Fahrtspur
             endgültig gelöscht. Das lässt sich nicht rückgängig machen.
           </p>
           {/* Der Fehlertext muss hier stehen und nicht in der Card unten:
@@ -257,7 +257,7 @@ export default function CompletionActionsMenu({
             maxLength={MAX_NOTIZ_LENGTH}
             value={notizDraft}
             onChange={(e) => setNotizDraft(e.target.value)}
-            placeholder="z.B. nasse Fahrbahn, mit der Ducati…"
+            placeholder="z. B. nasse Fahrbahn, mit der Ducati…"
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-base text-foreground transition-shadow duration-fast focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 md:text-sm"
           />
           <div className="mt-2 flex justify-end gap-2">
@@ -265,7 +265,7 @@ export default function CompletionActionsMenu({
               Abbrechen
             </Button>
             <Button type="button" variant="primary" size="sm" disabled={saving} onClick={handleSaveNotiz}>
-              {saving ? "Speichern…" : "Speichern"}
+              {saving ? "Wird gespeichert…" : "Speichern"}
             </Button>
           </div>
         </div>
