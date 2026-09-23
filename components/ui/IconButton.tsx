@@ -11,17 +11,13 @@ import { cn } from "@/lib/utils/cn";
 // 44 px ist deshalb keine Empfehlung, sondern der Mindestwert: min-h-11 und
 // min-w-11 stehen fest in `basis`.
 //
-// Was dieser Kommentar bis zur Review von PR #254 behauptete — "Tailwind
-// würde eine zweite min-h-* zwar gewinnen lassen" — stimmt nicht, und der
-// Satz hätte den Nächsten in die Irre geführt: lib/utils/cn.ts ist ein
-// reiner String-Join und kein tailwind-merge. Stehen zwei Utilities
-// derselben Eigenschaft im class-Attribut, entscheidet die Reihenfolge im
-// erzeugten CSS und nicht die im Attribut — welche gewinnt, hängt also
-// davon ab, wie Tailwind sortiert, und nicht davon, wer sie zuletzt
-// hinschreibt. Ein Unterbieten über className ist damit weder verlässlich
-// möglich noch verlässlich verhindert. Wer eine andere Grösse braucht,
-// bekommt einen Parameter (so wie chipClassName einen hat), statt sie
-// anzuhängen.
+// Seit 2026-09-23 ist lib/utils/cn.ts tailwind-merge: ein über className
+// angehängtes min-h-* GEWINNT jetzt gegen das eingebaute (vorher entschied
+// die Reihenfolge im erzeugten CSS, und ein Unterbieten war weder
+// verlässlich möglich noch verlässlich verhindert). Umso mehr gilt: die
+// 44 px werden hier nicht unterboten. Wer eine andere Grösse braucht,
+// bekommt einen Parameter (so wie chipClassName einen hat) — dann steht die
+// Ausnahme an einer Stelle, statt an der Aufrufstelle zu verschwinden.
 //
 // Der sichtbare Rahmen im Ruhezustand ist Absicht: ein Icon ohne Fläche
 // liest sich wie ein Textzeichen, das versehentlich in eine Kopfzeile

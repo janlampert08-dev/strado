@@ -881,7 +881,11 @@ breaking changes from earlier versions (see the block at the top of this file).
   `@stripe/react-stripe-js` ^6.9.0 (client, Payment Element)
 - **Mapbox GL** ^3.30.0 (routing/maps, `mapbox-gl` + `@types/mapbox-gl`)
 - **lucide-react** ^1.43.0 (icons — wrapped in `components/NavIcons.tsx` /
-  `components/VisibilityIcons.tsx`, don't import it directly in new code)
+  `components/VisibilityIcons.tsx`; since 2026-09-23 nothing else imports
+  it directly — keep it that way)
+- **tailwind-merge** ^3.7.0 (inside `lib/utils/cn.ts` only — later class
+  wins; the project's own `--text-*`/`--shadow-*`/`--ease-*`/`--duration-*`
+  tokens must be registered there, see its comment)
 - **@vercel/analytics** ^2.0.1 (`<Analytics />` in `app/layout.tsx`; the only
   telemetry in the app — there is no Sentry or other error reporting)
 - **Vitest** ^5.0.0 (unit tests, `environment: "node"` project-wide).

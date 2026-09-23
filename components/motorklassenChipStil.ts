@@ -23,9 +23,10 @@ import { cn } from "@/lib/utils/cn";
 /**
  * @param gross 44 px statt 36 — der Mindestwert aus components/ui/IconButton.tsx.
  *
- * Ein Parameter und keine angehängte Klasse: lib/utils/cn.ts ist ein reiner
- * String-Join, ein zweites min-h-* im class-Attribut überschreibt das erste
- * also nicht verlässlich (die Reihenfolge im erzeugten CSS entscheidet).
+ * Ein Parameter und keine angehängte Klasse: entstanden, als lib/utils/cn.ts
+ * noch ein String-Join war und ein zweites min-h-* das erste nicht
+ * verlässlich überschrieb. Seit cn tailwind-merge ist, ginge es — der
+ * Parameter bleibt, weil er die zwei erlaubten Höhen benennt.
  *
  * Gebraucht wird er im Fazit (components/RideSummaryForm.tsx): die
  * Fahrzeug-Chips haben dort die <select>-Liste ersetzt, die mit rund 42 px
