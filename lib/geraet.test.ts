@@ -33,9 +33,14 @@ describe("erkenneGeraet", () => {
 });
 
 describe("standortAnleitung", () => {
-  it("führt im Safari-Tab über «aA», in der installierten App über die Einstellungen", () => {
-    expect(standortAnleitung({ plattform: "ios", standalone: false })).toContain("«aA»");
+  it("führt auf dem iPhone über die Einstellungen-App, nicht über Safaris Menü", () => {
+    expect(standortAnleitung({ plattform: "ios", standalone: false })).toContain("Apps › Safari › Standort");
     expect(standortAnleitung({ plattform: "ios", standalone: true })).toContain("Ortungsdienste");
+  });
+
+  it("schickt die installierte Android-App nicht zu einer Adressleiste, die sie nicht hat", () => {
+    expect(standortAnleitung({ plattform: "android", standalone: true })).not.toContain("Adresse");
+    expect(standortAnleitung({ plattform: "android", standalone: true })).toContain("App-Info");
   });
 
   it("sagt jedem Gerät, dass danach neu geladen oder geöffnet werden muss", () => {
@@ -43,6 +48,7 @@ describe("standortAnleitung", () => {
       { plattform: "ios", standalone: false },
       { plattform: "ios", standalone: true },
       { plattform: "android", standalone: false },
+      { plattform: "android", standalone: true },
       { plattform: "desktop", standalone: false },
     ] as const) {
       expect(standortAnleitung(geraet)).toMatch(/neu (laden|öffnen)\.$/);

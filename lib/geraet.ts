@@ -41,13 +41,20 @@ export function erkenneGeraet({
  * welche Einstellungen, blieb offen.
  */
 export function standortAnleitung(geraet: Geraet): string {
+  // iPhone über die Einstellungen-App und nicht über Safaris Seitenmenü: das
+  // Menü hat sich mit iOS 26 verschoben («aA» sitzt im kompakten Layout
+  // hinter «•••»), die Einstellungen-Pfade sind seit iOS 18 stabil.
   if (geraet.plattform === "ios") {
     return geraet.standalone
       ? "So gibst du ihn frei: Einstellungen › Datenschutz & Sicherheit › Ortungsdienste › Safari-Websites › «Beim Verwenden der App». Danach Strado neu öffnen."
-      : "So gibst du ihn frei: in der Adressleiste auf «aA» tippen › Website-Einstellungen › Standort › Erlauben. Danach die Seite neu laden.";
+      : "So gibst du ihn frei: Einstellungen › Apps › Safari › Standort › «Fragen» oder «Erlauben». Danach die Seite neu laden.";
   }
+  // Eine installierte App hat keine Adressleiste, an deren Symbol man tippen
+  // könnte — dort führt der Weg über die App-Info.
   if (geraet.plattform === "android") {
-    return "So gibst du ihn frei: links neben der Adresse auf das Symbol tippen › Berechtigungen › Standort › Zulassen. Danach die Seite neu laden.";
+    return geraet.standalone
+      ? "So gibst du ihn frei: das Strado-Symbol gedrückt halten › App-Info › Berechtigungen › Standort › Zulassen. Danach Strado neu öffnen."
+      : "So gibst du ihn frei: links neben der Adresse auf das Symbol tippen › Berechtigungen › Standort › Zulassen. Danach die Seite neu laden.";
   }
   return "So gibst du ihn frei: links neben der Adresse auf das Symbol klicken und den Standort erlauben. Danach die Seite neu laden.";
 }
