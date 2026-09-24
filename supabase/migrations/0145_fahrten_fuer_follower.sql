@@ -310,7 +310,7 @@ returns void
 language plpgsql
 security definer
 set search_path to 'public', 'pg_temp'
-as $function$
+as $$
 begin
   if p_user_id is null then
     raise exception 'anonymize_account: p_user_id darf nicht NULL sein';
@@ -368,7 +368,7 @@ begin
 
   delete from public.pass_folgen where user_id = p_user_id;
 end;
-$function$;
+$$;
 
 -- ---------------------------------------------------------------------
 -- H) Freie Fahrt speichern: Katalogstand vom 2026-09-25 plus fuer_follower
