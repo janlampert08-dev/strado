@@ -1,18 +1,19 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { freieFahrtTitel } from "@/lib/completions";
+import { leseModeratorStatus } from "@/lib/moderatorStatus";
 import type { Route } from "@/types/database";
 
 // Pro Request memoisiert: <Header /> fragt den Moderator-Status auf jeder
 // Seite ab, /moderation zusätzlich noch einmal für den Zugriffsschutz.
+//
+// Antwortet für das EINGELOGGTE Konto (ist_moderator() liest auth.uid(),
+// 0134) — `userId` muss also die ID aus getUser() sein, wie bei allen
+// Aufrufern heute. Den Status eines anderen Kontos kann die App seit 0134
+// nicht mehr lesen, und soll es auch nicht.
 export const isModerator = cache(async function isModerator(userId: string): Promise<boolean> {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("profiles")
-    .select("is_moderator")
-    .eq("id", userId)
-    .maybeSingle();
-  return data?.is_moderator ?? false;
+  return leseModeratorStatus(supabase, userId);
 });
 
 export async function getPendingRoutes(): Promise<Route[]> {
