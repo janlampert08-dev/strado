@@ -210,3 +210,7 @@ export { Smartphone as TelefonIcon } from "lucide-react";
 // "Zum Home-Bildschirm" (components/NachDerFahrt.tsx): wer es sucht, sucht
 // genau diese Form in der Safari-Leiste.
 export { Share as TeilenIcon } from "lucide-react";
+
+// GPX-Import früherer Fahrten (app/fahrten/importieren): der Pfeil in die
+// Ablage, weil etwas von aussen hereinkommt — nicht der Kreis der Aufnahme.
+export { FileUp as ImportIcon } from "lucide-react";
