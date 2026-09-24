@@ -995,12 +995,27 @@ export async function createPortalSession() {
 
   if (!profile?.stripe_customer_id) redirect("/profil");
 
-  const session = await getStripe().billingPortal.sessions.create({
-    customer: profile.stripe_customer_id,
-    return_url: `${siteUrl()}/profil`,
-  });
+  // Der Stripe-Aufruf kann scheitern, obwohl eine Customer-ID gespeichert
+  // ist: der Customer wurde in Stripe gelöscht, gehört zu einem anderen
+  // Konto (Test-/Altdaten) oder Stripe ist kurz nicht erreichbar. Bisher
+  // flog die Ausnahme ungefangen bis auf die Fehlerseite (live gesehen:
+  // "No such customer" für ein Konto mit Premium). Jetzt zurück auf die
+  // Abo-Seite mit einem Hinweis, der sagt, was zu tun ist.
+  // redirect() steht bewusst ausserhalb des try: es wirft selbst, und ein
+  // catch drumherum würde den gewollten Sprung als Fehler verschlucken.
+  let portalUrl: string | null = null;
+  try {
+    const session = await getStripe().billingPortal.sessions.create({
+      customer: profile.stripe_customer_id,
+      return_url: `${siteUrl()}/profil`,
+    });
+    portalUrl = session.url;
+  } catch (err) {
+    console.error("Kundenportal liess sich nicht öffnen", err);
+  }
 
-  redirect(session.url);
+  if (!portalUrl) redirect("/profil/einstellungen/abo?portal=fehler");
+  redirect(portalUrl);
 }
 
 // Kürzt eine Nutzereingabe fürs Log auf eine Zeile: Steuerzeichen raus,
