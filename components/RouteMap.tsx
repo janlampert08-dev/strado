@@ -796,7 +796,7 @@ export default function RouteMap({
       attributionControl: false,
       cooperativeGestures: kooperativeGestenRef.current,
       // Ohne locale melden sich die Bedienelemente englisch ("Zoom in",
-      // "Reset bearing to north") in einem lang="de"-Dokument.
+      // "Reset bearing to north") in einem lang="de-CH"-Dokument.
       locale: {
         "AttributionControl.ToggleAttribution": "Quellenangabe ein-/ausblenden",
         "GeolocateControl.FindMyLocation": "Meinen Standort finden",
