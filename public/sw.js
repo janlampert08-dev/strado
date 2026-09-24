@@ -267,22 +267,45 @@ async function shellAuffrischen(pfad, antwort) {
 // keine Kacheln hat. FreeRideForm.tsx fängt eine fehlende Karte ab, die
 // Aufzeichnung läuft ohne sie. Hat das Telefon die Karte schon einmal
 // geladen, liegt sie meist noch im HTTP-Cache des Browsers.
+//
+// DIE REIHENFOLGE IST DER PUNKT: erst die Chunks, dann die Seite. Vorher
+// stand das cache.put der Seite VOR dem Nachladen, und weil assetHolen()
+// jeden Fehlschlag schluckt, endete eine unterwegs abreissende Verbindung
+// mit neuem HTML neben alten Chunks. Genau die Lage, gegen die dieser Worker
+// gebaut ist: die Fahrerin öffnet /fahrten/neu mit Empfang, der Server
+// liefert einen frischen Build aus, auf halber Strecke bricht das Netz weg —
+// und die gesicherte Aufzeichnungsseite lädt danach im Funkloch nicht mehr,
+// weil ihre Skripte weder im Cache noch im Netz stehen.
+//
+// Deshalb zusätzlich: fehlt am Ende ein Chunk und liegt bereits eine Seite
+// im Cache, bleibt die ALTE stehen. Sie passt zu den Chunks, die daneben
+// liegen; die neue täte es nicht. Liegt dagegen noch nichts da (Installation,
+// oder die Seite wurde beim Abmelden vergessen), wird die unvollständige
+// Seite abgelegt — eine Hülle mit fehlender Schrift ist besser als keine.
+// Das ist dieselbe Abwägung wie bisher, nur mit dem Fall unterschieden, in
+// dem es etwas zu verlieren gibt.
 async function shellAblegen(cache, pfad, antwort) {
   const html = await antwort.clone().text();
-  await cache.put(pfad, antwort);
   const assets = assetUrlsAus(html, self.location.origin);
-  await Promise.all(assets.map((assetUrl) => assetHolen(cache, assetUrl)));
+  const geholt = await Promise.all(assets.map((assetUrl) => assetHolen(cache, assetUrl)));
+  if (geholt.some((ok) => !ok) && (await cache.match(pfad))) return false;
+  await cache.put(pfad, antwort);
+  return true;
 }
 
-// Ein fehlendes Asset lässt die Seite nicht scheitern: im schlimmsten Fall
-// fehlt offline eine Schrift, nicht die Aufzeichnung.
+// Liefert, ob das Asset danach im Cache liegt. Ein Fehlschlag wirft nicht —
+// über die Folge entscheidet shellAblegen(), das als Einziges weiss, ob es
+// eine ältere, stimmige Fassung der Seite zu verlieren gibt.
 async function assetHolen(cache, assetUrl) {
   try {
-    if (await cache.match(assetUrl)) return;
+    if (await cache.match(assetUrl)) return true;
     const antwort = await fetch(assetUrl, { credentials: "same-origin" });
-    if (istCachebar(antwort)) await cache.put(assetUrl, antwort);
+    if (!istCachebar(antwort)) return false;
+    await cache.put(assetUrl, antwort);
+    return true;
   } catch {
     // Kein Netz oder abgebrochen — dann eben ohne dieses Asset.
+    return false;
   }
 }
 

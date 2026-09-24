@@ -241,6 +241,23 @@ describe("public/sw.js — Installation", () => {
     await expect(sw.install()).rejects.toThrow();
   });
 
+  it("legt eine Seite erst ab, nachdem ihre Chunks im Cache liegen", async () => {
+    const sw = ladeServiceWorker(server());
+    await sw.install();
+
+    // FakeCache behält die Einfügereihenfolge, und bei einem frischen Cache
+    // ist sie die Reihenfolge der cache.put-Aufrufe. Lag die Seite vor ihren
+    // Chunks, blieb nach einem abgebrochenen Worker HTML ohne Skripte zurück.
+    const urls = (await sw.caches.open("cornice-shell-build-a")).urls();
+    expect(urls.indexOf("/offline")).toBeGreaterThan(
+      urls.indexOf("/_next/static/chunks/offline.js"),
+    );
+    expect(urls.indexOf("/offline")).toBeGreaterThan(urls.indexOf("/_next/static/chunks/app.css"));
+    expect(urls.indexOf("/fahrten/neu")).toBeGreaterThan(
+      urls.indexOf("/_next/static/chunks/aufzeichnung.js"),
+    );
+  });
+
   it("übersteht ein fehlendes Asset", async () => {
     const sw = ladeServiceWorker(
       server({ "/_next/static/chunks/aufzeichnung.js": async () => antwort("", { status: 404 }) }),
@@ -381,6 +398,51 @@ describe("public/sw.js — Navigation", () => {
     expect(await (await shell.match("/fahrten/neu"))!.text()).toBe(html);
     // Das neue HTML verweist auf einen Chunk, den es vorher nicht gab.
     expect(shell.urls()).toContain("/_next/static/chunks/aufzeichnung2.js");
+  });
+
+  it("behält beim Auffrischen die alte Seite, wenn ein Chunk der neuen nicht ankommt", async () => {
+    let html = NEU_HTML;
+    const sw = ladeServiceWorker(
+      server({
+        "/fahrten/neu": async () => antwort(html),
+        "/_next/static/chunks/aufzeichnung2.js": async () => {
+          throw new TypeError("Failed to fetch");
+        },
+      }),
+    );
+    await sw.install();
+    html = NEU_HTML.replace("aufzeichnung.js", "aufzeichnung2.js");
+    await sw.navigation("/fahrten/neu");
+
+    // Die Fahrerin öffnet die Aufzeichnung mit Empfang, der Server liefert
+    // einen frischen Build, unterwegs bricht das Netz weg. Die alte Seite
+    // passt zu den Chunks, die daneben liegen — die neue täte es nicht.
+    const shell = await sw.caches.open("cornice-shell-build-a");
+    expect(await (await shell.match("/fahrten/neu"))!.text()).toBe(NEU_HTML);
+    expect(shell.urls()).toContain("/_next/static/chunks/aufzeichnung.js");
+    expect(shell.urls()).not.toContain("/_next/static/chunks/aufzeichnung2.js");
+  });
+
+  it("legt eine unvollständige Seite ab, solange keine ältere im Cache liegt", async () => {
+    let html = NEU_HTML;
+    const sw = ladeServiceWorker(
+      server({
+        "/fahrten/neu": async () => antwort(html),
+        "/_next/static/chunks/aufzeichnung2.js": async () => {
+          throw new TypeError("Failed to fetch");
+        },
+      }),
+    );
+    await sw.install();
+    // Das Abmelden vergisst die Aufzeichnungsseite — jetzt gibt es nichts
+    // mehr zu verlieren, und eine Hülle mit fehlendem Chunk ist besser als
+    // gar keine. Dieselbe Abwägung wie bei der Installation.
+    await sw.navigation("/auth/abmelden", "POST");
+    html = NEU_HTML.replace("aufzeichnung.js", "aufzeichnung2.js");
+    await sw.navigation("/fahrten/neu");
+
+    const shell = await sw.caches.open("cornice-shell-build-a");
+    expect(await (await shell.match("/fahrten/neu"))!.text()).toBe(html);
   });
 
   it("vergisst die gesicherte Aufzeichnung beim Abmelden", async () => {
