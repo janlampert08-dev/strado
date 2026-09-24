@@ -8,6 +8,7 @@ import Select from "@/components/ui/Select";
 import { PassStatusMarke } from "@/components/PassStatusZeile";
 import { HakenIcon } from "@/components/NavIcons";
 import { anzeigeFuerStatus, type PassZustand } from "@/lib/passStatus";
+import { hatStempelSpalte } from "@/lib/passStempel";
 import { cn } from "@/lib/utils/cn";
 
 // Die Liste aller Pässe mit Filtern. Client, weil die Filter sofort greifen
@@ -65,6 +66,9 @@ export default function PaesseListe({
       return true;
     });
   }, [eintraege, feedStand, auswahl, kanton]);
+
+  // Die Stempelspalte nur mit Sammlung (lib/passStempel.ts).
+  const stempelSpalte = hatStempelSpalte(angemeldet, eintraege);
 
   const filter: { wert: Auswahl; label: string }[] = [
     { wert: "alle", label: "Alle" },
@@ -126,23 +130,31 @@ export default function PaesseListe({
               // Tippfläche, nicht nur der 21 px hohe Name (Audit 2026-09-23).
               className={cn("flex items-center gap-3 px-4 py-3", eintrag.strecke && "druckbar relative")}
             >
-              {/* Der Stempel: befahren oder nicht. Er steht vorn, weil die
-                  Sammlung die Frage ist, mit der man diese Liste liest. */}
-              <span
-                className={cn(
-                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border",
-                  eintrag.gefahren
-                    ? "border-accent bg-accent-subtle text-accent-ink"
-                    : "border-dashed border-border text-muted",
-                )}
-              >
-                {eintrag.gefahren ? (
-                  <HakenIcon className="h-4 w-4" aria-hidden="true" />
+              {/* Der Stempel steht nur, wo es etwas zu stempeln gibt. Bis
+                  2026-09-25 trug JEDE Zeile einen Kreis — gestrichelt für
+                  "noch nicht befahren" —, auf einem frischen Konto also 34
+                  Mal dieselbe Leermeldung, und für Gäste, die gar keine
+                  Sammlung haben, ebenso. Was fehlt, sagt der Zähler oben
+                  ("0 von 34 befahren") und der Filter "Nicht befahren";
+                  die Zeile selbst meldet nur noch, was man hat.
+
+                  Die Spalte bleibt, sobald mindestens ein Pass gestempelt
+                  ist: die ungestempelten Zeilen halten dann einen leeren
+                  Platz gleicher Breite, damit die Namen untereinander
+                  fluchten. Ohne einen einzigen Stempel (und immer für Gäste)
+                  fällt die Spalte ganz weg. */}
+              {stempelSpalte &&
+                (eintrag.gefahren ? (
+                  <span
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-accent bg-accent-subtle text-accent-ink"
+                    title={befahrenTitel(eintrag.gefahren.fahrten)}
+                  >
+                    <HakenIcon className="h-4 w-4" aria-hidden="true" />
+                    <span className="sr-only">Befahren</span>
+                  </span>
                 ) : (
-                  <span className="sr-only">Noch nicht befahren</span>
-                )}
-                {eintrag.gefahren && <span className="sr-only">Befahren</span>}
-              </span>
+                  <span className="h-7 w-7 shrink-0" aria-hidden="true" />
+                ))}
 
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">
@@ -170,4 +182,8 @@ export default function PaesseListe({
       )}
     </div>
   );
+}
+
+function befahrenTitel(fahrten: number): string {
+  return fahrten === 1 ? "Befahren" : `Befahren, ${fahrten} Fahrten`;
 }
