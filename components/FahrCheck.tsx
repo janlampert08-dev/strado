@@ -13,6 +13,7 @@ import { offenSeitText } from "@/lib/passKalender";
 import {
   fetchCongestionLevels,
   verkehrSamplesFuerLaenge,
+  anteilMindestens,
   worstCongestion,
   type CongestionLevel,
 } from "@/lib/traffic";
@@ -115,6 +116,7 @@ export default function FahrCheck({
         hatPrognose: punkte.length > 0,
         hatGemeinschaft: startzeitenSatz(startzeiten) !== null,
         liveLaedt: liveMoeglich && levels === null,
+        liveAnteil: live && levels ? anteilMindestens(levels, live) : undefined,
       }),
     [live, prognoseFaktor, skala, punkte.length, startzeiten, liveMoeglich, levels],
   );

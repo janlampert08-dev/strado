@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { sampleRoutePoints, sliceRouteByTraffic, worstCongestion } from "@/lib/traffic";
+import {
+  anteilMindestens,
+  sampleRoutePoints,
+  sliceRouteByTraffic,
+  worstCongestion,
+} from "@/lib/traffic";
+
+describe("anteilMindestens", () => {
+  it("zählt nur Punkte mit Daten und alle Stufen ab der gefragten", () => {
+    expect(anteilMindestens(["low", "severe", null, "heavy"], "heavy")).toBeCloseTo(2 / 3);
+    expect(anteilMindestens(["low", "low"], "severe")).toBe(0);
+    expect(anteilMindestens([null, null], "low")).toBe(0);
+  });
+});
 
 describe("sampleRoutePoints", () => {
   it("returns an empty array for an empty route", () => {

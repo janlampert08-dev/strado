@@ -89,8 +89,29 @@ export function faktorText(faktor: number): string {
   return `ca. +${prozent} % Fahrzeit gegenüber der ruhigsten Stunde der Woche`;
 }
 
+// Unter diesem Anteil betroffener Stichprobenpunkte heisst die Live-Zeile
+// "stellenweise …" statt einer Aussage über die ganze Strecke. Ein Viertel:
+// bei der üblichen Dichte (ein Punkt je ~800 m) sind das auf 20 km rund
+// 5 km — darunter ist es ein Abschnitt, kein Zustand der Strecke.
+export const STELLENWEISE_UNTER = 0.25;
+
+// Kleingeschrieben für "stellenweise …" — "stellenweise Mässig" läse sich
+// wie ein Tippfehler.
+const LIVE_STELLENWEISE: Record<CongestionLevel, string> = {
+  low: "frei",
+  moderate: "mässig",
+  heavy: "stark",
+  severe: "Stau",
+};
+
 export interface VerkehrsEingabe {
   live: CongestionLevel | null;
+  /**
+   * Anteil der Stichprobenpunkte auf der Stufe von `live` oder darüber
+   * (anteilMindestens in lib/traffic.ts). Fehlt er, gilt die Aussage wie
+   * bisher für die ganze Strecke.
+   */
+  liveAnteil?: number;
   /** Vorhersagefaktor für die aktuelle Stunde (prognoseFuerStunde) — oder null. */
   prognoseFaktor: number | null;
   /** Die Skala der Wochenübersicht (skalaFuerPunkte) — misst die Stufe. */
@@ -120,16 +141,23 @@ export function baueVerkehrseinschaetzung(eingabe: VerkehrsEingabe): VerkehrsEin
 
   if (live) {
     const quellen = ["Live: Mapbox"];
+    const stellenweise =
+      live !== "low" &&
+      eingabe.liveAnteil !== undefined &&
+      eingabe.liveAnteil < STELLENWEISE_UNTER;
+    const liveText = stellenweise
+      ? `stellenweise ${LIVE_STELLENWEISE[live]}`
+      : CONGESTION_META[live].label;
     if (prognoseFaktor !== null) {
       quellen.push("Vorhersage: Mapbox");
       return {
-        titel: `Verkehr gerade: ${CONGESTION_META[live].label}`,
+        titel: `Verkehr gerade: ${liveText}`,
         detail: `Üblicherweise ${STUFE_IM_SATZ[stufeFuerFaktor(prognoseFaktor, skala)]} um diese Zeit (${faktorText(prognoseFaktor)}).`,
         quellen,
       };
     }
     return {
-      titel: `Verkehr gerade: ${CONGESTION_META[live].label}`,
+      titel: `Verkehr gerade: ${liveText}`,
       detail: null,
       quellen,
     };
