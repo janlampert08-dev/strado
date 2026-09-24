@@ -284,7 +284,11 @@ export default async function EinstellungenPage() {
           <section id="premium" className="flex scroll-mt-20 flex-col gap-3">
             <SectionHeading icon={Sparkles}>Premium</SectionHeading>
             <p className="text-sm text-muted">
-              {premiumStatus.aktiv ? "Abo-Status, Rechnungen, Kündigung." : premiumKurzform()}
+              {premiumStatus.aktiv
+                ? "Abo-Status, Rechnungen, Kündigung."
+                : premiumStatus.offeneZahlung
+                  ? "Für dein Abo ist eine Zahlung offen."
+                  : premiumKurzform()}
             </p>
             {/* Text und Knopf standen nebeneinander in einer Zeile. Ohne Abo
                 ist der Text premiumKurzform() und damit ein ganzer Satz —
@@ -296,7 +300,11 @@ export default async function EinstellungenPage() {
                 stand er rahmenlos unter einem mehrzeiligen Satz. */}
             <Card className="p-4">
               <Link
-                href={premiumStatus.aktiv ? "/profil/einstellungen/abo" : "/profil/premium"}
+                href={
+                  premiumStatus.aktiv || premiumStatus.offeneZahlung
+                    ? "/profil/einstellungen/abo"
+                    : "/profil/premium"
+                }
                 className={buttonVariants({ variant: "secondary" })}
               >
                 {/* Mit einem Saisonpass gibt es kein Abo zu verwalten —
@@ -306,7 +314,9 @@ export default async function EinstellungenPage() {
                   ? premiumStatus.quelle === "saisonpass"
                     ? "Premium verwalten"
                     : "Abo verwalten"
-                  : "Mehr zu Premium"}
+                  : premiumStatus.offeneZahlung
+                    ? "Zahlungsmittel aktualisieren"
+                    : "Mehr zu Premium"}
               </Link>
             </Card>
           </section>

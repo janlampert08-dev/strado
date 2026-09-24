@@ -2,6 +2,7 @@ import { cache } from "react";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { BESTAND_VARIABLEN, preisIdsAus } from "@/lib/stripeWebhook";
 import { passZeitraum } from "@/lib/premiumAngebot";
+import { zahlungNochOffen } from "@/lib/offeneZahlung";
 import { throwOnQueryError } from "@/lib/queryError";
 import {
   MAX_PRIVATE_STRECKEN_GRATIS,
@@ -33,6 +34,7 @@ const KEIN_PREMIUM: PremiumStatus = {
   testphaseBis: null,
   inKulanzfrist: false,
   kulanzBis: null,
+  offeneZahlung: false,
 };
 
 function datum(wert: string | null): Date | null {
@@ -210,6 +212,10 @@ export const getPremiumStatus = cache(async function getPremiumStatus(): Promise
     testphaseBis: abo.status === "trialing" ? periodeEndetAm : null,
     inKulanzfrist,
     kulanzBis: inKulanzfrist ? kulanzBis : null,
+    // Dieselbe Regel wie die Kaufsperre in lib/actions/billing.ts: wer dort
+    // wegen einer offenen Zahlung abgewiesen wird, muss hier den Weg ins
+    // Portal finden (app/profil/einstellungen/abo).
+    offeneZahlung: zahlungNochOffen(abo.status, periodeEndetAm ? periodeEndetAm.getTime() : null),
   };
 });
 

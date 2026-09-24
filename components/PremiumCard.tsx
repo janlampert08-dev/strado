@@ -6,7 +6,7 @@ import { buttonVariants } from "@/components/ui/Button";
 import { premiumKurzform } from "@/lib/premiumVorteile";
 import { createPortalSession } from "@/lib/actions/billing";
 import { datumCH } from "@/lib/format";
-import { planName } from "@/lib/premiumAngebot";
+import { betragText, planName } from "@/lib/premiumAngebot";
 import type { PremiumStatus } from "@/lib/premiumLimits";
 
 // Plan-Benennung und Datumsformat stehen in lib/, weil die Abschluss-Seite
@@ -31,7 +31,15 @@ import type { PremiumStatus } from "@/lib/premiumLimits";
 // app/profil/einstellungen/abo, der Werbe-Zweig nur auf der Profilseite
 // (die die Karte mit Abo gar nicht mehr rendert). Abrechnung gehört zu den
 // Einstellungen, Werbung nicht.
-export default function PremiumCard({ status }: { status: PremiumStatus }) {
+export default function PremiumCard({
+  status,
+  wechselHinweis = null,
+}: {
+  status: PremiumStatus;
+  /** Nur auf der Abo-Seite gesetzt: Bestands-Monatsabo, dessen Wechsel
+   *  aufs Jahresabo das Kundenportal anbietet (jahresaboWechselHinweis). */
+  wechselHinweis?: { ersparnisRappen: number; waehrung: string } | null;
+}) {
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-border bg-surface px-4 py-4">
       <SectionHeading icon={SparklesIcon}>Premium</SectionHeading>
@@ -78,9 +86,22 @@ export default function PremiumCard({ status }: { status: PremiumStatus }) {
                 (invoice_creation in lib/actions/billing.ts). Der Knopf sagt
                 deshalb, was dahinter steht. */}
             <SubmitButton pendingLabel="Wird geöffnet…" className="shrink-0">
-              {status.quelle === "saisonpass" ? "Rechnung ansehen" : "Abo verwalten"}
+              {status.quelle === "saisonpass"
+                ? "Rechnung ansehen"
+                : status.inKulanzfrist
+                  ? "Zahlungsmittel aktualisieren"
+                  : "Abo verwalten"}
             </SubmitButton>
           </form>
+          {/* Nur wenn das Portal den Wechsel wirklich anbietet — sonst
+              verspräche der Satz einen Weg, den es nicht gibt. */}
+          {wechselHinweis && status.quelle === "abo" && (
+            <p className="text-xs text-muted">
+              Mit dem Jahresabo sparst du{" "}
+              {betragText(wechselHinweis.ersparnisRappen, wechselHinweis.waehrung)} pro Jahr — im
+              Kundenportal unter «Abo verwalten» wechseln.
+            </p>
+          )}
           {/* Der Pass läuft aus und niemand erinnert daran — kein Stripe-
               Ereignis, keine Mahnung, keine Kündigung. Der Weg zurück
               gehört deshalb sichtbar hierhin, und zwar leise: ein Abo, das
@@ -94,6 +115,20 @@ export default function PremiumCard({ status }: { status: PremiumStatus }) {
             </Link>
           )}
         </>
+      ) : status.offeneZahlung ? (
+        // Kulanzfrist vorbei, Zahlung weiterhin offen: Premium ist aus, das
+        // Abo lebt bei Stripe weiter. Kein Kauf-Einstieg — ein zweites Abo
+        // wiese die Kasse ohnehin ab —, sondern der Weg, das bestehende
+        // nachzuzahlen.
+        <form action={createPortalSession} className="flex flex-col gap-3">
+          <p className="text-sm text-danger">
+            Für dein Abo ist eine Zahlung offen, Premium ist deshalb pausiert. Hinterleg im
+            Abo-Portal ein gültiges Zahlungsmittel — danach läuft es ohne neues Abo weiter.
+          </p>
+          <SubmitButton pendingLabel="Wird geöffnet…" className="self-start">
+            Zahlungsmittel aktualisieren
+          </SubmitButton>
+        </form>
       ) : (
         <>
           {/* Eine Zeile plus eine Umriss-Schaltfläche, nicht mehr eine

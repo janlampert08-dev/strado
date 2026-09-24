@@ -155,6 +155,12 @@ export interface PremiumStatus {
   inKulanzfrist: boolean;
   /** Ende der Kulanzfrist, wenn eine läuft. */
   kulanzBis: Date | null;
+  /** Für das Abo ist eine Zahlung offen (Stripe-Status past_due/unpaid,
+   *  noch in der Frist aus lib/offeneZahlung.ts) — unabhängig davon, ob die
+   *  Kulanzfrist noch läuft. Nach ihrem Ende ist aktiv false, und genau
+   *  dann braucht es den Weg ins Kundenportal, um das Zahlungsmittel zu
+   *  aktualisieren. */
+  offeneZahlung: boolean;
 }
 
 export interface PrivateStreckenKontingent {
