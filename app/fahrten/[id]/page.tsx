@@ -42,6 +42,7 @@ import { motorklasseLabel } from "@/lib/motorklassen";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
 import AbschnittTabs from "@/components/ui/AbschnittTabs";
 import { buttonVariants, textAktionClassName } from "@/components/ui/Button";
+import { streckenPfad } from "@/lib/streckenPfad";
 
 // Eine Fahrt gehört einer Person: Name, Zeit und bei freien Fahrten der
 // Startort. Fahrer-Profile stehen aus genau diesem Grund nicht im Index
@@ -337,7 +338,7 @@ export default async function FahrtDetailPage({
                   shareUrl={
                     completion.istOeffentlich || !route
                       ? `/fahrten/${completion.id}`
-                      : `/strecken/${route.id}`
+                      : streckenPfad(route)
                   }
                 />
               )}
@@ -375,7 +376,7 @@ export default async function FahrtDetailPage({
               </h1>
             ) : (
               <Link
-                href={`/strecken/${route!.id}`}
+                href={streckenPfad(route!)}
                 className="group inline-flex items-baseline gap-1.5"
               >
                 <h1 className="text-display font-semibold tracking-tight group-hover:text-accent-ink">
@@ -639,7 +640,7 @@ export default async function FahrtDetailPage({
                 </Link>
                 {!istFreieFahrt && route ? (
                   <Link
-                    href={`/strecken/${route.id}`}
+                    href={streckenPfad(route)}
                     className={buttonVariants({ variant: "secondary", size: "md" })}
                   >
                     Strecke ansehen
@@ -658,7 +659,7 @@ export default async function FahrtDetailPage({
               Fahrt. Zwei Text-Handlungen, kein neuer Baustein. */}
           <nav aria-label="Weiter" className="flex flex-wrap gap-x-5 gap-y-2 border-t border-border pt-4">
             {!istFreieFahrt && route ? (
-              <Link href={`/strecken/${route.id}`} className={textAktionClassName()}>
+              <Link href={streckenPfad(route)} className={textAktionClassName()}>
                 Strecke ansehen →
               </Link>
             ) : (

@@ -20,6 +20,7 @@ import { SIGNATUR_RUECKFALL, SIGNATUR_TOKEN, type SignatureKey } from "@/lib/sig
 import { MIN_ACCURACY_M } from "@/components/useRideRecorder";
 import type { KartenStrecke, TempolimitSegment } from "@/types/database";
 import Skeleton from "@/components/ui/Skeleton";
+import { streckenPfad } from "@/lib/streckenPfad";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 const ROUTES_SOURCE = "routes";
@@ -180,7 +181,9 @@ function toFeatureCollection(
       type: "Feature",
       id: route.id,
       geometry: route.geometry_geojson,
-      properties: { id: route.id, name: route.name, color: farbe(route.id) },
+      // pfad: das Ziel eines Klicks auf die Linie — mit Slug, wo die Zeile
+      // einen trägt (lib/streckenPfad.ts), sonst die UUID-Adresse.
+      properties: { id: route.id, pfad: streckenPfad(route), name: route.name, color: farbe(route.id) },
     })),
   };
 }
@@ -1267,8 +1270,10 @@ export default function RouteMap({
     });
     map.on("click", ROUTES_HIT_LAYER, (e) => {
       if (!routesClickableRef.current) return;
-      const id = e.features?.[0]?.properties?.id;
-      if (id) router.push(`/strecken/${id}`);
+      const eigenschaften = e.features?.[0]?.properties;
+      const pfad = eigenschaften?.pfad;
+      if (typeof pfad === "string" && pfad) router.push(pfad);
+      else if (eigenschaften?.id) router.push(streckenPfad({ id: String(eigenschaften.id) }));
     });
 
     // Jede von Hand begonnene Kamerabewegung — Ziehen, Zoomen, Drehen —

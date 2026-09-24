@@ -7,6 +7,7 @@ import { getPassZustaendeJeStrecke } from "@/lib/paesse";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { getOrigin } from "@/lib/utils/url";
 import { BESCHREIBUNG, SLOGAN } from "@/lib/constants";
+import { streckenPfad } from "@/lib/streckenPfad";
 
 // Die wichtigste Seite der App hatte bisher keine eigene Metadata und erbte
 // nur "Strado" aus dem Layout — für Suchmaschinen also einen Titel ohne
@@ -100,7 +101,7 @@ export default async function Home() {
         itemListElement: routes.map((route, index) => ({
           "@type": "ListItem",
           position: index + 1,
-          url: `${origin}/strecken/${route.id}`,
+          url: `${origin}${streckenPfad(route)}`,
           name: route.name,
         })),
       },

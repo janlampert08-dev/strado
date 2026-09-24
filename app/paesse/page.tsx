@@ -14,6 +14,7 @@ import { getCurrentUser } from "@/lib/supabase/server";
 import { getOrigin } from "@/lib/utils/url";
 import { mitAnzahl } from "@/lib/format";
 import { OG_GEERBT } from "@/lib/openGraph";
+import { streckenPfad } from "@/lib/streckenPfad";
 
 // Die öffentliche Passseite: der Katalog, sein heutiger Zustand, und — für
 // angemeldete Konten — die eigene Sammlung.
@@ -100,7 +101,7 @@ export default async function PaessePage() {
         name: eintrag.name,
         description: `${eintrag.hoeheM.toLocaleString("de-CH")} m · ${eintrag.kantone.join(" / ")}${eintrag.strecke ? "" : " · noch keine Strecke"}`,
         url: eintrag.strecke
-          ? `${origin}/strecken/${eintrag.strecke.id}`
+          ? `${origin}${streckenPfad(eintrag.strecke)}`
           : `${origin}/paesse#${eintrag.id}`,
       },
     })),
@@ -168,7 +169,7 @@ export default async function PaessePage() {
               {gefolgt.map((eintrag) => {
                 const anzeige = anzeigeFuerStatus(eintrag.status, feedStand);
                 const ziel = eintrag.strecke
-                  ? `/strecken/${eintrag.strecke.id}`
+                  ? streckenPfad(eintrag.strecke)
                   : `/paesse#${eintrag.id}`;
                 return (
                   <li key={eintrag.id} className="druckbar relative flex items-center gap-3 px-4 py-3">

@@ -15,6 +15,7 @@ import { waehleEmpfohleneStrecke, type Empfehlung } from "@/lib/empfehlung";
 import type { ExploreRoute } from "@/types/database";
 import type { Streckenbewertung } from "@/lib/bewertungen";
 import type { PassZustand } from "@/lib/passStatus";
+import { streckenPfad } from "@/lib/streckenPfad";
 
 // URL-Sync für den Suchtext wird debounced (siehe searchInput-Effekt unten),
 // damit nicht jeder Tastendruck einen router.replace() (und damit einen
@@ -318,7 +319,7 @@ export default function ExploreView({
       {zufallsstrecke && (
         <div className="pointer-events-none absolute inset-x-0 top-4 z-10 flex justify-center px-5">
           <Link
-            href={`/strecken/${zufallsstrecke.id}`}
+            href={streckenPfad(zufallsstrecke)}
             className="pointer-events-auto max-w-full truncate rounded-full border border-border bg-background/95 px-4 py-2 text-sm font-medium shadow-overlay backdrop-blur-xl transition-colors duration-fast hover:text-accent-ink"
           >
             Wie wär&rsquo;s mit … {zufallsstrecke.name}?

@@ -44,6 +44,7 @@ import { wetterMassstab } from "@/lib/wetterfenster";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { KATEGORIEN } from "@/lib/constants";
 import { siteUrl } from "@/lib/siteUrl";
+import { streckenPfad } from "@/lib/streckenPfad";
 import { averageTempolimit, estimateRouteDurationMinutes, formatMinutes } from "@/lib/geo";
 import type { Vehicle } from "@/types/database";
 import { ChevronDown, Pencil } from "@/components/NavIcons";
@@ -80,8 +81,9 @@ export async function generateMetadata({
 }: {
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
-  const { id } = await params;
-  const route = await getRoute(id);
+  // Das Segment ist die UUID oder der Slug (0130) — getRoute() nimmt beides.
+  const { id: adressteil } = await params;
+  const route = await getRoute(adressteil);
   // Dieselbe Überschrift wie app/not-found.tsx: die Seite antwortet unten
   // mit notFound(), und der Tab soll dasselbe sagen wie der Inhalt, nicht
   // einen Streckentitel ankündigen, den es nicht gibt.
@@ -113,7 +115,12 @@ export async function generateMetadata({
     // git beides von selbst zusammenführt. Die Schlüsselreihenfolge eines
     // Objektliterals ist für Next ohne Bedeutung — sie hier zu "sortieren"
     // holt den Konflikt zurück.
-    alternates: { canonical: `/strecken/${route.id}` },
+    //
+    // Seit 0130 ist die kanonische Adresse die mit dem Slug, sobald die
+    // Strecke einen hat — auch wenn sie unter der UUID aufgerufen wurde
+    // (proxy.ts leitet dorthin weiter; fällt die Weiterleitung aus, sagt es
+    // wenigstens diese Zeile).
+    alternates: { canonical: streckenPfad(route) },
     title: suchtitel(route),
     description: beschreibung,
     // Diese Seite hatte als einzige mit eigenem Freigabebild keinen eigenen
@@ -127,7 +134,7 @@ export async function generateMetadata({
     // openGraph-Block ersetzt den des Layouts vollständig und nähme sonst
     // auch das Bild aus opengraph-image.tsx mit weg.
     openGraph: {
-      ...ogMitBild(`/strecken/${id}/opengraph-image`, `${route.name} auf Strado`),
+      ...ogMitBild(`${streckenPfad(route)}/opengraph-image`, `${route.name} auf Strado`),
       type: "article",
       title: `${route.name} – Strado`,
       description: beschreibung,
@@ -168,7 +175,8 @@ export default async function StreckeDetailPage({
   // gesetzt, aber von niemandem gelesen.
   searchParams: Promise<{ fortsetzen?: string; privat?: string }>;
 }) {
-  const { id } = await params;
+  // UUID oder Slug; ab dem Laden gilt nur noch route.id (siehe unten).
+  const { id: adressteil } = await params;
   const { fortsetzen, privat } = await searchParams;
   const supabase = await createClient();
 
@@ -181,9 +189,14 @@ export default async function StreckeDetailPage({
   // brauchen ihn ausser der Seite selbst auch <Header /> und
   // getPremiumStatus(). Ueber den request-weiten cache() wird daraus einer
   // statt dreier.
-  const [route, user] = await Promise.all([getRoute(id), getCurrentUser()]);
+  const [route, user] = await Promise.all([getRoute(adressteil), getCurrentUser()]);
 
   if (!route) notFound();
+
+  // Alle Abfragen unten laufen über die UUID — das Segment kann seit 0130
+  // auch der Slug sein, und Bewertungen, Fotos, Bestenliste & Co. hängen an
+  // route_id.
+  const id = route.id;
 
   // kontextStrecken: die umliegenden Strecken für die Karte des
   // Aufzeichnungsschirms (siehe GefahrenSection/LiveTrackingForm). Sie werden
@@ -266,7 +279,7 @@ export default async function StreckeDetailPage({
     // (opengraph-image.tsx nebenan) — absolut, weil strukturierte Daten
     // keine Basis-URL erben. staging und Previews zeigen damit auf sich
     // selbst, wie Canonical und OG-Bild auch.
-    image: `${siteUrl()}/strecken/${route.id}/opengraph-image`,
+    image: `${siteUrl()}${streckenPfad(route)}/opengraph-image`,
     ...(bewertung
       ? {
           aggregateRating: {
@@ -448,6 +461,7 @@ export default async function StreckeDetailPage({
           <OfflineRouteButton
             route={{
               id: route.id,
+              slug: route.slug ?? null,
               name: route.name,
               region: route.region,
               startOrt: route.start_ort,
@@ -475,7 +489,7 @@ export default async function StreckeDetailPage({
           />
           {!moderator && user?.id === route.erstellt_von && !route.status_ok && (
             <Link
-              href={`/strecken/${id}/bearbeiten`}
+              href={`${streckenPfad(route)}/bearbeiten`}
               aria-label="Strecke bearbeiten"
               title="Strecke bearbeiten"
               className={iconButtonVariants()}

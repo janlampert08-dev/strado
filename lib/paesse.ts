@@ -10,6 +10,10 @@ import type { PassZustand } from "@/lib/passMeldungen";
 import { istFeedGesund, schwerwiegendster } from "@/lib/passStatus";
 import { heuteCH, type PassEreignis, type Sperrtag, type SperrtagArt } from "@/lib/passKalender";
 import { throwOnQueryError } from "@/lib/queryError";
+import { fehltSlugSpalte } from "@/lib/streckenPfad";
+
+/** Die öffentliche Strecke über einen Pass; slug fehlt vor 0130. */
+export type PassStrecke = { id: string; name: string; slug?: string | null };
 
 export interface Pass {
   id: string;
@@ -93,7 +97,7 @@ export interface PassMitStatus {
   status: PassStatusZeile | null;
   /** Die sichtbare Strecke, über die man den Pass fährt — null, solange es
    *  keine gibt. Genau diese Lücke ist der Aufruf, eine anzulegen. */
-  strecke: { id: string; name: string } | null;
+  strecke: PassStrecke | null;
   /** Aus den eigenen Fahrten: wann zum ersten Mal, wie oft. */
   gefahren: { erstmals: string; fahrten: number } | null;
   /** Ob das Konto diesem Pass folgt (pass_folgen). */
@@ -150,18 +154,25 @@ export async function getPaesseMitStatus(): Promise<PassMitStatus[]> {
   const streckenIds = [
     ...new Set((((verknuepfungen.data as { route_id: string; pass_id: string }[] | null) ?? [])).map((v) => v.route_id)),
   ];
-  const { data: strecken } = streckenIds.length
-    ? await supabase
-        .from("routes")
-        .select("id, name")
-        .in("id", streckenIds)
-        .eq("status_ok", true)
-        .eq("ist_privat", false)
-        .order("name")
-    : { data: [] as { id: string; name: string }[] };
+  // slug (0130) für den Link; fehlt die Spalte noch, dieselbe Abfrage ohne
+  // — dann verlinkt die Liste die UUID-Adresse, die weiterleitet.
+  const streckenAbfrage = (spalten: string) =>
+    supabase
+      .from("routes")
+      .select(spalten)
+      .in("id", streckenIds)
+      .eq("status_ok", true)
+      .eq("ist_privat", false)
+      .order("name");
+  let strecken: PassStrecke[] = [];
+  if (streckenIds.length) {
+    let ergebnis = await streckenAbfrage("id, name, slug");
+    if (ergebnis.error && fehltSlugSpalte(ergebnis.error)) ergebnis = await streckenAbfrage("id, name");
+    strecken = (ergebnis.data as unknown as PassStrecke[] | null) ?? [];
+  }
 
-  const streckeNachId = new Map(((strecken as { id: string; name: string }[] | null) ?? []).map((s) => [s.id, s]));
-  const streckeJePass = new Map<string, { id: string; name: string }>();
+  const streckeNachId = new Map(strecken.map((s) => [s.id, s]));
+  const streckeJePass = new Map<string, PassStrecke>();
   for (const verknuepfung of ((verknuepfungen.data as { route_id: string; pass_id: string }[] | null) ?? [])) {
     if (streckeJePass.has(verknuepfung.pass_id)) continue;
     const strecke = streckeNachId.get(verknuepfung.route_id);

@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { haversineKm } from "@/lib/geo";
+import { fehltSlugSpalte, leseStreckenAdressteil } from "@/lib/streckenPfad";
 import type {
   ExploreRoute,
   GeoLineString,
@@ -15,6 +16,11 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // abgeleitet zu halten geht nicht (Typen existieren zur Laufzeit nicht) —
 // deshalb hier einmal ausgeschrieben und in types/database.ts dokumentiert.
 const EXPLORE_SPALTEN =
+  "id, name, region, start_ort, ziel_ort, start_geojson, ziel_geojson, geometry_geojson, geometry_uebersicht_geojson, hoehe_m, laenge_km, max_steigung_prozent, kehren, saison_status, tempolimits, ist_rundfahrt, slug";
+
+// Spaltenstand nach 0117, vor 0130 (ohne slug) — Fallback, solange die
+// Slug-Migration nicht eingespielt ist. Die Links bleiben dann UUID-Links.
+const EXPLORE_SPALTEN_OHNE_SLUG =
   "id, name, region, start_ort, ziel_ort, start_geojson, ziel_geojson, geometry_geojson, geometry_uebersicht_geojson, hoehe_m, laenge_km, max_steigung_prozent, kehren, saison_status, tempolimits, ist_rundfahrt";
 
 // Spaltenstand vor 0117 (ohne Übersichtsgeometrie) — Fallback, solange die
@@ -31,11 +37,25 @@ const EXPLORE_SPALTEN_LEGACY =
 // Array aus Punkten pro Strecke, für die Explore-Liste ohne jede Verwendung.
 export async function getRoutes(): Promise<{ routes: ExploreRoute[]; error: boolean }> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const mitSlug = await supabase
     .from("routes_geojson")
     .select(EXPLORE_SPALTEN)
     .eq("status_ok", true)
     .order("name");
+  let data: unknown = mitSlug.data;
+  let error = mitSlug.error;
+
+  // 0130 noch nicht eingespielt: ohne slug nochmals, die Karte verlinkt dann
+  // auf die UUID-Adresse.
+  if (error && fehltSlugSpalte(error)) {
+    const ohneSlug = await supabase
+      .from("routes_geojson")
+      .select(EXPLORE_SPALTEN_OHNE_SLUG)
+      .eq("status_ok", true)
+      .order("name");
+    data = ohneSlug.data;
+    error = ohneSlug.error;
+  }
 
   // 0117 noch nicht eingespielt: unbekannte Spalte -> alter Stand.
   if (error) {
@@ -252,7 +272,9 @@ export async function getKontextStrecken(route: RouteGeoJSON): Promise<KartenStr
 export interface RouteSitemapEintrag {
   id: string;
   created_at: string;
+  slug?: string | null;
 }
+
 
 // Der Streckenbestand, reduziert auf die Spalten, aus denen sich ein
 // Signatur-Merkmal berechnet. computeSignatures() vergleicht eine Strecke
@@ -280,11 +302,24 @@ export async function getSignaturbestand(): Promise<SignaturStrecke[]> {
 
 export async function listRoutesForSitemap(): Promise<RouteSitemapEintrag[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const mitSlug = await supabase
     .from("routes_geojson")
-    .select("id, created_at")
+    .select("id, created_at, slug")
     .eq("status_ok", true)
     .order("name");
+  let data: unknown = mitSlug.data;
+  let error = mitSlug.error;
+
+  // Vor 0130: ohne slug, die Sitemap listet dann UUID-Adressen.
+  if (error && fehltSlugSpalte(error)) {
+    const ohneSlug = await supabase
+      .from("routes_geojson")
+      .select("id, created_at")
+      .eq("status_ok", true)
+      .order("name");
+    data = ohneSlug.data;
+    error = ohneSlug.error;
+  }
 
   if (error) {
     console.error("Sitemap-Strecken konnten nicht geladen werden:", error.message);
@@ -316,8 +351,9 @@ export type RouteApiZeile = Pick<
   | "tempolimits"
 > &
   // Nur gesetzt, wenn der Aufrufer es ausdrücklich anfordert — siehe
-  // listRoutesForApi().
-  Partial<Pick<RouteGeoJSON, "hoehenprofil">>;
+  // listRoutesForApi(). slug fehlt vor 0130; der öffentliche Endpunkt gibt
+  // ihn (noch) nicht aus, llms.txt verlinkt damit die lesbare Adresse.
+  Partial<Pick<RouteGeoJSON, "hoehenprofil" | "slug">>;
 
 // mitHoehenprofil nur auf ausdrückliche Anforderung (?hoehenprofil=1 am
 // Endpunkt): das Profil ist nach der Geometrie der grösste Posten pro
@@ -330,18 +366,36 @@ export async function listRoutesForApi(mitHoehenprofil = false): Promise<RouteAp
   // Beide Spaltenlisten ausgeschrieben statt eine aus der anderen
   // zusammengesetzt: der Typ-Parser von postgrest-js liest den Select-String
   // zur Compile-Zeit und versteht nur ein Literal, kein `${...}`.
-  const abfrage = mitHoehenprofil
-    ? supabase
-        .from("routes_geojson")
-        .select(
-          "id, name, region, start_ort, ziel_ort, ist_rundfahrt, laenge_km, hoehe_m, max_steigung_prozent, kehren, kategorien, saison_status, tempolimits, hoehenprofil",
-        )
-    : supabase
-        .from("routes_geojson")
-        .select(
-          "id, name, region, start_ort, ziel_ort, ist_rundfahrt, laenge_km, hoehe_m, max_steigung_prozent, kehren, kategorien, saison_status, tempolimits",
-        );
-  const { data, error } = await abfrage.eq("status_ok", true).order("name");
+  const abfrage = (mitSlug: boolean) =>
+    (mitHoehenprofil
+      ? mitSlug
+        ? supabase
+            .from("routes_geojson")
+            .select(
+              "id, name, region, start_ort, ziel_ort, ist_rundfahrt, laenge_km, hoehe_m, max_steigung_prozent, kehren, kategorien, saison_status, tempolimits, hoehenprofil, slug",
+            )
+        : supabase
+            .from("routes_geojson")
+            .select(
+              "id, name, region, start_ort, ziel_ort, ist_rundfahrt, laenge_km, hoehe_m, max_steigung_prozent, kehren, kategorien, saison_status, tempolimits, hoehenprofil",
+            )
+      : mitSlug
+        ? supabase
+            .from("routes_geojson")
+            .select(
+              "id, name, region, start_ort, ziel_ort, ist_rundfahrt, laenge_km, hoehe_m, max_steigung_prozent, kehren, kategorien, saison_status, tempolimits, slug",
+            )
+        : supabase
+            .from("routes_geojson")
+            .select(
+              "id, name, region, start_ort, ziel_ort, ist_rundfahrt, laenge_km, hoehe_m, max_steigung_prozent, kehren, kategorien, saison_status, tempolimits",
+            )
+    )
+      .eq("status_ok", true)
+      .order("name");
+  let { data, error } = await abfrage(true);
+  // Vor 0130: ohne slug nochmals (Muster wie getRoutes()).
+  if (error && fehltSlugSpalte(error)) ({ data, error } = await abfrage(false));
 
   if (error) {
     console.error("Strecken konnten nicht geladen werden:", error.message);
@@ -507,18 +561,31 @@ export async function listRouteDetectionCandidatesInBox(
 // opengraph-image.tsx rufen getRoute(id) für denselben Request unabhängig
 // voneinander auf — ohne Memoisierung wäre das dieselbe DB-Abfrage
 // dreifach pro Seitenaufruf.
-export const getRoute = cache(async function getRoute(id: string): Promise<RouteGeoJSON | null> {
-  if (!UUID_RE.test(id)) return null;
+//
+// Nimmt die UUID ODER den Slug (0130) — das Segment von /strecken/[id].
+// Beide Wege laufen über denselben Server-Client mit der Sitzung der
+// anfragenden Person und dieselbe security_invoker-View: RLS entscheidet
+// beim Slug genau wie bei der id, eine private oder wartende Strecke findet
+// über den Slug also nur, wer sie auch über die id fände. (Solche Strecken
+// tragen ohnehin keinen Slug, siehe den Trigger in 0130 — die RLS ist die
+// Grenze, das ist nur die zweite Schicht.)
+//
+// Vor 0130 gibt es die Spalte nicht: ein Slug-Aufruf endet dann als "nicht
+// gefunden" (404) statt als Fehlerseite, UUID-Aufrufe laufen unverändert.
+export const getRoute = cache(async function getRoute(idOderSlug: string): Promise<RouteGeoJSON | null> {
+  const teil = leseStreckenAdressteil(idOderSlug);
+  if (!teil) return null;
 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("routes_geojson")
     .select("*")
-    .eq("id", id)
+    .eq(teil.art, teil.wert)
     .single();
 
   if (error) {
     if (error.code === "PGRST116") return null;
+    if (teil.art === "slug" && fehltSlugSpalte(error)) return null;
     console.error("Strecke konnte nicht geladen werden:", error.message);
     throw new Error("Strecke konnte nicht geladen werden.");
   }

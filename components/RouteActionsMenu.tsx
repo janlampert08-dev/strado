@@ -14,6 +14,7 @@ import { ConfirmDialog } from "@/components/ui/Dialog";
 import ReportDialog from "@/components/ReportDialog";
 import { useVolleGeometrie } from "@/components/VolleGeometrie";
 import { TCS_PASS_PORTAL_URL } from "@/lib/constants";
+import { streckenPfad } from "@/lib/streckenPfad";
 
 // Die Adresse steht in lib/constants.ts, weil die Moderation dieselbe Seite
 // verlinkt (components/PassStatusForm.tsx) — die Begründung für die
@@ -191,7 +192,8 @@ export default function RouteActionsMenu({
   }
 
   async function handleShare() {
-    const url = `${window.location.origin}/strecken/${route.id}`;
+    // Geteilt wird die lesbare Adresse, sobald es sie gibt (0130).
+    const url = `${window.location.origin}${streckenPfad(route)}`;
     if (typeof navigator.share === "function") {
       try {
         await navigator.share({ title: route.name, url });
@@ -349,7 +351,7 @@ export default function RouteActionsMenu({
           )}
           {isOwner && (
             <Link
-              href={`/strecken/${route.id}/bearbeiten`}
+              href={`${streckenPfad(route)}/bearbeiten`}
               onClick={() => setOpen(false)}
               className={ITEM_CLASS}
             >
@@ -371,7 +373,7 @@ export default function RouteActionsMenu({
           {moderator && (
             <>
               <Link
-                href={`/strecken/${route.id}/bearbeiten`}
+                href={`${streckenPfad(route)}/bearbeiten`}
                 onClick={() => setOpen(false)}
                 className={ITEM_CLASS}
               >

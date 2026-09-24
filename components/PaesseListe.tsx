@@ -9,6 +9,7 @@ import { PassStatusMarke } from "@/components/PassStatusZeile";
 import { HakenIcon } from "@/components/NavIcons";
 import { anzeigeFuerStatus, type PassZustand } from "@/lib/passStatus";
 import { cn } from "@/lib/utils/cn";
+import { streckenPfad } from "@/lib/streckenPfad";
 
 // Die Liste aller Pässe mit Filtern. Client, weil die Filter sofort greifen
 // sollen — 34 Zeilen brauchen keinen Serverbesuch, um sich zu sortieren.
@@ -148,7 +149,7 @@ export default function PaesseListe({
                 <p className="truncate font-medium">
                   {eintrag.strecke ? (
                     <Link
-                      href={`/strecken/${eintrag.strecke.id}`}
+                      href={streckenPfad(eintrag.strecke)}
                       className="hover:text-accent-ink after:absolute after:inset-0 after:content-['']"
                     >
                       {eintrag.name}
