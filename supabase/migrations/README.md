@@ -29,7 +29,15 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
-## Noch nicht angewendet: 0123_ranglisten_ohne_abschnitte (geschrieben 2026-09-23)
+## Angewendet: 0123_ranglisten_ohne_abschnitte (gemessen 2026-09-24)
+
+> **Stand am 2026-09-24 korrigiert.** Diese Überschrift sagte bis dahin „Noch
+> nicht angewendet". Gemessen am Katalog: die Definition von
+> `leaderboard_completions` nennt `parent_completion_id`
+> (`pg_get_viewdef('public.leaderboard_completions'::regclass)`), die
+> Migration steht also in der Produktion. **Nicht** gemessen sind die
+> Aggregatswerte selbst; der Abschnitt darunter beschreibt weiterhin den
+> Stand beim Schreiben der Migration.
 
 Ranglisten zählen erkannte Streckenabschnitte nicht mehr als eigene Fahrten.
 `leaderboard_completions` bekommt eine angehängte Spalte `ist_abschnitt`, die
@@ -47,7 +55,15 @@ Entscheid des Eigentümers vom 2026-09-23 (PR #274 hatte ihn offen gelassen).
   Elternfahrt hat, steht danach mit 0 Fahrten / 0 km in den Mengenlisten
   (für "Meiste Strecken" zählt er richtig). Heute betrifft das niemanden.
 
-## 0115 — noch nicht angewendet (Stand 2026-09-20)
+## 0115 — angewendet (gemessen 2026-09-24)
+
+> **Stand am 2026-09-24 korrigiert.** Diese Überschrift sagte bis dahin „noch
+> nicht angewendet". Gemessen am Katalog: `route_completions` führt
+> `tempoprofil` **und** `hoehen_quelle`. Das musste auch so sein — `staging`
+> schreibt beide Spalten längst auf dem normalen Speicherpfad
+> (`lib/actions/completions.ts`), wäre die Zeile richtig gewesen, wäre nicht
+> der Import kaputt, sondern **jedes Speichern einer Fahrt**. Der Fehler fiel
+> beim Review von #362 auf.
 
 `0115_tempoprofil.sql` legt `route_completions.tempoprofil` an ([{km, kmh}],
 nur für den Besitzer lesbar, in keiner öffentlichen View) und erweitert
@@ -79,7 +95,14 @@ Migrationsheader (Spalte, Check-Constraint, Grants auf
 Datenbankzugang, nur das Wort. Wer ihn nachholt, ersetzt diesen Absatz
 durch das Gemessene.
 
-## Noch nicht angewendet: 0121_premium_promo_link (geschrieben 2026-09-22)
+## Angewendet: 0121_premium_promo_link (gemessen 2026-09-24)
+
+> **Stand am 2026-09-24 korrigiert.** Diese Überschrift sagte bis dahin „Noch
+> nicht angewendet". Gemessen am Katalog: die Tabellen
+> `premium_promo_codes` und `premium_gratis` und die Funktion
+> `premium_gratis_gueltig` existieren alle drei. **Nicht** gemessen sind die
+> Grants und die Funktionsrümpfe — die Prüfliste weiter unten bleibt damit
+> offen, nicht erledigt.
 
 Signup-Link mit 7 Tagen Gratis-Premium (`app.strado.ch/registrieren?promo=7-tage-gratis`).
 Neue Tabellen `premium_promo_codes` und `premium_gratis`, neue Funktion
@@ -2439,20 +2462,33 @@ where schemaname = 'storage' and tablename = 'objects'
 -- {public} ist weg.
 ```
 
-## 0096 — noch nicht angewendet (Stand 2026-09-15)
+## 0096 — überholter Abschnitt (eingespielt am 2026-09-15)
+
+> **Überholt, am 2026-09-24 als solcher gekennzeichnet.** Maßgeblich ist
+> **„Eingespielt: 0096–0098 (Fahrtstart serverseitig, 2026-09-15,
+> Produktion)"** weiter oben in dieser Datei — dieser Abschnitt hier ist der
+> stehengebliebene Vorgänger von vor dem Einspielen und sagte deshalb noch
+> „noch nicht angewendet", samt der daraus gezogenen Anweisung „Also nicht
+> mergen". Am Katalog gegengeprüft: `fahrt_starts` existiert, die Definition
+> von `route_leaderboard` nennt `dauer_quelle`, `fahrt_start_puls` (aus
+> `0098`) existiert. Was hier steht, bleibt als **Prüfliste** brauchbar —
+> Trigger-Reihenfolge und Grants sind damit nicht gemessen; als Stand ist es
+> nicht mehr zu lesen.
 
 `0096_fahrtstart_serverseitig.sql` **verengt** Bein 2 des Audit-Befunds A1 (die
 fälschbare Fahrtdauer) — sie schliesst es nicht: das Ticket bindet eine Person
 und eine Uhr, nicht den eingereichten Trail. Die A1-Tabelle in
 `docs/audit/README.md` sagt genau, was offen bleibt. Die Migration liegt auf
-einem Zweig und ist **nicht eingespielt**.
+einem Zweig und ist **nicht eingespielt**. *(Überholt — siehe den Kasten
+über dieser Zeile: eingespielt am 2026-09-15.)*
 
 Reihenfolge: **Schema zuerst, Code danach.** Der Code auf dem Zweig schreibt
 `dauer_quelle`, `dauer_trail_sekunden` und `fahrt_start_id` und ruft
 `fahrt_start_anlegen`/`fahrt_start_einloesen`. Ohne die Migration schlägt
 jedes Speichern einer Fahrt mit einem Spaltenfehler fehl — anders als bei
 `0087`, wo nur zwei Seiten betroffen waren, träfe es hier Schritt 5 der
-Kernschleife. Also nicht mergen, bevor die Migration steht.
+Kernschleife. Also nicht mergen, bevor die Migration steht. *(Erledigt: die
+Migration steht seit dem 2026-09-15, der Code ist gemergt.)*
 
 Was nach dem Einspielen zu prüfen ist (die Lücke, die `0094` hatte, war
 genau, dass das unterblieb):
