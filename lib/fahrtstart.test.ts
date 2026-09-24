@@ -5,6 +5,7 @@ import {
   PULS_INTERVALL_SCHNELL_MS,
   abdruckVon,
   erzeugeGeheimnis,
+  istGastSperre,
   istGeheimnis,
   istTicketId,
   leseTicket,
@@ -176,5 +177,27 @@ describe("sollPulsen", () => {
 
   it("hält das kurze Intervall über der Datenbank-Bremse", () => {
     expect(PULS_INTERVALL_SCHNELL_MS).toBeGreaterThan(5_000);
+  });
+});
+
+describe("istGastSperre", () => {
+  it("weicht bei fehlendem EXECUTE aus (anon seit 0133)", () => {
+    expect(istGastSperre({ code: "42501" })).toBe(true);
+    expect(istGastSperre({ code: "PGRST202" })).toBe(true);
+  });
+
+  it("weicht bei Token-Fehlern und Grenzen der Funktion NICHT aus", () => {
+    // Ungültiges/abgelaufenes JWT: kein stiller Wechsel in den Gastzweig.
+    expect(istGastSperre({ code: "PGRST301" })).toBe(false);
+    expect(istGastSperre({ code: "PGRST303" })).toBe(false);
+    // raise exception 'Zu viele Fahrtstarts' — die Grenze gilt auch für den zweiten Weg.
+    expect(istGastSperre({ code: "P0001" })).toBe(false);
+  });
+
+  it("ohne Fehler oder Code: nicht ausweichen", () => {
+    expect(istGastSperre(null)).toBe(false);
+    expect(istGastSperre(undefined)).toBe(false);
+    expect(istGastSperre({})).toBe(false);
+    expect(istGastSperre({ code: null })).toBe(false);
   });
 });
