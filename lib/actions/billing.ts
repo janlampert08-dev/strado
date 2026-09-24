@@ -29,6 +29,7 @@ import {
   saisonpassAusSession,
   type ZahlungsVariante,
 } from "@/lib/stripeCheckout";
+import { checkoutErgebnis, zahlungsversuchDerSession, type CheckoutErgebnis } from "@/lib/checkoutErgebnis";
 import { datumCH } from "@/lib/format";
 import { passZeitraum, saisonpassVerlaengerbar } from "@/lib/premiumAngebot";
 import {
@@ -920,6 +921,85 @@ export async function confirmCheckoutSession(sessionId: string): Promise<boolean
   if (!subscription) return false;
 
   return schreibeAboZustand(admin, subscription, abgerufenAm);
+}
+
+// Was aus einer Session geworden ist, wenn confirmCheckoutSession sie (noch)
+// nicht bestätigen konnte — bezahlt, unterwegs oder sicher gescheitert.
+// Aufgerufen von components/AboBestaetigung.tsx nach einem erfolglosen
+// Bestätigungsversuch; die Zuordnung selbst steht in lib/checkoutErgebnis.ts.
+//
+// Nur lesend: keine Datenbank, kein revalidatePath. Deshalb auch kein
+// Risiko, wenn es öfter läuft als nötig — nur Stripe-Abrufe, und die sind
+// wie beim Bestätigen gebremst (eigener Zähler, damit diese Nachfrage einer
+// bezahlten Person nie das Kontingent der Bestätigung wegnimmt).
+//
+// Im Zweifel "ausstehend": ein falsches "fehlgeschlagen" schickt jemanden
+// ein zweites Mal zahlen.
+export async function pruefeCheckoutErgebnis(
+  sessionId: string,
+): Promise<{ ergebnis: CheckoutErgebnis; plan: AboPlan | null }> {
+  const unklar = { ergebnis: "ausstehend" as const, plan: null };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return unklar;
+
+  if (
+    isRateLimitedByKey(
+      `checkout:ergebnis:${user.id}`,
+      CHECKOUT_BESTAETIGEN_LIMIT,
+      CHECKOUT_BESTAETIGEN_FENSTER_MS,
+    )
+  ) {
+    return unklar;
+  }
+
+  // Wie in confirmCheckoutSession: stripe_customer_id ist für authenticated
+  // nicht lesbar (0027), user.id stammt aus der verifizierten Session.
+  const { data: profile } = await createAdminClient()
+    .from("profiles")
+    .select("stripe_customer_id")
+    .eq("id", user.id)
+    .maybeSingle();
+  const customerId = profile?.stripe_customer_id;
+  if (!customerId) return unklar;
+
+  try {
+    const session = await getStripe().checkout.sessions.retrieve(sessionId, {
+      expand: ["payment_intent.latest_charge"],
+    });
+
+    // sessionId kommt aus der Adresszeile. Eine fremde Session bekommt
+    // dieselbe Antwort wie eine unbekannte — nichts über sie verraten.
+    if (idVonCustomer(session.customer) !== customerId) return unklar;
+
+    // Im Modus "subscription" steht der Versuch nicht an der Session, sondern
+    // als PaymentIntent am Customer (siehe lib/checkoutErgebnis.ts). Nur bei
+    // offener Session nötig: abgeschlossen und abgelaufen entscheidet die
+    // Session allein. Eine Minute Vorlauf gegen Uhrenabweichung; die
+    // Zuordnung läuft ohnehin über order_reference, nicht über die Zeit.
+    let kandidaten: Stripe.PaymentIntent[] = [];
+    if (session.status === "open" && !session.payment_intent) {
+      const liste = await getStripe().paymentIntents.list({
+        customer: customerId,
+        created: { gte: session.created - 60 },
+        limit: 10,
+        expand: ["data.latest_charge"],
+      });
+      kandidaten = liste.data;
+    }
+
+    const plan = session.metadata?.plan;
+    return {
+      ergebnis: checkoutErgebnis(session, zahlungsversuchDerSession(session, kandidaten)),
+      plan: plan === "monat" || plan === "jahr" || plan === "saisonpass" ? plan : null,
+    };
+  } catch (err) {
+    console.error("Checkout-Ergebnis nicht lesbar", { userId: user.id }, err);
+    return unklar;
+  }
 }
 
 // Übergangsweg aus dem vorherigen Payment-Intent-Fluss.
