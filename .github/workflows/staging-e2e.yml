@@ -1,0 +1,74 @@
+name: Staging E2E
+
+# Prüft staging.strado.ch im Browser, nachdem Vercel den Branch `staging`
+# fertig deployt hat — auf sechs Geräten, vom 320-px-iPhone bis zum Desktop
+# (playwright.config.ts). Nur lesend: Staging hängt an der Produktions-DB.
+#
+# Getrennt von ci.yml, weil dieser Lauf eine laufende Umgebung und echte
+# Zugangsdaten braucht; ci.yml prüft den Code und braucht beides nicht.
+on:
+  # Vercel meldet jedes Deployment als GitHub-Deployment. Gefiltert wird
+  # unten im Job auf erfolgreich + Branch staging.
+  deployment_status:
+  # Von Hand, etwa nach einer Änderung in Supabase oder Stripe, die kein
+  # Deployment auslöst.
+  workflow_dispatch:
+  # Einmal am Morgen, auch ohne Deployment: fängt auf, was sich unter der
+  # App geändert hat (Daten, Migrationen, Dienste).
+  schedule:
+    - cron: "30 4 * * *"
+
+concurrency:
+  group: staging-e2e
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: Playwright auf staging.strado.ch
+    if: >-
+      github.event_name != 'deployment_status' ||
+      (github.event.deployment_status.state == 'success' &&
+       github.event.deployment.ref == 'staging')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      STAGING_E2E_URL: https://staging.strado.ch
+      # Ein Moderator-Konto (profiles.is_moderator), sonst sperrt proxy.ts.
+      # Fehlen die Secrets, bricht e2e/anmelden.setup.ts ab statt alles zu
+      # überspringen.
+      STAGING_E2E_EMAIL: ${{ secrets.STAGING_E2E_EMAIL }}
+      STAGING_E2E_PASSWORD: ${{ secrets.STAGING_E2E_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # Beim Deployment-Ereignis den Stand prüfen, der deployt wurde.
+          ref: ${{ github.event.deployment.sha || github.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Browser installieren
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: E2E-Tests
+        run: npm run test:e2e
+
+      - name: Bericht hochladen
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-bericht
+          # Der Bericht enthält Screenshots und Traces der fehlgeschlagenen
+          # Tests, nie die Sitzung (e2e/.auth/ liegt nicht darin).
+          path: e2e/.bericht/
+          retention-days: 14

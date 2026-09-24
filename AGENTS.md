@@ -686,6 +686,15 @@ is what should be corrected.
   lives in `lib/`. A change confined to `components/` or `app/` still has no
   automated coverage unless its logic was lifted into something importable —
   say so rather than implying the suite covered it.
+- **Since 2026-09-25 there are read-only E2E tests against staging**
+  (`e2e/`, Playwright, `npm run test:e2e`, workflow `staging-e2e.yml`). They
+  open the deployed `staging.strado.ch` on six devices from 320 px to
+  desktop, logged in as a moderator from the secrets
+  `STAGING_E2E_EMAIL`/`STAGING_E2E_PASSWORD`. They cover what renders, not
+  what writes, because staging talks to the production database — a test
+  that writes must clean up after itself (`e2e/README.md`). They run after a
+  deploy, not in `ci.yml`, so a PR is still not covered by them before it
+  merges. Files end in `.e2e.ts` because Vitest's glob picks up `*.spec.ts`.
 - **The brand is one outline, not a font.** `lib/marke.ts` holds the "strado"
   wordmark as SVG path data (Familjen Grotesk Bold, SIL OFL, converted to
   outlines). `components/Wortmarke.tsx`, `app/icon.tsx`,

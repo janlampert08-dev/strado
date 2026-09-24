@@ -61,3 +61,8 @@ Thumbs.db
 
 # amtliche Tempolimit-Daten, von scripts/enrich-amtliche-tempolimits.mjs gecacht
 /scripts/output/_amtlich/
+
+# Playwright (e2e/): Sitzung mit gültigen Cookies, Berichte, Traces
+/e2e/.auth/
+/e2e/.ergebnisse/
+/e2e/.bericht/
