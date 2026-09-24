@@ -22,11 +22,17 @@ export const metadata = { title: "Abo verwalten – Strado" };
 //
 // Für Abonnenten ist das die einzige Stelle mit "Abo verwalten": die
 // Profilseite zeigt die Karte nur noch ohne Abo (Kauf-Einstieg).
-export default async function AboVerwaltenPage() {
+export default async function AboVerwaltenPage({
+  searchParams,
+}: {
+  // ?portal=fehler setzt createPortalSession, wenn Stripe das Kundenportal
+  // nicht öffnen konnte.
+  searchParams: Promise<{ portal?: string }>;
+}) {
   const user = await getCurrentUser();
   if (!user) redirect("/anmelden");
 
-  const status = await getPremiumStatus();
+  const [status, { portal }] = await Promise.all([getPremiumStatus(), searchParams]);
 
   // Ohne Abo gibt es hier nichts zu verwalten. Statt einer Seite mit dem
   // Titel "Abo verwalten", die in Wahrheit für Premium wirbt, geht es
@@ -41,6 +47,12 @@ export default async function AboVerwaltenPage() {
       <Header back="/profil/einstellungen" />
       <Seitenrahmen className="flex-1 overflow-y-auto">
         <h1 className="text-display font-semibold">Abo verwalten</h1>
+        {portal === "fehler" && (
+          <p role="alert" className="text-sm text-danger">
+            Die Aboverwaltung liess sich gerade nicht öffnen. Versuch es in ein paar Minuten
+            nochmals — klappt es dann immer noch nicht, schreib uns an contact@strado.ch.
+          </p>
+        )}
         <PremiumCard status={status} />
       </Seitenrahmen>
     </div>
