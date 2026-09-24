@@ -49,6 +49,20 @@ export function worstCongestion(levels: CongestionLevel[]): CongestionLevel | nu
  * Seite sagte "Verkehr gerade: Stau". Mit dem Anteil kann die Überschrift
  * "stellenweise" sagen, statt einen Stau für die ganze Strecke zu melden.
  */
+/**
+ * Die stärkste Stufe, die mindestens `ab` der Punkte (mit Daten) erreichen —
+ * der Zustand der Strecke als Ganzes, im Unterschied zum schlimmsten
+ * einzelnen Punkt (worstCongestion). null ohne Daten.
+ */
+export function hauptStufe(
+  levels: (CongestionLevel | null)[],
+  ab: number,
+): CongestionLevel | null {
+  if (!levels.some((l) => l !== null)) return null;
+  const absteigend: CongestionLevel[] = ["severe", "heavy", "moderate", "low"];
+  return absteigend.find((stufe) => anteilMindestens(levels, stufe) >= ab) ?? "low";
+}
+
 export function anteilMindestens(
   levels: (CongestionLevel | null)[],
   stufe: CongestionLevel,

@@ -14,6 +14,7 @@ import {
   fetchCongestionLevels,
   verkehrSamplesFuerLaenge,
   anteilMindestens,
+  hauptStufe,
   worstCongestion,
   type CongestionLevel,
 } from "@/lib/traffic";
@@ -27,6 +28,7 @@ import {
   baueVerkehrseinschaetzung,
   jetztInZuerich,
   prognoseFuerStunde,
+  STELLENWEISE_UNTER,
 } from "@/lib/verkehrslage";
 import { mitAnzahl } from "@/lib/format";
 import type { PassKontext } from "@/lib/paesse";
@@ -117,6 +119,7 @@ export default function FahrCheck({
         hatGemeinschaft: startzeitenSatz(startzeiten) !== null,
         liveLaedt: liveMoeglich && levels === null,
         liveAnteil: live && levels ? anteilMindestens(levels, live) : undefined,
+        liveHaupt: levels ? hauptStufe(levels, STELLENWEISE_UNTER) : undefined,
       }),
     [live, prognoseFaktor, skala, punkte.length, startzeiten, liveMoeglich, levels],
   );

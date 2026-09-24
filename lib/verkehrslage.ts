@@ -112,6 +112,12 @@ export interface VerkehrsEingabe {
    * bisher für die ganze Strecke.
    */
   liveAnteil?: number;
+  /**
+   * Die Stufe, die ein grösserer Teil der Strecke zeigt (hauptStufe in
+   * lib/traffic.ts mit STELLENWEISE_UNTER). Steht vor dem "stellenweise …",
+   * wenn sie über "frei" liegt: "Stark, stellenweise Stau".
+   */
+  liveHaupt?: CongestionLevel | null;
   /** Vorhersagefaktor für die aktuelle Stunde (prognoseFuerStunde) — oder null. */
   prognoseFaktor: number | null;
   /** Die Skala der Wochenübersicht (skalaFuerPunkte) — misst die Stufe. */
@@ -145,8 +151,11 @@ export function baueVerkehrseinschaetzung(eingabe: VerkehrsEingabe): VerkehrsEin
       live !== "low" &&
       eingabe.liveAnteil !== undefined &&
       eingabe.liveAnteil < STELLENWEISE_UNTER;
+    const haupt = eingabe.liveHaupt;
     const liveText = stellenweise
-      ? `stellenweise ${LIVE_STELLENWEISE[live]}`
+      ? haupt && haupt !== "low" && haupt !== live
+        ? `${CONGESTION_META[haupt].label}, stellenweise ${LIVE_STELLENWEISE[live]}`
+        : `stellenweise ${LIVE_STELLENWEISE[live]}`
       : CONGESTION_META[live].label;
     if (prognoseFaktor !== null) {
       quellen.push("Vorhersage: Mapbox");

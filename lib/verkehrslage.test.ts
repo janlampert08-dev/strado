@@ -103,6 +103,20 @@ describe("baueVerkehrseinschaetzung", () => {
     expect(e.titel).toBe("Verkehr gerade: stellenweise Stau");
   });
 
+  it("nennt die Stufe der grösseren Strecke vor dem 'stellenweise'", () => {
+    const e = baueVerkehrseinschaetzung({
+      live: "severe",
+      liveAnteil: 0.1,
+      liveHaupt: "heavy",
+      prognoseFaktor: null,
+      skala: SKALA,
+      hatPrognose: false,
+      hatGemeinschaft: false,
+      liveLaedt: false,
+    });
+    expect(e.titel).toBe("Verkehr gerade: Stark, stellenweise Stau");
+  });
+
   it("bleibt bei der Aussage für die ganze Strecke, wenn viele Punkte betroffen sind", () => {
     const e = baueVerkehrseinschaetzung({
       live: "heavy",
