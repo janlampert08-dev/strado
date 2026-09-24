@@ -153,10 +153,10 @@ export default function PassSammlung({
             {sammlung.gefahren.map((pass) => (
               <li key={pass.id}>
                 <Link
-                  // Ein Pass ist ein Katalogeintrag, keine Strecke: /paesse
-                  // trägt je Pass einen Anker mit seinem Kürzel, dazu Status
-                  // und die Strecke, die darüber führt.
-                  href={`/paesse#${pass.id}`}
+                  // Ein Pass ist ein Katalogeintrag, keine Strecke: seine
+                  // Seite (/paesse/<kürzel>) trägt Status, Saison und die
+                  // Strecke, die darüber führt.
+                  href={`/paesse/${pass.id}`}
                   // -mx-2/px-2: die Fläche für Hover und Fokus darf ein
                   // Stück über die Textkante hinausgehen, ohne die Flucht
                   // der Liste zum Seitenrand zu verlieren.
@@ -210,7 +210,7 @@ export default function PassSammlung({
             {sammlung.offen.map((pass) => (
               <li key={pass.id}>
                 <Link
-                  href={`/paesse#${pass.id}`}
+                  href={`/paesse/${pass.id}`}
                   className="-mx-2 flex min-h-11 items-center justify-between gap-3 rounded-md px-2 py-2 text-muted hover:bg-surface druckbar hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
                 >
                   <span className="flex min-w-0 items-baseline gap-2">

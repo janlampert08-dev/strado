@@ -42,6 +42,15 @@ and the "Supabase Rules" section in particular.
   for why: a secret embedded in migration SQL is committed to Git history
   in plaintext forever, and `grant execute ... to anon` makes it callable
   directly from the browser with the public key).
+- **Moderator checks in policies go through `(select public.ist_moderator())`.**
+  Since `0134_rechte_nachziehen` neither `anon` nor `authenticated` may read
+  `profiles.is_moderator` (it made every moderator account enumerable with
+  the public key). A policy that still writes
+  `exists (select 1 from profiles where id = auth.uid() and is_moderator)`
+  fails with "permission denied for table profiles" for every caller — and
+  on a `public`-role policy on `routes` that means the whole map for
+  signed-out visitors. The app reads its own flag through the same
+  function (`lib/moderatorStatus.ts`).
 - PostGIS geometry columns: keep SRID consistent with existing route
   geometry columns, and check spatial indexes exist for columns queried by
   proximity/bounding box.

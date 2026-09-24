@@ -84,9 +84,15 @@ address it.
   supplied?
 
 **Location privacy**
-- Published tracks are cropped by `lib/publicTrack.ts` / `lib/track.ts`
-  (`cropTrackEnds`, `privacyRadiusM`) so a ride doesn't reveal where the
-  rider lives. Does every newly exposed track column, view, or API field
+- Published tracks are cropped by `lib/publicTrack.ts` / `lib/privatzone.ts`
+  (`oeffentlicheKoordinaten`, `privacyRadiusM`) so a ride doesn't reveal where
+  the rider lives. The crop circle is deliberately NOT centred on the raw
+  start: it is shifted by a secret, per-user-and-place HMAC offset (0–r/2) and
+  enlarged to 1.5–2 r, so the first visible points of several rides can't be
+  trilaterated back to the door. Never crop a public track with plain
+  `cropTrackEnds`, and never derive anything public (e.g. `start_ort`) from the
+  raw first point. `privatzone_radius_m` is not readable by other users (0132);
+  the owner reads it via `meine_privatzone()`. Does every newly exposed track column, view, or API field
   come from the cropped public track and not the raw `track`? The raw
   column is deliberately absent from every RLS-bypassing view — keep it
   that way.

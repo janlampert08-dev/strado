@@ -193,37 +193,69 @@ export function publicationBlockReason(
   return null;
 }
 
-// Entfernt Anfang und Ende des Tracks im Umkreis von radiusM um den ersten
-// bzw. letzten Punkt — die Privatzone. Bewusst nur an den Enden entlang der
-// Fahrtrichtung und nicht "jeder Punkt in der Nähe des Startpunkts": eine
-// Runde, die unterwegs am eigenen Wohnort vorbeiführt, soll dort kein Loch
-// bekommen, das erst recht verrät, worum es geht.
+// Ein Kreis, innerhalb dessen ein Track-Ende verschwindet: Mittelpunkt als
+// [lng, lat] und Radius in Metern.
+export interface KappKreis {
+  zentrum: [number, number];
+  radiusM: number;
+}
+
+// Entfernt Anfang und Ende des Tracks, solange sie innerhalb des jeweiligen
+// Kreises liegen. Bewusst nur an den Enden entlang der Fahrtrichtung und
+// nicht "jeder Punkt in der Nähe des Startpunkts": eine Runde, die unterwegs
+// am eigenen Wohnort vorbeiführt, soll dort kein Loch bekommen, das erst
+// recht verrät, worum es geht.
+//
+// Welche Kreise das sind, entscheidet der Aufrufer. Öffentlich geteilte
+// Tracks laufen über lib/privatzone.ts, das die Kreise gegenüber Start und
+// Ziel geheim verschiebt und vergrössert — mit Kreisen genau um den ersten
+// und letzten Punkt (cropTrackEnds unten) lägen die ersten sichtbaren Punkte
+// mehrerer Fahrten alle auf demselben Kreis um die Haustür, und drei davon
+// genügen, um dessen Mitte zu bestimmen.
 //
 // Bleiben danach weniger als zwei Punkte übrig (kurze Fahrt, grosser
 // Radius), gibt es für diese Fahrt keinen öffentlichen Track — die Zahlen
 // bleiben, die Karte entfällt. Das ist die sichere Richtung.
-export function cropTrackEnds(
+export function cropTrackEndsKreise(
   coordinates: [number, number][],
-  radiusM: number,
+  startKreis: KappKreis,
+  zielKreis: KappKreis,
 ): [number, number][] {
-  if (radiusM <= 0 || coordinates.length < 2) return [...coordinates];
+  if (coordinates.length < 2) return [...coordinates];
 
-  const radiusKm = radiusM / 1000;
-  const first = coordinates[0];
-  const last = coordinates[coordinates.length - 1];
+  const startKm = startKreis.radiusM / 1000;
+  const zielKm = zielKreis.radiusM / 1000;
 
   let start = 0;
-  while (start < coordinates.length && haversineKm(coordinates[start], first) <= radiusKm) {
+  while (
+    start < coordinates.length &&
+    haversineKm(coordinates[start], startKreis.zentrum) <= startKm
+  ) {
     start++;
   }
 
   let end = coordinates.length - 1;
-  while (end >= 0 && haversineKm(coordinates[end], last) <= radiusKm) {
+  while (end >= 0 && haversineKm(coordinates[end], zielKreis.zentrum) <= zielKm) {
     end--;
   }
 
   if (end - start + 1 < 2) return [];
   return coordinates.slice(start, end + 1);
+}
+
+// Die unverschleierte Kappung: Kreise mit radiusM genau um den ersten bzw.
+// letzten Punkt. NICHT für öffentliche Tracks gedacht (siehe oben und
+// lib/privatzone.ts) — sie bleibt als einfacher Baustein und für Tests.
+export function cropTrackEnds(
+  coordinates: [number, number][],
+  radiusM: number,
+): [number, number][] {
+  if (radiusM <= 0 || coordinates.length < 2) return [...coordinates];
+  return cropTrackEndsKreise(
+    coordinates,
+    { zentrum: coordinates[0], radiusM },
+    { zentrum: coordinates[coordinates.length - 1], radiusM },
+  );
 }
 
 // Sechs Nachkommastellen entsprechen gut 0.1 m — jenseits jeder GPS-

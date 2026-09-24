@@ -332,7 +332,31 @@ export default async function StreckeDetailPage({
           laufen — siehe AufzeichnungsKontext.tsx. */}
       <AufzeichnungProvider>
       <VolleGeometrieProvider streckenId={route.id} url={linienUrl}>
-      <RouteDetailLayout route={leichteRoute}>
+      <RouteDetailLayout
+        route={leichteRoute}
+        // Die Hauptaktion steht als feste Fussleiste des Sheets statt im
+        // Reiter Fahren — im Peek lag sie sonst unter der Kante (siehe
+        // RouteDetailLayout.tsx). Das Sprungziel #fahren ("Zum Start" in der
+        // leeren Bestenliste) sitzt jetzt auf dieser Leiste.
+        aktion={
+          <GefahrenSection
+            route={leichteRoute}
+            kontextStrecken={kontextStrecken}
+            userId={user?.id ?? null}
+            vehicles={vehicles}
+            personalBestSeconds={personalBestSeconds}
+            guestContinuationToken={fortsetzen ?? null}
+            maxPhotos={maxFotosProFahrt(premiumStatus.aktiv)}
+            // Aus, bis die neuen AGB gelten (lib/liveSplit.ts). Server-Variable,
+            // damit Ausschalten ohne neuen Build geht.
+            liveSplit={
+              liveSplitEingeschaltet(process.env.STRADO_LIVE_SPLIT)
+                ? { streckenBestzeitS: leaderboard[0]?.dauerSekunden ?? null }
+                : null
+            }
+          />
+        }
+      >
         <div>
           <p className="text-sm text-muted">
             {route.region}
@@ -507,36 +531,9 @@ export default async function StreckeDetailPage({
             der Bestenliste begann — Bestzeit und Sterne sind zwei Fragen. */}
         <AbschnittTabs tabs={[{ titel: "Fahren" }, { titel: "Details" }, { titel: "Bestzeiten", anzahl: leaderboard.length }]}>
           <div className="flex flex-col gap-5">
-        {/* Sprungziel für "Zum Start" in der leeren Bestenliste. scroll-mt:
-            sonst endet der Sprung mit dem Knopf an der oberen Kante. */}
-        <div id="fahren" className="scroll-mt-6">
-        {/* Die Überschriften dieses Reiters sind nur für Vorlesesoftware
-            und Suchmaschinen da (sr-only): sichtbar trägt jede Fläche ihren
-            Inhalt schon selbst, und eine Marke über jedem Block machte aus
-            dem Reiter eine Formularseite. Ohne sie bestand die Gliederung
-            der Seite aus dem Titel und den zwei H2 der Melde- und
-            Löschdialoge — Überschriften zu etwas, das kaum jemand sieht. */}
-        <h2 className="sr-only">Strecke fahren</h2>
-        <GefahrenSection
-          route={leichteRoute}
-          kontextStrecken={kontextStrecken}
-          userId={user?.id ?? null}
-          vehicles={vehicles}
-          personalBestSeconds={personalBestSeconds}
-          guestContinuationToken={fortsetzen ?? null}
-          maxPhotos={maxFotosProFahrt(premiumStatus.aktiv)}
-          // Aus, bis die neuen AGB gelten (lib/liveSplit.ts). Server-Variable,
-          // damit Ausschalten ohne neuen Build geht.
-          liveSplit={
-            liveSplitEingeschaltet(process.env.STRADO_LIVE_SPLIT)
-              ? { streckenBestzeitS: leaderboard[0]?.dauerSekunden ?? null }
-              : null
-          }
-        />
-        </div>
-
-        {/* Das Höhenprofil als Hauptbild der Strecke, direkt unter dem
-            Start: die Höhe ist das, was einen Pass von einer Landstrasse
+        {/* Das Höhenprofil als Hauptbild der Strecke, zuoberst im Reiter
+            (der Start steht seit 2026-09-25 in der Fussleiste des Sheets):
+            die Höhe ist das, was einen Pass von einer Landstrasse
             unterscheidet, und stand bisher im zweiten Reiter. */}
         {route.hoehenprofil && route.hoehenprofil.length > 1 && (
           <section aria-labelledby="hoehenprofil">

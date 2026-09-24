@@ -26,9 +26,9 @@ export interface VisibilitySettingsProps extends VisibilityFlags {
 
 const PRIVACY_RADIUS_LABELS: Record<number, string> = {
   0: "Aus — vollständiger Track sichtbar",
-  100: "100 m um Start und Ziel",
-  200: "200 m um Start und Ziel",
-  500: "500 m um Start und Ziel",
+  100: "Mindestens 100 m um Start und Ziel",
+  200: "Mindestens 200 m um Start und Ziel",
+  500: "Mindestens 500 m um Start und Ziel",
 };
 
 interface Field {
@@ -137,8 +137,11 @@ export default function VisibilitySettings({
           ))}
         </Select>
         <p className="text-xs text-muted">
-          Der Anfang und das Ende jeder geteilten Fahrt werden in diesem Umkreis von der
-          öffentlichen Karte entfernt — sonst beginnt und endet die Spur vor deiner Haustür. Eine
+          Anfang und Ende jeder geteilten Fahrt fehlen auf der öffentlichen Karte, mindestens in
+          diesem Umkreis — sonst beginnt und endet die Spur vor deiner Haustür. Der ausgeblendete
+          Bereich ist etwas grösser und liegt nicht genau um deinen Startpunkt, damit er sich auch
+          aus mehreren Fahrten nicht zurückrechnen lässt. Je grösser der Umkreis, desto ungenauer
+          lässt sich dein Startort eingrenzen. Auch der Ortsname einer Fahrt richtet sich nach dem ersten sichtbaren Punkt. Eine
           Änderung gilt auch für deine bereits geteilten Fahrten. Deine eigene Ansicht bleibt
           vollständig.
         </p>

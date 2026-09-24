@@ -99,9 +99,9 @@ export default function RouteLeaderboardPreview({
           {klasse === null
             ? "Noch keine Bestzeit auf dieser Strecke. Zeichne sie auf und teil die Fahrt, dann kannst du der Erste sein."
             : `Noch keine Zeit ${filterImSatz(klasse)} auf dieser Strecke. Du kannst der Erste sein.`}{" "}
-          {/* Der Startknopf steht weiter oben auf derselben Seite (#fahren in
-              app/strecken/[id]/page.tsx); auf dem Telefon ist er bis hierher
-              meist aus dem Bild gescrollt. */}
+          {/* Der Startknopf steht in der festen Fussleiste derselben Seite
+              (#fahren in components/RouteDetailLayout.tsx) und ist damit
+              immer im Blick; der Link fokussiert ihn für die Tastatur. */}
           <a href="#fahren" className="text-accent-ink underline-offset-4 hover:underline">
             Zum Start
           </a>
