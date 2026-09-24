@@ -11,8 +11,9 @@ import { isValidUuid } from "@/lib/validation";
 const KUDOS_COOLDOWN_MS = 500;
 
 // Reines Toggle wie toggleFavorite (lib/actions/favorites.ts). RLS
-// (0029_kudos.sql) erzwingt unabhängig davon, dass nur auf öffentliche
-// Fahrten (ist_oeffentlich = true) Kudos gegeben werden können — ein
+// (0029_kudos.sql, seit 0140 completion_ist_sichtbar) erzwingt unabhängig
+// davon, dass nur auf Fahrten, die man sehen darf — öffentliche, oder
+// Follower-Fahrten von jemandem, dem man folgt —, Kudos gegeben werden — ein
 // insert auf eine private Fahrt schlägt serverseitig fehl, auch falls hier
 // je ein Aufruf mit falscher completionId ankäme.
 export async function toggleKudos(completionId: string): Promise<{ ok: boolean; grund?: "auth" | "fehler" }> {

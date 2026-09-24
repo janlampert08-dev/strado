@@ -388,6 +388,9 @@ export interface RouteCompletion {
   // Fazit-Screen bzw. nachträglich im Profil, ob diese Fahrt auf
   // Bestenlisten/öffentlichem Profil erscheint. Standardmässig false.
   ist_oeffentlich: boolean;
+  // Nur für Follower sichtbar (0140). Nie zusammen mit ist_oeffentlich —
+  // lib/sichtbarkeit.ts übersetzt die beiden Spalten in eine Stufe.
+  fuer_follower: boolean;
   // Deckungsgrad (0-100) ggü. der offiziellen Streckengeometrie, siehe
   // 0019_streckenabdeckung.sql. Unterhalb von COVERAGE_THRESHOLD_PERCENT
   // (lib/routeCoverage.ts) kann ist_oeffentlich nicht true sein.
@@ -559,6 +562,10 @@ export interface PublicFahrt {
   // der Migration ohne die Spalte antwortet — dann ist der Wert undefined
   // und lib/completions.ts faellt auf "trail" zurueck.
   dauer_quelle?: DauerQuelle;
+  // Ab 0140: true, wenn die Zeile nur sichtbar ist, weil der Betrachter dem
+  // Fahrer folgt (oder der Fahrer selbst ist). Optional aus demselben Grund
+  // wie dauer_quelle.
+  fuer_follower?: boolean;
 }
 
 // Zeilenform von public.public_fahrt_tracks (0045) — der an den Enden
