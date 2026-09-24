@@ -6,6 +6,7 @@ import { FEHLER_BESTAETIGUNG, FEHLER_LINK, FEHLER_ZU_VIELE } from "@/lib/authFeh
 import { OTP_RECOVERY, istErlaubterOtpTyp } from "@/lib/otpTyp";
 import {
   PASSWORT_AENDERN_PFAD,
+  codeAustauschIstWiederherstellung,
   merkeWiederherstellung,
 } from "@/lib/passwortWiederherstellung";
 
@@ -137,7 +138,19 @@ export async function GET(request: Request) {
       // data.user stammt aus dem gerade abgeschlossenen Tokenaustausch mit
       // GoTrue, ist also serverseitig geprüft und nicht aus dem Request
       // übernommen.
-      if (next === PASSWORT_AENDERN_PFAD && data.user) {
+      //
+      // Der Pfad allein reicht dafür NICHT mehr: auch eine Google-Anmeldung
+      // oder eine Registrierungsbestätigung kann ihn als next mitbringen.
+      // Ob wirklich eine Zurücksetzen-E-Mail dahinter steht, entscheidet
+      // codeAustauschIstWiederherstellung() aus GoTrues eigener Antwort.
+      if (
+        next === PASSWORT_AENDERN_PFAD &&
+        data.user &&
+        codeAustauschIstWiederherstellung({
+          accessToken: data.session?.access_token,
+          recoverySentAt: data.user.recovery_sent_at,
+        })
+      ) {
         await merkeWiederherstellung(data.user.id);
       }
       return NextResponse.redirect(`${origin}${next}`);

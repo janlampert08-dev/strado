@@ -34,8 +34,9 @@ describe("merkeWiederherstellung", () => {
     await merkeWiederherstellung(NUTZER);
     const [name, wert] = store.set.mock.calls[0];
     expect(name).toBe(WIEDERHERSTELLUNGS_COOKIE);
-    // "id.signatur" — die blosse ID wäre von Hand pflanzbar.
-    expect(wert).toMatch(new RegExp(`^${NUTZER}\\.[0-9a-f]{64}$`));
+    // "id.ablauf.signatur" — die blosse ID wäre von Hand pflanzbar, und
+    // ohne mitsignierten Ablauf gälte ein kopierter Wert für immer.
+    expect(wert).toMatch(new RegExp(`^${NUTZER}\\.\\d+\\.[0-9a-f]{64}$`));
   });
 
   // Das Cookie berechtigt dazu, das alte Passwort wegzulassen. Wäre es aus
