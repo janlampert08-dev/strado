@@ -523,19 +523,22 @@ export const getPassSeite = cache(async function getPassSeite(id: string): Promi
   // privaten und noch nicht freigegebenen Strecken (security_invoker). Die
   // Seite ist öffentlich und verlinkt nur, was alle sehen.
   const routeIds = ((verknuepfungen.data as { route_id: string }[] | null) ?? []).map((v) => v.route_id);
-  const { data: streckenRoh } = routeIds.length
+  const { data: streckenRoh, error: streckenFehler } = routeIds.length
     ? await supabase
         .from("routes")
-        .select("id, name, region, start_ort, ziel_ort, ist_rundfahrt, laenge_km, kehren, hoehe_m, max_steigung_prozent")
+        .select("id, name, region, start_ort, ziel_ort, laenge_km, kehren, hoehe_m, max_steigung_prozent")
         .in("id", routeIds)
         .eq("status_ok", true)
         .eq("ist_privat", false)
         .order("name")
-    : { data: [] };
+    : { data: [], error: null };
+  // Ohne diese Prüfung stünde bei einem Ausfall "Noch keine Strecke" da —
+  // eine falsche Einladung, die wie eine Tatsache aussieht.
+  throwOnQueryError(streckenFehler, "Die Strecken über diesen Pass");
 
   type StreckeRoh = {
     id: string; name: string; region: string; start_ort: string; ziel_ort: string;
-    ist_rundfahrt: boolean; laenge_km: number; kehren: number | null; hoehe_m: number | null;
+    laenge_km: number; kehren: number | null; hoehe_m: number | null;
     max_steigung_prozent: number | null;
   };
   type EreignisRoh = { zustand: PassEreignis["zustand"]; vorher: PassEreignis["vorher"]; erfasst_am: string };
@@ -569,7 +572,9 @@ export const getPassSeite = cache(async function getPassSeite(id: string): Promi
       region: s.region,
       startOrt: s.start_ort,
       zielOrt: s.ziel_ort,
-      istRundfahrt: s.ist_rundfahrt,
+      // ist_rundfahrt gibt es nur in der View routes_geojson; dieselbe
+      // Regel wie im Suchtitel der Streckenseite: Start gleich Ziel.
+      istRundfahrt: s.start_ort.trim().toLowerCase() === s.ziel_ort.trim().toLowerCase(),
       laengeKm: s.laenge_km,
       kehren: s.kehren,
       hoeheM: s.hoehe_m,
