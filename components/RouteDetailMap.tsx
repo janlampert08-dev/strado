@@ -116,7 +116,10 @@ export default function RouteDetailMap({
   }, [verkehr]);
 
   return (
-    <div className="relative h-full w-full">
+    // data-karten-rahmen / data-karten-ueberlagerung: RouteMap misst daran,
+    // wie viel der Karte oben verdeckt ist, und passt die Strecke darunter
+    // ein (verdeckteRaender in RouteMap.tsx).
+    <div className="relative h-full w-full" data-karten-rahmen="">
       {/* Kein eigenes role="img": die Beschreibung trägt bereits die
           übergeordnete Seite, und darin sitzt der Navigationsschalter. */}
       <div className="h-full w-full">
@@ -129,7 +132,10 @@ export default function RouteDetailMap({
           bottomInsetPx={bottomInsetPx}
         />
       </div>
-      <div className="absolute top-4 left-4 flex flex-col items-start gap-2">
+      <div
+        className="absolute top-4 left-4 flex flex-col items-start gap-2"
+        data-karten-ueberlagerung=""
+      >
         {/* EINE EBENE ZUR ZEIT, UND SICHTBAR SO. Vorher waren Tempolimits und
             Verkehr zwei unabhängig aussehende Umschalter, die einander still
             ausgeschaltet haben: wer den zweiten einschaltete, sah den ersten
