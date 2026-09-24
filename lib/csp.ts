@@ -54,6 +54,29 @@ const STRIPE_CONNECT = [
 ];
 const STRIPE_IMG = ["https://*.stripe.com", "https://*.link.com"];
 
+// Die Supabase-Origin, gegen die der Browser sprechen darf.
+//
+// Bisher "https://*.supabase.co": damit durfte eingeschleustes Skript Daten
+// an JEDES Supabase-Projekt schicken — eines, das ein Angreifer in zwei
+// Minuten selbst anlegt. Ein Wildcard auf einen Mehrmandanten-Host ist als
+// Abflussweg so gut wie keiner. Strado hat genau ein Projekt; dessen Host
+// steht in NEXT_PUBLIC_SUPABASE_URL.
+//
+// Fällt auf den Wildcard zurück, wenn die Variable fehlt oder unlesbar ist
+// (Tests, ein Build ohne .env) — lieber eine weitere Policy als eine, die
+// die App lautlos von ihrer Datenbank abschneidet.
+export function supabaseOrigin(url: string | undefined): string {
+  if (url) {
+    try {
+      const { protocol, host } = new URL(url);
+      if (protocol === "https:" && host.endsWith(".supabase.co")) return `https://${host}`;
+    } catch {
+      // unlesbar → Rückfall unten
+    }
+  }
+  return "https://*.supabase.co";
+}
+
 /**
  * Baut die Policy als Header-Wert.
  *
@@ -63,7 +86,10 @@ const STRIPE_IMG = ["https://*.stripe.com", "https://*.link.com"];
  *   brechen — was den einzigen Ort entwertet, an dem ein Verstoss vor dem
  *   Deploy auffällt.
  */
-export function contentSecurityPolicy(istEntwicklung: boolean): string {
+export function contentSecurityPolicy(
+  istEntwicklung: boolean,
+  supabase: string = supabaseOrigin(undefined),
+): string {
   const dev = (...quellen: string[]) => (istEntwicklung ? quellen : []);
 
   // Herleitung der Fremd-Origins je Direktive:
@@ -98,11 +124,11 @@ export function contentSecurityPolicy(istEntwicklung: boolean): string {
     ["child-src", "'self'", "blob:"],
     ["style-src", "'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
     ["font-src", "'self'", "data:", "https://fonts.gstatic.com"],
-    ["img-src", "'self'", "data:", "blob:", "https://*.supabase.co", "https://*.mapbox.com", ...STRIPE_IMG],
+    ["img-src", "'self'", "data:", "blob:", supabase, "https://*.mapbox.com", ...STRIPE_IMG],
     [
       "connect-src",
       "'self'",
-      "https://*.supabase.co",
+      supabase,
       "https://*.mapbox.com",
       "https://api.open-meteo.com",
       // Das Payment Element bekommt seine Schrift als CSS-Datei mitgegeben

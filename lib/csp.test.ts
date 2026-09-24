@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contentSecurityPolicy } from "./csp";
+import { contentSecurityPolicy, supabaseOrigin } from "./csp";
 
 // Zerlegt den Header-Wert in { direktive: [quelle, …] }.
 function direktiven(csp: string): Record<string, string[]> {
@@ -80,6 +80,25 @@ describe("contentSecurityPolicy", () => {
       "https://link.com",
       "https://*.link.com",
     ]);
+  });
+
+  describe("Supabase-Origin", () => {
+    it("heftet connect-src und img-src an das eigene Projekt", () => {
+      const eigen = supabaseOrigin("https://stecakpnuijbvjsniqto.supabase.co");
+      expect(eigen).toBe("https://stecakpnuijbvjsniqto.supabase.co");
+      const d = direktiven(contentSecurityPolicy(false, eigen));
+      expect(d["connect-src"]).toContain(eigen);
+      expect(d["img-src"]).toContain(eigen);
+      // Kein Abflussweg mehr zu beliebigen anderen Supabase-Projekten.
+      expect(Object.values(d).flat()).not.toContain("https://*.supabase.co");
+    });
+
+    it("fällt ohne oder mit fremder URL auf den Wildcard zurück, statt die DB abzuschneiden", () => {
+      expect(supabaseOrigin(undefined)).toBe("https://*.supabase.co");
+      expect(supabaseOrigin("kein url")).toBe("https://*.supabase.co");
+      expect(supabaseOrigin("http://127.0.0.1:54321")).toBe("https://*.supabase.co");
+      expect(supabaseOrigin("https://supabase.co.angreifer.example")).toBe("https://*.supabase.co");
+    });
   });
 
   describe("Absicherung", () => {
