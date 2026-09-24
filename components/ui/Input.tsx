@@ -23,13 +23,17 @@ import { cn } from "@/lib/utils/cn";
 // des Passworts und die Streckensuche — also genau den Weg, den ein neuer
 // Besucher zuerst geht.
 //
-// Ab md bleibt es bei 14px: dort gibt es kein automatisches Zoomen, und das
-// Formular soll aussehen wie bisher.
+// 14px nur ab md UND mit Maus/Trackpad (pointer: fine). Die Breite allein
+// reichte nicht: ein iPad ist 768 px und mehr breit, fällt also unter md,
+// und Safari zoomt dort genauso in jedes Feld unter 16px wie auf dem
+// Telefon. Ein iPad mit Trackpad meldet pointer: fine und bekommt die
+// kompakte Schrift; ohne Trackpad bleibt es bei 16px. Gefunden vom
+// E2E-Test "Eingabefelder haben mindestens 16 px Schrift" (e2e/).
 export function fieldClassName(className?: string, invalid?: boolean): string {
   return cn(
     // min-h-11: mit py-2 und text-base waren Felder 42 px hoch, knapp unter
     // der 44-px-Tippfläche, die der Rest der App einhält.
-    "min-h-11 w-full rounded-lg border bg-transparent px-3 py-2 text-base outline-none transition-shadow duration-fast md:text-sm",
+    "min-h-11 w-full rounded-lg border bg-transparent px-3 py-2 text-base outline-none transition-shadow duration-fast md:pointer-fine:text-sm",
     invalid
       ? "border-danger focus:border-danger focus:ring-2 focus:ring-danger/15"
       // Akzentrand plus 1 px Ring = eine 2 px starke Akzentkante (5.9:1).
