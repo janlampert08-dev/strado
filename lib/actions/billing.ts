@@ -19,6 +19,7 @@ import {
 } from "@/lib/abobremse";
 import { KULANZ_TAGE, leseAboZustand, saisonpassPreisId } from "@/lib/stripeWebhook";
 import {
+  abzulaufendeSessions,
   aktivesAboAusSession,
   checkoutIdempotencyKey,
   istEigeneBezahlteSession,
@@ -544,16 +545,22 @@ async function checkoutSessionMitCustomer(
     modus,
     variante: planung.variante,
   });
-  if (offen) {
-    const offenerPreis = await vergebenerPreis(offen, plan, planung);
-    if (offenerPreis) {
-      return {
-        ok: true,
-        clientSecret: offen.client_secret!,
-        sessionId: offen.id,
-        preis: offenerPreis,
-      };
-    }
+  const offenerPreis = offen ? await vergebenerPreis(offen, plan, planung) : null;
+  const weiter = offen && offenerPreis ? offen : null;
+
+  // Alle ANDEREN offenen Sessions dieses Customers beenden, bevor die eine
+  // zurückgeht — sonst liessen sich zwei Pläne parallel bezahlen (Pass im
+  // einen Tab, Jahresabo im anderen). Siehe abzulaufendeSessions.
+  const sperre = await andereSessionsBeenden(offeneSessions.data, weiter?.id ?? null);
+  if (sperre) return { ok: false, error: sperre };
+
+  if (weiter && offenerPreis) {
+    return {
+      ok: true,
+      clientSecret: weiter.client_secret!,
+      sessionId: weiter.id,
+      preis: offenerPreis,
+    };
   }
 
   // Die Metadaten sind die einzige Stelle, an der später steht, was diese
@@ -621,20 +628,35 @@ async function checkoutSessionMitCustomer(
           payment_method_collection: "always" as const,
         };
 
-  const session = await getStripe().checkout.sessions.create(parameter, {
-    // Fängt den Doppelklick ab, bei dem zwei Anfragen die Prüfung oben
-    // gleichzeitig passieren: beide bekommen dann dieselbe Session zurück.
-    // Der Schlüssel trägt Customer, Preis-ID und Zahlungsart mit, damit ein
-    // geänderter Aufruf auch einen geänderten Schlüssel bekommt — siehe
-    // checkoutIdempotencyKey.
-    idempotencyKey: checkoutIdempotencyKey({
+  const schluessel = (zusatz: string | undefined) =>
+    checkoutIdempotencyKey({
       userId,
       plan: `${plan}:${planung.variante}${planung.trialEnde ? `:${planung.trialEnde}` : ""}`,
       customerId,
       preisId,
-      zusatz: schluesselZusatz,
-    }),
+      zusatz,
+    });
+
+  // Fängt den Doppelklick ab, bei dem zwei Anfragen die Prüfung oben
+  // gleichzeitig passieren: beide bekommen dann dieselbe Session zurück.
+  // Der Schlüssel trägt Customer, Preis-ID und Zahlungsart mit, damit ein
+  // geänderter Aufruf auch einen geänderten Schlüssel bekommt — siehe
+  // checkoutIdempotencyKey.
+  let session = await getStripe().checkout.sessions.create(parameter, {
+    idempotencyKey: schluessel(schluesselZusatz),
   });
+
+  // Seit andereSessionsBeenden kann die Antwort auf denselben Schlüssel eine
+  // inzwischen beendete Session sein: Jahr gewählt, dann Pass (die
+  // Jahres-Session läuft ab), dann in derselben Stunde wieder Jahr — Stripe
+  // gibt zum alten Schlüssel die alte, jetzt abgelaufene Session zurück, und
+  // das Formular stünde vor einer toten Kasse. Dann einmal mit frischem
+  // Schlüssel.
+  if (session.status !== "open") {
+    session = await getStripe().checkout.sessions.create(parameter, {
+      idempotencyKey: schluessel(randomUUID()),
+    });
+  }
 
   const clientSecret = session.client_secret;
   if (!clientSecret) {
@@ -647,6 +669,41 @@ async function checkoutSessionMitCustomer(
     return { ok: false, error: "Dieser Plan ist zurzeit nicht verfügbar." };
   }
   return { ok: true, clientSecret, sessionId: session.id, preis };
+}
+
+// Lässt die übrigen offenen Sessions ablaufen (abzulaufendeSessions in
+// lib/stripeCheckout.ts). null heisst: erledigt, weiter.
+//
+// Stripe verweigert das Ablaufen einer Session, deren Zahlung gerade läuft
+// (TWINT bestätigt noch, Bankverfahren in Bearbeitung). Genau dann darf hier
+// keine zweite Kasse aufgehen — sonst wäre die Doppelzahlung nur verschoben.
+// Nach einem Fehler wird deshalb nachgesehen: ist die Session inzwischen
+// ohnehin abgelaufen, ist nichts passiert; steht sie noch offen oder ist sie
+// eben bezahlt worden, bekommt die Person eine Meldung statt einer Kasse.
+async function andereSessionsBeenden(
+  offene: Stripe.Checkout.Session[],
+  behaltenId: string | null,
+): Promise<string | null> {
+  for (const session of abzulaufendeSessions(offene, behaltenId)) {
+    try {
+      await getStripe().checkout.sessions.expire(session.id);
+    } catch (err) {
+      const jetzt = await getStripe()
+        .checkout.sessions.retrieve(session.id)
+        .catch(() => null);
+      if (jetzt?.status === "expired") continue;
+      console.warn(
+        "Offene Checkout-Session liess sich nicht beenden — Kauf vorerst gesperrt",
+        { sessionId: session.id, status: jetzt?.status ?? "unbekannt" },
+        err,
+      );
+      return (
+        "Eine andere Zahlung läuft gerade. Warte einen Moment, bis sie abgeschlossen ist, " +
+        "und lade die Seite dann neu."
+      );
+    }
+  }
+  return null;
 }
 
 // Legt eine Checkout-Session an (siehe checkoutSessionMitCustomer). Aufrufer

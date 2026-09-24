@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import Stripe from "stripe";
 import {
+  abzulaufendeSessions,
   aktivesAboAusSession,
   checkoutIdempotencyKey,
   istEigeneBezahlteSession,
@@ -397,5 +398,33 @@ describe("aktivesAboAusSession", () => {
 
   it("liefert null ohne Abo", () => {
     expect(aktivesAboAusSession(session({ subscription: null }))).toBeNull();
+  });
+});
+
+describe("abzulaufendeSessions", () => {
+  const pass = session({ id: "cs_pass", mode: "payment", status: "open" });
+  const jahr = session({ id: "cs_jahr", status: "open" });
+  const monat = session({ id: "cs_monat", status: "open" });
+
+  it("beendet alle anderen offenen Sessions, nicht die weiterverwendete", () => {
+    // Pass im einen Tab, Jahresabo im anderen: wer das Jahr öffnet, lässt
+    // den Pass ablaufen — und umgekehrt.
+    expect(abzulaufendeSessions([pass, jahr, monat], "cs_jahr").map((s) => s.id)).toEqual([
+      "cs_pass",
+      "cs_monat",
+    ]);
+  });
+
+  it("beendet alle, wenn eine neue Session angelegt wird", () => {
+    expect(abzulaufendeSessions([pass, jahr], null).map((s) => s.id)).toEqual([
+      "cs_pass",
+      "cs_jahr",
+    ]);
+  });
+
+  it("lässt Sessions ausserhalb dieser Kasse und nicht mehr offene in Ruhe", () => {
+    const gehostet = session({ id: "cs_hosted", status: "open", ui_mode: "hosted_page" } as never);
+    const fertig = session({ id: "cs_fertig", status: "complete" });
+    expect(abzulaufendeSessions([gehostet, fertig], null)).toEqual([]);
   });
 });
