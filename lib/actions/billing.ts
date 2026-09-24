@@ -1075,9 +1075,9 @@ export async function createPortalSession() {
 // lesend, und nur, wenn der Wechsel im Kundenportal tatsächlich angeboten
 // wird — siehe portalErlaubtWechselZu. null heisst: keinen Hinweis zeigen.
 //
-// Über den Service-Role-Client wie zugangsgeschichte(): subscriptions.price_id
-// ist für authenticated nicht freigegeben (0063), und userId stammt aus der
-// verifizierten Session (Muster b in AGENTS.md).
+// Über den an die Session gebundenen Client, unter RLS: Status, Preis-ID und
+// Kündigungsstand sind für die eigene Zeile freigegeben (0063) — dieselben
+// Spalten, die getPremiumStatus liest. Kein Service-Role-Client nötig.
 //
 // Jeder Fehler endet in null: der Hinweis ist Beiwerk, die Abo-Seite darf
 // an ihm nicht scheitern.
@@ -1089,7 +1089,8 @@ export async function jahresaboWechselHinweis(): Promise<{
   if (!user) return null;
 
   try {
-    const { data: abo } = await createAdminClient()
+    const supabase = await createClient();
+    const { data: abo } = await supabase
       .from("subscriptions")
       .select("status, price_id, cancel_at_period_end")
       .eq("user_id", user.id)
