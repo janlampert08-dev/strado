@@ -486,7 +486,9 @@ export interface Profile {
   // den rohen Abo-Status nicht offen.
   zeigt_premium_abzeichen: boolean;
   // Radius der Privatzone in Metern (0 = aus), siehe
-  // 0045_freie_fahrten_teilen.sql und cropTrackEnds in lib/track.ts.
+  // 0045_freie_fahrten_teilen.sql und lib/privatzone.ts. Seit 0132 nur für
+  // service_role direkt lesbar; die angemeldete Person liest den eigenen Wert
+  // über rpc("meine_privatzone") (lib/publicTrack.ts).
   privatzone_radius_m: number;
   // Zeitpunkt der Kontolöschung, null bei aktiven Konten (siehe
   // 0058_kontoloeschung_werte_nullen.sql). Ein gelöschtes Konto trägt in
