@@ -203,11 +203,16 @@ export default function ExploreSidebar({
           ≤70 km) und Pässe & Berge (Höhe/Kehren/Name-Heuristik in
           ExploreView.tsx). 44 px Chips, eine Zeile, horizontal scrollbar —
           kostet keine Listenhöhe im Peek, weil sie die Trennlinie ersetzt,
-          nicht ergänzt. */}
+          nicht ergänzt.
+
+          shrink-0: Die Zeile ist ein Flex-Kind einer scrollenden Spalte und
+          hat selbst overflow-x-auto — damit fällt ihre automatische
+          Mindesthöhe weg, und die Spalte drückte sie auf 4 px zusammen. Die
+          Chips waren auf app.strado.ch nur noch als Oberkante zu sehen. */}
       <div
         role="group"
         aria-label="Strecken filtern"
-        className="flex gap-2 overflow-x-auto pb-1"
+        className="flex shrink-0 gap-2 overflow-x-auto pb-1"
       >
         {(
           [
