@@ -29,6 +29,22 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Stand 2026-09-25: 0126–0129 eingespielt, 0115–0122 gemessen
+
+- **0126–0129** am 2026-09-25 per `apply_migration` eingespielt, Ledger-Namen
+  = Dateinamen. Danach gemessen: beide `*_foto_im_eigenen_ordner`-Constraints
+  validiert; Buckets avatars 4 MB / route-photos 8 MB; 9 von 9 Indizes aus 0128;
+  `anonymize_own_account()` ohne EXECUTE für authenticated/anon, service_role
+  behält `anonymize_account(uuid)`.
+- **0115–0120, 0122** stehen NICHT unter ihrem Dateinamen im Ledger, sind aber
+  in der Produktion: am 2026-09-25 an den Objekten geprüft (tempoprofil,
+  route_kandidaten_in_box, geometry_uebersicht, fahrt_pulse +
+  segment_fenster_*, route_completions_route_zeit_idx, hoehen_quelle,
+  fahrt_start_ticket_gehort und dessen Aufruf in save_free_ride_with_segments).
+- **0058** bleibt uneingespielt. Es erteilte authenticated den Grant auf
+  `anonymize_own_account()` erneut (0058:120) — wer es nachzieht, macht 0129
+  rückgängig und muss den revoke danach wiederholen.
+
 ## Angewendet: 0123_ranglisten_ohne_abschnitte (gemessen 2026-09-24)
 
 > **Stand am 2026-09-24 korrigiert.** Diese Überschrift sagte bis dahin „Noch
