@@ -7,7 +7,7 @@ import PremiumBadge from "@/components/PremiumBadge";
 import PremiumCheckoutForm from "@/components/PremiumCheckoutForm";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumAngebot } from "@/lib/actions/billing";
-import { getPremiumStatus } from "@/lib/premium";
+import { getPremiumStatus, kaufseiteOffen } from "@/lib/premium";
 import { LEGAL_URLS } from "@/lib/constants";
 import { betragText, planTitel, planZeitraum } from "@/lib/premiumAngebot";
 import { datumCH } from "@/lib/format";
@@ -55,7 +55,8 @@ export default async function PremiumZahlungPage({
   // app/profil/premium/page.tsx. Eine Ausnahme seit 0110: mit einem
   // laufenden Saisonpass darf ein Abo abgeschlossen werden, das erst mit
   // dem Passende zu zahlen beginnt (und ein neuer Pass kurz vor Ablauf).
-  if (status.aktiv && status.quelle !== "saisonpass") redirect("/profil");
+  // Seit 0135 ebenso mit dem Gratis-Premium aus dem Signup-Link.
+  if (!kaufseiteOffen(status)) redirect("/profil");
 
   if (!istAboPlan(plan)) redirect("/profil/premium");
 

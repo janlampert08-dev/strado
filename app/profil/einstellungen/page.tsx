@@ -284,7 +284,11 @@ export default async function EinstellungenPage() {
           <section id="premium" className="flex scroll-mt-20 flex-col gap-3">
             <SectionHeading icon={Sparkles}>Premium</SectionHeading>
             <p className="text-sm text-muted">
-              {premiumStatus.aktiv ? "Abo-Status, Rechnungen, Kündigung." : premiumKurzform()}
+              {premiumStatus.quelle === "gratis"
+                ? "Gratis-Premium und wie es danach weitergeht."
+                : premiumStatus.aktiv
+                  ? "Abo-Status, Rechnungen, Kündigung."
+                  : premiumKurzform()}
             </p>
             {/* Text und Knopf standen nebeneinander in einer Zeile. Ohne Abo
                 ist der Text premiumKurzform() und damit ein ganzer Satz —
@@ -303,7 +307,7 @@ export default async function EinstellungenPage() {
                     dort führt der Weg zur Übersicht mit Gültigkeit und
                     Rechnung (0110). */}
                 {premiumStatus.aktiv
-                  ? premiumStatus.quelle === "saisonpass"
+                  ? premiumStatus.quelle === "saisonpass" || premiumStatus.quelle === "gratis"
                     ? "Premium verwalten"
                     : "Abo verwalten"
                   : "Mehr zu Premium"}
