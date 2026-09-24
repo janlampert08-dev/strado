@@ -878,6 +878,24 @@ async function kuendigeStripeAbo(userId: string): Promise<boolean> {
       if (beendet.has(abo.status)) continue;
       await getStripe().subscriptions.cancel(abo.id);
     }
+
+    // Offene Kassen-Sitzungen ebenfalls schliessen. Eine TWINT-Zahlung, die
+    // erst NACH der Löschung durchgeht, legte sonst bei Stripe ein neues,
+    // laufendes Abo an: der Webhook findet dazu kein Profil mehr, protokolliert
+    // nur, und das Abo bucht ein gelöschtes Konto weiter ab — genau der Fall,
+    // den die Schleife oben für bestehende Abos verhindert.
+    //
+    // Lässt sich eine Sitzung nicht schliessen (etwa weil ihre Zahlung gerade
+    // verarbeitet wird), bricht die Löschung über den catch unten ab, statt
+    // sie laufen zu lassen: "in ein paar Minuten nochmals" ist besser als ein
+    // Abo ohne Konto.
+    for await (const sitzung of getStripe().checkout.sessions.list({
+      customer: profile.stripe_customer_id,
+      status: "open",
+      limit: 100,
+    })) {
+      await getStripe().checkout.sessions.expire(sitzung.id);
+    }
   } catch (fehler) {
     console.error(
       "Stripe-Kündigung bei Kontolöschung fehlgeschlagen",
@@ -953,7 +971,7 @@ export async function deleteAccount(
   if (!abgebrochen) {
     return {
       error:
-        "Das laufende Premium-Abo konnte nicht gekündigt werden. Das Konto wurde deshalb nicht gelöscht — bitte versuche es später erneut.",
+        "Das laufende Premium-Abo oder eine offene Zahlung liess sich nicht abschliessen. Das Konto wurde deshalb nicht gelöscht — bitte versuche es in ein paar Minuten erneut.",
     };
   }
 
