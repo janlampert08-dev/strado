@@ -4,6 +4,7 @@ import PremiumPurchaseView from "@/components/PremiumPurchaseView";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumAngebot } from "@/lib/actions/billing";
 import { getPremiumStatus } from "@/lib/premium";
+import { saisonpassImWinter } from "@/lib/saisonpassSaison";
 
 // Die Preise kommen bei jedem Aufruf frisch aus Stripe — ein im Dashboard
 // geänderter Preis darf nicht als zwischengespeicherte Zahl weiterlaufen.
@@ -46,7 +47,7 @@ export default async function PremiumPage() {
           Etwas breiter als die Formularseiten, weil die Planauswahl Preis,
           Abzeichen und Zusatzzeile nebeneinander trägt. */}
       <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 overflow-y-auto px-5 py-8 sm:px-6">
-        <PremiumPurchaseView angebot={angebot} />
+        <PremiumPurchaseView angebot={angebot} winter={saisonpassImWinter()} />
       </main>
     </div>
   );

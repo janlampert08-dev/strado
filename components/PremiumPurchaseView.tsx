@@ -6,6 +6,7 @@ import { Check, Sparkles, CreditCard, SparklesIcon } from "@/components/NavIcons
 import EmptyState from "@/components/ui/EmptyState";
 import SectionHeading from "@/components/ui/SectionHeading";
 import PremiumBadge from "@/components/PremiumBadge";
+import SaisonpassWinterHinweis from "@/components/SaisonpassWinterHinweis";
 import { buttonVariants } from "@/components/ui/Button";
 import {
   betragText,
@@ -47,7 +48,16 @@ import {
 // Monatsabo zuletzt als niedrigste Hürde.
 const REIHENFOLGE: AboPlan[] = ["jahr", "saisonpass", "monat"];
 
-export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngebot }) {
+export default function PremiumPurchaseView({
+  angebot,
+  winter = false,
+}: {
+  angebot: PremiumAngebot;
+  /** Oktober bis Februar (lib/saisonpassSaison.ts): Jahresabo vorwählen
+   *  und beim Saisonpass sagen, was er jetzt bringt. Vom Server berechnet,
+   *  damit Server- und Browser-Render nicht an der Uhr auseinanderlaufen. */
+  winter?: boolean;
+}) {
   const passBisWert = angebot.saisonpassBis ? new Date(angebot.saisonpassBis) : null;
 
   // Ein zweiter Saisonpass mitten in der Saison wird von
@@ -60,7 +70,12 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
     .filter((p): p is PlanAngebot => Boolean(p))
     .filter((p) => p.plan !== "saisonpass" || saisonpassVerlaengerbar(passBisWert));
 
-  const [gewaehlt, setGewaehlt] = useState<AboPlan>(plaene[0]?.plan ?? "jahr");
+  // Vorgewählt ist der erste Plan der Reihenfolge — das Jahresabo. Im Winter
+  // ausdrücklich: selbst wenn die Reihenfolge je umgestellt würde, soll dann
+  // niemand mit einem Klick einen Pass kaufen, der Oktober bis März abdeckt.
+  const [gewaehlt, setGewaehlt] = useState<AboPlan>(
+    (winter && plaene.find((p) => p.plan === "jahr")?.plan) || (plaene[0]?.plan ?? "jahr"),
+  );
 
   if (plaene.length === 0) {
     // Kein Angebot heisst ohne Zutun eine Sackgasse: die Seite verlangt eine
@@ -137,6 +152,9 @@ export default function PremiumPurchaseView({ angebot }: { angebot: PremiumAngeb
             gewaehlt={p.plan === gewaehlt}
             vorteilProzent={p.plan === "jahr" ? vorteilProzent : null}
             testphase={p.plan === "jahr" && angebot.testphaseMoeglich}
+            // Mit laufendem Pass schliesst ein neuer an und beginnt nicht
+            // heute — "Gilt ab Kauf" stimmte dann nicht.
+            winter={p.plan === "saisonpass" ? winter && !passBisWert : winter}
             onWaehlen={() => setGewaehlt(p.plan)}
           />
         ))}
@@ -180,6 +198,7 @@ function PlanOption({
   gewaehlt,
   vorteilProzent,
   testphase,
+  winter,
   onWaehlen,
 }: {
   angebot: PlanAngebot;
@@ -188,6 +207,8 @@ function PlanOption({
   vorteilProzent: number | null;
   /** Gratis-Testphase auf diesem Plan möglich. */
   testphase: boolean;
+  /** Winterhalbjahr — siehe PremiumPurchaseView. */
+  winter: boolean;
   onWaehlen: () => void;
 }) {
   const istJahr = angebot.plan === "jahr";
@@ -262,6 +283,16 @@ function PlanOption({
           </span>
         )}
 
+        {/* Ehrlich statt versteckt: im Winter gekauft, deckt der Pass die
+            Monate, in denen die meisten Pässe zu sind. Ein wählbarer Start
+            wäre eine AGB-Änderung (Ziff. 4.6 "sechs Monate ab dem Kauf"). */}
+        {istPass && winter && <SaisonpassWinterHinweis />}
+        {istJahr && winter && (
+          <span className="text-xs text-muted">
+            Empfohlen im Winter: läuft über die ganze nächste Saison.
+          </span>
+        )}
+
         {testphase && (
           <span className="text-xs text-muted">
             Die ersten {TESTPHASE_TAGE} Tage kosten nichts. Kündigst du vorher, wird nichts
@@ -272,3 +303,4 @@ function PlanOption({
     </label>
   );
 }
+
