@@ -452,8 +452,13 @@ main {
   color: var(--color-muted);
 }
 
-.mapboxgl-map .mapboxgl-ctrl-attrib-inner a:hover {
-  color: var(--color-foreground);
+/* Hinter (hover: hover): auf dem Telefon bliebe der Hover-Zustand nach dem
+   Tippen stehen, bis woanders hingetippt wird — wie Tailwinds hover:, das
+   dieselbe Abfrage erzeugt. */
+@media (hover: hover) and (pointer: fine) {
+  .mapboxgl-map .mapboxgl-ctrl-attrib-inner a:hover {
+    color: var(--color-foreground);
+  }
 }
 
 /* Das ⓘ-Icon des Kompakt-Knopfs ist in mapbox-gl.css eine fest dunkle SVG —
