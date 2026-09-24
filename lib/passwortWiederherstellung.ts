@@ -73,23 +73,39 @@ function cookieGeheimnis(): string {
   return "nur-entwicklung-kein-geheimnis";
 }
 
-/** Signiert eine Nutzer-ID für das Wiederherstellungs-Cookie. */
+// Der Wert trägt seinen Ablauf SELBST, mitsigniert: "id.ablauf.signatur".
+// Vorher war er HMAC(id) allein — jedes Mal derselbe Wert, und die
+// Viertelstunde stand nur im maxAge, also in der Hand des Browsers. Ein
+// einmal kopierter Wert (Proxy-Log, exportierte Cookies, Browser-Profil)
+// hätte serverseitig für immer gegolten. Jetzt prüft der Server die Zeit.
+/** Signiert eine Nutzer-ID samt Ablaufzeit für das Wiederherstellungs-Cookie. */
 export function signiereWiederherstellung(
   userId: string,
   geheimnis: string = cookieGeheimnis(),
+  jetztMs: number = Date.now(),
 ): string {
-  const sig = createHmac("sha256", geheimnis).update(userId).digest("hex");
-  return `${userId}.${sig}`;
+  const ablauf = Math.floor(jetztMs / 1000) + WIEDERHERSTELLUNG_GUELTIG_SEKUNDEN;
+  const sig = createHmac("sha256", geheimnis).update(`${userId}.${ablauf}`).digest("hex");
+  return `${userId}.${ablauf}.${sig}`;
 }
 
-function signaturPruefen(wert: string, userId: string, geheimnis: string): boolean {
-  // UUIDs enthalten keine Punkte — alles vor dem letzten Punkt ist die ID.
-  const trenn = wert.lastIndexOf(".");
-  if (trenn <= 0) return false;
-  const id = wert.slice(0, trenn);
-  const sig = wert.slice(trenn + 1);
+function signaturPruefen(
+  wert: string,
+  userId: string,
+  geheimnis: string,
+  jetztMs: number,
+): boolean {
+  // UUIDs enthalten keine Punkte — genau drei Teile, sonst ungültig. Ein
+  // Wert im alten Format ("id.signatur") gilt damit nicht mehr; er war
+  // höchstens eine Viertelstunde alt, wer mitten im Wechsel steckt, fordert
+  // einen neuen Link an.
+  const teile = wert.split(".");
+  if (teile.length !== 3) return false;
+  const [id, ablaufText, sig] = teile;
   if (!id || !sig || id !== userId) return false;
-  const erwartet = createHmac("sha256", geheimnis).update(id).digest();
+  if (!/^\d{1,12}$/.test(ablaufText)) return false;
+  if (Number(ablaufText) * 1000 <= jetztMs) return false;
+  const erwartet = createHmac("sha256", geheimnis).update(`${id}.${ablaufText}`).digest();
   let gegeben: Buffer;
   try {
     gegeben = Buffer.from(sig, "hex");
@@ -111,10 +127,74 @@ export function wiederherstellungGiltFuer(
   cookieWert: string | undefined | null,
   userId: string,
   geheimnis: string = cookieGeheimnis(),
+  jetztMs: number = Date.now(),
 ): boolean {
   if (typeof cookieWert !== "string" || cookieWert.length === 0) return false;
   if (!userId) return false;
-  return signaturPruefen(cookieWert, userId, geheimnis);
+  return signaturPruefen(cookieWert, userId, geheimnis, jetztMs);
+}
+
+// Wie lange nach dem Versand einer Zurücksetzen-E-Mail ein Code-Austausch
+// noch als Wiederherstellung gelten darf. GoTrue lässt den Link
+// standardmässig eine Stunde gelten; länger braucht es hier nicht.
+export const ZURUECKSETZEN_MAIL_GUELTIG_MS = 60 * 60 * 1000;
+
+function amrMethoden(accessToken: string | undefined | null): string[] | null {
+  if (!accessToken) return null;
+  const teile = accessToken.split(".");
+  if (teile.length < 2) return null;
+  try {
+    const nutzlast = JSON.parse(Buffer.from(teile[1], "base64url").toString("utf8"));
+    const amr: unknown = nutzlast?.amr;
+    if (!Array.isArray(amr)) return null;
+    return amr
+      .map((eintrag) => (typeof eintrag === "string" ? eintrag : eintrag?.method))
+      .filter((m): m is string => typeof m === "string");
+  } catch {
+    return null;
+  }
+}
+
+// Entscheidet für den Code-Weg (PKCE) in app/auth/callback, ob ein
+// erfolgreicher Austausch eine Wiederherstellung war.
+//
+// Bisher genügte dafür next === /profil/passwort-aendern. Den Pfad bestimmt
+// aber, wer den Fluss startet — und JEDER Code-Austausch mit diesem Ziel
+// setzte das Merkmal: auch eine Google-Anmeldung (signInMitGoogle reicht
+// next durch) oder eine Registrierungsbestätigung. An einem unbeaufsichtigt
+// angemeldeten Gerät eines Google-Kontos hiess das: /anmelden?next=
+// /profil/passwort-aendern, "Mit Google" (ohne Rückfrage, die Einwilligung
+// besteht), neues Passwort setzen, ohne das alte zu kennen — dauerhafte
+// Übernahme.
+//
+// Jetzt zählen zwei Tatsachen aus der Antwort von GoTrue selbst, nicht aus
+// der Adresszeile:
+//   1. recovery_sent_at liegt in der letzten Stunde — es wurde tatsächlich
+//      eine Zurücksetzen-E-Mail für dieses Konto verschickt;
+//   2. die neue Sitzung stammt nicht aus einer OAuth-/SSO-Anmeldung (amr).
+// Beides ist nötig: (1) allein liesse sich erfüllen, indem der Angreifer am
+// fremden Gerät zuerst "Passwort vergessen" für das Opfer auslöst und dann
+// mit Google anmeldet — (2) schliesst genau das aus.
+//
+// Bewusst NICHT auf ein amr "recovery" gewartet: ob GoTrue diesen Wert für
+// den PKCE-Weg setzt, ist nicht dokumentiert, und ein falsches Nein sperrte
+// jede echte Wiederherstellung aus.
+export function codeAustauschIstWiederherstellung(eingabe: {
+  accessToken: string | undefined | null;
+  recoverySentAt: string | undefined | null;
+  jetztMs?: number;
+}): boolean {
+  const jetzt = eingabe.jetztMs ?? Date.now();
+  if (!eingabe.recoverySentAt) return false;
+  const gesendet = Date.parse(eingabe.recoverySentAt);
+  if (!Number.isFinite(gesendet)) return false;
+  // Fünf Minuten Toleranz für Uhrabweichung zwischen GoTrue und Vercel.
+  if (jetzt - gesendet > ZURUECKSETZEN_MAIL_GUELTIG_MS || gesendet - jetzt > 5 * 60 * 1000) {
+    return false;
+  }
+  const methoden = amrMethoden(eingabe.accessToken) ?? [];
+  if (methoden.some((m) => m.startsWith("oauth") || m.startsWith("sso"))) return false;
+  return true;
 }
 
 // Nur aus einem Route Handler oder einer Server Action aufrufbar — beim
