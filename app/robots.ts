@@ -3,10 +3,8 @@ import { getOrigin } from "@/lib/utils/url";
 import { siteUrl } from "@/lib/siteUrl";
 import { istStaging } from "@/lib/staging";
 
-// Wie die Sitemap (app/sitemap.ts): stündlich neu bauen statt bei jedem
-// Abruf auf die Request-Header zu warten. force-dynamic aus demselben
-// Grund: die Origin hängt an den Request-Headern, nie am Build.
-export const revalidate = 3600;
+// Wie die Sitemap (app/sitemap.ts): zur Anfragezeit rendern, denn die
+// Origin hängt an den Request-Headern, nie am Build.
 export const dynamic = "force-dynamic";
 
 async function bestimmeOrigin(): Promise<string> {

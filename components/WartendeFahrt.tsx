@@ -28,7 +28,20 @@ function lese(schluessel: string): Stand | null {
   return cache.get(schluessel) ?? null;
 }
 
-const nichtsZuAbonnieren = () => () => {};
+// Beim Einhängen und bei jeder Änderung im Speicher (anderer Tab) frisch
+// lesen: der Cache ist nur für die Stabilität innerhalb eines Renders da.
+// Ohne das stünde nach einer übernommenen Fahrt bei der nächsten
+// Client-Navigation hierher noch die alte "wartende" Fahrt.
+function abonniere(neuLesen: () => void) {
+  cache.clear();
+  neuLesen();
+  const beiAenderung = () => {
+    cache.clear();
+    neuLesen();
+  };
+  window.addEventListener("storage", beiAenderung);
+  return () => window.removeEventListener("storage", beiAenderung);
+}
 
 /**
  * Die Registrierung als Belohnung statt als Wand: wer aus dem Fazit einer
@@ -43,7 +56,7 @@ const nichtsZuAbonnieren = () => () => {};
 export default function WartendeFahrt({ ziel }: { ziel: string | undefined }) {
   const schluessel = gastfahrtSchluesselAusZiel(ziel);
   const stand = useSyncExternalStore(
-    nichtsZuAbonnieren,
+    abonniere,
     () => (schluessel ? lese(schluessel) : null),
     () => null,
   );

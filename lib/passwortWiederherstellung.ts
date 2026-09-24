@@ -57,16 +57,20 @@ export const PASSWORT_AENDERN_PFAD = "/profil/passwort-aendern";
 export const WIEDERHERSTELLUNG_GUELTIG_SEKUNDEN = 15 * 60;
 
 // Das Geheimnis hinter der Cookie-Signatur: ein eigenes Server-Geheimnis,
-// ersatzweise der Supabase-Secret-Key (serverseitig, nie im Client). Der
-// Rückfall ist bewusst kein Fehler: beide Werte stehen in Produktion
-// ohnehin, und in der Entwicklung darf der Fluss nicht an einem fehlenden
-// Geheimnis scheitern. Tests übergeben ihr Geheimnis explizit.
+// ersatzweise der Supabase-Secret-Key (serverseitig, nie im Client). Nur in
+// der Entwicklung gibt es einen festen Rückfall, damit der Fluss dort nicht
+// an einem fehlenden Geheimnis scheitert. In einem Produktions-Build
+// scheitert er stattdessen: ein Geheimnis, das im Repository steht, liesse
+// jeden die Signatur für fremde Nutzer-IDs ausrechnen und damit die Abfrage
+// des alten Passworts abschalten. Tests übergeben ihr Geheimnis explizit.
 function cookieGeheimnis(): string {
-  return (
-    process.env.RECOVERY_COOKIE_SECRET?.trim() ||
-    process.env.SUPABASE_SECRET_KEY ||
-    "nur-entwicklung-kein-geheimnis"
-  );
+  const geheimnis =
+    process.env.RECOVERY_COOKIE_SECRET?.trim() || process.env.SUPABASE_SECRET_KEY;
+  if (geheimnis) return geheimnis;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("RECOVERY_COOKIE_SECRET oder SUPABASE_SECRET_KEY fehlt");
+  }
+  return "nur-entwicklung-kein-geheimnis";
 }
 
 /** Signiert eine Nutzer-ID für das Wiederherstellungs-Cookie. */

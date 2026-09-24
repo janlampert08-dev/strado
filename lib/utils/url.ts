@@ -33,7 +33,13 @@ export async function getOrigin(): Promise<string> {
     const lokal = sauber === "localhost" || sauber === "127.0.0.1";
     const proto = headerList.get("x-forwarded-proto") ?? (lokal ? "http" : "https");
     if (proto !== "https" && !lokal) return fallback;
-    return `${lokal ? "http" : "https"}://${sauber}`;
+    // Lokal mit Port (next dev auf :3000): ohne ihn führte jeder
+    // Bestätigungs- und OAuth-Rückweg auf Port 80 ins Leere.
+    if (lokal) {
+      const port = host.trim().split(":")[1];
+      return port && /^\d{1,5}$/.test(port) ? `http://${sauber}:${port}` : `http://${sauber}`;
+    }
+    return `https://${sauber}`;
   } catch {
     return fallback;
   }
