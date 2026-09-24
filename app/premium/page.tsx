@@ -10,7 +10,15 @@ import { getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
 import { getOeffentlichesAngebot } from "@/lib/actions/billing";
 import { getOrigin } from "@/lib/utils/url";
-import { betragText, planTitel, planZeitraum } from "@/lib/premiumAngebot";
+import {
+  betragText,
+  jahresVorteilProzent,
+  monatsAequivalentRappen,
+  planTitel,
+  planZeitraum,
+  saisonpassMonatsAequivalentRappen,
+} from "@/lib/premiumAngebot";
+import { SAISONPASS_MONATE } from "@/lib/premiumLimits";
 import { PREMIUM_VORTEILE } from "@/lib/premiumVorteile";
 import type { AboPlan } from "@/lib/premiumLimits";
 
@@ -40,6 +48,16 @@ export default async function PremiumTeaserPage() {
   const hatPremium = status.aktiv && status.quelle !== "saisonpass";
   const sortiert = REIHENFOLGE.map((plan) => plaene.find((p) => p.plan === plan)).filter(
     (p): p is NonNullable<typeof p> => Boolean(p),
+  );
+  // Dieselbe Einordnung wie auf der Kaufseite (components/PremiumPurchaseView
+  // .tsx): Prozent-Abzeichen am Jahresplan und das Monatsäquivalent als
+  // Nebenzeile. Bisher standen hier nur die nackten Beträge — CHF 39.00 pro
+  // Jahr neben CHF 6.90 pro Monat, und die Rechnung, dass das Jahr weniger
+  // als die Hälfte kostet, blieb der Leserin überlassen. Auf der Seite, die
+  // Nicht-Kunden als erste sehen.
+  const vorteilProzent = jahresVorteilProzent(
+    plaene.find((p) => p.plan === "monat"),
+    plaene.find((p) => p.plan === "jahr"),
   );
 
   // Strukturierte Daten für das öffentliche Angebot. Die Preise kommen aus
@@ -117,15 +135,39 @@ export default async function PremiumTeaserPage() {
               {sortiert.map((p) => (
                 <li
                   key={p.plan}
-                  className="flex items-baseline justify-between gap-3 rounded-lg border border-border px-4 py-3"
+                  className="flex flex-col gap-1 rounded-lg border border-border px-4 py-3"
                 >
-                  <span className="text-sm font-semibold text-foreground">{planTitel(p.plan)}</span>
-                  <span className="flex flex-wrap items-baseline justify-end gap-x-2">
-                    <span className="text-title font-semibold text-foreground">
-                      {betragText(p.betragRappen, p.waehrung)}
+                  <span className="flex items-baseline justify-between gap-3">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold text-foreground">
+                        {planTitel(p.plan)}
+                      </span>
+                      {p.plan === "jahr" && vorteilProzent !== null && (
+                        <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-on-accent">
+                          {vorteilProzent} % günstiger
+                        </span>
+                      )}
                     </span>
-                    <span className="text-sm text-muted">{planZeitraum(p.plan)}</span>
+                    <span className="flex flex-wrap items-baseline justify-end gap-x-2">
+                      <span className="text-title font-semibold text-foreground">
+                        {betragText(p.betragRappen, p.waehrung)}
+                      </span>
+                      <span className="text-sm text-muted">{planZeitraum(p.plan)}</span>
+                    </span>
                   </span>
+                  {p.plan === "jahr" && (
+                    <span className="text-xs text-muted">
+                      entspricht {betragText(monatsAequivalentRappen(p.betragRappen), p.waehrung)}{" "}
+                      pro Monat
+                    </span>
+                  )}
+                  {p.plan === "saisonpass" && (
+                    <span className="text-xs text-muted">
+                      {SAISONPASS_MONATE} Monate ab Kauf, verlängert sich nicht · entspricht{" "}
+                      {betragText(saisonpassMonatsAequivalentRappen(p.betragRappen), p.waehrung)}{" "}
+                      pro Monat
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
