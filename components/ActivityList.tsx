@@ -65,14 +65,14 @@ export default function ActivityList({
     <ul className="flex flex-col gap-3">
       {eintraege.map((eintrag) =>
         // Die Passmeldung ist die eine Zeile ohne Person: statt Avatar und
-        // Name steht der Pass da, und der Link führt auf seine Strecke.
+        // Name steht der Pass da, und der Link führt auf seine Passseite.
         eintrag.art === "pass" ? (
           <Card as="li" key={aktivitaetsSchluessel(eintrag)} className="flex items-center gap-3 p-4">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface">
               <BergIcon className="h-5 w-5 text-muted" aria-hidden="true" />
             </span>
             <Link
-              href={`/paesse#${eintrag.passId}`}
+              href={`/paesse/${eintrag.passId}`}
               className="min-w-0 flex-1 transition-colors duration-fast hover:text-accent-ink"
             >
               <p className="flex items-center text-sm">
