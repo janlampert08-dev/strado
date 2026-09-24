@@ -23,9 +23,10 @@ import { cn } from "@/lib/utils/cn";
 /**
  * @param gross 44 px statt 36 — der Mindestwert aus components/ui/IconButton.tsx.
  *
- * Ein Parameter und keine angehängte Klasse: lib/utils/cn.ts ist ein reiner
- * String-Join, ein zweites min-h-* im class-Attribut überschreibt das erste
- * also nicht verlässlich (die Reihenfolge im erzeugten CSS entscheidet).
+ * Ein Parameter und keine angehängte Klasse: entstanden, als lib/utils/cn.ts
+ * noch ein String-Join war und ein zweites min-h-* das erste nicht
+ * verlässlich überschrieb. Seit cn tailwind-merge ist, ginge es — der
+ * Parameter bleibt, weil er die zwei erlaubten Höhen benennt.
  *
  * Gebraucht wird er im Fazit (components/RideSummaryForm.tsx): die
  * Fahrzeug-Chips haben dort die <select>-Liste ersetzt, die mit rund 42 px
@@ -41,6 +42,10 @@ export function chipClassName(aktiv: boolean, gross = false): string {
     // relative + after: auch in der 36-px-Fassung eine 44-px-Tippfläche,
     // ohne die zwei Chipzeilen der Ranglisten höher zu machen.
     "relative inline-flex shrink-0 items-center rounded-full border px-3 text-sm font-medium whitespace-nowrap transition-colors duration-fast after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']",
+    // Eigener Fokusring: ohne ihn blieb nur die Browser-Umrandung, und die
+    // lag beim gewählten (vordergrundgefüllten) Chip in Hintergrundfarbe auf
+    // Hintergrund — rund 1:1, also unsichtbar (Audit 2026-09-23).
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background",
     gross ? "min-h-11" : "min-h-9",
     // Gewählt = gefüllt in der Vordergrundfarbe, wie ein Segment in
     // ui/SegmentedControl. Vorher blau gefüllt: dieselbe Rolle ("das ist
@@ -49,7 +54,7 @@ export function chipClassName(aktiv: boolean, gross = false): string {
     // aus", nicht "ist gewählt".
     aktiv
       ? "border-foreground bg-foreground text-background"
-      : "border-border-control text-muted hover:border-border-strong hover:text-foreground",
+      : "border-border-control text-muted hover:border-muted hover:text-foreground",
   );
 }
 
@@ -66,6 +71,6 @@ export function unterChipClassName(aktiv: boolean): string {
     "relative inline-flex min-h-8 shrink-0 items-center rounded-full border px-2.5 text-xs font-medium whitespace-nowrap transition-colors duration-fast after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-['']",
     aktiv
       ? "border-foreground bg-surface text-foreground"
-      : "border-border-control text-muted hover:border-border-strong hover:text-foreground",
+      : "border-border-control text-muted hover:border-muted hover:text-foreground",
   );
 }

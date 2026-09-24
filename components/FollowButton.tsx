@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { UserPlus, UserCheck } from "lucide-react";
+import { UserPlus, UserCheck } from "@/components/NavIcons";
 import { toggleFollow } from "@/lib/actions/follows";
 import { buttonVariants } from "@/components/ui/Button";
 import { zeigeHinweis } from "@/components/Hinweis";

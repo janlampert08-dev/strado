@@ -102,7 +102,7 @@ export default function EditRouteForm({
       {state.error && <p className="text-sm text-danger">{state.error}</p>}
 
       <Button type="submit" disabled={pending} className="self-start">
-        {pending ? "Speichern…" : "Speichern"}
+        {pending ? "Wird gespeichert…" : "Speichern"}
       </Button>
     </form>
   );

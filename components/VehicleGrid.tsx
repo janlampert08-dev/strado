@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bike, Car, ChevronRight } from "lucide-react";
+import { Bike, Car, ChevronRight } from "@/components/NavIcons";
 import type { Vehicle } from "@/types/database";
 import MotorklasseBadge from "@/components/MotorklasseBadge";
 import { motorklasseFor } from "@/lib/motorklassen";
@@ -125,10 +125,10 @@ export default function VehicleGrid({
         // zerstörender Knopf im Raster war ohnehin einen Fehlgriff vom
         // Verlust entfernt.
         return editable ? (
-          <Card key={vehicle.id} surface className="transition-colors duration-fast hover:border-border-strong">
+          <Card key={vehicle.id} surface className="transition-colors duration-fast hover:border-muted">
             <Link
               href={`/profil/fahrzeuge/${vehicle.id}`}
-              className="flex items-start gap-3 rounded-lg p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+              className="flex items-start gap-3 rounded-lg p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               {inhalt}
             </Link>

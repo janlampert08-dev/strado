@@ -2,43 +2,65 @@ import { describe, expect, it } from "vitest";
 import {
   PASSWORT_AENDERN_PFAD,
   WIEDERHERSTELLUNG_GUELTIG_SEKUNDEN,
+  signiereWiederherstellung,
   wiederherstellungGiltFuer,
 } from "@/lib/passwortWiederherstellung";
 
 // Diese Funktion entscheidet, ob updatePassword() das aktuelle Passwort
 // abfragt. Sagt sie fälschlich "ja, das ist eine Wiederherstellung", reicht
 // eine unbeaufsichtigt offene Sitzung, um ein Konto zu übernehmen — deshalb
-// stehen hier vor allem die Fälle, in denen sie NICHT gelten darf.
+// stehen hier vor allem die Fälle, in denen sie NICHT gelten darf. Das
+// Geheimnis ist in den Tests fest verdrahtet, damit sie nicht vom
+// Server-Geheimnis der Umgebung abhängen.
+const GEHEIMNIS = "test-geheimnis";
+const FALSCHES_GEHEIMNIS = "falsches-geheimnis";
+
 describe("wiederherstellungGiltFuer", () => {
   const userId = "11111111-2222-3333-4444-555555555555";
   const andererUser = "99999999-8888-7777-6666-555555555555";
+  const gueltig = signiereWiederherstellung(userId, GEHEIMNIS);
 
-  it("gilt für die Nutzer-ID, für die das Merkmal gesetzt wurde", () => {
-    expect(wiederherstellungGiltFuer(userId, userId)).toBe(true);
+  it("gilt für den signierten Wert, für den das Merkmal gesetzt wurde", () => {
+    expect(wiederherstellungGiltFuer(gueltig, userId, GEHEIMNIS)).toBe(true);
+  });
+
+  it("gilt NICHT für die blosse Nutzer-ID ohne Signatur", () => {
+    // Die ID steht in jeder /fahrer/[id]-URL — von Hand eingetragen darf
+    // sie die Passwort-Abfrage nicht abschalten.
+    expect(wiederherstellungGiltFuer(userId, userId, GEHEIMNIS)).toBe(false);
   });
 
   it("gilt NICHT für ein anderes Konto auf demselben Gerät", () => {
     // Der eigentliche Grund, warum die ID im Cookie steht und nicht bloss
     // ein Ja/Nein: nach der Wiederherstellung meldet sich jemand anderes an.
-    expect(wiederherstellungGiltFuer(andererUser, userId)).toBe(false);
+    expect(wiederherstellungGiltFuer(gueltig, andererUser, GEHEIMNIS)).toBe(false);
+    expect(
+      wiederherstellungGiltFuer(
+        signiereWiederherstellung(andererUser, GEHEIMNIS),
+        userId,
+        GEHEIMNIS,
+      ),
+    ).toBe(false);
+  });
+
+  it("gilt nicht mit verfälschter Signatur oder falschem Geheimnis", () => {
+    const faelschung = `${userId}.${"0".repeat(64)}`;
+    expect(wiederherstellungGiltFuer(faelschung, userId, GEHEIMNIS)).toBe(false);
+    expect(wiederherstellungGiltFuer(gueltig.slice(0, -1) + "x", userId, GEHEIMNIS)).toBe(false);
+    expect(wiederherstellungGiltFuer(gueltig, userId, FALSCHES_GEHEIMNIS)).toBe(false);
   });
 
   it("gilt nicht ohne Cookie", () => {
-    expect(wiederherstellungGiltFuer(undefined, userId)).toBe(false);
-    expect(wiederherstellungGiltFuer(null, userId)).toBe(false);
-    expect(wiederherstellungGiltFuer("", userId)).toBe(false);
+    expect(wiederherstellungGiltFuer(undefined, userId, GEHEIMNIS)).toBe(false);
+    expect(wiederherstellungGiltFuer(null, userId, GEHEIMNIS)).toBe(false);
+    expect(wiederherstellungGiltFuer("", userId, GEHEIMNIS)).toBe(false);
   });
 
   it("gilt nicht ohne Nutzer-ID", () => {
     // Ein leerer Vergleichswert darf nicht dazu führen, dass ein leeres
     // Cookie plötzlich passt.
-    expect(wiederherstellungGiltFuer("", "")).toBe(false);
-    expect(wiederherstellungGiltFuer(userId, "")).toBe(false);
-  });
-
-  it("vergleicht exakt, nicht als Präfix", () => {
-    expect(wiederherstellungGiltFuer(userId + "x", userId)).toBe(false);
-    expect(wiederherstellungGiltFuer(userId.slice(0, -1), userId)).toBe(false);
+    expect(wiederherstellungGiltFuer("", "", GEHEIMNIS)).toBe(false);
+    expect(wiederherstellungGiltFuer(gueltig, "", GEHEIMNIS)).toBe(false);
   });
 });
 

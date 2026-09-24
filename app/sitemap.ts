@@ -1,14 +1,58 @@
 import type { MetadataRoute } from "next";
 import { getOrigin } from "@/lib/utils/url";
-import { listRoutesForSitemap } from "@/lib/routes";
+import { siteUrl } from "@/lib/siteUrl";
+import { listRoutesForSitemap, type RouteSitemapEintrag } from "@/lib/routes";
+
+// Immer zur Anfragezeit rendern: die Origin hängt an den Request-Headern
+// und die Streckenliste an cookies() — beides ist nie statisch
+// vorberechenbar, ohne das versucht der Build ein Prerender, das nur in den
+// statischen Fallback läuft. Ein `revalidate` daneben wäre wirkungslos
+// (force-dynamic rendert jeden Abruf neu); was Googlebot vor "Couldn't
+// fetch" schützt, ist das Zeitbudget mit Rückfall unten, nicht ein Cache.
+export const dynamic = "force-dynamic";
+
+// Zeitbudget für die Streckenabfrage: reisst die DB, antwortet die Sitemap
+// trotzdem mit den statischen Adressen statt mit einem 500er (für Googlebot
+// ebenfalls "Couldn't fetch"). 8 s lassen der Abfrage Luft, bleiben aber
+// deutlich unter dem Vercel-Function-Timeout.
+const STRECKEN_TIMEOUT_MS = 8000;
+
+async function ladeStrecken(): Promise<RouteSitemapEintrag[]> {
+  try {
+    const ergebnis = await Promise.race([
+      listRoutesForSitemap(),
+      new Promise<null>((loese) => setTimeout(() => loese(null), STRECKEN_TIMEOUT_MS)),
+    ]);
+    return ergebnis ?? [];
+  } catch (fehler) {
+    console.error(
+      "Sitemap: Streckenliste fehlgeschlagen, liefere statische Adressen:",
+      fehler instanceof Error ? fehler.message : fehler,
+    );
+    return [];
+  }
+}
+
+// Die Origin kommt aus den Request-Headern (Vorschau-Deployments zeigen auf
+// sich selbst); fällt das weg, gilt die konfigurierte Produktions-Domain
+// statt einer kaputten oder fehlenden Angabe.
+async function bestimmeOrigin(): Promise<string> {
+  try {
+    const origin = await getOrigin();
+    new URL(origin);
+    return origin;
+  } catch {
+    return siteUrl();
+  }
+}
 
 // Fahrer-Profile sind bewusst ausgeschlossen — Privatsphäre-Konsistenz mit
 // den bestehenden Sichtbarkeits-Flags (siehe lib/profile.ts): ob ein Profil
 // überhaupt etwas preisgibt, entscheidet der Nutzer selbst, das soll nicht
 // unabhängig davon per Sitemap crawlbar gemacht werden.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const origin = await getOrigin();
-  const routes = await listRoutesForSitemap();
+  const origin = await bestimmeOrigin();
+  const routes = await ladeStrecken();
 
   return [
     { url: origin, changeFrequency: "weekly", priority: 1 },

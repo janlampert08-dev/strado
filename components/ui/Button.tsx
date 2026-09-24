@@ -1,11 +1,12 @@
 import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils/cn";
 
+/** "accent" ist ein Alias auf "primary" — siehe `variants`. */
 export type ButtonVariant = "primary" | "accent" | "secondary" | "ghost" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
 
 const base =
-  "inline-flex items-center justify-center gap-1.5 font-medium transition-[transform,opacity,border-color,background-color] duration-fast ease-standard active:scale-95 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+  "inline-flex items-center justify-center gap-1.5 text-center font-medium transition-[transform,opacity,border-color,background-color] duration-fast ease-standard active:scale-95 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 // Alle fünf tragen dieselbe Silhouette. Vorher waren primary/accent/danger
 // Pillen und secondary/ghost Rechtecke — und im grid-cols-2 der Profilseite
@@ -27,11 +28,19 @@ const base =
 // musste es pro Schirm neu lernen. Jetzt trägt jede Haupthandlung den
 // Akzent. Der Schlüssel "primary" bleibt, damit nicht jeder Aufrufer
 // wandern muss; er ist nur kein zweiter Look mehr.
+//
+// "accent" ist seitdem ein Alias auf "primary" und keine eigene Variante:
+// zwei gleichlautende Zeilen liefen sonst beim nächsten Handgriff an einer
+// von beiden still auseinander. Der Alias bleibt statt einer Umstellung,
+// weil 14 Aufrufer in sechs Dateien ihn tragen — ausgerechnet die
+// Aufzeichnungsschirme (FreeRideForm, LiveTrackingForm, HalteKnopf), an
+// denen gleichzeitig andere Zweige arbeiten. Neuer Code schreibt "primary".
+const primary = "rounded-full border border-accent bg-accent text-on-accent hover:opacity-90";
 const variants: Record<ButtonVariant, string> = {
-  primary: "rounded-full border border-accent bg-accent text-background hover:opacity-90",
-  accent: "rounded-full border border-accent bg-accent text-background hover:opacity-90",
+  primary,
+  accent: primary,
   secondary:
-    "rounded-full border border-border-control text-foreground hover:border-border-strong",
+    "rounded-full border border-border-control text-foreground hover:border-muted",
   ghost: "rounded-full text-foreground hover:bg-surface",
   danger: "rounded-full border border-danger bg-danger text-background hover:opacity-90",
 };
@@ -48,12 +57,16 @@ const variants: Record<ButtonVariant, string> = {
 // kurzer Beschriftung wächst nicht in die Breite. Zusammen mit dem
 // inline-flex + items-center aus `base` bleibt der Inhalt zentriert.
 const sizes: Record<ButtonSize, string> = {
-  sm: "min-h-9 px-3 py-1.5 text-xs",
+  // Sichtbar 36 px, getippt 44: das ::after reicht vier Pixel über und
+  // unter die Schaltfläche (wie SegmentedControl, BackButton). 54 Stellen
+  // nutzen sm in dichten Zeilen, in denen 44 px sichtbare Höhe die Zeile
+  // sprengen würde — die Tippfläche braucht die Höhe, das Auge nicht.
+  sm: "relative min-h-9 px-3 py-1.5 text-xs after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']",
   md: "min-h-11 px-4 py-2 text-sm",
   // Nur für die Bedienelemente während einer laufenden Aufzeichnung
-  // (LiveTrackingForm, FreeRideForm, "Strecke starten"). Dort wird mit
+  // (LiveTrackingForm, FreeRideForm, "Strecke fahren"). Dort wird mit
   // Handschuhen, in Bewegung und mit einem Blick von einer halben Sekunde
-  // getippt; 52 px ist die Höhe, die die "Strecke starten"-Schaltfläche
+  // getippt; 52 px ist die Höhe, die die "Strecke fahren"-Schaltfläche
   // schon vorher von Hand hatte.
   lg: "min-h-[3.25rem] px-6 py-3.5 text-base",
 };
@@ -116,9 +129,19 @@ export default function Button({
  * streitig machen sollen ("Passwort vergessen?" über dem Anmelden-Knopf,
  * "Wertung entfernen" neben den Sternen).
  *
- * Beides Parameter und keine angehängten Klassen: lib/utils/cn.ts ist ein
- * String-Join, kein tailwind-merge — ein angehängtes text-xs setzt sich
- * gegen das eingebaute text-sm nicht verlässlich durch.
+ * Beides Parameter und keine angehängten Klassen. Entstanden sind sie, als
+ * lib/utils/cn.ts noch ein String-Join war und ein angehängtes text-xs sich
+ * gegen das eingebaute text-sm nicht verlässlich durchsetzte; seit cn
+ * tailwind-merge ist, ginge das. Sie bleiben trotzdem, weil sie benannte
+ * Stufen sind und keine freien Werte.
+ *
+ * DIE SECHSTE SCHALTFLÄCHE. Das hier ist eine Variante neben den fünf in
+ * `variants`, auch wenn sie nicht in der Tabelle steht — und zwar bewusst
+ * nicht: sie hat weder Silhouette noch Rahmen noch Füllung und nicht die
+ * px-Polsterung der Grössen, also nichts von dem, was buttonVariants
+ * zusammensetzt. In die Tabelle gefaltet, müsste jede Grösse dort einen
+ * Sonderfall für sie tragen. Gemeinsam ist ihr mit den übrigen nur die
+ * 44-px-Tippfläche und der Fokusring; die stehen hier ausgeschrieben.
  */
 export function textAktionClassName({
   groesse = "sm",
@@ -132,9 +155,9 @@ export function textAktionClassName({
   return cn(
     "inline-flex min-h-11 items-center gap-1 rounded-sm font-medium",
     groesse === "xs" ? "text-xs" : "text-sm",
-    ton === "gedaempft" ? "text-muted hover:text-foreground" : "text-accent",
+    ton === "gedaempft" ? "text-muted hover:text-foreground" : "text-accent-ink",
     "transition-colors duration-fast hover:underline",
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
     "focus-visible:ring-offset-2 focus-visible:ring-offset-background",
     className,
   );

@@ -11,8 +11,13 @@ import PremiumHinweis from "@/components/PremiumHinweis";
 import WartungsStatus from "@/components/WartungsStatus";
 import Wartungsheft from "@/components/Wartungsheft";
 import WartungserinnerungenForm from "@/components/WartungserinnerungenForm";
-import { AutoIcon, MotorradIcon, TerminIcon, WartungIcon } from "@/components/NavIcons";
-import { ChevronDown } from "lucide-react";
+import {
+  ChevronDown,
+  AutoIcon,
+  MotorradIcon,
+  TerminIcon,
+  WartungIcon,
+} from "@/components/NavIcons";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getWartungsheft } from "@/lib/wartungsdaten";
 import { istPremium } from "@/lib/premium";

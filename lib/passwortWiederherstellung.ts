@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 // Merkmal dafür, dass die aktuelle Sitzung gerade aus einem
 // Passwort-zurücksetzen-Link entstanden ist.
@@ -38,8 +39,11 @@ import { cookies } from "next/headers";
 // nicht für ein anderes Konto, das sich auf demselben Gerät danach anmeldet.
 //
 // Es berechtigt zu genau einer Sache: das alte Passwort beim Setzen des
-// neuen wegzulassen. Mehr steckt nicht drin, und der Wert selbst (eine
-// Nutzer-ID) ist ohnehin öffentlich — er steht in jeder /fahrer/[id]-URL.
+// neuen wegzulassen. Mehr steckt nicht drin. Der Wert ist die Nutzer-ID
+// PLUS HMAC-Signatur ("id.signatur"): die ID allein wäre von Hand pflanzbar
+// — sie steht in jeder /fahrer/[id]-URL —, die Signatur lässt sich ohne das
+// Server-Geheimnis nicht fälschen. Wer das Cookie im Opfer-Browser pflanzen
+// kann (Subdomain, MITM, XSS), schaltet die Abfrage damit nicht mehr ab.
 export const WIEDERHERSTELLUNGS_COOKIE = "strado_pw_wiederherstellung";
 
 // Der Pfad, für den der Callback das Merkmal setzt. requestPasswordReset()
@@ -52,25 +56,72 @@ export const PASSWORT_AENDERN_PFAD = "/profil/passwort-aendern";
 // alte Passwort — wer es nicht kennt, fordert einen neuen Link an.
 export const WIEDERHERSTELLUNG_GUELTIG_SEKUNDEN = 15 * 60;
 
+// Das Geheimnis hinter der Cookie-Signatur: ein eigenes Server-Geheimnis,
+// ersatzweise der Supabase-Secret-Key (serverseitig, nie im Client). Nur in
+// der Entwicklung gibt es einen festen Rückfall, damit der Fluss dort nicht
+// an einem fehlenden Geheimnis scheitert. In einem Produktions-Build
+// scheitert er stattdessen: ein Geheimnis, das im Repository steht, liesse
+// jeden die Signatur für fremde Nutzer-IDs ausrechnen und damit die Abfrage
+// des alten Passworts abschalten. Tests übergeben ihr Geheimnis explizit.
+function cookieGeheimnis(): string {
+  const geheimnis =
+    process.env.RECOVERY_COOKIE_SECRET?.trim() || process.env.SUPABASE_SECRET_KEY;
+  if (geheimnis) return geheimnis;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("RECOVERY_COOKIE_SECRET oder SUPABASE_SECRET_KEY fehlt");
+  }
+  return "nur-entwicklung-kein-geheimnis";
+}
+
+/** Signiert eine Nutzer-ID für das Wiederherstellungs-Cookie. */
+export function signiereWiederherstellung(
+  userId: string,
+  geheimnis: string = cookieGeheimnis(),
+): string {
+  const sig = createHmac("sha256", geheimnis).update(userId).digest("hex");
+  return `${userId}.${sig}`;
+}
+
+function signaturPruefen(wert: string, userId: string, geheimnis: string): boolean {
+  // UUIDs enthalten keine Punkte — alles vor dem letzten Punkt ist die ID.
+  const trenn = wert.lastIndexOf(".");
+  if (trenn <= 0) return false;
+  const id = wert.slice(0, trenn);
+  const sig = wert.slice(trenn + 1);
+  if (!id || !sig || id !== userId) return false;
+  const erwartet = createHmac("sha256", geheimnis).update(id).digest();
+  let gegeben: Buffer;
+  try {
+    gegeben = Buffer.from(sig, "hex");
+  } catch {
+    return false;
+  }
+  if (gegeben.length !== erwartet.length) return false;
+  return timingSafeEqual(gegeben, erwartet);
+}
+
 // Reine Entscheidung, getrennt vom Cookie-Zugriff, damit sie testbar ist.
 //
 // Der Vergleich gegen die Nutzer-ID ist der eigentliche Inhalt: ein blosses
 // "Cookie vorhanden" würde auch dann noch gelten, wenn sich nach der
-// Wiederherstellung jemand anderes auf demselben Gerät angemeldet hat.
+// Wiederherstellung jemand anderes auf demselben Gerät angemeldet hat. Die
+// Signatur ist der zweite Teil: eine von Hand eingetragene ID ohne gültige
+// Signatur gilt nicht.
 export function wiederherstellungGiltFuer(
   cookieWert: string | undefined | null,
   userId: string,
+  geheimnis: string = cookieGeheimnis(),
 ): boolean {
   if (typeof cookieWert !== "string" || cookieWert.length === 0) return false;
   if (!userId) return false;
-  return cookieWert === userId;
+  return signaturPruefen(cookieWert, userId, geheimnis);
 }
 
 // Nur aus einem Route Handler oder einer Server Action aufrufbar — beim
 // Rendern einer Server Component lässt Next kein Set-Cookie mehr zu.
 export async function merkeWiederherstellung(userId: string): Promise<void> {
   const store = await cookies();
-  store.set(WIEDERHERSTELLUNGS_COOKIE, userId, {
+  store.set(WIEDERHERSTELLUNGS_COOKIE, signiereWiederherstellung(userId), {
     httpOnly: true,
     sameSite: "lax",
     // Auf localhost läuft die Entwicklung über http; ein secure-Cookie käme

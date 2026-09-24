@@ -300,9 +300,19 @@ export default function BestaetigenForm({
           Falsche Adresse?{" "}
           <Link
             href="/registrieren"
-            className="font-medium text-accent hover:underline"
+            className="font-medium text-accent-ink hover:underline"
           >
             Nochmal registrieren
+          </Link>
+        </p>
+        {/* Für eine schon registrierte Adresse schickt signUp() bewusst
+            keinen Fehler und keinen Code (keine Konto-Enumeration, siehe
+            lib/actions/auth.ts). Ohne diesen Satz wartete, wer sein Konto
+            vergessen hat, hier auf eine Mail, die nie kommt. */}
+        <p className="text-muted">
+          Schon ein Konto mit dieser Adresse?{" "}
+          <Link href="/anmelden" className="font-medium text-accent-ink hover:underline">
+            Zur Anmeldung
           </Link>
         </p>
       </div>

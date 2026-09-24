@@ -17,6 +17,7 @@ const {
   WIEDERHERSTELLUNG_GUELTIG_SEKUNDEN,
   istWiederherstellung,
   merkeWiederherstellung,
+  signiereWiederherstellung,
   verbraucheWiederherstellung,
 } = await import("@/lib/passwortWiederherstellung");
 
@@ -29,11 +30,12 @@ beforeEach(() => {
 });
 
 describe("merkeWiederherstellung", () => {
-  it("legt das Merkmal unter der Nutzer-ID ab", async () => {
+  it("legt das Merkmal signiert unter der Nutzer-ID ab", async () => {
     await merkeWiederherstellung(NUTZER);
     const [name, wert] = store.set.mock.calls[0];
     expect(name).toBe(WIEDERHERSTELLUNGS_COOKIE);
-    expect(wert).toBe(NUTZER);
+    // "id.signatur" — die blosse ID wäre von Hand pflanzbar.
+    expect(wert).toMatch(new RegExp(`^${NUTZER}\\.[0-9a-f]{64}$`));
   });
 
   // Das Cookie berechtigt dazu, das alte Passwort wegzulassen. Wäre es aus
@@ -50,10 +52,26 @@ describe("merkeWiederherstellung", () => {
 
   // secure:true auf http://localhost käme nie an — dort bricht sonst das
   // Zurücksetzen in der Entwicklung, ohne dass es jemandem auffiele.
+  // Ein Geheimnis, das im Repository steht, darf in Produktion nie
+  // signieren: damit liesse sich die Signatur für fremde Nutzer-IDs
+  // ausrechnen.
+  it("scheitert in Produktion ohne Geheimnis, statt auf den festen Wert zurückzufallen", async () => {
+    try {
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("RECOVERY_COOKIE_SECRET", "");
+      vi.stubEnv("SUPABASE_SECRET_KEY", "");
+      await expect(merkeWiederherstellung(NUTZER)).rejects.toThrow();
+      expect(store.set).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("setzt secure nur in Produktion", async () => {
     const vorher = process.env.NODE_ENV;
     try {
       vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("RECOVERY_COOKIE_SECRET", "test-geheimnis");
       await merkeWiederherstellung(NUTZER);
       expect(store.set.mock.calls[0][2]).toMatchObject({ secure: true });
 
@@ -70,14 +88,19 @@ describe("merkeWiederherstellung", () => {
 
 describe("istWiederherstellung", () => {
   it("gilt für die Sitzung, für die das Merkmal gesetzt wurde", async () => {
-    store.get.mockReturnValue({ value: NUTZER });
+    store.get.mockReturnValue({ value: signiereWiederherstellung(NUTZER) });
     await expect(istWiederherstellung(NUTZER)).resolves.toBe(true);
     expect(store.get).toHaveBeenCalledWith(WIEDERHERSTELLUNGS_COOKIE);
   });
 
   it("gilt NICHT für ein anderes Konto auf demselben Gerät", async () => {
-    store.get.mockReturnValue({ value: NUTZER });
+    store.get.mockReturnValue({ value: signiereWiederherstellung(NUTZER) });
     await expect(istWiederherstellung("ce4f33eb-ece2-40f4-8b1c-da26d1bb6f5a")).resolves.toBe(false);
+  });
+
+  it("gilt NICHT für eine von Hand eingetragene Nutzer-ID", async () => {
+    store.get.mockReturnValue({ value: NUTZER });
+    await expect(istWiederherstellung(NUTZER)).resolves.toBe(false);
   });
 
   // Der Normalfall: Passwortwechsel aus den Einstellungen heraus. Dort MUSS

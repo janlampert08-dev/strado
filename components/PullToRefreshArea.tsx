@@ -152,7 +152,7 @@ export default function PullToRefreshArea({ children }: { children: ReactNode })
                 }
           }
         >
-          <Signet className="h-5 w-auto text-accent" />
+          <Signet className="h-5 w-auto text-accent-ink" />
         </span>
         <span className="sr-only">{laedt ? "Wird aktualisiert…" : ""}</span>
       </div>

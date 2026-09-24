@@ -1,10 +1,19 @@
 import type { NextConfig } from "next";
 import path from "path";
 import { contentSecurityPolicy } from "./lib/csp";
+import { buildKennung } from "./lib/serviceWorker";
 
 const nextConfig: NextConfig = {
   turbopack: {
     root: path.join(__dirname),
+  },
+  // Die Kennung, unter der components/ServiceWorkerRegister.tsx den Service
+  // Worker registriert (/sw.js?v=…) und nach der public/sw.js seine Caches
+  // benennt. Über `env` statt NEXT_PUBLIC_*: der Wert entsteht hier beim
+  // Build und nicht in der Vercel-Oberfläche. Warum überhaupt:
+  // lib/serviceWorker.ts.
+  env: {
+    STRADO_BUILD_KENNUNG: buildKennung(process.env, Date.now()),
   },
   experimental: {
     serverActions: {
@@ -61,11 +70,15 @@ const nextConfig: NextConfig = {
           // Referrer-Policy ginge die vollständige URL beim Klick auf einen
           // externen Link als Referer mit — inklusive Token.
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          // Keine der drei Berechtigungen wird gebraucht. Geolocation
+          // Kamera und Mikrofon werden nicht gebraucht. Geolocation
           // ausdrücklich NICHT gesperrt: die Fahrtaufzeichnung lebt davon.
+          // payment bleibt für uns und die Iframes von js.stripe.com offen:
+          // payment=() schaltete die Payment Request API auch im Payment
+          // Element ab, sodass Apple Pay und Google Pay nie erscheinen
+          // konnten. Jede andere Origin bleibt gesperrt.
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), payment=()",
+            value: 'camera=(), microphone=(), payment=(self "https://js.stripe.com")',
           },
           {
             key: "Strict-Transport-Security",

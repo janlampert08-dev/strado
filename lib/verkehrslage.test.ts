@@ -7,6 +7,11 @@ import {
   stufeFuerLive,
 } from "@/lib/verkehrslage";
 
+
+// Eine Woche mit Spannweite 1.05–1.30 (10./90. Perzentil), wie sie
+// skalaFuerPunkte für einen Pass liefert.
+const SKALA = { unten: 1.05, oben: 1.3, flach: false };
+
 describe("stufeFuerLive", () => {
   it("legt Live auf die Prognosestufen", () => {
     expect(stufeFuerLive("low")).toBe("ruhig");
@@ -60,6 +65,7 @@ describe("baueVerkehrseinschaetzung", () => {
     const e = baueVerkehrseinschaetzung({
       live: "moderate",
       prognoseFaktor: 1.03,
+      skala: SKALA,
       hatPrognose: true,
       hatGemeinschaft: false,
       liveLaedt: false,
@@ -73,6 +79,7 @@ describe("baueVerkehrseinschaetzung", () => {
     const e = baueVerkehrseinschaetzung({
       live: "severe",
       prognoseFaktor: null,
+      skala: SKALA,
       hatPrognose: false,
       hatGemeinschaft: false,
       liveLaedt: false,
@@ -86,11 +93,12 @@ describe("baueVerkehrseinschaetzung", () => {
     const e = baueVerkehrseinschaetzung({
       live: null,
       prognoseFaktor: 1.35,
+      skala: SKALA,
       hatPrognose: true,
       hatGemeinschaft: false,
       liveLaedt: false,
     });
-    expect(e.titel).toBe("Um diese Zeit typischerweise zäh");
+    expect(e.titel).toBe("Um diese Zeit typischerweise voll");
     expect(e.detail).toContain("Kein Live-Wert für diese Stelle.");
     expect(e.quellen).toEqual(["Vorhersage: Mapbox"]);
   });
@@ -99,6 +107,7 @@ describe("baueVerkehrseinschaetzung", () => {
     const e = baueVerkehrseinschaetzung({
       live: null,
       prognoseFaktor: null,
+      skala: SKALA,
       hatPrognose: false,
       hatGemeinschaft: false,
       liveLaedt: true,
@@ -110,6 +119,7 @@ describe("baueVerkehrseinschaetzung", () => {
     const e = baueVerkehrseinschaetzung({
       live: null,
       prognoseFaktor: null,
+      skala: SKALA,
       hatPrognose: true,
       hatGemeinschaft: false,
       liveLaedt: false,
@@ -122,6 +132,7 @@ describe("baueVerkehrseinschaetzung", () => {
     const e = baueVerkehrseinschaetzung({
       live: null,
       prognoseFaktor: null,
+      skala: SKALA,
       hatPrognose: false,
       hatGemeinschaft: true,
       liveLaedt: false,
@@ -133,11 +144,44 @@ describe("baueVerkehrseinschaetzung", () => {
     const e = baueVerkehrseinschaetzung({
       live: null,
       prognoseFaktor: null,
+      skala: SKALA,
       hatPrognose: false,
       hatGemeinschaft: false,
       liveLaedt: false,
     });
     expect(e.titel).toBe("Noch keine Verkehrsdaten");
     expect(e.quellen).toEqual([]);
+  });
+});
+
+describe("baueVerkehrseinschaetzung — Stufe relativ zur Strecke", () => {
+  it("liest denselben Faktor an einer ruhigen und einer vollen Strecke verschieden", () => {
+    const eingabe = {
+      live: null,
+      prognoseFaktor: 1.14,
+      hatPrognose: true,
+      hatGemeinschaft: false,
+      liveLaedt: false,
+    } as const;
+    // Am Furka ist 1.14 die ruhigste Werktagsstunde …
+    expect(
+      baueVerkehrseinschaetzung({ ...eingabe, skala: { unten: 1.14, oben: 1.3, flach: false } }).titel,
+    ).toBe("Um diese Zeit typischerweise ruhig");
+    // … an einer Strecke, die nie über 1.15 kommt, fast die vollste.
+    expect(
+      baueVerkehrseinschaetzung({ ...eingabe, skala: { unten: 1.02, oben: 1.15, flach: false } }).titel,
+    ).toBe("Um diese Zeit typischerweise voll");
+  });
+
+  it("nennt eine flache Woche ruhig", () => {
+    const e = baueVerkehrseinschaetzung({
+      live: null,
+      prognoseFaktor: 1.06,
+      skala: { unten: 1.0, oben: 1.05, flach: true },
+      hatPrognose: true,
+      hatGemeinschaft: false,
+      liveLaedt: false,
+    });
+    expect(e.titel).toBe("Um diese Zeit typischerweise ruhig");
   });
 });

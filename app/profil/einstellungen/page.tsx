@@ -11,7 +11,7 @@ import {
   Palette,
   Scale,
   Sparkles,
-} from "lucide-react";
+} from "@/components/NavIcons";
 import Header from "@/components/Header";
 import VisibilitySettings from "@/components/VisibilitySettings";
 import { DEFAULT_PRIVACY_RADIUS_M } from "@/lib/track";
@@ -67,7 +67,7 @@ export default async function EinstellungenPage() {
     supabase
       .from("profiles")
       .select(
-        "display_name, zeigt_fahrzeuge, zeigt_avatar, zeigt_paesse, zeigt_hoehenmeter, zeigt_distanz, zeigt_follower_liste, privatzone_radius_m",
+        "display_name, zeigt_fahrzeuge, zeigt_avatar, zeigt_paesse, zeigt_hoehenmeter, zeigt_distanz, zeigt_follower_liste, zeigt_tempo, privatzone_radius_m",
       )
       .eq("id", user.id)
       .single(),
@@ -122,7 +122,7 @@ export default async function EinstellungenPage() {
                 <li key={a.id}>
                   <a
                     href={`#${a.id}`}
-                    className="inline-flex min-h-9 items-center rounded-full border border-border-control px-3 text-sm whitespace-nowrap text-muted transition-colors duration-fast hover:border-border-strong hover:text-foreground"
+                    className="inline-flex min-h-9 items-center rounded-full border border-border-control px-3 text-sm whitespace-nowrap text-muted transition-colors duration-fast hover:border-muted hover:text-foreground"
                   >
                     {a.label}
                   </a>
@@ -134,9 +134,9 @@ export default async function EinstellungenPage() {
           <section id="privatsphaere" className="flex scroll-mt-20 flex-col gap-3">
             <SectionHeading icon={Lock}>Privatsphäre</SectionHeading>
             <p className="text-sm text-muted">
-              Legt fest, was andere auf deinem Profil sehen. Ob eine einzelne
-              Fahrt öffentlich ist, entscheidest du beim Speichern oder in
-              &bdquo;Getrackte Fahrten&ldquo;.
+              Legt fest, was andere auf deinem Profil und deinen geteilten Fahrten sehen. Ob eine einzelne
+              Fahrt öffentlich ist, entscheidest du beim Speichern oder später
+              im Profil unter &bdquo;Getrackte Fahrten&ldquo;.
             </p>
             <VisibilitySettings
               zeigtFahrzeuge={profile?.zeigt_fahrzeuge ?? true}
@@ -145,6 +145,7 @@ export default async function EinstellungenPage() {
               zeigtHoehenmeter={profile?.zeigt_hoehenmeter ?? true}
               zeigtDistanz={profile?.zeigt_distanz ?? true}
               zeigtFollowerListe={profile?.zeigt_follower_liste ?? true}
+              zeigtTempo={profile?.zeigt_tempo ?? false}
               privatzoneRadiusM={
                 profile?.privatzone_radius_m ?? DEFAULT_PRIVACY_RADIUS_M
               }
@@ -179,7 +180,7 @@ export default async function EinstellungenPage() {
                         ? "Abgelehnt"
                         : "Ausstehend";
                   const color = route.status_ok
-                    ? "text-accent"
+                    ? "text-accent-ink"
                     : route.abgelehnt_am
                       ? "text-danger"
                       : "text-muted";
@@ -203,7 +204,7 @@ export default async function EinstellungenPage() {
                       <div className="flex min-w-0 items-center justify-between gap-3 sm:justify-start">
                         <Link
                           href={`/strecken/${route.id}`}
-                          className="truncate transition-colors duration-fast hover:text-accent"
+                          className="truncate transition-colors duration-fast hover:text-accent-ink"
                         >
                           {route.name}
                         </Link>
@@ -305,7 +306,7 @@ export default async function EinstellungenPage() {
                   ? premiumStatus.quelle === "saisonpass"
                     ? "Premium verwalten"
                     : "Abo verwalten"
-                  : "Premium ansehen"}
+                  : "Mehr zu Premium"}
               </Link>
             </Card>
           </section>
@@ -405,7 +406,7 @@ export default async function EinstellungenPage() {
                     href={eintrag.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex min-h-11 items-center justify-between gap-3 px-4 py-3 text-sm transition-colors duration-fast hover:text-accent"
+                    className="flex min-h-11 items-center justify-between gap-3 px-4 py-3 text-sm transition-colors duration-fast hover:text-accent-ink"
                   >
                     {eintrag.label}
                     <ExternalLink className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />

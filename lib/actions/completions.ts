@@ -1056,6 +1056,147 @@ export async function logFreeRide(
   };
 }
 
+export interface ImportFormState {
+  error: string | null;
+  completionId?: string;
+}
+
+// Höchstens so viele Importe je Konto und Tag. Der Cooldown (0024) hält die
+// Frequenz schon auf eine Fahrt alle paar Sekunden; diese Grenze hält die
+// Menge im Rahmen, die eine Schleife über Nacht hinterlassen könnte.
+const MAX_IMPORTE_PRO_TAG = 100;
+// Vor diesem Datum stammt kein GPS-Track aus einer Fahr-App.
+const FRUEHESTES_IMPORTDATUM = "2005-01-01";
+
+// Importiert eine frühere Fahrt aus einer GPX-Datei (lib/gpxImport.ts liest
+// die Datei im Browser und schickt dieselbe Punktliste wie der Recorder).
+//
+// Gegenüber logFreeRide drei bewusste Unterschiede, alle aus demselben Grund
+// — die Zeitstempel stehen in einer Datei, die jeder schreiben kann:
+// - Das Datum kommt aus dem ersten Punkt, nicht von heute, sonst stünde die
+//   Klausenfahrt vom Juli in der Pass-Sammlung auf dem Tag des Imports.
+// - Kein Fahrtstart-Ticket, keine Streckenerkennung. dauer_quelle bleibt
+//   "trail" (der Trigger aus 0098/0118 setzt es ohne Ticket ohnehin), die
+//   Fahrt steht in keiner Rangliste.
+// - Immer privat. Das Formular fragt gar nicht erst; die Datenbank erzwingt
+//   es mit route_completions_import_privat (0124), auch gegen den
+//   nachträglichen Umschalter.
+//
+// Die Plausibilitätsprüfungen sind dieselben wie bei einer Aufzeichnung
+// (implausibilityReason): eine Zugfahrt oder ein Flug wird auch als Datei
+// nicht zur Fahrt.
+export async function importGpxRide(formData: FormData): Promise<ImportFormState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Bitte melde dich zuerst an." };
+
+  if (
+    await isRateLimited(
+      supabase,
+      "route_completions",
+      "created_at",
+      "user_id",
+      user.id,
+      COMPLETION_COOLDOWN_MS,
+    )
+  ) {
+    return { error: "Bitte warte einen Moment, bevor du erneut einträgst." };
+  }
+
+  const { count: importeHeute } = await supabase
+    .from("route_completions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("importiert", true)
+    .gte("created_at", new Date(Date.now() - 24 * 3600 * 1000).toISOString());
+  if ((importeHeute ?? 0) >= MAX_IMPORTE_PRO_TAG) {
+    return { error: `Höchstens ${MAX_IMPORTE_PRO_TAG} Importe pro Tag. Morgen geht es weiter.` };
+  }
+
+  const parsedTrail = parseTrail(formData);
+  if ("error" in parsedTrail) return { error: parsedTrail.error };
+  const trail = parsedTrail.trail;
+
+  const datum = todayInZurich(new Date(trail[0].t));
+  if (datum < FRUEHESTES_IMPORTDATUM || datum > todayInZurich()) {
+    return { error: "Das Datum in der Datei ist nicht plausibel." };
+  }
+
+  const { distanceKm: distanzKm, durationSeconds: dauerSekunden } = computeTrailStats(trail);
+  const implausible = implausibilityReason(trail, distanzKm, dauerSekunden);
+  if (implausible) return { error: implausible };
+
+  // Dieselbe Datei zweimal hochgeladen: gleicher Tag, gleiche Dauer, gleiche
+  // Distanz auf 50 m. Beides stammt aus denselben Punkten und ist damit
+  // reproduzierbar — ein Hash der Datei wäre es nicht, weil der Browser
+  // ausdünnt.
+  const { data: doppelt } = await supabase
+    .from("route_completions")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("importiert", true)
+    .eq("datum", datum)
+    .eq("dauer_sekunden", dauerSekunden)
+    .gte("distanz_km", distanzKm - 0.05)
+    .lte("distanz_km", distanzKm + 0.05)
+    .limit(1)
+    .maybeSingle<{ id: string }>();
+  if (doppelt) return { error: "Diese Fahrt ist schon importiert.", completionId: doppelt.id };
+
+  let bewegteSekunden = movingSeconds(trail);
+  if (bewegteSekunden > dauerSekunden) bewegteSekunden = dauerSekunden;
+
+  const titelRaw = String(formData.get("titel") ?? "").trim();
+  const titel = titelRaw ? titelRaw.slice(0, MAX_TITEL_LENGTH) : null;
+
+  const coordinates = toCoordinates(simplifyTrack(trail));
+  const track = toEwktLineString(coordinates);
+  if (!track) return { error: "Ungültige Tracking-Daten." };
+
+  const [ort, elevation] = await Promise.all([
+    reverseGeocode(coordinates[0]).catch(() => null),
+    deriveElevation(coordinates),
+  ]);
+
+  const { data: inserted, error } = await supabase
+    .from("route_completions")
+    .insert({
+      user_id: user.id,
+      art: "frei",
+      importiert: true,
+      ist_oeffentlich: false,
+      track_oeffentlich: null,
+      datum,
+      distanz_km: distanzKm,
+      dauer_sekunden: dauerSekunden,
+      dauer_trail_sekunden: dauerSekunden,
+      bewegte_zeit_sekunden: bewegteSekunden,
+      titel,
+      start_ort: ort?.ort ?? null,
+      region: ort?.region ?? null,
+      hoehenmeter_aufstieg: elevation.hoehenmeter_aufstieg,
+      hoehenprofil: elevation.hoehenprofil,
+      hoehen_quelle: elevation.quelle,
+      tempoprofil: buildTempoprofil(trail),
+      track,
+    })
+    .select("id")
+    .single();
+
+  if (error || !inserted) {
+    if (error?.message.includes("cooldown_active")) {
+      return { error: "Bitte warte einen Moment, bevor du erneut einträgst." };
+    }
+    return { error: "Fahrt konnte nicht importiert werden." };
+  }
+
+  revalidatePath("/profil");
+  return { error: null, completionId: inserted.id };
+}
+
 export interface DeleteCompletionState {
   error: string | null;
 }
@@ -1133,13 +1274,14 @@ export async function toggleCompletionVisibility(
   const { data: existing } = await supabase
     .from("route_completions")
     .select(
-      "route_id, art, ist_oeffentlich, abdeckung_prozent, distanz_km, dauer_sekunden, bewegte_zeit_sekunden",
+      "route_id, art, importiert, ist_oeffentlich, abdeckung_prozent, distanz_km, dauer_sekunden, bewegte_zeit_sekunden",
     )
     .eq("id", completionId)
     .eq("user_id", user.id)
     .maybeSingle<{
       route_id: string | null;
       art: "strecke" | "frei";
+      importiert: boolean;
       ist_oeffentlich: boolean;
       abdeckung_prozent: number | null;
       distanz_km: number | null;
@@ -1156,6 +1298,11 @@ export async function toggleCompletionVisibility(
   // Fahrt. Ohne diese Prüfung liesse sich die Regel über den nachträglichen
   // Umschalter umgehen.
   if (nextOeffentlich) {
+    // Die Datenbank lehnt das ohnehin ab (0124) — hier nur, damit der Nutzer
+    // einen Satz liest statt "Sichtbarkeit konnte nicht geändert werden."
+    if (existing.importiert) {
+      return { error: "Importierte Fahrten bleiben privat." };
+    }
     if (existing.art === "frei") {
       const blocked = publicationBlockReason(
         existing.distanz_km ?? 0,

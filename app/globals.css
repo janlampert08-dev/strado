@@ -3,7 +3,21 @@
 :root {
   --color-background: #fafafa;
   --color-foreground: #131316;
-  --color-accent: #3d5afe;
+  /* Die Markenfarbe #6B83FF gilt seit 2026-09-23 in beiden Schemas
+     (Eigentümerentscheid). Vorher trug das helle Schema #3d5afe, ein
+     Material-Blau, weil #6B83FF als SCHRIFT auf #fafafa nur 3.19:1 hat.
+     Die Lösung ist eine Aufteilung nach Rolle statt einer zweiten Marke:
+     - --color-accent: Flächen, Ränder, Ringe, Grafik — immer #6B83FF
+       (als Nicht-Text-Element 3.19:1, über der 3:1-Schwelle).
+     - --color-accent-ink: Akzent als SCHRIFT. Hell dieselbe Farbfamilie,
+       tiefer gesetzt: #4460e0, 5.04 auf Hintergrund, 4.65 auf accent-subtle,
+       4.74 auf Fläche. Dunkel ist es #6B83FF selbst.
+     - --color-on-accent: Schrift AUF einer Akzentfläche — in beiden Schemas
+       fast Schwarz (5.91:1), genau wie das dunkle Schema es schon hielt.
+       Weiss auf #6B83FF hätte 3.33:1. */
+  --color-accent: #6b83ff;
+  --color-accent-ink: #4460e0;
+  --color-on-accent: #0b0b0d;
   /* Trägt fast den gesamten Sekundärtext der App (Labels, Hinweise,
      Einheiten). Vorher #8a8f98 — 3.11:1 auf #fafafa und damit unter der
      AA-Schwelle von 4.5:1. Das ist genau der Text, der bei Sonnenlicht auf
@@ -22,9 +36,21 @@
      --color-border-control. Eine Karte ist Ordnung, ein Feld ist etwas zum
      Anfassen; das darf man sehen. */
   --color-border: color-mix(in oklch, var(--color-foreground) 8%, transparent);
-  --color-border-control: color-mix(in oklch, var(--color-foreground) 22%, transparent);
+  /* 48 %: ab hier erreicht der Umriss eines Feldes 3:1 gegen Hintergrund
+     (3.25) und Fläche (3.21) — WCAG 1.4.11 verlangt das für die Grenze
+     eines Bedienelements. 22 % ergaben 1.62:1: das Feld war als Feld kaum
+     zu erkennen. Der Hover-Rahmen der Bedienelemente nimmt dafür
+     --color-muted (hover:border-muted): strong trägt auch Trennlinien und
+     den Griff des Sheets und bleibt deshalb, wo er war. */
+  --color-border-control: color-mix(in oklch, var(--color-foreground) 48%, transparent);
   --color-border-strong: color-mix(in oklch, var(--color-foreground) 30%, transparent);
   --color-surface: color-mix(in oklch, var(--color-foreground) 3%, var(--color-background));
+  /* Tempo-Skala (lib/speed.ts, TEMPO_FARBEN.hell): dieselben Werte wie dort. */
+  --data-speed-1: #e9967f;
+  --data-speed-2: #d9703b;
+  --data-speed-3: #b35d00;
+  --data-speed-4: #8a5000;
+  --data-speed-5: #5c4500;
 
   /* Abstufungen des Akzenttons statt verstreuter accent/5-, accent/10-
      Opacity-Utilities an einzelnen Stellen (z. B. Bestenlisten-Hervorhebung). */
@@ -104,12 +130,19 @@
     --color-background: #0b0b0d;
     --color-foreground: #f2f2f4;
     --color-accent: #6b83ff;
+    --color-accent-ink: #6b83ff;
+    --color-on-accent: #0b0b0d;
     --color-muted: #8f95a3;
 
     --color-border: color-mix(in oklch, var(--color-foreground) 9%, transparent);
-    --color-border-control: color-mix(in oklch, var(--color-foreground) 22%, transparent);
+    --color-border-control: color-mix(in oklch, var(--color-foreground) 40%, transparent);
     --color-border-strong: color-mix(in oklch, var(--color-foreground) 32%, transparent);
     --color-surface: color-mix(in oklch, var(--color-foreground) 6%, var(--color-background));
+    --data-speed-1: #a04034;
+    --data-speed-2: #c65d26;
+    --data-speed-3: #e38305;
+    --data-speed-4: #f2b036;
+    --data-speed-5: #f7dd7d;
 
     --color-accent-subtle: color-mix(in oklch, var(--color-accent) 14%, var(--color-background));
     --color-accent-strong: color-mix(in oklch, var(--color-accent) 80%, white);
@@ -165,12 +198,20 @@
   --color-background: #0b0b0d;
   --color-foreground: #f2f2f4;
   --color-accent: #6b83ff;
+  --color-accent-ink: #6b83ff;
+  --color-on-accent: #0b0b0d;
   --color-muted: #8f95a3;
 
   --color-border: color-mix(in oklch, var(--color-foreground) 9%, transparent);
-  --color-border-control: color-mix(in oklch, var(--color-foreground) 22%, transparent);
+  /* Dunkel: 40 % ergibt 3.51:1 gegen Hintergrund und 3.54:1 gegen Fläche. */
+  --color-border-control: color-mix(in oklch, var(--color-foreground) 40%, transparent);
   --color-border-strong: color-mix(in oklch, var(--color-foreground) 32%, transparent);
   --color-surface: color-mix(in oklch, var(--color-foreground) 6%, var(--color-background));
+  --data-speed-1: #a04034;
+  --data-speed-2: #c65d26;
+  --data-speed-3: #e38305;
+  --data-speed-4: #f2b036;
+  --data-speed-5: #f7dd7d;
 
   --color-accent-subtle: color-mix(in oklch, var(--color-accent) 14%, var(--color-background));
   --color-accent-strong: color-mix(in oklch, var(--color-accent) 80%, white);
@@ -220,6 +261,8 @@
   --color-background: var(--color-background);
   --color-foreground: var(--color-foreground);
   --color-accent: var(--color-accent);
+  --color-accent-ink: var(--color-accent-ink);
+  --color-on-accent: var(--color-on-accent);
   --color-accent-subtle: var(--color-accent-subtle);
   --color-accent-strong: var(--color-accent-strong);
   --color-muted: var(--color-muted);
@@ -248,21 +291,32 @@
   --shadow-overlay: var(--shadow-overlay);
 
   --text-display: var(--text-display);
+  /* Zeilenhöhe und Laufweite gehören zur Grösse: Titel standen mit dem
+     Standard von 1.5 (bei 25 px also 37 px Zeile) locker wie Fliesstext. */
+  --text-display--line-height: 1.1;
+  --text-display--letter-spacing: -0.02em;
   --text-title: var(--text-title);
+  --text-title--line-height: 1.2;
+  --text-title--letter-spacing: -0.01em;
 
   --ease-standard: var(--ease-standard);
   --duration-fast: var(--duration-fast);
   --duration-base: var(--duration-base);
 
-  --font-sans: var(--font-inter);
+  /* Mit generischem Schluss: fällt eine Webschrift aus und gibt es kein
+     lokales Arial (Android), griffe der Browser sonst zu seiner Standard-
+     schrift — oft einer Serifenschrift. */
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  /* Seitentitel in der Schrift der Wortmarke (app/layout.tsx). */
+  --font-display: var(--font-familjen), ui-sans-serif, system-ui, sans-serif;
   /* IBM Plex Mono bleibt geladen, trägt aber nur noch, was wirklich Code
      ist (Creator-Codes, Pfade unter /moderation/creator) — und das
      Teilen-Bild, das die Variable in lib/shareImage.ts direkt liest.
-     Zahlen setzt die Oberfläche in Inter mit tabellarischen Ziffern (siehe
+     Zahlen setzt die Oberfläche in Geist mit tabellarischen Ziffern (siehe
      body): Mono auf Messwerten las sich als Terminal, nicht als
      Präzisionsinstrument, und auf Wörtern ("Ohne Klasse",
      "Aufzeichnung läuft") als Kostüm. */
-  --font-mono: var(--font-ibm-plex-mono);
+  --font-mono: var(--font-ibm-plex-mono), ui-monospace, monospace;
 }
 
 body {
@@ -273,12 +327,50 @@ body {
      — km, km/h, Höhenmeter, Zeiten —, und Messwerte, die untereinander oder
      live stehen, dürfen nicht springen. Seit IBM Plex Mono nicht mehr die
      Zahlenschrift der Oberfläche ist (siehe --font-mono unten), übernimmt
-     Inter das, und Inter hat die Tabellenziffern eingebaut. */
+     Geist das, und Geist hat die Tabellenziffern eingebaut. */
   font-variant-numeric: tabular-nums;
   /* Kein blaues Antipp-Aufblitzen auf iOS/Android — eigene, dezente
      :active-Zustände (siehe Button-/Link-Klassen) übernehmen dieses Feedback. */
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
+}
+
+/* Plattformschicht fürs Telefon (Skill "mobile-native", 2026-09-23).
+   - text-size-adjust: keine Schriftvergrösserung im Querformat auf iOS.
+   - touch-action: manipulation: kein Doppeltipp-Zoom auf Bedienelementen,
+     damit der Klick ohne Wartezeit feuert — der Seitenzoom per zwei
+     Finger bleibt unberührt (kein user-scalable=no).
+   - user-select/-webkit-touch-callout nur auf BEDIENELEMENTEN: langes
+     Drücken auf einen Knopf markierte seine Beschriftung. Inhalt (Namen,
+     Zahlen, Adressen) bleibt markierbar. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+a,
+button,
+summary,
+label,
+[role="button"],
+[role="tab"],
+[role="radio"] {
+  touch-action: manipulation;
+}
+button,
+summary,
+[role="button"],
+[role="tab"],
+[role="radio"] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Seitentitel (die eine h1 je Seite und alles in text-display) in der
+   Schrift der Wortmarke. :where() hält die Spezifität bei null, damit eine
+   Utility-Klasse am Element weiterhin gewinnt. */
+:where(h1, .text-display) {
+  font-family: var(--font-display);
 }
 
 /* Sinnvoller Default für native Formularelemente, die nicht überall einzeln
@@ -378,6 +470,47 @@ main {
   filter: invert(1);
 }
 
+/* Zoom- und Kompassknöpfe im Stil der App statt Mapbox' weissen 29-px-
+   Kästchen, die auf der dunklen Karte als einziges Weiss aufleuchteten
+   (Re-Review 2026-09-23). 44 px wie jede Tippfläche der App; die Icons sind
+   in mapbox-gl.css feste dunkle SVGs und werden im dunklen Schema
+   invertiert, wie der ⓘ-Knopf oben. Nur Aussehen und Grösse — die Knöpfe
+   selbst und das Mapbox-Logo bleiben unangetastet. */
+.mapboxgl-map .mapboxgl-ctrl-group {
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: color-mix(in oklch, var(--color-background) 88%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-elevated);
+}
+.mapboxgl-map .mapboxgl-ctrl-group button {
+  width: 44px;
+  height: 44px;
+}
+.mapboxgl-map .mapboxgl-ctrl-group button + button {
+  border-top: 1px solid var(--color-border);
+}
+@media (hover: hover) and (pointer: fine) {
+  .mapboxgl-map .mapboxgl-ctrl-group button:not(:disabled):hover {
+    background-color: var(--color-surface);
+  }
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .mapboxgl-ctrl-group .mapboxgl-ctrl-icon {
+    filter: invert(1);
+  }
+}
+:root[data-theme="dark"] .mapboxgl-ctrl-group .mapboxgl-ctrl-icon {
+  filter: invert(1);
+}
+/* Die Fläche hinter der Karte, bis die ersten Kacheln da sind: die Fläche
+   der App statt Mapbox' Standardgrau. */
+.mapboxgl-map {
+  background-color: var(--color-surface);
+}
+
 /* Bewegung — die einzigen @keyframes der App.
    Bis hierher kam die App ohne eigene Keyframes aus: Bewegung entstand
    ausschliesslich aus Tailwind-Utilities (transition-colors, active:scale-95,
@@ -401,11 +534,11 @@ main {
   }
   30% {
     transform: skewX(-9deg);
-    color: var(--color-accent);
+    color: var(--color-accent-ink);
   }
   70% {
     transform: skewX(2deg);
-    color: var(--color-accent);
+    color: var(--color-accent-ink);
   }
   100% {
     transform: skewX(0deg);
@@ -480,28 +613,52 @@ main {
   animation: abschluss-ring 900ms var(--ease-standard) 160ms both;
 }
 
+/* Schrittwechsel der Einrichtung (components/Einrichtung.tsx): der neue
+   Schritt kommt von unten nach, kurz und ohne Nachfedern. Der Anlass ist
+   derselbe wie oben — eine Quittung für "Weiter": ohne sie wechselt der
+   Inhalt an Ort und Stelle, und ob der Tipp gegriffen hat, sieht man nur am
+   Fortschrittsbalken ganz oben. Läuft einmal pro Schritt; der
+   prefers-reduced-motion-Block unten erfasst ihn wie die übrigen. */
+@keyframes einrichtung-schritt {
+  from {
+    transform: translateY(0.5rem);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.einrichtung-schritt {
+  animation: einrichtung-schritt var(--duration-base) var(--ease-standard) both;
+}
+
 /* Reduzierte Bewegung — App-weit, und bis hierher gab es das nirgends
    (docs/audit/uiux.md §6.4). Betroffen ist praktisch jede Bewegung im
    Projekt: animate-pulse auf jedem Skeleton (also auf jedem Ladebildschirm),
-   animate-spin, active:scale-95 auf jedem Button, transition-colors überall,
-   die Höhen-Transition des DragSheets und die beiden Keyframes oben.
+   animate-spin, active:scale-95 auf jedem Button, transition-colors überall
+   und die beiden Keyframes oben.
 
    !important ist hier ausnahmsweise richtig, und zwar aus einem Grund, der
    nichts mit Spezifitätskämpfen zu tun hat: die Werte, die überschrieben
    werden müssen, stehen in Tailwind-Utilities an einzelnen Elementen und in
-   Inline-Styles (DragSheet setzt seine Höhe per style-Attribut). Eine Regel
-   ohne !important verlöre gegen beides. Und die Betriebssystem-Einstellung
-   ist eine ausdrückliche Nutzeransage — sie darf gewinnen, auch gegen die
-   Absicht einer einzelnen Komponente.
+   Inline-Styles. Eine Regel ohne !important verlöre gegen beides. Und die
+   Betriebssystem-Einstellung ist eine ausdrückliche Nutzeransage — sie darf
+   gewinnen, auch gegen die Absicht einer einzelnen Komponente.
 
    0.01ms statt 0: eine Dauer von exakt 0 unterdrückt in manchen Browsern das
    transitionend-/animationend-Ereignis, und Code, der darauf wartet (etwa
    KudosButton, das damit seine Klasse abräumt), bliebe hängen.
 
    Nicht erfasst sind Bewegungen, die nicht über CSS laufen: die Kamerafahrten
-   von Mapbox (dafür bewegungsdauer() in RouteMap.tsx), das Hochzählen in
-   CountUp.tsx und die Zeichen-Animation in PullToRefreshArea.tsx prüfen die
-   Abfrage jeweils selbst in JavaScript. */
+   von Mapbox (dafür bewegungsdauer() in RouteMap.tsx), die Zeichen-Animation
+   in PullToRefreshArea.tsx und — seit die Höhen-Transition durch eine Feder
+   in JavaScript ersetzt wurde — das DragSheet (reduzierteBewegung() in
+   components/ui/DragSheet.tsx, geprüft in laufZu und nachlaufen) prüfen die
+   Abfrage jeweils selbst in JavaScript. Die Seitenwechsel
+   (::view-transition-*) matcht * nicht; sie stehen unten eigens im selben
+   Block. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -510,6 +667,122 @@ main {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  ::view-transition-old(.seite),
+  ::view-transition-new(.seite) {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Seitenwechsel (components/ui/Seitenrahmen.tsx, React <ViewTransition>).
+
+   Vorher tauschte jede Navigation den Inhalt schlagartig aus. Jetzt geht die
+   alte Seite schnell (120 ms, ausblenden), die neue kommt etwas ruhiger und
+   sechs Pixel von unten (220 ms, ease-out) — gerade genug, dass der Wechsel
+   als Bewegung gelesen wird, nicht als Flackern. Asymmetrisch mit Absicht:
+   was geht, soll nicht mit dem konkurrieren, was kommt. Kopf und Leiste
+   unten gehören zum Layout und bewegen sich nicht.
+   --------------------------------------------------------------------------- */
+::view-transition-old(.seite) {
+  animation: 120ms var(--ease-standard) both seite-raus;
+}
+::view-transition-new(.seite) {
+  animation: 220ms cubic-bezier(0.2, 0.8, 0.2, 1) 60ms both seite-rein;
+}
+@keyframes seite-raus {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes seite-rein {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Druckzustand für alles, was als ganze Zeile oder Karte antippbar ist.
+
+   Bisher reagierten nur Schaltflächen (active:scale-95 in ui/Button.tsx) und
+   die Entdecken-Zeilen; Ranglisten-, Feed-, Pass- und Fahrtenzeilen hatten
+   nur hover-Zustände, und die gibt es auf dem Telefon nicht. Ein Tipp ohne
+   Antwort fühlt sich an wie ein verfehlter Tipp. Leicht eingefärbt und um
+   zwei Prozent eingezogen, 100 ms — sichtbar unter dem Daumen, ohne dass
+   die Liste wackelt.
+   --------------------------------------------------------------------------- */
+@utility druckbar {
+  /* Farbe und Rand gehören mit in die Liste: druckbar ersetzt an seinen
+     Stellen transition-colors. Beide nebeneinander liessen die Klasse, die
+     im Stylesheet später steht, die ganze transition-property bestimmen —
+     und das Einziehen sprang statt zu gleiten (Audit 2026-09-23). */
+  transition-property: color, background-color, border-color, transform;
+  transition-duration: 100ms;
+  transition-timing-function: var(--ease-standard);
+  -webkit-tap-highlight-color: transparent;
+  &:active {
+    background-color: var(--color-surface);
+    transform: scale(0.98);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Dialoge (components/ui/Dialog.tsx) erscheinen, statt aufzuploppen.
+
+   Natives <dialog> mit @starting-style: auf dem Telefon als Blatt von unten
+   (translateY), ab sm mittig mit leichtem Einzoomen; der Hintergrund blendet
+   mit. allow-discrete, damit auch das Schliessen animiert — display und
+   overlay würden sonst sofort umspringen. Browser ohne @starting-style
+   zeigen den Dialog wie bisher sofort.
+   --------------------------------------------------------------------------- */
+dialog.dialog-animiert {
+  transition:
+    opacity 200ms var(--ease-standard),
+    transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    overlay 240ms allow-discrete,
+    display 240ms allow-discrete;
+  opacity: 0;
+  transform: scale(0.96);
+}
+dialog.dialog-animiert[open] {
+  opacity: 1;
+  transform: none;
+}
+@starting-style {
+  dialog.dialog-animiert[open] {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+@media (width < 40rem) {
+  dialog.dialog-animiert.dialog-blatt {
+    transform: translateY(100%);
+    opacity: 1;
+  }
+  dialog.dialog-animiert.dialog-blatt[open] {
+    transform: none;
+  }
+  @starting-style {
+    dialog.dialog-animiert.dialog-blatt[open] {
+      transform: translateY(100%);
+      opacity: 1;
+    }
+  }
+}
+dialog.dialog-animiert::backdrop {
+  transition:
+    background-color 200ms var(--ease-standard),
+    overlay 240ms allow-discrete,
+    display 240ms allow-discrete;
+  background-color: transparent;
+}
+dialog.dialog-animiert[open]::backdrop {
+  background-color: rgb(0 0 0 / 0.6);
+}
+@starting-style {
+  dialog.dialog-animiert[open]::backdrop {
+    background-color: transparent;
   }
 }
 
@@ -583,4 +856,14 @@ main {
 }
 .reiter-scroller::-webkit-scrollbar {
   display: none;
+}
+
+/* Reiter-Segmente sind Pillen — ausdrücklich auch für <button>: die globale
+   button-Regel weiter oben (border-radius: var(--radius-md)) ist unlayered
+   und sticht damit jede Tailwind-Schicht aus, also auch rounded-full auf den
+   Segmenten. Ohne diese Zeile wären die aktiven Reiter eckiger als ihre
+   Hülle. Steht hier als Regel statt als Utility, damit sie unabhängig von
+   der Klassenreihenfolge und der globalen button-Regel gilt. */
+.reiter-scroller > button {
+  border-radius: 9999px;
 }

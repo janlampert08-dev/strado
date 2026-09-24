@@ -7,6 +7,31 @@ export function formatDuration(totalSeconds: number): string {
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
+// Dauer mit Einheit: "15:27 min", "1:05:12 h". formatDuration allein las
+// sich neben einem Datum wie eine Uhrzeit ("21.09.2026 · 15:27") — und ob
+// "14:12" Minuten oder Stunden meint, stand nirgends. Die Stoppuhr auf dem
+// Aufzeichnungsschirm bleibt ohne Einheit: dort läuft sie sichtbar, und
+// eine laufende Uhr liest niemand als Tageszeit.
+//
+// Wert und Einheit getrennt, weil Kennzahl-Kacheln die Einheit kleiner
+// setzen als die Zahl.
+export function dauerTeile(totalSeconds: number): { wert: string; einheit: "min" | "h" } {
+  return { wert: formatDuration(totalSeconds), einheit: totalSeconds >= 3600 ? "h" : "min" };
+}
+
+export function formatDauer(totalSeconds: number): string {
+  const { wert, einheit } = dauerTeile(totalSeconds);
+  return `${wert} ${einheit}`;
+}
+
+// Höhe in Metern mit Schweizer Tausendertrennung: "2’315 m". Dieselbe
+// Passhöhe stand auf der Passkarte als "2'315 m" und drei Zentimeter tiefer
+// als "Höchster Punkt 2308 m" — zwei Schreibweisen lesen sich wie zwei
+// verschiedene Angaben.
+export function formatMeter(meter: number): string {
+  return `${Math.round(meter).toLocaleString("de-CH")} m`;
+}
+
 // laenge_km kommt bei serverseitig aus der Route-Geometrie berechneten
 // Strecken (ST_Length, siehe propose_route_full) mit voller Float-Präzision
 // aus der DB — ungerundet für die Anzeige ungeeignet.
@@ -45,13 +70,15 @@ export function datumCH(d: Date): string {
 // (z.B. 00:30 Uhr CEST im Sommer ist noch 22:30 Uhr UTC des Vortags).
 // en-CA formatiert direkt als YYYY-MM-DD, ohne die Teile manuell wieder
 // zusammensetzen zu müssen.
-export function todayInZurich(): string {
+// Mit Argument das Kalenderdatum eines beliebigen Zeitpunkts, etwa des
+// ersten Punkts einer importierten Fahrt.
+export function todayInZurich(zeitpunkt: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Zurich",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).formatToParts(new Date());
+  }).formatToParts(zeitpunkt);
   const get = (type: string) => parts.find((p) => p.type === type)?.value;
   return `${get("year")}-${get("month")}-${get("day")}`;
 }

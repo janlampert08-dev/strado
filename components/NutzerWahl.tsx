@@ -121,7 +121,11 @@ export default function NutzerWahl({
     return (
       <div className="flex flex-col gap-1.5 text-sm font-medium">
         {label}
-        <div className="flex items-center justify-between gap-2 rounded-lg border border-border px-3 py-2">
+        {/* Steht an der Stelle des Suchfelds und sieht deshalb aus wie
+            eines: Rahmen in border-border-control und 44 px Höhe wie
+            fieldClassName. Vorher trug es die Kartenlinie border-border und
+            wurde beim Wählen niedriger — das Formular sprang. */}
+        <div className="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-border-control px-3 py-2">
           <span className="min-w-0 truncate font-normal">
             {/* Ein gelöschtes Konto trägt keinen Namen mehr (0058) — dann
                 steht hier die Tatsache statt eines erfundenen Platzhalters. */}
@@ -207,7 +211,7 @@ export default function NutzerWahl({
           id={listenId}
           role="listbox"
           aria-label="Gefundene Konten"
-          className="absolute top-full right-0 left-0 z-20 mt-1 max-h-64 overflow-y-auto rounded-lg border border-border bg-background shadow-elevated"
+          className="absolute top-full right-0 left-0 z-20 mt-1 max-h-64 overflow-y-auto overscroll-y-contain rounded-lg border border-border bg-background shadow-elevated"
         >
           {results.length === 0 ? (
             <li className="px-3 py-2 text-sm font-normal text-muted">
@@ -219,7 +223,7 @@ export default function NutzerWahl({
                 <button
                   type="button"
                   onClick={() => waehle(profil)}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-normal hover:bg-surface"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-normal hover:bg-surface druckbar"
                 >
                   <Avatar
                     url={profil.avatarUrl}

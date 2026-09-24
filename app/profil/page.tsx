@@ -14,7 +14,12 @@ import {
   Route as RouteIcon,
   Settings,
   Timer,
-} from "lucide-react";
+  ChartIcon,
+  ImportIcon,
+  PassIcon,
+  RecordIcon,
+  ShieldIcon,
+} from "@/components/NavIcons";
 import Header from "@/components/Header";
 import PullToRefreshArea from "@/components/PullToRefreshArea";
 import MarkSeen from "@/components/MarkSeen";
@@ -30,7 +35,6 @@ import PremiumCard from "@/components/PremiumCard";
 import FahrtStatistik from "@/components/FahrtStatistik";
 import { WetterfensterFavoriten, WetterfensterFavoritenPlatzhalter } from "@/components/Wetterfenster";
 import PassSammlung, { PassSammlungHinweis } from "@/components/PassSammlung";
-import { ChartIcon, PassIcon, RecordIcon, ShieldIcon } from "@/components/NavIcons";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
 import { getPassSammlungsDaten } from "@/lib/passSammlungDaten";
@@ -41,7 +45,7 @@ import { getRollenItems } from "@/lib/nav";
 import { getUnseenKudosCount } from "@/lib/kudos";
 import { markKudosSeen } from "@/lib/actions/kudos";
 import { getFollowCounts, getFollowerProfiles, getFollowingProfiles } from "@/lib/follows";
-import { formatDuration, formatKm, datumCH } from "@/lib/format";
+import { formatDauer, formatKm, datumCH } from "@/lib/format";
 import {
   FAHRTEN_MILESTONES,
   HOEHENMETER_MILESTONES,
@@ -79,7 +83,7 @@ function SectionSummary({
   count?: number;
 }) {
   return (
-    <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+    <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background">
       <span className="flex items-center gap-1.5">
         <Icon className="h-4 w-4 text-muted" aria-hidden="true" />
         {label}
@@ -143,7 +147,7 @@ export default async function ProfilPage() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
     // Beide Fahrtarten: freie Fahrten stehen in derselben Liste wie
-    // Streckenfahrten und zählen in "Km gefahren"/"Anzahl Fahrten" mit —
+    // Streckenfahrten und zählen in "Kilometer"/"Anzahl Fahrten" mit —
     // anders als in den globalen Bestenlisten, die streckenbasiert bleiben
     // (siehe 0044_freie_fahrten.sql).
     //
@@ -164,7 +168,7 @@ export default async function ProfilPage() {
     // stimmen, wenn ein Abschnitt eines Tages einen Anstieg bekommt.
     //
     // Betroffen war damit alles, was Kilometer oder Fahrten aus dieser
-    // Abfrage zieht: die Kacheln "Km gefahren" und "Fahrten", der
+    // Abfrage zieht: die Kacheln "Kilometer" und "Fahrten", der
     // Aktivitätskalender, die Fahrten-Auszeichnungen und die
     // Premium-Auswertung.
     //
@@ -184,7 +188,7 @@ export default async function ProfilPage() {
     // Zähler sagt es nichts, weil damals keiner auf die Spalte filterte.
     // Die Folge ist deshalb hier zu notieren und nicht dort: eine freie
     // Fahrt mit drei Abschnitten steht als "Fahrten 1"; wird sie gelöscht,
-    // steht dort "Fahrten 3", während "Km gefahren" gleichzeitig sinkt und
+    // steht dort "Fahrten 3", während "Kilometer" gleichzeitig sinkt und
     // im Aktivitätskalender drei Punkte an einem eben geleerten Tag wieder
     // auftauchen. Selten und nicht falsch — die Abschnitte SIND dann
     // eigenständige Fahrten —, aber überraschend genug, um es
@@ -300,7 +304,7 @@ export default async function ProfilPage() {
   // jede gefahrene Strecke, auch eine Runde ums Dorf, und stand damit neben
   // einer zweiten, anderen Pass-Zahl.
   const passCount = sammlung?.befahren ?? 0;
-  // Höhenmeter über dieselbe Fahrtenliste wie "Km gefahren" und "Anzahl
+  // Höhenmeter über dieselbe Fahrtenliste wie "Kilometer" und "Anzahl
   // Fahrten" darunter, damit die vier Kacheln denselben Bestand beschreiben.
   // Gezählt wird der kumulierte Anstieg, nicht mehr die Scheitelhöhe der
   // Strecke — siehe lib/hoehenmeter.ts.
@@ -371,9 +375,9 @@ export default async function ProfilPage() {
                 will, findet es hier — es ist kein Weg des Kernloops. */}
             <Link
               href={`/fahrer/${user.id}`}
-              className="w-fit text-xs text-muted transition-colors hover:text-foreground"
+              className="relative w-fit text-xs text-muted transition-colors hover:text-foreground after:absolute after:-inset-x-1 after:-inset-y-3.5 after:content-['']"
             >
-              Öffentliches Profil ansehen →
+              So sehen dich andere →
             </Link>
           </div>
           {/* Nebeneinander, Rangfolge über die Fläche: Aufzeichnen (Accent)
@@ -434,9 +438,21 @@ export default async function ProfilPage() {
               icon={RecordIcon}
               title="Noch keine Fahrt aufgezeichnet — deine Kennzahlen entstehen mit der ersten."
               action={
-                <Link href="/fahrten/neu" className={buttonVariants({ variant: "accent", size: "sm" })}>
-                  Erste Fahrt aufzeichnen
-                </Link>
+                // Der Import steht daneben, weil er im Winter der einzige
+                // Weg zu einer ersten Fahrt ist: aufzeichnen kann man erst,
+                // wenn die Pässe offen sind, frühere Fahrten liegen meist
+                // schon in einer anderen App.
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Link href="/fahrten/neu" className={buttonVariants({ variant: "accent", size: "sm" })}>
+                    Erste Fahrt aufzeichnen
+                  </Link>
+                  <Link
+                    href="/fahrten/importieren"
+                    className={buttonVariants({ variant: "secondary", size: "sm" })}
+                  >
+                    Frühere Fahrten importieren
+                  </Link>
+                </div>
               }
             />
           ) : (
@@ -446,18 +462,18 @@ export default async function ProfilPage() {
                 wert={sammlung ? <CountUp value={passCount} /> : "–"}
                 zusatz={
                   sammlung && sammlung.gesamt > 0 ? (
-                    <Link href="/paesse" className="hover:text-foreground hover:underline">
+                    <Link href="/paesse" className="relative hover:text-foreground hover:underline after:absolute after:-inset-x-1 after:-inset-y-3.5 after:content-['']">
                       von {sammlung.gesamt} Passhöhen
                     </Link>
                   ) : undefined
                 }
               />
               <Kennzahl
-                beschriftung="Höhenmeter gesammelt"
+                beschriftung="Höhenmeter"
                 wert={<CountUp value={hoehenmeter} unit="m" />}
               />
               <Kennzahl
-                beschriftung="Km gefahren"
+                beschriftung="Kilometer"
                 wert={<CountUp value={getrackteDistanzGesamt} unit="km" />}
               />
               <Kennzahl beschriftung="Fahrten" wert={<CountUp value={trackedRides?.length ?? 0} />} />
@@ -565,7 +581,13 @@ export default async function ProfilPage() {
               eigener Grossabschnitt unter den Kennzahlen, jetzt eine Ansicht
               neben ihnen. */}
           <section className="flex flex-col gap-3">
-            <SectionHeading icon={RouteIcon}>Meine Fahrten</SectionHeading>
+            <div className="flex items-center justify-between">
+              <SectionHeading icon={RouteIcon}>Meine Fahrten</SectionHeading>
+              <Link href="/fahrten/importieren" className={textAktionClassName()}>
+                <ImportIcon className="h-4 w-4" aria-hidden="true" />
+                GPX importieren
+              </Link>
+            </div>
             {/* Flach wie der Kennzahlen-Block darüber, nicht in einer Card.
                 Die Card hier war die dritte Rahmenebene, die Abschnitt 3.9
                 des Konzepts eigentlich abschaffen wollte — sie ist bei den
@@ -607,10 +629,10 @@ export default async function ProfilPage() {
                               ? ride.distanz_km / (tempoSekunden / 3600)
                               : 0;
                         return (
-                          <li key={ride.id} className="group transition-colors duration-fast hover:bg-surface">
+                          <li key={ride.id} className="group hover:bg-surface druckbar">
                             <div className="flex items-center justify-between gap-3 p-3">
                               <Link href={`/fahrten/${ride.id}`} className="flex min-w-0 flex-1 flex-col gap-1">
-                                <span className="min-w-0 truncate font-medium transition-colors duration-fast group-hover:text-accent">
+                                <span className="min-w-0 truncate font-medium transition-colors duration-fast group-hover:text-accent-ink">
                                   {ride.art === "frei"
                                     ? freieFahrtTitel(ride.titel, ride.start_ort)
                                     : (ride.routes?.name ?? "Strecke")}
@@ -626,10 +648,10 @@ export default async function ProfilPage() {
                                       Farbe wie der Text (kein Akzent), bewusst unauffällig. */}
                                   <span className="flex items-center gap-1">
                                     <Timer className="h-3 w-3" aria-hidden="true" />
-                                    {formatDuration(ride.dauer_sekunden)}
+                                    {formatDauer(ride.dauer_sekunden)}
                                   </span>
                                   <span aria-hidden="true">·</span>
-                                  <span>{avgKmh.toFixed(0)} km/h</span>
+                                  <span>Ø {avgKmh.toFixed(0)} km/h</span>
                                 </div>
                               </Link>
                               {/* Beide Fahrtarten lassen sich hier teilen —
@@ -661,7 +683,7 @@ export default async function ProfilPage() {
                     // für dieselbe Lücke lasen sich im Review als Wiederholung.
                     <p className="py-2 text-sm text-muted">
                       Noch keine Fahrten aufgezeichnet.{" "}
-                      <Link href="/" className="text-accent hover:underline">
+                      <Link href="/" className="text-accent-ink hover:underline">
                         Strecken entdecken
                       </Link>
                     </p>
@@ -702,9 +724,9 @@ export default async function ProfilPage() {
                           <li key={f.route_id}>
                             <Link
                               href={`/strecken/${f.route_id}`}
-                              className="group flex items-baseline justify-between px-4 py-3 transition-colors duration-fast hover:bg-surface"
+                              className="group flex items-baseline justify-between px-4 py-3 hover:bg-surface druckbar"
                             >
-                              <span className="transition-colors duration-fast group-hover:text-accent">
+                              <span className="transition-colors duration-fast group-hover:text-accent-ink">
                                 {f.routes.name}
                               </span>
                               <span className="text-sm tabular-nums text-muted">
@@ -766,7 +788,7 @@ export default async function ProfilPage() {
               Stripe-Portal sind einer zu viel. */}
           {rollen.length > 0 && (
             <section className="flex flex-col gap-2 md:hidden">
-              <SectionHeading icon={ShieldIcon}>Deine Bereiche</SectionHeading>
+              <SectionHeading icon={ShieldIcon}>Verwaltung</SectionHeading>
               <Card className="flex flex-col divide-y divide-border">
                 {rollen.map((rolle) => {
                   const Icon = rolle.icon;
@@ -774,7 +796,7 @@ export default async function ProfilPage() {
                     <Link
                       key={rolle.href}
                       href={rolle.href}
-                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors duration-fast hover:text-accent"
+                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors duration-fast hover:text-accent-ink"
                     >
                       <Icon className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
                       {rolle.label}

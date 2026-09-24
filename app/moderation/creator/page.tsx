@@ -173,7 +173,7 @@ export default async function CreatorLinksPage() {
           </div>
 
           <p className="text-sm">
-            <Link href="/moderation" className="text-accent hover:underline">
+            <Link href="/moderation" className="text-accent-ink hover:underline">
               Zurück zur Moderation
             </Link>
           </p>

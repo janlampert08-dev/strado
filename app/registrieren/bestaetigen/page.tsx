@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Header from "@/components/Header";
 import BestaetigenForm from "@/components/BestaetigenForm";
+import AnderesGeraetForm from "@/components/AnderesGeraetForm";
 import {
   BESTAETIGUNG_GUELTIG_SEKUNDEN,
   CODE_LAENGE,
@@ -57,33 +58,23 @@ export default async function BestaetigenPage() {
             />
           ) : (
             // Kein Cookie: abgelaufen (60 Minuten), in einem anderen Browser
-            // registriert, oder jemand ruft die Adresse einfach so auf. Ohne
-            // die Adresse lässt sich der Code nicht einlösen, und sie hier
-            // abzufragen wäre genau das Formular, das lib/bestaetigung.ts
-            // vermeidet. Der Weg zurück führt deshalb über die Anmeldung: wer
-            // sein Passwort kennt, landet von dort automatisch wieder hier.
+            // registriert, oder jemand ruft die Adresse einfach so auf. Das
+            // Formular oben holt den Code aufs hiesige Gerät (Adresse aus
+            // der Registrierung genügt, Antwort immer gleich) — erst wenn
+            // auch das nicht zieht, führt der Weg über Anmeldung oder
+            // Neuregistrierung.
             <>
-              <h1 className="text-display font-semibold">E-Mail bestätigen</h1>
-              <p className="text-sm text-muted">
-                Wir wissen gerade nicht, für welche Adresse der Code gilt — das
-                passiert, wenn der Link zu lange offen lag oder du dich in einem
-                anderen Browser registriert hast.
-              </p>
-              <p className="text-sm text-muted">
-                Melde dich mit deiner E-Mail-Adresse und deinem Passwort an,
-                dann kommst du direkt hierher zurück und kannst einen neuen Code
-                anfordern.
-              </p>
-              <div className="flex flex-col gap-2 text-sm">
+              <AnderesGeraetForm />
+              <div className="flex flex-col gap-2 border-t border-border pt-5 text-sm">
                 <Link
                   href="/anmelden"
-                  className="font-medium text-accent hover:underline"
+                  className="font-medium text-accent-ink hover:underline"
                 >
                   Zur Anmeldung
                 </Link>
                 <Link
                   href="/registrieren"
-                  className="font-medium text-accent hover:underline"
+                  className="font-medium text-accent-ink hover:underline"
                 >
                   Neues Konto anlegen
                 </Link>

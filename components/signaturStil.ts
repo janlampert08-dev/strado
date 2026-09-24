@@ -1,4 +1,4 @@
-import { Gauge, Mountain, Route, Ruler, TrendingUp } from "lucide-react";
+import { Gauge, Mountain, Route, Ruler, TrendingUp } from "@/components/NavIcons";
 import type { SignatureKey } from "@/lib/signature";
 
 // Icon und Utility-Klassen je Signatur-Merkmal — die Anzeigeseite dessen,

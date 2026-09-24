@@ -1,13 +1,63 @@
 import { headers } from "next/headers";
+import { siteUrl } from "@/lib/siteUrl";
 
-// Ermittelt die aktuelle Origin aus den Request-Headern, damit
-// E-Mail-Bestätigungslinks in jeder Umgebung (localhost, Vercel-Preview,
-// Produktion) auf die richtige Domain zeigen, ohne sie fest zu verdrahten.
+// Hosts, denen ein aus dem Request gelesener Host für E-Mail-Links
+// (emailRedirectTo / redirectTo) vertraut wird. Alles andere fällt auf
+// siteUrl() zurück — ein per X-Forwarded-Host eingeschleuster Angreifer-Host
+// landet damit nie in einer Auth-Mail an ein Opfer.
+const VERTRAUENSWUERDIGE_HOSTS = new Set([
+  "app.strado.ch",
+  "staging.strado.ch",
+  "strado.ch",
+  "www.strado.ch",
+]);
+
+function istVertrauenswuerdigerHost(host: string | null): host is string {
+  if (!host) return false;
+  const sauber = host.trim().toLowerCase().split(":")[0];
+  if (VERTRAUENSWUERDIGE_HOSTS.has(sauber)) return true;
+  if (sauber === "localhost" || sauber === "127.0.0.1") return true;
+  return false;
+}
+
+// Die reine Entscheidung hinter getOrigin(), getrennt vom Header-Zugriff,
+// damit sie ohne next/headers testbar ist. null heisst "nicht verwendbar" —
+// der Aufrufer nimmt dann siteUrl().
+//
+// Der PORT gehört bei localhost zur Origin und darf nicht wegfallen. Die
+// Allowlist-Härtung liess ihn bisher mit `split(":")[0]` fallen, sodass aus
+// `localhost:3000` die Origin `http://localhost` wurde: in der Entwicklung
+// zeigten damit der Google-Rücksprung (signInMitGoogle), die
+// Bestätigungsmail und der Passwort-Reset alle auf Port 80. In Produktion
+// fiel es nicht auf, weil app.strado.ch keinen Port trägt.
+//
+// Übernommen wird der Port nur, wenn er aus ZIFFERN besteht. Sonst wäre er
+// ein Einschleusweg: bei `localhost:1234@example.com` liefert split(":")[0]
+// weiterhin das vertrauenswürdige "localhost", und ein roh angehängter Rest
+// ergäbe `http://localhost:1234@example.com` — was der Browser als
+// Benutzerangabe vor dem echten Host example.com liest.
+export function originAusHost(host: string | null, proto: string | null): string | null {
+  if (!istVertrauenswuerdigerHost(host)) return null;
+  const [name, port] = host.trim().toLowerCase().split(":");
+  const lokal = name === "localhost" || name === "127.0.0.1";
+  const protokoll = proto ?? (lokal ? "http" : "https");
+  if (protokoll !== "https" && !lokal) return null;
+  if (!lokal) return `https://${name}`;
+  return /^\d+$/.test(port ?? "") ? `http://${name}:${port}` : `http://${name}`;
+}
+
+// Ermittelt die aktuelle Origin für E-Mail-Links. Der Host kommt aus dem
+// Request, wird aber gegen die Allowlist oben geprüft — sonst siteUrl() als
+// Fail-closed. Protokoll: https ausser lokal.
 export async function getOrigin(): Promise<string> {
-  const headerList = await headers();
-  const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
-  const protocol = headerList.get("x-forwarded-proto") ?? "http";
-  return `${protocol}://${host}`;
+  const fallback = siteUrl();
+  try {
+    const headerList = await headers();
+    const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
+    return originAusHost(host, headerList.get("x-forwarded-proto")) ?? fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 // Validiert einen aus einem ?next=-Query-Parameter oder Formularfeld

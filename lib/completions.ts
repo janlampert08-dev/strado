@@ -139,7 +139,14 @@ export interface CompletionDetail {
   // heisst: aus den Zeitstempeln des Geräts. Kein Vorwurf, meist ein
   // Funkloch; siehe components/VerifiziertAbzeichen.tsx und AGB Ziff. 12.6.
   dauerQuelle: DauerQuelle;
+  // Aus einer GPX-Datei importiert (0124) statt aufgezeichnet. Immer privat,
+  // deshalb nur auf dem Pfad der eigenen Fahrt je true.
+  importiert: boolean;
   distanzKm: number | null;
+  // Ob die Seite das Durchschnittstempo zeigen darf (profiles.zeigt_tempo,
+  // 0125). Für den Besitzer immer true — die Einstellung regelt, was ANDERE
+  // sehen, nicht was der Fahrer über seine eigene Fahrt erfährt.
+  zeigtTempo: boolean;
   istOeffentlich: boolean;
   // Für private Fahrten nur gesetzt, wenn der Betrachter der Besitzer ist.
   // Für öffentliche Fahrten (ab 0035_public_fahrten_notiz.sql) für jeden
@@ -261,6 +268,21 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
     let ownParentCompletionId: string | null = null;
     let ownMotorklasse: Motorklasse | null = null;
     let ownMotorklasseGewertet: Motorklasse | null = null;
+    // Das Tempo-Flag des Fahrers, nur für fremde Betrachter gelesen. Schlägt
+    // die Abfrage fehl (etwa solange 0125 nicht eingespielt ist), bleibt das
+    // Tempo verborgen: eine unlesbare Datenschutz-Einstellung darf nicht zum
+    // Zeigen führen — derselbe Grundsatz wie beim Privatzonen-Radius
+    // (privacyRadiusM in lib/publicTrack.ts).
+    let zeigtTempo = viewerId === row.user_id;
+    if (!zeigtTempo) {
+      const { data: fahrerProfil, error: tempoFlagError } = await supabase
+        .from("profiles")
+        .select("zeigt_tempo")
+        .eq("id", row.user_id)
+        .maybeSingle<{ zeigt_tempo: boolean }>();
+      zeigtTempo = !tempoFlagError && fahrerProfil?.zeigt_tempo === true;
+    }
+
     if (viewerId === row.user_id) {
       const [
         { data: own, error: ownError },
@@ -309,7 +331,10 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
       // Migration noch nicht eingespielt ist — dann fehlt das Feld und
       // "trail" ist die sichere Annahme (kein falsches Verifiziert-Abzeichen).
       dauerQuelle: row.dauer_quelle === "server" ? "server" : "trail",
+      // Eine öffentliche Fahrt ist nie importiert (0124).
+      importiert: false,
       distanzKm: row.distanz_km,
+      zeigtTempo,
       istOeffentlich: true,
       // Ab 0035_public_fahrten_notiz.sql: teilt sich die Sichtbarkeit der
       // Fahrt selbst — hier immer gesetzt (die View filtert bereits auf
@@ -362,7 +387,7 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
   const { data: own, error: eigeneFahrtError } = await supabase
     .from("route_completions")
     .select(
-      "id, art, route_id, user_id, datum, dauer_sekunden, dauer_quelle, distanz_km, ist_oeffentlich, abdeckung_prozent, notiz, titel, start_ort, region, bewegte_zeit_sekunden, hoehenmeter_aufstieg, hoehenprofil, hoehen_quelle, tempoprofil, parent_completion_id, motorklasse, motorklasse_gewertet, vehicles(typ, marke, modell)",
+      "id, art, route_id, user_id, datum, dauer_sekunden, dauer_quelle, importiert, distanz_km, ist_oeffentlich, abdeckung_prozent, notiz, titel, start_ort, region, bewegte_zeit_sekunden, hoehenmeter_aufstieg, hoehenprofil, hoehen_quelle, tempoprofil, parent_completion_id, motorklasse, motorklasse_gewertet, vehicles(typ, marke, modell)",
     )
     .eq("id", id)
     .eq("user_id", viewerId)
@@ -374,6 +399,7 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
       datum: string;
       dauer_sekunden: number | null;
       dauer_quelle: DauerQuelle;
+      importiert: boolean;
       distanz_km: number | null;
       ist_oeffentlich: boolean;
       abdeckung_prozent: number | null;
@@ -436,7 +462,10 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
     datum: own.datum,
     dauerSekunden: own.dauer_sekunden,
     dauerQuelle: own.dauer_quelle === "server" ? "server" : "trail",
+    importiert: own.importiert === true,
     distanzKm: own.distanz_km,
+    // Eigene Fahrt: der Besitzer sieht sein Tempo immer.
+    zeigtTempo: true,
     istOeffentlich: own.ist_oeffentlich,
     abdeckungProzent: own.abdeckung_prozent,
     notiz: own.notiz,

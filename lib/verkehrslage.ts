@@ -11,7 +11,7 @@
 // für Pässe. Rein und ohne Server-Import: die Sektion ist eine
 // Client-Komponente (dieselbe Trennung wie lib/ruhigeZeiten.ts).
 import { CONGESTION_META, type CongestionLevel } from "@/lib/traffic";
-import { stufeFuerFaktor, type VerkehrsStufe } from "@/lib/ruhigeZeiten";
+import { stufeFuerFaktor, type Skala, type VerkehrsStufe } from "@/lib/ruhigeZeiten";
 
 /** Live-Stau auf die Stufen der Wochenprognose gelegt — ein Ton für beides. */
 export function stufeFuerLive(level: CongestionLevel): VerkehrsStufe {
@@ -27,13 +27,15 @@ export function stufeFuerLive(level: CongestionLevel): VerkehrsStufe {
   }
 }
 
-// Kleingeschrieben für den Satz ("typischerweise dicht") — STUFEN_LABEL trägt
-// die Legendenform ("Dichter"), die im Satz falsch läse.
+// Kleingeschrieben für den Satz ("typischerweise belebt"). Die Stufe ist
+// seit 2026-09-23 relativ zur Woche der Strecke (lib/ruhigeZeiten.ts,
+// skalaFuerPunkte) — derselbe Massstab wie die Wochenübersicht darunter, damit
+// "typischerweise ruhig" hier nicht "belebt" dort heisst.
 const STUFE_IM_SATZ: Record<VerkehrsStufe, string> = {
   ruhig: "ruhig",
-  normal: "normal",
-  dicht: "dicht",
-  zaeh: "zäh",
+  normal: "mässig belebt",
+  dicht: "belebt",
+  zaeh: "voll",
 };
 
 /**
@@ -79,8 +81,7 @@ export function prognoseFuerStunde(
 /**
  * "+20 % Fahrzeit gegenüber der ruhigsten Stunde" — der Faktor allein
  * (1,20) sagt niemandem etwas, das Verhältnis zur eigenen ruhigen Stunde
- * schon. Gerundet wie die Schwellen in stufeFuerFaktor: die zweite Stelle
- * trägt nichts.
+ * schon. Auf ganze Prozent gerundet: die zweite Stelle trägt nichts.
  */
 export function faktorText(faktor: number): string {
   const prozent = Math.round((faktor - 1) * 100);
@@ -92,6 +93,8 @@ export interface VerkehrsEingabe {
   live: CongestionLevel | null;
   /** Vorhersagefaktor für die aktuelle Stunde (prognoseFuerStunde) — oder null. */
   prognoseFaktor: number | null;
+  /** Die Skala der Wochenübersicht (skalaFuerPunkte) — misst die Stufe. */
+  skala: Skala;
   /** Das Profil existiert überhaupt (auch ausserhalb der Stunde). */
   hatPrognose: boolean;
   /** Die Seite zeigt unten den Satz aus den Gemeinschafts-Starts. */
@@ -113,7 +116,7 @@ export interface VerkehrsEinschaetzung {
  * benannt statt verschwiegen ("kein Live-Wert", "noch keine Daten").
  */
 export function baueVerkehrseinschaetzung(eingabe: VerkehrsEingabe): VerkehrsEinschaetzung {
-  const { live, prognoseFaktor, hatPrognose, hatGemeinschaft, liveLaedt } = eingabe;
+  const { live, prognoseFaktor, skala, hatPrognose, hatGemeinschaft, liveLaedt } = eingabe;
 
   if (live) {
     const quellen = ["Live: Mapbox"];
@@ -121,7 +124,7 @@ export function baueVerkehrseinschaetzung(eingabe: VerkehrsEingabe): VerkehrsEin
       quellen.push("Vorhersage: Mapbox");
       return {
         titel: `Verkehr gerade: ${CONGESTION_META[live].label}`,
-        detail: `Üblicherweise ${STUFE_IM_SATZ[stufeFuerFaktor(prognoseFaktor)]} um diese Zeit (${faktorText(prognoseFaktor)}).`,
+        detail: `Üblicherweise ${STUFE_IM_SATZ[stufeFuerFaktor(prognoseFaktor, skala)]} um diese Zeit (${faktorText(prognoseFaktor)}).`,
         quellen,
       };
     }
@@ -136,7 +139,7 @@ export function baueVerkehrseinschaetzung(eingabe: VerkehrsEingabe): VerkehrsEin
     const satz = faktorText(prognoseFaktor);
     const detailAnfang = satz.charAt(0).toUpperCase() + satz.slice(1);
     return {
-      titel: `Um diese Zeit typischerweise ${STUFE_IM_SATZ[stufeFuerFaktor(prognoseFaktor)]}`,
+      titel: `Um diese Zeit typischerweise ${STUFE_IM_SATZ[stufeFuerFaktor(prognoseFaktor, skala)]}`,
       detail: `${detailAnfang}.${liveLaedt ? " Live-Abfrage läuft…" : " Kein Live-Wert für diese Stelle."}`,
       quellen: ["Vorhersage: Mapbox"],
     };

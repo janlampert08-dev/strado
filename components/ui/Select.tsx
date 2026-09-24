@@ -4,7 +4,7 @@
 "use client";
 
 import type { ReactNode, SelectHTMLAttributes } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown } from "@/components/NavIcons";
 import { fieldClassName } from "@/components/ui/Input";
 import { cn } from "@/lib/utils/cn";
 

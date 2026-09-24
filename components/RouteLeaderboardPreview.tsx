@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { formatDuration, mitAnzahl } from "@/lib/format";
+import { formatDauer, mitAnzahl } from "@/lib/format";
 import type { RouteTimeEntry } from "@/lib/leaderboard";
-import { MEDAL_COLORS } from "@/lib/constants";
 import Avatar from "@/components/Avatar";
 import { RankingIcon } from "@/components/NavIcons";
 import Card from "@/components/ui/Card";
@@ -91,7 +90,7 @@ export default function RouteLeaderboardPreview({
 
       {beste !== null && (
         <p className={cn("text-sm text-muted tabular-nums", laedt && "opacity-40")}>
-          Bestzeit {formatDuration(beste)} · {mitAnzahl(liste.length, "Zeit", "Zeiten")}
+          Bestzeit {formatDauer(beste)} · {mitAnzahl(liste.length, "Zeit", "Zeiten")}
         </p>
       )}
 
@@ -103,7 +102,7 @@ export default function RouteLeaderboardPreview({
           {/* Der Startknopf steht weiter oben auf derselben Seite (#fahren in
               app/strecken/[id]/page.tsx); auf dem Telefon ist er bis hierher
               meist aus dem Bild gescrollt. */}
-          <a href="#fahren" className="text-accent underline-offset-4 hover:underline">
+          <a href="#fahren" className="text-accent-ink underline-offset-4 hover:underline">
             Zum Start
           </a>
         </p>
@@ -114,18 +113,21 @@ export default function RouteLeaderboardPreview({
         >
           {sichtbar.map((entry, i) => (
             <li key={entry.completionId} className="flex items-center gap-3 px-4 py-3 text-sm">
-              {i < 3 ? (
-                <span className="flex w-4 shrink-0 justify-center">
-                  <RankingIcon className="h-4 w-4" style={{ color: MEDAL_COLORS[i] }} aria-hidden="true" />
-                  <span className="sr-only">Platz {i + 1}</span>
-                </span>
-              ) : (
-                <span className="w-4 shrink-0 text-center text-xs text-muted">{i + 1}.</span>
-              )}
+              {/* Der Rang als Zahl in jeder Zeile. Vorher trugen die ersten drei
+                  je einen gleich geformten Pokal, unterschieden nur durch Gold, Silber
+                  und Bronze — Silber hatte auf hellem Grund 2.3:1, und wer die Farben
+                  nicht trennt, sah dreimal dasselbe (WCAG 1.4.1). Die ersten drei
+                  sind betont, nicht eingefärbt. */}
+              <span
+                className={`w-5 shrink-0 text-center text-xs tabular-nums ${i < 3 ? "font-semibold text-foreground" : "text-muted"}`}
+              >
+                <span className="sr-only">Platz </span>
+                {i + 1}
+              </span>
               <Avatar url={entry.avatarUrl} name={entry.name} size={24} />
               <Link
                 href={`/fahrer/${entry.userId}`}
-                className="relative flex min-w-0 flex-1 items-center transition-colors duration-fast hover:text-accent after:absolute after:-inset-y-3 after:inset-x-0 after:content-['']"
+                className="relative flex min-w-0 flex-1 items-center transition-colors duration-fast hover:text-accent-ink after:absolute after:-inset-y-3 after:inset-x-0 after:content-['']"
               >
                 <span className="truncate">{entry.name}</span>
               </Link>
@@ -140,7 +142,7 @@ export default function RouteLeaderboardPreview({
                 </span>
               )}
               <span className="shrink-0 tabular-nums text-muted">
-                {formatDuration(entry.dauerSekunden)}
+                {formatDauer(entry.dauerSekunden)}
               </span>
             </li>
           ))}

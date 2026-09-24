@@ -845,7 +845,7 @@ export async function confirmCheckoutSession(sessionId: string): Promise<boolean
   // Stripe-Status. Die Bindung an den eigenen Customer ist dieselbe wie
   // unten und aus demselben Grund unverzichtbar — die Session-ID kommt aus
   // der Adresszeile.
-  const pass = saisonpassAusSession(session, profile.stripe_customer_id);
+  const pass = saisonpassAusSession(session, profile.stripe_customer_id, saisonpassPreisId());
   if (pass) {
     const { error } = await admin.rpc("apply_saisonpass", {
       p_stripe_customer_id: pass.customerId,

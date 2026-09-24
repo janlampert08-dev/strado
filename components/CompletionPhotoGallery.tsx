@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react";
 import Image from "next/image";
-import { Image as ImageIcon, X } from "lucide-react";
+import { Image as ImageIcon, X } from "@/components/NavIcons";
 import { Dialog } from "@/components/ui/Dialog";
 import { removeCompletionPhoto } from "@/lib/actions/completions";
 import type { CompletionPhotoItem } from "@/lib/completions";

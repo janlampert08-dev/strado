@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { safeInternalPath } from "@/lib/utils/url";
+import { originAusHost, safeInternalPath } from "@/lib/utils/url";
 
 // safeInternalPath ist die Open-Redirect-Sperre für jeden Rücksprungpfad,
 // der aus einem Query-Parameter oder Formularfeld stammt: der
@@ -9,6 +9,41 @@ import { safeInternalPath } from "@/lib/utils/url";
 // — fällt diese Prüfung, wird aus jedem davon eine Weiterleitung auf eine
 // fremde Domain, im Fall der Anmeldung direkt nach einer echten
 // Passworteingabe. Deshalb hier festgehalten statt nur im Aufrufer.
+describe("originAusHost", () => {
+  it("behält den Port bei localhost — sonst zeigen die Entwicklungslinks auf Port 80", () => {
+    expect(originAusHost("localhost:3000", null)).toBe("http://localhost:3000");
+    expect(originAusHost("127.0.0.1:3000", null)).toBe("http://127.0.0.1:3000");
+  });
+
+  it("kommt ohne Port aus", () => {
+    expect(originAusHost("localhost", null)).toBe("http://localhost");
+  });
+
+  it("übernimmt nur einen Port aus Ziffern — sonst wäre er ein Einschleusweg", () => {
+    // Browser lesen http://localhost:1234@example.com als Benutzerangabe vor
+    // dem Host example.com. Der Name vor dem ersten Doppelpunkt ist hier
+    // weiterhin das vertrauenswürdige "localhost", der Rest darf nicht mit.
+    expect(originAusHost("localhost:1234@example.com", null)).toBe("http://localhost");
+    expect(originAusHost("localhost:80x", null)).toBe("http://localhost");
+    expect(originAusHost("localhost:", null)).toBe("http://localhost");
+  });
+
+  it("gibt für echte Hosts https ohne Port zurück", () => {
+    expect(originAusHost("app.strado.ch", "https")).toBe("https://app.strado.ch");
+    expect(originAusHost("app.strado.ch:443", "https")).toBe("https://app.strado.ch");
+  });
+
+  it("weist Hosts ausserhalb der Allowlist ab — der Aufrufer nimmt dann siteUrl()", () => {
+    expect(originAusHost("angreifer.example", "https")).toBeNull();
+    expect(originAusHost(null, "https")).toBeNull();
+  });
+
+  it("weist einen echten Host ohne https ab, erlaubt http aber lokal", () => {
+    expect(originAusHost("app.strado.ch", "http")).toBeNull();
+    expect(originAusHost("localhost:3000", "http")).toBe("http://localhost:3000");
+  });
+});
+
 describe("safeInternalPath", () => {
   it("lässt gewöhnliche interne Pfade durch", () => {
     expect(safeInternalPath("/fahrten/neu")).toBe("/fahrten/neu");

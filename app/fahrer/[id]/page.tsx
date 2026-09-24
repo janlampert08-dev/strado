@@ -3,7 +3,7 @@ import { datumCH } from "@/lib/format";
 import type { Metadata } from "next";
 import { OG_GEERBT } from "@/lib/openGraph";
 import Link from "next/link";
-import { Car, Route as RouteIcon } from "lucide-react";
+import { Car, Route as RouteIcon } from "@/components/NavIcons";
 import Header from "@/components/Header";
 import Avatar from "@/components/Avatar";
 import KudosButton from "@/components/KudosButton";
@@ -40,7 +40,7 @@ export async function generateMetadata({
   // entscheiden die zeigt_*-Schalter des Nutzers (lib/profile.ts). Sie in
   // die Beschreibung zu ziehen würde diese Entscheidung an Suchmaschinen
   // vorbei aushebeln — deshalb bewusst nur der Name.
-  const beschreibung = `Profil von ${name} auf Strado: gefahrene Strecken und Touren.`;
+  const beschreibung = `Profil von ${name} auf Strado: Fahrten und Strecken.`;
   return {
     title: `${name} – Strado`,
     description: beschreibung,
@@ -200,7 +200,7 @@ export default async function FahrerPage({
                         href={`/fahrten/${f.completion_id}`}
                         // min-h-11: die Zeile ist ein Link auf die Fahrt, war
                         // aber nur so hoch wie ihre Schrift (20 px).
-                        className="flex min-h-11 min-w-0 flex-1 items-center justify-between text-sm transition-colors duration-fast hover:text-accent"
+                        className="flex min-h-11 min-w-0 flex-1 items-center justify-between text-sm transition-colors duration-fast hover:text-accent-ink"
                       >
                         <span className="truncate">
                           {f.art === "frei"
