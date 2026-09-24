@@ -99,9 +99,10 @@ export default async function PaessePage() {
         "@type": "TouristAttraction",
         name: eintrag.name,
         description: `${eintrag.hoeheM.toLocaleString("de-CH")} m · ${eintrag.kantone.join(" / ")}${eintrag.strecke ? "" : " · noch keine Strecke"}`,
-        url: eintrag.strecke
-          ? `${origin}/strecken/${eintrag.strecke.id}`
-          : `${origin}/paesse#${eintrag.id}`,
+        // Jeder Pass hat seit app/paesse/[id] eine eigene Seite; vorher
+        // zeigte die Adresse auf die Strecke oder, ohne Strecke, auf einen
+        // Anker dieser Liste.
+        url: `${origin}/paesse/${eintrag.id}`,
       },
     })),
   };
@@ -167,9 +168,9 @@ export default async function PaessePage() {
             <Card as="ul" className="divide-y divide-border">
               {gefolgt.map((eintrag) => {
                 const anzeige = anzeigeFuerStatus(eintrag.status, feedStand);
-                const ziel = eintrag.strecke
-                  ? `/strecken/${eintrag.strecke.id}`
-                  : `/paesse#${eintrag.id}`;
+                // Auf die Passseite, nicht mehr auf die Strecke: dort steht
+                // der Status mit Quelle, und die Strecke ist einen Tipp weiter.
+                const ziel = `/paesse/${eintrag.id}`;
                 return (
                   <li key={eintrag.id} className="druckbar relative flex items-center gap-3 px-4 py-3">
                     <div className="min-w-0 flex-1">

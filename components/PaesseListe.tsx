@@ -121,10 +121,13 @@ export default function PaesseListe({
           {gezeigt.map(({ eintrag, anzeige }) => (
             <li
               key={eintrag.id}
+              // Die id bleibt: alte Links auf /paesse#susten springen weiter
+              // an die richtige Zeile, auch seit jeder Pass eine eigene
+              // Seite hat.
               id={eintrag.id}
               // relative + after:inset-0 am Link: die ganze Zeile ist die
               // Tippfläche, nicht nur der 21 px hohe Name (Audit 2026-09-23).
-              className={cn("flex items-center gap-3 px-4 py-3", eintrag.strecke && "druckbar relative")}
+              className="druckbar relative flex items-center gap-3 px-4 py-3"
             >
               {/* Der Stempel: befahren oder nicht. Er steht vorn, weil die
                   Sammlung die Frage ist, mit der man diese Liste liest. */}
@@ -146,16 +149,16 @@ export default function PaesseListe({
 
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">
-                  {eintrag.strecke ? (
-                    <Link
-                      href={`/strecken/${eintrag.strecke.id}`}
-                      className="hover:text-accent-ink after:absolute after:inset-0 after:content-['']"
-                    >
-                      {eintrag.name}
-                    </Link>
-                  ) : (
-                    eintrag.name
-                  )}
+                  {/* Auf die Passseite, auch wenn es eine Strecke gibt: dort
+                      stehen Status, Saison und die Strecke selbst. Vorher
+                      führte die Zeile auf die Strecke und war ohne Strecke
+                      gar kein Link. */}
+                  <Link
+                    href={`/paesse/${eintrag.id}`}
+                    className="hover:text-accent-ink after:absolute after:inset-0 after:content-['']"
+                  >
+                    {eintrag.name}
+                  </Link>
                 </p>
                 <p className="truncate text-xs text-muted">
                   {eintrag.hoeheM.toLocaleString("de-CH")} m · {eintrag.kantone.join(" / ")}
