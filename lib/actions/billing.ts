@@ -476,15 +476,35 @@ async function checkoutSessionMitCustomer(
   // Gezielt nach Status abfragen statt status "all" mit einer Seitengrenze:
   // ein Konto mit vielen beendeten Abos hätte sonst genau das laufende aus
   // der ersten Seite verdrängt, und daneben wäre ein zweites entstanden.
-  const [aktive, testphase, offeneSessions, geschichte] = await Promise.all([
-    getStripe().subscriptions.list({ customer: customerId, status: "active", limit: 1 }),
-    getStripe().subscriptions.list({ customer: customerId, status: "trialing", limit: 1 }),
-    getStripe().checkout.sessions.list({ customer: customerId, status: "open", limit: 20 }),
-    zugangsgeschichte(userId),
-  ]);
+  const [aktive, testphase, ueberfaellig, unbezahlt, offeneSessions, geschichte] =
+    await Promise.all([
+      getStripe().subscriptions.list({ customer: customerId, status: "active", limit: 1 }),
+      getStripe().subscriptions.list({ customer: customerId, status: "trialing", limit: 1 }),
+      getStripe().subscriptions.list({ customer: customerId, status: "past_due", limit: 1 }),
+      getStripe().subscriptions.list({ customer: customerId, status: "unpaid", limit: 1 }),
+      getStripe().checkout.sessions.list({ customer: customerId, status: "open", limit: 20 }),
+      zugangsgeschichte(userId),
+    ]);
 
   if (aktive.data.length > 0 || testphase.data.length > 0) {
     return { ok: false, error: "Du hast bereits ein aktives Premium-Abo." };
+  }
+
+  // Ein Abo mit fehlgeschlagener Zahlung lebt bei Stripe weiter: Stripe
+  // versucht die Rechnung erneut, und sobald die Person ihr Zahlungsmittel
+  // aktualisiert, wird nachbezahlt. Nach Ablauf der Kulanzfrist steht
+  // ist_premium aber auf false und die Kaufseite öffnet sich wieder — ein
+  // zweites Abo daneben hiesse doppelt zahlen, und mit zwei Abos kippt die
+  // einzeilige subscriptions-Tabelle bei der Kündigung des einen auch den
+  // Zugang des anderen. Also kein neues Abo, sondern der Weg zum alten.
+  if (ueberfaellig.data.length > 0 || unbezahlt.data.length > 0) {
+    return {
+      ok: false,
+      error:
+        "Für dein bisheriges Abo ist noch eine Zahlung offen. Aktualisiere dein Zahlungsmittel " +
+        "über den Link in der Zahlungserinnerung von Stripe — dann läuft es ohne neues Abo " +
+        "weiter. Findest du die E-Mail nicht, schreib uns an contact@strado.ch.",
+    };
   }
 
   // Ein zweiter Pass mitten in der Saison ist fast sicher ein Versehen —
