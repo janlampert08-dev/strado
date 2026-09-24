@@ -131,6 +131,15 @@ export function istEigeneBezahlteSession(
  * Webhook kennt kein angemeldetes Konto und ordnet in apply_saisonpass über
  * den Customer zu. Aus dem Browser (confirmCheckoutSession) wird immer die
  * eigene ID übergeben.
+ *
+ * `erwartetePreisId`: die konfigurierte Saisonpass-Preis-ID
+ * (saisonpassPreisId() aus lib/stripeWebhook.ts). Steht sie, muss die Session
+ * genau diesen Preis tragen — sonst wäre jede Einmalzahlung auf demselben
+ * Stripe-Konto ein halbes Jahr Premium, dieselbe Verwechslung, die
+ * preisHerkunft() für Abos verhindert. Ist sie leer/undefined (Preis noch
+ * nicht angelegt, siehe docs/premium-neu/rollout.md), greift die Prüfung
+ * nicht — die Session kann dann nur aus unserem eigenen Kauf stammen, weil
+ * die Kaufseite den Plan ohne konfigurierten Preis gar nicht anbietet.
  */
 export interface GekaufterSaisonpass {
   sessionId: string;
@@ -144,6 +153,7 @@ export interface GekaufterSaisonpass {
 export function saisonpassAusSession(
   session: Stripe.Checkout.Session,
   eigenerCustomerId: string | null,
+  erwartetePreisId?: string | null,
 ): GekaufterSaisonpass | null {
   const customerId = idVon(session.customer);
   if (!customerId) return null;
@@ -154,6 +164,7 @@ export function saisonpassAusSession(
   if (session.metadata?.plan !== "saisonpass") return null;
   const preisId = session.metadata?.price_id;
   if (!preisId) return null;
+  if (erwartetePreisId && preisId !== erwartetePreisId) return null;
   if (typeof session.amount_total !== "number" || session.amount_total <= 0) return null;
   if (!session.currency) return null;
   return {

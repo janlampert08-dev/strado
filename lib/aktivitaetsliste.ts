@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getRecentKudosReceived } from "@/lib/kudos";
 import { getRecentFollowersReceived } from "@/lib/follows";
 import { mischeAktivitaet, type AktivitaetsEintrag, type PassEintrag } from "@/lib/aktivitaet";
@@ -12,12 +12,15 @@ import { mischeAktivitaet, type AktivitaetsEintrag, type PassEintrag } from "@/l
 // /aktivitaet. Die zwei RPCs hängen nicht voneinander ab, laufen also
 // nebenläufig.
 export async function getAktivitaet(): Promise<AktivitaetsEintrag[]> {
-  const [kudos, follower, paesse] = await Promise.all([
+  // getCurrentUser() ist per React cache() dedupliziert — die Seite hat
+  // dieselbe Sitzung eben schon gelesen, das kostet keinen Roundtrip.
+  const [kudos, follower, paesse, user] = await Promise.all([
     getRecentKudosReceived(),
     getRecentFollowersReceived(),
     getPassMeldungen(),
+    getCurrentUser(),
   ]);
-  return mischeAktivitaet(kudos, follower, paesse);
+  return mischeAktivitaet(kudos, follower, paesse, user?.id ?? null);
 }
 
 /**

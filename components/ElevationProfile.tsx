@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { formatMeter } from "@/lib/format";
+import { hoehenAchse } from "@/lib/hoehenAchse";
 import type { HoehenprofilPunkt, HoehenQuelle } from "@/types/database";
 
 const WIDTH = 600;
@@ -11,8 +13,12 @@ const PADDING_BOTTOM = 4;
 export default function ElevationProfile({
   punkte,
   quelle = "swisstopo",
+  gross = false,
 }: {
   punkte: HoehenprofilPunkt[];
+  /** Als Hauptbild der Streckenseite: höher und mit beschrifteten
+   *  Höhenlinien. Ohne bleibt es die kompakte Fassung (Fahrtseite, Fazit). */
+  gross?: boolean;
   // Woher das Profil stammt: Routenprofile kommen immer von swisstopo
   // swissALTI3D (lib/actions/routes.ts), Fahrtenprofile nur, wenn
   // deriveElevation eins geliefert hat (route_completions.hoehen_quelle,
@@ -26,16 +32,25 @@ export default function ElevationProfile({
   if (punkte.length < 2) return null;
 
   const kmMax = punkte[punkte.length - 1].km || 1;
-  const mMin = Math.min(...punkte.map((p) => p.m));
-  const mMax = Math.max(...punkte.map((p) => p.m));
-  const mRange = Math.max(mMax - mMin, 1);
+  // Achse mit Mindestspanne statt von tiefster zu höchster Stelle
+  // (lib/hoehenAchse.ts): eine flache Runde soll flach aussehen.
+  const achse = hoehenAchse(
+    Math.min(...punkte.map((p) => p.m)),
+    Math.max(...punkte.map((p) => p.m)),
+  );
+  const mMin = achse.unten;
+  const mRange = Math.max(achse.oben - achse.unten, 1);
 
-  const x = (km: number) => (km / kmMax) * WIDTH;
+  // In der grossen Fassung endet die Kurve vor dem rechten Rand: dort stehen
+  // die Höhenlinien-Beschriftungen. Vorher lief die Linie durch die Zahlen
+  // hindurch ("1'700" auf dem Furka, Re-Audit 2026-09-23).
+  const plotBreite = gross ? WIDTH * 0.87 : WIDTH;
+  const x = (km: number) => (km / kmMax) * plotBreite;
   const y = (m: number) =>
     PADDING_TOP + (1 - (m - mMin) / mRange) * (HEIGHT - PADDING_TOP - PADDING_BOTTOM);
 
   const linePath = punkte.map((p, i) => `${i === 0 ? "M" : "L"} ${x(p.km).toFixed(1)} ${y(p.m).toFixed(1)}`).join(" ");
-  const areaPath = `${linePath} L ${WIDTH} ${HEIGHT} L 0 ${HEIGHT} Z`;
+  const areaPath = `${linePath} L ${plotBreite} ${HEIGHT} L 0 ${HEIGHT} Z`;
 
   const gipfel = punkte.reduce((a, b) => (b.m > a.m ? b : a));
 
@@ -45,7 +60,8 @@ export default function ElevationProfile({
   // selbst eine Drag-to-inspect-Geste.
   function nearestIndex(clientX: number): number {
     const rect = svgRef.current!.getBoundingClientRect();
-    const fraction = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    const plotPx = rect.width * (plotBreite / WIDTH);
+    const fraction = Math.min(1, Math.max(0, (clientX - rect.left) / plotPx));
     const km = fraction * kmMax;
 
     let closest = 0;
@@ -73,7 +89,7 @@ export default function ElevationProfile({
           ref={svgRef}
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
           preserveAspectRatio="none"
-          className="h-28 w-full cursor-crosshair touch-none"
+          className={`${gross ? "h-44" : "h-28"} w-full cursor-crosshair touch-pan-y`}
           role="img"
           aria-label={`Höhenprofil, Scheitelpunkt ${gipfel.m} m bei km ${gipfel.km}${
             hoverPunkt ? `, ausgewählt: ${hoverPunkt.m} m bei km ${hoverPunkt.km.toFixed(1)}` : ""
@@ -82,6 +98,7 @@ export default function ElevationProfile({
           onPointerDown={onPointerActivity}
           onPointerLeave={() => setHoverIndex(null)}
           onPointerUp={() => setHoverIndex(null)}
+          onPointerCancel={() => setHoverIndex(null)}
         >
           <defs>
             {/* stopColor über style statt Attribut, damit var(--color-accent) im
@@ -92,6 +109,21 @@ export default function ElevationProfile({
               <stop offset="100%" style={{ stopColor: "var(--color-accent)" }} stopOpacity="0" />
             </linearGradient>
           </defs>
+          {/* Höhenlinien wie auf der Landeskarte. vectorEffect: die Linie
+              bleibt ein Haar, auch wenn preserveAspectRatio="none" die
+              Grafik in die Breite zieht. */}
+          {achse.linien.map((m) => (
+            <line
+              key={m}
+              x1={0}
+              x2={WIDTH}
+              y1={y(m)}
+              y2={y(m)}
+              style={{ stroke: "var(--color-border)" }}
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
           <path d={areaPath} fill="url(#elevation-fill)" />
           <path
             d={linePath}
@@ -101,7 +133,6 @@ export default function ElevationProfile({
             strokeLinejoin="round"
             strokeLinecap="round"
           />
-          <circle cx={x(gipfel.km)} cy={y(gipfel.m)} r="3" style={{ fill: "var(--color-accent)" }} />
           {hoverPunkt && (
             <>
               <line
@@ -113,43 +144,60 @@ export default function ElevationProfile({
                 strokeWidth="1"
                 strokeDasharray="3,3"
               />
-              <circle
-                cx={x(hoverPunkt.km)}
-                cy={y(hoverPunkt.m)}
-                r="4"
-                style={{ fill: "var(--color-accent)", stroke: "var(--color-background)" }}
-                strokeWidth="1.5"
-              />
             </>
           )}
         </svg>
+        {/* Punkte als HTML statt <circle>: preserveAspectRatio="none" zog die
+            Kreise zu Ellipsen. Positioniert in Prozent derselben Koordinaten. */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent"
+          style={{ left: `${(x(gipfel.km) / WIDTH) * 100}%`, top: `${(y(gipfel.m) / HEIGHT) * 100}%` }}
+        />
         {hoverPunkt && (
-          <div
-            className="pointer-events-none absolute rounded-md border border-border bg-background px-2 py-1 text-xs tabular-nums shadow-elevated"
-            // Unter der Kurve statt darüber: oben lag die Blase über
-            // "Strecke starten" — der Hinweis verdeckte die Handlung, für die
-            // die Seite da ist.
-            style={{
-              left: `${(hoverPunkt.km / kmMax) * 100}%`,
-              bottom: 0,
-              transform: "translate(-50%, calc(100% + 6px))",
-            }}
-          >
-            {hoverPunkt.m} m · km {hoverPunkt.km.toFixed(1)}
-          </div>
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-background bg-accent"
+            style={{ left: `${(x(hoverPunkt.km) / WIDTH) * 100}%`, top: `${(y(hoverPunkt.m) / HEIGHT) * 100}%` }}
+          />
         )}
+        {/* Beschriftung der Höhenlinien als HTML über der Grafik: Text in
+            einem verzerrten SVG würde mitverzerrt. Nur in der grossen
+            Fassung — in 112 px Höhe wären die Zahlen Rauschen. */}
+        {gross &&
+          achse.linien.map((m) => (
+            <span
+              key={m}
+              aria-hidden="true"
+              className="pointer-events-none absolute right-0 -translate-y-full pb-0.5 text-xs leading-none tabular-nums text-muted"
+              style={{ top: `${(y(m) / HEIGHT) * 100}%` }}
+            >
+              {m.toLocaleString("de-CH")}
+            </span>
+          ))}
       </div>
       {/* Start · höchster Punkt · Ziel, statt Minimum · Gipfel · Maximum.
           Der Gipfel IST das Maximum — rechts stand also zweimal dieselbe
           Zahl, und an der Stelle, an der man das Streckenende erwartet,
           las sie sich als Zielhöhe, während die Linie darüber abfiel. */}
-      <div className="flex justify-between gap-2 text-xs tabular-nums text-muted">
-        <span>Start {punkte[0].m} m</span>
-        <span className="text-center">
-          Höchster Punkt {gipfel.m} m · km {gipfel.km.toFixed(0)}
-        </span>
-        <span className="text-right">Ziel {punkte[punkte.length - 1].m} m</span>
-      </div>
+      {/* Der Messwert unter dem Finger steht in derselben Zeile wie Start,
+          höchster Punkt und Ziel und ersetzt sie, solange gewischt wird.
+          Vorher lag eine Blase unter der Kurve — genau über dieser Zeile,
+          sodass der Wert die Werte verdeckte, mit denen man ihn vergleicht.
+          Über der Kurve ging nicht: dort liegt "Strecke starten". */}
+      {hoverPunkt ? (
+        <p className="text-center text-xs font-medium tabular-nums text-foreground">
+          {formatMeter(hoverPunkt.m)} · km {hoverPunkt.km.toFixed(1)}
+        </p>
+      ) : (
+        <div className="flex justify-between gap-2 whitespace-nowrap text-xs tabular-nums text-muted">
+          <span>Start {formatMeter(punkte[0].m)}</span>
+          <span className="truncate text-center">
+            Höchster Punkt {formatMeter(gipfel.m)}
+          </span>
+          <span className="text-right">Ziel {formatMeter(punkte[punkte.length - 1].m)}</span>
+        </div>
+      )}
       {/* Beleg statt Behauptung: Routenprofile kommen von swisstopo
           swissALTI3D (lib/elevation.ts), Fahrtenprofile nur bei Quelle
           swisstopo — sonst steht hier ehrlich "geschaetzt" bzw. bei

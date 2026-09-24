@@ -2,6 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   clampSheetHeight,
   decideSheetGesture,
+  FEDER_RUHIG,
+  FEDER_WURF,
+  federFuer,
+  federRuht,
+  federSchritt,
+  gummibandHoehe,
+  projizierterWeg,
+  snapAfterFling,
+  wischGeschwindigkeit,
   nextSnapOnTap,
   sheetHeightFor,
   sheetSnapHeights,
@@ -152,5 +161,97 @@ describe("decideSheetGesture", () => {
     expect(decideSheetGesture({ deltaY: -10, deltaX: -40, snap: "voll", scrollTop: 0 })).toBe(
       "scroll",
     );
+  });
+
+  it("keeps a diagonal swipe on the sheet when nothing under the finger scrolls sideways", () => {
+    expect(
+      decideSheetGesture({ deltaY: 2, deltaX: 4, snap: "peek", scrollTop: 0, waagrechtScrollbar: false }),
+    ).toBe("sheet");
+  });
+});
+
+describe("Sheet-Physik", () => {
+  const heights = { minPx: 40, peekPx: 280, maxPx: 800 };
+
+  it("throws a short fast flick up to full instead of staying on peek", () => {
+    // 40 px über Peek losgelassen: ohne Schwung bliebe es auf Peek.
+    expect(snapAfterDrag(320, heights)).toBe("peek");
+    expect(snapAfterFling(320, 2500, heights)).toBe("voll");
+  });
+
+  it("keeps a slow release where the finger left it", () => {
+    expect(snapAfterFling(320, 50, heights)).toBe("peek");
+  });
+
+  it("flicks down to hidden", () => {
+    expect(snapAfterFling(260, -2500, heights)).toBe("versteckt");
+  });
+
+  it("projects about 200 px for 1000 px/s", () => {
+    expect(projizierterWeg(1000)).toBeCloseTo(199, 0);
+  });
+
+  it("resists past the ends but never passes the container height", () => {
+    expect(gummibandHoehe(500, heights)).toBe(500);
+    const drueber = gummibandHoehe(900, heights);
+    expect(drueber).toBeGreaterThan(800);
+    expect(drueber).toBeLessThan(900);
+    expect(gummibandHoehe(100000, heights)).toBeLessThan(1600);
+    const drunter = gummibandHoehe(0, heights);
+    expect(drunter).toBeLessThan(40);
+    expect(drunter).toBeGreaterThan(0);
+  });
+
+  it("measures speed from the last 100 ms only", () => {
+    const proben = [
+      { t: 0, h: 100 },
+      { t: 400, h: 400 }, // schneller Anfang, dann Stillstand:
+      { t: 480, h: 400 },
+      { t: 560, h: 400 },
+    ];
+    expect(wischGeschwindigkeit(proben)).toBe(0);
+    expect(wischGeschwindigkeit([{ t: 0, h: 100 }, { t: 50, h: 200 }])).toBe(2000);
+  });
+});
+
+describe("Feder", () => {
+  function laufe(start: { x: number; v: number }, ziel: number, feder = FEDER_RUHIG) {
+    let z = start;
+    let max = z.x;
+    let frames = 0;
+    while (!federRuht(z, ziel) && frames < 600) {
+      z = federSchritt(z, ziel, 1 / 60, feder);
+      max = Math.max(max, z.x);
+      frames++;
+    }
+    return { z, max, frames };
+  }
+
+  it("settles on the target within a second", () => {
+    const { z, frames } = laufe({ x: 272, v: 0 }, 700);
+    expect(Math.abs(z.x - 700)).toBeLessThan(0.5);
+    expect(frames).toBeLessThan(60);
+  });
+
+  it("does not overshoot when critically damped, even when thrown", () => {
+    expect(laufe({ x: 272, v: 3000 }, 700).max).toBeLessThanOrEqual(700.5);
+  });
+
+  it("overshoots a little after a fling", () => {
+    const { max } = laufe({ x: 600, v: 2500 }, 700, FEDER_WURF);
+    expect(max).toBeGreaterThan(701);
+    expect(max).toBeLessThan(760);
+  });
+
+  it("carries the release velocity: a fast release moves further in the first frame", () => {
+    const langsam = federSchritt({ x: 300, v: 0 }, 700, 1 / 60, FEDER_RUHIG);
+    const schnell = federSchritt({ x: 300, v: 2000 }, 700, 1 / 60, FEDER_RUHIG);
+    expect(schnell.x - 300).toBeGreaterThan(25);
+    expect(schnell.x).toBeGreaterThan(langsam.x);
+  });
+
+  it("only bounces when the gesture had momentum", () => {
+    expect(federFuer(100)).toBe(FEDER_RUHIG);
+    expect(federFuer(-1200)).toBe(FEDER_WURF);
   });
 });

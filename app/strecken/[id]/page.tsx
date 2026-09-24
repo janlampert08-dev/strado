@@ -5,6 +5,7 @@ import { ogMitBild } from "@/lib/openGraph";
 import Link from "next/link";
 import Header from "@/components/Header";
 import RouteDetailLayout from "@/components/RouteDetailLayout";
+import { AufzeichnungProvider } from "@/components/AufzeichnungsKontext";
 import FavoriteButton from "@/components/FavoriteButton";
 import RatingSection from "@/components/RatingSection";
 import GefahrenSection from "@/components/GefahrenSection";
@@ -13,13 +14,17 @@ import PublishRouteButton from "@/components/PublishRouteButton";
 import ElevationProfile from "@/components/ElevationProfile";
 import PhotoGallery from "@/components/PhotoGallery";
 import RouteLeaderboardPreview from "@/components/RouteLeaderboardPreview";
+import BestzeitStreifen from "@/components/BestzeitStreifen";
+import { liveSplitEingeschaltet } from "@/lib/liveSplit";
 import OfflineRouteButton from "@/components/OfflineRouteButton";
+import { VolleGeometrieProvider } from "@/components/VolleGeometrie";
+import { geometrieUrl, kodiereGeometrie, mitUebersichtsgeometrie } from "@/lib/streckenGeometrie";
 import { getKontextStrecken, getRoute, getSignaturbestand } from "@/lib/routes";
 import { computeSignatures } from "@/lib/signature";
 import { SIGNATURE_ICONS, SIGNATUR_KLASSEN } from "@/components/signaturStil";
 import PremiumHinweis from "@/components/PremiumHinweis";
 import { WetterfensterStreifen, WetterfensterStreifenPlatzhalter } from "@/components/Wetterfenster";
-import { formatKm } from "@/lib/format";
+import { formatKm, formatMeter } from "@/lib/format";
 import { getRatings, getOwnRating } from "@/lib/ratings";
 import { bewertungAusSternen } from "@/lib/bewertungen";
 import { getPersonalBestSeconds } from "@/lib/completions";
@@ -41,7 +46,7 @@ import { KATEGORIEN } from "@/lib/constants";
 import { siteUrl } from "@/lib/siteUrl";
 import { averageTempolimit, estimateRouteDurationMinutes, formatMinutes } from "@/lib/geo";
 import type { Vehicle } from "@/types/database";
-import { ChevronDown, Pencil } from "lucide-react";
+import { ChevronDown, Pencil } from "@/components/NavIcons";
 import Card from "@/components/ui/Card";
 import AbschnittTabs from "@/components/ui/AbschnittTabs";
 import Kennzahl, { Kennzahlen, Kennzahlenzeile } from "@/components/ui/Kennzahl";
@@ -77,7 +82,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const route = await getRoute(id);
-  if (!route) return { title: "Strecke – Strado" };
+  // Dieselbe Überschrift wie app/not-found.tsx: die Seite antwortet unten
+  // mit notFound(), und der Tab soll dasselbe sagen wie der Inhalt, nicht
+  // einen Streckentitel ankündigen, den es nicht gibt.
+  if (!route) return { title: "Seite nicht gefunden – Strado" };
 
   const beschreibung =
     route.charakter_text ??
@@ -204,6 +212,15 @@ export default async function StreckeDetailPage({
 
   const signatur = computeSignatures(signaturbestand).get(route.id) ?? null;
 
+  // Die exakte Linie bleibt auf dem Server (Wetterfenster, strukturierte
+  // Daten); an Client-Komponenten geht nur die Übersichtslinie aus 0117.
+  // Die volle Linie holt der Browser nach dem ersten Aufbau unter einer
+  // versionierten Adresse (lib/streckenGeometrie.ts,
+  // app/strecken/[id]/geometrie/route.ts). Vorher stand sie hier in der
+  // Nutzlast — und über dieselbe Referenz in fünf Client-Props.
+  const leichteRoute = mitUebersichtsgeometrie(route);
+  const linienUrl = geometrieUrl(route.id, kodiereGeometrie(route.geometry_geojson).v);
+
   // Strukturierte Daten für die Streckenseite — der einzige öffentlich
   // indexierbare Evergreen-Inhalt der Plattform (app/sitemap.ts listet
   // Strecken mit priority 0.8, Profile bewusst gar nicht).
@@ -293,7 +310,12 @@ export default async function StreckeDetailPage({
         }}
       />
       <Header back="/" />
-      <RouteDetailLayout route={route}>
+      {/* Trägt, ob gerade aufgezeichnet wird (GefahrenSection): Währenddessen
+          hängt die Detailkarte aus, damit nicht zwei WebGL-Karten gleichzeitig
+          laufen — siehe AufzeichnungsKontext.tsx. */}
+      <AufzeichnungProvider>
+      <VolleGeometrieProvider streckenId={route.id} url={linienUrl}>
+      <RouteDetailLayout route={leichteRoute}>
         <div>
           <p className="text-sm text-muted">
             {route.region}
@@ -361,7 +383,7 @@ export default async function StreckeDetailPage({
                     {!istNameSchonImTitel(route.name, kontext.pass.name, passKontexte.length) && (
                       <Link
                         href={`/paesse#${kontext.pass.id}`}
-                        className="font-medium text-foreground transition-colors hover:text-accent"
+                        className="relative font-medium text-foreground transition-colors hover:text-accent-ink after:absolute after:-inset-x-1 after:-inset-y-3 after:content-['']"
                         title={`${kontext.pass.name} auf der Passseite`}
                       >
                         {kontext.pass.name}
@@ -369,7 +391,7 @@ export default async function StreckeDetailPage({
                     )}
                     <a
                       href="#fahrcheck"
-                      className="inline-flex items-center rounded-full transition-opacity hover:opacity-70"
+                      className="relative inline-flex items-center rounded-full transition-opacity hover:opacity-70 after:absolute after:-inset-x-1 after:-inset-y-3.5 after:content-['']"
                       title={`${kontext.pass.name}: ${anzeige.label} — Details weiter unten`}
                     >
                       <PassStatusMarke anzeige={anzeige} />
@@ -423,13 +445,16 @@ export default async function StreckeDetailPage({
               kehren: route.kehren,
               charakterText: route.charakter_text,
               hoehenprofil: route.hoehenprofil,
-              geometryCoordinates: route.geometry_geojson.coordinates as [number, number][],
+              // Übersichtslinie — der Knopf holt beim Speichern die volle
+              // (siehe OfflineRouteButton), fällt ohne Empfang aber auf
+              // diese zurück.
+              geometryCoordinates: leichteRoute.geometry_geojson.coordinates as [number, number][],
               gespeichertAm: new Date().toISOString(),
             }}
             istPremium={premiumStatus.aktiv}
           />
           <RouteActionsMenu
-            route={route}
+            route={leichteRoute}
             moderator={moderator}
             isOwner={!moderator && user?.id === route.erstellt_von && !route.status_ok}
             canReport={!!user && user.id !== route.erstellt_von}
@@ -454,23 +479,44 @@ export default async function StreckeDetailPage({
             wo ein Besucher ohne Konto zuerst ankommt. Der Kommentar-Teil des
             alten Hinweises lebt jetzt in RatingSection weiter, wo er
             hingehört. */}
+        {/* Die Bestzeit vor den Reitern: sie beantwortet die zweite Frage,
+            mit der man eine Strecke öffnet ("was wurde hier gefahren?"),
+            und stand bisher erst im dritten Reiter. */}
+        <BestzeitStreifen beste={leaderboard[0] ?? null} eigeneSekunden={personalBestSeconds} />
+
         {/* Reiter statt Stapel: Fahren (die Entscheidung), Details
-            (Vertiefung), Wertung (Community). */}
-        <AbschnittTabs tabs={[{ titel: "Fahren" }, { titel: "Details" }, { titel: "Wertung", anzahl: ratings.length }]}>
+            (Vertiefung samt Bewertungen und Fotos), Bestzeiten. Der dritte
+            Reiter hiess "Wertung" und zählte die Bewertungen, obwohl er mit
+            der Bestenliste begann — Bestzeit und Sterne sind zwei Fragen. */}
+        <AbschnittTabs tabs={[{ titel: "Fahren" }, { titel: "Details" }, { titel: "Bestzeiten", anzahl: leaderboard.length }]}>
           <div className="flex flex-col gap-5">
         {/* Sprungziel für "Zum Start" in der leeren Bestenliste. scroll-mt:
             sonst endet der Sprung mit dem Knopf an der oberen Kante. */}
         <div id="fahren" className="scroll-mt-6">
         <GefahrenSection
-          route={route}
+          route={leichteRoute}
           kontextStrecken={kontextStrecken}
           userId={user?.id ?? null}
           vehicles={vehicles}
           personalBestSeconds={personalBestSeconds}
           guestContinuationToken={fortsetzen ?? null}
           maxPhotos={maxFotosProFahrt(premiumStatus.aktiv)}
+          // Aus, bis die neuen AGB gelten (lib/liveSplit.ts). Server-Variable,
+          // damit Ausschalten ohne neuen Build geht.
+          liveSplit={
+            liveSplitEingeschaltet(process.env.STRADO_LIVE_SPLIT)
+              ? { streckenBestzeitS: leaderboard[0]?.dauerSekunden ?? null }
+              : null
+          }
         />
         </div>
+
+        {/* Das Höhenprofil als Hauptbild der Strecke, direkt unter dem
+            Start: die Höhe ist das, was einen Pass von einer Landstrasse
+            unterscheidet, und stand bisher im zweiten Reiter. */}
+        {route.hoehenprofil && route.hoehenprofil.length > 1 && (
+          <ElevationProfile punkte={route.hoehenprofil} gross />
+        )}
 
         {/* Ein Widget statt zweier Sektionen: Öffnung und Verkehr als eine
             Entscheidung direkt nach dem Start — denn ob der Pass überhaupt
@@ -480,7 +526,7 @@ export default async function StreckeDetailPage({
         <FahrCheck
           kontexte={passKontexte}
           feedStand={feedStand}
-          route={route}
+          route={leichteRoute}
           punkte={ruhigeZeiten.punkte}
           startzeiten={ruhigeZeiten.startzeiten}
           angemeldet={!!user}
@@ -510,7 +556,8 @@ export default async function StreckeDetailPage({
         </div>
 
         {/* Fakten in zwei Stufen: 4 Kacheln für die Auswahl, der Rest als
-            ruhige Detailzeile. Das Höhenprofil lebt im Reiter Details. */}
+            ruhige Detailzeile. Das Höhenprofil steht darüber, direkt unter
+            dem Start. */}
         <Kennzahlen>
           <Kennzahl beschriftung="Länge" wert={`${formatKm(route.laenge_km)} km`} />
           <Kennzahl
@@ -524,9 +571,9 @@ export default async function StreckeDetailPage({
             // Schirm. Das Profil ist die Quelle, die man sieht.
             wert={
               route.hoehenprofil && route.hoehenprofil.length > 1
-                ? `${Math.max(...route.hoehenprofil.map((p) => p.m))} m`
+                ? formatMeter(Math.max(...route.hoehenprofil.map((p) => p.m)))
                 : route.hoehe_m !== null
-                  ? `${route.hoehe_m} m`
+                  ? formatMeter(route.hoehe_m)
                   : "—"
             }
           />
@@ -560,18 +607,16 @@ export default async function StreckeDetailPage({
         />
 
           </div>
-          {/* Reiter Details: Profil und Zeitpunkt-Infos — Vertiefung für
-              nach dem Start, nicht Ballast davor. */}
+          {/* Reiter Details: Zeitpunkt-Infos — Vertiefung für nach dem
+              Start, nicht Ballast davor. Das Höhenprofil steht seit
+              2026-09-23 vorne im Reiter Fahren. */}
           <div className="flex flex-col gap-5">
-            {route.hoehenprofil && route.hoehenprofil.length > 1 && (
-              <ElevationProfile punkte={route.hoehenprofil} />
-            )}
-            {/* Standardmässig offen: der Reiter wäre sonst nur Profil plus
+            {/* Standardmässig offen: der Reiter wäre sonst nur eine
                 eine geschlossene Klappe — zu leer für eine eigene Ansicht. */}
             <details open className="group rounded-xl border border-border">
           <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium marker:content-none">
             <span>
-              Beste Zeit & Wetterwoche{" "}
+              Ruhige Zeiten & Wetter{" "}
               <span className="font-normal text-muted">— Details</span>
             </span>
             <ChevronDown
@@ -616,16 +661,6 @@ export default async function StreckeDetailPage({
           </div>
         </details>
 
-          </div>
-          {/* Reiter Wertung: Bestenliste, Meinung, Bilder — die Community
-              als eigene Ansicht. */}
-          <div className="flex flex-col gap-5">
-            <RouteLeaderboardPreview
-              routeId={id}
-              entries={leaderboard}
-              klassen={leaderboardKlassen}
-            />
-
         <RatingSection
           routeId={id}
           ratings={ratings}
@@ -645,8 +680,18 @@ export default async function StreckeDetailPage({
             Bestenliste und Bewertungen. */}
         <PhotoGallery photos={photos} />
           </div>
+          {/* Reiter Bestzeiten: die Bestenliste allein. */}
+          <div className="flex flex-col gap-5">
+            <RouteLeaderboardPreview
+              routeId={id}
+              entries={leaderboard}
+              klassen={leaderboardKlassen}
+            />
+          </div>
         </AbschnittTabs>
       </RouteDetailLayout>
+      </VolleGeometrieProvider>
+      </AufzeichnungProvider>
     </div>
   );
 }

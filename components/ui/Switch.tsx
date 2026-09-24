@@ -20,7 +20,7 @@ export default function Switch({ label, description, className, ...props }: Swit
       <input type="checkbox" className="peer sr-only" {...props} />
       <span
         aria-hidden="true"
-        className="relative h-6 w-10 shrink-0 rounded-full bg-border transition-colors duration-fast after:absolute after:top-0.5 after:left-0.5 after:h-5 after:w-5 after:rounded-full after:bg-background after:shadow-sm after:transition-transform after:duration-fast peer-checked:bg-accent peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-accent/40 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background"
+        className="relative h-6 w-10 shrink-0 rounded-full bg-border-control transition-colors duration-fast after:absolute after:top-0.5 after:left-0.5 after:h-5 after:w-5 after:rounded-full after:bg-background after:shadow-sm after:transition-transform after:duration-fast peer-checked:bg-accent peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background"
       />
     </label>
   );

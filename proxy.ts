@@ -6,22 +6,28 @@ import { istStaging } from "@/lib/staging";
 // müssen: die Anmeldeseite selbst (sonst könnte sich niemand einloggen), die
 // Auth-Route-Handler (PKCE-Callback für Bestätigungs-/Passwort-Reset-Links,
 // Abmeldung — beide laufen, bevor ein Moderator-Status feststeht) sowie
-// /api/**, das laut Absprache von diesem Gate ausgenommen bleibt (u.a. der
-// Stripe-Webhook, der keine Login-Session mitbringt, und die bewusst
-// unauthentifizierten /api/strecken/**-Endpunkte).
+// /robots.txt (sonst bekäme ein Crawler statt "disallow: /" eine Weiterleitung).
 //
-// Dazu /robots.txt: ohne diese Ausnahme bekäme ein Crawler statt des
-// "disallow: /" aus app/robots.ts eine Weiterleitung auf /anmelden — und die
-// Anmeldeseite ist ausgenommen, wäre also das Einzige, was er von Staging je
-// zu sehen bekommt und indexieren kann. Die Ausnahme gibt nichts preis: die
-// Antwort ist auf Staging genau eine Zeile Verbot.
+// /api/** ist bewusst KEIN pauschales Exempt mehr: Staging spricht gegen die
+// Produktions-DB, und jede künftige /api-Route stünde sonst automatisch mit
+// Prod-Daten öffentlich. Allowlist statt Prefix: Webhook (keine Session),
+// die bewusst öffentlichen Strecken-Endpunkte, die Cron-Routen (eigenes
+// CRON_SECRET) und der Client-Fehler-Logger.
 function istVomGateAusgenommen(pathname: string): boolean {
-  return (
+  if (
     pathname === "/anmelden" ||
     pathname.startsWith("/anmelden/") ||
     pathname.startsWith("/auth/") ||
-    pathname.startsWith("/api/") ||
     pathname === "/robots.txt"
+  ) {
+    return true;
+  }
+  return (
+    pathname === "/api/stripe/webhook" ||
+    pathname === "/api/strecken" ||
+    pathname.startsWith("/api/strecken/") ||
+    pathname.startsWith("/api/cron/") ||
+    pathname === "/api/fehler"
   );
 }
 

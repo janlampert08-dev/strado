@@ -71,7 +71,7 @@ export default function BottomNav({
             >
               <span className="relative">
                 <Icon
-                  className={`h-6 w-6 transition-colors duration-fast ${active ? "text-accent" : "text-muted"}`}
+                  className={`h-6 w-6 transition-colors duration-fast ${active ? "text-accent-ink" : "text-muted"}`}
                 />
                 {zeigtAufzeichnung && (
                   <span
@@ -82,13 +82,16 @@ export default function BottomNav({
                 {zeigtZaehler && (
                   <span
                     aria-hidden="true"
-                    className="absolute -top-1 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-background"
+                    className="absolute -top-1 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-on-accent"
                   >
                     {ungeseheneAktivitaet > 9 ? "9+" : ungeseheneAktivitaet}
                   </span>
                 )}
               </span>
-              <span className={`transition-colors duration-fast ${active ? "text-accent" : "text-muted"}`}>
+              {/* whitespace-nowrap + tracking-tight: "Fahrt starten" brach mit Geist
+                  auf 360 px in zwei Zeilen (Re-Audit 2026-09-23). Der Name bleibt —
+                  er ist bewusst nach der Absicht gewählt (lib/nav.test.ts). */}
+              <span className={`whitespace-nowrap tracking-tight transition-colors duration-fast ${active ? "text-accent-ink" : "text-muted"}`}>
                 {tab.label}
               </span>
             </Link>

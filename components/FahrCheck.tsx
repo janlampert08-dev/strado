@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
 import { textAktionClassName } from "@/components/ui/Button";
-import { AutoIcon } from "@/components/NavIcons";
+import { AutoIcon, ChevronDown } from "@/components/NavIcons";
+import PassKalenderAbschnitt from "@/components/PassKalenderAbschnitt";
 import PassFolgenButton from "@/components/PassFolgenButton";
 import { STATUS_TON_TEXT, StatusPunkt } from "@/components/PassStatusZeile";
 import { anzeigeFuerStatus } from "@/lib/passStatus";
@@ -16,6 +17,7 @@ import {
   type CongestionLevel,
 } from "@/lib/traffic";
 import {
+  skalaFuerPunkte,
   startzeitenSatz,
   type Startzeit,
   type VerkehrsPunkt,
@@ -28,21 +30,24 @@ import {
 import { mitAnzahl } from "@/lib/format";
 import type { PassKontext } from "@/lib/paesse";
 import type { RouteGeoJSON } from "@/types/database";
+import { useVolleGeometrie } from "@/components/VolleGeometrie";
 
 // Der Losfahr-Check im Reiter Fahren: eine Frage, zwei Antworten, eine
 // Fläche — ist der Pass offen, und wie ist der Verkehr. Er ersetzt
 // PassSektion und VerkehrSektion, die dieselben Antworten auf je eine
 // eigene Card mit Überschrift, Kalender-Klappe und Quellen-Zeile
-// verteilten. Alles, was keine Losfahr-Entscheidung ist (Kalender,
-// Meldungstext, Herkunft, Wochenraster), lebt auf der Passseite und im
-// Details-Reiter — jede Zeile hier verlinkt dorthin.
+// verteilten. Was keine Losfahr-Entscheidung ist (Meldungstext, Herkunft,
+// Wochenraster), lebt auf der Passseite und im Details-Reiter — jede Zeile
+// hier verlinkt dorthin. Der Kalender (Saison, geplante Sperrungen,
+// Öffnungen der Vorjahre) bleibt als Klappe am Ende der Card: die
+// Passseite zeigt ihn nicht, ohne die Klappe gäbe es ihn nirgends mehr.
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
 export default function FahrCheck({
   kontexte,
   feedStand,
-  route,
+  route: hereingereicht,
   punkte,
   startzeiten,
   angemeldet,
@@ -54,6 +59,11 @@ export default function FahrCheck({
   startzeiten: Startzeit[];
   angemeldet: boolean;
 }) {
+  // Die Stichproben liegen je Index (lib/traffic.ts) — auf der vollen Linie
+  // wie vor 2026-09-23, deshalb wird auf sie gewartet (sie lädt ohnehin für
+  // die Detailkarte, derselbe Abruf). Scheitert sie, gilt die Übersicht.
+  const { strecke: route, stand } = useVolleGeometrie(hereingereicht);
+  const linieSteht = stand !== "laedt";
   const coordinates = route.geometry_geojson.coordinates as [number, number][];
   const liveMoeglich = !!MAPBOX_TOKEN && coordinates.length >= 2;
 
@@ -63,7 +73,7 @@ export default function FahrCheck({
   const [levels, setLevels] = useState<(CongestionLevel | null)[] | null>(null);
 
   useEffect(() => {
-    if (!liveMoeglich) return;
+    if (!liveMoeglich || !linieSteht) return;
     let abgebrochen = false;
     fetchCongestionLevels(
       coordinates,
@@ -76,7 +86,7 @@ export default function FahrCheck({
       abgebrochen = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [route.id]);
+  }, [route.id, linieSteht]);
 
   const live = useMemo(
     () =>
@@ -94,16 +104,19 @@ export default function FahrCheck({
     [punkte, wochentag, stunde],
   );
 
+  const skala = useMemo(() => skalaFuerPunkte(punkte), [punkte]);
+
   const einschaetzung = useMemo(
     () =>
       baueVerkehrseinschaetzung({
         live,
         prognoseFaktor,
+        skala,
         hatPrognose: punkte.length > 0,
         hatGemeinschaft: startzeitenSatz(startzeiten) !== null,
         liveLaedt: liveMoeglich && levels === null,
       }),
-    [live, prognoseFaktor, punkte.length, startzeiten, liveMoeglich, levels],
+    [live, prognoseFaktor, skala, punkte.length, startzeiten, liveMoeglich, levels],
   );
 
   // Die Verkehrszeile in beiden Fällen: mit Trennlinie unter den Pässen,
@@ -159,7 +172,7 @@ export default function FahrCheck({
                   <div className="flex min-w-0 items-center gap-2">
                     <Link
                       href={`/paesse#${kontext.pass.id}`}
-                      className="truncate text-sm font-medium transition-colors duration-fast hover:text-accent"
+                      className="truncate text-sm font-medium transition-colors duration-fast hover:text-accent-ink"
                     >
                       {kontext.pass.name}
                     </Link>
@@ -203,6 +216,30 @@ export default function FahrCheck({
                 Details →
               </Link>
             </div>
+            <details className="group/kalender border-t border-border">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-muted transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden">
+                Saison & Sperrungen
+                <ChevronDown
+                  className="h-4 w-4 transition-transform duration-fast group-open/kalender:rotate-180"
+                  aria-hidden="true"
+                />
+              </summary>
+              <div className="flex flex-col gap-4 pt-1 pb-1">
+                {kontexte.map((kontext) => (
+                  <div key={kontext.pass.id} className="flex flex-col gap-2">
+                    {kontexte.length > 1 && (
+                      <h3 className="text-sm font-semibold">{kontext.pass.name}</h3>
+                    )}
+                    <PassKalenderAbschnitt
+                      wintersperreAbMonat={kontext.pass.wintersperreAbMonat}
+                      wintersperreBisMonat={kontext.pass.wintersperreBisMonat}
+                      sperrtage={kontext.sperrtage}
+                      ereignisse={kontext.ereignisse}
+                    />
+                  </div>
+                ))}
+              </div>
+            </details>
           </>
         ) : (
           verkehrsZeile(false)

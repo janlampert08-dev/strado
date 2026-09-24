@@ -29,6 +29,24 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Noch nicht angewendet: 0123_ranglisten_ohne_abschnitte (geschrieben 2026-09-23)
+
+Ranglisten zählen erkannte Streckenabschnitte nicht mehr als eigene Fahrten.
+`leaderboard_completions` bekommt eine angehängte Spalte `ist_abschnitt`, die
+drei Aggregate (`leaderboard_user_totals`, `…_klassen_totals`,
+`…_typ_totals`) zählen Fahrten, Kilometer und Höhenmeter mit
+`filter (where not ist_abschnitt)`; `strecken_count` bleibt ungefiltert.
+Entscheid des Eigentümers vom 2026-09-23 (PR #274 hatte ihn offen gelassen).
+
+- **Reihenfolge:** unabhängig vom Code, kein Code liest die neue Spalte.
+- **Wirkung am 2026-09-23:** ein Konto mit einem öffentlichen Abschnitt,
+  211.1 → 199.6 km und 8 → 7 Fahrten; alle anderen unverändert. Vorher als
+  reine Abfrage nachgerechnet, die Aggregat-SQL gegen die Live-Daten geprüft.
+- **Prüfung danach** und **Weg zurück:** stehen im Kopf und am Ende der Datei.
+- **Grenzfall:** Wer nur einen öffentlichen Abschnitt, aber keine öffentliche
+  Elternfahrt hat, steht danach mit 0 Fahrten / 0 km in den Mengenlisten
+  (für "Meiste Strecken" zählt er richtig). Heute betrifft das niemanden.
+
 ## 0115 — noch nicht angewendet (Stand 2026-09-20)
 
 `0115_tempoprofil.sql` legt `route_completions.tempoprofil` an ([{km, kmh}],
@@ -60,6 +78,34 @@ Migrationsheader (Spalte, Check-Constraint, Grants auf
 öffentlichen View) steht noch aus — von hier aus gibt es keinen
 Datenbankzugang, nur das Wort. Wer ihn nachholt, ersetzt diesen Absatz
 durch das Gemessene.
+
+## Noch nicht angewendet: 0121_premium_promo_link (geschrieben 2026-09-22)
+
+Signup-Link mit 7 Tagen Gratis-Premium (`app.strado.ch/registrieren?promo=7-tage-gratis`).
+Neue Tabellen `premium_promo_codes` und `premium_gratis`, neue Funktion
+`premium_gratis_gueltig(uuid)`, und Erweiterungen von
+`handle_new_user()` (0094-Koerper), `apply_subscription_state()` (0110),
+`premium_abgleich()` (0110), `saisonpass_erstatten()` (0110) und
+`anonymize_account()` (0120).
+
+Vor dem Einspielen den Live-Koerper von `anonymize_account` lesen und
+vergleichen (AGENTS.md, "create or replace auf einer Live-Funktion"):
+```sql
+select prosrc from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public' and p.proname = 'anonymize_account';
+```
+
+Nach dem Einspielen pruefen:
+```sql
+select code, tage, aktiv from public.premium_promo_codes;
+select has_function_privilege('anon', 'public.premium_gratis_gueltig(uuid)', 'execute') as anon,
+       has_function_privilege('authenticated', 'public.premium_gratis_gueltig(uuid)', 'execute') as authenticated,
+       has_function_privilege('service_role', 'public.premium_gratis_gueltig(uuid)', 'execute') as service_role;
+select position('premium_gratis' in pg_get_functiondef(p.oid)) > 0 as kennt_gratis
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+ where n.nspname = 'public' and p.proname in
+   ('handle_new_user', 'apply_subscription_state', 'premium_abgleich', 'saisonpass_erstatten', 'anonymize_account');
+```
 
 ## Eingespielt: 0101_anonymisierung_fahrtstarts (2026-09-16, Produktion)
 

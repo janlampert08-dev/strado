@@ -1,9 +1,26 @@
 import type { MetadataRoute } from "next";
 import { getOrigin } from "@/lib/utils/url";
+import { siteUrl } from "@/lib/siteUrl";
 import { istStaging } from "@/lib/staging";
 
+// Wie die Sitemap (app/sitemap.ts): stündlich neu bauen statt bei jedem
+// Abruf auf die Request-Header zu warten. force-dynamic aus demselben
+// Grund: die Origin hängt an den Request-Headern, nie am Build.
+export const revalidate = 3600;
+export const dynamic = "force-dynamic";
+
+async function bestimmeOrigin(): Promise<string> {
+  try {
+    const origin = await getOrigin();
+    new URL(origin);
+    return origin;
+  } catch {
+    return siteUrl();
+  }
+}
+
 export default async function robots(): Promise<MetadataRoute.Robots> {
-  const origin = await getOrigin();
+  const origin = await bestimmeOrigin();
 
   // Staging trägt denselben Inhalt wie die Produktion, ist aus eigenem
   // Antrieb öffentlich erreichbar (Vercels Deployment Protection muss aus

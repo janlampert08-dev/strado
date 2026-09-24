@@ -300,7 +300,7 @@ export default function BestaetigenForm({
           Falsche Adresse?{" "}
           <Link
             href="/registrieren"
-            className="font-medium text-accent hover:underline"
+            className="font-medium text-accent-ink hover:underline"
           >
             Nochmal registrieren
           </Link>

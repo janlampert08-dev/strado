@@ -10,21 +10,42 @@ import useEingabenBewahren from "@/components/useEingabenBewahren";
 
 const initialState: AuthFormState = { error: null };
 
-export default function RegistrierenForm({ nextHref }: { nextHref?: string } = {}) {
+export default function RegistrierenForm({
+  nextHref,
+  promoCode,
+}: {
+  nextHref?: string;
+  promoCode?: string | null;
+} = {}) {
   const [state, formAction, pending] = useActionState(signUp, initialState);
   // Drei Felder, und ohne das wären nach einem Fehlschlag alle drei leer —
   // siehe components/useEingabenBewahren.ts.
   const formRef = useRef<HTMLFormElement>(null);
   useEingabenBewahren(formRef);
 
+  // Promo-Code aus dem Signup-Link (app/registrieren/page.tsx):
+  // ?promo=7-tage-gratis wird als verstecktes Feld an signUp()
+  // weitergereicht und dort in raw_user_meta_data.promo_code gelegt.
+  // Der Trigger handle_new_user() (0121) prüft den Code und vergibt
+  // 7 Tage Premium — ohne dass der Nutzer etwas eingeben muss.
+  const hatPromo = !!promoCode;
+
   return (
     <>
-      <h1 className="text-display font-semibold">Registrieren</h1>
+      {hatPromo && (
+        <p className="rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-xs text-accent-ink">
+          Dein Link beinhaltet 7 Tage Premium kostenlos — sie werden nach
+          der Registrierung aktiv und enden automatisch.
+        </p>
+      )}
       <form ref={formRef} action={formAction} className="flex flex-col gap-4">
         {/* Optionales Rücksprungziel, wie in AnmeldenForm — signUp()
             validiert den Wert erneut, bevor daraus ein Redirect bzw. ein
             Bestätigungslink wird. */}
         {nextHref && <input type="hidden" name="next" value={nextHref} />}
+        {hatPromo && (
+          <input type="hidden" name="promo_code" value={promoCode} />
+        )}
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           Benutzername
           <Input
@@ -38,7 +59,7 @@ export default function RegistrierenForm({ nextHref }: { nextHref?: string } = {
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           E-Mail
-          <Input type="email" name="email" required autoComplete="email" />
+          <Input type="email" name="email" required autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} />
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           Passwort
@@ -65,7 +86,7 @@ export default function RegistrierenForm({ nextHref }: { nextHref?: string } = {
           href={LEGAL_URLS.agb}
           target="_blank"
           rel="noopener noreferrer"
-          className="underline hover:text-accent"
+          className="underline hover:text-accent-ink"
         >
           AGB
         </a>{" "}
@@ -74,7 +95,7 @@ export default function RegistrierenForm({ nextHref }: { nextHref?: string } = {
           href={LEGAL_URLS.datenschutz}
           target="_blank"
           rel="noopener noreferrer"
-          className="underline hover:text-accent"
+          className="underline hover:text-accent-ink"
         >
           Datenschutzerklärung
         </a>
@@ -84,7 +105,7 @@ export default function RegistrierenForm({ nextHref }: { nextHref?: string } = {
         Schon ein Konto?{" "}
         <Link
           href={nextHref ? `/anmelden?next=${encodeURIComponent(nextHref)}` : "/anmelden"}
-          className="font-medium text-accent hover:underline"
+          className="font-medium text-accent-ink hover:underline"
         >
           Anmelden
         </Link>

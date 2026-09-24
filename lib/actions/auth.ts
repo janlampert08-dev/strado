@@ -17,6 +17,7 @@ import {
   verbraucheWiederherstellung,
 } from "@/lib/passwortWiederherstellung";
 import { OTP_SIGNUP } from "@/lib/otpTyp";
+import { EINRICHTUNG_PFAD } from "@/lib/einrichtung";
 import {
   BESTAETIGUNG_PFAD,
   CODE_LAENGE,
@@ -117,6 +118,67 @@ export async function signIn(
   redirect(next ?? "/profil");
 }
 
+// Anmeldung über Google (OAuth 2.0 via Supabase, PKCE). Ein Tap statt
+// E-Mail + Passwort + Code — der kürzeste Weg vom Besucher zum Konto.
+//
+// Ablauf: diese Action baut die Google-URL (skipBrowserRedirect, der
+// PKCE-Prüfwert landet dabei als Cookie) und schickt den Browser per
+// redirect() dorthin. Google antwortet auf /auth/callback?code=…,
+// app/auth/callback/route.ts löst per exchangeCodeForSession ein —
+// derselbe geprüfte Pfad wie jeder andere Login.
+//
+// Was OAuth NICHT mitbringt (dokumentierte Lücke, kein Versehen):
+// signUp() legt display_name, herkunft_code und promo_code in
+// raw_user_meta_data — handle_new_user() (0088/0121) liest genau die.
+// signInWithOAuth kennt keine Metadaten, also entsteht das Profil mit
+// leerem Namen (nullable seit 0001, kein Bruch) und ohne Herkunft und
+// Promo. Heisst: Creator-Attribution und 7-Tage-Link gelten vorerst nur
+// für die E-Mail-Registrierung. Schliessen braucht eine Nachtrag-Funktion
+// in der DB — eigene Mini-Migration, bewusst nicht in diesem Batch.
+// Den Namen setzt man im Profil nach (0109).
+//
+// redirectTo muss zusätzlich im Supabase-Dashboard unter den Redirect-URLs
+// stehen (app + staging), sonst antwortet GoTrue mit "redirect not
+// allowed" — der Fehler unten fängt genau das lesbar ab.
+export async function signInMitGoogle(
+  _prevState: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  // Gegen Skripte, die Anläufe im Sekundentakt erzeugen — die eigentliche
+  // Prüfung (Passwort/Code) gibt es hier nicht, dafür aber teure
+  // Redirect-Runden über GoTrue und Google.
+  if (isRateLimitedByKey(`oauth:ip:${await currentIp()}`, 20, 10 * 60_000)) {
+    return { error: TOO_MANY_ATTEMPTS_ERROR };
+  }
+
+  const next = safeInternalPath(formData.get("next"));
+  const origin = await getOrigin();
+  const emailRedirectTo = next
+    ? `${origin}/auth/callback?next=${encodeURIComponent(next)}`
+    : `${origin}/auth/callback`;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: emailRedirectTo,
+      skipBrowserRedirect: true,
+    },
+  });
+
+  // Kein Redirect ins Leere: Provider im Dashboard nicht aktiviert,
+  // Redirect-URL nicht erlaubt, GoTrue unerreichbar — alles landet hier
+  // statt auf einer weissen Google-Fehlerseite.
+  if (error || !data.url) {
+    console.error("Google-Anmeldung konnte nicht gestartet werden", error);
+    return {
+      error: "Google-Anmeldung ist gerade nicht verfügbar. Bitte mit E-Mail fortfahren.",
+    };
+  }
+
+  redirect(data.url);
+}
+
 // PostgREST reicht ilike als SQL LIKE durch — % und _ (und \ selbst) haben
 // dort Sonderbedeutung als Wildcards und müssen escaped werden, sonst würde
 // z.B. der Name "50%" jeden zweistelligen Namen fälschlich als vergeben melden.
@@ -205,13 +267,26 @@ export async function signUp(
   // gezählt wird. Was hier mitfährt, ist ein Vorschlag, keine Tatsache.
   const herkunft = await leseHerkunft();
 
+  // Der Promo-Code kommt als verstecktes Feld aus dem Signup-Form
+  // (app/registrieren/page.tsx liest ?promo= aus der URL). Der Code
+  // ist client-setzbar — genauso wie herkunft_code. Deshalb
+  // entscheidet handle_new_user() in der Datenbank (0121), nicht
+  // hier: wir schicken ihn nur als Vorschlag mit.
+  const promoCodeRaw = formData.get("promo_code")?.toString().trim();
+  const promoCode =
+    promoCodeRaw && /^[a-z0-9-]{2,32}$/.test(promoCodeRaw)
+      ? promoCodeRaw.toLowerCase()
+      : null;
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: herkunft
-        ? { display_name: displayName, herkunft_code: herkunft }
-        : { display_name: displayName },
+      data: {
+        display_name: displayName,
+        ...(herkunft ? { herkunft_code: herkunft } : {}),
+        ...(promoCode ? { promo_code: promoCode } : {}),
+      },
       emailRedirectTo,
     },
   });
@@ -221,14 +296,16 @@ export async function signUp(
   }
 
   // Bei aktivierter E-Mail-Bestätigung liefert signUp() für eine bereits
-  // registrierte, bestätigte Adresse keinen Fehler (Supabase schützt so
-  // selbst gegen Enumeration) — erkennbar nur daran, dass identities leer
-  // bleibt statt eine neue Identity zu enthalten. Offiziell von Supabase
-  // dokumentierter Weg, das client-seitig zu unterscheiden, um dem Nutzer
-  // trotzdem eine Rückmeldung zu geben statt ihn auf eine nie versendete
-  // Bestätigungsmail warten zu lassen.
+  // registrierte, bestätigte Adresse keinen Fehler — erkennbar nur daran,
+  // dass identities leer bleibt. Um keine Konto-Enumeration zu ermöglichen,
+  // läuft dieser Fall durch denselben Pfad wie eine Neuregistrierung
+  // (Cookie + Redirect auf die Code-Seite, keine verräterische Meldung).
+  // Wer dort wirklich neu ist, bekommt den Code; wer schon registriert ist,
+  // kann über "Code erneut senden" bzw. die Anmeldung weiter — der
+  // Unterschied ist für einen Beobachter nicht sichtbar.
   if (data.user?.identities?.length === 0) {
-    return { error: "Diese E-Mail-Adresse ist bereits registriert." };
+    await merkeBestaetigung(email, next);
+    redirect(BESTAETIGUNG_PFAD);
   }
 
   // Ab hier ist das Konto angelegt und die Herkunft steht (oder steht
@@ -240,10 +317,10 @@ export async function signUp(
   // Aufräumen darf die Registrierung nicht kosten: das Konto existiert an
   // dieser Stelle bereits. Würde das Löschen des Cookies werfen, sähe der
   // Nutzer einen Fehler, wäre weder angemeldet noch weitergeleitet, und der
-  // zweite Versuch antwortete mit "Diese E-Mail-Adresse ist bereits
-  // registriert." Ein zurückgebliebenes Cookie ist dagegen folgenlos — es
-  // läuft ab, und ein zweites Konto legt dieselbe Person nicht an. Dieselbe
-  // Abwägung wie bei avatareEntfernen() in deleteAccount().
+  // zweite Versuch liefe erneut auf die Bestätigungsseite. Ein
+  // zurückgebliebenes Cookie ist dagegen folgenlos — es läuft ab, und ein
+  // zweites Konto legt dieselbe Person nicht an. Dieselbe Abwägung wie bei
+  // avatareEntfernen() in deleteAccount().
   try {
     await verbraucheHerkunft();
   } catch (fehler) {
@@ -257,9 +334,10 @@ export async function signUp(
   // bereits eine aktive Session — dann direkt einloggen statt auf eine
   // (nie versendete) Bestätigungsmail zu verweisen. Führt wie der
   // E-Mail-Bestätigungslink (app/auth/callback/route.ts) zum next-Ziel,
-  // sonst unverändert zur Startseite.
+  // sonst in die Einrichtung (app/einrichten) statt ohne ein Wort auf die
+  // Startseite. Ein fester interner Pfad — safeInternalPath betrifft ihn nicht.
   if (data.session) {
-    redirect(next ?? "/");
+    redirect(next ?? EINRICHTUNG_PFAD);
   }
 
   // Adresse und Rücksprungziel für das Einlösen des Codes merken. MUSS vor
@@ -370,15 +448,17 @@ export async function bestaetigeRegistrierung(
   // dem redirect(), das wirft.
   await verbraucheBestaetigung();
 
-  redirect(offen.next ?? "/");
+  // Ohne eigenes Ziel in die Einrichtung (Fahrzeug, Pässe) — dieselbe
+  // Regel wie beim sofortigen Login in signUp() oben. Ein next aus dem
+  // Fazit einer Gastfahrt gewinnt weiterhin: die Fahrt zu speichern ist
+  // wichtiger als alles, was die Einrichtung fragt.
+  redirect(offen.next ?? EINRICHTUNG_PFAD);
 }
 
 export interface ErneutSendenState {
   error: string | null;
   gesendet: boolean;
-}
-
-// Schickt einen neuen Code an dieselbe Adresse.
+}// Schickt einen neuen Code an dieselbe Adresse.
 //
 // Nötig, weil der Code 60 Minuten gilt und eine Registrierungsmail, die im
 // Spam-Ordner gelandet oder in einem geschlossenen Tab vergessen worden ist,
@@ -469,6 +549,84 @@ export async function sendeBestaetigungErneut(): Promise<ErneutSendenState> {
   // weiter, und der neue Code soll seine 60 Minuten nicht mit dem Rest der
   // alten Cookie-Laufzeit teilen müssen.
   await merkeBestaetigung(offen.email, offen.next);
+
+  return { error: null, gesendet: true };
+}
+
+export interface CodeAnfordernState {
+  error: string | null;
+  gesendet: boolean;
+}
+
+// Code an eine frei eingegebene Adresse schicken — für den Gerätewechsel:
+// am Laptop registriert, am Handy bestätigt (dort steht kein Cookie, also
+// zeigte die Seite bisher nur "melde dich an"). Die Antwort ist immer
+// gleich, ob zu der Adresse eine offene Registrierung existiert oder
+// nicht (nur das Serverlog unterscheidet) — sonst wäre das Formular ein
+// Orakel über fremde Konten. Die eigentliche Bremse gegen Raten steht wie
+// überall beim Einlösen (bestaetigeRegistrierung: 10 je Adresse und
+// 30 je IP in zehn Minuten).
+//
+// Schickt an eine Adresse ohne offene Registrierung nichts (resend
+// scheitert dort), setzt das Cookie aber trotzdem: die Code-Seite braucht
+// die Adresse, und ein falscher Code scheitert generisch — derselbe Stand
+// wie nach einer echten Registrierung mit falschem Code.
+export async function fordereCodeFuerAdresse(
+  _prevState: CodeAnfordernState,
+  formData: FormData,
+): Promise<CodeAnfordernState> {
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .slice(0, MAX_EMAIL_LENGTH);
+  if (!email.includes("@")) {
+    return { error: "Bitte gib eine gültige E-Mail-Adresse ein.", gesendet: false };
+  }
+
+  // Strenger als das Einlösen, weil jeder Aufruf einen Versand auslösen
+  // kann: 5 je IP und 3 je Adresse in zehn Minuten — wie beim erneuten
+  // Senden. Bei Überschreitung dieselbe Erfolgsantwort wie unten (die
+  // Ursache steht nur im Log), damit sich Brems- und Normalfall nicht
+  // unterscheiden lassen.
+  const ip = await currentIp();
+  if (
+    isRateLimitedByKey(`code-anfordern:ip:${ip}`, 5, 10 * 60_000) ||
+    isRateLimitedByKey(`code-anfordern:email:${email.toLowerCase()}`, 3, 10 * 60_000)
+  ) {
+    return { error: null, gesendet: true };
+  }
+
+  const supabase = await createClient();
+  const origin = await getOrigin();
+
+  // NICHT ABGEWARTET — derselbe 36-s-Gateway-Abbruch wie in
+  // sendeBestaetigungErneut/requestPasswordReset: die Antwort steht sofort,
+  // der Versand läuft per after() weiter, Fehler nur ins Serverlog (siehe
+  // oben, warum nie in die Antwort).
+  const versand = supabase.auth
+    .resend({
+      type: OTP_SIGNUP,
+      email,
+      options: { emailRedirectTo: `${origin}/auth/callback` },
+    })
+    .then(({ error }) => {
+      if (error) {
+        console.error("Bestätigungscode (Gerätewechsel): Versand fehlgeschlagen", {
+          status: error.status,
+          code: error.code,
+          message: error.message,
+        });
+      }
+    })
+    .catch((fehler) => {
+      console.error("Bestätigungscode (Gerätewechsel): Versand geworfen", fehler);
+    });
+
+  after(() => versand);
+
+  // Setzt das Cookie für diese Adresse neu (60 Minuten ab jetzt), damit das
+  // Code-Formular weiss, welche Adresse gemeint ist. Muss vor der Antwort
+  // stehen — after() gilt nur dem Versand, nicht dem Cookie.
+  await merkeBestaetigung(email, null);
 
   return { error: null, gesendet: true };
 }

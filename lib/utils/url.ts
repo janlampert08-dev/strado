@@ -1,13 +1,42 @@
 import { headers } from "next/headers";
+import { siteUrl } from "@/lib/siteUrl";
 
-// Ermittelt die aktuelle Origin aus den Request-Headern, damit
-// E-Mail-Bestätigungslinks in jeder Umgebung (localhost, Vercel-Preview,
-// Produktion) auf die richtige Domain zeigen, ohne sie fest zu verdrahten.
+// Hosts, denen ein aus dem Request gelesener Host für E-Mail-Links
+// (emailRedirectTo / redirectTo) vertraut wird. Alles andere fällt auf
+// siteUrl() zurück — ein per X-Forwarded-Host eingeschleuster Angreifer-Host
+// landet damit nie in einer Auth-Mail an ein Opfer.
+const VERTRAUENSWUERDIGE_HOSTS = new Set([
+  "app.strado.ch",
+  "staging.strado.ch",
+  "strado.ch",
+  "www.strado.ch",
+]);
+
+function istVertrauenswuerdigerHost(host: string | null): host is string {
+  if (!host) return false;
+  const sauber = host.trim().toLowerCase().split(":")[0];
+  if (VERTRAUENSWUERDIGE_HOSTS.has(sauber)) return true;
+  if (sauber === "localhost" || sauber === "127.0.0.1") return true;
+  return false;
+}
+
+// Ermittelt die aktuelle Origin für E-Mail-Links. Der Host kommt aus dem
+// Request, wird aber gegen die Allowlist oben geprüft — sonst siteUrl() als
+// Fail-closed. Protokoll: https ausser lokal.
 export async function getOrigin(): Promise<string> {
-  const headerList = await headers();
-  const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
-  const protocol = headerList.get("x-forwarded-proto") ?? "http";
-  return `${protocol}://${host}`;
+  const fallback = siteUrl();
+  try {
+    const headerList = await headers();
+    const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
+    if (!istVertrauenswuerdigerHost(host)) return fallback;
+    const sauber = host.trim().toLowerCase().split(":")[0];
+    const lokal = sauber === "localhost" || sauber === "127.0.0.1";
+    const proto = headerList.get("x-forwarded-proto") ?? (lokal ? "http" : "https");
+    if (proto !== "https" && !lokal) return fallback;
+    return `${lokal ? "http" : "https"}://${sauber}`;
+  } catch {
+    return fallback;
+  }
 }
 
 // Validiert einen aus einem ?next=-Query-Parameter oder Formularfeld

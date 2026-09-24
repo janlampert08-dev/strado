@@ -2,9 +2,18 @@
 
 import { useEffect, useState } from "react";
 import LiveTrackingForm from "@/components/LiveTrackingForm";
+import { useAufzeichnung } from "@/components/AufzeichnungsKontext";
 import type { KartenStrecke, RouteGeoJSON, Vehicle } from "@/types/database";
 import { buttonVariants } from "@/components/ui/Button";
 import { GUEST_TRACKING_USER_ID, loadTrackingSnapshot } from "@/lib/trackingStorage";
+import FullscreenDialog from "@/components/ui/FullscreenDialog";
+import ErsteFahrtHinweise from "@/components/ErsteFahrtHinweise";
+import {
+  useErsteFahrtHinweiseGesehen,
+  useGeraet,
+  useStandortFreigabe,
+} from "@/components/useStandortFreigabe";
+import { merkeErsteFahrtHinweiseGesehen } from "@/lib/ersteFahrt";
 
 export default function GefahrenSection({
   route,
@@ -14,6 +23,7 @@ export default function GefahrenSection({
   personalBestSeconds,
   guestContinuationToken = null,
   maxPhotos,
+  liveSplit = null,
 }: {
   route: RouteGeoJSON;
   // Umliegende freigegebene Strecken, die auf der Aufzeichnungskarte zur
@@ -31,6 +41,8 @@ export default function GefahrenSection({
   // Aus ?fortsetzen=<token>: der Besucher kommt gerade aus dem Anmelde-Gate
   // einer als Gast aufgezeichneten Fahrt zurück.
   guestContinuationToken?: string | null;
+  /** Live-Abstand zur Bestzeit (lib/liveSplit.ts); null = ausgeschaltet. */
+  liveSplit?: { streckenBestzeitS: number | null } | null;
 }) {
   // Standardmässig eingeklappt, damit die Seite beim blossen Ansehen einer
   // Strecke nicht durch ein immer offenes Formular überladen wirkt. Bleibt
@@ -44,6 +56,28 @@ export default function GefahrenSection({
   // mounten, damit die Aufzeichnung übernommen und das Fazit gezeigt wird.
   const [open, setOpen] = useState(guestContinuationToken !== null);
 
+  // Die erste Streckenfahrt auf diesem Gerät bekommt einen Schritt davor.
+  // Anders als die freie Fahrt startet LiveTrackingForm sofort und fragt
+  // dabei nach dem Standort — für die Hinweise (was gleich gefragt wird,
+  // warum der Bildschirm an bleiben muss) bliebe sonst keine Stelle. Ab der
+  // zweiten Fahrt führt "Strecke starten" wieder direkt in die Aufzeichnung.
+  const [vorbereitung, setVorbereitung] = useState(false);
+  const standortFreigabe = useStandortFreigabe();
+  const geraet = useGeraet();
+  const ersteFahrtHinweiseGesehen = useErsteFahrtHinweiseGesehen();
+
+  // Während der Aufzeichnung läuft auf dem Schirm genau eine Karte: die des
+  // Aufzeichnungs-Dialogs. Die Detailkarte dahinter hängt sich über den
+  // AufzeichnungProvider aus (siehe AufzeichnungsKontext.tsx) — sonst liefen
+  // zwei WebGL-Karten gleichzeitig, und genau das machte die
+  // Streckenaufzeichnung auf dem Telefon zäh, während die freie Fahrt mit
+  // einer Karte flüssig blieb.
+  const { setzeAktiv } = useAufzeichnung();
+  useEffect(() => {
+    setzeAktiv(open);
+    return () => setzeAktiv(false);
+  }, [open, setzeAktiv]);
+
   // Den verbrauchten Marker aus der Adressleiste nehmen, sobald er
   // weitergereicht ist: er ist einmalig einlösbar, ein Neuladen derselben
   // URL würde also nichts mehr übernehmen, aber den Abschnitt trotzdem
@@ -54,7 +88,7 @@ export default function GefahrenSection({
   // selbst auf. Hierher führt der Streifen "Aufzeichnung unterbrochen"
   // (components/OffeneAufzeichnung.tsx) — ohne das stünde man nach dem Tipp
   // darauf vor einer Streckenseite, auf der von der Fahrt nichts zu sehen
-  // ist, und erst "Strecke starten" hätte sie wiederaufgenommen. Das ist
+  // ist, und erst "Strecke fahren" hätte sie wiederaufgenommen. Das ist
   // dieselbe Wiederaufnahme wie nach einem Tab-Kill, nur ohne den Umweg:
   // LiveTrackingForm findet den Snapshot beim Mount und setzt ihn fort.
   useEffect(() => {
@@ -74,14 +108,51 @@ export default function GefahrenSection({
     window.history.replaceState(null, "", `/strecken/${route.id}`);
   }, [guestContinuationToken, route.id]);
 
+  if (!open && vorbereitung) {
+    return (
+      <FullscreenDialog
+        label="Vor der ersten Fahrt"
+        className="fixed inset-0 z-50 flex flex-col justify-end overflow-y-auto bg-background pt-[var(--safe-top)]"
+      >
+        <div className="mx-auto flex w-full max-w-lg flex-col gap-6 px-5 pt-8 pb-[calc(1.25rem+var(--safe-bottom))]">
+          <h1 className="text-title font-semibold tracking-tight text-balance">{route.name}</h1>
+          <ErsteFahrtHinweise freigabe={standortFreigabe} geraet={geraet} gesehen={false} />
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                merkeErsteFahrtHinweiseGesehen();
+                setVorbereitung(false);
+                setOpen(true);
+              }}
+              className={buttonVariants({ variant: "accent", size: "lg", className: "w-full" })}
+            >
+              Strecke starten
+            </button>
+            <button
+              type="button"
+              onClick={() => setVorbereitung(false)}
+              className="min-h-11 text-sm text-muted transition-colors duration-fast hover:text-foreground"
+            >
+              Abbrechen
+            </button>
+          </div>
+        </div>
+      </FullscreenDialog>
+    );
+  }
+
   if (!open) {
     return (
       <div className="sticky bottom-0 z-10 -mx-1 px-1 pt-2 pb-1">
         <div className="flex items-center gap-3 rounded-2xl border border-border bg-background/95 p-3 shadow-elevated backdrop-blur">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">Bereit?</p>
+            <p className="truncate text-sm font-semibold">Strecke fahren</p>
+            {/* "ohne Konto" nur für Gäste: angemeldet ist der Satz keine
+                Information mehr, sondern eine Falschaussage über den Zustand. */}
             <p className="truncate text-xs text-muted">
-              {route.laenge_km.toFixed(0)} km · GPS-Aufzeichnung ohne Konto
+              {route.laenge_km.toFixed(0)} km · Zeitmessung startet am Startpunkt
+              {userId === null && " · auch ohne Konto"}
             </p>
           </div>
           {/* Handgebaute Pille durch die Design-System-Variante ersetzt (Kernregel
@@ -91,10 +162,10 @@ export default function GefahrenSection({
               steht als die im Vollbild. */}
           <button
             type="button"
-            onClick={() => setOpen(true)}
+            onClick={() => (ersteFahrtHinweiseGesehen ? setOpen(true) : setVorbereitung(true))}
             className={buttonVariants({ variant: "accent", size: "lg", className: "shrink-0 px-8" })}
           >
-            Strecke starten
+            Strecke fahren
           </button>
         </div>
       </div>
@@ -110,6 +181,7 @@ export default function GefahrenSection({
       personalBestSeconds={personalBestSeconds}
       guestContinuationToken={guestContinuationToken}
       maxPhotos={maxPhotos}
+      liveSplit={liveSplit}
       onExit={() => setOpen(false)}
     />
   );

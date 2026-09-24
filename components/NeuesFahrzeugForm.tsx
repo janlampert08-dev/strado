@@ -227,7 +227,7 @@ export default function NeuesFahrzeugForm({ nextHref }: { nextHref?: string } = 
           </p>
         )}
         <Button type="submit" disabled={pending}>
-          {pending ? "Speichern…" : "Speichern"}
+          {pending ? "Wird gespeichert…" : "Speichern"}
         </Button>
       </form>
     </>

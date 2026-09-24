@@ -1,12 +1,12 @@
 "use client";
 
+import KartePlatzhalter from "@/components/ui/KartePlatzhalter";
 import dynamic from "next/dynamic";
-import Skeleton from "@/components/ui/Skeleton";
-import { formatDuration } from "@/lib/format";
+import { dauerTeile } from "@/lib/format";
 
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
   ssr: false,
-  loading: () => <Skeleton className="h-full w-full" />,
+  loading: () => <KartePlatzhalter />,
 });
 
 const KEINE_STRECKEN: never[] = [];
@@ -39,7 +39,7 @@ export default function FazitKopf({
   const tempo = sekunden > 0 ? distanzKm / (sekunden / 3600) : null;
   const werte = [
     { beschriftung: "Distanz", wert: distanzKm.toFixed(1), einheit: "km" },
-    { beschriftung: "Zeit", wert: formatDuration(sekunden), einheit: null },
+    { beschriftung: "Zeit", ...dauerTeile(sekunden) },
     { beschriftung: "Ø Tempo", wert: tempo !== null ? tempo.toFixed(0) : "—", einheit: "km/h" },
   ];
 

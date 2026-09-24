@@ -93,7 +93,7 @@ async function topByMetric(
 
 // Vier bewusst nicht-zeitbezogene Bestenlisten (siehe 0013_leaderboard_view.sql
 // für die Begründung) — belohnen Distanz/Höhenmeter/Anzahl aufgezeichneter
-// Fahrten/unterschiedlicher Strecken, nie Geschwindigkeit. "Entdecker"
+// Fahrten/unterschiedlicher Strecken, nie Geschwindigkeit. "Meiste Strecken"
 // (strecken_count) zählt unterschiedliche Strecken statt reiner Fahrtenzahl
 // — belohnt Vielfalt auch für Nutzer, die nie an die Spitze der
 // Distanz-/Höhenmeter-Rangliste kommen. Bewusst ohne Zeitfenster:
