@@ -9,7 +9,7 @@ const listRoutesForSitemap = vi.fn<() => Promise<{ id: string; created_at: strin
 vi.mock("@/lib/utils/url", () => ({ getOrigin: () => getOrigin() }));
 vi.mock("@/lib/routes", () => ({ listRoutesForSitemap: () => listRoutesForSitemap() }));
 
-import sitemap, { revalidate, dynamic } from "@/app/sitemap";
+import sitemap, { dynamic } from "@/app/sitemap";
 
 const STATISCH = ["", "/ranglisten", "/paesse", "/premium", "/verifiziert"];
 
@@ -24,8 +24,7 @@ describe("app/sitemap.ts", () => {
     vi.unstubAllEnvs();
   });
 
-  it("wird stündlich neu gebaut, nicht bei jedem Abruf", () => {
-    expect(revalidate).toBe(3600);
+  it("rendert zur Anfragezeit, nicht beim Build", () => {
     expect(dynamic).toBe("force-dynamic");
   });
 

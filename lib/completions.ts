@@ -139,6 +139,9 @@ export interface CompletionDetail {
   // heisst: aus den Zeitstempeln des Geräts. Kein Vorwurf, meist ein
   // Funkloch; siehe components/VerifiziertAbzeichen.tsx und AGB Ziff. 12.6.
   dauerQuelle: DauerQuelle;
+  // Aus einer GPX-Datei importiert (0124) statt aufgezeichnet. Immer privat,
+  // deshalb nur auf dem Pfad der eigenen Fahrt je true.
+  importiert: boolean;
   distanzKm: number | null;
   // Ob die Seite das Durchschnittstempo zeigen darf (profiles.zeigt_tempo,
   // 0125). Für den Besitzer immer true — die Einstellung regelt, was ANDERE
@@ -328,6 +331,8 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
       // Migration noch nicht eingespielt ist — dann fehlt das Feld und
       // "trail" ist die sichere Annahme (kein falsches Verifiziert-Abzeichen).
       dauerQuelle: row.dauer_quelle === "server" ? "server" : "trail",
+      // Eine öffentliche Fahrt ist nie importiert (0124).
+      importiert: false,
       distanzKm: row.distanz_km,
       zeigtTempo,
       istOeffentlich: true,
@@ -382,7 +387,7 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
   const { data: own, error: eigeneFahrtError } = await supabase
     .from("route_completions")
     .select(
-      "id, art, route_id, user_id, datum, dauer_sekunden, dauer_quelle, distanz_km, ist_oeffentlich, abdeckung_prozent, notiz, titel, start_ort, region, bewegte_zeit_sekunden, hoehenmeter_aufstieg, hoehenprofil, hoehen_quelle, tempoprofil, parent_completion_id, motorklasse, motorklasse_gewertet, vehicles(typ, marke, modell)",
+      "id, art, route_id, user_id, datum, dauer_sekunden, dauer_quelle, importiert, distanz_km, ist_oeffentlich, abdeckung_prozent, notiz, titel, start_ort, region, bewegte_zeit_sekunden, hoehenmeter_aufstieg, hoehenprofil, hoehen_quelle, tempoprofil, parent_completion_id, motorklasse, motorklasse_gewertet, vehicles(typ, marke, modell)",
     )
     .eq("id", id)
     .eq("user_id", viewerId)
@@ -394,6 +399,7 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
       datum: string;
       dauer_sekunden: number | null;
       dauer_quelle: DauerQuelle;
+      importiert: boolean;
       distanz_km: number | null;
       ist_oeffentlich: boolean;
       abdeckung_prozent: number | null;
@@ -456,6 +462,7 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
     datum: own.datum,
     dauerSekunden: own.dauer_sekunden,
     dauerQuelle: own.dauer_quelle === "server" ? "server" : "trail",
+    importiert: own.importiert === true,
     distanzKm: own.distanz_km,
     // Eigene Fahrt: der Besitzer sieht sein Tempo immer.
     zeigtTempo: true,

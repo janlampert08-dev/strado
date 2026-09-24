@@ -5,6 +5,7 @@ import GoogleLoginButton from "@/components/GoogleLoginButton";
 import WartendeFahrt from "@/components/WartendeFahrt";
 import { safeInternalPath } from "@/lib/utils/url";
 import { aktiveOAuthAnbieter } from "@/lib/oauth";
+import { EINRICHTUNG_PFAD } from "@/lib/einrichtung";
 import { NICHT_INDEXIEREN } from "@/lib/seo";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
@@ -64,7 +65,11 @@ export default async function RegistrierenPage({
           <WartendeFahrt ziel={nextHref} />
           {mitGoogle && (
             <>
-              <GoogleLoginButton nextHref={nextHref} />
+              {/* Ohne eigenes Ziel wie die E-Mail-Registrierung auf die
+                  Einrichtung (lib/actions/auth.ts). Wer sie schon erledigt
+                  hat — ein bestehendes Google-Konto —, schickt die Seite
+                  selbst weiter. */}
+              <GoogleLoginButton nextHref={nextHref ?? EINRICHTUNG_PFAD} />
               <div aria-hidden="true" className="flex items-center gap-3 text-xs text-muted">
                 <span className="h-px flex-1 bg-border" />
                 <span>oder mit E-Mail</span>

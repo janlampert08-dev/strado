@@ -52,10 +52,26 @@ describe("merkeWiederherstellung", () => {
 
   // secure:true auf http://localhost käme nie an — dort bricht sonst das
   // Zurücksetzen in der Entwicklung, ohne dass es jemandem auffiele.
+  // Ein Geheimnis, das im Repository steht, darf in Produktion nie
+  // signieren: damit liesse sich die Signatur für fremde Nutzer-IDs
+  // ausrechnen.
+  it("scheitert in Produktion ohne Geheimnis, statt auf den festen Wert zurückzufallen", async () => {
+    try {
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("RECOVERY_COOKIE_SECRET", "");
+      vi.stubEnv("SUPABASE_SECRET_KEY", "");
+      await expect(merkeWiederherstellung(NUTZER)).rejects.toThrow();
+      expect(store.set).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("setzt secure nur in Produktion", async () => {
     const vorher = process.env.NODE_ENV;
     try {
       vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("RECOVERY_COOKIE_SECRET", "test-geheimnis");
       await merkeWiederherstellung(NUTZER);
       expect(store.set.mock.calls[0][2]).toMatchObject({ secure: true });
 
