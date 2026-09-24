@@ -14,6 +14,7 @@ import {
   type AktiveMeldung,
   type PassMuster,
 } from "@/lib/passMeldungen";
+import { loeschGruppen, mitHoechstens } from "@/lib/passAbgleich";
 
 // Abgleich der Passstatus mit den ASTRA-Verkehrsmeldungen. Läuft alle fünf
 // Minuten (vercel.json).
@@ -27,6 +28,17 @@ import {
 // Wie der Stripe-Webhook läuft dieser Handler ohne Session mit dem
 // Service-Role-Client (AGENTS.md, "Supabase Rules", Muster a): es gibt keinen
 // Nutzer, und die Berechtigung kommt aus CRON_SECRET.
+
+// Obergrenze für einen Lauf. Der Abruf selbst bricht nach 20 s ab
+// (ZEITLIMIT_MS in lib/astraFeed.ts), der Rest sind ein paar Dutzend kurze
+// Datenbankaufrufe. Ohne eigene Grenze gälte die des Projekts (bei Vercel
+// mit Fluid Compute bis zu 300 s) — ein hängender Lauf überlappte dann den
+// nächsten, der fünf Minuten später startet. 60 s lassen dem normalen Lauf
+// reichlich Luft und beenden einen hängenden, bevor der nächste kommt.
+export const maxDuration = 60;
+
+// Wie viele pass_status_anwenden-Aufrufe gleichzeitig laufen (siehe unten).
+const GLEICHZEITIGE_PASSAUFRUFE = 6;
 
 function istBerechtigt(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
@@ -174,27 +186,42 @@ export async function GET(req: Request) {
   // verschwinden. Weg fällt, was zu einer gelieferten Situation gespeichert
   // ist, aber keinen Treffer mehr hat (aufgehoben, geändert, passt nicht
   // mehr) — und beim Vollabruf zusätzlich alles, was gar nicht mehr
-  // geliefert wurde. Der Schlüssel ist zusammengesetzt, also wird Zeile für
-  // Zeile gelöscht; es sind nur eine Handvoll.
+  // geliefert wurde.
+  //
+  // Bis 2026-09-25 lief das Zeile für Zeile, eine DELETE-Anfrage je Meldung
+  // nacheinander. Jetzt in möglichst wenigen Anweisungen (loeschGruppen in
+  // lib/passAbgleich.ts: im Normalfall eine, sonst eine je Pass), die
+  // untereinander parallel laufen. Die Fehlerzählung bleibt je Zeile, damit
+  // "n Schreibfehler" dieselbe Grösse meint wie vorher.
   const schluessel = (situationId: string, passId: string) => JSON.stringify([situationId, passId]);
   const behalten = new Set(treffer.map((t) => schluessel(t.situationId, t.passId)));
   const wegfallend = (gespeichert ?? []).filter((zeile) => {
     if (behalten.has(schluessel(zeile.situation_id, zeile.pass_id))) return false;
     return antwort.voll || gelieferteIds.has(zeile.situation_id);
   });
+  const wegfallendSchluessel = new Set(wegfallend.map((z) => schluessel(z.situation_id, z.pass_id)));
+  const bleibend = [
+    ...(gespeichert ?? []).filter((z) => !wegfallendSchluessel.has(schluessel(z.situation_id, z.pass_id))),
+    ...treffer.map((t) => ({ situation_id: t.situationId, pass_id: t.passId })),
+  ];
 
-  for (const zeile of wegfallend) {
-    const { error } = await supabase
-      .from("verkehrsmeldungen")
-      .delete()
-      .eq("situation_id", zeile.situation_id)
-      .eq("pass_id", zeile.pass_id);
+  const loeschErgebnisse = await Promise.all(
+    loeschGruppen(wegfallend, bleibend).map(async (gruppe) => {
+      const { error } = await supabase
+        .from("verkehrsmeldungen")
+        .delete()
+        .in("situation_id", gruppe.situationIds)
+        .in("pass_id", gruppe.passIds);
+      return { gruppe, error };
+    }),
+  );
+  for (const { gruppe, error } of loeschErgebnisse) {
     if (error) {
-      schreibfehler += 1;
-      console.error("Verkehrsmeldung konnte nicht gelöscht werden", zeile, error);
+      schreibfehler += gruppe.zeilen.length;
+      console.error("Verkehrsmeldungen konnten nicht gelöscht werden", gruppe.zeilen, error);
       continue;
     }
-    betroffen.add(zeile.pass_id);
+    for (const zeile of gruppe.zeilen) betroffen.add(zeile.pass_id);
   }
 
   // Beim Vollabruf jeden Pass neu bewerten (auch die ohne Meldung — sie sind
@@ -241,10 +268,16 @@ export async function GET(req: Request) {
     ? paesse.map((p) => p.id)
     : [...new Set([...betroffen, ...meldungenJePass.keys(), ...abgelaufen])];
 
-  let ereignisse = 0;
-  for (const passId of zuBewerten) {
+  // Je Pass ein Aufruf von pass_status_anwenden — bis 2026-09-25 alle
+  // nacheinander, beim Vollabruf 34 Rundreisen am Stück. Die Aufrufe hängen
+  // nicht voneinander ab: die Funktion sperrt je Pass
+  // (pg_advisory_xact_lock auf 'pass_status:' || pass_id) und schreibt nur
+  // Zeilen dieses einen Passes. Deshalb jetzt bis zu
+  // GLEICHZEITIGE_PASSAUFRUFE parallel. Ein Fehler zählt weiterhin einzeln
+  // und bricht die übrigen nicht ab.
+  const ergebnisse = await mitHoechstens(zuBewerten, GLEICHZEITIGE_PASSAUFRUFE, async (passId) => {
     const pass = paesse.find((p) => p.id === passId);
-    if (!pass) continue;
+    if (!pass) return "uebersprungen" as const;
 
     const { zustand, meldung } = statusAusMeldungen(meldungenJePass.get(passId) ?? [], {
       jetzt,
@@ -262,12 +295,13 @@ export async function GET(req: Request) {
     });
 
     if (error) {
-      schreibfehler += 1;
       console.error("Passstatus konnte nicht geschrieben werden", { passId }, error);
-      continue;
+      return "fehler" as const;
     }
-    if (wechsel === true) ereignisse += 1;
-  }
+    return wechsel === true ? ("wechsel" as const) : ("gleich" as const);
+  });
+  schreibfehler += ergebnisse.filter((e) => e === "fehler").length;
+  const ereignisse = ergebnisse.filter((e) => e === "wechsel").length;
 
   if (schreibfehler > 0) {
     await supabase
