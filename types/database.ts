@@ -370,6 +370,11 @@ export interface RouteCompletion {
   // Die aus dem Trail gerechnete Dauer, unabhängig von dauer_quelle — das,
   // was die Uhr während der Fahrt gezeigt hat.
   dauer_trail_sekunden: number | null;
+  // Warum eine Fahrt mit Fahrtstart-Ticket trotzdem "trail" wurde (0131):
+  // Regelcode aus enforce_route_completion_dauer / fahrt_pulse_pruefen,
+  // NULL bei "server" und bei Fahrten ohne Ticket. Nur zur Auswertung von
+  // Fehlalarmen, nicht für die Anzeige; setzt ausschliesslich der Trigger.
+  dauer_herabstufung: string | null;
   fahrt_start_id: string | null;
   distanz_km: number | null;
   // Opt-in pro Fahrt (siehe 0017_pro_fahrt_sichtbarkeit.sql) — entscheidet im
