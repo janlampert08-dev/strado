@@ -114,7 +114,7 @@ export async function generateMetadata({
     // Objektliterals ist für Next ohne Bedeutung — sie hier zu "sortieren"
     // holt den Konflikt zurück.
     alternates: { canonical: `/strecken/${route.id}` },
-    title: `${route.name} – Strado`,
+    title: suchtitel(route),
     description: beschreibung,
     // Diese Seite hatte als einzige mit eigenem Freigabebild keinen eigenen
     // openGraph-Block — die Vorschau eines geteilten Streckenlinks zeigte
@@ -133,6 +133,19 @@ export async function generateMetadata({
       description: beschreibung,
     },
   };
+}
+
+// Der Tab- und Suchtitel trägt, wonach gesucht wird ("Töff", "Autoroute",
+// Start- und Zielort) — "Ächerlipass – Strado" allein rankt nur auf den
+// Namen, den jemand schon kennt. Die Linkvorschau (openGraph.title unten)
+// bleibt beim blossen Namen: dort zählt, dass man die Strasse wiedererkennt,
+// nicht ein Suchbegriff.
+function suchtitel(route: { name: string; start_ort: string; ziel_ort: string }): string {
+  const rundfahrt = route.start_ort.trim().toLowerCase() === route.ziel_ort.trim().toLowerCase();
+  const strecke = rundfahrt
+    ? `Rundfahrt ab ${route.start_ort}`
+    : `${route.start_ort} → ${route.ziel_ort}`;
+  return `${route.name} – Töff- & Autoroute ${strecke} | Strado`;
 }
 
 export default async function StreckeDetailPage({
