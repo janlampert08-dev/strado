@@ -20,10 +20,24 @@ export const STAGING_URL = `https://${STAGING_HOSTNAME}`;
 // den Hostnamen staging.strado.ch. Vercel vergibt daneben aber immer auch
 // die Branch- und die Deployment-Adresse, und unter denen lag dieselbe
 // Staging-App völlig ungeschützt offen — ein Link genügte.
+//
+// Seit 2026-09-24 zählt JEDES Vorschau-Deployment dazu (VERCEL_ENV ===
+// "preview"), nicht nur das des staging-Branches. Vercel baut für jeden
+// Branch mit PR eine Vorschau unter einer vorhersagbaren Adresse
+// (strado-git-<branch>-jl-e520.vercel.app). Die Deployment-Protection des
+// Projekts ist aus, und alle Vorschauen sprechen gegen die Produktions-DB —
+// im Audit lieferte die Vorschau eines Feature-Branches ungeschützt die
+// echten Strecken aus, mit "Allow: /" in robots.txt. Ungeprüfter Code
+// jedes Branches (auch Dependabot) lief damit öffentlich auf Echtdaten,
+// Anmeldung mit echten Konten inklusive. Dieselbe Sperre wie für Staging
+// schliesst das: nur Moderatoren, und Disallow für Crawler.
+//
+// Produktion (main) meldet VERCEL_ENV "production", lokale Entwicklung
+// setzt die Variable gar nicht — beide bleiben unberührt.
 export function istStagingDeployment(
   env: NodeJS.ProcessEnv = process.env,
 ): boolean {
-  return env.VERCEL_GIT_COMMIT_REF === STAGING_BRANCH;
+  return env.VERCEL_GIT_COMMIT_REF === STAGING_BRANCH || env.VERCEL_ENV === "preview";
 }
 
 // Der Hostname bleibt als zweite, unabhängige Bedingung stehen. Sie greift
