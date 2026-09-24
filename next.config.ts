@@ -1,9 +1,12 @@
 import type { NextConfig } from "next";
 import path from "path";
-import { contentSecurityPolicy } from "./lib/csp";
+import { contentSecurityPolicy, supabaseOrigin } from "./lib/csp";
 import { buildKennung } from "./lib/serviceWorker";
 
 const nextConfig: NextConfig = {
+  // Kein "x-powered-by: Next.js": sagt Angreifern nur, wonach sie suchen
+  // sollen, und niemandem sonst etwas.
+  poweredByHeader: false,
   turbopack: {
     root: path.join(__dirname),
   },
@@ -53,7 +56,10 @@ const nextConfig: NextConfig = {
     return [{ source: "/leaderboards", destination: "/ranglisten", permanent: true }];
   },
   async headers() {
-    const csp = contentSecurityPolicy(process.env.NODE_ENV !== "production");
+    const csp = contentSecurityPolicy(
+      process.env.NODE_ENV !== "production",
+      supabaseOrigin(process.env.NEXT_PUBLIC_SUPABASE_URL),
+    );
 
     return [
       {
