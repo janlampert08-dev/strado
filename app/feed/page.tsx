@@ -38,6 +38,12 @@ export const metadata: Metadata = {
   // ?scope=folge-ich ist der zweite Reiter derselben Seite und braucht
   // deshalb keine eigene Adresse im Index.
   alternates: { canonical: "/feed" },
+  // Nicht in den Index: der Feed ist ein laufender Strom persönlicher Fahrten
+  // mit Namen — dieselbe Abwägung wie bei /fahrer und /fahrten (dort steht
+  // sie ausführlich). follow bleibt, damit die verlinkten Strecken gefunden
+  // werden. Das Canonical oben bleibt trotzdem richtig: es sagt, welche
+  // Adresse gemeint ist, falls die Seite doch verlinkt wird.
+  robots: { index: false, follow: true },
 };
 
 // Öffentlich lesbar wie /strecken/[id] (public_fahrten ist an anon
