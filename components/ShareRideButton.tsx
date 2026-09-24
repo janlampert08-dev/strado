@@ -3,9 +3,13 @@
 import IconButton from "@/components/ui/IconButton";
 import { useState } from "react";
 import { Share2 } from "@/components/NavIcons";
-import { createClient } from "@/lib/supabase/client";
 import { renderShareImage } from "@/lib/shareImage";
 import type { GeoLineString } from "@/types/database";
+
+// Der Browser-Client (@supabase/supabase-js, ~69 KB gz) wird erst im
+// Moment des Gebrauchs geladen, nicht mit der Seite: statisch importiert zog
+// er ihn in das Paket jeder Strecken- und Fahrtseite, auch für Besucher,
+// die nie teilen oder hochladen (Performance-Audit 2026-09-24).
 
 function slugify(name: string): string {
   return name
@@ -54,6 +58,7 @@ export default function ShareRideButton({
   async function handleShare() {
     setLoading(true);
     try {
+      const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
 
       let coordinates: [number, number][] | null = null;

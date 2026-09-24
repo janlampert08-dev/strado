@@ -1,8 +1,10 @@
 "use client";
 
 import { createFotoUploadTickets } from "@/lib/actions/fotos";
-import { createClient } from "@/lib/supabase/client";
 import { metadatenEntfernen } from "@/lib/imageMetadata";
+
+// Der Browser-Client (@supabase/supabase-js, ~69 KB gz) wird erst beim
+// Hochladen geladen, nicht mit dem Formular — siehe ShareRideButton.tsx.
 
 // Lädt Fotos direkt in den privaten Bucket hoch, ohne sie durch die
 // Server Action zu schicken (9 MB Body-Limit, Funktionslaufzeit pro Byte).
@@ -33,6 +35,7 @@ export async function ladeFotosDirektHoch(dateien: File[]): Promise<string[]> {
   const bereinigt = await Promise.all(dateien.map(bereinigeDatei));
   const ergebnis = await createFotoUploadTickets(bereinigt.map((d) => d.type));
   if (!ergebnis.ok) throw new Error(ergebnis.error);
+  const { createClient } = await import("@/lib/supabase/client");
   const supabase = createClient();
   const pfade: string[] = [];
   for (let i = 0; i < bereinigt.length; i++) {
@@ -54,6 +57,7 @@ export async function ladeFotosDirektHoch(dateien: File[]): Promise<string[]> {
 // verwaistes Objekt im privaten Bucket sieht niemand.
 export async function loescheDirektUpload(pfad: string): Promise<void> {
   try {
+    const { createClient } = await import("@/lib/supabase/client");
     const supabase = createClient();
     await supabase.storage.from("route-photos").remove([pfad]);
   } catch {
