@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { haversineKm } from "@/lib/geo";
+import { computeSignatures, type RouteSignature } from "@/lib/signature";
 import type {
   ExploreRoute,
   GeoLineString,
@@ -29,7 +30,22 @@ const EXPLORE_SPALTEN_LEGACY =
 // ExploreSidebar, RouteMap, exploreFilters, signature, search, useLiveLapHint).
 // Das Höhenprofil ist dabei der teuerste Posten nach der Geometrie: ein
 // Array aus Punkten pro Strecke, für die Explore-Liste ohne jede Verwendung.
-export async function getRoutes(): Promise<{ routes: ExploreRoute[]; error: boolean }> {
+//
+// tempolimits wird weiterhin gelesen, verlässt den Server aber nicht mehr.
+// Der einzige Leser im Client war computeSignatures() (lib/signature.ts), und
+// der braucht aus den Segmenten nur einen Schnitt je Strecke. Die ganzen
+// Arrays waren am 2026-09-25 rund 42 KB der ~100 KB Streckenzeilen auf der
+// Startseite. Das Merkmal wird deshalb hier gerechnet — über denselben
+// ungefilterten Bestand wie vorher im Browser — und als {key, label} je
+// Strecke mitgegeben, als einfaches Objekt, weil es die Server/Client-Grenze
+// überquert. Die Karte zeichnet auf der Startseite und bei der freien Fahrt
+// nie eine Tempolimit-Ebene (showSpeedLimits fehlt dort), sie vermisst die
+// Segmente also nicht.
+export async function getRoutes(): Promise<{
+  routes: ExploreRoute[];
+  signaturen: Record<string, RouteSignature>;
+  error: boolean;
+}> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("routes_geojson")
@@ -47,26 +63,67 @@ export async function getRoutes(): Promise<{ routes: ExploreRoute[]; error: bool
         .order("name");
       if (fallback.error) {
         console.error("Strecken konnten nicht geladen werden:", fallback.error.message);
-        return { routes: [], error: true };
+        return { routes: [], signaturen: {}, error: true };
       }
-      return { routes: (fallback.data as unknown as ExploreRoute[]) ?? [], error: false };
+      return { ...mitSignaturen((fallback.data as unknown as ExploreZeile[]) ?? []), error: false };
     }
     console.error("Strecken konnten nicht geladen werden:", error.message);
-    return { routes: [], error: true };
+    return { routes: [], signaturen: {}, error: true };
   }
 
   // Die Karte zeichnet die vereinfachte Linie; fehlt sie (null), gilt die
   // exakte. Deckungsgrad und Erkennung nutzen diese Funktion nie — sie lesen
   // die volle Geometrie über getRoute()/Kandidaten.
-  type ExploreZeile = ExploreRoute & { geometry_uebersicht_geojson?: ExploreRoute["geometry_geojson"] | null };
   const zeilen = (data as unknown as ExploreZeile[]) ?? [];
   return {
-    routes: zeilen.map(({ geometry_uebersicht_geojson, ...rest }) => ({
-      ...rest,
-      geometry_geojson: geometry_uebersicht_geojson ?? rest.geometry_geojson,
-    })),
+    ...mitSignaturen(
+      zeilen.map(({ geometry_uebersicht_geojson, ...rest }) => ({
+        ...rest,
+        geometry_geojson: geometry_uebersicht_geojson ?? rest.geometry_geojson,
+      })),
+    ),
     error: false,
   };
+}
+
+// Eine Zeile, wie getRoutes() sie liest: ExploreRoute plus die beiden
+// Spalten, die den Server nicht verlassen.
+type ExploreZeile = ExploreRoute & {
+  tempolimits: SignaturStrecke["tempolimits"];
+  geometry_uebersicht_geojson?: ExploreRoute["geometry_geojson"] | null;
+};
+
+/**
+ * Rechnet die Signatur-Merkmale über den ganzen übergebenen Bestand und nimmt
+ * danach die Tempolimits aus den Zeilen. Rein, damit prüfbar
+ * (lib/routes.test.ts): der Test hält fest, dass kein tempolimits-Feld mehr
+ * in der Nutzlast landet und die Merkmale dieselben sind wie aus
+ * computeSignatures() direkt.
+ */
+export function mitSignaturen(
+  zeilen: (ExploreRoute & { tempolimits: SignaturStrecke["tempolimits"] })[],
+): { routes: ExploreRoute[]; signaturen: Record<string, RouteSignature> } {
+  const signaturen = Object.fromEntries(computeSignatures(zeilen));
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const routes = zeilen.map(({ tempolimits, ...rest }) => rest);
+  return { routes, signaturen };
+}
+
+// Die IDs der freigegebenen Strecken — dieselbe Menge, die getRoutes()
+// liefert (status_ok; private Strecken sind nie freigegeben), aber ohne
+// Geometrie. Die Startseite braucht sie für Bewertungen und Passzustand; mit
+// dieser schmalen Abfrage laufen beide parallel zu getRoutes() statt in einer
+// zweiten Welle danach (app/page.tsx). Ein Fehler ergibt eine leere Liste:
+// dann fehlen Sterne und Abzeichen, die Liste selbst steht — dasselbe wie
+// bisher, wenn getRoutes() scheiterte.
+export async function getFreigegebeneStreckenIds(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("routes").select("id").eq("status_ok", true);
+  if (error) {
+    console.error("Strecken-IDs konnten nicht geladen werden:", error.message);
+    return [];
+  }
+  return ((data as { id: string }[] | null) ?? []).map((r) => r.id);
 }
 
 // Umkreis um die gefahrene Strecke, in dem umliegende Strecken auf der

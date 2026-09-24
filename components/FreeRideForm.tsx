@@ -18,7 +18,7 @@ import {
 } from "@/lib/trackingStorage";
 import RideSummaryForm, { FAZIT_ABSCHNITT } from "@/components/RideSummaryForm";
 import { formatDuration } from "@/lib/format";
-import { computeSignatures } from "@/lib/signature";
+import type { RouteSignature } from "@/lib/signature";
 import { movingSeconds, publicationBlockReason } from "@/lib/track";
 import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
 import type { ExploreRoute, Vehicle } from "@/types/database";
@@ -80,6 +80,7 @@ export default function FreeRideForm({
   userId,
   vehicles,
   routes,
+  signaturen,
   guestContinuationToken = null,
   maxPhotos,
 }: {
@@ -97,6 +98,9 @@ export default function FreeRideForm({
   // eine freie Fahrt bleibt eine freie Fahrt, auch wenn sie zufällig über
   // eine kuratierte Strecke führt.
   routes: ExploreRoute[];
+  // Signatur-Merkmal je Strecken-ID, serverseitig gerechnet (getRoutes()),
+  // damit die Linien dieselben Töne tragen wie auf der Startseite.
+  signaturen: Record<string, RouteSignature>;
   // Der Marker aus ?fortsetzen=<token>, mit dem sich die Rückkehr aus dem
   // Anmelde-Gate ausweist — nur damit darf die als Gast aufgezeichnete Fahrt
   // an dieses Konto übergehen (siehe adoptGuestTrackingSnapshot).
@@ -120,10 +124,10 @@ export default function FreeRideForm({
   // Dieselben Signaturfarben wie auf der Startseite (ExploreView.tsx), damit
   // die Karte gleich aussieht: gleiche Töne in Liste und Linie, aus denselben
   // Tokens. Eigener useMemo für eine stabile Prop-Referenz an RouteMap.
-  const kartenSignaturen = useMemo(() => {
-    const signatures = computeSignatures(routes);
-    return new Map([...signatures].map(([id, sig]) => [id, sig.key]));
-  }, [routes]);
+  const kartenSignaturen = useMemo(
+    () => new Map(Object.entries(signaturen).map(([id, sig]) => [id, sig.key])),
+    [signaturen],
+  );
 
   // Standort schon auf dem Startbildschirm (/fahrten/neu) holen, nicht erst
   // mit dem Start: Die Karte zentriert einmalig darauf (centerOnFirstLocation
