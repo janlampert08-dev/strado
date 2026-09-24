@@ -863,6 +863,30 @@ async function kuendigeStripeAbo(userId: string): Promise<boolean> {
   if (!profile?.stripe_customer_id) return true;
 
   try {
+    // ZUERST die offenen Kassen-Sitzungen schliessen, DANN die Abos kündigen.
+    //
+    // Eine TWINT-Zahlung, die erst nach der Löschung durchgeht, legte sonst
+    // bei Stripe ein neues, laufendes Abo an: der Webhook findet dazu kein
+    // Profil mehr, protokolliert nur, und das Abo bucht ein gelöschtes Konto
+    // weiter ab. Die Reihenfolge ist dabei der eigentliche Schutz: schlösse
+    // man die Sitzungen erst nach der Abo-Schleife, könnte eine Sitzung genau
+    // dazwischen bezahlt werden — sie ist dann nicht mehr "open" und wird
+    // übersprungen, ihr neues Abo entstand aber nach der Abo-Liste. So herum
+    // ist jede Sitzung entweder geschlossen oder ihr Abo existiert bereits,
+    // wenn die Abo-Schleife unten liest.
+    //
+    // Lässt sich eine Sitzung nicht schliessen (etwa weil ihre Zahlung gerade
+    // verarbeitet wird), bricht die Löschung über den catch unten ab, statt
+    // sie laufen zu lassen: "in ein paar Minuten nochmals" ist besser als ein
+    // Abo ohne Konto.
+    for await (const sitzung of getStripe().checkout.sessions.list({
+      customer: profile.stripe_customer_id,
+      status: "open",
+      limit: 100,
+    })) {
+      await getStripe().checkout.sessions.expire(sitzung.id);
+    }
+
     // Bereits beendete Abos brauchen keine Kündigung; ein erneuter Aufruf
     // darauf würde nur einen Fehler erzeugen.
     const beendet = new Set(["canceled", "incomplete_expired"]);
@@ -878,31 +902,27 @@ async function kuendigeStripeAbo(userId: string): Promise<boolean> {
       if (beendet.has(abo.status)) continue;
       await getStripe().subscriptions.cancel(abo.id);
     }
-
-    // Offene Kassen-Sitzungen ebenfalls schliessen. Eine TWINT-Zahlung, die
-    // erst NACH der Löschung durchgeht, legte sonst bei Stripe ein neues,
-    // laufendes Abo an: der Webhook findet dazu kein Profil mehr, protokolliert
-    // nur, und das Abo bucht ein gelöschtes Konto weiter ab — genau der Fall,
-    // den die Schleife oben für bestehende Abos verhindert.
-    //
-    // Lässt sich eine Sitzung nicht schliessen (etwa weil ihre Zahlung gerade
-    // verarbeitet wird), bricht die Löschung über den catch unten ab, statt
-    // sie laufen zu lassen: "in ein paar Minuten nochmals" ist besser als ein
-    // Abo ohne Konto.
-    for await (const sitzung of getStripe().checkout.sessions.list({
-      customer: profile.stripe_customer_id,
-      status: "open",
-      limit: 100,
-    })) {
-      await getStripe().checkout.sessions.expire(sitzung.id);
-    }
   } catch (fehler) {
-    console.error(
-      "Stripe-Kündigung bei Kontolöschung fehlgeschlagen",
-      { userId },
-      fehler,
-    );
-    return false;
+    // Einen Customer, den es in diesem Stripe-Konto nicht (mehr) gibt, kann
+    // auch nichts abbuchen — dort ist nichts zu kündigen. Ohne diese Ausnahme
+    // wäre ein solches Konto nie löschbar: jeder Versuch scheiterte an
+    // "No such customer" (live gesehen: ein Profil mit einem Customer aus
+    // einem anderen Stripe-Konto, siehe Audit 2026-09-24).
+    // Nur wenn der fehlende Gegenstand der Customer selbst ist (param
+    // "customer"): ein resource_missing beim Schliessen EINER Sitzung darf
+    // die Abo-Schleife nicht überspringen.
+    const stripeFehler = fehler as { code?: string; param?: string } | null;
+    const customerFehlt =
+      stripeFehler?.code === "resource_missing" && stripeFehler?.param === "customer";
+    if (!customerFehlt) {
+      console.error(
+        "Stripe-Kündigung bei Kontolöschung fehlgeschlagen",
+        { userId },
+        fehler,
+      );
+      return false;
+    }
+    console.warn("Stripe-Customer existiert nicht mehr, nichts zu kündigen", { userId });
   }
 
   // Die gespiegelte Zeile mitnehmen: nach der Anonymisierung zeigt sie auf
