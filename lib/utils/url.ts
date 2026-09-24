@@ -20,6 +20,32 @@ function istVertrauenswuerdigerHost(host: string | null): host is string {
   return false;
 }
 
+// Die reine Entscheidung hinter getOrigin(), getrennt vom Header-Zugriff,
+// damit sie ohne next/headers testbar ist. null heisst "nicht verwendbar" —
+// der Aufrufer nimmt dann siteUrl().
+//
+// Der PORT gehört bei localhost zur Origin und darf nicht wegfallen. Die
+// Allowlist-Härtung liess ihn bisher mit `split(":")[0]` fallen, sodass aus
+// `localhost:3000` die Origin `http://localhost` wurde: in der Entwicklung
+// zeigten damit der Google-Rücksprung (signInMitGoogle), die
+// Bestätigungsmail und der Passwort-Reset alle auf Port 80. In Produktion
+// fiel es nicht auf, weil app.strado.ch keinen Port trägt.
+//
+// Übernommen wird der Port nur, wenn er aus ZIFFERN besteht. Sonst wäre er
+// ein Einschleusweg: bei `localhost:1234@example.com` liefert split(":")[0]
+// weiterhin das vertrauenswürdige "localhost", und ein roh angehängter Rest
+// ergäbe `http://localhost:1234@example.com` — was der Browser als
+// Benutzerangabe vor dem echten Host example.com liest.
+export function originAusHost(host: string | null, proto: string | null): string | null {
+  if (!istVertrauenswuerdigerHost(host)) return null;
+  const [name, port] = host.trim().toLowerCase().split(":");
+  const lokal = name === "localhost" || name === "127.0.0.1";
+  const protokoll = proto ?? (lokal ? "http" : "https");
+  if (protokoll !== "https" && !lokal) return null;
+  if (!lokal) return `https://${name}`;
+  return /^\d+$/.test(port ?? "") ? `http://${name}:${port}` : `http://${name}`;
+}
+
 // Ermittelt die aktuelle Origin für E-Mail-Links. Der Host kommt aus dem
 // Request, wird aber gegen die Allowlist oben geprüft — sonst siteUrl() als
 // Fail-closed. Protokoll: https ausser lokal.
@@ -28,12 +54,7 @@ export async function getOrigin(): Promise<string> {
   try {
     const headerList = await headers();
     const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
-    if (!istVertrauenswuerdigerHost(host)) return fallback;
-    const sauber = host.trim().toLowerCase().split(":")[0];
-    const lokal = sauber === "localhost" || sauber === "127.0.0.1";
-    const proto = headerList.get("x-forwarded-proto") ?? (lokal ? "http" : "https");
-    if (proto !== "https" && !lokal) return fallback;
-    return `${lokal ? "http" : "https"}://${sauber}`;
+    return originAusHost(host, headerList.get("x-forwarded-proto")) ?? fallback;
   } catch {
     return fallback;
   }
