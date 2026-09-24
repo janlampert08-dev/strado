@@ -57,7 +57,7 @@ export default async function NeueFahrtPage({
   // Fahrzeuge gibt es nur für angemeldete Nutzer — ein Gast sieht die
   // Fahrzeugauswahl ohnehin nicht, weil er statt des Speichern-Formulars
   // das Anmelde-Gate bekommt.
-  const [vehicles, { routes }, premiumStatus] = await Promise.all([
+  const [vehicles, { routes, signaturen }, premiumStatus] = await Promise.all([
     user
       ? supabase
           .from("vehicles")
@@ -80,6 +80,7 @@ export default async function NeueFahrtPage({
       userId={user?.id ?? null}
       vehicles={vehicles}
       routes={routes}
+      signaturen={signaturen}
       guestContinuationToken={user ? (fortsetzen ?? null) : null}
       maxPhotos={maxFotosProFahrt(premiumStatus.aktiv)}
     />

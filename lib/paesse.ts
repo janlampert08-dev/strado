@@ -278,14 +278,19 @@ export async function getPassZustaendeJeStrecke(
   // Startseite den Zustand roh aus der Tabelle, während jede andere Fläche
   // ihn bei stillem Feed auf "kein Stand" zurücknimmt — die Liste hätte als
   // einzige weiter "Gesperrt" behauptet.
-  const feedStand = await getFeedStand();
+  //
+  // Feed-Stand und Verknüpfungen hängen nicht aneinander und laufen deshalb
+  // gleichzeitig; bis 2026-09-25 standen sie hintereinander, eine Runde mehr
+  // auf dem Weg jeder Startseite.
+  const [feedStand, { data: verknuepfungen }] = await Promise.all([
+    getFeedStand(),
+    supabase
+      .from("strecken_paesse")
+      .select("route_id, pass_id")
+      .in("route_id", routeIds)
+      .returns<{ route_id: string; pass_id: string }[]>(),
+  ]);
   const feedGesund = istFeedGesund(feedStand);
-
-  const { data: verknuepfungen } = await supabase
-    .from("strecken_paesse")
-    .select("route_id, pass_id")
-    .in("route_id", routeIds)
-    .returns<{ route_id: string; pass_id: string }[]>();
 
   if (!verknuepfungen || verknuepfungen.length === 0) return new Map();
 

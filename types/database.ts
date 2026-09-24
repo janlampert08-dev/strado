@@ -274,9 +274,11 @@ export type ExploreRoute = Pick<
   | "max_steigung_prozent"
   | "kehren"
   | "saison_status"
-  | "tempolimits"
   | "ist_rundfahrt"
 >;
+// Ohne tempolimits: getRoutes() liest sie noch, rechnet daraus das
+// Signatur-Merkmal und gibt die Segmente nicht an den Client weiter
+// (lib/routes.ts). Das Merkmal kommt als eigenes Objekt mit.
 
 /**
  * Das Minimum, aus dem sich ein Signatur-Merkmal berechnen lässt
