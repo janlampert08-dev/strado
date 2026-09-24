@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { formatDuration } from "@/lib/format";
+import { formatDauer } from "@/lib/format";
 import { meldeClientFehler } from "@/lib/fehlerbericht";
 import type { RouteTimeEntry } from "@/lib/leaderboard";
 import Card from "@/components/ui/Card";
@@ -118,7 +118,7 @@ export default function TrackLeaderboardChooser({
           {/* Ohne Einladung im Satz: steht diese Liste unter dem leeren
               Ranglisten-Zustand, hat die Seite das schon einmal gesagt. Der
               Weg zur Strecke bleibt, denn gefahren wird dort. */}
-          <Link href={`/strecken/${routeId}`} className="text-accent underline-offset-4 hover:underline">
+          <Link href={`/strecken/${routeId}`} className="text-accent-ink underline-offset-4 hover:underline">
             Zur Strecke
           </Link>
         </p>
@@ -136,13 +136,13 @@ export default function TrackLeaderboardChooser({
                   <span className="mr-2 text-muted tabular-nums">{i + 1}.</span>
                   <Link
                     href={`/fahrer/${entry.userId}`}
-                    className="relative inline-flex min-w-0 items-center align-bottom transition-colors duration-fast hover:text-accent after:absolute after:-inset-y-3 after:inset-x-0 after:content-['']"
+                    className="relative inline-flex min-w-0 items-center align-bottom transition-colors duration-fast hover:text-accent-ink after:absolute after:-inset-y-3 after:inset-x-0 after:content-['']"
                   >
                     <span className="truncate">{entry.name}</span>
                   </Link>
                 </span>
-                <span className="tabular-nums text-accent">
-                  {formatDuration(entry.dauerSekunden)}
+                <span className="shrink-0 font-medium tabular-nums text-foreground">
+                  {formatDauer(entry.dauerSekunden)}
                 </span>
               </li>
             ))}

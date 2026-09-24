@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Flame } from "lucide-react";
+import { Flame } from "@/components/NavIcons";
 import { toggleKudos } from "@/lib/actions/kudos";
 import { cn } from "@/lib/utils/cn";
 
@@ -84,7 +84,11 @@ export default function KudosButton({
         onClick={handleClick}
         disabled={pending}
         aria-pressed={given}
-        aria-label={given ? "Kudos zurückziehen" : "Kudos geben"}
+        // Feste Beschriftung samt Zahl, der Zustand steckt in aria-pressed.
+        // Vorher wechselte das Label auf "Kudos zurückziehen" UND stand auf
+        // gedrückt — vorgelesen als "Kudos zurückziehen, gedrückt", und die
+        // Zahl im Knopf verschwand hinter dem aria-label.
+        aria-label={`Kudos geben, ${count}`}
         className={cn(
           // min-h-11/min-w-11: das ist die Reaktion des Kernloops (AGENTS.md,
           // Schritt 7) und stand mit px-2 py-1 auf 24 px Höhe — unter jeder
@@ -92,7 +96,7 @@ export default function KudosButton({
           // begründet die 44). Optik unverändert: kein Rahmen, keine Füllung,
           // nur die Fläche stimmt.
           "inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full px-2 text-xs font-medium transition-colors duration-fast disabled:pointer-events-none disabled:opacity-50",
-          given ? "text-accent" : "text-muted hover:text-foreground",
+          given ? "text-accent-ink" : "text-muted hover:text-foreground",
         )}
       >
         {/* Die Klasse wird am Ende der Animation wieder abgeräumt, damit ein

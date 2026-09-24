@@ -98,7 +98,118 @@ export { Wrench as WartungIcon, CalendarClock as TerminIcon } from "lucide-react
 // und app/profil/page.tsx, dort aber als direkter lucide-Import aus der Zeit
 // vor dieser Wrapper-Regel. Neuer Code (app/profil/fahrzeuge/[id]) nimmt sie
 // von hier; das Raster mitzuziehen wäre eine Änderung ohne Anlass.
-export { Car as AutoIcon, Bike as MotorradIcon } from "lucide-react";
+// Seit 2026-09-23 das Motorrad (Motorbike) statt des Fahrrads (Bike): auf
+// der Kachel "Motorrad" der Einrichtung las sich das Fahrrad als Fehler.
+export { Car as AutoIcon, Motorbike as MotorradIcon } from "lucide-react";
+
+// ---------------------------------------------------------------------------
+// DER REST DES ICON-SATZES, unter seinen lucide-Namen.
+//
+// Bis 2026-09-23 importierten 47 Dateien diese Icons direkt aus
+// lucide-react, obwohl AGENTS.md (Stack) und .agents/frontend.md verlangen,
+// dass sie über diese Datei kommen (docs/design-vereinfachung.md §3.8 nennt
+// den Zustand "eine Regel, die in zwei Dokumenten steht und in 40 Dateien
+// nicht gilt"). Jetzt kommt jedes Icon der App von hier — damit ist diese
+// Datei der eine Ort, an dem sich später Grösse oder Strichstärke festlegen
+// liessen, und `grep "lucide-react"` findet nur noch die Wrapper.
+//
+// Die lucide-Namen bleiben absichtlich: die Umstellung sollte nur den
+// Importpfad ändern, nicht jede Verwendungsstelle. Deshalb stehen einige
+// Symbole doppelt da — oben unter ihrem Rollen-Namen (MapPinIcon,
+// SternIcon …), hier unter dem lucide-Namen. Neuer Code nimmt den
+// Rollen-Namen, wo es einen gibt; den Satz zusammenzustreichen (§3.8) ist
+// ein eigener Schritt.
+
+// Richtung und Aufklappen: Chevrons für Zurück, Weiter und Akkordeons.
+export { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+
+// Handlungen an Knöpfen und in Menüs.
+export {
+  Bookmark,
+  Check,
+  Crosshair,
+  Download,
+  ExternalLink,
+  Flag,
+  LogOut,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Search,
+  SearchX,
+  Share2,
+  SlidersHorizontal,
+  Trash2,
+  UserCheck,
+  UserPlus,
+  X,
+} from "lucide-react";
+
+// Passwortfeld (components/ui/Input.tsx): anzeigen / verbergen.
+export { Eye, EyeOff } from "lucide-react";
+
+// Strecke, Fahrt und Fahrzeug: Messwerte, Abzeichen und Kennzahlen.
+export {
+  Award,
+  Bike,
+  Box,
+  CalendarDays,
+  Car,
+  Clock,
+  Compass,
+  Flame,
+  Gauge,
+  MapPin,
+  Mountain,
+  Route,
+  Ruler,
+  Timer,
+  TrendingUp,
+} from "lucide-react";
+
+// Konto, Einstellungen, Premium und Bezahlung.
+export {
+  CreditCard,
+  FlaskConical,
+  KeyRound,
+  Lock,
+  MessageSquare,
+  Palette,
+  Rss,
+  Scale,
+  Settings,
+  Smartphone,
+  Sparkles,
+  Users,
+} from "lucide-react";
+
+// Farbschema (components/ThemeToggle.tsx): hell, dunkel, System.
+export { Monitor, Moon, Sun } from "lucide-react";
+
+// Fotos einer Fahrt; Aufrufer benennen es ImageIcon, damit es nicht mit
+// next/image verwechselt wird.
+export { Image } from "lucide-react";
+
+// Ebenfalls kein Nav-Icon: der Streckenvorschlag auf dem Startschirm der
+// freien Fahrt (components/FreeRideForm.tsx, lib/streckenvorschlag.ts).
+// Dasselbe Zeichen, das FreeRideForm für den Live-Hinweis einer erkannten
+// Strecke schon direkt importiert — neuer Code nimmt es von hier.
+export { Route as StreckeIcon } from "lucide-react";
+
+// Die Stoppuhr vor einer gemessenen Dauer (Bestzeit-Streifen der
+// Streckenseite) — damit "14:12 min" nicht als Uhrzeit gelesen wird.
+export { Timer as TimerIcon } from "lucide-react";
+
+// Die Hinweise vor der ersten Fahrt (components/ErsteFahrtHinweise.tsx):
+// dasselbe Telefon, das FreeRideForm und LiveTrackingForm neben "Bildschirm
+// an lassen" zeigen — dort noch als direkter Import aus der Zeit vor dieser
+// Regel.
+export { Smartphone as TelefonIcon } from "lucide-react";
+
+// Das Teilen-Symbol von iOS (Kasten mit Pfeil nach oben), in der Anleitung
+// "Zum Home-Bildschirm" (components/NachDerFahrt.tsx): wer es sucht, sucht
+// genau diese Form in der Safari-Leiste.
+export { Share as TeilenIcon } from "lucide-react";
 
 // GPX-Import früherer Fahrten (app/fahrten/importieren): der Pfeil in die
 // Ablage, weil etwas von aussen hereinkommt — nicht der Kreis der Aufnahme.

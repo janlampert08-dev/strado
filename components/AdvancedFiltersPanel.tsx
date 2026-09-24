@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, SlidersHorizontal } from "@/components/NavIcons";
 import { countActiveFilters, EMPTY_ADVANCED_FILTERS, type AdvancedFilters } from "@/lib/exploreFilters";
 import { fieldClassName } from "@/components/ui/Input";
 import { textAktionClassName } from "@/components/ui/Button";
@@ -33,12 +33,12 @@ export default function AdvancedFiltersPanel({
 
   return (
     <details className="group border-b border-border pb-6">
-      <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+      <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background">
         <span className="flex items-center gap-1.5">
           <SlidersHorizontal className="h-4 w-4 text-muted" aria-hidden="true" />
           Weitere Filter
           {activeCount > 0 && (
-            <span className="rounded-full bg-accent px-1.5 py-0.5 text-xs font-semibold text-background">
+            <span className="rounded-full bg-accent px-1.5 py-0.5 text-xs font-semibold text-on-accent">
               {activeCount}
             </span>
           )}

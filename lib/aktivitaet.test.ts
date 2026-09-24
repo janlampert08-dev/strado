@@ -86,6 +86,35 @@ describe("mischeAktivitaet", () => {
   it("liefert für leere Quellen eine leere Liste", () => {
     expect(mischeAktivitaet([], [])).toEqual([]);
   });
+
+  it("blendet eigene Kudos auf der eigenen Fahrt aus", () => {
+    const eintraege = mischeAktivitaet(
+      [kudo("2026-09-10T10:00:00Z", "ich", "c1"), kudo("2026-09-09T10:00:00Z", "g2", "c1")],
+      [follower("2026-09-08T10:00:00Z", "f1")],
+      [],
+      "ich",
+    );
+
+    expect(eintraege.map((e) => (e.art === "pass" ? e.passId : e.personId))).toEqual(["g2", "f1"]);
+  });
+
+  it("filtert die eigenen Einträge vor dem Kappen, nicht danach", () => {
+    // 30 eigene Kudos, alle jünger als der eine fremde: ohne Filter vor dem
+    // Kappen fiele der fremde Eintrag aus dem Fenster, und die Liste wäre leer.
+    const eigene = Array.from({ length: AKTIVITAET_LIMIT }, (_, i) =>
+      kudo(new Date(Date.UTC(2026, 8, 2, 0, i)).toISOString(), "ich", `c${i}`),
+    );
+    const fremd = kudo("2026-09-01T00:00:00Z", "g1", "cx");
+
+    const eintraege = mischeAktivitaet([...eigene, fremd], [], [], "ich");
+
+    expect(eintraege).toHaveLength(1);
+    expect(eintraege[0]).toMatchObject({ art: "kudos", personId: "g1" });
+  });
+
+  it("lässt ohne eigene Id alle Einträge stehen", () => {
+    expect(mischeAktivitaet([kudo("2026-09-10T10:00:00Z", "ich")], [])).toHaveLength(1);
+  });
 });
 
 describe("aktivitaetsSchluessel", () => {

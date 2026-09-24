@@ -2,7 +2,7 @@
 
 import IconButton from "@/components/ui/IconButton";
 import { useState } from "react";
-import { Flag } from "lucide-react";
+import { Flag } from "@/components/NavIcons";
 import ReportDialog from "@/components/ReportDialog";
 import { reportCompletion } from "@/lib/actions/reports";
 

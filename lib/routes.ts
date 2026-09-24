@@ -74,8 +74,9 @@ export async function getRoutes(): Promise<{ routes: ExploreRoute[]; error: bool
 // Nachbarschaft einer Passfahrt ab (Anfahrt, Parallelrouten im selben Tal),
 // ohne die halbe Schweiz mitzuschicken.
 export const KONTEXT_UMKREIS_KM = 25;
-// Harte Obergrenze für die Anzahl. Jede Strecke bringt ihre volle Geometrie
-// mit (RouteMap braucht sie), deshalb bindet nicht der Umkreis allein die
+// Harte Obergrenze für die Anzahl. Jede Strecke bringt ihre Linie mit (seit
+// 2026-09-23 die Übersichtslinie, siehe getKontextStrecken), deshalb bindet
+// nicht der Umkreis allein die
 // Datenmenge, sondern diese Zahl: zwölf Linien sind auf einer Karte noch
 // lesbar, und mehr hilft der Orientierung ohnehin nicht.
 export const KONTEXT_MAX_STRECKEN = 12;
@@ -188,6 +189,13 @@ export function waehleKontextStrecken(
 // gingen sonst bei jedem Aufruf der Streckenseite mit über die Leitung, auch
 // für Besucher, die nie aufzeichnen.
 const KARTEN_SPALTEN = "id, name, start_geojson, ziel_geojson, geometry_geojson, ist_rundfahrt";
+// Dasselbe mit der Übersichtslinie (0117) statt der exakten. Kontext-Strecken
+// werden gedimmt zur Orientierung gezeichnet, nie für Gate oder Deckungsgrad
+// gebraucht — und sie waren der grösste Posten der Streckenseite: auf dem
+// Albulapass vier Nachbarn mit zusammen 7 775 exakten Punkten gegen 286 in
+// der Übersicht. Die exakte Spalte wird hier gar nicht erst gelesen.
+const KARTEN_SPALTEN_UEBERSICHT =
+  "id, name, start_geojson, ziel_geojson, geometry_uebersicht_geojson, ist_rundfahrt";
 
 // Die umliegenden Strecken für die Karte des Aufzeichnungsschirms
 // (components/LiveTrackingForm.tsx). Eigene, schmale Abfrage statt
@@ -200,15 +208,42 @@ export async function getKontextStrecken(route: RouteGeoJSON): Promise<KartenStr
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("routes_geojson")
-    .select(KARTEN_SPALTEN)
+    .select(KARTEN_SPALTEN_UEBERSICHT)
     .eq("status_ok", true);
 
-  if (error) {
-    console.error("Kontext-Strecken konnten nicht geladen werden:", error.message);
+  if (!error) {
+    type Zeile = Omit<KartenStrecke, "geometry_geojson"> & {
+      geometry_uebersicht_geojson: KartenStrecke["geometry_geojson"] | null;
+    };
+    const zeilen = (data as unknown as Zeile[]) ?? [];
+    // Eine Zeile ohne Übersicht (null) fällt weg statt ihre exakte Linie
+    // nachzuladen: die Übersicht ist eine generierte Spalte, null heisst
+    // also, es gibt keine Geometrie zum Zeichnen.
+    const strecken: KartenStrecke[] = zeilen
+      .filter((z) => z.geometry_uebersicht_geojson?.coordinates?.length)
+      .map(({ geometry_uebersicht_geojson, ...rest }) => ({
+        ...rest,
+        geometry_geojson: geometry_uebersicht_geojson!,
+      }));
+    return waehleKontextStrecken(strecken, route);
+  }
+
+  // 0117 noch nicht eingespielt: unbekannte Spalte -> exakte Linien wie
+  // vorher (Schema zuerst, Code danach — dasselbe Muster wie getRoutes()).
+  if (/geometry_uebersicht_geojson/i.test(error.message)) {
+    const fallback = await supabase
+      .from("routes_geojson")
+      .select(KARTEN_SPALTEN)
+      .eq("status_ok", true);
+    if (!fallback.error) {
+      return waehleKontextStrecken((fallback.data as unknown as KartenStrecke[]) ?? [], route);
+    }
+    console.error("Kontext-Strecken konnten nicht geladen werden:", fallback.error.message);
     return [];
   }
 
-  return waehleKontextStrecken((data as unknown as KartenStrecke[]) ?? [], route);
+  console.error("Kontext-Strecken konnten nicht geladen werden:", error.message);
+  return [];
 }
 
 // Nur was die Sitemap braucht. getRoutes() liefert sonst für jede Strecke

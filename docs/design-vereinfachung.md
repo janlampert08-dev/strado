@@ -241,6 +241,28 @@ eingeblendeter Tastatur oben beschnitten werden — ein Risiko, das dieser PR
 mit 64–80 px zusätzlicher Polsterung vergrössert hat. Sie liegen jetzt in
 einem eigenen Scrollbereich mit `min-h-full`.
 
+### Nachtrag 2026-09-23: `cn` ist tailwind-merge, Icons kommen aus dem Wrapper
+
+Zwei Sätze weiter oben gelten seitdem nicht mehr so, wie sie dastehen:
+
+- **„`lib/utils/cn.ts` ist kein tailwind-merge"** (Punkt 3 der Code-Review
+  und der Absatz zu `registrieren/bestaetigen`). Seit PR
+  `staging-designsystem-aufraeumen` ist es eines: die spätere Klasse
+  gewinnt, `cn("min-h-9", "min-h-11")` ergibt `min-h-11`. Die Regel „wer eine
+  Vorgabe ändern muss, bekommt einen Parameter" ist damit keine
+  Notwendigkeit mehr, sondern eine Wahl — die vorhandenen Parameter
+  (`chipClassName(gross)`, `Kennzahlen spalten`, `SectionHeading groesse`,
+  `textAktionClassName`) bleiben, weil sie benannte Stufen sind. Die eigenen
+  Tokens (`text-display`, `text-title`, `shadow-elevated`, `ease-standard`,
+  `duration-fast` …) sind in `cn.ts` eingetragen und in `cn.test.ts`
+  geprüft; ohne den Eintrag hielte tailwind-merge `text-display` für eine
+  Farbe und würfe es neben `text-muted` weg.
+- **§3.8, die Icons.** Alle Icons kommen jetzt über `components/NavIcons.tsx`
+  (bzw. `VisibilityIcons.tsx`); `lucide-react` steht nur noch in den beiden
+  Wrappern. Umgestellt ist der Importpfad, nicht der Satz: Namen und Grössen
+  sind unverändert, Strichstärke und Zusammenstreichen (Option 1 in §3.8)
+  bleiben offen.
+
 ### Drei sichtbare Kosten, die genannt gehören
 
 1. Die Anmelde-Formulare sind ab `sm` 64 px breiter (`max-w-sm` →

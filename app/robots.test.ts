@@ -63,4 +63,13 @@ describe("app/robots.ts", () => {
     expect(r.rules).toEqual({ userAgent: "*", disallow: "/" });
     expect(r.sitemap).toBeUndefined();
   });
+
+  // Fällt die Header-Auflösung weg, gilt die konfigurierte Domain statt
+  // eines 500ers auf /robots.txt.
+  it("fällt bei kaputter Origin auf die konfigurierte Domain zurück", async () => {
+    getOrigin.mockRejectedValue(new Error("keine Header"));
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://app.strado.ch");
+    const r = await robots();
+    expect(r.sitemap).toBe("https://app.strado.ch/sitemap.xml");
+  });
 });

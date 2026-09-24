@@ -6,8 +6,8 @@ import { passFolgenUmschalten } from "@/lib/actions/paesse";
 import Button, { buttonVariants } from "@/components/ui/Button";
 
 /**
- * "Bei Änderungen melden" — folgt einem Pass, damit ein Wechsel von zu auf
- * offen (oder umgekehrt) in der Aktivität auftaucht.
+ * "Über Sperrungen benachrichtigen" — folgt einem Pass, damit ein Wechsel
+ * von zu auf offen (oder umgekehrt) in der Aktivität auftaucht.
  *
  * Der Text sagt, was passiert, nicht wie es heisst: "Folgen" ist in dieser
  * App das, was man mit Fahrerinnen tut. Ein Pass antwortet nicht.
@@ -42,9 +42,15 @@ export default function PassFolgenButton({
     );
   }
 
+  // Immer "secondary", auch im Ruhezustand: auf der Streckenseite
+  // (PassSektion) steht der Knopf im selben Blick wie "Strecke fahren", und
+  // zwei gefüllte Akzentknöpfe auf einem Schirm lassen offen, welcher die
+  // Handlung ist (siehe die Regel
+  // "eine Farbe für die Haupthandlung" in ui/Button.tsx). Den Zustand trägt
+  // die Beschriftung und aria-pressed, nicht die Füllung.
   return (
     <Button
-      variant={optimistisch ? "secondary" : "primary"}
+      variant="secondary"
       size="sm"
       disabled={laeuft}
       aria-pressed={optimistisch}
@@ -55,7 +61,7 @@ export default function PassFolgenButton({
         });
       }}
     >
-      {optimistisch ? "Meldungen an" : "Bei Änderungen melden"}
+      {optimistisch ? "Benachrichtigung aktiv" : "Über Sperrungen benachrichtigen"}
       <span className="sr-only"> — {passName}</span>
     </Button>
   );

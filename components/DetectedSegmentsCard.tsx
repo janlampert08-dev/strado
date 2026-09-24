@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Route as RouteIcon, Timer } from "lucide-react";
+import { Route as RouteIcon, Timer } from "@/components/NavIcons";
 import RideVisibilityToggle from "@/components/RideVisibilityToggle";
-import { formatDuration } from "@/lib/format";
+import { formatDauer } from "@/lib/format";
 import type { DetectedSegment } from "@/lib/completions";
 import Card from "@/components/ui/Card";
 import SectionHeading from "@/components/ui/SectionHeading";
@@ -27,13 +27,13 @@ export default function DetectedSegmentsCard({ segments }: { segments: DetectedS
               ? segment.distanzKm / (segment.dauerSekunden / 3600)
               : null;
           return (
-            <li key={segment.id} className="group transition-colors duration-fast hover:bg-surface">
+            <li key={segment.id} className="group hover:bg-surface druckbar">
               <div className="flex items-center justify-between gap-3 p-3">
                 <Link
                   href={`/fahrten/${segment.id}`}
                   className="flex min-w-0 flex-1 flex-col gap-1"
                 >
-                  <span className="min-w-0 truncate font-medium transition-colors duration-fast group-hover:text-accent">
+                  <span className="min-w-0 truncate font-medium transition-colors duration-fast group-hover:text-accent-ink">
                     {segment.routeName}
                   </span>
                   <div className="flex items-center gap-2 text-xs tabular-nums text-muted">
@@ -41,7 +41,7 @@ export default function DetectedSegmentsCard({ segments }: { segments: DetectedS
                     <span aria-hidden="true">·</span>
                     <span className="flex items-center gap-1">
                       <Timer className="h-3 w-3" aria-hidden="true" />
-                      {segment.dauerSekunden !== null ? formatDuration(segment.dauerSekunden) : "—"}
+                      {segment.dauerSekunden !== null ? formatDauer(segment.dauerSekunden) : "—"}
                     </span>
                     {avgKmh !== null && (
                       <>

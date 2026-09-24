@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { ViewTransition, type ReactNode } from "react";
 import { cn } from "@/lib/utils/cn";
 
 // Der eine Seitenrahmen. Vorher schrieb jede Seite ihr <main> selbst, und
@@ -34,15 +34,21 @@ export default function Seitenrahmen({
   className?: string;
   children: ReactNode;
 }) {
+  // Der Seitenwechsel hängt am Seitenrahmen und nicht am Layout: ein Layout
+  // bleibt über Navigationen stehen, dort feuern enter/exit nie (Next-Doku
+  // "view-transitions"). default="none": keine Animation bei Übergängen,
+  // die keine Navigation sind (Suspense-Auflösung, router.refresh()).
   return (
-    <main
-      className={cn(
-        "mx-auto flex w-full flex-col gap-6 px-5 py-8 sm:px-6 sm:py-10",
-        breiten[breite],
-        className,
-      )}
-    >
-      {children}
-    </main>
+    <ViewTransition enter="seite" exit="seite" default="none">
+      <main
+        className={cn(
+          "mx-auto flex w-full flex-col gap-6 px-5 py-8 sm:px-6 sm:py-10",
+          breiten[breite],
+          className,
+        )}
+      >
+        {children}
+      </main>
+    </ViewTransition>
   );
 }

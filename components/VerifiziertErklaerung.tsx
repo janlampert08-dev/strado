@@ -94,7 +94,7 @@ export default function VerifiziertErklaerung() {
           href={LEGAL_URLS.agb}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-accent underline underline-offset-2"
+          className="text-accent-ink underline underline-offset-2"
         >
           Ziff. 12.4 der AGB
         </a>

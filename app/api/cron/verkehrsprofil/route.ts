@@ -4,6 +4,8 @@ import {
   abfrageZeitpunkte,
   fahrzeitFuer,
   faktorenAusDauern,
+  laengeKm,
+  streckeGesperrt,
   type ProfilPunkt,
 } from "@/lib/verkehrsprofil";
 import type { GeoLineString } from "@/types/database";
@@ -52,7 +54,7 @@ export async function GET(req: Request) {
   const jetzt = new Date();
   const grenze = new Date(jetzt.getTime() - PROFIL_ALTERT_NACH_TAGEN * 24 * 60 * 60 * 1000);
 
-  const [{ data: strecken }, { data: staende }] = await Promise.all([
+  const [{ data: strecken }, { data: staende }, { data: passZuordnung }, { data: passStatus }] = await Promise.all([
     supabase
       .from("routes_geojson")
       .select("id, name, geometry_geojson")
@@ -63,6 +65,15 @@ export async function GET(req: Request) {
       .from("strecken_verkehr_stand")
       .select("route_id, berechnet_am")
       .returns<{ route_id: string; berechnet_am: string }[]>(),
+    // Welche Strecke über welchen Pass führt und ob er offen ist (0104).
+    supabase
+      .from("strecken_paesse")
+      .select("route_id, pass_id")
+      .returns<{ route_id: string; pass_id: string }[]>(),
+    supabase
+      .from("pass_status")
+      .select("pass_id, zustand")
+      .returns<{ pass_id: string; zustand: string }[]>(),
   ]);
 
   if (!strecken || strecken.length === 0) {
@@ -70,9 +81,18 @@ export async function GET(req: Request) {
   }
 
   const standJeStrecke = new Map((staende ?? []).map((s) => [s.route_id, s.berechnet_am]));
+  const zustandJePass = new Map((passStatus ?? []).map((p) => [p.pass_id, p.zustand]));
+  const paesseJeStrecke = new Map<string, string[]>();
+  for (const { route_id, pass_id } of passZuordnung ?? []) {
+    paesseJeStrecke.set(route_id, [...(paesseJeStrecke.get(route_id) ?? []), pass_id]);
+  }
 
   // Nie berechnete zuerst, danach die ältesten.
+  // Gesperrte Pässe werden übersprungen, nicht als "fällig" gezählt: ihr
+  // Profil aus der offenen Zeit bleibt stehen (siehe GESPERRTE_ZUSTAENDE), und
+  // sie belegen keinen der drei Plätze je Lauf, bis der Pass wieder offen ist.
   const faellig = strecken
+    .filter((s) => !streckeGesperrt(paesseJeStrecke.get(s.id) ?? [], zustandJePass))
     .filter((s) => {
       const stand = standJeStrecke.get(s.id);
       return !stand || new Date(stand) < grenze;
@@ -94,10 +114,11 @@ export async function GET(req: Request) {
     if (koordinaten.length < 2) continue;
 
     const zeitpunkte = abfrageZeitpunkte(jetzt);
+    const erwartetKm = laengeKm(koordinaten);
     const punkte = await inHaeppchen(zeitpunkte, GLEICHZEITIG, async (z): Promise<ProfilPunkt> => ({
       wochentag: z.wochentag,
       stunde: z.stunde,
-      dauerSekunden: (await fahrzeitFuer(koordinaten, z.abfahrtLokal)) ?? 0,
+      dauerSekunden: (await fahrzeitFuer(koordinaten, z.abfahrtLokal, erwartetKm)) ?? 0,
     }));
 
     const ergebnis = faktorenAusDauern(punkte);

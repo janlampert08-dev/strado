@@ -58,7 +58,9 @@ export function Dialog({ open, onClose, title, ariaLabel, children, className }:
       // Öffnen nur als "Dialog", obwohl "Follower" darin steht.
       aria-labelledby={title ? titelId : undefined}
       className={cn(
-        "m-auto w-[min(28rem,calc(100vw-2rem))] rounded-lg border border-border bg-background p-5 text-foreground shadow-elevated outline-none backdrop:bg-black/60",
+        // dialog-animiert: Ein- und Ausblenden über @starting-style (globals.css);
+        // der Hintergrund-Schleier kommt von dort, nicht mehr von backdrop:bg-black/60.
+        "dialog-animiert m-auto w-[min(28rem,calc(100vw-2rem))] rounded-lg border border-border bg-background p-5 text-foreground shadow-elevated outline-none",
         // UNTER sm EIN BLATT VON UNTEN, sobald der Dialog eine Überschrift
         // hat — Rückfragen, Listen, Formulare. Mittig schwebend lagen ihre
         // Knöpfe in der oberen Bildschirmhälfte, also dort, wo der Daumen
@@ -66,7 +68,7 @@ export function Dialog({ open, onClose, title, ariaLabel, children, className }:
         // ist. Die Foto-Lightbox (kein title) bleibt mittig: ein Bild ist
         // kein Blatt.
         title &&
-          "max-sm:mx-0 max-sm:mt-auto max-sm:mb-0 max-sm:w-full max-sm:max-w-full max-sm:rounded-b-none max-sm:border-x-0 max-sm:border-b-0 max-sm:pb-[calc(1.25rem+var(--safe-bottom))]",
+          "dialog-blatt max-sm:mx-0 max-sm:mt-auto max-sm:mb-0 max-sm:w-full max-sm:max-w-full max-sm:rounded-b-none max-sm:border-x-0 max-sm:border-b-0 max-sm:pb-[calc(1.25rem+var(--safe-bottom))]",
         className,
       )}
       onClick={(event) => {
@@ -91,7 +93,7 @@ export function Dialog({ open, onClose, title, ariaLabel, children, className }:
             type="button"
             aria-label="Schliessen"
             onClick={() => ref.current?.close()}
-            className="-mt-1 -mr-2 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-muted transition-colors duration-fast hover:bg-surface hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            className="-mt-1 -mr-2 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-muted transition-colors duration-fast hover:bg-surface hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <SchliessenIcon className="h-5 w-5" aria-hidden="true" />
           </button>
