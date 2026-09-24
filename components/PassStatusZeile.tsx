@@ -14,6 +14,11 @@ const TON_TEXT: Record<StatusTon, string> = {
   still: "text-muted",
 };
 
+// Derselbe Ton als Wortklasse für Stellen, die Punkt und Wort selbst
+// zusammensetzen (FahrCheck) statt PassStatusMarke zu verwenden — eine
+// Quelle für die Farbe, nicht zwei.
+export const STATUS_TON_TEXT: Record<StatusTon, string> = TON_TEXT;
+
 const TON_FLAECHE: Record<StatusTon, string> = {
   gut: "bg-success",
   warnung: "bg-warning",

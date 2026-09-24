@@ -43,7 +43,7 @@ export async function passFolgenUmschalten(passId: string): Promise<{ ok: boolea
       .eq("user_id", user.id);
     if (error) return { ok: false, folgtMan: true };
     revalidatePath("/paesse");
-    // Der Knopf steht auch auf jeder Streckenseite (PassSektion): ohne diese
+    // Der Knopf steht auch auf jeder Streckenseite (FahrCheck): ohne diese
     // Zeile bliebe dort der alte Zustand stehen, bis jemand neu lädt.
     // Folgen ist selten, ein Layout-Revalidate dafür vertretbar.
     revalidatePath("/", "layout");

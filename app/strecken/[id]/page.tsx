@@ -34,8 +34,7 @@ import { isModerator } from "@/lib/moderation";
 import { getPremiumStatus, maxFotosProFahrt } from "@/lib/premium";
 import { getRouteLeaderboard, getRouteLeaderboardKlassen } from "@/lib/leaderboard";
 import { fetchCurrentWeather } from "@/lib/weather";
-import PassSektion from "@/components/PassSektion";
-import VerkehrSektion from "@/components/VerkehrSektion";
+import FahrCheck from "@/components/FahrCheck";
 import { PassStatusMarke } from "@/components/PassStatusZeile";
 import { anzeigeFuerStatus } from "@/lib/passStatus";
 import RuhigeZeiten from "@/components/RuhigeZeiten";
@@ -350,11 +349,11 @@ export default async function StreckeDetailPage({
               </span>
             )}
           </p>
-          {/* Kompaktstatus je Pass — Punkt plus Wort, sonst nichts. Die volle
-              Sektion (Kalender, Folgen, Meldung) steht weiter unten auf
-              dieser Seite (#pass); hier zählt nur die Antwort auf
+          {/* Kompaktstatus je Pass — Punkt plus Wort, sonst nichts. Das volle
+              Widget (Folgen, Verkehr, Details-Link) steht weiter unten auf
+              dieser Seite (#fahrcheck); hier zählt nur die Antwort auf
               "kann ich los?". Der Passname verweist auf die Passseite, der
-              Status springt zur Sektion unten. */}
+              Status springt zum Widget unten. */}
           {passKontexte.length > 0 && (
             <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
               {passKontexte.map((kontext) => {
@@ -391,7 +390,7 @@ export default async function StreckeDetailPage({
                       </Link>
                     )}
                     <a
-                      href="#pass"
+                      href="#fahrcheck"
                       className="relative inline-flex items-center rounded-full transition-opacity hover:opacity-70 after:absolute after:-inset-x-1 after:-inset-y-3.5 after:content-['']"
                       title={`${kontext.pass.name}: ${anzeige.label} — Details weiter unten`}
                     >
@@ -519,19 +518,19 @@ export default async function StreckeDetailPage({
           <ElevationProfile punkte={route.hoehenprofil} gross />
         )}
 
-        {/* Der Passblock steht dort, wo er die Entscheidung trägt: nach dem
-            Start, vor Beschreibung und Zahlen — denn ob der Pass überhaupt
-            offen ist, kommt vor der Frage, wie steil er ist. Ohne Pass
-            schliesst die Verkehrs-Sektion die Lücke mit Live plus Vorhersage
-            für diese Stunde. */}
-        <PassSektion kontexte={passKontexte} angemeldet={!!user} feedStand={feedStand} />
-        {passKontexte.length === 0 && (
-          <VerkehrSektion
-            route={leichteRoute}
-            punkte={ruhigeZeiten.punkte}
-            startzeiten={ruhigeZeiten.startzeiten}
-          />
-        )}
+        {/* Ein Widget statt zweier Sektionen: Öffnung und Verkehr als eine
+            Entscheidung direkt nach dem Start — denn ob der Pass überhaupt
+            offen ist und wie der Verkehr liegt, kommt vor der Frage, wie
+            steil die Strecke ist. Kalender, Meldung und Wochenraster leben
+            auf der Passseite und im Details-Reiter. */}
+        <FahrCheck
+          kontexte={passKontexte}
+          feedStand={feedStand}
+          route={leichteRoute}
+          punkte={ruhigeZeiten.punkte}
+          startzeiten={ruhigeZeiten.startzeiten}
+          angemeldet={!!user}
+        />
 
         {/* Kategorien und Charakter nach Start und Passlage: was die Strecke
             IST, steht vor Profil und Zahlen — vorher erst nach der
