@@ -368,7 +368,7 @@ export default async function ProfilPage() {
             </Link>
           </div>
           <div className="flex flex-col gap-1.5">
-            <h1 className="text-display font-semibold">{profile?.display_name ?? user.email}</h1>
+            <h1 className="text-display font-semibold break-words">{profile?.display_name ?? user.email}</h1>
             {/* Die E-Mail-Adresse stand hier unter dem Namen — auf der Seite, die
                 man anderen am ehesten über die Schulter zeigt, und doppelt:
                 Einstellungen → Konto nennt sie ohnehin. */}

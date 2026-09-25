@@ -12,5 +12,6 @@
 // nicht reichen.
 export default function CountUp({ value, unit }: { value: number; unit?: string }) {
   const formatted = Math.round(value).toLocaleString("de-CH");
-  return <>{unit ? `${formatted} ${unit}` : formatted}</>;
+  // \u00a0: Zahl und Einheit brechen nie auseinander (wie lib/format.ts).
+  return <>{unit ? `${formatted}\u00a0${unit}` : formatted}</>;
 }
