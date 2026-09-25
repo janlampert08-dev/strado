@@ -70,7 +70,7 @@ letzter Aufzählungspunkt entfällt.
 
 | Ziff. | Änderung in Kurzform | Warum |
 | --- | --- | --- |
-| **10.1.1** | Dritte Sichtbarkeitsstufe **„Follower"**; neue Einstellung **„Neue Follower bestätigen"**, voreingestellt an | Entscheid des Inhabers vom 2026-09-25 (Migrationen `0145`–`0147`). Engere Sichtbarkeit und mehr Kontrolle — die Funktion darf vor dem Inkrafttreten ausgeliefert werden, die AGB beschreiben sie nur nach |
+| **10.1.1, 10.1.2 (neu)** | Dritte Sichtbarkeitsstufe **„Follower"**; neue Ziffer 10.1.2 zu Folgen und Folgeanfragen mit der Einstellung **„Neue Follower bestätigen"**, voreingestellt an | Entscheid des Inhabers vom 2026-09-25 (Migrationen `0145`–`0147`). Engere Sichtbarkeit und mehr Kontrolle — die Funktion darf vor dem Inkrafttreten ausgeliefert werden, die AGB beschreiben sie nur nach |
 | **10.2** | Rechteeinräumung auch für Inhalte, die **mit Followern geteilt** sind | Ohne sie deckte das Recht aus 10.2 die Anzeige einer Follower-Fahrt nicht, weil sie nicht „veröffentlicht" ist |
 | **11.3** | Follower-Fahrten erscheinen in **keiner Bestzeitenliste** | Eine Liste, deren Inhalt davon abhängt, wer schaut, ist keine |
 | **9.6** | Bei der Kontolöschung werden Follower-Fahrten unsichtbar und offene Folgeanfragen gelöscht | `anonymize_account` seit `0145`/`0146` |
@@ -615,8 +615,8 @@ Mit der Einstellung „Neue Follower bestätigen", die für alle Konten
 **voreingestellt eingeschaltet** ist, wird daraus eine Anfrage, die die
 Gefolgten annehmen oder ablehnen; erst mit der Annahme entsteht die
 Folgebeziehung. Wird die Einstellung ausgeschaltet, bleiben offene Anfragen
-bestehen und werden einzeln beantwortet. Bestehende Folgebeziehungen bleiben
-beim Einschalten bestehen; Gefolgte können Follower jederzeit entfernen.
+bestehen und werden einzeln beantwortet. Bereits bestehende Folgebeziehungen bleiben
+beim Einschalten erhalten; Gefolgte können Follower jederzeit entfernen.
 Einzelheiten regelt die Datenschutzerklärung.
 
 **10.2 Rechteeinräumung.** Nutzende räumen der Anbieterin an den von ihnen

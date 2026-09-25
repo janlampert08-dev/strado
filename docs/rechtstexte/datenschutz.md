@@ -232,7 +232,7 @@ gesetzt werden.
 Links ausgeliefert, die der Server erzeugt, nachdem er geprüft hat, dass die
 abrufende Person die zugehörige Fahrt sehen darf — weil sie öffentlich ist,
 weil sie für Follower geteilt ist und die Person dem Konto folgt, oder weil
-sie die Fahrt selbst gefahren ist. Ein weitergegebener Link funktioniert
+die Person die Fahrt selbst gefahren ist. Ein weitergegebener Link funktioniert
 deshalb nicht dauerhaft: ein ausgestellter Link gilt höchstens eine
 Stunde. Wird eine Fahrt wieder auf privat gestellt — oder folgt jemand einem
 Konto nicht mehr —, erhält diese Person keine neuen Links; ein bereits
@@ -501,8 +501,8 @@ Notiz sowie dem an den Enden gekappten Track.
 „Follower" — mit denselben Angaben wie eine öffentliche Fahrt — für Personen,
 die dem Konto folgen. Weil Folgen standardmässig eine Bestätigung verlangt
 (Abschnitt 3.6), sind das Personen, deren Anfrage angenommen wurde, sowie
-Follower, die schon vor Einführung der Bestätigung gefolgt sind (sie lassen
-sich entfernen). Wird eine solche Fahrt gemeldet, sehen die Moderatorinnen und
+Follower, die gefolgt sind, bevor die Bestätigung eingeführt wurde oder
+während sie ausgeschaltet war (sie lassen sich entfernen). Wird eine solche Fahrt gemeldet, sehen die Moderatorinnen und
 Moderatoren, solange die Meldung offen ist, Titel, Startort, Strecke und
 Notiz und können die Fahrt verbergen.
 
