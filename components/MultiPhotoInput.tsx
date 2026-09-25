@@ -270,13 +270,18 @@ export default function MultiPhotoInput({
                   className="absolute inset-0 m-auto h-5 w-5 animate-spin rounded-full border-2 border-background/40 border-t-background"
                 />
               )}
+              {/* 44 px Trefferfläche, sichtbar bleibt der 24-px-Kreis — wie
+                  in CompletionPhotoGallery. Ohne Rückfrage: Das Foto ist
+                  hier noch nicht gespeichert, erneut wählen kostet nichts. */}
               <button
                 type="button"
                 onClick={() => removeAt(i)}
                 aria-label="Foto entfernen"
-                className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-foreground/70 text-background backdrop-blur transition-colors duration-fast hover:bg-foreground"
+                className="group absolute top-0 right-0 flex h-11 w-11 items-start justify-end p-1 focus-visible:outline-none"
               >
-                <X className="h-3.5 w-3.5" aria-hidden="true" />
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-foreground/70 text-background backdrop-blur transition-colors duration-fast group-hover:bg-foreground group-focus-visible:ring-2 group-focus-visible:ring-accent">
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                </span>
               </button>
             </div>
           ))}
