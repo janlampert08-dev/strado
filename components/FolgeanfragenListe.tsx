@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { formatZeitpunkt } from "@/lib/format";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import Card from "@/components/ui/Card";
@@ -28,6 +29,10 @@ export default function FolgeanfragenListe({ initial }: { initial: Folgeanfrage[
   const [beantwortet, setBeantwortet] = useState<ReadonlySet<string>>(new Set());
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+  // Die beantwortete Karte verschwindet samt dem fokussierten Knopf —
+  // der Fokus geht an den Abschnitt (liest seine Überschrift vor) statt an
+  // <body>.
+  const ueberschriftRef = useRef<HTMLElement>(null);
   const anfragen = initial.filter((a) => !beantwortet.has(schluessel(a)));
 
   // Der "neu"-Punkt als Stand beim Laden, wie in ActivityList: MarkSeen
@@ -42,6 +47,13 @@ export default function FolgeanfragenListe({ initial }: { initial: Folgeanfrage[
   function beantworte(anfrage: Folgeanfrage, annehmen: boolean) {
     // Optimistisch ausblenden; bei einem Fehler wieder an ihren Platz.
     setBeantwortet((s) => new Set(s).add(schluessel(anfrage)));
+    // War es die letzte Anfrage, verschwindet der ganze Abschnitt — dann an
+    // die Seitenüberschrift, die sicher stehen bleibt.
+    if (anfragen.length <= 1) {
+      document.getElementById("aktivitaet-titel")?.focus();
+    } else {
+      ueberschriftRef.current?.focus();
+    }
     startTransition(async () => {
       const { ok } = annehmen
         ? await folgeanfrageAnnehmen(anfrage.von)
@@ -67,7 +79,12 @@ export default function FolgeanfragenListe({ initial }: { initial: Folgeanfrage[
   }
 
   return (
-    <section aria-labelledby="folgeanfragen-titel" className="flex flex-col gap-3">
+    <section
+      ref={ueberschriftRef}
+      tabIndex={-1}
+      aria-labelledby="folgeanfragen-titel"
+      className="flex flex-col gap-3 outline-none"
+    >
       <SectionHeading as="h2" groesse="xs" id="folgeanfragen-titel">
         Folgeanfragen ({anfragen.length})
       </SectionHeading>
@@ -85,21 +102,21 @@ export default function FolgeanfragenListe({ initial }: { initial: Folgeanfrage[
                   <span className="ml-1 truncate">möchte dir folgen</span>
                 </p>
                 <p className="text-xs text-muted">
-                  {new Date(anfrage.erstelltAm).toLocaleString("de-CH", {
-                    day: "numeric",
-                    month: "long",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  {formatZeitpunkt(anfrage.erstelltAm)}
                 </p>
               </Link>
-              {neuBeimLaden.has(schluessel(anfrage)) && <span className="h-2 w-2 shrink-0 rounded-full bg-accent" aria-label="Neu" />}
+              {neuBeimLaden.has(schluessel(anfrage)) && (
+                <span className="h-2 w-2 shrink-0 rounded-full bg-accent">
+                  <span className="sr-only">Neu</span>
+                </span>
+              )}
             </div>
             <div className="flex gap-2">
               <button
                 type="button"
                 disabled={pending}
                 onClick={() => beantworte(anfrage, true)}
+                aria-label={`Anfrage von ${anfrage.displayName ?? "Fahrer"} annehmen`}
                 className={buttonVariants({ variant: "accent", size: "sm", className: "flex-1" })}
               >
                 Annehmen
@@ -108,6 +125,7 @@ export default function FolgeanfragenListe({ initial }: { initial: Folgeanfrage[
                 type="button"
                 disabled={pending}
                 onClick={() => beantworte(anfrage, false)}
+                aria-label={`Anfrage von ${anfrage.displayName ?? "Fahrer"} ablehnen`}
                 className={buttonVariants({ variant: "secondary", size: "sm", className: "flex-1" })}
               >
                 Ablehnen

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { formatZeitpunkt } from "@/lib/format";
 import Avatar from "@/components/Avatar";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
@@ -30,8 +31,12 @@ import { aktivitaetsSchluessel, passMeldungText, type AktivitaetsEintrag } from 
 // alles uebrige kommt aus den frischen Props.
 export default function ActivityList({
   initialEintraege,
+  hatFolgeanfragen = false,
 }: {
   initialEintraege: AktivitaetsEintrag[];
+  // Stehen darüber offene Folgeanfragen (FolgeanfragenListe), wäre
+  // "Noch keine Neuigkeiten." direkt darunter ein Widerspruch.
+  hatFolgeanfragen?: boolean;
 }) {
   // Nur die Schluessel, nicht die Eintraege: der Initialisierer laeuft
   // einmal, spaetere Props aendern die Menge nicht mehr.
@@ -47,6 +52,12 @@ export default function ActivityList({
   );
 
   if (eintraege.length === 0) {
+    // Mit offenen Anfragen darüber nur eine leise Zeile statt des grossen
+    // Leerzustands — und nicht gar nichts: werden die Anfragen beantwortet,
+    // stünde die Seite sonst bis zum Neuladen leer da.
+    if (hatFolgeanfragen) {
+      return <p className="text-sm text-muted">Sonst noch keine Neuigkeiten.</p>;
+    }
     return (
       <EmptyState
         icon={AktivitaetIcon}
@@ -80,12 +91,7 @@ export default function ActivityList({
                 <span className="ml-1 truncate">{passMeldungText(eintrag)}</span>
               </p>
               <p className="text-xs text-muted">
-                {new Date(eintrag.erstelltAm).toLocaleString("de-CH", {
-                  day: "numeric",
-                  month: "long",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {formatZeitpunkt(eintrag.erstelltAm)}
               </p>
             </Link>
             {eintrag.neu && (
@@ -119,12 +125,7 @@ export default function ActivityList({
               </span>
             </p>
             <p className="text-xs text-muted">
-              {new Date(eintrag.erstelltAm).toLocaleString("de-CH", {
-                day: "numeric",
-                month: "long",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              {formatZeitpunkt(eintrag.erstelltAm)}
             </p>
           </Link>
           {eintrag.neu && <span className="h-2 w-2 shrink-0 rounded-full bg-accent" aria-label="Neu" />}

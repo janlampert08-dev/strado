@@ -109,3 +109,17 @@ export function nomen(anzahl: number, eins: string, mehr: string): string {
 export function mitAnzahl(anzahl: number, eins: string, mehr: string): string {
   return `${anzahl.toLocaleString("de-CH")} ${nomen(anzahl, eins, mehr)}`;
 }
+
+// Zeitpunkt für Listen wie /aktivitaet ("25. September, 14:05"), immer in
+// Europe/Zurich. Ohne feste Zeitzone formatiert der Server (Vercel, UTC)
+// eine andere Stunde als der Browser — React meldet dann einen
+// Hydration-Fehler, und im Server-HTML steht die falsche Uhrzeit.
+export function formatZeitpunkt(iso: string): string {
+  return new Date(iso).toLocaleString("de-CH", {
+    timeZone: "Europe/Zurich",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}

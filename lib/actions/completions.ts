@@ -1316,7 +1316,7 @@ export async function setCompletionVisibility(
   const { data: existing } = await supabase
     .from("route_completions")
     .select(
-      "route_id, art, importiert, ist_oeffentlich, abdeckung_prozent, distanz_km, dauer_sekunden, bewegte_zeit_sekunden",
+      "route_id, art, importiert, parent_completion_id, ist_oeffentlich, abdeckung_prozent, distanz_km, dauer_sekunden, bewegte_zeit_sekunden",
     )
     .eq("id", completionId)
     .eq("user_id", user.id)
@@ -1324,6 +1324,7 @@ export async function setCompletionVisibility(
       route_id: string | null;
       art: "strecke" | "frei";
       importiert: boolean;
+      parent_completion_id: string | null;
       ist_oeffentlich: boolean;
       abdeckung_prozent: number | null;
       distanz_km: number | null;
@@ -1346,6 +1347,12 @@ export async function setCompletionVisibility(
     if (existing.importiert) {
       return { error: "Importierte Fahrten bleiben privat." };
     }
+    // Erkannte Abschnitte folgen der Öffentlichkeit ihrer Fahrt (0151) und
+    // werden nie "nur für Follower" (0154). Vorher ablehnen statt schreiben:
+    // die Datenbank verengte sonst eine öffentliche Fahrt auf privat.
+    if (sichtbarkeit === "follower" && existing.parent_completion_id) {
+      return { error: "Erkannte Abschnitte sind privat oder öffentlich — wie ihre Fahrt." };
+    }
     if (existing.art === "frei") {
       const blocked = publicationBlockReason(
         existing.distanz_km ?? 0,
@@ -1364,11 +1371,19 @@ export async function setCompletionVisibility(
   // die niemand mehr sehen darf.
   let trackOeffentlich: string | null = null;
   if (geteilt) {
-    const { data: trackRow } = await supabase
+    const { data: trackRow, error: trackFehler } = await supabase
       .from("fahrt_tracks")
       .select("track_geojson")
       .eq("completion_id", completionId)
       .maybeSingle<{ track_geojson: { coordinates: [number, number][] } }>();
+    // Ein Lesefehler ist kein fehlender Track.
+    if (trackFehler) return { error: "Sichtbarkeit konnte nicht geändert werden." };
+    // Ohne gespeicherten Track verengt die Datenbank (0052, Fall 4 / 0145)
+    // auf privat und setzt bei einer Streckenfahrt den Deckungsgrad auf 0 —
+    // eine öffentliche Fahrt wäre danach dauerhaft privat. Vorher ablehnen.
+    if (!trackRow?.track_geojson?.coordinates && existing.art === "strecke") {
+      return { error: "Diese Fahrt hat keinen gespeicherten Track und kann nicht anders geteilt werden." };
+    }
     if (trackRow?.track_geojson?.coordinates) {
       trackOeffentlich = await publicTrackEwkt(
         supabase,

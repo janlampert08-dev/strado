@@ -1,11 +1,13 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Clock, UserPlus, UserCheck } from "@/components/NavIcons";
 import { toggleFollow } from "@/lib/actions/follows";
 import { buttonVariants } from "@/components/ui/Button";
 import { zeigeHinweis } from "@/components/Hinweis";
 import type { FolgeZustand } from "@/lib/follows";
+
+const RUECKFRAGE_MS = 4000;
 
 // Gleiches optimistisches Toggle-Muster wie FavoriteButton.tsx/KudosButton.tsx
 // — seit 0146 mit einem dritten Zustand: "angefragt", wenn das Profil neue
@@ -26,14 +28,33 @@ export default function FollowButton({
 }) {
   const [zustand, setZustand] = useState<FolgeZustand>(initialZustand);
   const [brauchtBestaetigung, setBrauchtBestaetigung] = useState(brauchtBestaetigungBeimLaden);
+  // Entfolgen eines Profils mit Bestätigung lässt sich nicht rückgängig
+  // machen — erneut folgen wäre eine neue Anfrage. Deshalb dort ein zweiter
+  // Tipp: der erste fragt nach, der zweite (innert 4 s) entfolgt.
+  const [rueckfrage, setRueckfrage] = useState(false);
   // Der aktuelle Stand für Aufrufe, die ausserhalb eines Renders passieren
   // (das Rückgängig im Hinweis) — ohne ihn sähe es den Stand von damals.
   const zustandRef = useRef(zustand);
   const [pending, startTransition] = useTransition();
 
+  useEffect(() => {
+    if (!rueckfrage) return;
+    const t = setTimeout(() => setRueckfrage(false), RUECKFRAGE_MS);
+    return () => clearTimeout(t);
+  }, [rueckfrage]);
+
   function setzen(neu: FolgeZustand) {
     zustandRef.current = neu;
     setZustand(neu);
+  }
+
+  function tippen() {
+    if (zustandRef.current === "folgt" && brauchtBestaetigung && !rueckfrage) {
+      setRueckfrage(true);
+      return;
+    }
+    setRueckfrage(false);
+    umschalten();
   }
 
   function umschalten() {
@@ -45,6 +66,10 @@ export default function FollowButton({
       const result = await toggleFollow(targetUserId, angezeigt);
       if (!result.ok || !result.zustand) {
         setzen(angezeigt);
+        // Eine Meldung für beides: die Sperre (isRateLimited) antwortet auch
+        // bei einem Lesefehler mit "gesperrt" — "zu schnell getippt" wäre dann
+        // die falsche Erklärung.
+        zeigeHinweis("Das hat nicht geklappt — bitte gleich noch einmal versuchen.");
         return;
       }
       setzen(result.zustand);
@@ -53,21 +78,21 @@ export default function FollowButton({
       }
 
       if (!result.geaendert) {
-        // Die Seite war veraltet — nichts geändert, nur den echten Stand zeigen.
+        // Die Seite war veraltet — nichts geändert, nur den echten Stand
+        // nennen, ohne einen Grund zu behaupten, den wir nicht kennen.
         zeigeHinweis(
           result.zustand === "folgt"
-            ? "Du folgst bereits — deine Anfrage wurde angenommen."
+            ? "Stand aktualisiert: Du folgst."
             : result.zustand === "angefragt"
-              ? "Deine Anfrage ist bereits gestellt."
-              : "Du folgst nicht mehr — die Anfrage gibt es nicht mehr.",
+              ? "Stand aktualisiert: Deine Anfrage ist gestellt."
+              : "Stand aktualisiert: Du folgst nicht.",
         );
         return;
       }
 
       if (angezeigt === "folgt") {
-        // Entfolgen geschah auf einen Tipp, ohne Rückfrage — deshalb eine
-        // Quittung. Rückgängig nur, wo erneutes Folgen wirklich wieder folgt:
-        // bei einem Profil mit Bestätigung würde daraus eine neue Anfrage.
+        // Rückgängig nur, wo erneutes Folgen wirklich wieder folgt: bei einem
+        // Profil mit Bestätigung würde daraus eine neue Anfrage.
         if (result.brauchtBestaetigung) {
           zeigeHinweis("Nicht mehr gefolgt. Erneut folgen braucht eine neue Anfrage.");
         } else {
@@ -81,7 +106,7 @@ export default function FollowButton({
       } else if (angezeigt === "angefragt") {
         zeigeHinweis("Anfrage zurückgezogen.");
       } else if (result.zustand === "angefragt") {
-        zeigeHinweis("Anfrage gesendet. Du folgst, sobald sie angenommen ist.");
+        zeigeHinweis("Anfrage gesendet. Du folgst, sobald sie angenommen ist. Erneut tippen zieht sie zurück.");
       }
     });
   }
@@ -89,25 +114,31 @@ export default function FollowButton({
   const Icon = zustand === "folgt" ? UserCheck : zustand === "angefragt" ? Clock : UserPlus;
 
   return (
+    // Kein aria-pressed: die Beschriftung wechselt ohnehin mit dem Zustand,
+    // "Folgst du, gedrückt" sagte dasselbe doppelt — und "angefragt" ist
+    // kein gedrückter Zustand.
     <button
       type="button"
-      onClick={umschalten}
+      onClick={tippen}
       disabled={pending}
-      aria-pressed={zustand !== "keiner"}
-      title={zustand === "angefragt" ? "Tippen, um die Anfrage zurückzuziehen" : undefined}
-      className={buttonVariants({ variant: zustand === "keiner" ? "accent" : "secondary", size: "sm" })}
+      className={buttonVariants({
+        variant: rueckfrage ? "danger" : zustand === "keiner" ? "accent" : "secondary",
+        size: "sm",
+      })}
     >
       <Icon className="h-3.5 w-3.5" aria-hidden="true" />
       {/* "Folgst du" statt "Gefolgt": dasselbe Wort stand eine Zeile höher
           als Zähler ("4 Gefolgt" — wem diese Person folgt). Direkt daneben
           meinte es auf dem Knopf das Gegenteil, nämlich dass DU folgst. */}
-      {zustand === "folgt"
-        ? "Folgst du"
-        : zustand === "angefragt"
-          ? "Angefragt"
-          : brauchtBestaetigung
-            ? "Folgen anfragen"
-            : "Folgen"}
+      {rueckfrage
+        ? "Wirklich entfolgen?"
+        : zustand === "folgt"
+          ? "Folgst du"
+          : zustand === "angefragt"
+            ? "Angefragt"
+            : brauchtBestaetigung
+              ? "Folgen anfragen"
+              : "Folgen"}
     </button>
   );
 }

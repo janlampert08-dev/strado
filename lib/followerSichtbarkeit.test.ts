@@ -18,7 +18,13 @@ const dateien = readdirSync(verzeichnis)
 // muss man es machen, wenn eine Spalte wegfällt) —, und darin der Text bis
 // zum nächsten Semikolon am Zeilenende.
 function definitionsMuster(view: string): RegExp {
-  return new RegExp(`create (?:or replace )?view public\\.${view} as([\\s\\S]*?);\\s*$`, "im");
+  // Auch mit Optionen ("with (security_invoker = true)") und ohne das
+  // Schema-Präfix — sonst übersähe der Test eine solche Neufassung und
+  // prüfte still eine ältere, sichere Definition.
+  return new RegExp(
+    `create\\s+(?:or\\s+replace\\s+)?view\\s+(?:public\\.)?${view}\\s+(?:with\\s*\\([^)]*\\)\\s+)?as([\\s\\S]*?);\\s*$`,
+    "im",
+  );
 }
 
 function juengsteDefinition(view: string): { datei: string; sql: string } {

@@ -1,6 +1,5 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { throwOnQueryError } from "@/lib/queryError";
 import { freieFahrtTitel } from "@/lib/completions";
 import { leseModeratorStatus } from "@/lib/moderatorStatus";
 import type { Route } from "@/types/database";
@@ -154,8 +153,13 @@ export async function getOpenCompletionReports(): Promise<CompletionReportWithCo
     p_ids: completionIds,
   });
   // Ein Fehler darf nicht als "alle Fahrten sind schon privat" durchgehen —
-  // sonst verschwänden sämtliche Meldungen still aus der Warteschlange.
-  throwOnQueryError(fahrtenFehler, "Gemeldete Fahrten");
+  // sonst verschwänden sämtliche Meldungen still aus der Warteschlange. Er
+  // soll aber auch nicht die ganze /moderation-Seite (Streckenfreigaben,
+  // übrige Meldungen) in die Fehlerseite ziehen: die Meldungen erscheinen
+  // dann ohne Fahrtangaben (unten), statt zu verschwinden.
+  if (fahrtenFehler) {
+    console.error("Gemeldete Fahrten: Angaben nicht ladbar", fahrtenFehler);
+  }
   const fahrten = data as
     | {
         completion_id: string;
@@ -171,9 +175,25 @@ export async function getOpenCompletionReports(): Promise<CompletionReportWithCo
 
   return reports.flatMap((r) => {
     const fahrt = fahrtById.get(r.completion_id);
+    // Konnten die Angaben nicht geladen werden, bleibt die Meldung trotzdem
+    // stehen — ohne Titel und Notiz, aber nicht still verschwunden.
+    if (fahrtenFehler) {
+      return [
+        {
+          id: r.id,
+          completionId: r.completion_id,
+          fahrtTitel: "Fahrt (Angaben gerade nicht ladbar)",
+          istFreieFahrt: false,
+          fahrtNotiz: null,
+          grund: r.grund,
+          kommentar: r.kommentar,
+          erstelltAm: r.erstellt_am,
+        },
+      ];
+    }
     // Eine Fahrt, die inzwischen wieder privat ist (vom Fahrer selbst oder
-    // durch eine frühere Moderation), taucht in der View nicht mehr auf —
-    // die Meldung hat sich damit erledigt und gehört nicht in die Liste.
+    // durch eine frühere Moderation), taucht nicht mehr auf — die Meldung
+    // hat sich damit erledigt und gehört nicht in die Liste.
     if (!fahrt) return [];
     return [
       {

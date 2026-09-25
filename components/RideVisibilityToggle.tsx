@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { setCompletionVisibility } from "@/lib/actions/completions";
 import { SichtbarkeitIcon } from "@/components/VisibilityIcons";
 import {
@@ -9,7 +9,7 @@ import {
   teilenSperrGrund,
   type Sichtbarkeit,
 } from "@/lib/sichtbarkeit";
-import Card from "@/components/ui/Card";
+import { zeigeHinweis } from "@/components/Hinweis";
 import IconButton from "@/components/ui/IconButton";
 import { Dialog } from "@/components/ui/Dialog";
 
@@ -48,15 +48,24 @@ export default function RideVisibilityToggle({
   blockedReason?: string | null;
 }) {
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   // Der Dialog wird beim Schliessen ausgehängt statt geschlossen — den
-  // Fokus gibt deshalb nicht der Browser zurück, sondern schliessen() hier.
+  // Fokus gibt deshalb nicht der Browser zurück. Zurückgegeben wird er erst
+  // NACH dem Aushängen (Effekt unten): solange das modale <dialog> offen
+  // ist, ist der Rest der Seite inert und nimmt keinen Fokus an.
   const ausloeserRef = useRef<HTMLButtonElement>(null);
+  const warOffen = useRef(false);
+  useEffect(() => {
+    if (open) {
+      warOffen.current = true;
+    } else if (warOffen.current) {
+      warOffen.current = false;
+      ausloeserRef.current?.focus();
+    }
+  }, [open]);
 
   function schliessen() {
     setOpen(false);
-    ausloeserRef.current?.focus();
   }
 
   // Teilen — mit Followern wie mit allen — hängt an denselben Hürden.
@@ -67,7 +76,9 @@ export default function RideVisibilityToggle({
     if (ziel === sichtbarkeit) return;
     startTransition(async () => {
       const result = await setCompletionVisibility(completionId, ziel);
-      setError(result.error);
+      // Als Hinweis statt als Karte am Knopf: die Listen, in denen er steht,
+      // schneiden absolut positionierte Elemente an ihrer Unterkante ab.
+      if (result.error) zeigeHinweis(result.error);
     });
   }
 
@@ -79,10 +90,12 @@ export default function RideVisibilityToggle({
         aria-haspopup="dialog"
         aria-label={`Sichtbarkeit: ${SICHTBARKEIT_LABEL[sichtbarkeit]} — ändern`}
         title={`${SICHTBARKEIT_LABEL[sichtbarkeit]} — ${BESCHREIBUNG[sichtbarkeit]}`}
-        disabled={pending}
+        // Nicht disabled während des Speicherns: ein deaktivierter Knopf nimmt
+        // den zurückgegebenen Fokus nicht an. Ein zweites Öffnen wartet.
+        aria-busy={pending}
+        className={pending ? "animate-pulse" : undefined}
         onClick={() => {
-          setError(null);
-          setOpen(true);
+          if (!pending) setOpen(true);
         }}
       >
         <SichtbarkeitIcon sichtbarkeit={sichtbarkeit} className="h-5 w-5" />
@@ -92,7 +105,10 @@ export default function RideVisibilityToggle({
           nicht. */}
       {open && (
       <Dialog open={open} onClose={schliessen} title="Wer sieht diese Fahrt?">
-        <div role="radiogroup" aria-label="Sichtbarkeit der Fahrt" className="flex flex-col gap-2">
+        {/* Drei Knöpfe statt einer radiogroup: das ARIA-Radiomuster verlangt
+            Pfeiltasten und einen einzigen Tab-Stopp. aria-pressed zeigt die
+            aktuelle Stufe. */}
+        <div className="flex flex-col gap-2">
           {stufen.map((stufe) => {
             const gesperrt = stufe !== "privat" && sperrGrund !== null;
             const aktiv = stufe === sichtbarkeit;
@@ -100,20 +116,21 @@ export default function RideVisibilityToggle({
               <button
                 key={stufe}
                 type="button"
-                role="radio"
-                aria-checked={aktiv}
+                aria-pressed={aktiv}
                 disabled={gesperrt}
                 onClick={() => waehle(stufe)}
-                className={`flex min-h-11 items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors duration-fast disabled:opacity-50 ${
+                className={`flex min-h-11 items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors duration-fast ${
                   aktiv ? "border-foreground" : "border-border hover:bg-surface"
                 }`}
               >
+                {/* Nur Symbol und Name werden bei einer gesperrten Stufe
+                    blass — der Grund darunter bleibt voll lesbar. */}
                 <SichtbarkeitIcon
                   sichtbarkeit={stufe}
-                  className={`mt-0.5 h-4 w-4 shrink-0 ${aktiv ? "text-foreground" : "text-muted"}`}
+                  className={`mt-0.5 h-4 w-4 shrink-0 ${aktiv ? "text-foreground" : "text-muted"} ${gesperrt ? "opacity-50" : ""}`}
                 />
                 <span className="flex flex-col gap-0.5">
-                  <span className="text-sm font-medium text-foreground">
+                  <span className={`text-sm font-medium text-foreground ${gesperrt ? "opacity-50" : ""}`}>
                     {SICHTBARKEIT_LABEL[stufe]}
                   </span>
                   <span className="text-xs text-muted">
@@ -125,14 +142,6 @@ export default function RideVisibilityToggle({
           })}
         </div>
       </Dialog>
-      )}
-      {error && (
-        <Card
-          elevated
-          className="absolute top-full right-0 z-10 mt-1 w-48 p-2 text-right text-sm text-danger"
-        >
-          {error}
-        </Card>
       )}
     </div>
   );

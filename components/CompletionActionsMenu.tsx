@@ -181,11 +181,22 @@ export default function CompletionActionsMenu({
                 type="button"
                 onClick={() => handleSetVisibility(stufe)}
                 disabled={toggling || gesperrt}
-                title={gesperrt ? sperrGrund : undefined}
-                className={`${ITEM_CLASS} flex items-center gap-1.5`}
+                // Ohne das disabled:opacity-50 aus ITEM_CLASS: sonst würde der
+                // Sperrgrund doppelt abgedunkelt und unlesbar. Blass werden
+                // nur Symbol und Name.
+                className={`${ITEM_CLASS.replace(" disabled:opacity-50", "")} flex items-start gap-1.5`}
               >
-                <SichtbarkeitIcon sichtbarkeit={stufe} className="h-4 w-4 text-muted" />
-                {ZIEL_LABEL[stufe]}
+                <SichtbarkeitIcon
+                  sichtbarkeit={stufe}
+                  className={`mt-0.5 h-4 w-4 shrink-0 text-muted ${gesperrt ? "opacity-50" : ""}`}
+                />
+                {/* Der Grund steht sichtbar darunter statt im title: ein
+                    deaktivierter Eintrag zeigt keinen Tooltip, auf dem
+                    Telefon ohnehin nicht. */}
+                <span className="flex flex-col">
+                  <span className={gesperrt ? "opacity-50" : undefined}>{ZIEL_LABEL[stufe]}</span>
+                  {gesperrt && <span className="text-xs text-muted">{sperrGrund}</span>}
+                </span>
               </button>
             );
           })}

@@ -69,7 +69,11 @@ export default async function AktivitaetPage() {
       <div className="flex-1 overflow-y-auto">
         <Seitenrahmen>
           <div>
-            <h1 className="text-display font-semibold">Aktivität</h1>
+            {/* tabIndex -1: Ziel für den Fokus, wenn die letzte Folgeanfrage
+                beantwortet ist und ihr Abschnitt verschwindet. */}
+            <h1 id="aktivitaet-titel" tabIndex={-1} className="text-display font-semibold outline-none">
+              Aktivität
+            </h1>
             <p className="mt-1 text-sm text-muted">
               Folgeanfragen, Kudos auf deine geteilten Fahrten und neue Follower.
             </p>
@@ -86,7 +90,7 @@ export default async function AktivitaetPage() {
 
           <FolgeanfragenListe initial={anfragen} />
 
-          <ActivityList initialEintraege={eintraege} />
+          <ActivityList initialEintraege={eintraege} hatFolgeanfragen={anfragen.length > 0} />
         </Seitenrahmen>
       </div>
       </PullToRefreshArea>
