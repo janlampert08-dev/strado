@@ -7,10 +7,21 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import PremiumBadge from "@/components/PremiumBadge";
 import { buttonVariants } from "@/components/ui/Button";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { getPremiumStatus } from "@/lib/premium";
+import { getPremiumStatus, kaufseiteOffen } from "@/lib/premium";
+import { datumCH } from "@/lib/format";
 import { getOeffentlichesAngebot } from "@/lib/actions/billing";
+import { saisonpassImWinter } from "@/lib/saisonpassSaison";
+import SaisonpassWinterHinweis from "@/components/SaisonpassWinterHinweis";
 import { getOrigin } from "@/lib/utils/url";
-import { betragText, planTitel, planZeitraum } from "@/lib/premiumAngebot";
+import {
+  betragText,
+  jahresVorteilProzent,
+  monatsAequivalentRappen,
+  planTitel,
+  planZeitraum,
+  saisonpassMonatsAequivalentRappen,
+} from "@/lib/premiumAngebot";
+import { SAISONPASS_MONATE } from "@/lib/premiumLimits";
 import { PREMIUM_VORTEILE } from "@/lib/premiumVorteile";
 import type { AboPlan } from "@/lib/premiumLimits";
 
@@ -37,9 +48,24 @@ export default async function PremiumTeaserPage() {
     getOrigin(),
   ]);
 
-  const hatPremium = status.aktiv && status.quelle !== "saisonpass";
+  // Wer Premium hat, das von selbst endet (Saisonpass, Gratis-Premium aus
+  // dem Signup-Link), geht wie ein Konto ohne Premium zur Kaufseite —
+  // dieselbe Regel wie dort (kaufseiteOffen).
+  const hatPremium = !kaufseiteOffen(status);
+  const gratisBis = status.quelle === "gratis" ? status.gratisBis : null;
+  const winter = saisonpassImWinter();
   const sortiert = REIHENFOLGE.map((plan) => plaene.find((p) => p.plan === plan)).filter(
     (p): p is NonNullable<typeof p> => Boolean(p),
+  );
+  // Dieselbe Einordnung wie auf der Kaufseite (components/PremiumPurchaseView
+  // .tsx): Prozent-Abzeichen am Jahresplan und das Monatsäquivalent als
+  // Nebenzeile. Bisher standen hier nur die nackten Beträge — CHF 39.00 pro
+  // Jahr neben CHF 6.90 pro Monat, und die Rechnung, dass das Jahr weniger
+  // als die Hälfte kostet, blieb der Leserin überlassen. Auf der Seite, die
+  // Nicht-Kunden als erste sehen.
+  const vorteilProzent = jahresVorteilProzent(
+    plaene.find((p) => p.plan === "monat"),
+    plaene.find((p) => p.plan === "jahr"),
   );
 
   // Strukturierte Daten für das öffentliche Angebot. Die Preise kommen aus
@@ -71,7 +97,13 @@ export default async function PremiumTeaserPage() {
     : user
       ? "/profil/premium"
       : `/anmelden?next=${encodeURIComponent("/profil/premium")}`;
-  const ctaText = hatPremium ? "Zum Profil" : user ? "Premium wählen" : "Anmelden, um Premium zu wählen";
+  const ctaText = hatPremium
+    ? "Zum Profil"
+    : gratisBis
+      ? "Jetzt sichern"
+      : user
+        ? "Premium wählen"
+        : "Anmelden, um Premium zu wählen";
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -117,15 +149,47 @@ export default async function PremiumTeaserPage() {
               {sortiert.map((p) => (
                 <li
                   key={p.plan}
-                  className="flex items-baseline justify-between gap-3 rounded-lg border border-border px-4 py-3"
+                  className="flex flex-col gap-1 rounded-lg border border-border px-4 py-3"
                 >
-                  <span className="text-sm font-semibold text-foreground">{planTitel(p.plan)}</span>
-                  <span className="flex flex-wrap items-baseline justify-end gap-x-2">
-                    <span className="text-title font-semibold text-foreground">
-                      {betragText(p.betragRappen, p.waehrung)}
+                  <span className="flex items-baseline justify-between gap-3">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold text-foreground">
+                        {planTitel(p.plan)}
+                      </span>
+                      {p.plan === "jahr" && vorteilProzent !== null && (
+                        <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-on-accent">
+                          {vorteilProzent} % günstiger
+                        </span>
+                      )}
                     </span>
-                    <span className="text-sm text-muted">{planZeitraum(p.plan)}</span>
+                    <span className="flex flex-wrap items-baseline justify-end gap-x-2">
+                      <span className="text-title font-semibold text-foreground">
+                        {betragText(p.betragRappen, p.waehrung)}
+                      </span>
+                      <span className="text-sm text-muted">{planZeitraum(p.plan)}</span>
+                    </span>
                   </span>
+                  {p.plan === "jahr" && (
+                    <span className="text-xs text-muted">
+                      entspricht {betragText(monatsAequivalentRappen(p.betragRappen), p.waehrung)}{" "}
+                      pro Monat
+                    </span>
+                  )}
+                  {p.plan === "saisonpass" && (
+                    <span className="text-xs text-muted">
+                      {SAISONPASS_MONATE} Monate ab Kauf, verlängert sich nicht · entspricht{" "}
+                      {betragText(saisonpassMonatsAequivalentRappen(p.betragRappen), p.waehrung)}{" "}
+                      pro Monat
+                    </span>
+                  )}
+                  {/* Oktober bis Februar: dieselben Sätze wie auf der Kaufseite
+                      (lib/saisonpassSaison.ts). */}
+                  {p.plan === "saisonpass" && winter && <SaisonpassWinterHinweis />}
+                  {p.plan === "jahr" && winter && (
+                    <span className="text-xs text-muted">
+                      Empfohlen im Winter: läuft über die ganze nächste Saison.
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -133,6 +197,12 @@ export default async function PremiumTeaserPage() {
               Bezahlen mit TWINT oder Karte · Endpreise in CHF · Kündigung im Kundenportal
             </p>
           </section>
+        )}
+
+        {gratisBis && (
+          <p className="text-sm text-muted">
+            Premium gratis bis {datumCH(gratisBis)}. Danach läuft es ohne Abo einfach aus.
+          </p>
         )}
 
         <Link href={ctaHref} className={buttonVariants({ className: "w-full" })}>

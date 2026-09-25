@@ -19,7 +19,7 @@ import { liveSplitEingeschaltet } from "@/lib/liveSplit";
 import OfflineRouteButton from "@/components/OfflineRouteButton";
 import { VolleGeometrieProvider } from "@/components/VolleGeometrie";
 import { geometrieUrl, kodiereGeometrie, mitUebersichtsgeometrie } from "@/lib/streckenGeometrie";
-import { getKontextStrecken, getRoute, getSignaturbestand } from "@/lib/routes";
+import { getKontextStrecken, getNachbarStrecken, getRoute, getSignaturbestand } from "@/lib/routes";
 import { computeSignatures } from "@/lib/signature";
 import { SIGNATURE_ICONS, SIGNATUR_KLASSEN } from "@/components/signaturStil";
 import PremiumHinweis from "@/components/PremiumHinweis";
@@ -44,9 +44,11 @@ import { wetterMassstab } from "@/lib/wetterfenster";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { KATEGORIEN } from "@/lib/constants";
 import { siteUrl } from "@/lib/siteUrl";
+import { streckenPfad } from "@/lib/streckenPfad";
 import { averageTempolimit, estimateRouteDurationMinutes, formatMinutes } from "@/lib/geo";
 import type { Vehicle } from "@/types/database";
-import { ChevronDown, Pencil } from "@/components/NavIcons";
+import { ChevronDown, Compass, Pencil } from "@/components/NavIcons";
+import SectionHeading from "@/components/ui/SectionHeading";
 import Card from "@/components/ui/Card";
 import AbschnittTabs from "@/components/ui/AbschnittTabs";
 import Kennzahl, { Kennzahlen, Kennzahlenzeile } from "@/components/ui/Kennzahl";
@@ -80,8 +82,9 @@ export async function generateMetadata({
 }: {
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
-  const { id } = await params;
-  const route = await getRoute(id);
+  // Das Segment ist die UUID oder der Slug (0130) — getRoute() nimmt beides.
+  const { id: adressteil } = await params;
+  const route = await getRoute(adressteil);
   // Dieselbe Überschrift wie app/not-found.tsx: die Seite antwortet unten
   // mit notFound(), und der Tab soll dasselbe sagen wie der Inhalt, nicht
   // einen Streckentitel ankündigen, den es nicht gibt.
@@ -113,8 +116,13 @@ export async function generateMetadata({
     // git beides von selbst zusammenführt. Die Schlüsselreihenfolge eines
     // Objektliterals ist für Next ohne Bedeutung — sie hier zu "sortieren"
     // holt den Konflikt zurück.
-    alternates: { canonical: `/strecken/${route.id}` },
-    title: `${route.name} – Strado`,
+    //
+    // Seit 0130 ist die kanonische Adresse die mit dem Slug, sobald die
+    // Strecke einen hat — auch wenn sie unter der UUID aufgerufen wurde
+    // (proxy.ts leitet dorthin weiter; fällt die Weiterleitung aus, sagt es
+    // wenigstens diese Zeile).
+    alternates: { canonical: streckenPfad(route) },
+    title: suchtitel(route),
     description: beschreibung,
     // Diese Seite hatte als einzige mit eigenem Freigabebild keinen eigenen
     // openGraph-Block — die Vorschau eines geteilten Streckenlinks zeigte
@@ -127,12 +135,25 @@ export async function generateMetadata({
     // openGraph-Block ersetzt den des Layouts vollständig und nähme sonst
     // auch das Bild aus opengraph-image.tsx mit weg.
     openGraph: {
-      ...ogMitBild(`/strecken/${id}/opengraph-image`, `${route.name} auf Strado`),
+      ...ogMitBild(`${streckenPfad(route)}/opengraph-image`, `${route.name} auf Strado`),
       type: "article",
       title: `${route.name} – Strado`,
       description: beschreibung,
     },
   };
+}
+
+// Der Tab- und Suchtitel trägt, wonach gesucht wird ("Töff", "Autoroute",
+// Start- und Zielort) — "Ächerlipass – Strado" allein rankt nur auf den
+// Namen, den jemand schon kennt. Die Linkvorschau (openGraph.title unten)
+// bleibt beim blossen Namen: dort zählt, dass man die Strasse wiedererkennt,
+// nicht ein Suchbegriff.
+function suchtitel(route: { name: string; start_ort: string; ziel_ort: string }): string {
+  const rundfahrt = route.start_ort.trim().toLowerCase() === route.ziel_ort.trim().toLowerCase();
+  const strecke = rundfahrt
+    ? `Rundfahrt ab ${route.start_ort}`
+    : `${route.start_ort} → ${route.ziel_ort}`;
+  return `${route.name} – Töff- & Autoroute ${strecke} | Strado`;
 }
 
 export default async function StreckeDetailPage({
@@ -155,7 +176,8 @@ export default async function StreckeDetailPage({
   // gesetzt, aber von niemandem gelesen.
   searchParams: Promise<{ fortsetzen?: string; privat?: string }>;
 }) {
-  const { id } = await params;
+  // UUID oder Slug; ab dem Laden gilt nur noch route.id (siehe unten).
+  const { id: adressteil } = await params;
   const { fortsetzen, privat } = await searchParams;
   const supabase = await createClient();
 
@@ -168,16 +190,21 @@ export default async function StreckeDetailPage({
   // brauchen ihn ausser der Seite selbst auch <Header /> und
   // getPremiumStatus(). Ueber den request-weiten cache() wird daraus einer
   // statt dreier.
-  const [route, user] = await Promise.all([getRoute(id), getCurrentUser()]);
+  const [route, user] = await Promise.all([getRoute(adressteil), getCurrentUser()]);
 
   if (!route) notFound();
+
+  // Alle Abfragen unten laufen über die UUID — das Segment kann seit 0130
+  // auch der Slug sein, und Bewertungen, Fotos, Bestenliste & Co. hängen an
+  // route_id.
+  const id = route.id;
 
   // kontextStrecken: die umliegenden Strecken für die Karte des
   // Aufzeichnungsschirms (siehe GefahrenSection/LiveTrackingForm). Sie werden
   // hier serverseitig mitgeladen, weil GefahrenSection eine Client-Komponente
   // ist und selbst nicht abfragen kann — im selben Promise.all wie alles
   // andere, also ohne die Antwortzeit zu verlängern.
-  const [ratings, ownRating, favorite, vehicles, personalBestSeconds, photos, leaderboard, leaderboardKlassen, weather, moderator, premiumStatus, kontextStrecken, signaturbestand, passKontexte, feedStand, ruhigeZeiten] =
+  const [ratings, ownRating, favorite, vehicles, personalBestSeconds, photos, leaderboard, leaderboardKlassen, weather, moderator, premiumStatus, kontextStrecken, signaturbestand, passKontexte, feedStand, ruhigeZeiten, nachbarStrecken] =
     await Promise.all([
       getRatings(id),
       user ? getOwnRating(id, user.id) : Promise.resolve(null),
@@ -208,6 +235,9 @@ export default async function StreckeDetailPage({
       getPassKontextFuerStrecke(id),
       getFeedStand(),
       getRuhigeZeiten(id),
+      // "Weitere Strecken in der Nähe" am Ende der Seite — nach Startpunkt,
+      // ohne Linien (lib/nachbarStrecken.ts).
+      getNachbarStrecken(route),
     ]);
 
   const signatur = computeSignatures(signaturbestand).get(route.id) ?? null;
@@ -253,7 +283,7 @@ export default async function StreckeDetailPage({
     // (opengraph-image.tsx nebenan) — absolut, weil strukturierte Daten
     // keine Basis-URL erben. staging und Previews zeigen damit auf sich
     // selbst, wie Canonical und OG-Bild auch.
-    image: `${siteUrl()}/strecken/${route.id}/opengraph-image`,
+    image: `${siteUrl()}${streckenPfad(route)}/opengraph-image`,
     ...(bewertung
       ? {
           aggregateRating: {
@@ -315,7 +345,31 @@ export default async function StreckeDetailPage({
           laufen — siehe AufzeichnungsKontext.tsx. */}
       <AufzeichnungProvider>
       <VolleGeometrieProvider streckenId={route.id} url={linienUrl}>
-      <RouteDetailLayout route={leichteRoute}>
+      <RouteDetailLayout
+        route={leichteRoute}
+        // Die Hauptaktion steht als feste Fussleiste des Sheets statt im
+        // Reiter Fahren — im Peek lag sie sonst unter der Kante (siehe
+        // RouteDetailLayout.tsx). Das Sprungziel #fahren ("Zum Start" in der
+        // leeren Bestenliste) sitzt jetzt auf dieser Leiste.
+        aktion={
+          <GefahrenSection
+            route={leichteRoute}
+            kontextStrecken={kontextStrecken}
+            userId={user?.id ?? null}
+            vehicles={vehicles}
+            personalBestSeconds={personalBestSeconds}
+            guestContinuationToken={fortsetzen ?? null}
+            maxPhotos={maxFotosProFahrt(premiumStatus.aktiv)}
+            // Aus, bis die neuen AGB gelten (lib/liveSplit.ts). Server-Variable,
+            // damit Ausschalten ohne neuen Build geht.
+            liveSplit={
+              liveSplitEingeschaltet(process.env.STRADO_LIVE_SPLIT)
+                ? { streckenBestzeitS: leaderboard[0]?.dauerSekunden ?? null }
+                : null
+            }
+          />
+        }
+      >
         <div>
           <p className="text-sm text-muted">
             {route.region}
@@ -382,7 +436,7 @@ export default async function StreckeDetailPage({
                         Status nicht zuordenbar. */}
                     {!istNameSchonImTitel(route.name, kontext.pass.name, passKontexte.length) && (
                       <Link
-                        href={`/paesse#${kontext.pass.id}`}
+                        href={`/paesse/${kontext.pass.id}`}
                         className="relative font-medium text-foreground transition-colors hover:text-accent-ink after:absolute after:-inset-x-1 after:-inset-y-3 after:content-['']"
                         title={`${kontext.pass.name} auf der Passseite`}
                       >
@@ -435,6 +489,7 @@ export default async function StreckeDetailPage({
           <OfflineRouteButton
             route={{
               id: route.id,
+              slug: route.slug ?? null,
               name: route.name,
               region: route.region,
               startOrt: route.start_ort,
@@ -462,7 +517,7 @@ export default async function StreckeDetailPage({
           />
           {!moderator && user?.id === route.erstellt_von && !route.status_ok && (
             <Link
-              href={`/strecken/${id}/bearbeiten`}
+              href={`${streckenPfad(route)}/bearbeiten`}
               aria-label="Strecke bearbeiten"
               title="Strecke bearbeiten"
               className={iconButtonVariants()}
@@ -490,32 +545,17 @@ export default async function StreckeDetailPage({
             der Bestenliste begann — Bestzeit und Sterne sind zwei Fragen. */}
         <AbschnittTabs tabs={[{ titel: "Fahren" }, { titel: "Details" }, { titel: "Bestzeiten", anzahl: leaderboard.length }]}>
           <div className="flex flex-col gap-5">
-        {/* Sprungziel für "Zum Start" in der leeren Bestenliste. scroll-mt:
-            sonst endet der Sprung mit dem Knopf an der oberen Kante. */}
-        <div id="fahren" className="scroll-mt-6">
-        <GefahrenSection
-          route={leichteRoute}
-          kontextStrecken={kontextStrecken}
-          userId={user?.id ?? null}
-          vehicles={vehicles}
-          personalBestSeconds={personalBestSeconds}
-          guestContinuationToken={fortsetzen ?? null}
-          maxPhotos={maxFotosProFahrt(premiumStatus.aktiv)}
-          // Aus, bis die neuen AGB gelten (lib/liveSplit.ts). Server-Variable,
-          // damit Ausschalten ohne neuen Build geht.
-          liveSplit={
-            liveSplitEingeschaltet(process.env.STRADO_LIVE_SPLIT)
-              ? { streckenBestzeitS: leaderboard[0]?.dauerSekunden ?? null }
-              : null
-          }
-        />
-        </div>
-
-        {/* Das Höhenprofil als Hauptbild der Strecke, direkt unter dem
-            Start: die Höhe ist das, was einen Pass von einer Landstrasse
+        {/* Das Höhenprofil als Hauptbild der Strecke, zuoberst im Reiter
+            (der Start steht seit 2026-09-25 in der Fussleiste des Sheets):
+            die Höhe ist das, was einen Pass von einer Landstrasse
             unterscheidet, und stand bisher im zweiten Reiter. */}
         {route.hoehenprofil && route.hoehenprofil.length > 1 && (
-          <ElevationProfile punkte={route.hoehenprofil} gross />
+          <section aria-labelledby="hoehenprofil">
+            <h2 id="hoehenprofil" className="sr-only">
+              Höhenprofil
+            </h2>
+            <ElevationProfile punkte={route.hoehenprofil} gross />
+          </section>
         )}
 
         {/* Ein Widget statt zweier Sektionen: Öffnung und Verkehr als eine
@@ -523,6 +563,7 @@ export default async function StreckeDetailPage({
             offen ist und wie der Verkehr liegt, kommt vor der Frage, wie
             steil die Strecke ist. Kalender, Meldung und Wochenraster leben
             auf der Passseite und im Details-Reiter. */}
+        <h2 className="sr-only">{passKontexte.length > 0 ? "Passstatus und Verkehr" : "Verkehr"}</h2>
         <FahrCheck
           kontexte={passKontexte}
           feedStand={feedStand}
@@ -535,6 +576,7 @@ export default async function StreckeDetailPage({
         {/* Kategorien und Charakter nach Start und Passlage: was die Strecke
             IST, steht vor Profil und Zahlen — vorher erst nach der
             Bestenliste, also Beschreibung nach Wertung. */}
+        <h2 className="sr-only">Streckeninfo</h2>
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
             {route.kategorien.map((k) => (
@@ -689,6 +731,42 @@ export default async function StreckeDetailPage({
             />
           </div>
         </AbschnittTabs>
+
+        {/* Ausserhalb der Reiter und damit immer im ausgelieferten HTML: die
+            Reiter rendern nur den offenen, und "wohin als Nächstes?" ist
+            keine Frage eines einzelnen Reiters. Dieselbe Zeilenform wie auf
+            /paesse (Card mit Trennlinien, ganze Zeile tippbar). */}
+        {nachbarStrecken.length > 0 && (
+          <section aria-labelledby="in-der-naehe" className="flex flex-col gap-2">
+            <SectionHeading id="in-der-naehe" icon={Compass}>
+              Weitere Strecken in der Nähe
+            </SectionHeading>
+            <Card as="ul" className="divide-y divide-border">
+              {nachbarStrecken.map((nachbar) => (
+                <li key={nachbar.id} className="druckbar relative flex items-center gap-3 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">
+                      <Link
+                        href={streckenPfad(nachbar)}
+                        className="hover:text-accent-ink after:absolute after:inset-0 after:content-['']"
+                      >
+                        {nachbar.name}
+                      </Link>
+                    </p>
+                    <p className="truncate text-xs text-muted">
+                      {nachbar.region} · {formatKm(nachbar.laengeKm)} km
+                    </p>
+                  </div>
+                  {/* Luftlinie zwischen den Startpunkten — "entfernt" statt
+                      einer Fahrzeit, die hier niemand gerechnet hat. */}
+                  <span className="shrink-0 text-xs tabular-nums text-muted">
+                    {Math.max(1, Math.round(nachbar.distanzKm))} km entfernt
+                  </span>
+                </li>
+              ))}
+            </Card>
+          </section>
+        )}
       </RouteDetailLayout>
       </VolleGeometrieProvider>
       </AufzeichnungProvider>

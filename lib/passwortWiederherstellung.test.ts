@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   PASSWORT_AENDERN_PFAD,
   WIEDERHERSTELLUNG_GUELTIG_SEKUNDEN,
+  codeAustauschIstWiederherstellung,
   signiereWiederherstellung,
   wiederherstellungGiltFuer,
 } from "@/lib/passwortWiederherstellung";
@@ -43,8 +44,28 @@ describe("wiederherstellungGiltFuer", () => {
     ).toBe(false);
   });
 
+  it("gilt nach Ablauf nicht mehr — geprüft vom Server, nicht vom Browser", () => {
+    const jetzt = Date.UTC(2026, 8, 24, 12, 0, 0);
+    const wert = signiereWiederherstellung(userId, GEHEIMNIS, jetzt);
+    const kurzDavor = jetzt + (WIEDERHERSTELLUNG_GUELTIG_SEKUNDEN - 1) * 1000;
+    const danach = jetzt + WIEDERHERSTELLUNG_GUELTIG_SEKUNDEN * 1000;
+    expect(wiederherstellungGiltFuer(wert, userId, GEHEIMNIS, kurzDavor)).toBe(true);
+    expect(wiederherstellungGiltFuer(wert, userId, GEHEIMNIS, danach)).toBe(false);
+  });
+
+  it("gilt nicht, wenn der Ablauf von Hand verlängert wurde", () => {
+    const jetzt = Date.UTC(2026, 8, 24, 12, 0, 0);
+    const [id, ablauf, sig] = signiereWiederherstellung(userId, GEHEIMNIS, jetzt).split(".");
+    const verlaengert = `${id}.${Number(ablauf) + 86_400}.${sig}`;
+    expect(wiederherstellungGiltFuer(verlaengert, userId, GEHEIMNIS, jetzt)).toBe(false);
+  });
+
+  it("gilt nicht für einen Wert im alten Format ohne Ablauf", () => {
+    expect(wiederherstellungGiltFuer(`${userId}.${"a".repeat(64)}`, userId, GEHEIMNIS)).toBe(false);
+  });
+
   it("gilt nicht mit verfälschter Signatur oder falschem Geheimnis", () => {
-    const faelschung = `${userId}.${"0".repeat(64)}`;
+    const faelschung = `${userId}.9999999999.${"0".repeat(64)}`;
     expect(wiederherstellungGiltFuer(faelschung, userId, GEHEIMNIS)).toBe(false);
     expect(wiederherstellungGiltFuer(gueltig.slice(0, -1) + "x", userId, GEHEIMNIS)).toBe(false);
     expect(wiederherstellungGiltFuer(gueltig, userId, FALSCHES_GEHEIMNIS)).toBe(false);
@@ -61,6 +82,65 @@ describe("wiederherstellungGiltFuer", () => {
     // Cookie plötzlich passt.
     expect(wiederherstellungGiltFuer("", "", GEHEIMNIS)).toBe(false);
     expect(wiederherstellungGiltFuer(gueltig, "", GEHEIMNIS)).toBe(false);
+  });
+});
+
+function token(amr: unknown): string {
+  const teil = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
+  return `${teil({ alg: "HS256" })}.${teil({ sub: "x", amr })}.signatur`;
+}
+
+describe("codeAustauschIstWiederherstellung", () => {
+  const jetzt = Date.UTC(2026, 8, 24, 12, 0, 0);
+  const vorZehnMinuten = new Date(jetzt - 10 * 60_000).toISOString();
+
+  it("gilt nach einer frisch verschickten Zurücksetzen-E-Mail", () => {
+    expect(
+      codeAustauschIstWiederherstellung({
+        accessToken: token([{ method: "otp", timestamp: 1 }]),
+        recoverySentAt: vorZehnMinuten,
+        jetztMs: jetzt,
+      }),
+    ).toBe(true);
+  });
+
+  it("gilt NICHT für eine Google-Anmeldung, auch nach ausgelöster Zurücksetzen-E-Mail", () => {
+    // Der Angriff: am fremden, angemeldeten Gerät "Passwort vergessen"
+    // auslösen, dann mit Google und next=/profil/passwort-aendern anmelden.
+    expect(
+      codeAustauschIstWiederherstellung({
+        accessToken: token([{ method: "oauth", timestamp: 1 }]),
+        recoverySentAt: vorZehnMinuten,
+        jetztMs: jetzt,
+      }),
+    ).toBe(false);
+    expect(
+      codeAustauschIstWiederherstellung({
+        accessToken: token(["oauth"]),
+        recoverySentAt: vorZehnMinuten,
+        jetztMs: jetzt,
+      }),
+    ).toBe(false);
+  });
+
+  it("gilt NICHT ohne verschickte Zurücksetzen-E-Mail (z.B. Registrierungsbestätigung)", () => {
+    expect(
+      codeAustauschIstWiederherstellung({
+        accessToken: token([{ method: "otp", timestamp: 1 }]),
+        recoverySentAt: null,
+        jetztMs: jetzt,
+      }),
+    ).toBe(false);
+  });
+
+  it("gilt NICHT, wenn die Zurücksetzen-E-Mail älter als eine Stunde ist", () => {
+    expect(
+      codeAustauschIstWiederherstellung({
+        accessToken: token([{ method: "otp", timestamp: 1 }]),
+        recoverySentAt: new Date(jetzt - 61 * 60_000).toISOString(),
+        jetztMs: jetzt,
+      }),
+    ).toBe(false);
   });
 });
 

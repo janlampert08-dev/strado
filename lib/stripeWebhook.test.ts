@@ -85,6 +85,20 @@ describe("leseAboZustand", () => {
     });
   });
 
+  it("liest eine Portal-Kündigung über cancel_at als gekündigt", () => {
+    // Flexibler Abrechnungsmodus: das Portal setzt cancel_at und lässt
+    // cancel_at_period_end auf false.
+    const zustand = leseAboZustand(
+      abo({ cancel_at_period_end: false, cancel_at: 1_800_000_000 } as Partial<Stripe.Subscription>),
+    );
+    expect(zustand?.cancelAtPeriodEnd).toBe(true);
+  });
+
+  it("liest ein Abo ohne cancel_at und ohne Flag als verlängernd", () => {
+    const zustand = leseAboZustand(abo({ cancel_at: null } as Partial<Stripe.Subscription>));
+    expect(zustand?.cancelAtPeriodEnd).toBe(false);
+  });
+
   it("nimmt die Customer-ID auch aus einem ausgeklappten Customer-Objekt", () => {
     const zustand = leseAboZustand(abo({ customer: { id: "cus_2" } as Stripe.Customer }));
     expect(zustand?.stripeCustomerId).toBe("cus_2");

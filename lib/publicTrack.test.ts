@@ -12,30 +12,43 @@ import { MAX_PRIVACY_RADIUS_M, PRIVACY_RADIUS_OPTIONS } from "@/lib/track";
 // Der Supabase-Client wird nicht gemockt, sondern durch das kleinste Objekt
 // ersetzt, das die benutzte Kette anbietet — dieselbe Linie wie in den
 // übrigen Tests hier (kein Mocking-Framework über Vitest hinaus).
-function fakeClient(antwort: { data: unknown; error: unknown }) {
+//
+// Seit 0132 liest privacyRadiusM über rpc("meine_privatzone"); der Weg über
+// die Spalte bleibt nur als Rückfall für den Fall, dass die Funktion noch
+// nicht existiert (PGRST202).
+function fakeClient(
+  rpc: { data: unknown; error: unknown },
+  spalte: { data: unknown; error: unknown } = { data: null, error: { message: "unerwartet" } },
+) {
   const kette = {
     select: () => kette,
     eq: () => kette,
-    maybeSingle: async () => antwort,
+    maybeSingle: async () => spalte,
   };
-  return { from: () => kette } as never;
+  return {
+    rpc: async () => rpc,
+    from: () => kette,
+    auth: { getUser: async () => ({ data: { user: { id: "u1" } } }) },
+  } as never;
 }
+
+const FEHLT = { data: null, error: { code: "PGRST202", message: "not found" } };
 
 describe("privacyRadiusM", () => {
   it("liefert den eingestellten Radius", async () => {
-    const client = fakeClient({ data: { privatzone_radius_m: 100 }, error: null });
+    const client = fakeClient({ data: 100, error: null });
     await expect(privacyRadiusM(client, "u1")).resolves.toBe(100);
   });
 
   it("liefert 0, wenn der Nutzer die Privatzone bewusst abgeschaltet hat", async () => {
     // 0 ist ein gültiger Wert und darf nicht über ?? in den Rückfall laufen.
-    const client = fakeClient({ data: { privatzone_radius_m: 0 }, error: null });
+    const client = fakeClient({ data: 0, error: null });
     await expect(privacyRadiusM(client, "u1")).resolves.toBe(0);
   });
 
   it("kappt bei einem Lesefehler maximal statt auf den Standard", async () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const client = fakeClient({ data: null, error: { message: "boom" } });
+    const client = fakeClient({ data: null, error: { code: "42501", message: "boom" } });
     await expect(privacyRadiusM(client, "u1")).resolves.toBe(MAX_PRIVACY_RADIUS_M);
     spy.mockRestore();
   });
@@ -43,6 +56,18 @@ describe("privacyRadiusM", () => {
   it("kappt maximal, wenn kein Profil gefunden wird", async () => {
     const client = fakeClient({ data: null, error: null });
     await expect(privacyRadiusM(client, "u1")).resolves.toBe(MAX_PRIVACY_RADIUS_M);
+  });
+
+  it("liest vor 0132 aus der Spalte", async () => {
+    const client = fakeClient(FEHLT, { data: { privatzone_radius_m: 100 }, error: null });
+    await expect(privacyRadiusM(client, "u1")).resolves.toBe(100);
+  });
+
+  it("kappt maximal, wenn auch der Spaltenweg scheitert", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const client = fakeClient(FEHLT, { data: null, error: { message: "permission denied" } });
+    await expect(privacyRadiusM(client, "u1")).resolves.toBe(MAX_PRIVACY_RADIUS_M);
+    spy.mockRestore();
   });
 
   it("nutzt als Rückfall wirklich die strengste angebotene Stufe", () => {

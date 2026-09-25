@@ -1,6 +1,9 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { haversineKm } from "@/lib/geo";
+import { fehltSlugSpalte, leseStreckenAdressteil } from "@/lib/streckenPfad";
+import { waehleNachbarStrecken } from "@/lib/nachbarStrecken";
+import { computeSignatures, type RouteSignature } from "@/lib/signature";
 import type {
   ExploreRoute,
   GeoLineString,
@@ -15,6 +18,11 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // abgeleitet zu halten geht nicht (Typen existieren zur Laufzeit nicht) —
 // deshalb hier einmal ausgeschrieben und in types/database.ts dokumentiert.
 const EXPLORE_SPALTEN =
+  "id, name, region, start_ort, ziel_ort, start_geojson, ziel_geojson, geometry_geojson, geometry_uebersicht_geojson, hoehe_m, laenge_km, max_steigung_prozent, kehren, saison_status, tempolimits, ist_rundfahrt, slug";
+
+// Spaltenstand nach 0117, vor 0130 (ohne slug) — Fallback, solange die
+// Slug-Migration nicht eingespielt ist. Die Links bleiben dann UUID-Links.
+const EXPLORE_SPALTEN_OHNE_SLUG =
   "id, name, region, start_ort, ziel_ort, start_geojson, ziel_geojson, geometry_geojson, geometry_uebersicht_geojson, hoehe_m, laenge_km, max_steigung_prozent, kehren, saison_status, tempolimits, ist_rundfahrt";
 
 // Spaltenstand vor 0117 (ohne Übersichtsgeometrie) — Fallback, solange die
@@ -29,13 +37,42 @@ const EXPLORE_SPALTEN_LEGACY =
 // ExploreSidebar, RouteMap, exploreFilters, signature, search, useLiveLapHint).
 // Das Höhenprofil ist dabei der teuerste Posten nach der Geometrie: ein
 // Array aus Punkten pro Strecke, für die Explore-Liste ohne jede Verwendung.
-export async function getRoutes(): Promise<{ routes: ExploreRoute[]; error: boolean }> {
+//
+// tempolimits wird weiterhin gelesen, verlässt den Server aber nicht mehr.
+// Der einzige Leser im Client war computeSignatures() (lib/signature.ts), und
+// der braucht aus den Segmenten nur einen Schnitt je Strecke. Die ganzen
+// Arrays waren am 2026-09-25 rund 42 KB der ~100 KB Streckenzeilen auf der
+// Startseite. Das Merkmal wird deshalb hier gerechnet — über denselben
+// ungefilterten Bestand wie vorher im Browser — und als {key, label} je
+// Strecke mitgegeben, als einfaches Objekt, weil es die Server/Client-Grenze
+// überquert. Die Karte zeichnet auf der Startseite und bei der freien Fahrt
+// nie eine Tempolimit-Ebene (showSpeedLimits fehlt dort), sie vermisst die
+// Segmente also nicht.
+export async function getRoutes(): Promise<{
+  routes: ExploreRoute[];
+  signaturen: Record<string, RouteSignature>;
+  error: boolean;
+}> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const mitSlug = await supabase
     .from("routes_geojson")
     .select(EXPLORE_SPALTEN)
     .eq("status_ok", true)
     .order("name");
+  let data: unknown = mitSlug.data;
+  let error = mitSlug.error;
+
+  // 0130 noch nicht eingespielt: ohne slug nochmals, die Karte verlinkt dann
+  // auf die UUID-Adresse.
+  if (error && fehltSlugSpalte(error)) {
+    const ohneSlug = await supabase
+      .from("routes_geojson")
+      .select(EXPLORE_SPALTEN_OHNE_SLUG)
+      .eq("status_ok", true)
+      .order("name");
+    data = ohneSlug.data;
+    error = ohneSlug.error;
+  }
 
   // 0117 noch nicht eingespielt: unbekannte Spalte -> alter Stand.
   if (error) {
@@ -47,26 +84,67 @@ export async function getRoutes(): Promise<{ routes: ExploreRoute[]; error: bool
         .order("name");
       if (fallback.error) {
         console.error("Strecken konnten nicht geladen werden:", fallback.error.message);
-        return { routes: [], error: true };
+        return { routes: [], signaturen: {}, error: true };
       }
-      return { routes: (fallback.data as unknown as ExploreRoute[]) ?? [], error: false };
+      return { ...mitSignaturen((fallback.data as unknown as ExploreZeile[]) ?? []), error: false };
     }
     console.error("Strecken konnten nicht geladen werden:", error.message);
-    return { routes: [], error: true };
+    return { routes: [], signaturen: {}, error: true };
   }
 
   // Die Karte zeichnet die vereinfachte Linie; fehlt sie (null), gilt die
   // exakte. Deckungsgrad und Erkennung nutzen diese Funktion nie — sie lesen
   // die volle Geometrie über getRoute()/Kandidaten.
-  type ExploreZeile = ExploreRoute & { geometry_uebersicht_geojson?: ExploreRoute["geometry_geojson"] | null };
   const zeilen = (data as unknown as ExploreZeile[]) ?? [];
   return {
-    routes: zeilen.map(({ geometry_uebersicht_geojson, ...rest }) => ({
-      ...rest,
-      geometry_geojson: geometry_uebersicht_geojson ?? rest.geometry_geojson,
-    })),
+    ...mitSignaturen(
+      zeilen.map(({ geometry_uebersicht_geojson, ...rest }) => ({
+        ...rest,
+        geometry_geojson: geometry_uebersicht_geojson ?? rest.geometry_geojson,
+      })),
+    ),
     error: false,
   };
+}
+
+// Eine Zeile, wie getRoutes() sie liest: ExploreRoute plus die beiden
+// Spalten, die den Server nicht verlassen.
+type ExploreZeile = ExploreRoute & {
+  tempolimits: SignaturStrecke["tempolimits"];
+  geometry_uebersicht_geojson?: ExploreRoute["geometry_geojson"] | null;
+};
+
+/**
+ * Rechnet die Signatur-Merkmale über den ganzen übergebenen Bestand und nimmt
+ * danach die Tempolimits aus den Zeilen. Rein, damit prüfbar
+ * (lib/routes.test.ts): der Test hält fest, dass kein tempolimits-Feld mehr
+ * in der Nutzlast landet und die Merkmale dieselben sind wie aus
+ * computeSignatures() direkt.
+ */
+export function mitSignaturen(
+  zeilen: (ExploreRoute & { tempolimits: SignaturStrecke["tempolimits"] })[],
+): { routes: ExploreRoute[]; signaturen: Record<string, RouteSignature> } {
+  const signaturen = Object.fromEntries(computeSignatures(zeilen));
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const routes = zeilen.map(({ tempolimits, ...rest }) => rest);
+  return { routes, signaturen };
+}
+
+// Die IDs der freigegebenen Strecken — dieselbe Menge, die getRoutes()
+// liefert (status_ok; private Strecken sind nie freigegeben), aber ohne
+// Geometrie. Die Startseite braucht sie für Bewertungen und Passzustand; mit
+// dieser schmalen Abfrage laufen beide parallel zu getRoutes() statt in einer
+// zweiten Welle danach (app/page.tsx). Ein Fehler ergibt eine leere Liste:
+// dann fehlen Sterne und Abzeichen, die Liste selbst steht — dasselbe wie
+// bisher, wenn getRoutes() scheiterte.
+export async function getFreigegebeneStreckenIds(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("routes").select("id").eq("status_ok", true);
+  if (error) {
+    console.error("Strecken-IDs konnten nicht geladen werden:", error.message);
+    return [];
+  }
+  return ((data as { id: string }[] | null) ?? []).map((r) => r.id);
 }
 
 // Umkreis um die gefahrene Strecke, in dem umliegende Strecken auf der
@@ -246,12 +324,67 @@ export async function getKontextStrecken(route: RouteGeoJSON): Promise<KartenStr
   return [];
 }
 
+export interface NachbarStrecke {
+  id: string;
+  /** Lesbare Adresse (0130); null nur für eine Strecke ohne Slug. */
+  slug: string | null;
+  name: string;
+  region: string;
+  laengeKm: number;
+  distanzKm: number;
+}
+
+// "Weitere Strecken in der Nähe" (Streckenseite): die freigegebenen,
+// öffentlichen Strecken mit dem nächsten Startpunkt. Nur Punkt und Zahlen,
+// keine Linie — gezeichnet wird hier nichts. Ein Ladefehler kostet bloss den
+// Abschnitt, nicht die Seite; deshalb wird er geloggt statt geworfen.
+export async function getNachbarStrecken(route: {
+  id: string;
+  region: string;
+  start_geojson: { coordinates: unknown };
+}): Promise<NachbarStrecke[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("routes_geojson")
+    .select("id, name, region, laenge_km, start_geojson, slug")
+    .eq("status_ok", true)
+    .eq("ist_privat", false);
+
+  if (error) {
+    console.error("Nachbarstrecken konnten nicht geladen werden:", error.message);
+    return [];
+  }
+
+  type Zeile = { id: string; name: string; region: string; laenge_km: number; start_geojson: { coordinates: [number, number] }; slug: string | null };
+  const kandidaten = ((data as unknown as Zeile[]) ?? [])
+    .filter((z) => Array.isArray(z.start_geojson?.coordinates))
+    .map((z) => ({ id: z.id, name: z.name, region: z.region, laengeKm: z.laenge_km, start: z.start_geojson.coordinates }));
+
+  const slugJeId = new Map(((data as unknown as Zeile[]) ?? []).map((z) => [z.id, z.slug]));
+
+  return waehleNachbarStrecken(kandidaten, {
+    id: route.id,
+    region: route.region,
+    start: route.start_geojson.coordinates as [number, number],
+  }).map(({ strecke, distanzKm }) => ({
+    id: strecke.id,
+    // Direkt die lesbare Adresse verlinken statt die UUID, die proxy.ts erst
+    // per Datenbankabfrage auf den Slug umleitet (Re-Audit 2026-09-25, L2).
+    slug: slugJeId.get(strecke.id) ?? null,
+    name: strecke.name,
+    region: strecke.region,
+    laengeKm: strecke.laengeKm,
+    distanzKm,
+  }));
+}
+
 // Nur was die Sitemap braucht. getRoutes() liefert sonst für jede Strecke
 // Geometrie, Höhenprofil, Tempolimits und Charaktertext mit — bei einem
 // Aufruf, der davon ausschliesslich id und created_at verwendet.
 export interface RouteSitemapEintrag {
   id: string;
   created_at: string;
+  slug?: string | null;
 }
 
 // Der Streckenbestand, reduziert auf die Spalten, aus denen sich ein
@@ -280,11 +413,24 @@ export async function getSignaturbestand(): Promise<SignaturStrecke[]> {
 
 export async function listRoutesForSitemap(): Promise<RouteSitemapEintrag[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const mitSlug = await supabase
     .from("routes_geojson")
-    .select("id, created_at")
+    .select("id, created_at, slug")
     .eq("status_ok", true)
     .order("name");
+  let data: unknown = mitSlug.data;
+  let error = mitSlug.error;
+
+  // Vor 0130: ohne slug, die Sitemap listet dann UUID-Adressen.
+  if (error && fehltSlugSpalte(error)) {
+    const ohneSlug = await supabase
+      .from("routes_geojson")
+      .select("id, created_at")
+      .eq("status_ok", true)
+      .order("name");
+    data = ohneSlug.data;
+    error = ohneSlug.error;
+  }
 
   if (error) {
     console.error("Sitemap-Strecken konnten nicht geladen werden:", error.message);
@@ -316,8 +462,9 @@ export type RouteApiZeile = Pick<
   | "tempolimits"
 > &
   // Nur gesetzt, wenn der Aufrufer es ausdrücklich anfordert — siehe
-  // listRoutesForApi().
-  Partial<Pick<RouteGeoJSON, "hoehenprofil">>;
+  // listRoutesForApi(). slug fehlt vor 0130; der öffentliche Endpunkt gibt
+  // ihn (noch) nicht aus, llms.txt verlinkt damit die lesbare Adresse.
+  Partial<Pick<RouteGeoJSON, "hoehenprofil" | "slug">>;
 
 // mitHoehenprofil nur auf ausdrückliche Anforderung (?hoehenprofil=1 am
 // Endpunkt): das Profil ist nach der Geometrie der grösste Posten pro
@@ -330,18 +477,36 @@ export async function listRoutesForApi(mitHoehenprofil = false): Promise<RouteAp
   // Beide Spaltenlisten ausgeschrieben statt eine aus der anderen
   // zusammengesetzt: der Typ-Parser von postgrest-js liest den Select-String
   // zur Compile-Zeit und versteht nur ein Literal, kein `${...}`.
-  const abfrage = mitHoehenprofil
-    ? supabase
-        .from("routes_geojson")
-        .select(
-          "id, name, region, start_ort, ziel_ort, ist_rundfahrt, laenge_km, hoehe_m, max_steigung_prozent, kehren, kategorien, saison_status, tempolimits, hoehenprofil",
-        )
-    : supabase
-        .from("routes_geojson")
-        .select(
-          "id, name, region, start_ort, ziel_ort, ist_rundfahrt, laenge_km, hoehe_m, max_steigung_prozent, kehren, kategorien, saison_status, tempolimits",
-        );
-  const { data, error } = await abfrage.eq("status_ok", true).order("name");
+  const abfrage = (mitSlug: boolean) =>
+    (mitHoehenprofil
+      ? mitSlug
+        ? supabase
+            .from("routes_geojson")
+            .select(
+              "id, name, region, start_ort, ziel_ort, ist_rundfahrt, laenge_km, hoehe_m, max_steigung_prozent, kehren, kategorien, saison_status, tempolimits, hoehenprofil, slug",
+            )
+        : supabase
+            .from("routes_geojson")
+            .select(
+              "id, name, region, start_ort, ziel_ort, ist_rundfahrt, laenge_km, hoehe_m, max_steigung_prozent, kehren, kategorien, saison_status, tempolimits, hoehenprofil",
+            )
+      : mitSlug
+        ? supabase
+            .from("routes_geojson")
+            .select(
+              "id, name, region, start_ort, ziel_ort, ist_rundfahrt, laenge_km, hoehe_m, max_steigung_prozent, kehren, kategorien, saison_status, tempolimits, slug",
+            )
+        : supabase
+            .from("routes_geojson")
+            .select(
+              "id, name, region, start_ort, ziel_ort, ist_rundfahrt, laenge_km, hoehe_m, max_steigung_prozent, kehren, kategorien, saison_status, tempolimits",
+            )
+    )
+      .eq("status_ok", true)
+      .order("name");
+  let { data, error } = await abfrage(true);
+  // Vor 0130: ohne slug nochmals (Muster wie getRoutes()).
+  if (error && fehltSlugSpalte(error)) ({ data, error } = await abfrage(false));
 
   if (error) {
     console.error("Strecken konnten nicht geladen werden:", error.message);
@@ -507,18 +672,31 @@ export async function listRouteDetectionCandidatesInBox(
 // opengraph-image.tsx rufen getRoute(id) für denselben Request unabhängig
 // voneinander auf — ohne Memoisierung wäre das dieselbe DB-Abfrage
 // dreifach pro Seitenaufruf.
-export const getRoute = cache(async function getRoute(id: string): Promise<RouteGeoJSON | null> {
-  if (!UUID_RE.test(id)) return null;
+//
+// Nimmt die UUID ODER den Slug (0130) — das Segment von /strecken/[id].
+// Beide Wege laufen über denselben Server-Client mit der Sitzung der
+// anfragenden Person und dieselbe security_invoker-View: RLS entscheidet
+// beim Slug genau wie bei der id, eine private oder wartende Strecke findet
+// über den Slug also nur, wer sie auch über die id fände. (Solche Strecken
+// tragen ohnehin keinen Slug, siehe den Trigger in 0130 — die RLS ist die
+// Grenze, das ist nur die zweite Schicht.)
+//
+// Vor 0130 gibt es die Spalte nicht: ein Slug-Aufruf endet dann als "nicht
+// gefunden" (404) statt als Fehlerseite, UUID-Aufrufe laufen unverändert.
+export const getRoute = cache(async function getRoute(idOderSlug: string): Promise<RouteGeoJSON | null> {
+  const teil = leseStreckenAdressteil(idOderSlug);
+  if (!teil) return null;
 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("routes_geojson")
     .select("*")
-    .eq("id", id)
+    .eq(teil.art, teil.wert)
     .single();
 
   if (error) {
     if (error.code === "PGRST116") return null;
+    if (teil.art === "slug" && fehltSlugSpalte(error)) return null;
     console.error("Strecke konnte nicht geladen werden:", error.message);
     throw new Error("Strecke konnte nicht geladen werden.");
   }

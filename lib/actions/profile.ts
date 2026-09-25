@@ -86,6 +86,7 @@ export async function searchProfiles(query: string): Promise<ProfileSearchResult
       .from("public_fahrten")
       .select("user_id, region")
       .in("user_id", ids)
+      .eq("ist_abschnitt", false)
       .order("datum", { ascending: false })
       .limit(500),
     Promise.all(

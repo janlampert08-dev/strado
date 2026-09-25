@@ -139,7 +139,10 @@ const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem("cornice-t
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="de"
+      // de-CH statt de: die Oberfläche schreibt Schweizer Hochdeutsch (ss statt
+      // ß, "Töff"), og:locale steht schon auf de_CH, und Suchmaschinen,
+      // Silbentrennung und Vorlesefunktion richten sich nach dieser Angabe.
+      lang="de-CH"
       // Das Inline-Script unten setzt data-theme ausserhalb von Reacts
       // Kontrolle — ohne dies würde React beim Hydratisieren fälschlich vor
       // einem Mismatch warnen.

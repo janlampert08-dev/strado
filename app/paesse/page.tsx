@@ -13,6 +13,7 @@ import { anzeigeFuerStatus } from "@/lib/passStatus";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { getOrigin } from "@/lib/utils/url";
 import { mitAnzahl } from "@/lib/format";
+import { OG_GEERBT } from "@/lib/openGraph";
 
 // Die öffentliche Passseite: der Katalog, sein heutiger Zustand, und — für
 // angemeldete Konten — die eigene Sammlung.
@@ -21,11 +22,27 @@ import { mitAnzahl } from "@/lib/format";
 // sinnvoll geteilt bekommen kann ("welche Pässe sind offen?"), und deshalb
 // indexierbar. Dynamisch gerendert, weil die Stempel am Konto hängen.
 
+// Titel und Beschreibung tragen die Wörter, mit denen danach gesucht wird
+// ("Pässe Schweiz offen", "Passstatus", "Wintersperre") — der alte Titel
+// "Pässe der Schweiz" beantwortete die Frage nicht, die jemand hier stellt.
+// Der eigene openGraph-Block ersetzt den generischen Layout-Titel
+// ("Strado — Für alle, die den Umweg nehmen.") in der Linkvorschau: diese
+// Seite ist neben der Streckenseite die, die geteilt wird. OG_GEERBT nimmt
+// Markenbild, locale und siteName mit (lib/openGraph.ts).
+const TITEL = "Pässe Schweiz: Welche sind offen? Passstatus heute – Strado";
+const BESCHREIBUNG =
+  "Alle Passstrassen der Schweiz mit aktuellem Status (offen, eingeschränkt, gesperrt), üblicher Wintersperre und geplanten Sperrungen.";
+
 export const metadata: Metadata = {
-  title: "Pässe der Schweiz – Strado",
-  description:
-    "Alle Passhöhen der Schweiz mit aktuellem Status, üblicher Wintersperre und geplanten Sperrungen — und welche du schon gefahren bist.",
+  title: TITEL,
+  description: BESCHREIBUNG,
   alternates: { canonical: "/paesse" },
+  openGraph: {
+    ...OG_GEERBT,
+    type: "website",
+    title: "Welche Pässe sind heute offen?",
+    description: BESCHREIBUNG,
+  },
 };
 
 export default async function PaessePage() {
@@ -82,9 +99,10 @@ export default async function PaessePage() {
         "@type": "TouristAttraction",
         name: eintrag.name,
         description: `${eintrag.hoeheM.toLocaleString("de-CH")} m · ${eintrag.kantone.join(" / ")}${eintrag.strecke ? "" : " · noch keine Strecke"}`,
-        url: eintrag.strecke
-          ? `${origin}/strecken/${eintrag.strecke.id}`
-          : `${origin}/paesse#${eintrag.id}`,
+        // Jeder Pass hat seit app/paesse/[id] eine eigene Seite; vorher
+        // zeigte die Adresse auf die Strecke oder, ohne Strecke, auf einen
+        // Anker dieser Liste.
+        url: `${origin}/paesse/${eintrag.id}`,
       },
     })),
   };
@@ -150,9 +168,9 @@ export default async function PaessePage() {
             <Card as="ul" className="divide-y divide-border">
               {gefolgt.map((eintrag) => {
                 const anzeige = anzeigeFuerStatus(eintrag.status, feedStand);
-                const ziel = eintrag.strecke
-                  ? `/strecken/${eintrag.strecke.id}`
-                  : `/paesse#${eintrag.id}`;
+                // Auf die Passseite, nicht mehr auf die Strecke: dort steht
+                // der Status mit Quelle, und die Strecke ist einen Tipp weiter.
+                const ziel = `/paesse/${eintrag.id}`;
                 return (
                   <li key={eintrag.id} className="druckbar relative flex items-center gap-3 px-4 py-3">
                     <div className="min-w-0 flex-1">

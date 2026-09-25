@@ -2,10 +2,12 @@
 
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getClientIp, isRateLimitedByKey } from "@/lib/rateLimit";
 import {
   abdruckVon,
   erzeugeGeheimnis,
+  istGastSperre,
   istGeheimnis,
   istTicketId,
   type FahrtStartTicket,
@@ -32,6 +34,57 @@ import { isValidUuid } from "@/lib/validation";
 const TICKETS_PRO_MINUTE = 20;
 const FENSTER_MS = 60_000;
 
+// Gasttickets je IP: zwei in fünf Minuten. Die Datenbank deckelt Gasttickets
+// global auf 10 pro Minute (0133) — lag die Bremse je IP darüber (20 pro
+// Minute, oben), konnte ein einziger Client den globalen Deckel dauerhaft
+// füllen, und jeder echte Gast bekam kein Ticket mehr (Fahrt ohne Wertung).
+// Re-Audit 2026-09-25, M2. Ein Mensch startet eine Aufzeichnung, allenfalls
+// eine zweite nach einem Neustart; mehr braucht ein Gast nicht. Angemeldete
+// Fahrer laufen nie durch diesen Zähler (siehe fahrtstartRpc).
+const GAST_TICKETS_PRO_FENSTER = 2;
+const GAST_FENSTER_MS = 5 * 60_000;
+
+// Ruft eine der beiden Fahrtstart-Funktionen auf — zuerst mit der Sitzung
+// des Aufrufers, für einen Gast notfalls über den Service-Role-Client.
+//
+// Warum der Umweg: seit 0133_gastticket_bremse.sql haben anon-Aufrufe kein
+// EXECUTE mehr auf fahrt_start_anlegen/fahrt_start_puls. Vorher waren beide
+// per PostgREST direkt mit dem öffentlichen Schlüssel erreichbar, an der
+// IP-Bremse hier vorbei — und fahrt_start_anlegen liess sich so ohne jede
+// wirksame Grenze mit Gasttickets füllen. Jetzt kommt ein Gast nur noch
+// durch diese Server Action an die Funktionen, also hinter
+// isRateLimitedByKey.
+//
+// Das ist eine dritte Aufrufstelle des Service-Role-Clients (siehe
+// lib/supabase/admin.ts und AGENTS.md → Supabase Rules). Sie ist bewusst
+// schmal: kein Tabellenzugriff, nur diese zwei SECURITY-DEFINER-Funktionen,
+// die ohnehin für jeden Gast gedacht sind. Der Service-Role-Aufruf trägt
+// keine Sitzung, auth.uid() ist dort NULL — die Funktion nimmt also genau den
+// Gastzweig, den ein anon-Aufruf auch genommen hätte, mit denselben Grenzen.
+// Angemeldete Fahrer laufen nie hier hindurch: authenticated behält EXECUTE,
+// der erste Aufruf gelingt, und ihr Ticket hängt an ihrem Konto.
+//
+// Warum "erst versuchen, dann ausweichen" statt vorher getUser() zu fragen:
+// getUser() ist ein Netzwerkaufruf gegen GoTrue (lib/supabase/server.ts), und
+// gepulst wird alle 10–20 Sekunden. So zahlt nur der Gast einen zweiten
+// Aufruf, und der Code funktioniert vor wie nach der Migration: solange anon
+// noch EXECUTE hat, gelingt schon der erste Aufruf.
+async function fahrtstartRpc(
+  funktion: "fahrt_start_anlegen" | "fahrt_start_puls",
+  args: Record<string, unknown>,
+  gastBremse?: () => boolean,
+): Promise<{ data: unknown; error: { code?: string } | null }> {
+  const supabase = await createClient();
+  const erster = await supabase.rpc(funktion, args);
+  if (!erster.error || !istGastSperre(erster.error)) {
+    return { data: erster.data, error: erster.error };
+  }
+  // Nur der Gastweg: eine eigene, engere Bremse vor dem Service-Role-Aufruf.
+  if (gastBremse?.()) return { data: null, error: { code: "gast_gebremst" } };
+  const zweiter = await createAdminClient().rpc(funktion, args);
+  return { data: zweiter.data, error: zweiter.error };
+}
+
 export type FahrtStartErgebnis =
   | { ok: true; ticket: FahrtStartTicket }
   | { ok: false };
@@ -43,9 +96,11 @@ export async function fahrtStartAnlegen(
   if (art !== "strecke" && art !== "frei") return { ok: false };
   if (streckeId != null && !isValidUuid(streckeId)) return { ok: false };
 
-  // Die Funktion ist auch für anon freigegeben — ohne Bremse könnte ein
-  // Skript beliebig viele Tickets anlegen. Teuer wird das nicht, aber es ist
-  // Schreibzugriff ohne Sitzung, und der gehört begrenzt.
+  // Gäste erreichen die Funktion seit 0133 nur noch über diesen Weg — ohne
+  // Bremse könnte ein Skript beliebig viele Tickets anlegen. Es ist
+  // Schreibzugriff ohne Sitzung, und der gehört begrenzt. Die Datenbank
+  // deckelt Gasttickets zusätzlich global (10 pro Minute, 120 pro Stunde),
+  // weil dieser Zähler je Serverinstanz im Speicher lebt.
   const ip = getClientIp(await headers());
   if (isRateLimitedByKey(`fahrtstart:${ip}`, TICKETS_PRO_MINUTE, FENSTER_MS)) {
     return { ok: false };
@@ -54,12 +109,15 @@ export async function fahrtStartAnlegen(
   const geheimnis = erzeugeGeheimnis();
   const abdruck = await abdruckVon(geheimnis);
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("fahrt_start_anlegen", {
-    p_abdruck: abdruck,
-    p_art: art,
-    p_strecke_id: streckeId ?? null,
-  });
+  const { data, error } = await fahrtstartRpc(
+    "fahrt_start_anlegen",
+    {
+      p_abdruck: abdruck,
+      p_art: art,
+      p_strecke_id: streckeId ?? null,
+    },
+    () => isRateLimitedByKey(`fahrtstart-gast:${ip}`, GAST_TICKETS_PRO_FENSTER, GAST_FENSTER_MS),
+  );
 
   // Fehlschlag ist kein Abbruch der Fahrt: ohne Ticket wird die Fahrt später
   // mit dauer_quelle = "trail" gespeichert und erscheint nur nicht in der
@@ -99,8 +157,7 @@ export async function fahrtStartPuls(
   const ip = getClientIp(await headers());
   if (isRateLimitedByKey(`fahrtpuls:${ip}`, PULSE_PRO_MINUTE, FENSTER_MS)) return false;
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("fahrt_start_puls", {
+  const { data, error } = await fahrtstartRpc("fahrt_start_puls", {
     p_id: ticket.id,
     p_abdruck: await abdruckVon(ticket.geheimnis),
     p_lat: lat,

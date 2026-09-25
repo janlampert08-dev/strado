@@ -1,16 +1,16 @@
 -- =====================================================================
--- NICHT EINSPIELEN, bevor das umgebaute deleteAccount() im
--- Produktivbetrieb läuft und einmal erfolgreich gelöscht hat.
---
--- Siehe supabase/migrations/ausstehend/README.md für die vollständige
--- Reihenfolge und die Prüfschritte. Kurzfassung: Diese Datei entzieht
--- authenticated das Recht, anonymize_own_account() aufzurufen. Läuft sie
--- vor dem Deployment, ruft die laufende Anwendung eine Funktion auf, die
--- sie nicht mehr ausführen darf, und die Kontolöschung bricht für alle.
---
--- Beim Einspielen mit der nächsten freien Nummer nach
--- supabase/migrations/ verschieben, damit sie im Ledger landet.
+-- 0129 — anonymize_own_account() für niemanden mehr aufrufbar
 -- =====================================================================
+--
+-- Eingespielt am 2026-09-25 (Supabase-Ledger: 0129_anonymize_own_account_grant_entziehen).
+-- Lag bis dahin in ausstehend/ mit der Vorbedingung "das umgebaute
+-- deleteAccount() läuft in Produktion". Geprüft am selben Tag: main ruft
+-- ausschliesslich admin.rpc("anonymize_account") auf (lib/actions/auth.ts),
+-- nirgends mehr anonymize_own_account. Eine Testlöschung hatte es noch nicht
+-- gegeben (0 anonymisierte Profile) — der Zweck der Vorbedingung, dass die
+-- laufende App die Funktion nicht mehr braucht, war damit direkt belegt.
+-- Danach gemessen: authenticated/anon ohne EXECUTE, service_role behält
+-- EXECUTE auf anonymize_account(uuid).
 
 -- Der dritte und letzte Schritt aus 0076: Nach dem Entzug gibt es genau
 -- einen Weg zur Anonymisierung — deleteAccount(), das die Identität per

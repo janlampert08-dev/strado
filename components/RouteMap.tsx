@@ -20,6 +20,7 @@ import { SIGNATUR_RUECKFALL, SIGNATUR_TOKEN, type SignatureKey } from "@/lib/sig
 import { MIN_ACCURACY_M } from "@/components/useRideRecorder";
 import type { KartenStrecke, TempolimitSegment } from "@/types/database";
 import Skeleton from "@/components/ui/Skeleton";
+import { streckenPfad } from "@/lib/streckenPfad";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 const ROUTES_SOURCE = "routes";
@@ -180,7 +181,9 @@ function toFeatureCollection(
       type: "Feature",
       id: route.id,
       geometry: route.geometry_geojson,
-      properties: { id: route.id, name: route.name, color: farbe(route.id) },
+      // pfad: das Ziel eines Klicks auf die Linie — mit Slug, wo die Zeile
+      // einen trägt (lib/streckenPfad.ts), sonst die UUID-Adresse.
+      properties: { id: route.id, pfad: streckenPfad(route), name: route.name, color: farbe(route.id) },
     })),
   };
 }
@@ -446,10 +449,48 @@ const NEU_EINPASSEN_MIN_HOEHE_PX = 200;
  */
 function fitPadding(map: mapboxgl.Map, basis: number, bottomInsetPx: number) {
   const hoehe = map.getContainer().clientHeight;
+  const { oben: obenVerdeckt, rechts: rechtsVerdeckt } = verdeckteRaender(map);
   const platz = Math.max(0, hoehe - MIN_SICHTHOEHE_PX);
-  const oben = Math.min(basis, platz);
+  const oben = Math.min(Math.max(basis, obenVerdeckt + UEBERLAGERUNG_LUFT_PX), platz);
   const unten = Math.min(basis + Math.max(0, bottomInsetPx), platz - oben);
-  return { top: oben, bottom: unten, left: basis, right: basis };
+  const breite = map.getContainer().clientWidth;
+  // Wie oben: nie so viel abziehen, dass keine Karte übrig bleibt.
+  const rechts = Math.min(
+    Math.max(basis, rechtsVerdeckt + UEBERLAGERUNG_LUFT_PX),
+    Math.max(basis, breite - basis - MIN_SICHTHOEHE_PX),
+  );
+  return { top: oben, bottom: unten, left: basis, right: rechts };
+}
+
+// Abstand zwischen einer Überlagerung und der eingepassten Linie.
+const UEBERLAGERUNG_LUFT_PX = 12;
+
+/**
+ * Was am oberen und rechten Rand über der Karte liegt, gemessen statt
+ * angenommen.
+ *
+ * Rechts: die eigenen Bedienelemente (Zoom, Kompass) in
+ * .mapboxgl-ctrl-top-right, 56 px breit. Das Einpassen rechnete mit 48 px
+ * Rand — auf der Streckenseite lief das Streckenende deshalb unter die
+ * Zoom-Knöpfe (gesehen am 2026-09-24 auf dem Ächerlipass: Ziel verdeckt).
+ *
+ * Oben: Elemente mit data-karten-ueberlagerung im nächsten
+ * [data-karten-rahmen] um die Karte — auf der Streckenseite die
+ * Ebenen-Auswahl (Standard/Tempolimits/Verkehr/3D), die auf schmalen
+ * Telefonen zweizeilig umbricht. Deshalb gemessen und nicht als feste Zahl.
+ */
+function verdeckteRaender(map: mapboxgl.Map): { oben: number; rechts: number } {
+  const container = map.getContainer();
+  const kasten = container.getBoundingClientRect();
+  const steuerung = container.querySelector<HTMLElement>(".mapboxgl-ctrl-top-right");
+  const rechts = steuerung ? steuerung.offsetWidth : 0;
+  let oben = 0;
+  const rahmen = container.closest<HTMLElement>("[data-karten-rahmen]");
+  rahmen?.querySelectorAll<HTMLElement>("[data-karten-ueberlagerung]").forEach((el) => {
+    const r = el.getBoundingClientRect();
+    if (r.height > 0) oben = Math.max(oben, r.bottom - kasten.top);
+  });
+  return { oben: Math.max(0, Math.round(oben)), rechts };
 }
 
 // Welche Strecken eingepasst wurden — Ids plus hervorgehobene Strecke, ohne
@@ -796,7 +837,7 @@ export default function RouteMap({
       attributionControl: false,
       cooperativeGestures: kooperativeGestenRef.current,
       // Ohne locale melden sich die Bedienelemente englisch ("Zoom in",
-      // "Reset bearing to north") in einem lang="de"-Dokument.
+      // "Reset bearing to north") in einem lang="de-CH"-Dokument.
       locale: {
         "AttributionControl.ToggleAttribution": "Quellenangabe ein-/ausblenden",
         "GeolocateControl.FindMyLocation": "Meinen Standort finden",
@@ -1229,8 +1270,10 @@ export default function RouteMap({
     });
     map.on("click", ROUTES_HIT_LAYER, (e) => {
       if (!routesClickableRef.current) return;
-      const id = e.features?.[0]?.properties?.id;
-      if (id) router.push(`/strecken/${id}`);
+      const eigenschaften = e.features?.[0]?.properties;
+      const pfad = eigenschaften?.pfad;
+      if (typeof pfad === "string" && pfad) router.push(pfad);
+      else if (eigenschaften?.id) router.push(streckenPfad({ id: String(eigenschaften.id) }));
     });
 
     // Jede von Hand begonnene Kamerabewegung — Ziehen, Zoomen, Drehen —

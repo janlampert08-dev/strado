@@ -64,6 +64,9 @@ export const getPublicProfile = cache(async function getPublicProfile(
       .from("public_fahrten")
       .select("*")
       .eq("user_id", userId)
+      // Streckenabschnitte (0150/0151) sind eigene Zeilen, erscheinen aber als
+      // Teil ihrer Fahrt — in einer Liste stünden sie sonst doppelt.
+      .eq("ist_abschnitt", false)
       .order("datum", { ascending: false })
       .order("completion_id", { ascending: false }),
     // Befahrene Passhöhen auf öffentlich geteilten Fahrten (0114). Die

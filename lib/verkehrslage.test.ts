@@ -89,6 +89,47 @@ describe("baueVerkehrseinschaetzung", () => {
     expect(e.quellen).toEqual(["Live: Mapbox"]);
   });
 
+  it("sagt 'stellenweise', wenn nur wenige Punkte betroffen sind", () => {
+    // Ächerlipass, 2026-09-24 23:30: 3 von 24 Punkten "severe".
+    const e = baueVerkehrseinschaetzung({
+      live: "severe",
+      liveAnteil: 3 / 24,
+      prognoseFaktor: null,
+      skala: SKALA,
+      hatPrognose: false,
+      hatGemeinschaft: false,
+      liveLaedt: false,
+    });
+    expect(e.titel).toBe("Verkehr gerade: stellenweise Stau");
+  });
+
+  it("nennt die Stufe der grösseren Strecke vor dem 'stellenweise'", () => {
+    const e = baueVerkehrseinschaetzung({
+      live: "severe",
+      liveAnteil: 0.1,
+      liveHaupt: "heavy",
+      prognoseFaktor: null,
+      skala: SKALA,
+      hatPrognose: false,
+      hatGemeinschaft: false,
+      liveLaedt: false,
+    });
+    expect(e.titel).toBe("Verkehr gerade: Stark, stellenweise Stau");
+  });
+
+  it("bleibt bei der Aussage für die ganze Strecke, wenn viele Punkte betroffen sind", () => {
+    const e = baueVerkehrseinschaetzung({
+      live: "heavy",
+      liveAnteil: 0.5,
+      prognoseFaktor: null,
+      skala: SKALA,
+      hatPrognose: false,
+      hatGemeinschaft: false,
+      liveLaedt: false,
+    });
+    expect(e.titel).toBe("Verkehr gerade: Stark");
+  });
+
   it("Prognose ohne Live sagt, dass der Live-Wert fehlt", () => {
     const e = baueVerkehrseinschaetzung({
       live: null,

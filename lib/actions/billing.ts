@@ -17,8 +17,16 @@ import {
   CHECKOUT_BESTAETIGEN_FENSTER_MS,
   CHECKOUT_BESTAETIGEN_LIMIT,
 } from "@/lib/abobremse";
-import { KULANZ_TAGE, leseAboZustand, saisonpassPreisId } from "@/lib/stripeWebhook";
 import {
+  BESTAND_VARIABLEN,
+  KULANZ_TAGE,
+  leseAboZustand,
+  preisIdsAus,
+  saisonpassPreisId,
+} from "@/lib/stripeWebhook";
+import { jahresErsparnisRappen, portalErlaubtWechselZu } from "@/lib/jahresWechsel";
+import {
+  abzulaufendeSessions,
   aktivesAboAusSession,
   checkoutIdempotencyKey,
   istEigeneBezahlteSession,
@@ -29,7 +37,9 @@ import {
   saisonpassAusSession,
   type ZahlungsVariante,
 } from "@/lib/stripeCheckout";
+import { checkoutErgebnis, zahlungsversuchDerSession, type CheckoutErgebnis } from "@/lib/checkoutErgebnis";
 import { datumCH } from "@/lib/format";
+import { zahlungNochOffen } from "@/lib/offeneZahlung";
 import { passZeitraum, saisonpassVerlaengerbar } from "@/lib/premiumAngebot";
 import {
   SAISONPASS_MONATE,
@@ -131,7 +141,13 @@ export type CheckoutSessionResult =
        *  Kaufseite beim Rendern gezeigt hat. Siehe VergebenerPreis. */
       preis: VergebenerPreis;
     }
-  | { ok: false; error: string };
+  | {
+      ok: false;
+      error: string;
+      /** Ein Weg weiter, wenn es einen gibt — etwa zur Abo-Seite, wenn für
+       *  ein bestehendes Abo eine Zahlung offen ist. */
+      link?: { href: string; label: string };
+    };
 
 // AboPlan und die Angebots-Typen stehen in lib/premiumLimits.ts, nicht
 // hier: eine Datei mit "use server" darf ausschliesslich async Functions
@@ -476,15 +492,53 @@ async function checkoutSessionMitCustomer(
   // Gezielt nach Status abfragen statt status "all" mit einer Seitengrenze:
   // ein Konto mit vielen beendeten Abos hätte sonst genau das laufende aus
   // der ersten Seite verdrängt, und daneben wäre ein zweites entstanden.
-  const [aktive, testphase, offeneSessions, geschichte] = await Promise.all([
-    getStripe().subscriptions.list({ customer: customerId, status: "active", limit: 1 }),
-    getStripe().subscriptions.list({ customer: customerId, status: "trialing", limit: 1 }),
-    getStripe().checkout.sessions.list({ customer: customerId, status: "open", limit: 20 }),
-    zugangsgeschichte(userId),
-  ]);
+  const [aktive, testphase, ueberfaellig, unbezahlt, offeneSessions, geschichte] =
+    await Promise.all([
+      getStripe().subscriptions.list({ customer: customerId, status: "active", limit: 1 }),
+      getStripe().subscriptions.list({ customer: customerId, status: "trialing", limit: 1 }),
+      getStripe().subscriptions.list({ customer: customerId, status: "past_due", limit: 10 }),
+      getStripe().subscriptions.list({ customer: customerId, status: "unpaid", limit: 10 }),
+      getStripe().checkout.sessions.list({ customer: customerId, status: "open", limit: 20 }),
+      zugangsgeschichte(userId),
+    ]);
 
   if (aktive.data.length > 0 || testphase.data.length > 0) {
     return { ok: false, error: "Du hast bereits ein aktives Premium-Abo." };
+  }
+
+  // Ein Abo mit fehlgeschlagener Zahlung lebt bei Stripe weiter: Stripe
+  // versucht die Rechnung erneut, und sobald die Person ihr Zahlungsmittel
+  // aktualisiert, wird nachbezahlt. Nach Ablauf der Kulanzfrist steht
+  // ist_premium aber auf false und die Kaufseite öffnet sich wieder — ein
+  // zweites Abo daneben hiesse doppelt zahlen, und mit zwei Abos kippt die
+  // einzeilige subscriptions-Tabelle bei der Kündigung des einen auch den
+  // Zugang des anderen. Also kein neues Abo, sondern der Weg zum alten.
+  //
+  // Nur solange Stripe dort noch einzieht: je nach Einstellung lässt Stripe
+  // ein Abo nach dem letzten Versuch als past_due/unpaid stehen, statt es zu
+  // kündigen. Ohne Frist wäre so ein Konto für immer vom Kauf ausgesperrt —
+  // auch vom Saisonpass. 60 Tage decken das längste Wiederholungsfenster ab,
+  // das Stripe anbietet (zwei Monate); ein älteres Abo wird nicht mehr
+  // nachbezahlt und steht einem neuen Kauf nicht im Weg.
+  //
+  // Die Frist steht in lib/offeneZahlung.ts, weil die Abo-Seite dieselbe
+  // Regel braucht: dort bekommt genau dieses Konto den Weg ins Portal.
+  const zieheNochEin = (abo: Stripe.Subscription) => {
+    const ende = abo.items?.data?.[0]?.current_period_end;
+    return zahlungNochOffen(abo.status, typeof ende === "number" ? ende * 1000 : null);
+  };
+  if (ueberfaellig.data.some(zieheNochEin) || unbezahlt.data.some(zieheNochEin)) {
+    return {
+      ok: false,
+      // Bis hierhin verwies der Satz auf die Zahlungserinnerung von Stripe,
+      // weil die Abo-Seite ohne aktives Premium auf die Kaufseite umleitete
+      // — der Weg ins Portal war für genau dieses Konto zu. Seit
+      // offeneZahlung (lib/premium.ts) steht er dort offen.
+      error:
+        "Für dein bisheriges Abo ist noch eine Zahlung offen. Aktualisiere dein Zahlungsmittel " +
+        "in der Aboverwaltung — dann läuft es ohne neues Abo weiter.",
+      link: { href: "/profil/einstellungen/abo", label: "Zahlungsmittel aktualisieren" },
+    };
   }
 
   // Ein zweiter Pass mitten in der Saison ist fast sicher ein Versehen —
@@ -510,16 +564,22 @@ async function checkoutSessionMitCustomer(
     modus,
     variante: planung.variante,
   });
-  if (offen) {
-    const offenerPreis = await vergebenerPreis(offen, plan, planung);
-    if (offenerPreis) {
-      return {
-        ok: true,
-        clientSecret: offen.client_secret!,
-        sessionId: offen.id,
-        preis: offenerPreis,
-      };
-    }
+  const offenerPreis = offen ? await vergebenerPreis(offen, plan, planung) : null;
+  const weiter = offen && offenerPreis ? offen : null;
+
+  // Alle ANDEREN offenen Sessions dieses Customers beenden, bevor die eine
+  // zurückgeht — sonst liessen sich zwei Pläne parallel bezahlen (Pass im
+  // einen Tab, Jahresabo im anderen). Siehe abzulaufendeSessions.
+  const sperre = await andereSessionsBeenden(offeneSessions.data, weiter?.id ?? null);
+  if (sperre) return { ok: false, error: sperre };
+
+  if (weiter && offenerPreis) {
+    return {
+      ok: true,
+      clientSecret: weiter.client_secret!,
+      sessionId: weiter.id,
+      preis: offenerPreis,
+    };
   }
 
   // Die Metadaten sind die einzige Stelle, an der später steht, was diese
@@ -587,20 +647,35 @@ async function checkoutSessionMitCustomer(
           payment_method_collection: "always" as const,
         };
 
-  const session = await getStripe().checkout.sessions.create(parameter, {
-    // Fängt den Doppelklick ab, bei dem zwei Anfragen die Prüfung oben
-    // gleichzeitig passieren: beide bekommen dann dieselbe Session zurück.
-    // Der Schlüssel trägt Customer, Preis-ID und Zahlungsart mit, damit ein
-    // geänderter Aufruf auch einen geänderten Schlüssel bekommt — siehe
-    // checkoutIdempotencyKey.
-    idempotencyKey: checkoutIdempotencyKey({
+  const schluessel = (zusatz: string | undefined) =>
+    checkoutIdempotencyKey({
       userId,
       plan: `${plan}:${planung.variante}${planung.trialEnde ? `:${planung.trialEnde}` : ""}`,
       customerId,
       preisId,
-      zusatz: schluesselZusatz,
-    }),
+      zusatz,
+    });
+
+  // Fängt den Doppelklick ab, bei dem zwei Anfragen die Prüfung oben
+  // gleichzeitig passieren: beide bekommen dann dieselbe Session zurück.
+  // Der Schlüssel trägt Customer, Preis-ID und Zahlungsart mit, damit ein
+  // geänderter Aufruf auch einen geänderten Schlüssel bekommt — siehe
+  // checkoutIdempotencyKey.
+  let session = await getStripe().checkout.sessions.create(parameter, {
+    idempotencyKey: schluessel(schluesselZusatz),
   });
+
+  // Seit andereSessionsBeenden kann die Antwort auf denselben Schlüssel eine
+  // inzwischen beendete Session sein: Jahr gewählt, dann Pass (die
+  // Jahres-Session läuft ab), dann in derselben Stunde wieder Jahr — Stripe
+  // gibt zum alten Schlüssel die alte, jetzt abgelaufene Session zurück, und
+  // das Formular stünde vor einer toten Kasse. Dann einmal mit frischem
+  // Schlüssel.
+  if (session.status !== "open") {
+    session = await getStripe().checkout.sessions.create(parameter, {
+      idempotencyKey: schluessel(randomUUID()),
+    });
+  }
 
   const clientSecret = session.client_secret;
   if (!clientSecret) {
@@ -613,6 +688,41 @@ async function checkoutSessionMitCustomer(
     return { ok: false, error: "Dieser Plan ist zurzeit nicht verfügbar." };
   }
   return { ok: true, clientSecret, sessionId: session.id, preis };
+}
+
+// Lässt die übrigen offenen Sessions ablaufen (abzulaufendeSessions in
+// lib/stripeCheckout.ts). null heisst: erledigt, weiter.
+//
+// Stripe verweigert das Ablaufen einer Session, deren Zahlung gerade läuft
+// (TWINT bestätigt noch, Bankverfahren in Bearbeitung). Genau dann darf hier
+// keine zweite Kasse aufgehen — sonst wäre die Doppelzahlung nur verschoben.
+// Nach einem Fehler wird deshalb nachgesehen: ist die Session inzwischen
+// ohnehin abgelaufen, ist nichts passiert; steht sie noch offen oder ist sie
+// eben bezahlt worden, bekommt die Person eine Meldung statt einer Kasse.
+async function andereSessionsBeenden(
+  offene: Stripe.Checkout.Session[],
+  behaltenId: string | null,
+): Promise<string | null> {
+  for (const session of abzulaufendeSessions(offene, behaltenId)) {
+    try {
+      await getStripe().checkout.sessions.expire(session.id);
+    } catch (err) {
+      const jetzt = await getStripe()
+        .checkout.sessions.retrieve(session.id)
+        .catch(() => null);
+      if (jetzt?.status === "expired") continue;
+      console.warn(
+        "Offene Checkout-Session liess sich nicht beenden — Kauf vorerst gesperrt",
+        { sessionId: session.id, status: jetzt?.status ?? "unbekannt" },
+        err,
+      );
+      return (
+        "Eine andere Zahlung läuft gerade. Warte einen Moment, bis sie abgeschlossen ist, " +
+        "und lade die Seite dann neu."
+      );
+    }
+  }
+  return null;
 }
 
 // Legt eine Checkout-Session an (siehe checkoutSessionMitCustomer). Aufrufer
@@ -888,6 +998,85 @@ export async function confirmCheckoutSession(sessionId: string): Promise<boolean
   return schreibeAboZustand(admin, subscription, abgerufenAm);
 }
 
+// Was aus einer Session geworden ist, wenn confirmCheckoutSession sie (noch)
+// nicht bestätigen konnte — bezahlt, unterwegs oder sicher gescheitert.
+// Aufgerufen von components/AboBestaetigung.tsx nach einem erfolglosen
+// Bestätigungsversuch; die Zuordnung selbst steht in lib/checkoutErgebnis.ts.
+//
+// Nur lesend: keine Datenbank, kein revalidatePath. Deshalb auch kein
+// Risiko, wenn es öfter läuft als nötig — nur Stripe-Abrufe, und die sind
+// wie beim Bestätigen gebremst (eigener Zähler, damit diese Nachfrage einer
+// bezahlten Person nie das Kontingent der Bestätigung wegnimmt).
+//
+// Im Zweifel "ausstehend": ein falsches "fehlgeschlagen" schickt jemanden
+// ein zweites Mal zahlen.
+export async function pruefeCheckoutErgebnis(
+  sessionId: string,
+): Promise<{ ergebnis: CheckoutErgebnis; plan: AboPlan | null }> {
+  const unklar = { ergebnis: "ausstehend" as const, plan: null };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return unklar;
+
+  if (
+    isRateLimitedByKey(
+      `checkout:ergebnis:${user.id}`,
+      CHECKOUT_BESTAETIGEN_LIMIT,
+      CHECKOUT_BESTAETIGEN_FENSTER_MS,
+    )
+  ) {
+    return unklar;
+  }
+
+  // Wie in confirmCheckoutSession: stripe_customer_id ist für authenticated
+  // nicht lesbar (0027), user.id stammt aus der verifizierten Session.
+  const { data: profile } = await createAdminClient()
+    .from("profiles")
+    .select("stripe_customer_id")
+    .eq("id", user.id)
+    .maybeSingle();
+  const customerId = profile?.stripe_customer_id;
+  if (!customerId) return unklar;
+
+  try {
+    const session = await getStripe().checkout.sessions.retrieve(sessionId, {
+      expand: ["payment_intent.latest_charge"],
+    });
+
+    // sessionId kommt aus der Adresszeile. Eine fremde Session bekommt
+    // dieselbe Antwort wie eine unbekannte — nichts über sie verraten.
+    if (idVonCustomer(session.customer) !== customerId) return unklar;
+
+    // Im Modus "subscription" steht der Versuch nicht an der Session, sondern
+    // als PaymentIntent am Customer (siehe lib/checkoutErgebnis.ts). Nur bei
+    // offener Session nötig: abgeschlossen und abgelaufen entscheidet die
+    // Session allein. Eine Minute Vorlauf gegen Uhrenabweichung; die
+    // Zuordnung läuft ohnehin über order_reference, nicht über die Zeit.
+    let kandidaten: Stripe.PaymentIntent[] = [];
+    if (session.status === "open" && !session.payment_intent) {
+      const liste = await getStripe().paymentIntents.list({
+        customer: customerId,
+        created: { gte: session.created - 60 },
+        limit: 10,
+        expand: ["data.latest_charge"],
+      });
+      kandidaten = liste.data;
+    }
+
+    const plan = session.metadata?.plan;
+    return {
+      ergebnis: checkoutErgebnis(session, zahlungsversuchDerSession(session, kandidaten)),
+      plan: plan === "monat" || plan === "jahr" || plan === "saisonpass" ? plan : null,
+    };
+  } catch (err) {
+    console.error("Checkout-Ergebnis nicht lesbar", { userId: user.id }, err);
+    return unklar;
+  }
+}
+
 // Übergangsweg aus dem vorherigen Payment-Intent-Fluss.
 //
 // Bis zur Umstellung auf die Checkout Sessions API zeigte die return_url auf
@@ -995,12 +1184,76 @@ export async function createPortalSession() {
 
   if (!profile?.stripe_customer_id) redirect("/profil");
 
-  const session = await getStripe().billingPortal.sessions.create({
-    customer: profile.stripe_customer_id,
-    return_url: `${siteUrl()}/profil`,
-  });
+  // Der Stripe-Aufruf kann scheitern, obwohl eine Customer-ID gespeichert
+  // ist: der Customer wurde in Stripe gelöscht, gehört zu einem anderen
+  // Konto (Test-/Altdaten) oder Stripe ist kurz nicht erreichbar. Bisher
+  // flog die Ausnahme ungefangen bis auf die Fehlerseite (live gesehen:
+  // "No such customer" für ein Konto mit Premium). Jetzt zurück auf die
+  // Abo-Seite mit einem Hinweis, der sagt, was zu tun ist.
+  // redirect() steht bewusst ausserhalb des try: es wirft selbst, und ein
+  // catch drumherum würde den gewollten Sprung als Fehler verschlucken.
+  let portalUrl: string | null = null;
+  try {
+    const session = await getStripe().billingPortal.sessions.create({
+      customer: profile.stripe_customer_id,
+      return_url: `${siteUrl()}/profil`,
+    });
+    portalUrl = session.url;
+  } catch (err) {
+    console.error("Kundenportal liess sich nicht öffnen", err);
+  }
 
-  redirect(session.url);
+  if (!portalUrl) redirect("/profil/einstellungen/abo?portal=fehler");
+  redirect(portalUrl);
+}
+
+// Der leise Hinweis auf der Abo-Seite: wer noch ein Monatsabo zum alten
+// Preis zahlt (BESTAND_VARIABLEN.monat), spart mit dem Jahresabo. Nur
+// lesend, und nur, wenn der Wechsel im Kundenportal tatsächlich angeboten
+// wird — siehe portalErlaubtWechselZu. null heisst: keinen Hinweis zeigen.
+//
+// Über den an die Session gebundenen Client, unter RLS: Status, Preis-ID und
+// Kündigungsstand sind für die eigene Zeile freigegeben (0063) — dieselben
+// Spalten, die getPremiumStatus liest. Kein Service-Role-Client nötig.
+//
+// Jeder Fehler endet in null: der Hinweis ist Beiwerk, die Abo-Seite darf
+// an ihm nicht scheitern.
+export async function jahresaboWechselHinweis(): Promise<{
+  ersparnisRappen: number;
+  waehrung: string;
+} | null> {
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  try {
+    const supabase = await createClient();
+    const { data: abo } = await supabase
+      .from("subscriptions")
+      .select("status, price_id, cancel_at_period_end")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!abo || abo.status !== "active" || abo.cancel_at_period_end) return null;
+    if (!abo.price_id || !preisIdsAus(BESTAND_VARIABLEN.monat).includes(abo.price_id)) return null;
+
+    const jahr = jahresPreis();
+    if (!jahr.preisId) return null;
+
+    const [konfigurationen, monatBetrag, jahrBetrag] = await Promise.all([
+      getStripe().billingPortal.configurations.list({ is_default: true, active: true, limit: 1 }),
+      betrag({ variable: "subscriptions.price_id", preisId: abo.price_id }),
+      betrag(jahr),
+    ]);
+
+    if (!portalErlaubtWechselZu(konfigurationen.data[0] ?? null, jahr.preisId)) return null;
+
+    const ersparnis = jahresErsparnisRappen(monatBetrag, jahrBetrag);
+    if (ersparnis === null || !jahrBetrag) return null;
+    return { ersparnisRappen: ersparnis, waehrung: jahrBetrag.waehrung };
+  } catch (err) {
+    console.error("Jahresabo-Hinweis nicht bestimmbar", err);
+    return null;
+  }
 }
 
 // Kürzt eine Nutzereingabe fürs Log auf eine Zeile: Steuerzeichen raus,

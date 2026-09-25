@@ -29,6 +29,52 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Stand 2026-09-25 (abends): 0130–0140
+
+**Eingespielt** (per `apply_migration`, jeweils danach gemessen):
+
+- **0139** RLS aufgeräumt — 0 nackte `auth.uid()`, 0 doppelte permissive
+  Policies; anon sieht dieselben Zeilen wie vorher (32 Strecken, Bewertungen,
+  0 Fahrten direkt, 4 freigegebene Fahrzeuge).
+- **0131** Serverzeit-Plausibilität — beide bestehenden server-Segmente
+  bestehen die neue Prüfung (fahrt_pulse_pruefen = NULL).
+- **0140** Streckentexte Ächerli/Raten — je genau eine Zeile geändert.
+- **0137** GeoJSON vorberechnet — routes_geojson 0.16 ms statt ~50 ms für
+  alle öffentlichen Strecken (warm gemessen).
+- **0138** strecken_paesse als Tabelle — anon sieht 21 Zuordnungen, wie
+  der alte Live-Join.
+- **0130** Slugs — **nach 0137** eingespielt; die View-Definition in der
+  Datei liest deshalb die 0137-Spalten. 32 öffentliche Strecken mit Slug,
+  0 private.
+- **0135** premium_gratis_bis() — anon ohne EXECUTE.
+
+**Bewusst noch NICHT eingespielt — erst nach der nächsten Promotion
+staging → main**, weil der heute auf app.strado.ch laufende Code sonst
+bricht (eine Datenbank für beide):
+
+- **0132** Privatzonen-Radius verbergen — alter Code liest die Spalte auf der
+  Einstellungsseite.
+- **0133** Gastticket-Bremse — alter Code ruft die Ticket-RPCs für Gäste als
+  anon; ohne EXECUTE bräche die Gast-Aufzeichnung.
+- **0134** Rechte nachziehen — alter Code liest `is_moderator` direkt;
+  Moderation und Staging-Gate wären zu.
+
+## Stand 2026-09-25: 0126–0129 eingespielt, 0115–0122 gemessen
+
+- **0126–0129** am 2026-09-25 per `apply_migration` eingespielt, Ledger-Namen
+  = Dateinamen. Danach gemessen: beide `*_foto_im_eigenen_ordner`-Constraints
+  validiert; Buckets avatars 4 MB / route-photos 8 MB; 9 von 9 Indizes aus 0128;
+  `anonymize_own_account()` ohne EXECUTE für authenticated/anon, service_role
+  behält `anonymize_account(uuid)`.
+- **0115–0120, 0122** stehen NICHT unter ihrem Dateinamen im Ledger, sind aber
+  in der Produktion: am 2026-09-25 an den Objekten geprüft (tempoprofil,
+  route_kandidaten_in_box, geometry_uebersicht, fahrt_pulse +
+  segment_fenster_*, route_completions_route_zeit_idx, hoehen_quelle,
+  fahrt_start_ticket_gehort und dessen Aufruf in save_free_ride_with_segments).
+- **0058** bleibt uneingespielt. Es erteilte authenticated den Grant auf
+  `anonymize_own_account()` erneut (0058:120) — wer es nachzieht, macht 0129
+  rückgängig und muss den revoke danach wiederholen.
+
 ## Angewendet: 0123_ranglisten_ohne_abschnitte (gemessen 2026-09-24)
 
 > **Stand am 2026-09-24 korrigiert.** Diese Überschrift sagte bis dahin „Noch

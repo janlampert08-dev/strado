@@ -37,6 +37,41 @@ export function worstCongestion(levels: CongestionLevel[]): CongestionLevel | nu
   return levels.reduce((worst, level) => (SEVERITY[level] > SEVERITY[worst] ? level : worst));
 }
 
+/**
+ * Anteil der Stichprobenpunkte (mit Daten), die mindestens `stufe` zeigen.
+ *
+ * Wozu: worstCongestion macht aus EINEM roten Punkt eine Aussage über die
+ * ganze Strecke. Mapbox liefert je Punkt zwei Linien — eine pro
+ * Fahrtrichtung —, und auf steilen, einspurigen Strassen steht die
+ * Bergauf-Richtung oft auf "severe", weil dort schlicht langsam gefahren
+ * wird. Gemessen am 2026-09-24 um 23:30 auf dem Ächerlipass: 3 von 24
+ * Punkten "severe" (je nur in einer Richtung), der Rest "low" — und die
+ * Seite sagte "Verkehr gerade: Stau". Mit dem Anteil kann die Überschrift
+ * "stellenweise" sagen, statt einen Stau für die ganze Strecke zu melden.
+ */
+/**
+ * Die stärkste Stufe, die mindestens `ab` der Punkte (mit Daten) erreichen —
+ * der Zustand der Strecke als Ganzes, im Unterschied zum schlimmsten
+ * einzelnen Punkt (worstCongestion). null ohne Daten.
+ */
+export function hauptStufe(
+  levels: (CongestionLevel | null)[],
+  ab: number,
+): CongestionLevel | null {
+  if (!levels.some((l) => l !== null)) return null;
+  const absteigend: CongestionLevel[] = ["severe", "heavy", "moderate", "low"];
+  return absteigend.find((stufe) => anteilMindestens(levels, stufe) >= ab) ?? "low";
+}
+
+export function anteilMindestens(
+  levels: (CongestionLevel | null)[],
+  stufe: CongestionLevel,
+): number {
+  const mitDaten = levels.filter((l): l is CongestionLevel => l !== null);
+  if (mitDaten.length === 0) return 0;
+  return mitDaten.filter((l) => SEVERITY[l] >= SEVERITY[stufe]).length / mitDaten.length;
+}
+
 // Etwa ein Abfragepunkt pro 800m — genug, um Stauabschnitte sichtbar entlang
 // der Strecke einzufärben, ohne bei langen Alpenpässen Hunderte parallele
 // Tilequery-Aufrufe auszulösen. Eine Stelle (beide Detailkarten fragen

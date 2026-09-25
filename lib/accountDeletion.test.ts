@@ -81,7 +81,9 @@ function currentAnonymizeFunctionBody(): string {
 // Löschung wären genau die Sorte Duplikat, die auseinanderläuft.
 function ownAccountWrapperBody(): string {
   const file = migrationFiles()
-    .filter((f) => readMigration(f).includes("function public.anonymize_own_account()"))
+    // "create or replace", nicht bloss der Funktionsname: 0129 nennt die
+    // Funktion in einem revoke/comment und ist die jüngste Datei damit.
+    .filter((f) => readMigration(f).includes("create or replace function public.anonymize_own_account()"))
     .pop();
   expect(file, "Migration mit anonymize_own_account()").toBeDefined();
 

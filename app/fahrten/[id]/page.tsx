@@ -42,6 +42,16 @@ import { motorklasseLabel } from "@/lib/motorklassen";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
 import AbschnittTabs from "@/components/ui/AbschnittTabs";
 import { buttonVariants, textAktionClassName } from "@/components/ui/Button";
+import { streckenPfad } from "@/lib/streckenPfad";
+
+// Eine Fahrt gehört einer Person: Name, Zeit und bei freien Fahrten der
+// Startort. Fahrer-Profile stehen aus genau diesem Grund nicht im Index
+// (app/fahrer/[id]/page.tsx, app/sitemap.ts) — ihre einzelnen Fahrten waren
+// es bisher schon, samt Namen im Titel. noindex hält sie heraus, follow lässt
+// den Crawler über sie weiter zur öffentlichen Streckenseite, die ranken
+// soll. Die Linkvorschau (openGraph) bleibt unberührt: sie ist der Grund,
+// warum Fahrten geteilt werden, und wirkt unabhängig vom Index.
+const FAHRT_ROBOTS: Metadata["robots"] = { index: false, follow: true };
 
 export async function generateMetadata({
   params,
@@ -51,7 +61,7 @@ export async function generateMetadata({
   const { id } = await params;
   const user = await getCurrentUser();
   const completion = await getCompletionDetail(id, user?.id ?? null);
-  if (!completion) return { title: "Fahrt – Strado" };
+  if (!completion) return { title: "Fahrt – Strado", robots: FAHRT_ROBOTS };
 
   const fahrer = completion.displayName ?? "Fahrer";
 
@@ -91,11 +101,12 @@ export async function generateMetadata({
       // Chats und Bios — oft mit angehängten Parametern. Der Inhalt bleibt
       // derselbe.
       alternates: { canonical: `/fahrten/${id}` },
+      robots: FAHRT_ROBOTS,
     };
   }
 
   const route = completion.routeId ? await getRoute(completion.routeId) : null;
-  if (!route) return { title: "Fahrt – Strado" };
+  if (!route) return { title: "Fahrt – Strado", robots: FAHRT_ROBOTS };
 
   const beschreibung = kennzahlen
     ? `${fahrer} ist ${kennzahlen} auf der Strecke ${route.name} gefahren. Auf Strado ansehen.`
@@ -115,6 +126,7 @@ export async function generateMetadata({
     // Chats und Bios — oft mit angehängten Parametern. Der Inhalt bleibt
     // derselbe.
     alternates: { canonical: `/fahrten/${id}` },
+    robots: FAHRT_ROBOTS,
   };
 }
 
@@ -326,7 +338,7 @@ export default async function FahrtDetailPage({
                   shareUrl={
                     completion.istOeffentlich || !route
                       ? `/fahrten/${completion.id}`
-                      : `/strecken/${route.id}`
+                      : streckenPfad(route)
                   }
                 />
               )}
@@ -364,7 +376,7 @@ export default async function FahrtDetailPage({
               </h1>
             ) : (
               <Link
-                href={`/strecken/${route!.id}`}
+                href={streckenPfad(route!)}
                 className="group inline-flex items-baseline gap-1.5"
               >
                 <h1 className="text-display font-semibold tracking-tight group-hover:text-accent-ink">
@@ -628,7 +640,7 @@ export default async function FahrtDetailPage({
                 </Link>
                 {!istFreieFahrt && route ? (
                   <Link
-                    href={`/strecken/${route.id}`}
+                    href={streckenPfad(route)}
                     className={buttonVariants({ variant: "secondary", size: "md" })}
                   >
                     Strecke ansehen
@@ -647,7 +659,7 @@ export default async function FahrtDetailPage({
               Fahrt. Zwei Text-Handlungen, kein neuer Baustein. */}
           <nav aria-label="Weiter" className="flex flex-wrap gap-x-5 gap-y-2 border-t border-border pt-4">
             {!istFreieFahrt && route ? (
-              <Link href={`/strecken/${route.id}`} className={textAktionClassName()}>
+              <Link href={streckenPfad(route)} className={textAktionClassName()}>
                 Strecke ansehen →
               </Link>
             ) : (

@@ -4,6 +4,7 @@ import {
   MAX_FOTOS_PREMIUM,
   MAX_OFFLINE_STRECKEN_GRATIS,
   MAX_PRIVATE_STRECKEN_GRATIS,
+  kaufseiteOffen,
   maxFotosProFahrt,
 } from "./premiumLimits";
 
@@ -58,5 +59,26 @@ describe("maxFotosProFahrt", () => {
   // anzuwenden.
   it("ist eine Obergrenze fürs Hochladen, nicht fürs Anzeigen", () => {
     expect(maxFotosProFahrt(false)).toBeLessThan(MAX_FOTOS_PREMIUM);
+  });
+});
+
+describe("kaufseiteOffen", () => {
+  it("öffnet die Kaufseite ohne Premium", () => {
+    expect(kaufseiteOffen({ aktiv: false, quelle: null })).toBe(true);
+  });
+
+  it("öffnet sie mit einem Saisonpass, der von selbst ausläuft (0110)", () => {
+    expect(kaufseiteOffen({ aktiv: true, quelle: "saisonpass" })).toBe(true);
+  });
+
+  it("öffnet sie mit Gratis-Premium aus dem Signup-Link (0135)", () => {
+    // Der Anlass: bis 0135 lief das unter "manuell", und genau die Konten,
+    // die der Link zum Kauf führen soll, wurden auf /profil umgeleitet.
+    expect(kaufseiteOffen({ aktiv: true, quelle: "gratis" })).toBe(true);
+  });
+
+  it("schickt ein laufendes Abo und von Hand gesetztes Premium weg", () => {
+    expect(kaufseiteOffen({ aktiv: true, quelle: "abo" })).toBe(false);
+    expect(kaufseiteOffen({ aktiv: true, quelle: "manuell" })).toBe(false);
   });
 });

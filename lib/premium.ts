@@ -2,6 +2,7 @@ import { cache } from "react";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { BESTAND_VARIABLEN, preisIdsAus } from "@/lib/stripeWebhook";
 import { passZeitraum } from "@/lib/premiumAngebot";
+import { zahlungNochOffen } from "@/lib/offeneZahlung";
 import { throwOnQueryError } from "@/lib/queryError";
 import {
   MAX_PRIVATE_STRECKEN_GRATIS,
@@ -33,6 +34,8 @@ const KEIN_PREMIUM: PremiumStatus = {
   testphaseBis: null,
   inKulanzfrist: false,
   kulanzBis: null,
+  offeneZahlung: false,
+  gratisBis: null,
 };
 
 function datum(wert: string | null): Date | null {
@@ -187,10 +190,31 @@ export const getPremiumStatus = cache(async function getPremiumStatus(): Promise
     };
   }
 
+  // Premium ohne laufendes Abo und ohne laufenden Pass: entweder das
+  // Gratis-Premium aus dem Signup-Link (0121) oder von Hand gesetzt. Beides
+  // sah bis 0135 gleich aus ("manuell"), und das sperrte die Promo-Konten
+  // aus den Kaufseiten aus — genau die, die der Link zum Kauf führen soll.
+  //
+  // Nur in diesem Fall gefragt, nicht bei jedem Aufruf: für alle anderen
+  // Konten kostet das keinen zusätzlichen Weg zur Datenbank.
+  if (aktiv && !aboLaeuft) {
+    const gratisBis = await gratisPremiumBis(supabase);
+    if (gratisBis) {
+      return {
+        ...KEIN_PREMIUM,
+        aktiv,
+        quelle: "gratis",
+        laeuftAbAm: gratisBis,
+        periodeEndetAm: gratisBis,
+        gratisBis,
+      };
+    }
+  }
+
   if (!abo) {
-    // Premium ohne Abo-Zeile und ohne Pass: von Hand gesetzt, oder die Zeile
-    // wurde bei einer Kontolöschung entfernt. Kein Plan, kein Periodenende —
-    // aber der Zugang gilt.
+    // Premium ohne Abo-Zeile, ohne Pass und ohne Gratis: von Hand gesetzt,
+    // oder die Zeile wurde bei einer Kontolöschung entfernt. Kein Plan, kein
+    // Periodenende — aber der Zugang gilt.
     return { ...KEIN_PREMIUM, aktiv, quelle: aktiv ? "manuell" : null };
   }
 
@@ -210,8 +234,38 @@ export const getPremiumStatus = cache(async function getPremiumStatus(): Promise
     testphaseBis: abo.status === "trialing" ? periodeEndetAm : null,
     inKulanzfrist,
     kulanzBis: inKulanzfrist ? kulanzBis : null,
+    // Dieselbe Regel wie die Kaufsperre in lib/actions/billing.ts: wer dort
+    // wegen einer offenen Zahlung abgewiesen wird, muss hier den Weg ins
+    // Portal finden (app/profil/einstellungen/abo).
+    offeneZahlung: zahlungNochOffen(abo.status, periodeEndetAm ? periodeEndetAm.getTime() : null),
+    gratisBis: null,
   };
 });
+
+// Ende des eigenen, gerade laufenden Gratis-Premiums — oder null.
+//
+// premium_gratis selbst ist für authenticated weder lesbar noch per Policy
+// freigegeben (0121); premium_gratis_bis() (0135) gibt als SECURITY
+// DEFINER genau diese eine Zahl für auth.uid() heraus. Kein
+// Service-Role-Client: dieselbe Abwägung wie oben bei getPremiumStatus.
+//
+// Anders als die drei Abfragen oben wirft ein Fehler hier NICHT. Das
+// Gratis-Premium trägt den Zugang nicht (der hängt an ist_premium), es
+// benennt ihn nur — und fällt die Abfrage aus, ist das bisherige Verhalten
+// ("manuell": Zugang gilt, keine Kaufseite) die sichere Seite. Vor allem
+// aber läuft der Code damit schon, bevor 0135 eingespielt ist: die
+// unbekannte Funktion landet genau hier.
+async function gratisPremiumBis(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<Date | null> {
+  const { data, error } = await supabase.rpc("premium_gratis_bis");
+  if (error) {
+    console.warn("Gratis-Premium nicht lesbar (0135 eingespielt?):", error.message);
+    return null;
+  }
+  const bis = datum(typeof data === "string" ? data : null);
+  return bis && bis.getTime() > Date.now() ? bis : null;
+}
 
 /** Kurzform für Aufrufer, die nur das Ja/Nein brauchen. */
 export async function istPremium(): Promise<boolean> {

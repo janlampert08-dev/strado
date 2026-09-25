@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Header from "@/components/Header";
 import ExploreView from "@/components/ExploreView";
-import { getRoutes } from "@/lib/routes";
+import { getFreigegebeneStreckenIds, getRoutes } from "@/lib/routes";
 import { getBewertungen } from "@/lib/ratings";
 import { getPassZustaendeJeStrecke } from "@/lib/paesse";
 import { getCurrentUser } from "@/lib/supabase/server";
+import { getOrigin } from "@/lib/utils/url";
 import { BESCHREIBUNG, SLOGAN } from "@/lib/constants";
+import { streckenPfad } from "@/lib/streckenPfad";
 
 // Die wichtigste Seite der App hatte bisher keine eigene Metadata und erbte
 // nur "Strado" aus dem Layout — für Suchmaschinen also einen Titel ohne
@@ -47,9 +49,16 @@ export default async function Home() {
   // <Header /> ruft es auf derselben Anfrage ohnehin auf — der Aufruf hier
   // kostet also keinen zusätzlichen GoTrue-Roundtrip. Parallel zu
   // getRoutes(), weil beide voneinander unabhängig sind.
-  const [{ routes, error }, user] = await Promise.all([getRoutes(), getCurrentUser()]);
-
-  // Erst danach, weil die Abfrage die IDs der geladenen Strecken braucht.
+  //
+  // Bewertungen und Passzustand laufen in derselben Welle mit. Sie brauchen
+  // nur die IDs der freigegebenen Strecken, und die liefert eine eigene,
+  // schmale Abfrage (getFreigegebeneStreckenIds) schneller als getRoutes()
+  // mit seinen Geometrien. Bis 2026-09-25 warteten beide auf getRoutes() und
+  // hängten damit eine zweite (beim Passzustand: dritte und vierte)
+  // Datenbank-Runde hinten an. Dieselbe Menge ist es, weil beide Abfragen
+  // auf status_ok filtern; weicht sie in einem Moment ab (eine Strecke wird
+  // genau dazwischen freigegeben), fehlt einer Zeile höchstens der Stern.
+  //
   // Eine Abfrage für die ganze Liste, nicht eine pro Zeile — die Begründung
   // steht im Kopf von lib/bewertungen.ts.
   //
@@ -64,17 +73,66 @@ export default async function Home() {
   // die erste Frage, und sie soll ohne Öffnen der Strecke beantwortet sein.
   // "Offen" bleibt ohne Abzeichen, sonst trüge fast jede Zeile eins.
   // Beide Abfragen hängen am selben Streckenbestand, aber nicht aneinander.
-  const [bewertungenPaare, passZustaende] = await Promise.all([
-    getBewertungen(routes.map((r) => r.id)),
-    getPassZustaendeJeStrecke(routes.map((r) => r.id)),
-  ]);
+  const [{ routes, signaturen, error }, user, origin, [bewertungenPaare, passZustaende]] =
+    await Promise.all([
+      getRoutes(),
+      getCurrentUser(),
+      getOrigin(),
+      getFreigegebeneStreckenIds().then((ids) =>
+        Promise.all([getBewertungen(ids), getPassZustaendeJeStrecke(ids)]),
+      ),
+    ]);
   const bewertungen = Object.fromEntries(bewertungenPaare);
+
+  // Strukturierte Daten der Startseite — bisher die einzige Hauptseite ohne.
+  // WebSite verweist per @id auf die Anbieterin, die die Info-Seite
+  // (www.strado.ch, stradoinfo/index.html) beschreibt, statt sie hier ein
+  // zweites Mal mit eigenen Angaben zu behaupten. Die ItemList nennt die
+  // Strecken, die auch sichtbar in der Liste stehen: getRoutes() liefert nur
+  // freigegebene (status_ok), und private Strecken sind nie freigegeben —
+  // geprüft am 2026-09-24, 2 private, beide status_ok = false.
+  const strukturierteDaten = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": `${origin}/#website`,
+        url: `${origin}/`,
+        name: "Strado",
+        inLanguage: "de-CH",
+        publisher: { "@id": "https://www.strado.ch/#anbieterin" },
+      },
+      {
+        "@type": "ItemList",
+        name: "Strecken auf Strado",
+        numberOfItems: routes.length,
+        itemListElement: routes.map((route, index) => ({
+          "@type": "ListItem",
+          position: index + 1,
+          url: `${origin}${streckenPfad(route)}`,
+          name: route.name,
+        })),
+      },
+    ],
+  };
 
   return (
     <div className="flex h-dvh flex-col">
+      {/* Streckennamen sind Moderationsinput — escaped wie auf der
+          Streckenseite, ein "</script>" im Namen beendete sonst den Block. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(strukturierteDaten)
+            .replace(/</g, "\\u003c")
+            .replace(/>/g, "\\u003e")
+            .replace(/&/g, "\\u0026"),
+        }}
+      />
       <Header />
       <ExploreView
         routes={routes}
+        signaturen={signaturen}
         bewertungen={bewertungen}
         passZustaende={Object.fromEntries(passZustaende)}
         loadError={error}

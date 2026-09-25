@@ -66,7 +66,13 @@ export default async function PremiumAbschlussPage({
           scrollenden Container lässt sich am oberen Rand nicht mehr
           erreichen — dieselbe Falle wie auf der Kaufseite. */}
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-4 overflow-y-auto px-5 py-8 sm:px-6">
-        {status.aktiv ? (
+        {/* Mit Gratis-Premium (0135) ist aktiv schon VOR der Zahlung true.
+            Ohne die Ausnahme sähe diese Person den Gruss, ohne dass ihre
+            Zahlung je bestätigt wurde — und nach einer abgelehnten TWINT-
+            Zahlung ein "Willkommen" für einen Kauf, den es nicht gibt. Die
+            Bestätigung läuft deshalb wie ohne Premium; nach dem Erfolg
+            holt router.refresh() den Zustand mit quelle "abo"/"saisonpass". */}
+        {status.aktiv && status.quelle !== "gratis" ? (
           <PremiumWillkommen status={status} />
         ) : (
           <AboBestaetigung sitzung={sitzung ?? null} abo={abo ?? null} />

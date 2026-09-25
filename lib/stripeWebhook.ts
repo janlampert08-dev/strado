@@ -53,7 +53,16 @@ export function leseAboZustand(subscription: Stripe.Subscription): AboZustand | 
       typeof position?.current_period_end === "number"
         ? new Date(position.current_period_end * 1000).toISOString()
         : null,
-    cancelAtPeriodEnd: subscription.cancel_at_period_end,
+    // Eine Kündigung steht bei Stripe an ZWEI Stellen, je nach Weg: das
+    // klassische cancel_at_period_end=true, oder — bei flexiblem
+    // Abrechnungsmodus, den das Kundenportal (mode "at_period_end") nutzt —
+    // ein gesetztes cancel_at bei cancel_at_period_end=false. Nur das erste
+    // zu lesen hiess: ein über das Portal gekündigtes Abo stand in der
+    // Datenbank weiter als verlängernd, und PremiumCard sagte der Person
+    // direkt nach ihrer Kündigung "verlängert sich am …" (live gesehen am
+    // 2026-09-24, Abo gekündigt am 19.09. mit cancel_at 16.10.).
+    cancelAtPeriodEnd:
+      subscription.cancel_at_period_end === true || typeof subscription.cancel_at === "number",
   };
 }
 

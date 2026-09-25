@@ -12,7 +12,8 @@ import type {
   StripeCheckoutElementsSdkOptions,
 } from "@stripe/stripe-js";
 import { getStripe } from "@/lib/stripeClient";
-import Button from "@/components/ui/Button";
+import Link from "next/link";
+import Button, { buttonVariants } from "@/components/ui/Button";
 import Skeleton from "@/components/ui/Skeleton";
 import {
   createCheckoutSession,
@@ -608,7 +609,7 @@ type SessionState =
   | { status: "bereitzustarten" }
   | { status: "laedt" }
   | { status: "bereit"; clientSecret: string; sessionId: string; preis: VergebenerPreis }
-  | { status: "fehler"; text: string };
+  | { status: "fehler"; text: string; link?: { href: string; label: string } };
 
 export default function PremiumCheckoutForm({
   plan,
@@ -641,7 +642,7 @@ export default function PremiumCheckoutForm({
             sessionId: result.sessionId,
             preis: result.preis,
           }
-        : { status: "fehler", text: result.error };
+        : { status: "fehler", text: result.error, link: result.link };
     } catch (err) {
       melde("", "vorbereitung", err);
       return {
@@ -684,9 +685,18 @@ export default function PremiumCheckoutForm({
         <p role="alert" className="text-sm text-danger">
           {state.text}
         </p>
-        <Button type="button" variant="secondary" onClick={starten}>
-          Noch einmal versuchen
-        </Button>
+        {/* Gibt der Server einen Weg weiter mit (offene Zahlung → Abo-Seite),
+            ist das die Handlung — "noch einmal versuchen" liefe gegen
+            dieselbe Sperre. */}
+        {state.link ? (
+          <Link href={state.link.href} className={buttonVariants()}>
+            {state.link.label}
+          </Link>
+        ) : (
+          <Button type="button" variant="secondary" onClick={starten}>
+            Noch einmal versuchen
+          </Button>
+        )}
       </div>
     );
   }

@@ -22,6 +22,24 @@ describe("istStagingDeployment", () => {
   });
 });
 
+describe("istStagingDeployment für Vorschau-Deployments", () => {
+  const mit = (ref: string | undefined, vercelEnv: string | undefined) =>
+    ({ VERCEL_GIT_COMMIT_REF: ref, VERCEL_ENV: vercelEnv }) as unknown as NodeJS.ProcessEnv;
+
+  it("sperrt jede Vorschau, nicht nur die des staging-Branches", () => {
+    // Die Branch-Adressen (strado-git-<branch>-….vercel.app) sind
+    // vorhersagbar und liefen ungeschützt gegen die Produktions-DB.
+    expect(istStagingDeployment(mit("staging-irgendwas", "preview"))).toBe(true);
+    expect(istStagingDeployment(mit("dependabot/npm_and_yarn/next-16.3.5", "preview"))).toBe(true);
+  });
+
+  it("lässt Produktion und lokale Entwicklung frei", () => {
+    expect(istStagingDeployment(mit("main", "production"))).toBe(false);
+    expect(istStagingDeployment(mit(undefined, undefined))).toBe(false);
+    expect(istStagingDeployment(mit(undefined, "development"))).toBe(false);
+  });
+});
+
 describe("istStagingHostname", () => {
   it("erkennt die Staging-Domain", () => {
     expect(istStagingHostname(STAGING_HOSTNAME)).toBe(true);
