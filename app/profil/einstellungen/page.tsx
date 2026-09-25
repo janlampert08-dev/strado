@@ -68,7 +68,7 @@ export default async function EinstellungenPage() {
     supabase
       .from("profiles")
       .select(
-        "display_name, zeigt_fahrzeuge, zeigt_avatar, zeigt_paesse, zeigt_hoehenmeter, zeigt_distanz, zeigt_follower_liste, zeigt_tempo",
+        "display_name, zeigt_fahrzeuge, zeigt_avatar, zeigt_paesse, zeigt_hoehenmeter, zeigt_distanz, zeigt_follower_liste, zeigt_tempo, folgen_bestaetigen",
       )
       .eq("id", user.id)
       .single(),
@@ -151,9 +151,9 @@ export default async function EinstellungenPage() {
           <section id="privatsphaere" className="flex scroll-mt-20 flex-col gap-3">
             <SectionHeading icon={Lock}>Privatsphäre</SectionHeading>
             <p className="text-sm text-muted">
-              Legt fest, was andere auf deinem Profil und deinen geteilten Fahrten sehen. Ob eine einzelne
-              Fahrt öffentlich ist, entscheidest du beim Speichern oder später
-              im Profil unter &bdquo;Getrackte Fahrten&ldquo;.
+              Legt fest, wer dir folgen kann und was andere auf deinem Profil und deinen geteilten Fahrten
+              sehen. Ob eine einzelne Fahrt privat, nur für Follower oder öffentlich ist, entscheidest du
+              beim Speichern oder später im Profil unter &bdquo;Getrackte Fahrten&ldquo;.
             </p>
             <VisibilitySettings
               zeigtFahrzeuge={profile?.zeigt_fahrzeuge ?? true}
@@ -163,6 +163,7 @@ export default async function EinstellungenPage() {
               zeigtDistanz={profile?.zeigt_distanz ?? true}
               zeigtFollowerListe={profile?.zeigt_follower_liste ?? true}
               zeigtTempo={profile?.zeigt_tempo ?? false}
+              folgenBestaetigen={profile?.folgen_bestaetigen ?? true}
               privatzoneRadiusM={privatzoneRadiusM}
             />
           </section>

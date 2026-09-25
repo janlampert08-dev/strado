@@ -121,6 +121,12 @@ const ABSICHTLICH_ERHALTEN: Record<string, string> = {
   // ob die Spalte noch generiert ist: eine gewöhnliche Spalte gehört hier
   // nicht her.
   zeigt_premium_abzeichen: "generiert aus ist_premium und zeigt_premium_badge, die beide geleert werden",
+  // 0146: eine Einstellung, kein eingegebener Inhalt — sie sagt nur, ob neue
+  // Follower bestätigt werden müssen. Für ein gelöschtes Konto ist sie
+  // wirkungslos: folgen_braucht_bestaetigung() nimmt Profile mit
+  // geloescht_am aus. Was an Anfragen am Konto hing, löscht
+  // anonymize_account seit 0146 (delete from public.folge_anfragen).
+  folgen_bestaetigen: "Einstellung ohne Personenbezug; für gelöschte Konten wirkungslos (0146)",
 };
 
 describe("anonymize_account (Kontolöschung)", () => {
