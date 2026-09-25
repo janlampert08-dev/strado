@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { haversineKm } from "@/lib/geo";
+import { waehleNachbarStrecken } from "@/lib/nachbarStrecken";
 import { computeSignatures, type RouteSignature } from "@/lib/signature";
 import type {
   ExploreRoute,
@@ -301,6 +302,53 @@ export async function getKontextStrecken(route: RouteGeoJSON): Promise<KartenStr
 
   console.error("Kontext-Strecken konnten nicht geladen werden:", error.message);
   return [];
+}
+
+export interface NachbarStrecke {
+  id: string;
+  name: string;
+  region: string;
+  laengeKm: number;
+  distanzKm: number;
+}
+
+// "Weitere Strecken in der Nähe" (Streckenseite): die freigegebenen,
+// öffentlichen Strecken mit dem nächsten Startpunkt. Nur Punkt und Zahlen,
+// keine Linie — gezeichnet wird hier nichts. Ein Ladefehler kostet bloss den
+// Abschnitt, nicht die Seite; deshalb wird er geloggt statt geworfen.
+export async function getNachbarStrecken(route: {
+  id: string;
+  region: string;
+  start_geojson: { coordinates: unknown };
+}): Promise<NachbarStrecke[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("routes_geojson")
+    .select("id, name, region, laenge_km, start_geojson")
+    .eq("status_ok", true)
+    .eq("ist_privat", false);
+
+  if (error) {
+    console.error("Nachbarstrecken konnten nicht geladen werden:", error.message);
+    return [];
+  }
+
+  type Zeile = { id: string; name: string; region: string; laenge_km: number; start_geojson: { coordinates: [number, number] } };
+  const kandidaten = ((data as unknown as Zeile[]) ?? [])
+    .filter((z) => Array.isArray(z.start_geojson?.coordinates))
+    .map((z) => ({ id: z.id, name: z.name, region: z.region, laengeKm: z.laenge_km, start: z.start_geojson.coordinates }));
+
+  return waehleNachbarStrecken(kandidaten, {
+    id: route.id,
+    region: route.region,
+    start: route.start_geojson.coordinates as [number, number],
+  }).map(({ strecke, distanzKm }) => ({
+    id: strecke.id,
+    name: strecke.name,
+    region: strecke.region,
+    laengeKm: strecke.laengeKm,
+    distanzKm,
+  }));
 }
 
 // Nur was die Sitemap braucht. getRoutes() liefert sonst für jede Strecke
