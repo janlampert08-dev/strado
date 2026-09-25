@@ -104,6 +104,25 @@ unverändert, also ohne Follower-Fahrten.
     Deckungsgrad (0052, Fall 4) und bleiben privat. Am 2026-09-25 gemessen:
     0 solche Fahrten, und die Konten dazu können sich nicht mehr anmelden.
 
+## Stand 2026-09-25 (nach Promotion #454): 0132–0134, 0150, 0151 eingespielt
+
+Nach dem Produktions-Deploy von #454 eingespielt und gemessen:
+
+- **0132** Privatzone — Spalten-Grant weg (kein tabellenweiter Grant, der
+  ihn umginge), meine_privatzone() nur für authenticated, UPDATE bleibt.
+- **0133** Gastticket-Bremse — anon ohne EXECUTE auf anlegen/puls,
+  service_role legt ein Gastticket an (Rollback-Test), anon bekommt 42501;
+  Cron-Job fahrtstarts-aufraeumen alle 15 Minuten.
+- **0134** Rechte — **mit fuer_follower im INSERT-Grant** eingespielt (#460;
+  0145 kam nach dem Schreiben der Datei, save_free_ride_with_segments ist
+  INVOKER). 20 Policies auf ist_moderator(), is_moderator für niemanden
+  lesbar, Moderator erkannt, anon sieht 32 Strecken.
+- **0150** public_fahrten.ist_abschnitt (vor dem Deploy, rein additiv).
+- **0151** Abschnitte folgen der Fahrt — 0 Abweichungen in beide Richtungen,
+  Umschalt-Test (Rollback) in beide Richtungen bestanden.
+
+Damit ist aus diesem Zug nichts mehr ausstehend.
+
 ## Stand 2026-09-25 (abends): 0130–0140
 
 **Eingespielt** (per `apply_migration`, jeweils danach gemessen):
