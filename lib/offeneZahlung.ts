@@ -35,3 +35,51 @@ export function zahlungNochOffen(
   if (periodeEndeMs === null || Number.isNaN(periodeEndeMs)) return true;
   return periodeEndeMs > jetzt - ZAHLUNG_OFFEN_SPERRT_TAGE * 86_400_000;
 }
+
+/**
+ * Läuft dieses Abo gerade, im Sinne von "Stripe zieht ein und alles ist
+ * bezahlt"? Bewusst eng: `past_due` läuft nicht, auch wenn eine Kulanzfrist
+ * den Zugang noch trägt.
+ */
+export function statusIstLaufend(status: string | null | undefined): boolean {
+  return status === "active" || status === "trialing";
+}
+
+/**
+ * Trägt eine Kulanzfrist den Zugang dieses Abos gerade — also: Status nicht
+ * laufend, aber die Frist noch nicht abgelaufen? Dieselbe Bedingung, die
+ * `subscription_ist_premium` (0059) in der Datenbank auswertet, wenn sie
+ * `profiles.ist_premium` für ein `past_due`-Abo auf true lässt.
+ */
+export function inKulanzfristJetzt(
+  status: string | null | undefined,
+  kulanzBisMs: number | null,
+  jetzt: number = Date.now(),
+): boolean {
+  if (statusIstLaufend(status)) return false;
+  if (kulanzBisMs === null || Number.isNaN(kulanzBisMs)) return false;
+  return kulanzBisMs > jetzt;
+}
+
+/**
+ * Hat die Abo-Zeile etwas, das die Person angeht — eine laufende Kulanzfrist
+ * oder eine Zahlung, die sie im Portal noch begleichen kann?
+ *
+ * Wofür das gebraucht wird: `profiles.ist_premium` bleibt in der
+ * Kulanzfrist true, `statusIstLaufend("past_due")` ist aber false. Jeder
+ * Zweig, der "Premium aktiv, aber kein laufendes Abo" als "dann kommt es
+ * woanders her" liest — Saisonpass, Gratis-Premium, von Hand gesetzt —
+ * verdeckt sonst genau die Fälle, in denen eine Zahlung offen ist. Wer das
+ * fragt, bevor er eine andere Quelle benennt, kann das nicht.
+ */
+export function aboBrauchtAufmerksamkeit(
+  status: string | null | undefined,
+  kulanzBisMs: number | null,
+  periodeEndeMs: number | null,
+  jetzt: number = Date.now(),
+): boolean {
+  return (
+    inKulanzfristJetzt(status, kulanzBisMs, jetzt) ||
+    zahlungNochOffen(status, periodeEndeMs, jetzt)
+  );
+}
