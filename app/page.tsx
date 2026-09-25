@@ -73,15 +73,21 @@ export default async function Home() {
   // die erste Frage, und sie soll ohne Öffnen der Strecke beantwortet sein.
   // "Offen" bleibt ohne Abzeichen, sonst trüge fast jede Zeile eins.
   // Beide Abfragen hängen am selben Streckenbestand, aber nicht aneinander.
+  const streckenLauf = getRoutes();
+  const abhaengige = getFreigegebeneStreckenIds().then(async ({ ids, fehler }) => {
+    // Scheitert die schmale Abfrage, ist ihre leere Liste keine Antwort,
+    // sondern ein Nichtwissen — verwendet, hiesse sie "keine Strecke hat eine
+    // Bewertung", und jede Zeile verlöre Stern und Passabzeichen, während die
+    // Liste daneben vollständig steht. Dann lieber die IDs aus getRoutes():
+    // dieselbe Menge (beide filtern auf status_ok und ist_privat = false),
+    // nur eine Runde später.
+    // Kostet im Fehlerfall Zeit, nie Inhalt.
+    const verwendbar = fehler ? (await streckenLauf).routes.map((r) => r.id) : ids;
+    return Promise.all([getBewertungen(verwendbar), getPassZustaendeJeStrecke(verwendbar)]);
+  });
+
   const [{ routes, signaturen, error }, user, origin, [bewertungenPaare, passZustaende]] =
-    await Promise.all([
-      getRoutes(),
-      getCurrentUser(),
-      getOrigin(),
-      getFreigegebeneStreckenIds().then((ids) =>
-        Promise.all([getBewertungen(ids), getPassZustaendeJeStrecke(ids)]),
-      ),
-    ]);
+    await Promise.all([streckenLauf, getCurrentUser(), getOrigin(), abhaengige]);
   const bewertungen = Object.fromEntries(bewertungenPaare);
 
   // Strukturierte Daten der Startseite — bisher die einzige Hauptseite ohne.

@@ -148,18 +148,35 @@ export function mitSignaturen(
 // liefert (status_ok; private Strecken sind nie freigegeben), aber ohne
 // Geometrie. Die Startseite braucht sie für Bewertungen und Passzustand; mit
 // dieser schmalen Abfrage laufen beide parallel zu getRoutes() statt in einer
-// zweiten Welle danach (app/page.tsx). Ein Fehler ergibt eine leere Liste:
-// dann fehlen Sterne und Abzeichen, die Liste selbst steht — dasselbe wie
-// bisher, wenn getRoutes() scheiterte.
+// zweiten Welle danach (app/page.tsx).
 //
 // Im selben Cache wie getRoutes() (lib/streckenCache.ts, gleicher Tag):
 // beide Mengen veralten und erneuern sich zusammen.
-export async function getFreigegebeneStreckenIds(): Promise<string[]> {
+//
+// Gibt den Fehler mit heraus, statt ihn in eine leere Liste zu verwandeln.
+// Eine leere Liste ist hier nicht "keine Strecken", sondern "wir wissen es
+// nicht" — und der Aufrufer kann das nur unterscheiden, wenn er es erfährt
+// (lib/queryError.ts, dieselbe Regel wie bei getRecentFollowersReceived).
+// Bis 2026-09-25 stand hier, ein Fehler sei "dasselbe wie bisher, wenn
+// getRoutes() scheiterte". Das stimmte nicht: vorher kamen die IDs aus
+// getRoutes() selbst, ein Fehler war also immer an dessen error gekoppelt
+// und damit sichtbar. Seit der schmalen Abfrage ist es ein eigener Weg, und
+// auf ihm verlor stillschweigend jede Zeile Sterne und Passabzeichen,
+// während die Seite Erfolg meldete.
+//
+// Am Cache ändert das nichts: ladeFreigegebeneStreckenIds() wirft weiterhin,
+// damit unstable_cache kein leeres Ergebnis zwei Minuten lang ausliefert
+// (Kopf von lib/streckenCache.ts). Gefangen wird der Fehler erst hier — und
+// hier lässt er sich auch benennen.
+export async function getFreigegebeneStreckenIds(): Promise<{
+  ids: string[];
+  fehler: boolean;
+}> {
   try {
-    return await ladeFreigegebeneStreckenIds();
+    return { ids: await ladeFreigegebeneStreckenIds(), fehler: false };
   } catch (fehler) {
     console.error("Strecken-IDs konnten nicht geladen werden:", (fehler as Error).message);
-    return [];
+    return { ids: [], fehler: true };
   }
 }
 
