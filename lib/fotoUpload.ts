@@ -9,7 +9,8 @@ import { metadatenEntfernen } from "@/lib/imageMetadata";
 // Lädt Fotos direkt in den privaten Bucket hoch, ohne sie durch die
 // Server Action zu schicken (9 MB Body-Limit, Funktionslaufzeit pro Byte).
 // Ablauf pro Datei: EXIF-Strip im Browser -> Ticket (Pfad + Token) vom
-// Server -> uploadToSignedUrl im Browser. Gibt die Storage-Pfade zurück,
+// Server -> uploadToSignedUrl im Browser. Die Uploads laufen gleichzeitig.
+// Gibt die Storage-Pfade in der Reihenfolge der Dateien zurück,
 // die das Formular danach als "foto_pfade" mitschickt; die Speicher-Action
 // verifiziert sie (eigener Ordner, Endung, Existenz).
 //
@@ -37,18 +38,18 @@ export async function ladeFotosDirektHoch(dateien: File[]): Promise<string[]> {
   if (!ergebnis.ok) throw new Error(ergebnis.error);
   const { createClient } = await import("@/lib/supabase/client");
   const supabase = createClient();
-  const pfade: string[] = [];
-  for (let i = 0; i < bereinigt.length; i++) {
-    const ticket = ergebnis.tickets[i];
-    const { error } = await supabase.storage
-      .from("route-photos")
-      .uploadToSignedUrl(ticket.pfad, ticket.token, bereinigt[i], {
-        contentType: bereinigt[i].type,
-      });
-    if (error) throw new Error("Direkt-Upload fehlgeschlagen.");
-    pfade.push(ticket.pfad);
-  }
-  return pfade;
+  return Promise.all(
+    bereinigt.map(async (datei, i) => {
+      const ticket = ergebnis.tickets[i];
+      const { error } = await supabase.storage
+        .from("route-photos")
+        .uploadToSignedUrl(ticket.pfad, ticket.token, datei, {
+          contentType: datei.type,
+        });
+      if (error) throw new Error("Direkt-Upload fehlgeschlagen.");
+      return ticket.pfad;
+    }),
+  );
 }
 
 // Best effort: direkt hochgeladene, dann doch entfernte Fotos wieder aus dem
