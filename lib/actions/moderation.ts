@@ -250,48 +250,27 @@ export async function dismissCompletionReport(reportId: string): Promise<Moderat
 // öffentliche Track wird dabei mit entfernt, damit keine Geometrie einer
 // nicht mehr sichtbaren Fahrt zurückbleibt (siehe 0045).
 //
-// Möglich wird das über die Moderator-Policy aus 0046_fahrt_meldungen.sql;
-// die Spalten-Grants derselben Migration begrenzen, was dabei überhaupt
-// geändert werden kann.
+// Seit 0148 über gemeldete_fahrt_verbergen() — die Moderator-Policy aus
+// 0046/0139 allein reichte nie, siehe unten.
 export async function unpublishReportedCompletion(
   completionId: string,
 ): Promise<ModerationResult> {
   const kontext = await alsModerator();
   if ("error" in kontext) return kontext;
 
-  const { error, count } = await kontext.supabase
-    .from("route_completions")
-    // fuer_follower mit: auch eine nur für Follower geteilte Fahrt kann
-    // gemeldet werden (0145), und verborgen heisst für alle.
-    .update(
-      { ist_oeffentlich: false, fuer_follower: false, track_oeffentlich: null },
-      { count: "exact" },
-    )
-    .eq("id", completionId);
+  // Über gemeldete_fahrt_verbergen() (0148) statt eines direkten UPDATE:
+  // das traf bei fremden Fahrten 0 Zeilen, weil Moderatoren sie nicht lesen
+  // dürfen (nur "Nutzer sehen eigene Fahrten") — "Fahrt verbergen" meldete
+  // deshalb immer "nichts getroffen". Die Funktion prüft die Rolle, verlangt
+  // eine offene Meldung, nimmt die Fahrt ganz aus der Sicht (öffentlich und
+  // für Follower, 0145) und schliesst die offenen Meldungen in derselben
+  // Transaktion. false heisst: keine offene Meldung (mehr) oder keine Fahrt.
+  const { data, error } = await kontext.supabase.rpc("gemeldete_fahrt_verbergen", {
+    p_completion_id: completionId,
+  });
 
   if (error) return fehlgeschlagen("Das Verbergen der Fahrt");
-  if (count === 0) return nichtGetroffen("Das Verbergen der Fahrt");
-
-  // Offene Meldungen zu dieser Fahrt sind damit erledigt — sonst bliebe die
-  // Warteschlange voll mit Fahrten, um die sich schon jemand gekümmert hat.
-  // Ein Fehler hier ist nachrangig: die Fahrt IST bereits verborgen, das
-  // eigentliche Ziel der Aktion ist erreicht. Ihn als Fehlschlag zu melden
-  // würde die Moderation zu einem zweiten Klick verleiten, der nichts mehr
-  // ändert. Kein count-Check aus demselben Grund — null offene Meldungen
-  // sind hier ein zulässiger Normalfall.
-  const { error: meldungsFehler } = await kontext.supabase
-    .from("completion_reports")
-    .update({
-      status: "erledigt",
-      bearbeitet_am: new Date().toISOString(),
-      bearbeitet_von: kontext.userId,
-    })
-    .eq("completion_id", completionId)
-    .eq("status", "offen");
-
-  if (meldungsFehler) {
-    console.error("Meldungen zur verborgenen Fahrt nicht geschlossen", { completionId }, meldungsFehler);
-  }
+  if (data !== true) return nichtGetroffen("Das Verbergen der Fahrt");
 
   revalidatePath("/moderation");
   revalidatePath("/feed");
