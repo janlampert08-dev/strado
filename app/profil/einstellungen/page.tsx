@@ -20,7 +20,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import DeleteProposalButton from "@/components/DeleteProposalButton";
 import DeleteAccountSection from "@/components/DeleteAccountSection";
 import FeedbackDialog from "@/components/FeedbackDialog";
-import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { createClient, getFreshUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
 import { premiumKurzform } from "@/lib/premiumVorteile";
 import { isModerator } from "@/lib/moderation";
@@ -51,7 +51,11 @@ export const metadata = { title: "Einstellungen – Strado" };
 // gibt, und kein separates Tab-Primitiv nur für diese eine Seite.
 export default async function EinstellungenPage() {
   const supabase = await createClient();
-  const user = await getCurrentUser();
+  // getFreshUser() statt getCurrentUser(): Konto-Einstellungen zeigen die
+  // E-Mail von GoTrue, nicht den Stand im Token (nach einer Änderung sonst
+  // bis zum nächsten Refresh die alte), und eine beendete Sitzung kommt
+  // hier nicht mehr herein.
+  const user = await getFreshUser();
 
   if (!user) redirect("/anmelden");
 
