@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type FocusEvent } from "react";
 import { usePathname } from "next/navigation";
 
 /**
@@ -49,12 +49,41 @@ export default function HinweisLeiste() {
   const pathname = usePathname();
   const [hinweis, setHinweis] = useState<HinweisDaten | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Solange der Zeiger auf der Quittung liegt oder der Fokus in ihr steht,
+  // läuft keine Uhr: Wer „Rückgängig“ gerade ansteuert — mit der Maus oder
+  // per Tab —, dem darf der Knopf nicht unter der Hand verschwinden
+  // (WCAG 2.2.1). Beim Verlassen beginnen die 4,5 s von vorn.
+  const gehaltenRef = useRef({ zeiger: false, fokus: false });
 
-  const zeigen = useCallback((daten: HinweisDaten) => {
+  const starteUhr = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    setHinweis(daten);
+    timerRef.current = null;
+    const { zeiger, fokus } = gehaltenRef.current;
+    if (zeiger || fokus) return;
     timerRef.current = setTimeout(() => setHinweis(null), DAUER_MS);
   }, []);
+
+  const halte = useCallback(
+    (art: "zeiger" | "fokus", an: boolean) => {
+      gehaltenRef.current[art] = an;
+      starteUhr();
+    },
+    [starteUhr],
+  );
+
+  const zeigen = useCallback(
+    (daten: HinweisDaten) => {
+      setHinweis(daten);
+      starteUhr();
+    },
+    [starteUhr],
+  );
+
+  function fokusVerlassen(e: FocusEvent<HTMLDivElement>) {
+    // Wandert der Fokus nur innerhalb der Quittung weiter, bleibt sie gehalten.
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+    halte("fokus", false);
+  }
 
   useEffect(() => {
     function empfangen(event: Event) {
@@ -94,16 +123,29 @@ export default function HinweisLeiste() {
       className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--bottom-nav-h)+0.75rem)] z-[60] flex justify-center px-4"
     >
       {hinweis && (
-        <div className="pointer-events-auto flex min-h-11 max-w-md items-center gap-3 rounded-full bg-foreground py-1.5 pr-1.5 pl-4 text-sm text-background shadow-overlay">
-          <span className="min-w-0">{hinweis.text}</span>
+        <div
+          onPointerEnter={() => halte("zeiger", true)}
+          onPointerLeave={() => halte("zeiger", false)}
+          onFocus={() => halte("fokus", true)}
+          onBlur={fokusVerlassen}
+          // Kein py an der Pille: Der Aktionsknopf ist 44 px hoch (vorher
+          // 36) und füllt sie damit ganz — mit py-1.5 wäre die Pille auf
+          // 56 px gewachsen. Der Abstand für mehrzeiligen Text sitzt am Text.
+          className="pointer-events-auto flex min-h-11 max-w-md items-center gap-3 rounded-full bg-foreground pr-1.5 pl-4 text-sm text-background shadow-overlay"
+        >
+          <span className="min-w-0 py-2">{hinweis.text}</span>
           {hinweis.aktion && (
             <button
               type="button"
               onClick={() => {
                 hinweis.aktion?.ausfuehren();
+                // Die Quittung verschwindet unter Zeiger und Fokus weg, ein
+                // pointerleave/focusout kommt dann nicht mehr — sonst bliebe
+                // die nächste Quittung für immer stehen.
+                gehaltenRef.current = { zeiger: false, fokus: false };
                 setHinweis(null);
               }}
-              className="min-h-9 shrink-0 rounded-full px-3 font-medium text-accent-subtle transition-opacity duration-fast hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/50"
+              className="min-h-11 shrink-0 rounded-full px-3 font-medium text-accent-subtle transition-opacity duration-fast hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/50"
             >
               {hinweis.aktion.label}
             </button>
