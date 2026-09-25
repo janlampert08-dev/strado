@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type Stripe from "stripe";
 import { jahresErsparnisRappen, portalErlaubtWechselZu } from "@/lib/jahresWechsel";
-import { ZAHLUNG_OFFEN_SPERRT_TAGE, zahlungNochOffen } from "@/lib/offeneZahlung";
+import {
+  ZAHLUNG_OFFEN_SPERRT_TAGE,
+  aboBrauchtAufmerksamkeit,
+  inKulanzfristJetzt,
+  statusIstLaufend,
+  zahlungNochOffen,
+} from "@/lib/offeneZahlung";
 
 describe("jahresErsparnisRappen", () => {
   it("rechnet zwölf Bestands-Monatszahlungen gegen das Jahresabo", () => {
@@ -94,5 +100,84 @@ describe("zahlungNochOffen", () => {
     expect(zahlungNochOffen("active", jetzt, jetzt)).toBe(false);
     expect(zahlungNochOffen("canceled", jetzt, jetzt)).toBe(false);
     expect(zahlungNochOffen(null, null, jetzt)).toBe(false);
+  });
+});
+
+describe("statusIstLaufend", () => {
+  it("kennt genau active und trialing", () => {
+    expect(statusIstLaufend("active")).toBe(true);
+    expect(statusIstLaufend("trialing")).toBe(true);
+    expect(statusIstLaufend("past_due")).toBe(false);
+    expect(statusIstLaufend("unpaid")).toBe(false);
+    expect(statusIstLaufend("canceled")).toBe(false);
+    expect(statusIstLaufend(null)).toBe(false);
+  });
+});
+
+describe("inKulanzfristJetzt", () => {
+  const jetzt = Date.parse("2026-09-25T12:00:00Z");
+  const tag = 86_400_000;
+
+  it("trägt den Zugang eines past_due-Abos bis zum Fristende", () => {
+    // Das ist der Fall, den subscription_ist_premium (0059) in der Datenbank
+    // auswertet: past_due, aber ist_premium bleibt true.
+    expect(inKulanzfristJetzt("past_due", jetzt + 3 * tag, jetzt)).toBe(true);
+  });
+
+  it("endet mit der Frist", () => {
+    expect(inKulanzfristJetzt("past_due", jetzt - 1, jetzt)).toBe(false);
+  });
+
+  it("kennt ohne Frist keine Kulanz", () => {
+    expect(inKulanzfristJetzt("past_due", null, jetzt)).toBe(false);
+  });
+
+  it("gilt für ein laufendes Abo nicht, auch mit stehengebliebener Frist", () => {
+    // apply_subscription_state räumt kulanz_bis beim Statuswechsel weg (0059);
+    // sollte doch ein Datum stehenbleiben, ist ein laufendes Abo trotzdem
+    // nicht "in Kulanz".
+    expect(inKulanzfristJetzt("active", jetzt + 3 * tag, jetzt)).toBe(false);
+  });
+});
+
+describe("aboBrauchtAufmerksamkeit", () => {
+  const jetzt = Date.parse("2026-09-25T12:00:00Z");
+  const tag = 86_400_000;
+
+  it("meldet sich für past_due in der Kulanzfrist", () => {
+    // Der Fall, der in lib/premium.ts vom Gratis-Zweig verdeckt wurde: die
+    // Frist hält den Zugang, laufend ist das Abo nicht, und eine Zahlung
+    // ist offen.
+    expect(aboBrauchtAufmerksamkeit("past_due", jetzt + 3 * tag, jetzt - tag, jetzt)).toBe(true);
+  });
+
+  it("meldet sich auch nach Ablauf der Kulanzfrist, solange die Zahlung offen ist", () => {
+    expect(aboBrauchtAufmerksamkeit("past_due", jetzt - tag, jetzt - tag, jetzt)).toBe(true);
+  });
+
+  it("meldet sich für unpaid ohne jede Kulanzfrist", () => {
+    expect(aboBrauchtAufmerksamkeit("unpaid", null, jetzt - tag, jetzt)).toBe(true);
+  });
+
+  it("schweigt bei einem laufenden Abo", () => {
+    expect(aboBrauchtAufmerksamkeit("active", null, jetzt + 20 * tag, jetzt)).toBe(false);
+    expect(aboBrauchtAufmerksamkeit("trialing", null, jetzt + 20 * tag, jetzt)).toBe(false);
+  });
+
+  it("schweigt bei einem alten, nicht mehr eingezogenen Abo", () => {
+    // Weder Kulanz noch einholbare Zahlung: hier darf eine andere Quelle
+    // (Saisonpass, Gratis-Premium) den Zugang benennen.
+    expect(
+      aboBrauchtAufmerksamkeit(
+        "past_due",
+        jetzt - 90 * tag,
+        jetzt - (ZAHLUNG_OFFEN_SPERRT_TAGE + 1) * tag,
+        jetzt,
+      ),
+    ).toBe(false);
+  });
+
+  it("schweigt ohne Abo-Zeile", () => {
+    expect(aboBrauchtAufmerksamkeit(null, null, null, jetzt)).toBe(false);
   });
 });

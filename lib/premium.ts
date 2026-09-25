@@ -2,7 +2,12 @@ import { cache } from "react";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { BESTAND_VARIABLEN, preisIdsAus } from "@/lib/stripeWebhook";
 import { passZeitraum } from "@/lib/premiumAngebot";
-import { zahlungNochOffen } from "@/lib/offeneZahlung";
+import {
+  aboBrauchtAufmerksamkeit,
+  inKulanzfristJetzt,
+  statusIstLaufend,
+  zahlungNochOffen,
+} from "@/lib/offeneZahlung";
 import { throwOnQueryError } from "@/lib/queryError";
 import {
   MAX_PRIVATE_STRECKEN_GRATIS,
@@ -79,10 +84,6 @@ function planAusPreisId(preisId: string | null): AboPlanKennung | null {
 // profiles.ist_premium. Liefen beide auseinander, gewönne ist_premium —
 // deshalb wird unten die Abo-Zeile UND das Profil-Flag gelesen, statt die
 // Regel hier noch einmal eigenständig zu entscheiden.
-function statusIstLaufend(status: string): boolean {
-  return status === "active" || status === "trialing";
-}
-
 // Mit React cache() umschlossen: eine Seite fragt den Status oft mehrfach
 // (Layout, Card, Gate), das soll eine Abfrage pro Request bleiben.
 //
@@ -190,6 +191,18 @@ export const getPremiumStatus = cache(async function getPremiumStatus(): Promise
     };
   }
 
+  // Der Zustand der Abo-Zeile, soweit es eine gibt — vor der Gratis-Frage
+  // gerechnet, weil sie davon abhängt (siehe unten). Die Regeln selbst
+  // stehen in lib/offeneZahlung.ts, rein und geprüft; die Kaufsperre in
+  // lib/actions/billing.ts liest dieselben.
+  const kulanzBis = abo ? datum(abo.kulanz_bis) : null;
+  const periodeEndetAm = abo ? datum(abo.current_period_end) : null;
+  const inKulanzfrist =
+    abo !== null && inKulanzfristJetzt(abo.status, kulanzBis ? kulanzBis.getTime() : null);
+  const offeneZahlung =
+    abo !== null &&
+    zahlungNochOffen(abo.status, periodeEndetAm ? periodeEndetAm.getTime() : null);
+
   // Premium ohne laufendes Abo und ohne laufenden Pass: entweder das
   // Gratis-Premium aus dem Signup-Link (0121) oder von Hand gesetzt. Beides
   // sah bis 0135 gleich aus ("manuell"), und das sperrte die Promo-Konten
@@ -197,7 +210,28 @@ export const getPremiumStatus = cache(async function getPremiumStatus(): Promise
   //
   // Nur in diesem Fall gefragt, nicht bei jedem Aufruf: für alle anderen
   // Konten kostet das keinen zusätzlichen Weg zur Datenbank.
-  if (aktiv && !aboLaeuft) {
+  //
+  // Nicht gefragt wird, solange die Abo-Zeile etwas offen hat. "past_due in
+  // der Kulanzfrist" erfüllt aktiv && !aboLaeuft nämlich auch: die Frist
+  // hält ist_premium true (subscription_ist_premium, 0059), laufend ist
+  // past_due aber nicht. Wer den Signup-Link genommen und in derselben
+  // Woche gekauft hat, dessen erste Abbuchung dann scheitert, läse sonst
+  // "gratis bis …" — und nie, dass eine Zahlung offen ist: der Gratis-Zweig
+  // kehrt vor inKulanzfrist und offeneZahlung zurück und lässt beide auf
+  // ihrem Vorgabewert false. Die Zahlungswarnung verschwände samt dem Weg
+  // ins Portal, den #435 für genau diesen Fall geöffnet hat, und das Konto
+  // verlöre Premium am Ende der Gratiswoche, ohne je erfahren zu haben,
+  // woran es lag. Eine offene Zahlung ist die dringlichere Nachricht, weil
+  // sie die einzige ist, die etwas zu tun gibt.
+  const aboBrauchtAntwort =
+    abo !== null &&
+    aboBrauchtAufmerksamkeit(
+      abo.status,
+      kulanzBis ? kulanzBis.getTime() : null,
+      periodeEndetAm ? periodeEndetAm.getTime() : null,
+    );
+
+  if (aktiv && !aboLaeuft && !aboBrauchtAntwort) {
     const gratisBis = await gratisPremiumBis(supabase);
     if (gratisBis) {
       return {
@@ -218,11 +252,6 @@ export const getPremiumStatus = cache(async function getPremiumStatus(): Promise
     return { ...KEIN_PREMIUM, aktiv, quelle: aktiv ? "manuell" : null };
   }
 
-  const kulanzBis = datum(abo.kulanz_bis);
-  const inKulanzfrist =
-    !statusIstLaufend(abo.status) && kulanzBis !== null && kulanzBis.getTime() > Date.now();
-  const periodeEndetAm = datum(abo.current_period_end);
-
   return {
     aktiv,
     plan: planAusPreisId(abo.price_id),
@@ -234,10 +263,7 @@ export const getPremiumStatus = cache(async function getPremiumStatus(): Promise
     testphaseBis: abo.status === "trialing" ? periodeEndetAm : null,
     inKulanzfrist,
     kulanzBis: inKulanzfrist ? kulanzBis : null,
-    // Dieselbe Regel wie die Kaufsperre in lib/actions/billing.ts: wer dort
-    // wegen einer offenen Zahlung abgewiesen wird, muss hier den Weg ins
-    // Portal finden (app/profil/einstellungen/abo).
-    offeneZahlung: zahlungNochOffen(abo.status, periodeEndetAm ? periodeEndetAm.getTime() : null),
+    offeneZahlung,
     gratisBis: null,
   };
 });
