@@ -17,7 +17,7 @@ const FEED_LIMIT = 30;
 // schon das öffentliche Profil (lib/profile.ts) nutzt, hier über mehrere
 // Nutzer hinweg statt auf einen einzelnen gefiltert. RLS auf den
 // zugrundeliegenden Tabellen ist irrelevant, da public_fahrten selbst
-// bereits serverseitig filtert — öffentliche Fahrten für alle, seit 0140
+// bereits serverseitig filtert — öffentliche Fahrten für alle, seit 0145
 // Follower-Fahrten zusätzlich für die, die dem Fahrer folgen — und an
 // anon/authenticated freigegeben ist.
 export async function getFeed(scope: FeedScope, viewerId: string | null): Promise<FeedItem[]> {

@@ -20,7 +20,7 @@ describe("sichtbarkeitAus", () => {
     expect(sichtbarkeitAus({ ist_oeffentlich: true, fuer_follower: false })).toBe("oeffentlich");
   });
 
-  it("gilt ohne fuer_follower-Spalte wie vor 0140", () => {
+  it("gilt ohne fuer_follower-Spalte wie vor 0145", () => {
     expect(sichtbarkeitAus({ ist_oeffentlich: false })).toBe("privat");
     expect(sichtbarkeitAus({ ist_oeffentlich: true, fuer_follower: null })).toBe("oeffentlich");
   });

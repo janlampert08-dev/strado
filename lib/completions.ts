@@ -149,7 +149,7 @@ export interface CompletionDetail {
   // 0125). Für den Besitzer immer true — die Einstellung regelt, was ANDERE
   // sehen, nicht was der Fahrer über seine eigene Fahrt erfährt.
   zeigtTempo: boolean;
-  // Privat, nur für Follower oder öffentlich (0140). Wer die Fahrt über
+  // Privat, nur für Follower oder öffentlich (0145). Wer die Fahrt über
   // "follower" sieht, folgt dem Fahrer — oder ist es selbst.
   sichtbarkeit: Sichtbarkeit;
   // Für private Fahrten nur gesetzt, wenn der Betrachter der Besitzer ist.
@@ -339,7 +339,7 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
       importiert: false,
       distanzKm: row.distanz_km,
       zeigtTempo,
-      // public_fahrten führt seit 0140 auch Follower-Fahrten — für Follower
+      // public_fahrten führt seit 0145 auch Follower-Fahrten — für Follower
       // des Fahrers und für ihn selbst.
       sichtbarkeit: row.fuer_follower ? "follower" : "oeffentlich",
       // Ab 0035_public_fahrten_notiz.sql: teilt sich die Sichtbarkeit der

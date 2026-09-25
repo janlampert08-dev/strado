@@ -51,7 +51,7 @@ const FAHRZEUG_FELD = "flex flex-col gap-1 text-xs font-medium text-muted";
 
 export interface VisibilityChoice {
   // Verhindert jedes Teilen — "Follower" wie "öffentlich" (z.B.
-  // Deckungsgrad unterschritten, siehe 0140).
+  // Deckungsgrad unterschritten, siehe 0145).
   publicDisabled: boolean;
   publicDisabledHint?: string;
   publicHint: string;
@@ -237,7 +237,7 @@ export default function RideSummaryForm({
       className="flex flex-col gap-4"
     >
       <input type="hidden" name="sichtbarkeit" value={sichtbarkeit} />
-      {/* Für einen Server von vor 0140, solange ein Deploy noch nicht
+      {/* Für einen Server von vor 0145, solange ein Deploy noch nicht
           überall angekommen ist. Der neue liest "sichtbarkeit" zuerst. */}
       <input
         type="hidden"

@@ -445,7 +445,7 @@ export async function logTrackedCompletion(
   // das Formular schickt, kann eine Fahrt unterhalb des Deckungsgrad-
   // Schwellenwerts nicht öffentlich sein (siehe lib/routeCoverage.ts) — und
   // auch nicht für Follower sichtbar: die Fahrt würde dort ebenso eine
-  // Strecke behaupten, die sie nicht gefahren ist (0140).
+  // Strecke behaupten, die sie nicht gefahren ist (0145).
   const sichtbarkeit: Sichtbarkeit =
     abdeckungProzent >= COVERAGE_THRESHOLD_PERCENT ? gewuenschteSichtbarkeit : "privat";
   const geteilt = sichtbarkeit !== "privat";
@@ -869,7 +869,7 @@ export async function logFreeRide(
   if (bewegteSekunden > dauerSekunden) {
     bewegteSekunden = dauerSekunden;
   }
-  // Zu kurze Fahrten bleiben privat — auch gegenüber Followern (0140).
+  // Zu kurze Fahrten bleiben privat — auch gegenüber Followern (0145).
   const sichtbarkeit: Sichtbarkeit =
     publicationBlockReason(distanzKm, bewegteSekunden) === null
       ? sichtbarkeitAusFormular(formData)
@@ -1001,7 +1001,7 @@ export async function logFreeRide(
     dauer_trail_sekunden: dauerTrailSekunden,
     fahrt_start_id: fahrtstart?.ticketId ?? null,
     bewegte_zeit_sekunden: bewegteSekunden,
-    // save_free_ride_with_segments liest fuer_follower seit 0140.
+    // save_free_ride_with_segments liest fuer_follower seit 0145.
     ...sichtbarkeitSpalten(sichtbarkeit),
     titel,
     notiz,
@@ -1339,9 +1339,9 @@ export async function setCompletionVisibility(
   // Dieselben zwei Anker wie beim ersten Speichern, je nach Fahrtart: der
   // Deckungsgrad bei einer Streckenfahrt, die Mindestwerte bei einer freien
   // Fahrt. Ohne diese Prüfung liesse sich die Regel über den nachträglichen
-  // Umschalter umgehen. Für Follower gelten sie genauso (0140).
+  // Umschalter umgehen. Für Follower gelten sie genauso (0145).
   if (geteilt) {
-    // Die Datenbank lehnt das ohnehin ab (0124/0140) — hier nur, damit der
+    // Die Datenbank lehnt das ohnehin ab (0124/0145) — hier nur, damit der
     // Nutzer einen Satz liest statt "Sichtbarkeit konnte nicht geändert werden."
     if (existing.importiert) {
       return { error: "Importierte Fahrten bleiben privat." };
@@ -1387,7 +1387,7 @@ export async function setCompletionVisibility(
     .maybeSingle<{ ist_oeffentlich: boolean; fuer_follower: boolean }>();
 
   if (error || !gespeichert) return { error: "Sichtbarkeit konnte nicht geändert werden." };
-  // Die Trigger (0052/0059/0140) verengen still, statt abzulehnen. Hat die
+  // Die Trigger (0052/0059/0145) verengen still, statt abzulehnen. Hat die
   // Datenbank die Fahrt privat gelassen, darf die Oberfläche nicht "geteilt"
   // behaupten.
   if (sichtbarkeitAus(gespeichert) !== sichtbarkeit) {

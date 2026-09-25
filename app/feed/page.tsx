@@ -265,7 +265,7 @@ export default async function FeedPage({
                       </time>
                       {/* Nur das Symbol: die Zeile ist auf 390 px schon voll.
                           Sagt dem Follower, dass nicht jeder diese Fahrt
-                          sieht (0140) — wer sie weiterempfiehlt, soll es
+                          sieht (0145) — wer sie weiterempfiehlt, soll es
                           wissen. */}
                       {item.fuer_follower && (
                         <span className="inline-flex shrink-0 items-center" title="Nur für Follower sichtbar">

@@ -224,7 +224,7 @@ export default function FreeRideForm({
   // Eine Fahrt, die die Veröffentlichung nicht erfüllt, bleibt trotzdem
   // privat: der Wert unten wird mit der Sperre verrechnet, und der Server
   // kann ist_oeffentlich ohnehin nur verengen (0052) — fuer_follower
-  // ebenso (0140).
+  // ebenso (0145).
   const [sichtbarkeit, setSichtbarkeit] = useState<Sichtbarkeit>("oeffentlich");
   const [submitted, setSubmitted] = useState(false);
   // Hält die automatische Weiterleitung an, solange es noch etwas

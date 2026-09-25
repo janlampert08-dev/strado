@@ -143,9 +143,9 @@ export async function getOpenCompletionReports(): Promise<CompletionReportWithCo
   if (!reports || reports.length === 0) return [];
 
   const completionIds = [...new Set(reports.map((r) => r.completion_id))];
-  // Über gemeldete_fahrten_fuer_moderation() (0140) statt route_completions:
+  // Über gemeldete_fahrten_fuer_moderation() (0145) statt route_completions:
   // die Tabelle selbst ist per RLS auf den Besitzer beschränkt, und ein
-  // Moderator ist das nicht. Bis 0140 lief das über public_fahrten — das
+  // Moderator ist das nicht. Bis 0145 lief das über public_fahrten — das
   // zeigt einem Moderator aber keine Follower-Fahrt, und die kann ein
   // Follower seither melden. Die Funktion liefert nur geteilte Fahrten mit
   // offener Meldung, und nur an Moderatoren.

@@ -60,7 +60,7 @@ export default function CompletionActionsMenu({
 
   // Gesperrt wird je nach Fahrtart über den Deckungsgrad (Strecke) oder die
   // Mindestwerte fürs Teilen (freie Fahrt, siehe publicationBlockReason) —
-  // für Follower genauso wie für alle (0140).
+  // für Follower genauso wie für alle (0145).
   const sperrGrund = teilenSperrGrund(coveragePercent, blockedReason);
 
   useEffect(() => {

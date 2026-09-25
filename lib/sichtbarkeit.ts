@@ -1,6 +1,6 @@
 import { COVERAGE_THRESHOLD_PERCENT } from "@/lib/routeCoverage";
 
-// Die drei Sichtbarkeitsstufen einer Fahrt (0140). In der Datenbank sind es
+// Die drei Sichtbarkeitsstufen einer Fahrt (0145). In der Datenbank sind es
 // zwei Spalten — ist_oeffentlich und fuer_follower —, nie beide true. Hier
 // wird daraus eine Stufe, damit Formulare, Umschalter und Server Actions
 // nicht jede für sich die Kombinationen auslegen.
@@ -30,7 +30,7 @@ export function istSichtbarkeit(wert: unknown): wert is Sichtbarkeit {
   return typeof wert === "string" && (SICHTBARKEITEN as readonly string[]).includes(wert);
 }
 
-// Liest die Stufe aus dem Fazit-Formular. Ein Formular von vor 0140 — offen
+// Liest die Stufe aus dem Fazit-Formular. Ein Formular von vor 0145 — offen
 // im Browser über das Deploy hinweg, oder ein offline zwischengespeicherter
 // Versand (RideSummaryForm schickt ihn bei Verbindung erneut) — kennt nur
 // ist_oeffentlich; das gilt dann wie bisher.
@@ -51,7 +51,7 @@ export const SICHTBARKEIT_LABEL: Record<Sichtbarkeit, string> = {
 // Followern noch mit allen —, oder null. Ein Grund von aussen (zu kurze
 // freie Fahrt, importiert) geht vor; sonst entscheidet bei Streckenfahrten
 // der Deckungsgrad. Dieselbe Regel prüfen setCompletionVisibility und die
-// Datenbank (0052/0140) noch einmal — das hier ist nur die Anzeige.
+// Datenbank (0052/0145) noch einmal — das hier ist nur die Anzeige.
 export function teilenSperrGrund(
   coveragePercent: number | null,
   blockedReason: string | null,

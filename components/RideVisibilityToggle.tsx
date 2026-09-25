@@ -20,7 +20,7 @@ const BESCHREIBUNG: Record<Sichtbarkeit, string> = {
 };
 
 // Sichtbarkeit einer gespeicherten Fahrt, direkt in der Liste (Profil,
-// erkannte Abschnitte). Seit 0140 drei Stufen statt eines Umschalters.
+// erkannte Abschnitte). Seit 0145 drei Stufen statt eines Umschalters.
 //
 // Eine Auswahl im Dialog statt eines Durchschaltens per Tipp: das führte
 // von "privat" nach "öffentlich" über eine Zwischenstufe, die niemand

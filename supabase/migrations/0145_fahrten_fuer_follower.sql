@@ -1,6 +1,9 @@
 -- =====================================================================
--- 0140 — Fahrten nur für Follower teilen
+-- 0145 — Fahrten nur für Follower teilen
 -- =====================================================================
+--
+-- Eingespielt am 2026-09-25 (Supabase-Ledger: 0145_fahrten_fuer_follower),
+-- nach einem zurückgerollten Funktionstest — siehe supabase/migrations/README.md.
 --
 -- Bisher kannte eine Fahrt zwei Zustände: privat oder öffentlich
 -- (route_completions.ist_oeffentlich, 0017). Neu gibt es einen dritten:
@@ -65,7 +68,7 @@ alter table public.route_completions
   add column fuer_follower boolean not null default false;
 
 comment on column public.route_completions.fuer_follower is
-  'Fahrt ist für Follower des Fahrers sichtbar (0140). Nie zusammen mit ist_oeffentlich; öffentliche Views und Ranglisten filtern weiterhin nur auf ist_oeffentlich.';
+  'Fahrt ist für Follower des Fahrers sichtbar (0145). Nie zusammen mit ist_oeffentlich; öffentliche Views und Ranglisten filtern weiterhin nur auf ist_oeffentlich.';
 
 alter table public.route_completions
   add constraint route_completions_sichtbarkeit_eindeutig
@@ -147,7 +150,7 @@ as $$
 $$;
 
 comment on function public.fahrt_fuer_follower_sichtbar(uuid) is
-  'True, wenn der Aufrufer eine Fahrt mit fuer_follower = true sehen darf: Besitzer oder Follower des Besitzers (0140). Prüft fuer_follower selbst NICHT — immer als "rc.fuer_follower and …" verwenden.';
+  'True, wenn der Aufrufer eine Fahrt mit fuer_follower = true sehen darf: Besitzer oder Follower des Besitzers (0145). Prüft fuer_follower selbst NICHT — immer als "rc.fuer_follower and …" verwenden.';
 
 -- Angaben gemeldeter Fahrten für die Moderationswarteschlange
 -- (lib/moderation.ts). Dieselben Spalten und Streckenbedingungen wie
@@ -264,7 +267,7 @@ where (
   );
 
 comment on view public.public_fahrten is
-  'Öffentliche Fahrten für alle, Follower-Fahrten (0140) zusätzlich für Follower des Fahrers. Läuft bewusst mit den Rechten des View-Owners (bypasst RLS); die Sichtbarkeit entscheidet die WHERE-Bedingung. Ranglisten lesen NICHT hieraus.';
+  'Öffentliche Fahrten für alle, Follower-Fahrten (0145) zusätzlich für Follower des Fahrers. Läuft bewusst mit den Rechten des View-Owners (bypasst RLS); die Sichtbarkeit entscheidet die WHERE-Bedingung. Ranglisten lesen NICHT hieraus.';
 
 create or replace view public.public_fahrt_tracks as
 select
@@ -283,7 +286,7 @@ where (
   );
 
 comment on view public.public_fahrt_tracks is
-  'Gekappter Track (Privatzone) öffentlicher Fahrten, bei Follower-Fahrten nur für Follower (0140). Läuft mit den Rechten des View-Owners.';
+  'Gekappter Track (Privatzone) öffentlicher Fahrten, bei Follower-Fahrten nur für Follower (0145). Läuft mit den Rechten des View-Owners.';
 
 create or replace view public.public_completion_photos as
 select
@@ -305,7 +308,7 @@ where (
 order by cp."position";
 
 comment on view public.public_completion_photos is
-  'Fotos einer einzelnen sichtbaren Streckenfahrt (öffentlich, oder Follower-Fahrt für Follower, 0140), für app/fahrten/[id]/page.tsx. Läuft mit den Rechten des View-Owners.';
+  'Fotos einer einzelnen sichtbaren Streckenfahrt (öffentlich, oder Follower-Fahrt für Follower, 0145), für app/fahrten/[id]/page.tsx. Läuft mit den Rechten des View-Owners.';
 
 create or replace view public.kudos_summary as
 select
@@ -320,35 +323,28 @@ group by k.completion_id;
 -- ---------------------------------------------------------------------
 -- E) Kudos: auf allem, was man sehen darf
 -- ---------------------------------------------------------------------
--- Die Namen bleiben stehen, obwohl "öffentlich" jetzt zu eng ist: PR #426
--- (0139_rls_policies_aufgeraeumt) löscht und legt dieselben Policies unter
--- diesen Namen neu an. Mit gleichen Namen laufen beide Migrationen in jeder
--- Reihenfolge durch — die zweite muss aber den Inhalt der ersten mitnehmen
--- (hier: completion_ist_sichtbar; dort: (select auth.uid())).
-drop policy "Kudos auf öffentlichen Fahrten sind sichtbar" on public.kudos;
-create policy "Kudos auf öffentlichen Fahrten sind sichtbar"
-  on public.kudos for select
+-- alter policy statt drop/create: die Namen stammen aus 0139 und bleiben,
+-- obwohl "öffentlich" jetzt zu eng ist — 0134 und künftiges Aufräumen
+-- finden die Policies so dort, wo sie sie erwarten.
+alter policy "Kudos auf öffentlichen Fahrten sind sichtbar" on public.kudos
   using (public.completion_ist_sichtbar(completion_id));
 
-drop policy "Nutzer geben Kudos nur auf öffentliche Fahrten" on public.kudos;
-create policy "Nutzer geben Kudos nur auf öffentliche Fahrten"
-  on public.kudos for insert
+alter policy "Nutzer geben Kudos nur auf öffentliche Fahrten" on public.kudos
   with check ((select auth.uid()) = user_id and public.completion_ist_sichtbar(completion_id));
 
 -- ---------------------------------------------------------------------
 -- F) Moderatoren nehmen eine Fahrt ganz aus der Sicht, auch für Follower
 -- ---------------------------------------------------------------------
--- Auch diese Policy schreibt PR #426 um (zusammengelegt mit der eigenen
--- Update-Policy). Wer dort zuletzt einspielt, nimmt fuer_follower = false in
--- den Moderatorenzweig des WITH CHECK mit.
-drop policy "Moderatoren können Fahrten entöffentlichen" on public.route_completions;
-create policy "Moderatoren können Fahrten entöffentlichen"
-  on public.route_completions for update
-  using (exists (
-    select 1 from public.profiles
-    where profiles.id = (select auth.uid()) and profiles.is_moderator = true
-  ))
-  with check (ist_oeffentlich = false and fuer_follower = false and track_oeffentlich is null);
+-- 0139 hat die Moderatoren-Policy mit der eigenen Update-Policy
+-- zusammengelegt. Geändert wird nur das WITH CHECK, das USING bleibt, wie
+-- es ist: 0134 schreibt dessen Moderatorenprüfung auf ist_moderator() um,
+-- und diese Datei soll dort weder vorgreifen noch zurückdrehen.
+alter policy "Nutzer bearbeiten eigene Fahrten, Moderatoren entöffentlichen"
+  on public.route_completions
+  with check (
+    (select auth.uid()) = user_id
+    or (ist_oeffentlich = false and fuer_follower = false and track_oeffentlich is null)
+  );
 
 -- ---------------------------------------------------------------------
 -- G) Kontolöschung: Katalogstand vom 2026-09-25 plus fuer_follower = false.

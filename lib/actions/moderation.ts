@@ -262,7 +262,7 @@ export async function unpublishReportedCompletion(
   const { error, count } = await kontext.supabase
     .from("route_completions")
     // fuer_follower mit: auch eine nur für Follower geteilte Fahrt kann
-    // gemeldet werden (0140), und verborgen heisst für alle.
+    // gemeldet werden (0145), und verborgen heisst für alle.
     .update(
       { ist_oeffentlich: false, fuer_follower: false, track_oeffentlich: null },
       { count: "exact" },

@@ -114,7 +114,7 @@ export async function publicTrackEwkt(
 // Fahrten, und genau die alten wären das Problem.
 //
 // Die Schleife läuft ausdrücklich nur über die geteilten Fahrten —
-// öffentliche UND seit 0140 die für Follower, die denselben gekappten Track
+// öffentliche UND seit 0145 die für Follower, die denselben gekappten Track
 // tragen: private tragen gar keinen (siehe 0045), und deren Zahl ist pro
 // Nutzer klein. Ein einzelnes UPDATE über alle Zeilen ginge nicht, weil die
 // Kappung pro Fahrt eine eigene Geometrie ergibt und in SQL nur

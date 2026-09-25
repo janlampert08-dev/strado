@@ -297,7 +297,7 @@ export default async function FahrtDetailPage({
                   </span>
                   {/* Wer mit wem: der Fahrer sieht die Stufe seiner Fahrt
                       auf einen Blick, und ein Follower weiss, dass er etwas
-                      sieht, das nicht jeder sieht (0140). Die öffentliche
+                      sieht, das nicht jeder sieht (0145). Die öffentliche
                       Fahrt eines anderen braucht keinen Hinweis. */}
                   {(completion.isOwner || completion.sichtbarkeit === "follower") && (
                     <span

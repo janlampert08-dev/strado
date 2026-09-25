@@ -23,7 +23,7 @@ export interface PublicProfile {
 
 // Fahrzeuge werden nur befüllt, wenn der Nutzer das per Profileinstellung
 // freigegeben hat. Fahrten kommen direkt aus public_fahrten (0017/0018) —
-// die View filtert bereits pro Fahrt: öffentlich für alle, seit 0140
+// die View filtert bereits pro Fahrt: öffentlich für alle, seit 0145
 // Follower-Fahrten auch für Follower. Ein Follower sieht deshalb höhere
 // Summen als ein Fremder — gewollt: sie fassen zusammen, was der Betrachter
 // sehen darf. Nur der Pässe-Zähler (oeffentliche_passhoehen) bleibt bei den
