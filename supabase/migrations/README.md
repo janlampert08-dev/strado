@@ -47,6 +47,7 @@ Meldungen schliessen — in einer Transaktion.
   authenticated mit EXECUTE, weiterhin 12 öffentliche Fahrten.
 - Der Code (`unpublishReportedCompletion`) ruft die Funktion auf; der alte
   Code bleibt bis zum Deploy so kaputt wie vorher.
+
 ## Eingespielt: 0154_abschnitte_ohne_follower (2026-09-25, Produktion)
 
 Erkannte Abschnitte (`parent_completion_id` gesetzt) werden nie "nur für
