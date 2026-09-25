@@ -8,6 +8,8 @@ import PremiumCheckoutForm from "@/components/PremiumCheckoutForm";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumAngebot } from "@/lib/actions/billing";
 import { getPremiumStatus, kaufseiteOffen } from "@/lib/premium";
+import { saisonpassImWinter } from "@/lib/saisonpassSaison";
+import SaisonpassWinterHinweis from "@/components/SaisonpassWinterHinweis";
 import { LEGAL_URLS } from "@/lib/constants";
 import { betragText, planTitel, planZeitraum } from "@/lib/premiumAngebot";
 import { datumCH } from "@/lib/format";
@@ -151,17 +153,27 @@ export default async function PremiumZahlungPage({
           <SectionHeading icon={Scale}>Bevor du bestätigst</SectionHeading>
           <Card surface className="flex flex-col gap-2 px-4 py-3 text-sm text-muted">
             {gewaehlt.plan === "saisonpass" ? (
-              <p>
-                Einmalige Zahlung für {SAISONPASS_MONATE} Monate Premium ab heute. Der Saisonpass
-                verlängert sich nicht und muss nicht gekündigt werden — nach {SAISONPASS_MONATE}{" "}
-                Monaten läuft er einfach aus.
-                {passBis && (
-                  <>
-                    {" "}
-                    Dein laufender Pass gilt bis {datumCH(passBis)}; der neue schliesst daran an.
-                  </>
+              <>
+                <p>
+                  Einmalige Zahlung für {SAISONPASS_MONATE} Monate Premium ab heute. Der Saisonpass
+                  verlängert sich nicht und muss nicht gekündigt werden — nach {SAISONPASS_MONATE}{" "}
+                  Monaten läuft er einfach aus.
+                  {passBis && (
+                    <>
+                      {" "}
+                      Dein laufender Pass gilt bis {datumCH(passBis)}; der neue schliesst daran an.
+                    </>
+                  )}
+                </p>
+                {/* Der letzte Moment vor der Zahlung (lib/saisonpassSaison.ts).
+                    Mit laufendem Pass nicht: dann schliesst der neue an und
+                    beginnt nicht heute. */}
+                {!passBis && saisonpassImWinter() && (
+                  <p>
+                    <SaisonpassWinterHinweis />
+                  </p>
                 )}
-              </p>
+              </>
             ) : (
               <>
                 {testphase && (

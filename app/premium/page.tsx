@@ -10,6 +10,8 @@ import { getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus, kaufseiteOffen } from "@/lib/premium";
 import { datumCH } from "@/lib/format";
 import { getOeffentlichesAngebot } from "@/lib/actions/billing";
+import { saisonpassImWinter } from "@/lib/saisonpassSaison";
+import SaisonpassWinterHinweis from "@/components/SaisonpassWinterHinweis";
 import { getOrigin } from "@/lib/utils/url";
 import {
   betragText,
@@ -51,6 +53,7 @@ export default async function PremiumTeaserPage() {
   // dieselbe Regel wie dort (kaufseiteOffen).
   const hatPremium = !kaufseiteOffen(status);
   const gratisBis = status.quelle === "gratis" ? status.gratisBis : null;
+  const winter = saisonpassImWinter();
   const sortiert = REIHENFOLGE.map((plan) => plaene.find((p) => p.plan === plan)).filter(
     (p): p is NonNullable<typeof p> => Boolean(p),
   );
@@ -177,6 +180,14 @@ export default async function PremiumTeaserPage() {
                       {SAISONPASS_MONATE} Monate ab Kauf, verlängert sich nicht · entspricht{" "}
                       {betragText(saisonpassMonatsAequivalentRappen(p.betragRappen), p.waehrung)}{" "}
                       pro Monat
+                    </span>
+                  )}
+                  {/* Oktober bis Februar: dieselben Sätze wie auf der Kaufseite
+                      (lib/saisonpassSaison.ts). */}
+                  {p.plan === "saisonpass" && winter && <SaisonpassWinterHinweis />}
+                  {p.plan === "jahr" && winter && (
+                    <span className="text-xs text-muted">
+                      Empfohlen im Winter: läuft über die ganze nächste Saison.
                     </span>
                   )}
                 </li>

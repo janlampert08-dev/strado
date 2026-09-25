@@ -4,6 +4,7 @@ import PremiumPurchaseView from "@/components/PremiumPurchaseView";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumAngebot } from "@/lib/actions/billing";
 import { getPremiumStatus, kaufseiteOffen } from "@/lib/premium";
+import { saisonpassImWinter } from "@/lib/saisonpassSaison";
 
 // Die Preise kommen bei jedem Aufruf frisch aus Stripe — ein im Dashboard
 // geänderter Preis darf nicht als zwischengespeicherte Zahl weiterlaufen.
@@ -53,6 +54,7 @@ export default async function PremiumPage() {
         <PremiumPurchaseView
           angebot={angebot}
           gratisBis={status.gratisBis ? status.gratisBis.toISOString() : null}
+          winter={saisonpassImWinter()}
         />
       </main>
     </div>
