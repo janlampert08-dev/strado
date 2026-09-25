@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils/cn";
 
 // Eine Zahl mit ihrer Beschriftung. Vorher stand dasselbe Muster fünfzehnmal
@@ -96,7 +97,11 @@ export function Kennzahlenzeile({
   eintraege,
   className,
 }: {
-  eintraege: { beschriftung: string; wert: string }[];
+  /** wert als Text, oder als fertiger Knoten, wenn er erst nachkommt
+   *  (Streckenseite: das aktuelle Wetter in einer Suspense-Grenze,
+   *  components/AktuellesWetter.tsx). Ein Knoten bringt seine Darstellung
+   *  — auch die für "keine Angabe" — selbst mit. */
+  eintraege: { beschriftung: string; wert: string | ReactNode }[];
   className?: string;
 }) {
   // Immer rendern, Fehlendes als "keine Angabe": vorher filterte die Zeile
@@ -109,6 +114,14 @@ export function Kennzahlenzeile({
   return (
     <p className={cn("text-sm leading-relaxed text-muted", className)}>
       {eintraege.map((e, i) => {
+        if (typeof e.wert !== "string") {
+          return (
+            <span key={e.beschriftung}>
+              {i > 0 && <span aria-hidden="true"> · </span>}
+              {e.beschriftung} {e.wert}
+            </span>
+          );
+        }
         const fehlt = e.wert.trim() === "" || e.wert === "—";
         return (
           <span key={e.beschriftung}>
