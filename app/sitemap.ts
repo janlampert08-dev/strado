@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { getOrigin } from "@/lib/utils/url";
 import { siteUrl } from "@/lib/siteUrl";
 import { listRoutesForSitemap, type RouteSitemapEintrag } from "@/lib/routes";
+import { listPassIdsFuerSitemap } from "@/lib/paesse";
 
 // Immer zur Anfragezeit rendern: die Origin hängt an den Request-Headern
 // und die Streckenliste an cookies() — beides ist nie statisch
@@ -33,6 +34,24 @@ async function ladeStrecken(): Promise<RouteSitemapEintrag[]> {
   }
 }
 
+// Dasselbe Zeitbudget und derselbe Rückfall für die Passseiten: fällt der
+// Katalog aus, fehlen sie in dieser Antwort, der Rest bleibt.
+async function ladePaesse(): Promise<string[]> {
+  try {
+    const ergebnis = await Promise.race([
+      listPassIdsFuerSitemap(),
+      new Promise<null>((loese) => setTimeout(() => loese(null), STRECKEN_TIMEOUT_MS)),
+    ]);
+    return ergebnis ?? [];
+  } catch (fehler) {
+    console.error(
+      "Sitemap: Passliste fehlgeschlagen, liefere sie nicht mit:",
+      fehler instanceof Error ? fehler.message : fehler,
+    );
+    return [];
+  }
+}
+
 // Die Origin kommt aus den Request-Headern (Vorschau-Deployments zeigen auf
 // sich selbst); fällt das weg, gilt die konfigurierte Produktions-Domain
 // statt einer kaputten oder fehlenden Angabe.
@@ -52,7 +71,7 @@ async function bestimmeOrigin(): Promise<string> {
 // unabhängig davon per Sitemap crawlbar gemacht werden.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const origin = await bestimmeOrigin();
-  const routes = await ladeStrecken();
+  const [routes, paesse] = await Promise.all([ladeStrecken(), ladePaesse()]);
 
   return [
     { url: origin, changeFrequency: "weekly", priority: 1 },
@@ -66,6 +85,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Aussage, die sonst nur als Blatt über anderen Seiten liegt
     // (components/VerifiziertAbzeichen.tsx). Selten ändernd, oft verlinkt.
     { url: `${origin}/verifiziert`, changeFrequency: "monthly", priority: 0.4 },
+    // Je Pass eine Seite (app/paesse/[id]). Täglich wie die Liste: der
+    // Status darauf ändert sich, auch wenn der Katalog es nicht tut. Ohne
+    // lastModified — es gäbe keinen ehrlichen Wert dafür.
+    ...paesse.map((id) => ({
+      url: `${origin}/paesse/${id}`,
+      changeFrequency: "daily" as const,
+      priority: 0.7,
+    })),
     ...routes.map((route) => ({
       url: `${origin}/strecken/${route.id}`,
       lastModified: route.created_at,

@@ -1,6 +1,61 @@
 import { describe, expect, it } from "vitest";
-import { KONTEXT_MAX_STRECKEN, trailBox, waehleKontextStrecken } from "@/lib/routes";
-import type { KartenStrecke } from "@/types/database";
+import { KONTEXT_MAX_STRECKEN, mitSignaturen, trailBox, waehleKontextStrecken } from "@/lib/routes";
+import { computeSignatures } from "@/lib/signature";
+import type { ExploreRoute, KartenStrecke, SignaturStrecke } from "@/types/database";
+
+describe("mitSignaturen", () => {
+  function zeile(
+    id: string,
+    over: Partial<ExploreRoute & SignaturStrecke> = {},
+  ): ExploreRoute & SignaturStrecke {
+    return {
+      id,
+      name: id,
+      region: "Kanton Uri",
+      start_ort: "A",
+      ziel_ort: "B",
+      start_geojson: { type: "Point", coordinates: [8.5, 46.7] },
+      ziel_geojson: { type: "Point", coordinates: [8.6, 46.8] },
+      geometry_geojson: {
+        type: "LineString",
+        coordinates: [
+          [8.5, 46.7],
+          [8.6, 46.8],
+        ],
+      },
+      hoehe_m: null,
+      laenge_km: 20,
+      max_steigung_prozent: null,
+      kehren: null,
+      saison_status: "ganzjaehrig",
+      tempolimits: null,
+      ist_rundfahrt: false,
+      ...over,
+    } as ExploreRoute & SignaturStrecke;
+  }
+
+  const bestand = [
+    zeile("schnell", { tempolimits: [{ km_von: 0, km_bis: 20, kmh: 100, bekannt: true }] }),
+    zeile("kurvig", { kehren: 12, laenge_km: 10 }),
+    zeile("hoch", { hoehe_m: 2400 }),
+  ];
+
+  // Die Tempolimit-Segmente waren der grösste Posten der Startseiten-
+  // Nutzlast, der nur für das Merkmal gebraucht wurde.
+  it("gibt keine Tempolimits an den Client weiter", () => {
+    const { routes } = mitSignaturen(bestand);
+    expect(routes).toHaveLength(3);
+    for (const route of routes) expect("tempolimits" in route).toBe(false);
+  });
+
+  // Dieselben Merkmale wie vorher im Browser — gerechnet über denselben
+  // ungefilterten Bestand.
+  it("liefert dieselben Merkmale wie computeSignatures über den Bestand", () => {
+    const { signaturen } = mitSignaturen(bestand);
+    expect(signaturen).toEqual(Object.fromEntries(computeSignatures(bestand)));
+    expect(Object.keys(signaturen).sort()).toEqual(["hoch", "kurvig", "schnell"]);
+  });
+});
 
 // Eine Strecke als gerade Linie von (lng, lat) über laengeGrad nach Osten.
 // Mehr braucht die Auswahl nicht: sie misst Rechtecke, keine Kurven.

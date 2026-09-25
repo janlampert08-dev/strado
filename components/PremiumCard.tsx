@@ -36,7 +36,28 @@ export default function PremiumCard({ status }: { status: PremiumStatus }) {
     <section className="flex flex-col gap-3 rounded-lg border border-border bg-surface px-4 py-4">
       <SectionHeading icon={SparklesIcon}>Premium</SectionHeading>
 
-      {status.aktiv ? (
+      {status.aktiv && status.quelle === "gratis" ? (
+        // Gratis-Premium aus dem Signup-Link (0121/0135): kein Stripe-
+        // Customer, also auch kein Kundenportal — der Knopf "Abo verwalten"
+        // warf hier stumm auf /profil zurück. Stattdessen das Ablaufdatum
+        // und der Weg zum Kauf. Gefüllt statt Umriss wie im Werbe-Zweig
+        // unten: diese Person nutzt Premium bereits, der Kauf ist hier die
+        // naheliegende nächste Handlung und keine Werbung.
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="min-w-0 text-sm text-foreground">
+            Premium gratis
+            {status.gratisBis && (
+              <> bis <span className="text-muted">{datumCH(status.gratisBis)}</span></>
+            )}
+          </p>
+          <Link
+            href="/profil/premium"
+            className={buttonVariants({ size: "sm", className: "shrink-0" })}
+          >
+            Jetzt sichern
+          </Link>
+        </div>
+      ) : status.aktiv ? (
         <>
           {status.inKulanzfrist && status.kulanzBis && (
             <p className="text-sm text-danger">

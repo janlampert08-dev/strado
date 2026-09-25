@@ -7,7 +7,8 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import PremiumBadge from "@/components/PremiumBadge";
 import { buttonVariants } from "@/components/ui/Button";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { getPremiumStatus } from "@/lib/premium";
+import { getPremiumStatus, kaufseiteOffen } from "@/lib/premium";
+import { datumCH } from "@/lib/format";
 import { getOeffentlichesAngebot } from "@/lib/actions/billing";
 import { saisonpassImWinter } from "@/lib/saisonpassSaison";
 import SaisonpassWinterHinweis from "@/components/SaisonpassWinterHinweis";
@@ -47,7 +48,11 @@ export default async function PremiumTeaserPage() {
     getOrigin(),
   ]);
 
-  const hatPremium = status.aktiv && status.quelle !== "saisonpass";
+  // Wer Premium hat, das von selbst endet (Saisonpass, Gratis-Premium aus
+  // dem Signup-Link), geht wie ein Konto ohne Premium zur Kaufseite —
+  // dieselbe Regel wie dort (kaufseiteOffen).
+  const hatPremium = !kaufseiteOffen(status);
+  const gratisBis = status.quelle === "gratis" ? status.gratisBis : null;
   const winter = saisonpassImWinter();
   const sortiert = REIHENFOLGE.map((plan) => plaene.find((p) => p.plan === plan)).filter(
     (p): p is NonNullable<typeof p> => Boolean(p),
@@ -92,7 +97,13 @@ export default async function PremiumTeaserPage() {
     : user
       ? "/profil/premium"
       : `/anmelden?next=${encodeURIComponent("/profil/premium")}`;
-  const ctaText = hatPremium ? "Zum Profil" : user ? "Premium wählen" : "Anmelden, um Premium zu wählen";
+  const ctaText = hatPremium
+    ? "Zum Profil"
+    : gratisBis
+      ? "Jetzt sichern"
+      : user
+        ? "Premium wählen"
+        : "Anmelden, um Premium zu wählen";
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -186,6 +197,12 @@ export default async function PremiumTeaserPage() {
               Bezahlen mit TWINT oder Karte · Endpreise in CHF · Kündigung im Kundenportal
             </p>
           </section>
+        )}
+
+        {gratisBis && (
+          <p className="text-sm text-muted">
+            Premium gratis bis {datumCH(gratisBis)}. Danach läuft es ohne Abo einfach aus.
+          </p>
         )}
 
         <Link href={ctaHref} className={buttonVariants({ className: "w-full" })}>

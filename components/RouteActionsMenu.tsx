@@ -392,25 +392,35 @@ export default function RouteActionsMenu({
           )}
         </Card>
       )}
-      <ConfirmDialog
-        open={deleteConfirmOpen}
-        title="Strecke löschen"
-        description={`"${route.name}" wird endgültig gelöscht. Das kann nicht rückgängig gemacht werden.`}
-        confirmLabel="Löschen"
-        variant="danger"
-        pending={deleting}
-        onCancel={() => setDeleteConfirmOpen(false)}
-        onConfirm={() => {
-          setDeleteConfirmOpen(false);
-          startDelete(() => deleteRouteAsModerator(route.id));
-        }}
-      />
-      <ReportDialog
-        open={reportOpen}
-        onClose={() => setReportOpen(false)}
-        title="Strecke melden"
-        action={reportAction}
-      />
+      {/* Beide Dialoge nur für die, die sie auch öffnen können. Ein
+          geschlossenes <dialog> steht trotzdem im HTML — samt seiner H2 —,
+          und so bestand die Gliederung jeder Streckenseite für jeden
+          Besucher und jede Suchmaschine aus "Strecke löschen" und "Strecke
+          melden". Die Berechtigung selbst prüfen weiterhin die Server
+          Actions und RLS; das hier ist nur, was gerendert wird. */}
+      {moderator && (
+        <ConfirmDialog
+          open={deleteConfirmOpen}
+          title="Strecke löschen"
+          description={`"${route.name}" wird endgültig gelöscht. Das kann nicht rückgängig gemacht werden.`}
+          confirmLabel="Löschen"
+          variant="danger"
+          pending={deleting}
+          onCancel={() => setDeleteConfirmOpen(false)}
+          onConfirm={() => {
+            setDeleteConfirmOpen(false);
+            startDelete(() => deleteRouteAsModerator(route.id));
+          }}
+        />
+      )}
+      {canReport && (
+        <ReportDialog
+          open={reportOpen}
+          onClose={() => setReportOpen(false)}
+          title="Strecke melden"
+          action={reportAction}
+        />
+      )}
     </div>
   );
 }

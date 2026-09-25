@@ -43,6 +43,12 @@ export default function VerifiziertErklaerung() {
           letzten Meldung. Zusätzlich muss diese letzte Meldung zum Ende deiner
           Aufzeichnung passen — sonst zählt die Zeit nicht.
         </p>
+        <p className="mt-3 text-sm text-muted">
+          Ausserdem müssen die Meldungen entlang der Strecke liegen, sie von Anfang bis
+          Ende abdecken und dürfen nicht springen. Ein Tunnel, eine Pause oder ein paar
+          Minuten, in denen dein Telefon die App schlafen legt, schaden nicht. Fehlt aber
+          ein grosser Teil der Strecke, zählt die Zeit nicht.
+        </p>
       </Card>
 
       <Card surface className="p-5">

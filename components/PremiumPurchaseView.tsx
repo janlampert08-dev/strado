@@ -51,12 +51,15 @@ const REIHENFOLGE: AboPlan[] = ["jahr", "saisonpass", "monat"];
 export default function PremiumPurchaseView({
   angebot,
   winter = false,
+  gratisBis = null,
 }: {
   angebot: PremiumAngebot;
   /** Oktober bis Februar (lib/saisonpassSaison.ts): Jahresabo vorwählen
    *  und beim Saisonpass sagen, was er jetzt bringt. Vom Server berechnet,
    *  damit Server- und Browser-Render nicht an der Uhr auseinanderlaufen. */
   winter?: boolean;
+  /** Ende des laufenden Gratis-Premiums aus dem Signup-Link (0135), ISO. */
+  gratisBis?: string | null;
 }) {
   const passBisWert = angebot.saisonpassBis ? new Date(angebot.saisonpassBis) : null;
 
@@ -168,6 +171,17 @@ export default function PremiumPurchaseView({
         <p className="text-sm text-muted">
           Dein Saisonpass gilt bis {datumCH(passBis)}. Ein Abo, das du jetzt abschliesst, zahlt
           erst ab diesem Tag.
+        </p>
+      )}
+
+      {/* Wer über den Signup-Link gerade gratis Premium hat, muss vor dem
+          Kauf wissen, was mit den restlichen Tagen passiert: nichts wird
+          angehängt, Abo und Pass beginnen heute. Stillschweigend wäre das
+          der Satz, den man erst auf der Rechnung liest. */}
+      {gratisBis && (
+        <p className="text-sm text-muted">
+          Du hast Premium gratis bis {datumCH(new Date(gratisBis))}. Sicherst du es dir jetzt, beginnt
+          dein Abo bzw. Saisonpass heute — die restlichen Gratistage werden nicht angehängt.
         </p>
       )}
 

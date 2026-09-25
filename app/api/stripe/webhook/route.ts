@@ -4,6 +4,7 @@ import { getStripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { SAISONPASS_MONATE } from "@/lib/premiumLimits";
 import { saisonpassAusSession } from "@/lib/stripeCheckout";
+import { disputeAktion, paymentIntentVonDispute } from "@/lib/stripeDisputes";
 import {
   ereignisAbschliessen,
   ereignisBeanspruchen,
@@ -132,6 +133,138 @@ async function schreibeSaisonpass(
       `Saisonpass ${pass.sessionId}: kein Profil zu Customer ${pass.customerId} — nicht eingetragen`,
     );
   }
+}
+
+// Eine Rückbuchung (Chargeback). Was sie bedeutet, entscheidet
+// disputeAktion() in lib/stripeDisputes.ts; hier steht nur, wie.
+//
+// Reihenfolge: zuerst der Saisonpass, weil er direkt am PaymentIntent hängt
+// (saisonpaesse.stripe_payment_intent_id) und saisonpass_erstatten ohne
+// passende Zeile schlicht false liefert. Erst danach die Abo-Rechnung, die
+// seit Basil nur noch über invoice_payments an der Zahlung hängt.
+//
+// Idempotent auf allen Wegen: der Ereignis-Anspruch fängt die doppelte
+// Zustellung, saisonpass_erstatten setzt erstattet_am mit coalesce, und ein
+// bereits beendetes Abo wird nicht noch einmal gekündigt. Mehrere Ereignisse
+// derselben Rückbuchung (created, funds_withdrawn, closed/lost) laufen
+// deshalb gefahrlos alle durch.
+async function behandleRueckbuchung(supabase: AdminClient, event: Stripe.Event): Promise<void> {
+  const dispute = event.data.object as Stripe.Dispute;
+  const aktion = disputeAktion(event.type, dispute);
+  const paymentIntentId = paymentIntentVonDispute(dispute);
+  const kontext = {
+    eventId: event.id,
+    type: event.type,
+    disputeId: dispute.id,
+    status: dispute.status,
+    grund: dispute.reason,
+    paymentIntentId,
+  };
+
+  if (aktion === "ignorieren") {
+    console.info("Rückbuchung: ohne Wirkung auf Premium", kontext);
+    return;
+  }
+  if (aktion === "gewonnen") {
+    // Laut, weil hier jemand von Hand entscheiden muss: Pass bzw. Abo
+    // wurden beim Eingang entzogen, das Geld ist jetzt wieder da.
+    console.warn(
+      "Rückbuchung GEWONNEN — Premium wurde entzogen und wird nicht automatisch zurückgegeben. Von Hand prüfen.",
+      kontext,
+    );
+    return;
+  }
+  if (!paymentIntentId) {
+    console.warn("Rückbuchung ohne PaymentIntent — nicht zuordenbar", kontext);
+    return;
+  }
+
+  // 1. Saisonpass?
+  const { data: warPass, error } = await supabase.rpc("saisonpass_erstatten", {
+    p_stripe_payment_intent_id: paymentIntentId,
+  });
+  if (error) throw error;
+  if (warPass === true) {
+    console.warn("Rückbuchung: Saisonpass entzogen", kontext);
+
+    // Ein Anschluss-Abo (Testphase bis zum Passende) verliert mit dem Pass
+    // seinen Grund. Anders als bei der Erstattung (charge.refunded, dort
+    // zahlt es ab heute) wird es hier gekündigt: wer die Passzahlung
+    // zurückbucht, würde eine sofortige Abbuchung sehr wahrscheinlich
+    // ebenfalls zurückbuchen — samt Gebühr.
+    const customerId = typeof dispute.charge === "object" ? idVonCustomer(dispute.charge.customer) : null;
+    const kunde = customerId ?? (await customerDerZahlung(paymentIntentId));
+    if (kunde) {
+      const anschluss = await getStripe().subscriptions.list({
+        customer: kunde,
+        status: "trialing",
+        limit: 10,
+      });
+      for (const abo of anschluss.data) {
+        if (abo.metadata?.variante !== "anschluss") continue;
+        await getStripe().subscriptions.cancel(abo.id, { prorate: false, invoice_now: false });
+        console.warn("Rückbuchung: Anschluss-Abo gekündigt", { ...kontext, subscriptionId: abo.id });
+      }
+    }
+    return;
+  }
+
+  // 2. Abo-Rechnung?
+  const zahlungen = await getStripe().invoicePayments.list({
+    payment: { type: "payment_intent", payment_intent: paymentIntentId },
+    limit: 1,
+    expand: ["data.invoice"],
+  });
+  const rechnungFeld = zahlungen.data[0]?.invoice;
+  const rechnung =
+    rechnungFeld && typeof rechnungFeld === "object"
+      ? (rechnungFeld as Stripe.Invoice)
+      : typeof rechnungFeld === "string"
+        ? await getStripe().invoices.retrieve(rechnungFeld)
+        : null;
+  const aboId = rechnung ? leseAboIdAusRechnung(rechnung) : null;
+  if (!aboId) {
+    console.info("Rückbuchung betrifft weder Saisonpass noch Abo", kontext);
+    return;
+  }
+
+  const abo = await getStripe().subscriptions.retrieve(aboId);
+  const zustand = leseAboZustand(abo);
+  const herkunft = zustand ? preisHerkunft(zustand.priceId) : "fremd";
+  if (herkunft === "unkonfiguriert") {
+    throw new Error("Keine STRIPE_PREMIUM_PRICE_ID* gesetzt — Rückbuchung nicht zuordenbar.");
+  }
+  if (herkunft === "fremd") {
+    console.info("Rückbuchung auf ein fremdes Abo übersprungen", { ...kontext, subscriptionId: aboId });
+    return;
+  }
+
+  if (abo.status !== "canceled" && abo.status !== "incomplete_expired") {
+    // Sofort statt zum Periodenende: die bezahlte Periode ist mit der
+    // Rückbuchung nicht mehr bezahlt, und jede weitere Abbuchung wäre die
+    // nächste Rückbuchung. Keine anteilige Gutschrift — es gibt nichts
+    // gutzuschreiben.
+    await getStripe().subscriptions.cancel(aboId, { prorate: false, invoice_now: false });
+    console.warn("Rückbuchung: Abo sofort gekündigt", { ...kontext, subscriptionId: aboId });
+  } else {
+    console.info("Rückbuchung: Abo war bereits beendet", { ...kontext, subscriptionId: aboId });
+  }
+
+  // Nicht auf customer.subscription.deleted warten: der Zustand wird jetzt
+  // geschrieben (frisch von Stripe geholt, apply_subscription_state verwirft
+  // Älteres). Das spätere Ereignis schreibt denselben Zustand noch einmal.
+  await schreibeAboZustand(supabase, aboId, "unveraendert", null);
+}
+
+function idVonCustomer(customer: Stripe.Charge["customer"]): string | null {
+  if (!customer) return null;
+  return typeof customer === "string" ? customer : customer.id;
+}
+
+async function customerDerZahlung(paymentIntentId: string): Promise<string | null> {
+  const pi = await getStripe().paymentIntents.retrieve(paymentIntentId);
+  if (!pi.customer) return null;
+  return typeof pi.customer === "string" ? pi.customer : pi.customer.id;
 }
 
 // Welche Abo-ID betrifft dieses Ereignis? Abo-Ereignisse tragen sie direkt,
@@ -278,6 +411,8 @@ export async function POST(req: Request) {
           }
         }
       }
+    } else if (event.type.startsWith("charge.dispute.")) {
+      await behandleRueckbuchung(supabase, event);
     } else {
       const kulanzAktion = kulanzAktionFuer(event.type);
       const abo = kulanzAktion ? betroffenesAbo(event) : null;

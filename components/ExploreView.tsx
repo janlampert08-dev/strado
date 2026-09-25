@@ -10,7 +10,7 @@ import ExploreSidebar from "@/components/ExploreSidebar";
 import DragSheet from "@/components/ui/DragSheet";
 import { haversineKm } from "@/lib/geo";
 import { brauchtUrlSync, echoEinordnen, matchesSearch } from "@/lib/search";
-import { computeSignatures } from "@/lib/signature";
+import type { RouteSignature } from "@/lib/signature";
 import { waehleEmpfohleneStrecke, type Empfehlung } from "@/lib/empfehlung";
 import type { ExploreRoute } from "@/types/database";
 import type { Streckenbewertung } from "@/lib/bewertungen";
@@ -85,12 +85,16 @@ const ZUFALLSVORSCHLAG_MS = 5000;
 
 export default function ExploreView({
   routes,
+  signaturen,
   bewertungen,
   passZustaende,
   loadError = false,
   loggedIn,
 }: {
   routes: ExploreRoute[];
+  /** Signatur-Merkmal je Strecken-ID, serverseitig über den ganzen Bestand
+   *  gerechnet (getRoutes() in lib/routes.ts). */
+  signaturen: Record<string, RouteSignature>;
   /** Sternenschnitt je Strecken-ID; Strecken ohne Wertung fehlen. */
   bewertungen: Record<string, Streckenbewertung>;
   /** Schwerwiegendster Passzustand je Strecke; Strecken ohne Pass fehlen. */
@@ -198,13 +202,16 @@ export default function ExploreView({
   // Über den gesamten (ungefilterten) Bestand berechnet, damit das
   // Signatur-Merkmal je Strecke stabil bleibt — eine Textsuche schränkt nur
   // die sichtbare Auswahl ein, ohne die Perzentile (und damit die Merkmale)
-  // der übrigen Strecken zu verschieben.
+  // der übrigen Strecken zu verschieben. Gerechnet wird seit 2026-09-25 auf
+  // dem Server (getRoutes()), damit die Tempolimit-Segmente, aus denen der
+  // Schnitt kommt, nicht mehr in der Seitennutzlast stehen; hier wird das
+  // Objekt nur in die Map zurückverwandelt, die die Seitenleiste erwartet.
   //
   // Die Signatur trägt Icon, Text UND Farbe — Letzteres wieder, seit die
   // fünf Töne als Design-Tokens in app/globals.css stehen statt als
   // Hex-Konstanten (siehe lib/signature.ts). Dieselbe Map speist deshalb
   // beides: die Seitenleiste und die Kartenlinien.
-  const signatures = useMemo(() => computeSignatures(routes), [routes]);
+  const signatures = useMemo(() => new Map(Object.entries(signaturen)), [signaturen]);
 
   // Nur der Schlüssel, ohne das Label — mehr braucht die Karte nicht, und
   // ein eigener useMemo hält die RouteMap-Prop stabil, statt bei jedem

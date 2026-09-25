@@ -14,7 +14,8 @@ import {
 } from "@/components/NavIcons";
 import Header from "@/components/Header";
 import VisibilitySettings from "@/components/VisibilitySettings";
-import { DEFAULT_PRIVACY_RADIUS_M } from "@/lib/track";
+import { DEFAULT_PRIVACY_RADIUS_M, MAX_PRIVACY_RADIUS_M } from "@/lib/track";
+import { eigenerPrivatzonenRadius } from "@/lib/publicTrack";
 import ThemeToggle from "@/components/ThemeToggle";
 import DeleteProposalButton from "@/components/DeleteProposalButton";
 import DeleteAccountSection from "@/components/DeleteAccountSection";
@@ -67,7 +68,7 @@ export default async function EinstellungenPage() {
     supabase
       .from("profiles")
       .select(
-        "display_name, zeigt_fahrzeuge, zeigt_avatar, zeigt_paesse, zeigt_hoehenmeter, zeigt_distanz, zeigt_follower_liste, zeigt_tempo, privatzone_radius_m",
+        "display_name, zeigt_fahrzeuge, zeigt_avatar, zeigt_paesse, zeigt_hoehenmeter, zeigt_distanz, zeigt_follower_liste, zeigt_tempo",
       )
       .eq("id", user.id)
       .single(),
@@ -89,6 +90,22 @@ export default async function EinstellungenPage() {
     isModerator(user.id),
     getOrigin(),
   ]);
+
+  // Der Privatzonen-Radius steht seit 0132 nicht mehr in der Spaltenliste
+  // oben: authenticated hat keinen Lese-Grant mehr darauf (sonst sähe jeder
+  // eingeloggte Nutzer den Radius jedes anderen), der eigene Wert kommt über
+  // meine_privatzone(). In der Liste oben liesse er die ganze Profilabfrage
+  // mit "permission denied" scheitern.
+  //
+  // Nicht lesbar heisst hier: die strengste Stufe vorbelegen, nicht den
+  // Standard. Das Formular speichert bei JEDEM umgelegten Schalter alle
+  // Felder mit (VisibilitySettings), eine falsch vorbelegte Auswahl würde
+  // also still gespeichert — und dann besser in die schützende Richtung
+  // (dieselbe Überlegung wie bei privacyRadiusM in lib/publicTrack.ts).
+  const privatzone = await eigenerPrivatzonenRadius(supabase);
+  const privatzoneRadiusM = privatzone.fehler
+    ? MAX_PRIVACY_RADIUS_M
+    : (privatzone.radiusM ?? DEFAULT_PRIVACY_RADIUS_M);
 
   // Der Einstieg in die Staging-Umgebung — nur für Moderatoren, und nur von
   // der Produktion aus: auf Staging selbst wäre der Link ein Verweis auf die
@@ -146,9 +163,7 @@ export default async function EinstellungenPage() {
               zeigtDistanz={profile?.zeigt_distanz ?? true}
               zeigtFollowerListe={profile?.zeigt_follower_liste ?? true}
               zeigtTempo={profile?.zeigt_tempo ?? false}
-              privatzoneRadiusM={
-                profile?.privatzone_radius_m ?? DEFAULT_PRIVACY_RADIUS_M
-              }
+              privatzoneRadiusM={privatzoneRadiusM}
             />
           </section>
 
@@ -284,7 +299,11 @@ export default async function EinstellungenPage() {
           <section id="premium" className="flex scroll-mt-20 flex-col gap-3">
             <SectionHeading icon={Sparkles}>Premium</SectionHeading>
             <p className="text-sm text-muted">
-              {premiumStatus.aktiv ? "Abo-Status, Rechnungen, Kündigung." : premiumKurzform()}
+              {premiumStatus.quelle === "gratis"
+                ? "Gratis-Premium und wie es danach weitergeht."
+                : premiumStatus.aktiv
+                  ? "Abo-Status, Rechnungen, Kündigung."
+                  : premiumKurzform()}
             </p>
             {/* Text und Knopf standen nebeneinander in einer Zeile. Ohne Abo
                 ist der Text premiumKurzform() und damit ein ganzer Satz —
@@ -303,7 +322,7 @@ export default async function EinstellungenPage() {
                     dort führt der Weg zur Übersicht mit Gültigkeit und
                     Rechnung (0110). */}
                 {premiumStatus.aktiv
-                  ? premiumStatus.quelle === "saisonpass"
+                  ? premiumStatus.quelle === "saisonpass" || premiumStatus.quelle === "gratis"
                     ? "Premium verwalten"
                     : "Abo verwalten"
                   : "Mehr zu Premium"}

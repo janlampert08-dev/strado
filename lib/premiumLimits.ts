@@ -131,8 +131,27 @@ export const TESTPHASE_TAGE = 14;
 export const SAISONPASS_VERLAENGERBAR_TAGE_VOR_ABLAUF = 30;
 
 /** Woher der Zugang kommt — die Oberfläche benennt und verwaltet ihn je
- *  nach Quelle anders (Kundenportal nur beim Abo). */
-export type PremiumQuelle = "abo" | "saisonpass" | "manuell";
+ *  nach Quelle anders (Kundenportal nur beim Abo).
+ *
+ *  "gratis" seit 0135: Premium über den Signup-Link (0121), befristet, ohne
+ *  Zahlung und ohne Stripe-Customer. Vorher fiel es unter "manuell" — und
+ *  damit genau die Konten, die der Link zum Kauf führen soll, von den
+ *  Kaufseiten weg auf /profil. */
+export type PremiumQuelle = "abo" | "saisonpass" | "gratis" | "manuell";
+
+/**
+ * Darf diese Person die Kaufseiten (/profil/premium, …/zahlung) sehen?
+ *
+ * Ohne Premium sowieso. Mit Premium nur, wenn der Zugang von selbst endet
+ * und nichts daran erinnert: der Saisonpass (0110 — ein Abo zahlt dann erst
+ * ab dem Passende, ein neuer Pass schliesst an) und das Gratis-Premium aus
+ * dem Signup-Link (0135 — ein Kauf beginnt sofort, siehe PR). Ein laufendes
+ * Abo oder ein von Hand gesetzter Zugang schickt weiter auf /profil;
+ * einen zweiten Abschluss wiese createCheckoutSession ohnehin ab.
+ */
+export function kaufseiteOffen(status: Pick<PremiumStatus, "aktiv" | "quelle">): boolean {
+  return !status.aktiv || status.quelle === "saisonpass" || status.quelle === "gratis";
+}
 
 export interface PremiumStatus {
   /** Darf diese Person die Premium-Funktionen nutzen? Die einzige Frage,
@@ -155,6 +174,9 @@ export interface PremiumStatus {
   inKulanzfrist: boolean;
   /** Ende der Kulanzfrist, wenn eine läuft. */
   kulanzBis: Date | null;
+  /** Ende des Gratis-Premiums aus dem Signup-Link, solange es den Zugang
+   *  trägt (quelle "gratis"); sonst null. */
+  gratisBis: Date | null;
 }
 
 export interface PrivateStreckenKontingent {
