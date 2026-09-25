@@ -9,6 +9,7 @@ import { PRIVACY_RADIUS_OPTIONS } from "@/lib/track";
 import { getClientIp, isRateLimitedByKey } from "@/lib/rateLimit";
 import { bildEndungFuerMime } from "@/lib/validation";
 import { AVATAR_BUCKET, avatareEntfernen } from "@/lib/avatarSpeicher";
+import { ladeFollowerZahlen } from "@/lib/followerZahlen";
 
 export interface ProfileActionState {
   error: string | null;
@@ -72,17 +73,20 @@ export async function searchProfiles(query: string): Promise<ProfileSearchResult
   //   öffentliche Fahrten und, nur für Follower, Follower-Fahrten (0145);
   //   eine private Fahrt verrät hier also weder ihre Region noch ihre
   //   Existenz.
-  // - Follower über get_follow_counts, die SECURITY-DEFINER-Funktion, die
-  //   auch das Profil nutzt (0040). Die Zahl ist laut Einstellungen "für
-  //   andere immer sichtbar", unabhängig von zeigt_follower_liste — die
+  // - Follower über get_follow_counts_many (0155), die gebündelte Fassung
+  //   der SECURITY-DEFINER-Funktion get_follow_counts, die auch das Profil
+  //   nutzt (0040) — ein Aufruf statt einem je Treffer, mit Rückweg auf die
+  //   Einzelaufrufe, solange 0155 fehlt (lib/followerZahlen.ts). Die Zahl
+  //   ist laut Einstellungen "für andere immer sichtbar", unabhängig von
+  //   zeigt_follower_liste — die
   //   Liste bleibt geschützt, die Zahl war nie geschützt.
   //
   // Beides läuft mit der Sitzung des Aufrufers (createClient), nicht mit dem
   // Admin-Client: keine RLS-Umgehung, nichts, was nicht schon per PostgREST
   // abrufbar wäre. Die Last bleibt durch das IP-Limit oben und limit(8)
-  // begrenzt — höchstens neun zusätzliche Abfragen je Suche.
+  // begrenzt — zwei zusätzliche Abfragen je Suche (neun im Rückweg).
   const ids = profile.map((p) => p.id);
-  const [{ data: fahrtenDaten }, followerZahlen] = await Promise.all([
+  const [{ data: fahrtenDaten }, followerJeNutzer] = await Promise.all([
     supabase
       .from("public_fahrten")
       .select("user_id, region")
@@ -90,14 +94,7 @@ export async function searchProfiles(query: string): Promise<ProfileSearchResult
       .eq("ist_abschnitt", false)
       .order("datum", { ascending: false })
       .limit(500),
-    Promise.all(
-      ids.map(async (id) => {
-        const { data: zeile } = await supabase
-          .rpc("get_follow_counts", { p_user_id: id })
-          .single();
-        return [id, (zeile as { followers?: number } | null)?.followers ?? 0] as const;
-      }),
-    ),
+    ladeFollowerZahlen(supabase, ids),
   ]);
 
   const fahrtenJeNutzer = new Map<string, { region: string | null; anzahl: number }>();
@@ -107,7 +104,6 @@ export async function searchProfiles(query: string): Promise<ProfileSearchResult
     if (bisher) bisher.anzahl += 1;
     else fahrtenJeNutzer.set(f.user_id, { region: f.region, anzahl: 1 });
   }
-  const followerJeNutzer = new Map(followerZahlen);
 
   return profile.map((p) => ({
     id: p.id,
