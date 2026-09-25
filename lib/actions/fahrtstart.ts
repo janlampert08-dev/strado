@@ -34,6 +34,16 @@ import { isValidUuid } from "@/lib/validation";
 const TICKETS_PRO_MINUTE = 20;
 const FENSTER_MS = 60_000;
 
+// Gasttickets je IP: zwei in fünf Minuten. Die Datenbank deckelt Gasttickets
+// global auf 10 pro Minute (0133) — lag die Bremse je IP darüber (20 pro
+// Minute, oben), konnte ein einziger Client den globalen Deckel dauerhaft
+// füllen, und jeder echte Gast bekam kein Ticket mehr (Fahrt ohne Wertung).
+// Re-Audit 2026-09-25, M2. Ein Mensch startet eine Aufzeichnung, allenfalls
+// eine zweite nach einem Neustart; mehr braucht ein Gast nicht. Angemeldete
+// Fahrer laufen nie durch diesen Zähler (siehe fahrtstartRpc).
+const GAST_TICKETS_PRO_FENSTER = 2;
+const GAST_FENSTER_MS = 5 * 60_000;
+
 // Ruft eine der beiden Fahrtstart-Funktionen auf — zuerst mit der Sitzung
 // des Aufrufers, für einen Gast notfalls über den Service-Role-Client.
 //
@@ -62,12 +72,15 @@ const FENSTER_MS = 60_000;
 async function fahrtstartRpc(
   funktion: "fahrt_start_anlegen" | "fahrt_start_puls",
   args: Record<string, unknown>,
+  gastBremse?: () => boolean,
 ): Promise<{ data: unknown; error: { code?: string } | null }> {
   const supabase = await createClient();
   const erster = await supabase.rpc(funktion, args);
   if (!erster.error || !istGastSperre(erster.error)) {
     return { data: erster.data, error: erster.error };
   }
+  // Nur der Gastweg: eine eigene, engere Bremse vor dem Service-Role-Aufruf.
+  if (gastBremse?.()) return { data: null, error: { code: "gast_gebremst" } };
   const zweiter = await createAdminClient().rpc(funktion, args);
   return { data: zweiter.data, error: zweiter.error };
 }
@@ -96,11 +109,15 @@ export async function fahrtStartAnlegen(
   const geheimnis = erzeugeGeheimnis();
   const abdruck = await abdruckVon(geheimnis);
 
-  const { data, error } = await fahrtstartRpc("fahrt_start_anlegen", {
-    p_abdruck: abdruck,
-    p_art: art,
-    p_strecke_id: streckeId ?? null,
-  });
+  const { data, error } = await fahrtstartRpc(
+    "fahrt_start_anlegen",
+    {
+      p_abdruck: abdruck,
+      p_art: art,
+      p_strecke_id: streckeId ?? null,
+    },
+    () => isRateLimitedByKey(`fahrtstart-gast:${ip}`, GAST_TICKETS_PRO_FENSTER, GAST_FENSTER_MS),
+  );
 
   // Fehlschlag ist kein Abbruch der Fahrt: ohne Ticket wird die Fahrt später
   // mit dauer_quelle = "trail" gespeichert und erscheint nur nicht in der
