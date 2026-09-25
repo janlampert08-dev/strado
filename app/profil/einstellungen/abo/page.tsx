@@ -3,6 +3,7 @@ import Header from "@/components/Header";
 import PremiumCard from "@/components/PremiumCard";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
+import { jahresaboWechselHinweis } from "@/lib/actions/billing";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
 // Der Abo-Zustand kommt aus der Datenbank (Webhook/Reconciliation-Cron
@@ -32,7 +33,11 @@ export default async function AboVerwaltenPage({
   const user = await getCurrentUser();
   if (!user) redirect("/anmelden");
 
-  const [status, { portal }] = await Promise.all([getPremiumStatus(), searchParams]);
+  const [status, { portal }, wechselHinweis] = await Promise.all([
+    getPremiumStatus(),
+    searchParams,
+    jahresaboWechselHinweis(),
+  ]);
 
   // Ohne Abo gibt es hier nichts zu verwalten. Statt einer Seite mit dem
   // Titel "Abo verwalten", die in Wahrheit für Premium wirbt, geht es
@@ -40,7 +45,14 @@ export default async function AboVerwaltenPage({
   // ohne Abo führt. Der Einstellungsabschnitt, der hierher verlinkt, ist
   // ohne Abo ohnehin ausgeblendet; diese Prüfung fängt den direkten Aufruf
   // der Adresse ab.
-  if (!status.aktiv) redirect("/profil/premium");
+  //
+  // Ausnahme: eine offene Zahlung (past_due/unpaid) nach Ablauf der
+  // Kulanzfrist. Dann ist aktiv false, aber das Abo lebt bei Stripe weiter,
+  // und der einzige Weg zurück ist ein neues Zahlungsmittel im Portal. Die
+  // Kasse weist diese Konten ab ("Für dein bisheriges Abo ist noch eine
+  // Zahlung offen") und verweist hierher — eine Umleitung auf die Kaufseite
+  // schloss den Kreis bisher ohne Ausgang.
+  if (!status.aktiv && !status.offeneZahlung) redirect("/profil/premium");
 
   return (
     <div className="flex h-dvh flex-col">
@@ -53,7 +65,7 @@ export default async function AboVerwaltenPage({
             nochmals — klappt es dann immer noch nicht, schreib uns an contact@strado.ch.
           </p>
         )}
-        <PremiumCard status={status} />
+        <PremiumCard status={status} wechselHinweis={wechselHinweis} />
       </Seitenrahmen>
     </div>
   );

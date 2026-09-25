@@ -17,7 +17,14 @@ import {
   CHECKOUT_BESTAETIGEN_FENSTER_MS,
   CHECKOUT_BESTAETIGEN_LIMIT,
 } from "@/lib/abobremse";
-import { KULANZ_TAGE, leseAboZustand, saisonpassPreisId } from "@/lib/stripeWebhook";
+import {
+  BESTAND_VARIABLEN,
+  KULANZ_TAGE,
+  leseAboZustand,
+  preisIdsAus,
+  saisonpassPreisId,
+} from "@/lib/stripeWebhook";
+import { jahresErsparnisRappen, portalErlaubtWechselZu } from "@/lib/jahresWechsel";
 import {
   abzulaufendeSessions,
   aktivesAboAusSession,
@@ -32,6 +39,7 @@ import {
 } from "@/lib/stripeCheckout";
 import { checkoutErgebnis, zahlungsversuchDerSession, type CheckoutErgebnis } from "@/lib/checkoutErgebnis";
 import { datumCH } from "@/lib/format";
+import { zahlungNochOffen } from "@/lib/offeneZahlung";
 import { passZeitraum, saisonpassVerlaengerbar } from "@/lib/premiumAngebot";
 import {
   SAISONPASS_MONATE,
@@ -133,7 +141,13 @@ export type CheckoutSessionResult =
        *  Kaufseite beim Rendern gezeigt hat. Siehe VergebenerPreis. */
       preis: VergebenerPreis;
     }
-  | { ok: false; error: string };
+  | {
+      ok: false;
+      error: string;
+      /** Ein Weg weiter, wenn es einen gibt — etwa zur Abo-Seite, wenn für
+       *  ein bestehendes Abo eine Zahlung offen ist. */
+      link?: { href: string; label: string };
+    };
 
 // AboPlan und die Angebots-Typen stehen in lib/premiumLimits.ts, nicht
 // hier: eine Datei mit "use server" darf ausschliesslich async Functions
@@ -460,9 +474,6 @@ async function vergebenerPreis(
 // unbekannten Customer unten einmal mit einer frischen ID wiederholen lässt,
 // ohne die Prüfungen am Anfang der Funktion (Anmeldung, Plan, Preis-ID) ein
 // zweites Mal zu durchlaufen.
-// Siehe die Prüfung auf offene Zahlungen in checkoutSessionMitCustomer.
-const ZAHLUNG_OFFEN_SPERRT_TAGE = 60;
-
 async function checkoutSessionMitCustomer(
   userId: string,
   email: string | undefined,
@@ -509,17 +520,24 @@ async function checkoutSessionMitCustomer(
   // auch vom Saisonpass. 60 Tage decken das längste Wiederholungsfenster ab,
   // das Stripe anbietet (zwei Monate); ein älteres Abo wird nicht mehr
   // nachbezahlt und steht einem neuen Kauf nicht im Weg.
+  //
+  // Die Frist steht in lib/offeneZahlung.ts, weil die Abo-Seite dieselbe
+  // Regel braucht: dort bekommt genau dieses Konto den Weg ins Portal.
   const zieheNochEin = (abo: Stripe.Subscription) => {
     const ende = abo.items?.data?.[0]?.current_period_end;
-    return typeof ende !== "number" || ende * 1000 > Date.now() - ZAHLUNG_OFFEN_SPERRT_TAGE * 86_400_000;
+    return zahlungNochOffen(abo.status, typeof ende === "number" ? ende * 1000 : null);
   };
   if (ueberfaellig.data.some(zieheNochEin) || unbezahlt.data.some(zieheNochEin)) {
     return {
       ok: false,
+      // Bis hierhin verwies der Satz auf die Zahlungserinnerung von Stripe,
+      // weil die Abo-Seite ohne aktives Premium auf die Kaufseite umleitete
+      // — der Weg ins Portal war für genau dieses Konto zu. Seit
+      // offeneZahlung (lib/premium.ts) steht er dort offen.
       error:
         "Für dein bisheriges Abo ist noch eine Zahlung offen. Aktualisiere dein Zahlungsmittel " +
-        "über den Link in der Zahlungserinnerung von Stripe — dann läuft es ohne neues Abo " +
-        "weiter. Findest du die E-Mail nicht, schreib uns an contact@strado.ch.",
+        "in der Aboverwaltung — dann läuft es ohne neues Abo weiter.",
+      link: { href: "/profil/einstellungen/abo", label: "Zahlungsmittel aktualisieren" },
     };
   }
 
@@ -1187,6 +1205,55 @@ export async function createPortalSession() {
 
   if (!portalUrl) redirect("/profil/einstellungen/abo?portal=fehler");
   redirect(portalUrl);
+}
+
+// Der leise Hinweis auf der Abo-Seite: wer noch ein Monatsabo zum alten
+// Preis zahlt (BESTAND_VARIABLEN.monat), spart mit dem Jahresabo. Nur
+// lesend, und nur, wenn der Wechsel im Kundenportal tatsächlich angeboten
+// wird — siehe portalErlaubtWechselZu. null heisst: keinen Hinweis zeigen.
+//
+// Über den an die Session gebundenen Client, unter RLS: Status, Preis-ID und
+// Kündigungsstand sind für die eigene Zeile freigegeben (0063) — dieselben
+// Spalten, die getPremiumStatus liest. Kein Service-Role-Client nötig.
+//
+// Jeder Fehler endet in null: der Hinweis ist Beiwerk, die Abo-Seite darf
+// an ihm nicht scheitern.
+export async function jahresaboWechselHinweis(): Promise<{
+  ersparnisRappen: number;
+  waehrung: string;
+} | null> {
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  try {
+    const supabase = await createClient();
+    const { data: abo } = await supabase
+      .from("subscriptions")
+      .select("status, price_id, cancel_at_period_end")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!abo || abo.status !== "active" || abo.cancel_at_period_end) return null;
+    if (!abo.price_id || !preisIdsAus(BESTAND_VARIABLEN.monat).includes(abo.price_id)) return null;
+
+    const jahr = jahresPreis();
+    if (!jahr.preisId) return null;
+
+    const [konfigurationen, monatBetrag, jahrBetrag] = await Promise.all([
+      getStripe().billingPortal.configurations.list({ is_default: true, active: true, limit: 1 }),
+      betrag({ variable: "subscriptions.price_id", preisId: abo.price_id }),
+      betrag(jahr),
+    ]);
+
+    if (!portalErlaubtWechselZu(konfigurationen.data[0] ?? null, jahr.preisId)) return null;
+
+    const ersparnis = jahresErsparnisRappen(monatBetrag, jahrBetrag);
+    if (ersparnis === null || !jahrBetrag) return null;
+    return { ersparnisRappen: ersparnis, waehrung: jahrBetrag.waehrung };
+  } catch (err) {
+    console.error("Jahresabo-Hinweis nicht bestimmbar", err);
+    return null;
+  }
 }
 
 // Kürzt eine Nutzereingabe fürs Log auf eine Zeile: Steuerzeichen raus,
