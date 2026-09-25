@@ -25,6 +25,9 @@ export async function getFeed(scope: FeedScope, viewerId: string | null): Promis
   let query = supabase
     .from("public_fahrten")
     .select("*")
+    // Streckenabschnitte (0150/0151) sind eigene Zeilen, erscheinen aber als
+    // Teil ihrer Fahrt — in einer Liste stünden sie sonst doppelt.
+    .eq("ist_abschnitt", false)
     .order("datum", { ascending: false })
     // Zweites Sortierkriterium, damit die Reihenfolge bei gleichem Datum
     // eindeutig ist — datum ist ein Datum ohne Uhrzeit, Gleichstände sind
