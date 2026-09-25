@@ -25,6 +25,7 @@ import { istPremium, maxFotosProFahrt } from "@/lib/premium";
 import { oeffentlicheKoordinaten, privacyRadiusM, publicTrackEwkt } from "@/lib/publicTrack";
 import {
   istSichtbarkeit,
+  sichtbarkeitAus,
   sichtbarkeitAusFormular,
   sichtbarkeitSpalten,
   type Sichtbarkeit,
@@ -499,11 +500,7 @@ export async function logTrackedCompletion(
       // falls GPS-Zeitstempel leicht über die Ticket-Dauer hinausragen.
       bewegte_zeit_sekunden: bewegteSekundenGekappt,
       art: "strecke",
-      // fuer_follower nur, wenn es gebraucht wird: so speichert dieser Code
-      // private und öffentliche Fahrten auch dann, wenn 0140 noch fehlt.
-      ...(sichtbarkeit === "follower"
-        ? sichtbarkeitSpalten(sichtbarkeit)
-        : { ist_oeffentlich: sichtbarkeit === "oeffentlich" }),
+      ...sichtbarkeitSpalten(sichtbarkeit),
       abdeckung_prozent: abdeckungProzent,
       notiz,
       // Seit 0054_freie_fahrten_in_bestenlisten.sql zählen Streckenfahrten
@@ -1004,8 +1001,7 @@ export async function logFreeRide(
     dauer_trail_sekunden: dauerTrailSekunden,
     fahrt_start_id: fahrtstart?.ticketId ?? null,
     bewegte_zeit_sekunden: bewegteSekunden,
-    // save_free_ride_with_segments liest fuer_follower seit 0140; ohne die
-    // Migration wird der Schlüssel ignoriert und die Fahrt bleibt privat.
+    // save_free_ride_with_segments liest fuer_follower seit 0140.
     ...sichtbarkeitSpalten(sichtbarkeit),
     titel,
     notiz,
@@ -1382,13 +1378,21 @@ export async function setCompletionVisibility(
     }
   }
 
-  const { error } = await supabase
+  const { data: gespeichert, error } = await supabase
     .from("route_completions")
     .update({ ...sichtbarkeitSpalten(sichtbarkeit), track_oeffentlich: trackOeffentlich })
     .eq("id", completionId)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .select("ist_oeffentlich, fuer_follower")
+    .maybeSingle<{ ist_oeffentlich: boolean; fuer_follower: boolean }>();
 
-  if (error) return { error: "Sichtbarkeit konnte nicht geändert werden." };
+  if (error || !gespeichert) return { error: "Sichtbarkeit konnte nicht geändert werden." };
+  // Die Trigger (0052/0059/0140) verengen still, statt abzulehnen. Hat die
+  // Datenbank die Fahrt privat gelassen, darf die Oberfläche nicht "geteilt"
+  // behaupten.
+  if (sichtbarkeitAus(gespeichert) !== sichtbarkeit) {
+    return { error: "Diese Fahrt kann nicht geteilt werden und bleibt privat." };
+  }
 
   revalidatePath("/profil");
   revalidatePath("/feed");

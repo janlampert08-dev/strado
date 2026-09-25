@@ -9,8 +9,7 @@ import {
   updateCompletionNotiz,
 } from "@/lib/actions/completions";
 import { SichtbarkeitIcon } from "@/components/VisibilityIcons";
-import { SICHTBARKEITEN, type Sichtbarkeit } from "@/lib/sichtbarkeit";
-import { COVERAGE_THRESHOLD_PERCENT } from "@/lib/routeCoverage";
+import { SICHTBARKEITEN, teilenSperrGrund, type Sichtbarkeit } from "@/lib/sichtbarkeit";
 import Card from "@/components/ui/Card";
 import IconButton from "@/components/ui/IconButton";
 import { Dialog } from "@/components/ui/Dialog";
@@ -59,15 +58,10 @@ export default function CompletionActionsMenu({
   const containerRef = useRef<HTMLDivElement>(null);
   const ausloeserRef = useRef<HTMLButtonElement>(null);
 
-  const belowThreshold =
-    coveragePercent !== null && coveragePercent < COVERAGE_THRESHOLD_PERCENT;
   // Gesperrt wird je nach Fahrtart über den Deckungsgrad (Strecke) oder die
   // Mindestwerte fürs Teilen (freie Fahrt, siehe publicationBlockReason) —
   // für Follower genauso wie für alle (0140).
-  const teilenGesperrt = belowThreshold || blockedReason !== null;
-  const sperrGrund =
-    blockedReason ??
-    `Kann nicht geteilt werden — deckt nur ${Math.round(coveragePercent ?? 0)}% der Strecke ab.`;
+  const sperrGrund = teilenSperrGrund(coveragePercent, blockedReason);
 
   useEffect(() => {
     if (!open) return;
@@ -177,7 +171,7 @@ export default function CompletionActionsMenu({
               Schloss/Personen/Globus wie RideVisibilityToggle und das
               Fazit-Formular. */}
           {SICHTBARKEITEN.filter((stufe) => stufe !== sichtbarkeit).map((stufe) => {
-            const gesperrt = stufe !== "privat" && teilenGesperrt;
+            const gesperrt = stufe !== "privat" && sperrGrund !== null;
             return (
               <button
                 key={stufe}

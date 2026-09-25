@@ -1,3 +1,5 @@
+import { COVERAGE_THRESHOLD_PERCENT } from "@/lib/routeCoverage";
+
 // Die drei Sichtbarkeitsstufen einer Fahrt (0140). In der Datenbank sind es
 // zwei Spalten — ist_oeffentlich und fuer_follower —, nie beide true. Hier
 // wird daraus eine Stufe, damit Formulare, Umschalter und Server Actions
@@ -44,3 +46,19 @@ export const SICHTBARKEIT_LABEL: Record<Sichtbarkeit, string> = {
   follower: "Follower",
   oeffentlich: "Öffentlich",
 };
+
+// Warum eine gespeicherte Fahrt nicht geteilt werden kann — weder mit
+// Followern noch mit allen —, oder null. Ein Grund von aussen (zu kurze
+// freie Fahrt, importiert) geht vor; sonst entscheidet bei Streckenfahrten
+// der Deckungsgrad. Dieselbe Regel prüfen setCompletionVisibility und die
+// Datenbank (0052/0140) noch einmal — das hier ist nur die Anzeige.
+export function teilenSperrGrund(
+  coveragePercent: number | null,
+  blockedReason: string | null,
+): string | null {
+  if (blockedReason) return blockedReason;
+  if (coveragePercent !== null && coveragePercent < COVERAGE_THRESHOLD_PERCENT) {
+    return `Kann nicht geteilt werden — deckt nur ${Math.round(coveragePercent)}% der Strecke ab.`;
+  }
+  return null;
+}

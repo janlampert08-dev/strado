@@ -1,27 +1,33 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { setCompletionVisibility } from "@/lib/actions/completions";
 import { SichtbarkeitIcon } from "@/components/VisibilityIcons";
-import { COVERAGE_THRESHOLD_PERCENT } from "@/lib/routeCoverage";
 import {
   SICHTBARKEITEN,
   SICHTBARKEIT_LABEL,
+  teilenSperrGrund,
   type Sichtbarkeit,
 } from "@/lib/sichtbarkeit";
 import Card from "@/components/ui/Card";
 import IconButton from "@/components/ui/IconButton";
+import { Dialog } from "@/components/ui/Dialog";
 
 const BESCHREIBUNG: Record<Sichtbarkeit, string> = {
-  privat: "Nur für dich",
-  follower: "Für Leute, die dir folgen",
-  oeffentlich: "Für alle, auch in Ranglisten",
+  privat: "Nur du siehst diese Fahrt.",
+  follower: "Wer dir folgt, sieht sie im Feed und auf deinem Profil. Nicht in den Ranglisten.",
+  oeffentlich: "Alle sehen sie, auch in den Ranglisten.",
 };
 
 // Sichtbarkeit einer gespeicherten Fahrt, direkt in der Liste (Profil,
-// erkannte Abschnitte). Seit 0140 drei Stufen statt eines Umschalters —
-// deshalb ein kleines Menü: ein Durchschalten per Tipp führte von "privat"
-// zu "öffentlich" über eine Zwischenstufe, die niemand wollte.
+// erkannte Abschnitte). Seit 0140 drei Stufen statt eines Umschalters.
+//
+// Eine Auswahl im Dialog statt eines Durchschaltens per Tipp: das führte
+// von "privat" nach "öffentlich" über eine Zwischenstufe, die niemand
+// wollte. Und ein Dialog statt eines Aufklappmenüs, weil beide Listen, in
+// denen der Knopf steht, overflow-hidden tragen — ein absolut positioniertes
+// Menü würde an ihrer Unterkante abgeschnitten. Das native <dialog> liegt
+// im Top-Layer, darüber.
 export default function RideVisibilityToggle({
   completionId,
   sichtbarkeit,
@@ -32,51 +38,19 @@ export default function RideVisibilityToggle({
   sichtbarkeit: Sichtbarkeit;
   // Nur bei Streckenfahrten gesetzt — dort entscheidet der Deckungsgrad.
   coveragePercent: number | null;
-  // Bei freien Fahrten steht hier der Grund, warum sie nicht geteilt werden
-  // kann (zu kurz), statt des Deckungsgrads — siehe publicationBlockReason
-  // in lib/track.ts.
+  // Grund, warum die Fahrt nicht geteilt werden kann (zu kurze freie Fahrt,
+  // importiert) — geht dem Deckungsgrad vor, siehe teilenSperrGrund.
   blockedReason?: string | null;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const ausloeserRef = useRef<HTMLButtonElement>(null);
 
-  const belowThreshold =
-    coveragePercent !== null && coveragePercent < COVERAGE_THRESHOLD_PERCENT;
   // Teilen — mit Followern wie mit allen — hängt an denselben Hürden.
-  const teilenGesperrt = belowThreshold || blockedReason !== null;
-  const sperrGrund =
-    blockedReason ??
-    `Kann nicht geteilt werden — deckt nur ${Math.round(coveragePercent ?? 0)}% der Strecke ab.`;
-
-  // Klick daneben und Escape schliessen, Fokus zurück an den Auslöser —
-  // dasselbe Verhalten wie CompletionActionsMenu.
-  useEffect(() => {
-    if (!open) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key !== "Escape") return;
-      const fokusIstDrin = containerRef.current?.contains(document.activeElement) ?? false;
-      setOpen(false);
-      if (fokusIstDrin) ausloeserRef.current?.focus();
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
+  const sperrGrund = teilenSperrGrund(coveragePercent, blockedReason);
 
   function waehle(ziel: Sichtbarkeit) {
     setOpen(false);
-    ausloeserRef.current?.focus();
     if (ziel === sichtbarkeit) return;
     startTransition(async () => {
       const result = await setCompletionVisibility(completionId, ziel);
@@ -85,50 +59,43 @@ export default function RideVisibilityToggle({
   }
 
   return (
-    <div ref={containerRef} className="relative shrink-0">
+    <div className="relative shrink-0">
       <IconButton
-        ref={ausloeserRef}
         ton={sichtbarkeit === "privat" ? "neutral" : "aktiv"}
-        aria-haspopup="menu"
-        aria-expanded={open}
+        aria-haspopup="dialog"
         aria-label={`Sichtbarkeit: ${SICHTBARKEIT_LABEL[sichtbarkeit]} — ändern`}
         title={`${SICHTBARKEIT_LABEL[sichtbarkeit]} — ${BESCHREIBUNG[sichtbarkeit]}`}
         disabled={pending}
         onClick={() => {
           setError(null);
-          setOpen((v) => !v);
+          setOpen(true);
         }}
       >
         <SichtbarkeitIcon sichtbarkeit={sichtbarkeit} className="h-5 w-5" />
       </IconButton>
-      {open && (
-        <Card
-          elevated
-          as="div"
-          role="menu"
-          aria-label="Sichtbarkeit der Fahrt"
-          className="absolute top-full right-0 z-10 mt-1 flex w-64 flex-col overflow-hidden"
-        >
+      <Dialog open={open} onClose={() => setOpen(false)} title="Wer sieht diese Fahrt?">
+        <div role="radiogroup" aria-label="Sichtbarkeit der Fahrt" className="flex flex-col gap-2">
           {SICHTBARKEITEN.map((stufe) => {
-            const gesperrt = stufe !== "privat" && teilenGesperrt;
+            const gesperrt = stufe !== "privat" && sperrGrund !== null;
             const aktiv = stufe === sichtbarkeit;
             return (
               <button
                 key={stufe}
                 type="button"
-                role="menuitemradio"
+                role="radio"
                 aria-checked={aktiv}
                 disabled={gesperrt}
-                title={gesperrt ? sperrGrund : undefined}
                 onClick={() => waehle(stufe)}
-                className="flex items-start gap-2 border-t border-border px-3 py-2 text-left first:border-t-0 hover:bg-surface disabled:pointer-events-none disabled:opacity-50"
+                className={`flex min-h-11 items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors duration-fast disabled:opacity-50 ${
+                  aktiv ? "border-foreground" : "border-border hover:bg-surface"
+                }`}
               >
                 <SichtbarkeitIcon
                   sichtbarkeit={stufe}
-                  className={`mt-0.5 h-4 w-4 shrink-0 ${aktiv ? "text-accent" : "text-muted"}`}
+                  className={`mt-0.5 h-4 w-4 shrink-0 ${aktiv ? "text-foreground" : "text-muted"}`}
                 />
-                <span className="flex flex-col">
-                  <span className={`text-sm ${aktiv ? "font-medium text-foreground" : "text-foreground"}`}>
+                <span className="flex flex-col gap-0.5">
+                  <span className="text-sm font-medium text-foreground">
                     {SICHTBARKEIT_LABEL[stufe]}
                   </span>
                   <span className="text-xs text-muted">
@@ -138,8 +105,8 @@ export default function RideVisibilityToggle({
               </button>
             );
           })}
-        </Card>
-      )}
+        </div>
+      </Dialog>
       {error && (
         <Card
           elevated

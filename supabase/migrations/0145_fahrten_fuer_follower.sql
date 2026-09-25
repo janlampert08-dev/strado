@@ -33,9 +33,11 @@
 -- sagt die Oberfläche auch so.
 --
 -- Moderation: Ein Follower kann eine Follower-Fahrt melden. Damit die
--- Meldung nicht still aus der Warteschlange fällt (lib/moderation.ts liest
--- über public_fahrten), sehen Moderatoren eine Follower-Fahrt, solange eine
--- offene Meldung auf ihr liegt.
+-- Meldung nicht still aus der Warteschlange fällt, liest lib/moderation.ts
+-- die Angaben gemeldeter Fahrten über gemeldete_fahrten_fuer_moderation()
+-- statt über public_fahrten. Bewusst NICHT über die Views: dort sähe ein
+-- Moderator die Fahrt sonst im Feed, auf dem Profil, mit Karte und Fotos —
+-- "nur Follower" hiesse dann "Follower und Moderatoren".
 --
 -- REIHENFOLGE: vor dem Code einspielen. Der alte Code bleibt damit voll
 -- funktionsfähig (die Spalte steht auf false, die Views liefern dieselben
@@ -51,6 +53,10 @@
 -- save_free_ride_with_segments mit ihren Definitionen vor dieser Datei neu
 -- anlegen (0070/0045/0029/0031/0046 und der Katalogstand vom 2026-09-25),
 -- dann Trigger, Funktionen und Spalte löschen.
+
+-- Wie 0124/0125: ein Sperrkonflikt soll die Migration scheitern lassen,
+-- nicht den Feed und das Speichern von Fahrten hinter sich anstauen.
+set lock_timeout = '5s';
 
 -- ---------------------------------------------------------------------
 -- A) Spalte, Invarianten, Grants
@@ -70,6 +76,13 @@ alter table public.route_completions
 alter table public.route_completions
   add constraint route_completions_import_nicht_fuer_follower
   check (not (importiert and fuer_follower));
+
+-- Der Feed (lib/feed.ts, order by datum desc, id desc limit 30) filtert
+-- über public_fahrten jetzt auf "öffentlich ODER Follower" — der
+-- Teilindex aus 0075 (where ist_oeffentlich) deckt das nicht mehr ab.
+create index if not exists route_completions_geteilt_datum_idx
+  on public.route_completions (datum desc, id desc)
+  where ist_oeffentlich or fuer_follower;
 
 -- authenticated hat seit 0046/0059 nur Spalten-Grants — eine neue Spalte
 -- erbt davon nichts.
@@ -98,6 +111,11 @@ begin
     or (new.art = 'frei' and new.track is null)
   ) then
     new.fuer_follower := false;
+    -- Der gekappte Track gehört zu einer geteilten Fahrt. Wird die Fahrt
+    -- hier privat, soll keiner liegen bleiben (siehe setCompletionVisibility).
+    if not new.ist_oeffentlich then
+      new.track_oeffentlich := null;
+    end if;
   end if;
   return new;
 end;
@@ -110,11 +128,9 @@ create trigger route_completions_zz_follower_sichtbarkeit
 -- ---------------------------------------------------------------------
 -- C) Wer eine Follower-Fahrt sehen darf
 -- ---------------------------------------------------------------------
--- SECURITY DEFINER, weil die Kudos-Policies als Aufrufer laufen und der
--- completion_reports nicht lesen darf. Verrät nichts, was der Aufrufer
--- nicht ohnehin weiss: ob ER folgt, und — nur als Moderator — ob eine
--- offene Meldung vorliegt.
-create or replace function public.fahrt_fuer_follower_sichtbar(p_owner uuid, p_completion_id uuid)
+-- SECURITY DEFINER, weil die Kudos-Policies als Aufrufer laufen. Verrät
+-- nichts, was der Aufrufer nicht ohnehin weiss: ob ER dem Fahrer folgt.
+create or replace function public.fahrt_fuer_follower_sichtbar(p_owner uuid)
 returns boolean
 language sql
 stable
@@ -127,17 +143,48 @@ as $$
       select 1 from public.follows f
       where f.follower_id = auth.uid() and f.followed_id = p_owner
     )
-    or exists (
-      select 1
-      from public.completion_reports cr
-      join public.profiles m on m.id = auth.uid() and m.is_moderator
-      where cr.completion_id = p_completion_id and cr.status = 'offen'
-    )
   );
 $$;
 
-comment on function public.fahrt_fuer_follower_sichtbar(uuid, uuid) is
-  'True, wenn der Aufrufer eine Fahrt mit fuer_follower = true sehen darf: Besitzer, Follower des Besitzers, oder Moderator bei offener Meldung (0140). Prüft fuer_follower selbst NICHT — immer als "rc.fuer_follower and …" verwenden.';
+comment on function public.fahrt_fuer_follower_sichtbar(uuid) is
+  'True, wenn der Aufrufer eine Fahrt mit fuer_follower = true sehen darf: Besitzer oder Follower des Besitzers (0140). Prüft fuer_follower selbst NICHT — immer als "rc.fuer_follower and …" verwenden.';
+
+-- Angaben gemeldeter Fahrten für die Moderationswarteschlange
+-- (lib/moderation.ts). Dieselben Spalten und Streckenbedingungen wie
+-- public_fahrten, aber für Moderatoren und nur bei offener Meldung — auch
+-- für Follower-Fahrten, die ein Moderator sonst nicht sieht.
+create or replace function public.gemeldete_fahrten_fuer_moderation(p_ids uuid[])
+returns table (
+  completion_id uuid,
+  art text,
+  titel text,
+  start_ort text,
+  route_name text,
+  notiz text
+)
+language sql
+stable
+security definer
+set search_path to 'public'
+as $$
+  select rc.id, rc.art, rc.titel, rc.start_ort, r.name, rc.notiz
+  from public.route_completions rc
+  left join public.routes r on r.id = rc.route_id
+  where rc.id = any(p_ids)
+    and (rc.ist_oeffentlich or rc.fuer_follower)
+    and (
+      (rc.art = 'frei' and rc.route_id is null)
+      or (rc.art = 'strecke' and r.status_ok = true and r.ist_privat = false)
+    )
+    and exists (
+      select 1 from public.profiles m
+      where m.id = auth.uid() and m.is_moderator
+    )
+    and exists (
+      select 1 from public.completion_reports cr
+      where cr.completion_id = rc.id and cr.status = 'offen'
+    );
+$$;
 
 -- Ersetzt completion_is_public (0031) in den Kudos-Policies.
 -- completion_is_public bleibt unverändert bestehen: "öffentlich" heisst
@@ -155,19 +202,21 @@ as $$
     where rc.id = p_completion_id
       and (
         rc.ist_oeffentlich
-        or (rc.fuer_follower and public.fahrt_fuer_follower_sichtbar(rc.user_id, rc.id))
+        or (rc.fuer_follower and public.fahrt_fuer_follower_sichtbar(rc.user_id))
       )
   );
 $$;
 
 -- Funktionen in Views werden mit den Rechten des Abfragenden ausgeführt,
 -- anon braucht EXECUTE also auch (liefert für anon immer false).
-revoke execute on function public.fahrt_fuer_follower_sichtbar(uuid, uuid) from public;
+revoke execute on function public.fahrt_fuer_follower_sichtbar(uuid) from public;
 revoke execute on function public.completion_ist_sichtbar(uuid) from public;
+revoke execute on function public.gemeldete_fahrten_fuer_moderation(uuid[]) from public, anon;
+grant execute on function public.gemeldete_fahrten_fuer_moderation(uuid[]) to authenticated;
 -- Supabase gibt anon/authenticated für jede neue Funktion einen direkten
 -- Grant; "from public" allein reicht nicht (0047/0048/0091).
 revoke execute on function public.enforce_follower_sichtbarkeit() from public, anon, authenticated;
-grant execute on function public.fahrt_fuer_follower_sichtbar(uuid, uuid) to anon, authenticated;
+grant execute on function public.fahrt_fuer_follower_sichtbar(uuid) to anon, authenticated;
 grant execute on function public.completion_ist_sichtbar(uuid) to anon, authenticated;
 
 -- ---------------------------------------------------------------------
@@ -207,7 +256,7 @@ left join public.routes r on r.id = rc.route_id
 left join public.vehicles v on v.id = rc.fahrzeug_id
 where (
     rc.ist_oeffentlich = true
-    or (rc.fuer_follower and public.fahrt_fuer_follower_sichtbar(rc.user_id, rc.id))
+    or (rc.fuer_follower and public.fahrt_fuer_follower_sichtbar(rc.user_id))
   )
   and (
     (rc.art = 'frei' and rc.route_id is null)
@@ -225,7 +274,7 @@ from public.route_completions rc
 left join public.routes r on r.id = rc.route_id
 where (
     rc.ist_oeffentlich = true
-    or (rc.fuer_follower and public.fahrt_fuer_follower_sichtbar(rc.user_id, rc.id))
+    or (rc.fuer_follower and public.fahrt_fuer_follower_sichtbar(rc.user_id))
   )
   and rc.track_oeffentlich is not null
   and (
@@ -249,7 +298,7 @@ join public.routes r on r.id = rc.route_id
 join public.profiles p on p.id = cp.user_id
 where (
     rc.ist_oeffentlich = true
-    or (rc.fuer_follower and public.fahrt_fuer_follower_sichtbar(rc.user_id, rc.id))
+    or (rc.fuer_follower and public.fahrt_fuer_follower_sichtbar(rc.user_id))
   )
   and r.status_ok = true
   and r.ist_privat = false
@@ -265,7 +314,7 @@ select
 from public.kudos k
 join public.route_completions rc on rc.id = k.completion_id
 where rc.ist_oeffentlich = true
-   or (rc.fuer_follower and public.fahrt_fuer_follower_sichtbar(rc.user_id, rc.id))
+   or (rc.fuer_follower and public.fahrt_fuer_follower_sichtbar(rc.user_id))
 group by k.completion_id;
 
 -- ---------------------------------------------------------------------

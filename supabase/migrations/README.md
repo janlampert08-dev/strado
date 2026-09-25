@@ -65,8 +65,9 @@ bricht (eine Datenbank für beide):
 Dritte Sichtbarkeitsstufe für Fahrten: nur für Follower. Neue Spalte
 `route_completions.fuer_follower`; `public_fahrten`, `public_fahrt_tracks`,
 `public_completion_photos`, `kudos_summary` und die zwei Kudos-Policies
-lassen Follower-Fahrten für Follower (und Moderatoren bei offener Meldung)
-durch. Ranglisten, `route_photos` und `oeffentliche_passhoehen` bleiben
+lassen Follower-Fahrten für Follower durch. Moderatoren lesen gemeldete
+Fahrten über `gemeldete_fahrten_fuer_moderation()`, nicht über die Views.
+Neuer Teilindex `route_completions_geteilt_datum_idx` für den Feed. Ranglisten, `route_photos` und `oeffentliche_passhoehen` bleiben
 unverändert, also ohne Follower-Fahrten.
 
 - **Reihenfolge: vor dem Code.** Der neue Code liest `fuer_follower` direkt
@@ -86,7 +87,8 @@ unverändert, also ohne Follower-Fahrten.
 - **Nicht funktional getestet.** Der zurückgerollte Test gegen die
   Produktion (Follower sieht die Fahrt, Fremder und `anon` nicht, Kudos nur
   vom Follower, Trigger verengt bei importiert / ohne Track / zusammen mit
-  öffentlich) wurde in der Sitzung, die die Datei schrieb, blockiert. Er
+  öffentlich und nullt dabei `track_oeffentlich`, Moderator sieht die
+  gemeldete Follower-Fahrt nur über die RPC) wurde in der Sitzung, die die Datei schrieb, blockiert. Er
   steht vor dem Einspielen noch aus.
 - **Prüfung danach:** siehe Kopf der Datei. **Weg zurück:** ebenda.
 >>>>>>> a3d581b (0140: anonymize_account mit $$-Rumpf, README-Eintrag)

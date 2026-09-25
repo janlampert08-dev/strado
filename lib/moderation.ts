@@ -143,16 +143,17 @@ export async function getOpenCompletionReports(): Promise<CompletionReportWithCo
   if (!reports || reports.length === 0) return [];
 
   const completionIds = [...new Set(reports.map((r) => r.completion_id))];
-  // Über public_fahrten statt route_completions: die Tabelle selbst ist per
-  // RLS auf den Besitzer beschränkt, und ein Moderator ist das nicht. Die
-  // View zeigt genau die öffentlichen Fahrten — und nur die können gemeldet
-  // werden (Insert-Policy in 0046).
-  const { data: fahrten } = await supabase
-    .from("public_fahrten")
-    .select("completion_id, art, titel, start_ort, route_name, notiz")
-    .in("completion_id", completionIds)
-    .returns<
-      {
+  // Über gemeldete_fahrten_fuer_moderation() (0140) statt route_completions:
+  // die Tabelle selbst ist per RLS auf den Besitzer beschränkt, und ein
+  // Moderator ist das nicht. Bis 0140 lief das über public_fahrten — das
+  // zeigt einem Moderator aber keine Follower-Fahrt, und die kann ein
+  // Follower seither melden. Die Funktion liefert nur geteilte Fahrten mit
+  // offener Meldung, und nur an Moderatoren.
+  const { data } = await supabase.rpc("gemeldete_fahrten_fuer_moderation", {
+    p_ids: completionIds,
+  });
+  const fahrten = data as
+    | {
         completion_id: string;
         art: "strecke" | "frei";
         titel: string | null;
@@ -160,7 +161,7 @@ export async function getOpenCompletionReports(): Promise<CompletionReportWithCo
         route_name: string | null;
         notiz: string | null;
       }[]
-    >();
+    | null;
 
   const fahrtById = new Map((fahrten ?? []).map((f) => [f.completion_id, f]));
 

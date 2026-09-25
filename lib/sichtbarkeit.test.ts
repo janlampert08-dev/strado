@@ -4,6 +4,7 @@ import {
   sichtbarkeitAusFormular,
   sichtbarkeitSpalten,
   SICHTBARKEITEN,
+  teilenSperrGrund,
 } from "./sichtbarkeit";
 
 function formular(felder: Record<string, string>): FormData {
@@ -55,5 +56,23 @@ describe("sichtbarkeitAusFormular", () => {
 
   it("ignoriert unbekannte Werte", () => {
     expect(sichtbarkeitAusFormular(formular({ sichtbarkeit: "alle" }))).toBe("privat");
+  });
+});
+
+describe("teilenSperrGrund", () => {
+  it("lässt freie Fahrten ohne Grund durch", () => {
+    expect(teilenSperrGrund(null, null)).toBeNull();
+  });
+
+  it("sperrt unter der Deckungsschwelle", () => {
+    expect(teilenSperrGrund(60, null)).toContain("60%");
+    expect(teilenSperrGrund(74.9, null)).not.toBeNull();
+    expect(teilenSperrGrund(75, null)).toBeNull();
+  });
+
+  it("nimmt einen Grund von aussen zuerst", () => {
+    expect(teilenSperrGrund(40, "Importierte Fahrten bleiben privat.")).toBe(
+      "Importierte Fahrten bleiben privat.",
+    );
   });
 });
