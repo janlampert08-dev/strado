@@ -1,3 +1,5 @@
+import type { KeyboardEvent } from "react";
+import { zielIndex } from "@/lib/pfeiltasten";
 import { cn } from "@/lib/utils/cn";
 
 // Die eine segmentierte Wahl. Vorher gab es fünf Fassungen desselben
@@ -94,14 +96,42 @@ export default function SegmentedControl<T extends string>({
   // Zusammenlegen der fünf Fassungen ist die schwächere Semantik hier
   // gelandet, ausgerechnet unter dem Sichtbarkeits-Umschalter im Fazit —
   // der folgenreichsten Wahl der App.
+  //
+  // Tastatur wie bei einer nativen Radiogruppe: Nur das gewählte Segment
+  // steht in der Tab-Reihenfolge (ist keines wählbar gewählt, das erste
+  // freie), die Pfeiltasten wählen das nächste freie und nehmen den Fokus
+  // mit. Gesperrte Segmente werden übersprungen. Ohne Hook, weil diese Datei
+  // keine Client-Komponente ist — der Fokus geht über das DOM der Gruppe.
+  const freie = segmente.filter((s) => !s.gesperrt);
+  const fokusWert = freie.some((s) => s.wert === wert) ? wert : freie[0]?.wert;
+
+  function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    const von = freie.findIndex((s) => s.wert === fokusWert);
+    const ziel = zielIndex(e.key, von, freie.length, { senkrecht: true });
+    if (ziel === null) return;
+    e.preventDefault();
+    const neu = freie[ziel].wert;
+    onChange(neu);
+    e.currentTarget
+      .querySelector<HTMLButtonElement>(`[data-segment="${CSS.escape(neu)}"]`)
+      ?.focus();
+  }
+
   return (
-    <div role="radiogroup" aria-label={label} className={segmentHuelleClassName(className)}>
+    <div
+      role="radiogroup"
+      aria-label={label}
+      className={segmentHuelleClassName(className)}
+      onKeyDown={onKeyDown}
+    >
       {segmente.map((s) => (
         <button
           key={s.wert}
           type="button"
           role="radio"
+          data-segment={s.wert}
           aria-checked={s.wert === wert}
+          tabIndex={s.wert === fokusWert ? 0 : -1}
           disabled={s.gesperrt}
           title={s.gesperrt ? s.hinweis : undefined}
           onClick={() => onChange(s.wert)}

@@ -1,14 +1,16 @@
 import { redirect } from "next/navigation";
 import Header from "@/components/Header";
 import PasswortAendernForm from "@/components/PasswortAendernForm";
-import { getCurrentUser } from "@/lib/supabase/server";
+import { getFreshUser } from "@/lib/supabase/server";
 import { istWiederherstellung } from "@/lib/passwortWiederherstellung";
 import Seitenrahmen from "@/components/ui/Seitenrahmen";
 
 export const metadata = { title: "Passwort ändern – Strado" };
 
 export default async function PasswortAendernPage() {
-  const user = await getCurrentUser();
+  // getFreshUser(): Passwortwechsel ist sicherheitsrelevant — die Sitzung
+  // wird hier bei GoTrue geprüft, nicht nur die Signatur des Tokens.
+  const user = await getFreshUser();
 
   // Kein aktiver Link mehr (abgelaufen/schon verwendet) — zurück zum
   // Anfordern eines neuen statt eines leeren Formulars, das nur mit dem

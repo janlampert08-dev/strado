@@ -60,7 +60,7 @@ export function Dialog({ open, onClose, title, ariaLabel, children, className }:
       className={cn(
         // dialog-animiert: Ein- und Ausblenden über @starting-style (globals.css);
         // der Hintergrund-Schleier kommt von dort, nicht mehr von backdrop:bg-black/60.
-        "dialog-animiert m-auto w-[min(28rem,calc(100vw-2rem))] rounded-lg border border-border bg-background p-5 text-foreground shadow-elevated outline-none",
+        "dialog-animiert m-auto w-[min(28rem,calc(100vw-2rem))] overscroll-y-contain rounded-lg border border-border bg-background p-5 text-foreground shadow-elevated outline-none",
         // UNTER sm EIN BLATT VON UNTEN, sobald der Dialog eine Überschrift
         // hat — Rückfragen, Listen, Formulare. Mittig schwebend lagen ihre
         // Knöpfe in der oberen Bildschirmhälfte, also dort, wo der Daumen

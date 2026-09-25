@@ -16,6 +16,8 @@ import {
   Ruler,
 } from "@/components/NavIcons";
 import Header from "@/components/Header";
+import { SichtbarkeitIcon } from "@/components/VisibilityIcons";
+import { SICHTBARKEIT_LABEL } from "@/lib/sichtbarkeit";
 import Avatar from "@/components/Avatar";
 import KudosButton from "@/components/KudosButton";
 import ShareRideButton from "@/components/ShareRideButton";
@@ -152,13 +154,13 @@ export default async function FahrtDetailPage({
 
   const istFreieFahrt = completion.art === "frei";
 
-  // Die folgenden vier Abfragen hängen alle nur an completion, nicht
+  // Die folgenden fünf Abfragen hängen alle nur an completion, nicht
   // voneinander — parallel statt nacheinander gestartet (gleiches Muster
   // wie app/strecken/[id]/page.tsx), spart auf dieser Seite einen
   // entsprechend langen Round-Trip-Wasserfall.
-  const [route, kudosByCompletion, detectedSegments, achievementStats] = await Promise.all([
+  const [route, kudosByCompletion, detectedSegments, achievementStats, premiumStatus] = await Promise.all([
     completion.routeId ? getRoute(completion.routeId) : Promise.resolve(null),
-    completion.istOeffentlich
+    completion.sichtbarkeit !== "privat"
       ? getKudosForCompletions([completion.id], user?.id ?? null)
       : Promise.resolve(null),
     // Nur für den Besitzer einer freien Fahrt: innerhalb dieser Aufzeichnung
@@ -173,6 +175,8 @@ export default async function FahrtDetailPage({
     // Gesamtzahlen, nicht die dieser einzelnen Fahrt, und für einen fremden
     // Betrachter irrelevant (spart die zusätzliche Query in dem Fall).
     completion.isOwner ? getUserAchievementStats(completion.userId) : Promise.resolve(null),
+    // Nur für den Besitzer — für den Premium-Satz weiter unten.
+    completion.isOwner ? getPremiumStatus() : Promise.resolve(null),
   ]);
 
   // Eine Streckenfahrt ohne auffindbare Strecke gibt es nicht — eine freie
@@ -243,7 +247,7 @@ export default async function FahrtDetailPage({
   // Der Premium-Satz unter der eigenen Fahrt, nur für Konten ohne Abo.
   // getPremiumStatus() ist request-weit gecacht (der Header fragt ohnehin).
   const premiumSatz =
-    completion.isOwner && !(await getPremiumStatus()).aktiv
+    completion.isOwner && premiumStatus && !premiumStatus.aktiv
       ? premiumSatzZurFahrt({
           streckenfahrt: !istFreieFahrt,
           fotos: completion.photos.length,
@@ -284,13 +288,31 @@ export default async function FahrtDetailPage({
                 <p className="truncate text-sm font-medium transition-colors duration-fast group-hover:text-accent-ink">
                   {completion.isOwner ? "Deine Fahrt" : (completion.displayName ?? "Fahrer")}
                 </p>
-                <p className="text-xs text-muted">
-                  {new Date(completion.datum).toLocaleDateString("de-CH", {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
+                <p className="flex items-center gap-1.5 text-xs text-muted">
+                  <span className="truncate">
+                    {new Date(completion.datum).toLocaleDateString("de-CH", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </span>
+                  {/* Wer mit wem: der Fahrer sieht die Stufe seiner Fahrt
+                      auf einen Blick, und ein Follower weiss, dass er etwas
+                      sieht, das nicht jeder sieht (0145). Die öffentliche
+                      Fahrt eines anderen braucht keinen Hinweis. */}
+                  {(completion.isOwner || completion.sichtbarkeit === "follower") && (
+                    <span
+                      className="inline-flex shrink-0 items-center gap-1"
+                      title={`Sichtbarkeit: ${SICHTBARKEIT_LABEL[completion.sichtbarkeit]}`}
+                    >
+                      <span aria-hidden="true">·</span>
+                      <SichtbarkeitIcon sichtbarkeit={completion.sichtbarkeit} className="h-3.5 w-3.5" />
+                      {completion.sichtbarkeit === "follower"
+                        ? "Nur Follower"
+                        : SICHTBARKEIT_LABEL[completion.sichtbarkeit]}
+                    </span>
+                  )}
                 </p>
               </div>
             </Link>
@@ -305,9 +327,9 @@ export default async function FahrtDetailPage({
               {/* Der Owner kann keine eigenen Kudos geben — aber die Zahl
                   gehört ihm: vorher sah er auf der eigenen Fahrt gar keine,
                   während Fremde Button plus Stand sahen. Reine Anzeige,
-                  gleiche Stelle, gleiche Flamme. Nur öffentlich: private
-                  Fahrten bekommen keine Kudos. */}
-              {completion.isOwner && completion.istOeffentlich && (
+                  gleiche Stelle, gleiche Flamme. Nur geteilt (öffentlich
+                  oder mit Followern): private Fahrten bekommen keine Kudos. */}
+              {completion.isOwner && completion.sichtbarkeit !== "privat" && (
                 <span
                   className="inline-flex min-h-11 items-center gap-1 px-2 text-xs font-medium text-muted"
                   title="So viele Kudos hat diese Fahrt erhalten"
@@ -318,10 +340,17 @@ export default async function FahrtDetailPage({
                 </span>
               )}
               {/* Eine freie Fahrt kann nur geteilt werden, wenn sie selbst
-                  öffentlich ist — nur dann existiert der gekappte Track, aus
-                  dem das Bild seine Linie zeichnet. Streckenfahrten nehmen
-                  wie bisher die Streckengeometrie. */}
-              {(route || (istFreieFahrt && completion.istOeffentlich && completion.track)) && (
+                  öffentlich ist — der Link im Bild führt auf die Fahrt, und
+                  eine Follower-Fahrt sähe dort nicht jeder, dem das Bild
+                  weitergeleitet wird. Streckenfahrten nehmen wie bisher die
+                  Streckengeometrie. */}
+              {/* Teilen-Bild nur für den Fahrer selbst oder bei öffentlichen
+                  Fahrten: eine Follower-Fahrt hat der Fahrer bewusst nicht
+                  öffentlich gemacht — ein Follower soll sie nicht per
+                  Knopfdruck als Bild auf Instagram tragen (Code-Review). */}
+              {(completion.isOwner || completion.sichtbarkeit === "oeffentlich") &&
+                (route ||
+                (istFreieFahrt && completion.sichtbarkeit === "oeffentlich" && completion.track)) && (
                 <ShareRideButton
                   routeId={route?.id ?? null}
                   completionId={completion.id}
@@ -336,7 +365,7 @@ export default async function FahrtDetailPage({
                   // aus dem geteilten Bild folgt, liefe ins Leere. Dann
                   // verweist das Bild auf die Strecke selbst.
                   shareUrl={
-                    completion.istOeffentlich || !route
+                    completion.sichtbarkeit === "oeffentlich" || !route
                       ? `/fahrten/${completion.id}`
                       : streckenPfad(route)
                   }
@@ -344,13 +373,16 @@ export default async function FahrtDetailPage({
               )}
               {/* Melden nur für andere und nur bei einer geteilten Fahrt —
                   private Fahrten sieht ohnehin niemand sonst. */}
-              {!completion.isOwner && user && completion.istOeffentlich && (
+              {!completion.isOwner && user && completion.sichtbarkeit !== "privat" && (
                 <CompletionReportButton completionId={completion.id} />
               )}
               {completion.isOwner && (
                 <CompletionActionsMenu
                   completionId={completion.id}
-                  isPublic={completion.istOeffentlich}
+                  sichtbarkeit={completion.sichtbarkeit}
+                  // Erkannte Abschnitte folgen der Fahrt (0151) und werden
+                  // nie "nur für Follower" (0154).
+                  stufen={completion.parentCompletionId ? ["privat", "oeffentlich"] : undefined}
                   coveragePercent={completion.abdeckungProzent}
                   blockedReason={
                     completion.importiert

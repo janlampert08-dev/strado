@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { isModerator } from "@/lib/moderation";
@@ -21,33 +22,30 @@ export default async function Header({ back }: { back?: string } = {}) {
   // bekommen hat oder ihm jemand neu folgt (0100: eine Zahl, ein RPC, weil
   // dieser Kopf auf jeder Seite läuft).
   // Zeigt sich als Zahl am Feed-Eintrag, in der Textleiste wie in der
-  // BottomNav — deshalb hier zentral berechnet statt separat je Surface.
+  // BottomNav — deshalb hier zentral angestossen statt separat je Surface.
   // Am Feed und nicht an der Aktivität selbst, weil die Aktivität seit dem
   // Leisten-Tausch ein Reiter des Feeds ist und keinen eigenen Eintrag mehr
   // hat (lib/nav.ts). Die Zahl wandert damit an den Ort, von dem aus man
   // hinkommt — was sie besser macht als vorher, nicht schlechter: sie steht
   // jetzt neben etwas, das man ohnehin öffnet.
   //
-  // Beide Abfragen hängen nur an user, nicht voneinander. Sequenziell waren
-  // das zwei Roundtrips hintereinander, und zwar auf jeder Seite: <Header />
-  // ist ein Kind der Seite, läuft also ohnehin erst nach deren eigenen
-  // Abfragen.
-  // Drei Abfragen, die nur an user hängen und nicht aneinander — also
-  // nebenläufig. Die dritte kam mit den Creator-Konten dazu (0091): sie ist
-  // ein Existenz-Check mit limit(1) auf einer Tabelle, die für die
-  // allermeisten Konten keine einzige Zeile hat, und wie isModerator pro
-  // Request memoisiert.
-  const [moderator, creator, ungeseheneAktivitaet] = await Promise.all([
-    user ? isModerator(user.id) : Promise.resolve(false),
-    user ? istCreator(user.id) : Promise.resolve(false),
-    user ? getUnseenActivityCount() : Promise.resolve(0),
-  ]);
-  // "/" wird hier ausgelassen — das Logo verlinkt bereits dorthin, ein
-  // zweiter Link wäre redundant. Einzige Quelle der Nav-Items: lib/nav.ts,
-  // von BottomNav (Mobile) genauso genutzt.
-  const items = getNavItems({ loggedIn: !!user, moderator, creator }).filter(
-    (item) => item.href !== "/",
-  );
+  // Angestossen, aber nicht erwartet. <Header /> ist ein Kind der Seite und
+  // läuft erst nach deren eigenen Abfragen; wartete er hier auf Zähler,
+  // Moderator- und Creator-Status, hinge an jeder Seite ein weiterer
+  // Roundtrip, bevor irgendetwas ausgeliefert wird. Stattdessen streamen die
+  // Navigation im Kopf und der Feed-Tab unten in eigenen Suspense-Grenzen
+  // nach, der Rest der Seite geht sofort raus. Alle drei Abfragen sind per
+  // cache() pro Request memoisiert (isModerator, eigeneCodes hinter
+  // istCreator, getUnseenActivityCount), die beiden Stellen teilen sich also
+  // dieselbe Abfrage.
+  //
+  // .catch: das Promise geht an eine Client-Komponente (BottomNav, dort
+  // use()). Ein Fehler soll höchstens die Zahl kosten, nicht die Seite —
+  // getUnseenActivityCount fängt Abfragefehler schon selbst ab, das hier
+  // deckt den Rest (z.B. createClient).
+  const ungeseheneAktivitaet = user
+    ? getUnseenActivityCount().catch(() => 0)
+    : undefined;
 
   return (
     <>
@@ -94,43 +92,16 @@ export default async function Header({ back }: { back?: string } = {}) {
               Icon) wohnt jetzt ausschliesslich im Darstellung-Tab der
               Einstellungen (app/profil/einstellungen); ohne manuelle Wahl
               gilt weiterhin "System" als Standard. */}
-          <nav className="hidden items-center gap-3 overflow-x-auto reiter-scroller text-sm sm:gap-6 md:flex">
-            {items.map((item) =>
-              item.href === "/anmelden" ? (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={buttonVariants({ variant: "primary", size: "sm", className: "whitespace-nowrap" })}
-                >
-                  {item.label}
-                </Link>
-              ) : (
-                <HeaderNavLink
-                  key={item.href}
-                  href={item.href}
-                  aktivAuf={item.aktivAuf}
-                  // Der Zähler hängt am Feed: dort liegt die Aktivität als
-                  // Reiter (components/FeedReiter.tsx), und die Zahl gehört
-                  // an den Eintrag, der dorthin führt.
-                  ariaLabel={
-                    item.href === "/feed" && ungeseheneAktivitaet > 0
-                      ? `${item.label}, ${ungeseheneAktivitaet} ${ungeseheneAktivitaet === 1 ? "neue Reaktion" : "neue Reaktionen"}`
-                      : undefined
-                  }
-                >
-                  {item.label}
-                  {item.href === "/feed" && ungeseheneAktivitaet > 0 && (
-                    <span
-                      aria-hidden="true"
-                      className="flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-on-accent"
-                    >
-                      {ungeseheneAktivitaet > 9 ? "9+" : ungeseheneAktivitaet}
-                    </span>
-                  )}
-                </HeaderNavLink>
-              ),
-            )}
-          </nav>
+          {user && ungeseheneAktivitaet ? (
+            // Platzhalter: dieselbe Leiste ohne Rollen-Einträge und ohne
+            // Zahl. Für die allermeisten Konten (weder Creator noch
+            // Moderator) ändert sich beim Nachrücken nur die Zahl am Feed.
+            <Suspense fallback={<KopfNavigation loggedIn moderator={false} creator={false} ungeseheneAktivitaet={0} />}>
+              <KopfNavigationMitRollen userId={user.id} ungeseheneAktivitaet={ungeseheneAktivitaet} />
+            </Suspense>
+          ) : (
+            <KopfNavigation loggedIn={false} moderator={false} creator={false} ungeseheneAktivitaet={0} />
+          )}
         </div>
       </header>
       {/* Nicht im sticky-Kopf, sondern darunter im Fluss: der Streifen ist
@@ -141,10 +112,86 @@ export default async function Header({ back }: { back?: string } = {}) {
       <BottomNav
         userId={user?.id ?? null}
         loggedIn={!!user}
-        moderator={moderator}
-        creator={creator}
         ungeseheneAktivitaet={ungeseheneAktivitaet}
       />
     </>
+  );
+}
+
+async function KopfNavigationMitRollen({
+  userId,
+  ungeseheneAktivitaet,
+}: {
+  userId: string;
+  ungeseheneAktivitaet: Promise<number>;
+}) {
+  // Drei Abfragen, die nur an userId hängen und nicht aneinander — also
+  // nebenläufig. istCreator ist ein Existenz-Check auf creator_links (0091),
+  // für die allermeisten Konten ohne eine einzige Zeile.
+  const [moderator, creator, zaehler] = await Promise.all([
+    isModerator(userId),
+    istCreator(userId),
+    ungeseheneAktivitaet,
+  ]);
+  return (
+    <KopfNavigation loggedIn moderator={moderator} creator={creator} ungeseheneAktivitaet={zaehler} />
+  );
+}
+
+function KopfNavigation({
+  loggedIn,
+  moderator,
+  creator,
+  ungeseheneAktivitaet,
+}: {
+  loggedIn: boolean;
+  moderator: boolean;
+  creator: boolean;
+  ungeseheneAktivitaet: number;
+}) {
+  // "/" wird hier ausgelassen — das Logo verlinkt bereits dorthin, ein
+  // zweiter Link wäre redundant. Einzige Quelle der Nav-Items: lib/nav.ts,
+  // von BottomNav (Mobile) genauso genutzt.
+  const items = getNavItems({ loggedIn, moderator, creator }).filter(
+    (item) => item.href !== "/",
+  );
+  return (
+    <nav className="hidden items-center gap-3 overflow-x-auto reiter-scroller text-sm sm:gap-6 md:flex">
+      {items.map((item) =>
+        item.href === "/anmelden" ? (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={buttonVariants({ variant: "primary", size: "sm", className: "whitespace-nowrap" })}
+          >
+            {item.label}
+          </Link>
+        ) : (
+          <HeaderNavLink
+            key={item.href}
+            href={item.href}
+            aktivAuf={item.aktivAuf}
+            // Der Zähler hängt am Feed: dort liegt die Aktivität als
+            // Reiter (components/FeedReiter.tsx), und die Zahl gehört
+            // an den Eintrag, der dorthin führt.
+            ariaLabel={
+              item.href === "/feed" && ungeseheneAktivitaet > 0
+                ? `${item.label}, ${ungeseheneAktivitaet} ${ungeseheneAktivitaet === 1 ? "neue Reaktion" : "neue Reaktionen"}`
+                : undefined
+            }
+          >
+            {item.label}
+            {item.href === "/feed" && ungeseheneAktivitaet > 0 && (
+              <span
+                aria-hidden="true"
+                className="flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-on-accent"
+              >
+                {ungeseheneAktivitaet > 9 ? "9+" : ungeseheneAktivitaet}
+              </span>
+            )}
+          </HeaderNavLink>
+        ),
+      )}
+    </nav>
   );
 }

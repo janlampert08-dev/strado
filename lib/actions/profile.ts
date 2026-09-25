@@ -69,14 +69,16 @@ export async function searchProfiles(query: string): Promise<ProfileSearchResult
   // Quellen, die für jeden ohnehin lesbar sind:
   //
   // - Region und Fahrtenzahl aus public_fahrten — dieselbe Sicht, die den
-  //   öffentlichen Feed und das öffentliche Profil speist. Sie enthält nur
-  //   Fahrten mit ist_oeffentlich = true; eine private Fahrt verrät hier
-  //   also weder ihre Region noch ihre Existenz.
+  //   öffentlichen Feed und das öffentliche Profil speist. Sie enthält
+  //   öffentliche Fahrten und, nur für Follower, Follower-Fahrten (0145);
+  //   eine private Fahrt verrät hier also weder ihre Region noch ihre
+  //   Existenz.
   // - Follower über get_follow_counts_many (0155), die gebündelte Fassung
   //   der SECURITY-DEFINER-Funktion get_follow_counts, die auch das Profil
   //   nutzt (0040) — ein Aufruf statt einem je Treffer, mit Rückweg auf die
   //   Einzelaufrufe, solange 0155 fehlt (lib/followerZahlen.ts). Die Zahl
-  //   ist laut Einstellungen "für andere immer sichtbar", unabhängig von zeigt_follower_liste — die
+  //   ist laut Einstellungen "für andere immer sichtbar", unabhängig von
+  //   zeigt_follower_liste — die
   //   Liste bleibt geschützt, die Zahl war nie geschützt.
   //
   // Beides läuft mit der Sitzung des Aufrufers (createClient), nicht mit dem
@@ -148,6 +150,13 @@ export async function updateVisibilitySettings(
     return { error: "Ungültiger Wert für die Privatzone. Bitte lade die Seite neu." };
   }
   const privatzoneRadiusM = radius;
+  // Nur schreiben, wenn das Formular den Schalter überhaupt kennt: eine
+  // nicht angekreuzte Checkbox schickt nichts, ein Formular von vor 0146
+  // (offener Tab über das Deploy hinweg) aber auch nicht. Ohne diese Marke
+  // schaltete jedes alte Formular die Bestätigung still aus.
+  const folgenBestaetigen = formData.has("folgen_bestaetigen_feld")
+    ? { folgen_bestaetigen: formData.get("folgen_bestaetigen") === "true" }
+    : {};
 
   // profiles.zeigt_premium_badge wird hier bewusst NICHT geschrieben. Das
   // Abzeichen hinter dem Namen ist aus der App entfernt; die Spalte bleibt
@@ -169,10 +178,17 @@ export async function updateVisibilitySettings(
       // 0125: Durchschnittstempo auf geteilten Fahrten. Der Besitzer sieht
       // es immer; das Flag entscheidet nur, ob Strado es anderen ausweist.
       zeigt_tempo: formData.get("zeigt_tempo") === "true",
+      // 0146: neue Follower bestätigen. Voreingestellt an.
+      ...folgenBestaetigen,
     })
     .eq("id", user.id);
 
   if (error) return { error: "Einstellungen konnten nicht gespeichert werden." };
+
+  // Ausschalten nimmt offene Anfragen bewusst NICHT an: der Schalter
+  // speichert sofort (VisibilitySettings), und ein versehentliches Umlegen
+  // hätte sonst Fremde unwiderruflich zu Followern gemacht. Offene Anfragen
+  // bleiben unter Aktivität und werden einzeln beantwortet.
 
   // Ein geänderter Radius muss auch für bereits geteilte Fahrten gelten —
   // sonst wirkte die strengere Einstellung nur in die Zukunft, und genau
