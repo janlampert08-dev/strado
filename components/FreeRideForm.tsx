@@ -523,7 +523,11 @@ export default function FreeRideForm({
       // Scroll-Notausgang wie im Tracking-Dialog darunter: Titel, Hinweise,
       // Fehler und Knöpfe stapeln sich auf kurzen Schirmen über die Höhe.
       <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col overflow-y-auto overscroll-y-contain bg-background">
-        <div className="flex-1 min-h-[30dvh]">
+        {/* Die Karte beginnt bei y=0: In der installierten App lagen Zoom und
+            Kompass (.mapboxgl-ctrl-top-right) sonst unter der Statusleiste.
+            Das ! ist nötig, weil mapbox-gl.css ungeschichtet ist und damit
+            jede Tailwind-Utility ohne !important schlägt. */}
+        <div className="flex-1 min-h-[30dvh] [&_.mapboxgl-ctrl-top-right]:top-[var(--safe-top)]!">
           <RouteMap
             routes={routes}
             signaturen={kartenSignaturen}
@@ -628,7 +632,11 @@ export default function FreeRideForm({
   // Knöpfe nie aus dem Bild drücken.
   return (
     <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col overflow-y-auto overscroll-y-contain bg-background">
-      <div className="flex-1 min-h-[30dvh]">
+      {/* Die Karte beginnt bei y=0: In der installierten App lagen Zoom und
+          Kompass (.mapboxgl-ctrl-top-right) sonst unter der Statusleiste.
+          Das ! ist nötig, weil mapbox-gl.css ungeschichtet ist und damit
+          jede Tailwind-Utility ohne !important schlägt. */}
+      <div className="flex-1 min-h-[30dvh] [&_.mapboxgl-ctrl-top-right]:top-[var(--safe-top)]!">
         <RouteMap
           routes={routes}
           signaturen={kartenSignaturen}
