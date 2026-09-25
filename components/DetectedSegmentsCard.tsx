@@ -37,7 +37,7 @@ export default function DetectedSegmentsCard({ segments }: { segments: DetectedS
                     {segment.routeName}
                   </span>
                   <div className="flex items-center gap-2 text-xs tabular-nums text-muted">
-                    <span>{(segment.distanzKm ?? 0).toFixed(1)} km</span>
+                    <span>{(segment.distanzKm ?? 0).toFixed(1)}{"\u00a0"}km</span>
                     <span aria-hidden="true">·</span>
                     <span className="flex items-center gap-1">
                       <Timer className="h-3 w-3" aria-hidden="true" />
@@ -46,7 +46,7 @@ export default function DetectedSegmentsCard({ segments }: { segments: DetectedS
                     {avgKmh !== null && (
                       <>
                         <span aria-hidden="true">·</span>
-                        <span>{avgKmh.toFixed(0)} km/h</span>
+                        <span>{avgKmh.toFixed(0)}{"\u00a0"}km/h</span>
                       </>
                     )}
                   </div>

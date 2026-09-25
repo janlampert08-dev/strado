@@ -28,12 +28,12 @@ describe("formatDuration", () => {
 describe("formatDauer", () => {
   // Ohne Einheit las sich "15:27" neben einem Datum wie eine Uhrzeit.
   it("adds min below one hour", () => {
-    expect(formatDauer(927)).toBe("15:27 min");
+    expect(formatDauer(927)).toBe("15:27\u00a0min");
   });
 
   it("adds h from one hour on", () => {
-    expect(formatDauer(3600)).toBe("1:00:00 h");
-    expect(formatDauer(3912)).toBe("1:05:12 h");
+    expect(formatDauer(3600)).toBe("1:00:00\u00a0h");
+    expect(formatDauer(3912)).toBe("1:05:12\u00a0h");
   });
 
   it("splits value and unit for tiles", () => {
@@ -44,9 +44,9 @@ describe("formatDauer", () => {
 
 describe("formatMeter", () => {
   it("groups thousands the Swiss way and rounds", () => {
-    expect(formatMeter(2315)).toBe(`${(2315).toLocaleString("de-CH")} m`);
+    expect(formatMeter(2315)).toBe(`${(2315).toLocaleString("de-CH")}\u00a0m`);
     expect(formatMeter(2315)).not.toBe("2315 m");
-    expect(formatMeter(460.6)).toBe("461 m");
+    expect(formatMeter(460.6)).toBe("461\u00a0m");
   });
 });
 

@@ -235,15 +235,20 @@ export default async function FeedPage({
                         // after: macht den Namen (24 × 20) zu einer 44 px hohen
                         // Tippfläche. Er überlappt dabei den Avatar daneben —
                         // beide führen auf dasselbe Profil.
-                        className="relative z-10 shrink-0 transition-colors duration-fast hover:text-foreground after:absolute after:-inset-x-3 after:-inset-y-3 after:content-['']"
+                        //
+                        // min-w-0 statt shrink-0: Ein langer Name schob Region,
+                        // Distanz und Datum aus der Zeile. Gekürzt wird im
+                        // inneren span — truncate am Link selbst (overflow
+                        // hidden) schnitte das after: der Tippfläche ab.
+                        className="relative z-10 min-w-0 transition-colors duration-fast hover:text-foreground after:absolute after:-inset-x-3 after:-inset-y-3 after:content-['']"
                       >
-                        {item.display_name ?? "Fahrer"}
+                        <span className="block truncate">{item.display_name ?? "Fahrer"}</span>
                       </Link>
                       <span aria-hidden="true">·</span>
                       <span className="truncate">{item.region}</span>
                       <span aria-hidden="true">·</span>
                       <span className="tabular-nums">
-                        {(item.distanz_km ?? item.laenge_km ?? 0).toFixed(1)} km
+                        {(item.distanz_km ?? item.laenge_km ?? 0).toFixed(1)}{"\u00a0"}km
                       </span>
                       <span aria-hidden="true">·</span>
                       {/* Kurzform ohne Jahr: der Feed ist nach Datum

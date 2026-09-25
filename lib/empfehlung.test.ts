@@ -74,8 +74,8 @@ describe("waehleEmpfohleneStrecke", () => {
 
 describe("formatEntfernungKm", () => {
   it("rundet und nennt kurze Distanzen ehrlich", () => {
-    expect(formatEntfernungKm(12.4)).toBe("12 km");
-    expect(formatEntfernungKm(0.4)).toBe("weniger als 1 km");
+    expect(formatEntfernungKm(12.4)).toBe("12\u00a0km");
+    expect(formatEntfernungKm(0.4)).toBe("weniger als 1\u00a0km");
     expect(formatEntfernungKm(NaN)).toBe("—");
   });
 });

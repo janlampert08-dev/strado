@@ -94,6 +94,7 @@ const GANZE_KM_FORMAT = new Intl.NumberFormat("de-CH", { maximumFractionDigits: 
 // Kilometer keine Scheingenauigkeit ("0 km"), darüber gerundet.
 export function formatEntfernungKm(km: number): string {
   if (!Number.isFinite(km) || km < 0) return "—";
-  if (km < 1) return "weniger als 1 km";
-  return `${GANZE_KM_FORMAT.format(Math.round(km))} km`;
+  // \u00a0 zwischen Zahl und Einheit, wie in lib/format.ts.
+  if (km < 1) return "weniger als 1\u00a0km";
+  return `${GANZE_KM_FORMAT.format(Math.round(km))}\u00a0km`;
 }
