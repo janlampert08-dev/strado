@@ -1,7 +1,7 @@
 "use client";
 
 import KartePlatzhalter from "@/components/ui/KartePlatzhalter";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -174,7 +174,11 @@ export default function ExploreView({
   // Strecken unter dem Sheet.
   const [verdecktUnten, setVerdecktUnten] = useState(0);
 
-  function requestLocation() {
+  // useCallback, damit die Prop an die (memoisierte) ExploreSidebar über
+  // Renders hinweg dieselbe Funktion bleibt — sonst rendert jeder Hover die
+  // ganze Seitenleiste neu. Nur State-Setter im Rumpf, also keine
+  // Abhängigkeiten.
+  const requestLocation = useCallback(() => {
     if (!navigator.geolocation) {
       setLocationError("Geolocation wird von diesem Browser nicht unterstützt.");
       return;
@@ -198,7 +202,7 @@ export default function ExploreView({
       },
       { enableHighAccuracy: true, timeout: 10_000 },
     );
-  }
+  }, []);
 
   // Über den gesamten (ungefilterten) Bestand berechnet, damit das
   // Signatur-Merkmal je Strecke stabil bleibt — eine Textsuche schränkt nur
@@ -223,14 +227,26 @@ export default function ExploreView({
     [signatures],
   );
   const [artFilter, setArtFilter] = useState<ExploreArt>("alle");
+  // Das Eingabefeld hängt weiter direkt an searchInput und antwortet damit
+  // bei jedem Tastendruck sofort. Gefiltert wird dagegen mit dem
+  // zurückgestellten Wert: vorher baute jeder Tastendruck angezeigteRouten
+  // neu, und RouteMap schrieb daraufhin alle Feature-Collections neu
+  // (setData) und passte unter Umständen den Ausschnitt ein. Mit
+  // useDeferredValue rendert React Liste und Karte in einem
+  // unterbrechbaren Hintergrund-Render nach — tippt man schnell, verwirft
+  // es die Zwischenstände, statt jeden einzeln zu committen.
+  //
+  // Nicht zu verwechseln mit dem Debounce des URL-Syncs oben: der wartet
+  // eine feste Zeit, das hier wartet nur so lange, wie der Render dauert.
+  const suchbegriff = useDeferredValue(searchInput);
   const visibleRoutes = useMemo(() => {
-    // searchInput statt des (debounced) URL-Werts: die Liste soll bei jedem
-    // Tastendruck sofort reagieren, nicht erst nach dem URL-Sync-Delay.
+    // suchbegriff statt des (debounced) URL-Werts: die Liste soll ohne
+    // feste Verzögerung reagieren, nicht erst nach dem URL-Sync-Delay.
     // Art-Filter (Agglo vs. Pass) läuft davor — beides sind explizite
     // Absichten, keine angeheftete Empfehlung.
     const nachArt = artFilter === "alle" ? routes : routes.filter((r) => passtZurArt(r, artFilter));
-    const filtered = searchInput.trim()
-      ? nachArt.filter((r) => matchesSearch(r, searchInput))
+    const filtered = suchbegriff.trim()
+      ? nachArt.filter((r) => matchesSearch(r, suchbegriff))
       : nachArt;
 
     if (!userLocation) return filtered;
@@ -240,7 +256,7 @@ export default function ExploreView({
         haversineKm(userLocation, a.start_geojson.coordinates) -
         haversineKm(userLocation, b.start_geojson.coordinates),
     );
-  }, [routes, searchInput, userLocation, artFilter]);
+  }, [routes, suchbegriff, userLocation, artFilter]);
 
   // Genau eine Empfehlung für die Hierarchie der Liste — und sie steht ganz
   // oben, ausser der Nutzer filtert oder sortiert selbst: Bei Suche oder
@@ -248,7 +264,9 @@ export default function ExploreView({
   // die keine angeheftete Empfehlung gehört. Im Grundzustand (keine Suche,
   // kein Standort) ist es die bestbewertete Strecke (lib/empfehlung.ts),
   // an erster Stelle der angezeigten Liste.
-  const hatFilter = searchInput.trim() !== "" || artFilter !== "alle";
+  // Derselbe zurückgestellte Wert wie für die Liste, damit Empfehlung und
+  // Trefferliste immer zum selben Suchstand gehören.
+  const hatFilter = suchbegriff.trim() !== "" || artFilter !== "alle";
   const hatStandort = userLocation !== null;
   const empfehlung: Empfehlung | null = useMemo(() => {
     if (hatFilter || hatStandort || loadError) return null;
