@@ -31,9 +31,24 @@
 > Rechtsgrundlage (keine Einwilligung mehr, siehe 5.1) ist anwaltlich zu
 > prüfen; siehe offener Punkt 12.
 
+> ### Ergänzung vom 25. September 2026 — Fahrten für Follower, Folgeanfragen
+>
+> Abschnitte 3.2, 3.4, 3.5, 3.6, 6 und 9 beschreiben zusätzlich die
+> Sichtbarkeitsstufe **„Follower"** (Migration `0145`) und
+> **Folgeanfragen** mit der Einstellung „Neue Follower bestätigen",
+> voreingestellt an (`0146`/`0147`, Entscheid des Inhabers vom 2026-09-25).
+> Anders als der Entwurf vom 17. September hängt diese Ergänzung **nicht**
+> an einer AGB-Mitteilung: sie beschreibt eine zusätzliche, engere
+> Sichtbarkeit und eine Bestätigung, die die Kontrolle über das eigene
+> Publikum erweitert. Die veröffentlichte Fassung
+> (`janlampert08-dev/stradoinfo`, `legal/datenschutz.html`) ist mit diesem
+> Inhalt nachzuführen, **bevor** der Code ausgeliefert wird. Ob die Änderung
+> „wesentlich" im Sinn von Abschnitt 14 ist (Hinweis in der App oder per
+> E-Mail), entscheidet der Inhaber.
+
 ---
 
-**Stand: 16. September 2026**
+**Stand: 25. September 2026**
 
 ## 1. Verantwortliche Stelle
 
@@ -84,7 +99,8 @@ Zum Profil gehören: Anzeigename, optionales **Profilbild**, die Einstellung des
 **Privatzonen-Radius** (Abschnitt 3.4), sowie mehrere unabhängige
 **Sichtbarkeits-Schalter**, mit denen selbst bestimmt wird, was auf dem
 öffentlichen Profil erscheint (Profilbild, Fahrzeuge, Anzahl Pässe,
-Höhenmeter, Distanz, Follower-Liste). Beim Premium-Abo
+Höhenmeter, Distanz, Follower-Liste), und die Einstellung **„Neue Follower
+bestätigen"** (Abschnitt 3.6). Beim Premium-Abo
 kommt eine Kunden-Kennung des Zahlungsdienstleisters hinzu (Abschnitt 3.9).
 
 > **Wichtig zu den Standardeinstellungen:** Bei neu angelegten Konten sind
@@ -95,6 +111,10 @@ kommt eine Kunden-Kennung des Zahlungsdienstleisters hinzu (Abschnitt 3.9).
 > sollen. Es handelt sich damit um eine Opt-out- und nicht um eine
 > Opt-in-Voreinstellung; die Anwendung weist in den Profileinstellungen
 > ausdrücklich darauf hin („Standardmässig ist alles an").
+>
+> „Neue Follower bestätigen" ist ebenfalls **standardmässig an** — und zwar
+> auch bei Konten, die vor der Einführung der Einstellung angelegt wurden.
+> Hier schützt die Voreinstellung: wer nicht bestätigt, wird nicht Follower.
 >
 > Eine Einstellung ist davon ausgenommen und bleibt **standardmässig aus**:
 > die Sichtbarkeit **einzelner Fahrten**, über die pro Fahrt entschieden wird
@@ -137,16 +157,22 @@ Dazu kommen: Datum, gewähltes Fahrzeug, eine optionale private **Notiz** (max.
 280 Zeichen), bei freien Fahrten ein selbst gewählter **Titel** sowie ein
 per Reverse-Geocoding ermittelter **Ortsbezug** (Startort und Region).
 
-**Sichtbarkeit.** Neu aufgezeichnete Fahrten sind **voreingestellt
-öffentlich**: Vor dem Speichern steht die Wahl sichtbar auf „Öffentlich" und
-lässt sich mit einem Tipp auf „Privat" umstellen; die Einstellung ist pro
-Fahrt jederzeit umkehrbar. Eine Fahrt, die die Voraussetzungen für eine
-Veröffentlichung nicht erfüllt, bleibt privat. Bereits gespeicherte Fahrten
+**Sichtbarkeit.** Jede Fahrt hat eine von drei Stufen: **Privat** (nur die
+eigene Person), **Follower** (zusätzlich die Personen, die dem Konto folgen,
+Abschnitt 3.6) oder **Öffentlich** (alle). Neu aufgezeichnete Fahrten sind
+**voreingestellt öffentlich**: Vor dem Speichern steht die Wahl sichtbar auf
+„Öffentlich" und lässt sich mit einem Tipp auf „Follower" oder „Privat"
+umstellen; die Einstellung ist pro Fahrt jederzeit änderbar. Eine Fahrt, die
+die Voraussetzungen für eine Veröffentlichung nicht erfüllt, bleibt privat —
+für beide geteilten Stufen gleich. In **Bestenlisten**, in den
+**Streckenfotos** und in der **Anzahl befahrener Pässe** erscheinen nur
+öffentliche Fahrten, nie Follower-Fahrten. Bereits gespeicherte Fahrten
 behalten ihre Einstellung. Der **vollständige GPS-Track ist ausschliesslich für die
 eigene Person sichtbar** — die Zugriffsregeln der Datenbank
 (Row Level Security) lassen keinen anderen Zugriff zu.
 
-**Privatzone.** Von einer öffentlich geteilten Fahrt wird nicht der
+**Privatzone.** Von einer geteilten Fahrt — öffentlich oder für Follower —
+wird nicht der
 vollständige Track veröffentlicht, sondern eine gekappte Fassung: Anfang und
 Ende werden innerhalb eines einstellbaren Radius **abgeschnitten**, damit
 Wohn- oder Arbeitsadresse nicht ableitbar sind. Der Radius beträgt
@@ -201,10 +227,12 @@ gesetzt werden.
 **Sichtbarkeit von Fahrt-Fotos.** Fahrt-Fotos liegen in einem **nicht
 öffentlich lesbaren Speicher**. Sie werden nur über zeitlich begrenzt gültige
 Links ausgeliefert, die der Server erzeugt, nachdem er geprüft hat, dass die
-zugehörige Fahrt öffentlich ist oder dass die abrufende Person die Fahrt
-selbst gefahren ist. Ein weitergegebener Link funktioniert deshalb nicht
-dauerhaft, und ein Foto einer wieder auf privat gestellten Fahrt ist nicht
-mehr abrufbar.
+abrufende Person die zugehörige Fahrt sehen darf — weil sie öffentlich ist,
+weil sie für Follower geteilt ist und die Person dem Konto folgt, oder weil
+sie die Fahrt selbst gefahren ist. Ein weitergegebener Link funktioniert
+deshalb nicht dauerhaft, und ein Foto einer wieder auf privat gestellten
+Fahrt ist nicht mehr abrufbar; dasselbe gilt für eine Follower-Fahrt, sobald
+jemand nicht mehr folgt.
 
 > **Hinweis zu Profilbildern:** Profilbilder liegen weiterhin in einem
 > **öffentlich lesbaren Speicher**. Wer die vollständige Adresse einer solchen
@@ -224,15 +252,24 @@ dabei nicht neu berechnet, die Bildqualität ändert sich also nicht.
 
 - **Bewertungen** zu Strecken (Kommentartext) — öffentlich sichtbar zusammen
   mit dem Anzeigenamen.
-- **Kudos** auf öffentliche Fahrten anderer.
+- **Kudos** auf Fahrten anderer, die man sehen darf: öffentliche Fahrten und
+  Follower-Fahrten von Konten, denen man folgt.
 - **Folgen** anderer Nutzender (Follows). Ob die eigene Follower-Liste
   öffentlich ist, steuert ein eigener Schalter — standardmässig **an**
   (Abschnitt 3.2).
+- **Folgeanfragen.** Mit der Einstellung „Neue Follower bestätigen" —
+  standardmässig **an** — wird aus dem Folgen eine **Anfrage**, die
+  angenommen oder abgelehnt wird. Gespeichert wird, wer wem wann eine
+  Anfrage gestellt hat; sichtbar ist das nur den beiden Beteiligten. Eine
+  Anfrage wird beim Annehmen zum Follow und beim Ablehnen oder Zurückziehen
+  gelöscht. Wird die Einstellung ausgeschaltet, werden offene Anfragen
+  angenommen. Bestehende Follows bleiben beim Einschalten unberührt.
 - **Favoriten** (gemerkte Strecken) — nur für die eigene Person sichtbar.
 - **Bestenlisten und Statistiken**, die aus öffentlich gestellten Fahrten
-  berechnet werden.
-- **Feed und Aktivitätsliste**, in denen Fahrten und erhaltene Kudos
-  erscheinen.
+  berechnet werden; Follower-Fahrten fliessen nicht ein.
+- **Feed und Aktivitätsliste**, in denen Fahrten, erhaltene Kudos, neue
+  Follower und offene Folgeanfragen erscheinen. Follower-Fahrten erscheinen
+  im Feed nur bei Personen, die dem Konto folgen.
 
 ### 3.7 Streckenvorschläge
 
@@ -451,6 +488,14 @@ Bewertungstexte; Streckenvorschläge nach ihrer Freigabe.
 Fahrten — mit Datum, Strecke bzw. Titel, Distanz, Dauer, Höhenmeter, Fotos und
 Notiz sowie dem an den Enden gekappten Track.
 
+**Nur für Follower sichtbar (pro Fahrt wählbar):** Fahrten mit der Stufe
+„Follower" — mit denselben Angaben wie eine öffentliche Fahrt — für Personen,
+die dem Konto folgen. Weil Folgen standardmässig eine Bestätigung verlangt
+(Abschnitt 3.6), sind das Personen, deren Anfrage angenommen wurde, sowie
+Follower, die schon vor Einführung der Bestätigung gefolgt sind. Wird eine
+solche Fahrt gemeldet, sehen die Moderatorinnen und Moderatoren ihre Angaben,
+solange die Meldung offen ist.
+
 **Voreingestellt sichtbar, bis es abgeschaltet wird (Standard: an):**
 Profilbild; Fahrzeuge; Anzahl gefahrener Pässe; gesammelte Höhenmeter;
 gefahrene Distanz; Follower-Liste. Diese sechs Schalter sind bei neuen Konten
@@ -458,13 +503,15 @@ voreingestellt **an** und lassen sich in den Profileinstellungen einzeln
 ausschalten. Wer nichts davon zeigen will, muss also aktiv werden.
 
 **Nie für andere sichtbar:** der vollständige, ungekappte GPS-Track;
-Fahrten, die nicht öffentlich gestellt sind; Notizen privater Fahrten;
-Favoriten; E-Mail-Adresse; Zahlungsangaben; abgegebene Meldungen.
+private Fahrten und ihre Notizen; Follower-Fahrten für alle, die nicht
+folgen; Folgeanfragen (ausser für die beiden Beteiligten); Favoriten;
+E-Mail-Adresse; Zahlungsangaben; abgegebene Meldungen.
 
 > **Zu bedenken:** Sobald eine Fahrt öffentlich gestellt wird, wird auch ihre
 > Notiz öffentlich. Wird eine Fahrt später wieder auf privat gestellt,
 > verschwindet sie aus Feed und Bestenlisten — bereits von Dritten angefertigte
-> Kopien (Screenshots, geteilte Bilder) können wir nicht zurückholen.
+> Kopien (Screenshots, geteilte Bilder) können wir nicht zurückholen. Das gilt
+> ebenso für Follower-Fahrten: wer sie sehen kann, kann sie weitergeben.
 
 ## 7. Empfänger und Auftragsbearbeiter
 
@@ -537,7 +584,8 @@ verlangen.
 verbergen: einzelne Fahrten löschen, einzelne Fotos entfernen, Notizen ändern,
 die Sichtbarkeit einer Fahrt umstellen, Fahrzeuge löschen, eigene abgelehnte
 Streckenvorschläge löschen, Profilangaben und Sichtbarkeitsschalter ändern,
-den Privatzonen-Radius anpassen (was bereits geteilte Fahrten neu zuschneidet).
+den Privatzonen-Radius anpassen (was bereits geteilte Fahrten neu zuschneidet),
+gestellte Folgeanfragen zurückziehen und erhaltene ablehnen.
 
 **9.3 Feste Fristen.**
 
@@ -565,7 +613,9 @@ verlangt zur Sicherheit eine erneute Eingabe des Passworts. Sie ist
 - sämtliche Sichtbarkeits- und Statusschalter werden abgeschaltet,
 - **alle GPS-Tracks aller Fahrten werden gelöscht** — sowohl die vollständigen
   als auch die gekappten öffentlichen Fassungen,
-- **freie Fahrten werden auf privat gestellt**,
+- **freie Fahrten werden auf privat gestellt**, und Fahrten, die nur für
+  Follower geteilt waren, sind danach für niemanden mehr sichtbar,
+- **offene Folgeanfragen** — gestellte wie erhaltene — werden gelöscht,
 - alle Fahrzeuge werden gelöscht,
 - die E-Mail-Adresse wird im Authentifizierungsdienst durch eine synthetische,
   nicht zustellbare Adresse ersetzt und das Passwort durch einen Zufallswert;
