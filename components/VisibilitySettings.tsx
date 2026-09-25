@@ -47,7 +47,7 @@ const FIELDS: Field[] = [
     formKey: "folgen_bestaetigen",
     label: "Neue Follower bestätigen",
     description:
-      "Wer dir folgen will, schickt eine Anfrage, die du unter Aktivität annimmst. So sehen Fahrten, die du nur mit Followern teilst, nur Leute, die du kennst. Ausschalten nimmt offene Anfragen an.",
+      "Wer dir folgen will, schickt eine Anfrage, die du unter Aktivität annimmst. So sehen Fahrten, die du nur mit Followern teilst, nur Leute, die du kennst. Bisherige Follower kannst du in deiner Follower-Liste entfernen.",
   },
   { name: "zeigtAvatar", formKey: "zeigt_avatar", label: "Profilbild zeigen" },
   { name: "zeigtFahrzeuge", formKey: "zeigt_fahrzeuge", label: "Fahrzeuge zeigen" },
@@ -113,6 +113,9 @@ export default function VisibilitySettings({
 
   return (
     <form ref={formRef} action={formAction} onChange={aenderung} className="flex flex-col gap-4">
+      {/* Marke für updateVisibilitySettings: dieses Formular kennt den
+          Schalter "Neue Follower bestätigen" (siehe lib/actions/profile.ts). */}
+      <input type="hidden" name="folgen_bestaetigen_feld" value="1" />
       <Card className="flex flex-col divide-y divide-border px-4">
         {FIELDS.map((field) => (
           <Switch

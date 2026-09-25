@@ -29,6 +29,24 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Eingespielt: 0149_follower_entfernen (2026-09-25, Produktion)
+
+Die Delete-Policy "Nutzer entfolgen" auf follows lässt jetzt auch den
+Gefolgten löschen (`follower_id = uid or followed_id = uid`). Anlass: wer vor
+0146 gefolgt ist, brauchte keine Bestätigung und hätte die Follower-Fahrten
+eines Kontos sonst auf Dauer gesehen. Die App bietet dazu "Entfernen" in der
+eigenen Follower-Liste (`followerEntfernen`).
+
+- **Zurückgerollter Test vorher:** Gefolgter entfernt eigenen Follower →
+  1 Zeile; fremde Beziehung → 0; anon → 0.
+- **Gemessen danach:** Ledger `0149_follower_entfernen`, Policy wie oben.
+
+**Nachtrag zu 0146:** `folgeanfragen_alle_annehmen()` ruft die App nicht mehr
+auf. Das Ausschalten von "Neue Follower bestätigen" nimmt offene Anfragen
+NICHT mehr an (Code-Review vor dem Release: der Schalter speichert sofort, ein
+versehentliches Umlegen hätte Fremde unwiderruflich zu Followern gemacht).
+Die Funktion bleibt im Schema; 0146 ist eingespielt und wird nicht geändert.
+
 ## 0146 eingespielt, 0147 wartet auf den Code in Produktion (Folgeanfragen, 2026-09-25)
 
 Folgeanfragen: `profiles.folgen_bestaetigen` (voreingestellt **an**, für

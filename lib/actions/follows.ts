@@ -19,7 +19,15 @@ const FOLLOW_COOLDOWN_MS = 500;
 // setzt dasselbe mit 0147 durch.
 export async function toggleFollow(
   targetUserId: string,
-): Promise<{ ok: boolean; zustand?: FolgeZustand }> {
+): Promise<{
+  ok: boolean;
+  zustand?: FolgeZustand;
+  // Der Zustand VOR dem Tipp, wie die Datenbank ihn sah — nicht, wie der
+  // Knopf ihn zeigte. Eine offene Seite kann veraltet sein (die Anfrage ist
+  // inzwischen angenommen), und die Quittung soll sagen, was geschehen ist.
+  vorher?: FolgeZustand;
+  brauchtBestaetigung?: boolean;
+}> {
   if (!isValidUuid(targetUserId)) return { ok: false };
 
   const supabase = await createClient();
@@ -70,14 +78,15 @@ export async function toggleFollow(
     if (error) return { ok: false };
     zustand = "keiner";
   } else {
-    const { data: ziel } = await supabase
-      .from("profiles")
-      .select("folgen_bestaetigen")
-      .eq("id", targetUserId)
-      .maybeSingle<{ folgen_bestaetigen: boolean }>();
-    if (!ziel) return { ok: false };
+    // Dieselbe Regel, die die Policies durchsetzen (0146/0147), statt sie
+    // hier aus profiles nachzubauen — sie nimmt z. B. gelöschte Konten aus.
+    const { data: braucht, error: regelFehler } = await supabase.rpc(
+      "folgen_braucht_bestaetigung",
+      { p_ziel: targetUserId },
+    );
+    if (regelFehler) return { ok: false };
 
-    if (ziel.folgen_bestaetigen) {
+    if (braucht === true) {
       const { error } = await supabase
         .from("folge_anfragen")
         .insert({ von: user.id, an: targetUserId });
@@ -100,7 +109,41 @@ export async function toggleFollow(
   // abgeleitet (0100) und verschwindet mit ihr wieder. Offene Anfragen
   // stehen seit 0146 ebenfalls dort.
   revalidatePath("/aktivitaet");
-  return { ok: true, zustand };
+
+  const vorher: FolgeZustand = folgt ? "folgt" : anfrage ? "angefragt" : "keiner";
+  // Nur fürs Rückgängig nach dem Entfolgen gebraucht: verlangt das Profil
+  // eine Bestätigung, wäre "erneut folgen" nur eine neue Anfrage.
+  let brauchtBestaetigung: boolean | undefined;
+  if (vorher === "folgt") {
+    const { data } = await supabase.rpc("folgen_braucht_bestaetigung", { p_ziel: targetUserId });
+    brauchtBestaetigung = data === true;
+  }
+  return { ok: true, zustand, vorher, brauchtBestaetigung };
+}
+
+// Einen eigenen Follower entfernen (0149). Wichtig für Fahrten "nur für
+// Follower": wer vor den Folgeanfragen (0146) gefolgt ist, brauchte keine
+// Bestätigung — so lässt sich der Kreis nachträglich schliessen.
+export async function followerEntfernen(followerId: string): Promise<{ ok: boolean }> {
+  if (!isValidUuid(followerId)) return { ok: false };
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || user.id === followerId) return { ok: false };
+
+  const { error, count } = await supabase
+    .from("follows")
+    .delete({ count: "exact" })
+    .eq("follower_id", followerId)
+    .eq("followed_id", user.id);
+  if (error || count === 0) return { ok: false };
+
+  revalidatePath("/profil");
+  revalidatePath(`/fahrer/${user.id}`);
+  revalidatePath(`/fahrer/${followerId}`);
+  revalidatePath("/feed");
+  return { ok: true };
 }
 
 // Annehmen: aus der Anfrage wird eine follows-Zeile. Läuft über

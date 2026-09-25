@@ -16,22 +16,30 @@ import type { Folgeanfrage } from "@/lib/follows";
 // beantwortet ist — auch nachdem die Seite sie als gesehen markiert hat.
 // Angenommen erscheint die Person unten als neuer Follower.
 export default function FolgeanfragenListe({ initial }: { initial: Folgeanfrage[] }) {
-  const [anfragen, setAnfragen] = useState(initial);
+  // Die Liste kommt immer aus den Props — neue Serverdaten (Ziehen zum
+  // Aktualisieren, revalidatePath nach einer Antwort) erscheinen so sofort,
+  // eine zurückgezogene Anfrage verschwindet. Lokal gemerkt wird nur, was
+  // gerade beantwortet wurde, damit die Karte nicht bis zur Antwort des
+  // Servers stehen bleibt.
+  const [beantwortet, setBeantwortet] = useState<ReadonlySet<string>>(new Set());
   const [pending, startTransition] = useTransition();
+  const anfragen = initial.filter((a) => !beantwortet.has(a.von));
 
   if (anfragen.length === 0) return null;
 
   function beantworte(anfrage: Folgeanfrage, annehmen: boolean) {
-    // Optimistisch entfernen; bei einem Fehler wieder an ihren Platz.
-    setAnfragen((liste) => liste.filter((a) => a.von !== anfrage.von));
+    // Optimistisch ausblenden; bei einem Fehler wieder an ihren Platz.
+    setBeantwortet((s) => new Set(s).add(anfrage.von));
     startTransition(async () => {
       const { ok } = annehmen
         ? await folgeanfrageAnnehmen(anfrage.von)
         : await folgeanfrageAblehnen(anfrage.von);
       if (!ok) {
-        setAnfragen((liste) =>
-          [...liste, anfrage].sort((a, b) => b.erstelltAm.localeCompare(a.erstelltAm)),
-        );
+        setBeantwortet((s) => {
+          const neu = new Set(s);
+          neu.delete(anfrage.von);
+          return neu;
+        });
         zeigeHinweis("Das hat nicht geklappt. Bitte versuche es noch einmal.");
         return;
       }

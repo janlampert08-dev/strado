@@ -63,7 +63,13 @@ export interface Folgeanfrage {
 export async function getOffeneFolgeanfragen(): Promise<Folgeanfrage[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("offene_folgeanfragen");
-  throwOnQueryError(error, "Folgeanfragen");
+  // Bewusst NICHT throwOnQueryError: die Anfragen sind ein Abschnitt über der
+  // Zeitachse. Ein Fehler hier soll nicht die ganze /aktivitaet-Seite (Kudos,
+  // Follower, Passmeldungen) in die Fehlerseite ziehen.
+  if (error) {
+    console.error("Folgeanfragen konnten nicht geladen werden", error);
+    return [];
+  }
   if (!data) return [];
   return (data as Array<Record<string, unknown>>).map((row) => ({
     von: row.von as string,

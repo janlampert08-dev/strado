@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { Clock, UserPlus, UserCheck } from "@/components/NavIcons";
 import { toggleFollow } from "@/lib/actions/follows";
 import { buttonVariants } from "@/components/ui/Button";
@@ -10,6 +10,10 @@ import type { FolgeZustand } from "@/lib/follows";
 // Gleiches optimistisches Toggle-Muster wie FavoriteButton.tsx/KudosButton.tsx
 // — seit 0146 mit einem dritten Zustand: "angefragt", wenn das Profil neue
 // Follower bestätigt.
+//
+// Was tatsächlich geschah, sagt der Server (vorher/zustand), nicht der
+// Knopf: eine offene Seite kann veraltet sein — die Anfrage ist inzwischen
+// angenommen, oder man folgt schon aus einem anderen Tab.
 export default function FollowButton({
   targetUserId,
   initialZustand,
@@ -20,35 +24,44 @@ export default function FollowButton({
   brauchtBestaetigung: boolean;
 }) {
   const [zustand, setZustand] = useState<FolgeZustand>(initialZustand);
+  // Der aktuelle Stand für Aufrufe, die ausserhalb eines Renders passieren
+  // (das Rückgängig im Hinweis) — ohne ihn sähe es den Stand von damals.
+  const zustandRef = useRef(zustand);
   const [pending, startTransition] = useTransition();
 
-  function erwarteterNaechster(von: FolgeZustand): FolgeZustand {
-    if (von !== "keiner") return "keiner";
-    return brauchtBestaetigung ? "angefragt" : "folgt";
+  function setzen(neu: FolgeZustand) {
+    zustandRef.current = neu;
+    setZustand(neu);
   }
 
   function umschalten() {
-    const vorher = zustand;
-    setZustand(erwarteterNaechster(vorher));
+    const angezeigt = zustandRef.current;
+    const erwartet: FolgeZustand =
+      angezeigt !== "keiner" ? "keiner" : brauchtBestaetigung ? "angefragt" : "folgt";
+    setzen(erwartet);
     startTransition(async () => {
       const result = await toggleFollow(targetUserId);
       if (!result.ok || !result.zustand) {
-        setZustand(vorher);
+        setzen(angezeigt);
         return;
       }
-      // Der Server entscheidet, ob gefolgt oder angefragt wurde — die
-      // Einstellung kann sich seit dem Laden der Seite geändert haben.
-      setZustand(result.zustand);
-      // Entfolgen geschah auf einen Tipp, ohne Rückfrage und ohne Weg zurück
-      // ausser erneut zu folgen — und wer ein zweites Mal tippt, weiss oft
-      // nicht, ob er gerade folgt oder nicht. Jetzt eine Quittung mit
-      // Rückgängig. Folgen selbst quittiert der Knopf, der umspringt.
-      if (vorher === "folgt") {
-        zeigeHinweis("Nicht mehr gefolgt.", {
-          label: "Rückgängig",
-          ausfuehren: umschalten,
-        });
-      } else if (vorher === "angefragt") {
+      setzen(result.zustand);
+
+      if (result.vorher === "folgt") {
+        // Entfolgen geschah auf einen Tipp, ohne Rückfrage — deshalb eine
+        // Quittung. Rückgängig nur, wo erneutes Folgen wirklich wieder folgt:
+        // bei einem Profil mit Bestätigung würde daraus eine neue Anfrage.
+        if (result.brauchtBestaetigung) {
+          zeigeHinweis("Nicht mehr gefolgt. Erneut folgen braucht eine neue Anfrage.");
+        } else {
+          zeigeHinweis("Nicht mehr gefolgt.", {
+            label: "Rückgängig",
+            ausfuehren: () => {
+              if (zustandRef.current === "keiner") umschalten();
+            },
+          });
+        }
+      } else if (result.vorher === "angefragt") {
         zeigeHinweis("Anfrage zurückgezogen.");
       } else if (result.zustand === "angefragt") {
         zeigeHinweis("Anfrage gesendet. Du folgst, sobald sie angenommen ist.");
