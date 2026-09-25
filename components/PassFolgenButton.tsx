@@ -34,7 +34,7 @@ export default function PassFolgenButton({
   if (!angemeldet) {
     return (
       <Link
-        href={`/anmelden?next=${encodeURIComponent(`/paesse#${passId}`)}`}
+        href={`/anmelden?next=${encodeURIComponent(`/paesse/${passId}`)}`}
         className={buttonVariants({ variant: "secondary", size: "sm" })}
       >
         Anmelden, um zu folgen

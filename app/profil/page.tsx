@@ -810,7 +810,10 @@ export default async function ProfilPage() {
 
           {/* Eigener Abschluss mit Trennlinie: der Kauf-Einstieg steht
               sonst rahmenlos im selben Strom wie Garage und Bereiche. */}
-          {!premiumStatus.aktiv && (
+          {/* Mit Gratis-Premium aus dem Signup-Link ebenfalls: die sieben
+              Tage enden von selbst, und hier steht, bis wann — samt dem Weg
+              zum Kauf (PremiumCard, quelle "gratis"). */}
+          {(!premiumStatus.aktiv || premiumStatus.quelle === "gratis") && (
             <div className="border-t border-border pt-6">
               <PremiumCard status={premiumStatus} />
             </div>

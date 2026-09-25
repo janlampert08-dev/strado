@@ -468,12 +468,13 @@ is what should be corrected.
     in `eingeloest_von` alone. Verified against the catalog (body, grants
     unchanged at `service_role` only) and by a rolled-back functional test
     that exercised the real function for both cases; the queries and the
-    way back are in `supabase/migrations/README.md`. **Still open and
-    deliberately so:** guest rows belonging to no account are cleaned up
-    only by the opportunistic `random() < 0.02` sweep inside
-    `fahrt_start_anlegen`, which guarantees no deadline — hence the
-    privacy text's "in der Regel innert 48 Stunden" over the hard 24-hour
-    gate that `fahrt_start_puls` and `fahrt_start_einloesen` both enforce.
+    way back are in `supabase/migrations/README.md`. **Until `0133`**
+    guest rows belonging to no account were cleaned up only by the
+    opportunistic `random() < 0.02` sweep inside `fahrt_start_anlegen`,
+    which guaranteed no deadline — hence the privacy text's "in der Regel
+    innert 48 Stunden". `0133_gastticket_bremse` replaces it with a pg_cron
+    job every 15 minutes (unredeemed guest tickets after 26 h, others after
+    48 h), which keeps that sentence true without the hedge.
   - **There is no separate staging database — confirmed, and staying that
     way.** The linked Supabase account holds exactly one project, and it is
     production; the owner confirmed on 2026-09-14 that `staging` points at
@@ -950,6 +951,10 @@ the other.
     `lib/actions/auth.ts` (`deleteAccount` → GoTrue admin API). Both of
     those scope every admin query to the `getUser()`-derived id, which is
     what makes pattern (b) safe — any new call site owes the same check.
+    (c) since `0133`, guest calls of `fahrt_start_anlegen` /
+    `fahrt_start_puls` in `lib/actions/fahrtstart.ts`: `anon` lost EXECUTE
+    so guests only reach them behind the action's IP limit. Two RPCs, no
+    table access, and only after the session call failed with `42501`.
 - `types/` — shared TypeScript types, including `database.ts` which mirrors
   the SQL schema.
 - `supabase/migrations/` — version-controlled database schema, RLS
@@ -1198,7 +1203,7 @@ only as safe as its RLS policies. `lib/supabase/admin.ts` bypasses RLS
 entirely and must stay server-only, called only from contexts where
 authorization has already been established some other way.
 
-There are two such contexts in the codebase today, and they are not
+There are three such contexts in the codebase today, and they are not
 interchangeable:
 
 - **No session, trust from elsewhere.** `app/api/stripe/webhook/route.ts`
@@ -1212,6 +1217,13 @@ interchangeable:
   call `getUser()` first, then use the admin client to reach something the
   `authenticated` role is intentionally not granted — the Stripe columns
   locked down in migration `0027`, and the GoTrue admin API.
+- **No session, and the function must not be reachable with the public
+  key.** `lib/actions/fahrtstart.ts` (since `0133_gastticket_bremse`)
+  falls back to the admin client only for the two ride-start RPCs, and
+  only when the session call fails with `42501`. Without a session
+  `auth.uid()` is NULL there, so the functions take exactly the guest
+  branch an `anon` call used to take — the point is that the call now
+  passes the action's IP limit first. No table is touched with it.
 
 The second pattern is the dangerous one, because a request path *does*
 reach it. Anything on that path must scope every query to the

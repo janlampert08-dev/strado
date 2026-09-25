@@ -32,6 +32,7 @@ import GpsBereitschaft from "@/components/GpsBereitschaft";
 import { useVolleGeometrie } from "@/components/VolleGeometrie";
 import { useGeraet, useStandortFreigabe } from "@/components/useStandortFreigabe";
 import { standortAnleitung } from "@/lib/geraet";
+import { streckenPfad } from "@/lib/streckenPfad";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
@@ -246,9 +247,8 @@ export default function LiveTrackingForm({
   // selbst wieder auf, damit die Fahrt zum Speichern bereitsteht.
   function goToAuth(ziel: "/anmelden" | "/registrieren") {
     const token = issueGuestContinuationToken(route.id);
-    const zurueck = token
-      ? `/strecken/${route.id}?fortsetzen=${encodeURIComponent(token)}`
-      : `/strecken/${route.id}`;
+    const pfad = streckenPfad(route);
+    const zurueck = token ? `${pfad}?fortsetzen=${encodeURIComponent(token)}` : pfad;
     router.push(`${ziel}?next=${encodeURIComponent(zurueck)}`);
   }
 

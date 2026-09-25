@@ -43,7 +43,8 @@ import { useVolleGeometrie } from "@/components/VolleGeometrie";
 // Wochenraster), lebt auf der Passseite und im Details-Reiter — jede Zeile
 // hier verlinkt dorthin. Der Kalender (Saison, geplante Sperrungen,
 // Öffnungen der Vorjahre) bleibt als Klappe am Ende der Card: die
-// Passseite zeigt ihn nicht, ohne die Klappe gäbe es ihn nirgends mehr.
+// Passseite (/paesse/<kürzel>) zeigt ihn inzwischen auch, hier bleibt er
+// für den, der auf der Strecke nicht wegnavigieren will.
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
@@ -176,7 +177,7 @@ export default function FahrCheck({
                 <div key={kontext.pass.id} className="flex items-center justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-2">
                     <Link
-                      href={`/paesse#${kontext.pass.id}`}
+                      href={`/paesse/${kontext.pass.id}`}
                       className="truncate text-sm font-medium transition-colors duration-fast hover:text-accent-ink"
                     >
                       {kontext.pass.name}
@@ -214,7 +215,7 @@ export default function FahrCheck({
               )}
               <Link
                 href={
-                  kontexte.length === 1 ? `/paesse#${kontexte[0].pass.id}` : "/paesse"
+                  kontexte.length === 1 ? `/paesse/${kontexte[0].pass.id}` : "/paesse"
                 }
                 className={textAktionClassName()}
               >

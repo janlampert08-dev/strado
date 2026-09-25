@@ -9,7 +9,9 @@ import { isValidUuid } from "@/lib/validation";
 // Verwaltung der Einstiegscodes unter /moderation/creator (Tabelle
 // creator_links, Migration 0084).
 //
-// Zusätzlich zur RLS-Policy "Moderatoren verwalten Creator-Links" auch hier
+// Zusätzlich zu den RLS-Policies für Moderatoren (bis 0139 eine
+// FOR-ALL-Policy "Moderatoren verwalten Creator-Links", seitdem je eine pro
+// Befehl) auch hier
 // explizit prüfen — dieselbe Defense-in-Depth wie in
 // lib/actions/moderation.ts, aus demselben Grund: eine künftige, versehentlich
 // zu weit gefasste Policy wäre hier sonst ohne jede Anwendungs-Sicherung

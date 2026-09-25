@@ -96,6 +96,31 @@ export function passendeOffeneSession(
 }
 
 /**
+ * Die offenen Sessions, die beim Anlegen oder Wiederaufnehmen einer Session
+ * ablaufen müssen: alle ausser der, die gerade weiterverwendet wird.
+ *
+ * Ohne das liessen sich zwei offene Sessions für verschiedene Pläne beide
+ * bezahlen — Saisonpass im einen Tab, Jahresabo im anderen. Die Prüfung auf
+ * ein aktives Abo in checkoutSessionMitCustomer hilft dort nicht: beide
+ * Sessions sind angelegt, bevor eine davon bezahlt ist. Dieselbe Lücke
+ * besteht zwischen zwei Abo-Plänen (Monat und Jahr), und dort ist sie
+ * teurer — mit zwei Abos kippt die einzeilige subscriptions-Tabelle.
+ *
+ * Nur Sessions im ui_mode "elements": eine andere Art Session auf demselben
+ * Customer (etwa eine gehostete aus dem Dashboard) hat mit dieser Kasse
+ * nichts zu tun und wird nicht angefasst.
+ */
+export function abzulaufendeSessions(
+  offene: Stripe.Checkout.Session[],
+  behaltenId: string | null,
+): Stripe.Checkout.Session[] {
+  return offene.filter(
+    (session) =>
+      session.status === "open" && session.ui_mode === "elements" && session.id !== behaltenId,
+  );
+}
+
+/**
  * Gehört diese Session dem eigenen Konto, und ist sie tatsächlich bezahlt?
  *
  * Der Session-Status allein reicht nicht: "complete" sagt, dass der Ablauf
