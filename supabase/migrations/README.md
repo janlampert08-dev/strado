@@ -80,7 +80,16 @@ NICHT mehr an (Code-Review vor dem Release: der Schalter speichert sofort, ein
 versehentliches Umlegen hätte Fremde unwiderruflich zu Followern gemacht).
 Die Funktion bleibt im Schema; 0146 ist eingespielt und wird nicht geändert.
 
-## 0146 eingespielt, 0147 wartet auf den Code in Produktion (Folgeanfragen, 2026-09-25)
+## Eingespielt: 0146 und 0147 (Folgeanfragen, 2026-09-25, Produktion)
+
+> **0147 eingespielt am 2026-09-25**, nachdem die Promotion #486 (`4437352`)
+> auf Produktion lief (Vercel READY, `app.strado.ch` darauf aliasiert).
+> Zurückgerollter Test direkt vorher: direktes Folgen bei verlangter
+> Bestätigung abgelehnt, ohne Bestätigung erlaubt, Anfrage und Annahme gehen.
+> Gemessen danach: Insert-Policy auf follows mit
+> `not folgen_braucht_bestaetigung(followed_id)`, Ledger
+> `0147_folgen_nur_mit_bestaetigung`. Der Abschnitt unten beschreibt den
+> Stand vor dem Einspielen.
 
 Folgeanfragen: `profiles.folgen_bestaetigen` (voreingestellt **an**, für
 alle, Entscheid des Eigentümers), Tabelle `folge_anfragen`, Annehmen über
