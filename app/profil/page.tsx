@@ -373,6 +373,7 @@ export default async function ProfilPage() {
               followingCount={followCounts.following}
               followers={followers}
               following={following}
+              eigenesProfil
             />
             {/* Dezent statt Knopf: wer das eigene Profil von aussen sehen
                 will, findet es hier — es ist kein Weg des Kernloops. */}

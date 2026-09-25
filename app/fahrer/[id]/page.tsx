@@ -14,7 +14,7 @@ import VehicleGrid from "@/components/VehicleGrid";
 import { getPublicProfile } from "@/lib/profile";
 import { getKudosForCompletions } from "@/lib/kudos";
 import {
-  isFollowing,
+  getFolgeZustand,
   getFollowCounts,
   getFollowerProfiles,
   getFollowingProfiles,
@@ -92,7 +92,7 @@ export default async function FahrerPage({
   // Betrachter — dieselbe Bedingung wie beim Kudos-Button oben.
   const showFollow = !!viewer && !isOwnProfile;
 
-  const [kudosByCompletion, followers, following, mutualFollowers, alreadyFollowing] =
+  const [kudosByCompletion, followers, following, mutualFollowers, folgeZustand] =
     await Promise.all([
     getKudosForCompletions(
       profile.fahrten.map((f) => f.completion_id),
@@ -108,7 +108,11 @@ export default async function FahrerPage({
       : Promise.resolve({ preview: [], totalCount: 0 }),
     // Hing von nichts aus diesem Block ab und lief trotzdem als eigener,
     // nachgelagerter Roundtrip — showFollow steht schon weiter oben fest.
-    showFollow ? isFollowing(viewer!.id, id) : Promise.resolve(false),
+    // Seit 0146 drei Zustände (folgt / angefragt / keiner) plus die
+    // Einstellung des Profils, ob es Follower bestätigt.
+    showFollow
+      ? getFolgeZustand(viewer!.id, id)
+      : Promise.resolve({ zustand: "keiner" as const, brauchtBestaetigung: false }),
   ]);
 
   const zeigtStatistiken = profile.zeigtPaesse || profile.zeigtHoehenmeter || profile.zeigtDistanz;
@@ -144,7 +148,13 @@ export default async function FahrerPage({
               )}
             </div>
           </div>
-          {showFollow && <FollowButton targetUserId={id} initialFollowing={alreadyFollowing} />}
+          {showFollow && (
+            <FollowButton
+              targetUserId={id}
+              initialZustand={folgeZustand.zustand}
+              brauchtBestaetigung={folgeZustand.brauchtBestaetigung}
+            />
+          )}
         </div>
 
         {zeigtStatistiken && (

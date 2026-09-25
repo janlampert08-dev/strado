@@ -48,6 +48,64 @@ Meldungen schliessen — in einer Transaktion.
 - Der Code (`unpublishReportedCompletion`) ruft die Funktion auf; der alte
   Code bleibt bis zum Deploy so kaputt wie vorher.
 
+## Eingespielt: 0160_folgeanfrage_annehmen_zeitpunkt (2026-09-25, Produktion)
+
+Zweites Code-Review vor dem Release: `folgeanfrage_annehmen` übernimmt den
+Zeitpunkt der Anfrage in die follows-Zeile (vorher `now()` — der eben selbst
+angenommene Follower erschien als neue Meldung im Abzeichen), und
+`folgeanfragen_alle_annehmen` ist entfernt (die App ruft sie seit dem ersten
+Review nicht mehr auf, sie war aber weiter per API aufrufbar).
+
+- **Zurückgerollter Test vorher:** Zähler vor/nach dem Annehmen 0/0,
+  Zeitpunkt übernommen, zweites Annehmen → false, Sammelfunktion weg, anon
+  ohne EXECUTE.
+- **Gemessen danach:** Ledger `0160_folgeanfrage_annehmen_zeitpunkt`,
+  Sammelfunktion 0, `folgeanfrage_annehmen` für authenticated, nicht anon.
+
+## Eingespielt: 0149_follower_entfernen (2026-09-25, Produktion)
+
+Die Delete-Policy "Nutzer entfolgen" auf follows lässt jetzt auch den
+Gefolgten löschen (`follower_id = uid or followed_id = uid`). Anlass: wer vor
+0146 gefolgt ist, brauchte keine Bestätigung und hätte die Follower-Fahrten
+eines Kontos sonst auf Dauer gesehen. Die App bietet dazu "Entfernen" in der
+eigenen Follower-Liste (`followerEntfernen`).
+
+- **Zurückgerollter Test vorher:** Gefolgter entfernt eigenen Follower →
+  1 Zeile; fremde Beziehung → 0; anon → 0.
+- **Gemessen danach:** Ledger `0149_follower_entfernen`, Policy wie oben.
+
+**Nachtrag zu 0146:** `folgeanfragen_alle_annehmen()` ruft die App nicht mehr
+auf. Das Ausschalten von "Neue Follower bestätigen" nimmt offene Anfragen
+NICHT mehr an (Code-Review vor dem Release: der Schalter speichert sofort, ein
+versehentliches Umlegen hätte Fremde unwiderruflich zu Followern gemacht).
+Die Funktion bleibt im Schema; 0146 ist eingespielt und wird nicht geändert.
+
+## 0146 eingespielt, 0147 wartet auf den Code in Produktion (Folgeanfragen, 2026-09-25)
+
+Folgeanfragen: `profiles.folgen_bestaetigen` (voreingestellt **an**, für
+alle, Entscheid des Eigentümers), Tabelle `folge_anfragen`, Annehmen über
+`folgeanfrage_annehmen()`, Anfragen unter /aktivitaet
+(`offene_folgeanfragen()`) und im Abzeichen (`count_unseen_activity`).
+
+- **0146 ist eingespielt** (rein additiv, der alte Folgen-Knopf läuft
+  unverändert weiter). Gemessen danach: 0 Profile ohne Bestätigung,
+  0 Anfragen, anon ohne Recht auf Tabelle und alle vier Funktionen,
+  authenticated ohne UPDATE auf `folge_anfragen`, `anonymize_account`
+  löscht Anfragen in beide Richtungen, die follows-Policy ist unverändert.
+- **Zurückgerollter Funktionstest (0146 + 0147 zusammen), 21 Prüfungen:**
+  direktes Folgen bei verlangter Bestätigung abgelehnt; Anfrage stellen ok;
+  Anfrage im Namen eines anderen, fremde Anfragen lesen, löschen oder
+  annehmen: alles abgelehnt bzw. 0 Zeilen; der Gefolgte sieht die Anfrage
+  (neu), das Abzeichen zählt sie; Annehmen legt die follows-Zeile an und
+  entfernt die Anfrage; Bestätigung aus → direktes Folgen geht, offene
+  Anfragen werden mit `folgeanfragen_alle_annehmen()` angenommen; anon
+  liest nichts.
+- **0147 NICHT einspielen, bevor der Code auf `main` läuft.** Die Datei
+  verbietet direktes Folgen, wenn der Gefolgte bestätigen will — und das
+  wollen nach 0146 alle. Der heutige Folgen-Knopf schreibt direkt in
+  follows; mit 0147 scheiterte in der Produktion jedes Folgen, bis der neue
+  Code ankommt. Bis dahin ist die Bestätigung nur so stark wie die App:
+  wer die API direkt aufruft, kann noch ohne Anfrage folgen.
 ## Eingespielt: 0154_abschnitte_ohne_follower (2026-09-25, Produktion)
 
 Erkannte Abschnitte (`parent_completion_id` gesetzt) werden nie "nur für

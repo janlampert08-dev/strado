@@ -154,6 +154,13 @@ export async function updateVisibilitySettings(
     return { error: "Ungültiger Wert für die Privatzone. Bitte lade die Seite neu." };
   }
   const privatzoneRadiusM = radius;
+  // Nur schreiben, wenn das Formular den Schalter überhaupt kennt: eine
+  // nicht angekreuzte Checkbox schickt nichts, ein Formular von vor 0146
+  // (offener Tab über das Deploy hinweg) aber auch nicht. Ohne diese Marke
+  // schaltete jedes alte Formular die Bestätigung still aus.
+  const folgenBestaetigen = formData.has("folgen_bestaetigen_feld")
+    ? { folgen_bestaetigen: formData.get("folgen_bestaetigen") === "true" }
+    : {};
 
   // profiles.zeigt_premium_badge wird hier bewusst NICHT geschrieben. Das
   // Abzeichen hinter dem Namen ist aus der App entfernt; die Spalte bleibt
@@ -175,10 +182,17 @@ export async function updateVisibilitySettings(
       // 0125: Durchschnittstempo auf geteilten Fahrten. Der Besitzer sieht
       // es immer; das Flag entscheidet nur, ob Strado es anderen ausweist.
       zeigt_tempo: formData.get("zeigt_tempo") === "true",
+      // 0146: neue Follower bestätigen. Voreingestellt an.
+      ...folgenBestaetigen,
     })
     .eq("id", user.id);
 
   if (error) return { error: "Einstellungen konnten nicht gespeichert werden." };
+
+  // Ausschalten nimmt offene Anfragen bewusst NICHT an: der Schalter
+  // speichert sofort (VisibilitySettings), und ein versehentliches Umlegen
+  // hätte sonst Fremde unwiderruflich zu Followern gemacht. Offene Anfragen
+  // bleiben unter Aktivität und werden einzeln beantwortet.
 
   // Ein geänderter Radius muss auch für bereits geteilte Fahrten gelten —
   // sonst wirkte die strengere Einstellung nur in die Zukunft, und genau
