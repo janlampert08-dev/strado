@@ -360,6 +360,7 @@ export default function RideSummaryForm({
               Marke
               <input
                 type="text"
+                autoComplete="off"
                 placeholder={newVehicleTyp === "motorrad" ? "z. B. Ducati" : "z. B. Porsche"}
                 value={newVehicleMarke}
                 onChange={(e) => setNewVehicleMarke(e.target.value)}
@@ -370,6 +371,7 @@ export default function RideSummaryForm({
               Modell
               <input
                 type="text"
+                autoComplete="off"
                 placeholder={newVehicleTyp === "motorrad" ? "z. B. Monster" : "z. B. 911 Carrera"}
                 value={newVehicleModell}
                 onChange={(e) => setNewVehicleModell(e.target.value)}

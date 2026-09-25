@@ -300,14 +300,19 @@ export default function NeueStreckeForm({ startName = "" }: { startName?: string
             value={activeDirections ? activeDirections.distanceKm.toFixed(1) : ""}
           />
 
-          {/* Schritt 2: Benennen — erst sinnvoll, sobald eine Route existiert. */}
+          {/* Schritt 2: Benennen — erst sinnvoll, sobald eine Route existiert.
+              Ohne autoFocus: Das Feld erscheint, sobald die Route steht, und
+              auf dem Telefon schob die Tastatur sich dann ungefragt über die
+              Karte, auf der man die Route gerade noch prüfen wollte.
+              autoComplete="off", weil der Browser sonst Namen und Adressen
+              aus dem Adressbuch vorschlägt, nie aber einen Streckennamen. */}
           {routeReady && (
             <label className="flex flex-col gap-1.5 text-sm font-medium">
               Name
               <Input
                 name="name"
                 required
-                autoFocus
+                autoComplete="off"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
