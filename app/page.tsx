@@ -7,6 +7,7 @@ import { getPassZustaendeJeStrecke } from "@/lib/paesse";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { getOrigin } from "@/lib/utils/url";
 import { BESCHREIBUNG, SLOGAN } from "@/lib/constants";
+import { streckenPfad } from "@/lib/streckenPfad";
 
 // Die wichtigste Seite der App hatte bisher keine eigene Metadata und erbte
 // nur "Strado" aus dem Layout — für Suchmaschinen also einen Titel ohne
@@ -78,7 +79,8 @@ export default async function Home() {
     // sondern ein Nichtwissen — verwendet, hiesse sie "keine Strecke hat eine
     // Bewertung", und jede Zeile verlöre Stern und Passabzeichen, während die
     // Liste daneben vollständig steht. Dann lieber die IDs aus getRoutes():
-    // dieselbe Menge (beide filtern auf status_ok), nur eine Runde später.
+    // dieselbe Menge (beide filtern auf status_ok und ist_privat = false),
+    // nur eine Runde später.
     // Kostet im Fehlerfall Zeit, nie Inhalt.
     const verwendbar = fehler ? (await streckenLauf).routes.map((r) => r.id) : ids;
     return Promise.all([getBewertungen(verwendbar), getPassZustaendeJeStrecke(verwendbar)]);
@@ -113,7 +115,7 @@ export default async function Home() {
         itemListElement: routes.map((route, index) => ({
           "@type": "ListItem",
           position: index + 1,
-          url: `${origin}/strecken/${route.id}`,
+          url: `${origin}${streckenPfad(route)}`,
           name: route.name,
         })),
       },

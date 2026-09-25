@@ -4,6 +4,7 @@ import { getOeffentlichesAngebot } from "@/lib/actions/billing";
 import { betragText, planTitel, planZeitraum } from "@/lib/premiumAngebot";
 import { siteUrl } from "@/lib/siteUrl";
 import type { AboPlan } from "@/lib/premiumLimits";
+import { streckenPfad } from "@/lib/streckenPfad";
 
 // Maschinenlesbare Kurzbeschreibung für KI-Assistenten und Antwortmaschinen
 // (ChatGPT, Perplexity, Gemini & Co.): was Strado ist, welche öffentlichen
@@ -59,7 +60,7 @@ export async function GET() {
         ? `Start/Ziel: ${s.start_ort}`
         : `${s.start_ort} → ${s.ziel_ort}`;
       zeilen.push(
-        `- ${s.name} — ${s.region}: ${orte}, ${s.laenge_km.toFixed(1)} km: ${origin}/strecken/${s.id}`,
+        `- ${s.name} — ${s.region}: ${orte}, ${s.laenge_km.toFixed(1)} km: ${origin}${streckenPfad(s)}`,
       );
     }
     zeilen.push("");

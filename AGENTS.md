@@ -940,7 +940,8 @@ the other.
   - `client.ts` — browser client (publishable key only).
   - `server.ts` — server client bound to the request's cookies/session
     (respects RLS as the logged-in user).
-  - `middleware.ts` — session refresh, invoked from `proxy.ts`.
+  - `middleware.ts` — session refresh and identity (`getClaims()`, see
+    Supabase Rules), invoked from `proxy.ts`.
   - `admin.ts` — **service-role client. RLS bypass. Server-only.** Used in
     two distinct patterns, both deliberate (see Supabase Rules): (a) no
     session at all, trust established otherwise — the Stripe webhook
@@ -1231,6 +1232,35 @@ reach it. Anything on that path must scope every query to the
 third call site is protected-area work: justify why a more precise RLS
 policy or a narrowly-scoped `SECURITY DEFINER` function can't do the job
 instead, and say so in the PR description.
+
+**Who is logged in, on the server — three calls, not interchangeable.**
+The project signs its access tokens asymmetrically (ES256, JWKS at
+`<project>/auth/v1/.well-known/jwks.json`), which is what makes the first
+one cheap:
+
+- `getClaims()` — identity for normal requests. Verifies the JWT's
+  signature and expiry locally against the cached JWKS, no GoTrue round
+  trip, and still refreshes a nearly expired token (it goes through
+  `getSession()` first). This is what `proxy.ts` (`updateSession` in
+  `lib/supabase/middleware.ts`) and `getCurrentUser()` in
+  `lib/supabase/server.ts` use. `getCurrentUser()` therefore returns only
+  what the token carries (`AktuellerNutzer`: `id`, `email`,
+  `user_metadata`, `app_metadata`, `is_anonymous`), as of when the token
+  was issued. The trade-off: a session ended server-side (sign-out on
+  another device, account deleted, ban) stays valid here until the token
+  expires (JWT lifetime, default 1 h) — the same window RLS/PostgREST
+  already had.
+- `getUser()` — fresh validation by GoTrue (`/auth/v1/user`), one round
+  trip. Required where a revoked session must fail immediately or where
+  current account data matters: every mutating Server Action (billing,
+  `deleteAccount`, moderation, password/e-mail change, …) calls
+  `supabase.auth.getUser()` itself and scopes by that id, and pages that
+  show or decide on current account data use `getFreshUser()` (`/einrichten`
+  reads `user_metadata` that `updateUser()` just wrote; account settings;
+  password change). A new Server Action does the same — don't swap its
+  `getUser()` for `getCurrentUser()` to save the round trip.
+- `getSession()` — **never for a trust decision.** It reads the cookie
+  without verifying anything; its `user` is whatever the browser sent.
 
 Before changing a table, in this order:
 

@@ -63,18 +63,24 @@ export async function createFotoUploadTickets(
     return { ok: false, error: "Zu viele Anfragen." };
   }
 
+  // Die Tickets hängen nicht aneinander — alle gleichzeitig angefordert,
+  // in der Reihenfolge der Fotos. Scheitert eines, gibt es keines.
+  const ergebnisse = await Promise.all(
+    endungen.map(async (ext) => {
+      const pfad = `${user.id}/${crypto.randomUUID()}.${ext}`;
+      const { data, error } = await supabase.storage
+        .from(FOTOS_BUCKET)
+        .createSignedUploadUrl(pfad);
+      if (error || !data?.signedUrl) return null;
+      // uploadToSignedUrl braucht Pfad + Token getrennt; die signierte URL
+      // selbst geht nie an den Client — sie läge sonst im DOM lesbar herum.
+      return { pfad, token: data.token };
+    }),
+  );
   const tickets: FotoUploadTicket[] = [];
-  for (const ext of endungen) {
-    const pfad = `${user.id}/${crypto.randomUUID()}.${ext}`;
-    const { data, error } = await supabase.storage
-      .from(FOTOS_BUCKET)
-      .createSignedUploadUrl(pfad);
-    if (error || !data?.signedUrl) {
-      return { ok: false, error: "Upload konnte nicht vorbereitet werden." };
-    }
-    // uploadToSignedUrl braucht Pfad + Token getrennt; die signierte URL
-    // selbst geht nie an den Client — sie läge sonst im DOM lesbar herum.
-    tickets.push({ pfad, token: data.token });
+  for (const ticket of ergebnisse) {
+    if (!ticket) return { ok: false, error: "Upload konnte nicht vorbereitet werden." };
+    tickets.push(ticket);
   }
 
   return { ok: true, tickets };

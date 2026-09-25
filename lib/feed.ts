@@ -17,7 +17,8 @@ const FEED_LIMIT = 30;
 // schon das öffentliche Profil (lib/profile.ts) nutzt, hier über mehrere
 // Nutzer hinweg statt auf einen einzelnen gefiltert. RLS auf den
 // zugrundeliegenden Tabellen ist irrelevant, da public_fahrten selbst
-// bereits serverseitig auf ist_oeffentlich=true filtert und an
+// bereits serverseitig filtert — öffentliche Fahrten für alle, seit 0145
+// Follower-Fahrten zusätzlich für die, die dem Fahrer folgen — und an
 // anon/authenticated freigegeben ist.
 export async function getFeed(scope: FeedScope, viewerId: string | null): Promise<FeedItem[]> {
   const supabase = await createClient();
@@ -25,6 +26,9 @@ export async function getFeed(scope: FeedScope, viewerId: string | null): Promis
   let query = supabase
     .from("public_fahrten")
     .select("*")
+    // Streckenabschnitte (0150/0151) sind eigene Zeilen, erscheinen aber als
+    // Teil ihrer Fahrt — in einer Liste stünden sie sonst doppelt.
+    .eq("ist_abschnitt", false)
     .order("datum", { ascending: false })
     // Zweites Sortierkriterium, damit die Reihenfolge bei gleichem Datum
     // eindeutig ist — datum ist ein Datum ohne Uhrzeit, Gleichstände sind

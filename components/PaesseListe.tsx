@@ -9,7 +9,6 @@ import { PassStatusMarke } from "@/components/PassStatusZeile";
 import { HakenIcon } from "@/components/NavIcons";
 import { anzeigeFuerStatus, type PassZustand } from "@/lib/passStatus";
 import { hatStempelSpalte } from "@/lib/passStempel";
-import { cn } from "@/lib/utils/cn";
 
 // Die Liste aller Pässe mit Filtern. Client, weil die Filter sofort greifen
 // sollen — 34 Zeilen brauchen keinen Serverbesuch, um sich zu sortieren.

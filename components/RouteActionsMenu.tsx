@@ -14,6 +14,7 @@ import { ConfirmDialog } from "@/components/ui/Dialog";
 import ReportDialog from "@/components/ReportDialog";
 import { useVolleGeometrie } from "@/components/VolleGeometrie";
 import { TCS_PASS_PORTAL_URL } from "@/lib/constants";
+import { streckenPfad } from "@/lib/streckenPfad";
 
 // Die Adresse steht in lib/constants.ts, weil die Moderation dieselbe Seite
 // verlinkt (components/PassStatusForm.tsx) — die Begründung für die
@@ -191,7 +192,8 @@ export default function RouteActionsMenu({
   }
 
   async function handleShare() {
-    const url = `${window.location.origin}/strecken/${route.id}`;
+    // Geteilt wird die lesbare Adresse, sobald es sie gibt (0130).
+    const url = `${window.location.origin}${streckenPfad(route)}`;
     if (typeof navigator.share === "function") {
       try {
         await navigator.share({ title: route.name, url });
@@ -349,7 +351,7 @@ export default function RouteActionsMenu({
           )}
           {isOwner && (
             <Link
-              href={`/strecken/${route.id}/bearbeiten`}
+              href={`${streckenPfad(route)}/bearbeiten`}
               onClick={() => setOpen(false)}
               className={ITEM_CLASS}
             >
@@ -371,7 +373,7 @@ export default function RouteActionsMenu({
           {moderator && (
             <>
               <Link
-                href={`/strecken/${route.id}/bearbeiten`}
+                href={`${streckenPfad(route)}/bearbeiten`}
                 onClick={() => setOpen(false)}
                 className={ITEM_CLASS}
               >
@@ -392,25 +394,35 @@ export default function RouteActionsMenu({
           )}
         </Card>
       )}
-      <ConfirmDialog
-        open={deleteConfirmOpen}
-        title="Strecke löschen"
-        description={`"${route.name}" wird endgültig gelöscht. Das kann nicht rückgängig gemacht werden.`}
-        confirmLabel="Löschen"
-        variant="danger"
-        pending={deleting}
-        onCancel={() => setDeleteConfirmOpen(false)}
-        onConfirm={() => {
-          setDeleteConfirmOpen(false);
-          startDelete(() => deleteRouteAsModerator(route.id));
-        }}
-      />
-      <ReportDialog
-        open={reportOpen}
-        onClose={() => setReportOpen(false)}
-        title="Strecke melden"
-        action={reportAction}
-      />
+      {/* Beide Dialoge nur für die, die sie auch öffnen können. Ein
+          geschlossenes <dialog> steht trotzdem im HTML — samt seiner H2 —,
+          und so bestand die Gliederung jeder Streckenseite für jeden
+          Besucher und jede Suchmaschine aus "Strecke löschen" und "Strecke
+          melden". Die Berechtigung selbst prüfen weiterhin die Server
+          Actions und RLS; das hier ist nur, was gerendert wird. */}
+      {moderator && (
+        <ConfirmDialog
+          open={deleteConfirmOpen}
+          title="Strecke löschen"
+          description={`"${route.name}" wird endgültig gelöscht. Das kann nicht rückgängig gemacht werden.`}
+          confirmLabel="Löschen"
+          variant="danger"
+          pending={deleting}
+          onCancel={() => setDeleteConfirmOpen(false)}
+          onConfirm={() => {
+            setDeleteConfirmOpen(false);
+            startDelete(() => deleteRouteAsModerator(route.id));
+          }}
+        />
+      )}
+      {canReport && (
+        <ReportDialog
+          open={reportOpen}
+          onClose={() => setReportOpen(false)}
+          title="Strecke melden"
+          action={reportAction}
+        />
+      )}
     </div>
   );
 }

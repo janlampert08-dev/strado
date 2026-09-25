@@ -20,7 +20,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import DeleteProposalButton from "@/components/DeleteProposalButton";
 import DeleteAccountSection from "@/components/DeleteAccountSection";
 import FeedbackDialog from "@/components/FeedbackDialog";
-import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { createClient, getFreshUser } from "@/lib/supabase/server";
 import { getPremiumStatus } from "@/lib/premium";
 import { premiumKurzform } from "@/lib/premiumVorteile";
 import { isModerator } from "@/lib/moderation";
@@ -51,7 +51,11 @@ export const metadata = { title: "Einstellungen – Strado" };
 // gibt, und kein separates Tab-Primitiv nur für diese eine Seite.
 export default async function EinstellungenPage() {
   const supabase = await createClient();
-  const user = await getCurrentUser();
+  // getFreshUser() statt getCurrentUser(): Konto-Einstellungen zeigen die
+  // E-Mail von GoTrue, nicht den Stand im Token (nach einer Änderung sonst
+  // bis zum nächsten Refresh die alte), und eine beendete Sitzung kommt
+  // hier nicht mehr herein.
+  const user = await getFreshUser();
 
   if (!user) redirect("/anmelden");
 
@@ -64,11 +68,12 @@ export default async function EinstellungenPage() {
     premiumStatus,
     istMod,
     origin,
+    privatzone,
   ] = await Promise.all([
     supabase
       .from("profiles")
       .select(
-        "display_name, zeigt_fahrzeuge, zeigt_avatar, zeigt_paesse, zeigt_hoehenmeter, zeigt_distanz, zeigt_follower_liste, zeigt_tempo",
+        "display_name, zeigt_fahrzeuge, zeigt_avatar, zeigt_paesse, zeigt_hoehenmeter, zeigt_distanz, zeigt_follower_liste, zeigt_tempo, folgen_bestaetigen",
       )
       .eq("id", user.id)
       .single(),
@@ -89,6 +94,8 @@ export default async function EinstellungenPage() {
     getPremiumStatus(),
     isModerator(user.id),
     getOrigin(),
+    // Der Privatzonen-Radius, eigene Abfrage — siehe unten.
+    eigenerPrivatzonenRadius(supabase),
   ]);
 
   // Der Privatzonen-Radius steht seit 0132 nicht mehr in der Spaltenliste
@@ -102,7 +109,6 @@ export default async function EinstellungenPage() {
   // Felder mit (VisibilitySettings), eine falsch vorbelegte Auswahl würde
   // also still gespeichert — und dann besser in die schützende Richtung
   // (dieselbe Überlegung wie bei privacyRadiusM in lib/publicTrack.ts).
-  const privatzone = await eigenerPrivatzonenRadius(supabase);
   const privatzoneRadiusM = privatzone.fehler
     ? MAX_PRIVACY_RADIUS_M
     : (privatzone.radiusM ?? DEFAULT_PRIVACY_RADIUS_M);
@@ -151,9 +157,9 @@ export default async function EinstellungenPage() {
           <section id="privatsphaere" className="flex scroll-mt-20 flex-col gap-3">
             <SectionHeading icon={Lock}>Privatsphäre</SectionHeading>
             <p className="text-sm text-muted">
-              Legt fest, was andere auf deinem Profil und deinen geteilten Fahrten sehen. Ob eine einzelne
-              Fahrt öffentlich ist, entscheidest du beim Speichern oder später
-              im Profil unter &bdquo;Getrackte Fahrten&ldquo;.
+              Legt fest, wer dir folgen kann und was andere auf deinem Profil und deinen geteilten Fahrten
+              sehen. Ob eine einzelne Fahrt privat, nur für Follower oder öffentlich ist, entscheidest du
+              beim Speichern oder später im Profil unter &bdquo;Getrackte Fahrten&ldquo;.
             </p>
             <VisibilitySettings
               zeigtFahrzeuge={profile?.zeigt_fahrzeuge ?? true}
@@ -163,6 +169,7 @@ export default async function EinstellungenPage() {
               zeigtDistanz={profile?.zeigt_distanz ?? true}
               zeigtFollowerListe={profile?.zeigt_follower_liste ?? true}
               zeigtTempo={profile?.zeigt_tempo ?? false}
+              folgenBestaetigen={profile?.folgen_bestaetigen ?? true}
               privatzoneRadiusM={privatzoneRadiusM}
             />
           </section>
@@ -299,7 +306,13 @@ export default async function EinstellungenPage() {
           <section id="premium" className="flex scroll-mt-20 flex-col gap-3">
             <SectionHeading icon={Sparkles}>Premium</SectionHeading>
             <p className="text-sm text-muted">
-              {premiumStatus.aktiv ? "Abo-Status, Rechnungen, Kündigung." : premiumKurzform()}
+              {premiumStatus.quelle === "gratis"
+                ? "Gratis-Premium und wie es danach weitergeht."
+                : premiumStatus.aktiv
+                  ? "Abo-Status, Rechnungen, Kündigung."
+                  : premiumStatus.offeneZahlung
+                    ? "Für dein Abo ist eine Zahlung offen."
+                    : premiumKurzform()}
             </p>
             {/* Text und Knopf standen nebeneinander in einer Zeile. Ohne Abo
                 ist der Text premiumKurzform() und damit ein ganzer Satz —
@@ -311,17 +324,23 @@ export default async function EinstellungenPage() {
                 stand er rahmenlos unter einem mehrzeiligen Satz. */}
             <Card className="p-4">
               <Link
-                href={premiumStatus.aktiv ? "/profil/einstellungen/abo" : "/profil/premium"}
+                href={
+                  premiumStatus.aktiv || premiumStatus.offeneZahlung
+                    ? "/profil/einstellungen/abo"
+                    : "/profil/premium"
+                }
                 className={buttonVariants({ variant: "secondary" })}
               >
                 {/* Mit einem Saisonpass gibt es kein Abo zu verwalten —
                     dort führt der Weg zur Übersicht mit Gültigkeit und
                     Rechnung (0110). */}
                 {premiumStatus.aktiv
-                  ? premiumStatus.quelle === "saisonpass"
+                  ? premiumStatus.quelle === "saisonpass" || premiumStatus.quelle === "gratis"
                     ? "Premium verwalten"
                     : "Abo verwalten"
-                  : "Mehr zu Premium"}
+                  : premiumStatus.offeneZahlung
+                    ? "Zahlungsmittel aktualisieren"
+                    : "Mehr zu Premium"}
               </Link>
             </Card>
           </section>

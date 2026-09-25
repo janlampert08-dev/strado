@@ -20,6 +20,7 @@ import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
 import { formatDauer, formatDuration } from "@/lib/format";
 import { formatAbstand, liveAbstandSekunden, markeUeberschritten } from "@/lib/liveSplit";
 import RideSummaryForm from "@/components/RideSummaryForm";
+import type { Sichtbarkeit } from "@/lib/sichtbarkeit";
 import type { KartenStrecke, RouteGeoJSON, Vehicle } from "@/types/database";
 import { Smartphone } from "@/components/NavIcons";
 import { buttonVariants } from "@/components/ui/Button";
@@ -32,6 +33,7 @@ import GpsBereitschaft from "@/components/GpsBereitschaft";
 import { useVolleGeometrie } from "@/components/VolleGeometrie";
 import { useGeraet, useStandortFreigabe } from "@/components/useStandortFreigabe";
 import { standortAnleitung } from "@/lib/geraet";
+import { streckenPfad } from "@/lib/streckenPfad";
 
 // Siehe ExploreView.tsx für die Begründung des dynamischen Imports.
 const RouteMap = dynamic(() => import("@/components/RouteMap"), {
@@ -170,8 +172,9 @@ export default function LiveTrackingForm({
   //
   // Eine Fahrt, die die Veröffentlichung nicht erfüllt, bleibt trotzdem
   // privat: der Wert unten wird mit der Sperre verrechnet, und der Server
-  // kann ist_oeffentlich ohnehin nur verengen (0052).
-  const [isPublic, setIsPublic] = useState(true);
+  // kann ist_oeffentlich ohnehin nur verengen (0052) — fuer_follower
+  // ebenso (0145).
+  const [sichtbarkeit, setSichtbarkeit] = useState<Sichtbarkeit>("oeffentlich");
   // Dieselbe Rückfrage wie im angemeldeten Pfad (RideSummaryForm).
   // Vorher verwarf ein einzelner Tap hier eine bereits FERTIGE
   // Aufzeichnung sofort und endgültig — ausgerechnet im Gast-Fall,
@@ -246,9 +249,8 @@ export default function LiveTrackingForm({
   // selbst wieder auf, damit die Fahrt zum Speichern bereitsteht.
   function goToAuth(ziel: "/anmelden" | "/registrieren") {
     const token = issueGuestContinuationToken(route.id);
-    const zurueck = token
-      ? `/strecken/${route.id}?fortsetzen=${encodeURIComponent(token)}`
-      : `/strecken/${route.id}`;
+    const pfad = streckenPfad(route);
+    const zurueck = token ? `${pfad}?fortsetzen=${encodeURIComponent(token)}` : pfad;
     router.push(`${ziel}?next=${encodeURIComponent(zurueck)}`);
   }
 
@@ -359,7 +361,11 @@ export default function LiveTrackingForm({
     // dem Bild. Die Karte behält mindestens 30dvh, das Panel schrumpft nie.
     return (
       <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col overflow-y-auto overscroll-y-contain bg-background">
-        <div className="flex-1 min-h-[30dvh]">
+        {/* Die Karte beginnt bei y=0: In der installierten App lagen Zoom und
+            Kompass (.mapboxgl-ctrl-top-right) sonst unter der Statusleiste.
+            Das ! ist nötig, weil mapbox-gl.css ungeschichtet ist und damit
+            jede Tailwind-Utility ohne !important schlägt. */}
+        <div className="flex-1 min-h-[30dvh] [&_.mapboxgl-ctrl-top-right]:top-[var(--safe-top)]!">
           <RouteMap
             routes={routes}
             // Derselbe Schweiz-Scheinwerfer wie auf Home und bei der freien
@@ -708,8 +714,8 @@ export default function LiveTrackingForm({
             vehicles={vehicles}
             trailJson={recorder.trailJson}
               ticketJson={recorder.ticketJson}
-            isPublic={isPublic && !belowCoverageThreshold}
-            onIsPublicChange={setIsPublic}
+            sichtbarkeit={belowCoverageThreshold ? "privat" : sichtbarkeit}
+            onSichtbarkeitChange={setSichtbarkeit}
             onSubmit={() => setSubmitted(true)}
             onDiscard={handleDiscard}
             onResume={recorder.fortsetzen}
@@ -719,9 +725,11 @@ export default function LiveTrackingForm({
               // "zurückgelegte Länge". Der dritte Grund im Text ist der neue:
               // bei einer Strecke, die über dieselbe Strasse zurückführt, kann
               // alles berührt und trotzdem nur die Hälfte gefahren sein.
-              publicDisabledHint: `Diese Fahrt deckt nur ${coveragePercent}% der offiziellen Strecke ab — evtl. abgekürzt, am falschen Punkt gestartet/beendet, oder die Strecke führt zurück und du bist nur eine Richtung gefahren. Sie bleibt privat gespeichert, kann aber nicht öffentlich geteilt werden.`,
+              publicDisabledHint: `Diese Fahrt deckt nur ${coveragePercent}% der offiziellen Strecke ab — evtl. abgekürzt, am falschen Punkt gestartet/beendet, oder die Strecke führt zurück und du bist nur eine Richtung gefahren. Sie bleibt privat gespeichert und kann weder öffentlich noch mit Followern geteilt werden.`,
               publicHint:
                 "Öffentlich: erscheint in den Ranglisten und auf deinem öffentlichen Profil. Später jederzeit umschaltbar.",
+              followerHint:
+                "Follower: nur wer dir folgt, sieht die Fahrt – im Feed und auf deinem Profil. Sie zählt nicht in den Ranglisten. Später jederzeit umschaltbar.",
               privateHint:
                 "Privat: nur du siehst diese Fahrt in deinem Profil, für andere bleibt sie unsichtbar. Später jederzeit umschaltbar.",
             }}

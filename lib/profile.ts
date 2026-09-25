@@ -23,7 +23,11 @@ export interface PublicProfile {
 
 // Fahrzeuge werden nur befüllt, wenn der Nutzer das per Profileinstellung
 // freigegeben hat. Fahrten kommen direkt aus public_fahrten (0017/0018) —
-// die View filtert bereits auf ist_oeffentlich=true pro Fahrt. Die
+// die View filtert bereits pro Fahrt: öffentlich für alle, seit 0145
+// Follower-Fahrten auch für Follower. Ein Follower sieht deshalb höhere
+// Summen als ein Fremder — gewollt: sie fassen zusammen, was der Betrachter
+// sehen darf. Nur der Pässe-Zähler (oeffentliche_passhoehen) bleibt bei den
+// öffentlichen Fahrten, wie die Ranglisten. Die
 // zusammenfassenden Kennzahlen (Pässe/Höhenmeter/Distanz) werden IMMER aus
 // diesen Fahrten berechnet, aber nur je nach eigenem Opt-in ausgegeben —
 // so kann jemand einzelne Fahrten teilen, ohne automatisch seine
@@ -64,6 +68,9 @@ export const getPublicProfile = cache(async function getPublicProfile(
       .from("public_fahrten")
       .select("*")
       .eq("user_id", userId)
+      // Streckenabschnitte (0150/0151) sind eigene Zeilen, erscheinen aber als
+      // Teil ihrer Fahrt — in einer Liste stünden sie sonst doppelt.
+      .eq("ist_abschnitt", false)
       .order("datum", { ascending: false })
       .order("completion_id", { ascending: false }),
     // Befahrene Passhöhen auf öffentlich geteilten Fahrten (0114). Die

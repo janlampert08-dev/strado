@@ -41,9 +41,12 @@ export default function EditRouteForm({
         </p>
       </div>
 
+      {/* autoComplete="off" auf allen Ortsfeldern: Der Browser schlägt
+          sonst Einträge aus dem Adressbuch vor (Name, Wohnort), die hier nie
+          gemeint sind — gleich wie in Einrichtung.tsx. */}
       <label className="flex flex-col gap-1.5 text-sm font-medium">
         Name
-        <Input name="name" required defaultValue={route.name} />
+        <Input name="name" required autoComplete="off" defaultValue={route.name} />
       </label>
 
       {adminMode && (
@@ -55,7 +58,7 @@ export default function EditRouteForm({
 
       <label className="flex flex-col gap-1.5 text-sm font-medium">
         Region
-        <Input name="region" required defaultValue={route.region} />
+        <Input name="region" required autoComplete="off" defaultValue={route.region} />
       </label>
 
       <div className="grid grid-cols-2 gap-3">
@@ -64,6 +67,7 @@ export default function EditRouteForm({
           <Input
             name="start_ort"
             required
+            autoComplete="off"
             value={startOrt}
             onChange={(e) => setStartOrt(e.target.value)}
           />
@@ -73,7 +77,7 @@ export default function EditRouteForm({
         ) : (
           <label className="flex flex-col gap-1.5 text-sm font-medium">
             Ziel-Ort
-            <Input name="ziel_ort" required defaultValue={route.ziel_ort} />
+            <Input name="ziel_ort" required autoComplete="off" defaultValue={route.ziel_ort} />
           </label>
         )}
       </div>

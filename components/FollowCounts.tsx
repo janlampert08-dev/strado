@@ -14,6 +14,7 @@ export default function FollowCounts({
   followers,
   following,
   listsHidden = false,
+  eigenesProfil = false,
 }: {
   followersCount: number;
   followingCount: number;
@@ -24,6 +25,8 @@ export default function FollowCounts({
   // sichtbar (0037_public_follows.sql, bewusst unverändert), nur die beiden
   // Listen-Dialoge zeigen dann "Diese Liste ist privat." statt Namen.
   listsHidden?: boolean;
+  // Auf dem eigenen Profil lassen sich Follower entfernen (0149).
+  eigenesProfil?: boolean;
 }) {
   const [openList, setOpenList] = useState<"followers" | "following" | null>(null);
 
@@ -55,6 +58,7 @@ export default function FollowCounts({
         title="Follower"
         profiles={followers}
         hidden={listsHidden}
+        entfernbar={eigenesProfil}
       />
       <FollowListModal
         open={openList === "following"}

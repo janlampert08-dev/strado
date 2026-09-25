@@ -36,8 +36,12 @@ export default function OfflineRoutesList() {
         setRoutes(gespeichert);
         // Kam diese Seite als Ersatz für eine gespeicherte Streckenseite,
         // gleich deren Detail zeigen (siehe lib/offlineAnsicht.ts).
+        // Das Segment kann die UUID oder der Slug sein (0130).
         const angefragt = angefragteStreckenId(window.location.pathname);
-        if (angefragt && gespeichert.some((r) => r.id === angefragt)) setSelectedId(angefragt);
+        const treffer = angefragt
+          ? gespeichert.find((r) => r.id === angefragt || (r.slug != null && r.slug === angefragt))
+          : undefined;
+        if (treffer) setSelectedId(treffer.id);
       })
       .catch(() => setRoutes([]));
   }, []);

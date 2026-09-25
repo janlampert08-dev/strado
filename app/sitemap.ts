@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { getOrigin } from "@/lib/utils/url";
 import { siteUrl } from "@/lib/siteUrl";
 import { listRoutesForSitemap, type RouteSitemapEintrag } from "@/lib/routes";
+import { streckenPfad } from "@/lib/streckenPfad";
 import { listPassIdsFuerSitemap } from "@/lib/paesse";
 
 // Immer zur Anfragezeit rendern: die Origin hängt an den Request-Headern
@@ -94,7 +95,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     })),
     ...routes.map((route) => ({
-      url: `${origin}/strecken/${route.id}`,
+      // Die kanonische Adresse (Slug, sobald vorhanden) — die Sitemap soll
+      // nicht auf eine Weiterleitung zeigen.
+      url: `${origin}${streckenPfad(route)}`,
       lastModified: route.created_at,
       changeFrequency: "monthly" as const,
       priority: 0.8,

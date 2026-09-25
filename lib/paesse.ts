@@ -10,7 +10,11 @@ import type { PassZustand } from "@/lib/passMeldungen";
 import { istFeedGesund, schwerwiegendster } from "@/lib/passStatus";
 import { heuteCH, type PassEreignis, type Sperrtag, type SperrtagArt } from "@/lib/passKalender";
 import { throwOnQueryError } from "@/lib/queryError";
+import { fehltSlugSpalte } from "@/lib/streckenPfad";
 import { istPassId, naechstePaesse, punktAusEwkb } from "@/lib/passSeite";
+
+/** Die öffentliche Strecke über einen Pass; slug fehlt vor 0130. */
+export type PassStrecke = { id: string; name: string; slug?: string | null };
 
 export interface Pass {
   id: string;
@@ -94,7 +98,7 @@ export interface PassMitStatus {
   status: PassStatusZeile | null;
   /** Die sichtbare Strecke, über die man den Pass fährt — null, solange es
    *  keine gibt. Genau diese Lücke ist der Aufruf, eine anzulegen. */
-  strecke: { id: string; name: string } | null;
+  strecke: PassStrecke | null;
   /** Aus den eigenen Fahrten: wann zum ersten Mal, wie oft. */
   gefahren: { erstmals: string; fahrten: number } | null;
   /** Ob das Konto diesem Pass folgt (pass_folgen). */
@@ -151,18 +155,25 @@ export async function getPaesseMitStatus(): Promise<PassMitStatus[]> {
   const streckenIds = [
     ...new Set((((verknuepfungen.data as { route_id: string; pass_id: string }[] | null) ?? [])).map((v) => v.route_id)),
   ];
-  const { data: strecken } = streckenIds.length
-    ? await supabase
-        .from("routes")
-        .select("id, name")
-        .in("id", streckenIds)
-        .eq("status_ok", true)
-        .eq("ist_privat", false)
-        .order("name")
-    : { data: [] as { id: string; name: string }[] };
+  // slug (0130) für den Link; fehlt die Spalte noch, dieselbe Abfrage ohne
+  // — dann verlinkt die Liste die UUID-Adresse, die weiterleitet.
+  const streckenAbfrage = (spalten: string) =>
+    supabase
+      .from("routes")
+      .select(spalten)
+      .in("id", streckenIds)
+      .eq("status_ok", true)
+      .eq("ist_privat", false)
+      .order("name");
+  let strecken: PassStrecke[] = [];
+  if (streckenIds.length) {
+    let ergebnis = await streckenAbfrage("id, name, slug");
+    if (ergebnis.error && fehltSlugSpalte(ergebnis.error)) ergebnis = await streckenAbfrage("id, name");
+    strecken = (ergebnis.data as unknown as PassStrecke[] | null) ?? [];
+  }
 
-  const streckeNachId = new Map(((strecken as { id: string; name: string }[] | null) ?? []).map((s) => [s.id, s]));
-  const streckeJePass = new Map<string, { id: string; name: string }>();
+  const streckeNachId = new Map(strecken.map((s) => [s.id, s]));
+  const streckeJePass = new Map<string, PassStrecke>();
   for (const verknuepfung of ((verknuepfungen.data as { route_id: string; pass_id: string }[] | null) ?? [])) {
     if (streckeJePass.has(verknuepfung.pass_id)) continue;
     const strecke = streckeNachId.get(verknuepfung.route_id);
@@ -441,6 +452,8 @@ export async function getPassModerationsDaten(): Promise<ModerationsDaten> {
 
 export interface PassSeitenStrecke {
   id: string;
+  /** Lesbare Adresse (0130). */
+  slug: string | null;
   name: string;
   region: string;
   startOrt: string;
@@ -531,7 +544,7 @@ export const getPassSeite = cache(async function getPassSeite(id: string): Promi
   const { data: streckenRoh, error: streckenFehler } = routeIds.length
     ? await supabase
         .from("routes")
-        .select("id, name, region, start_ort, ziel_ort, laenge_km, kehren, hoehe_m, max_steigung_prozent")
+        .select("id, slug, name, region, start_ort, ziel_ort, laenge_km, kehren, hoehe_m, max_steigung_prozent")
         .in("id", routeIds)
         .eq("status_ok", true)
         .eq("ist_privat", false)
@@ -542,7 +555,7 @@ export const getPassSeite = cache(async function getPassSeite(id: string): Promi
   throwOnQueryError(streckenFehler, "Die Strecken über diesen Pass");
 
   type StreckeRoh = {
-    id: string; name: string; region: string; start_ort: string; ziel_ort: string;
+    id: string; slug: string | null; name: string; region: string; start_ort: string; ziel_ort: string;
     laenge_km: number; kehren: number | null; hoehe_m: number | null;
     max_steigung_prozent: number | null;
   };
@@ -573,6 +586,7 @@ export const getPassSeite = cache(async function getPassSeite(id: string): Promi
     folgtMan: ((folgen.data as { pass_id: string }[] | null) ?? []).length > 0,
     strecken: ((streckenRoh as StreckeRoh[] | null) ?? []).map((s) => ({
       id: s.id,
+      slug: s.slug,
       name: s.name,
       region: s.region,
       startOrt: s.start_ort,

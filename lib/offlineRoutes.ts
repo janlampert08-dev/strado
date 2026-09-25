@@ -8,6 +8,10 @@ import type { HoehenprofilPunkt } from "@/types/database";
 // Offline-Ansicht die vorhandene SVG-Routenform (lib/routeShape.ts).
 export interface OfflineRoute {
   id: string;
+  /** Lesbare Adresse (0130), damit die Offline-Ansicht auch eine unter
+   *  /strecken/<slug> aufgerufene Strecke wiedererkennt. Fehlt bei Einträgen
+   *  von vor der Umstellung — dann greift nur die id. */
+  slug?: string | null;
   name: string;
   region: string;
   startOrt: string;

@@ -86,11 +86,15 @@ export default function TempoDiagram({
   return (
     <div className="flex flex-col gap-1">
       <div className="relative">
+        {/* touch-pan-y wie im Höhenprofil: Das Diagramm ist so breit wie der
+            Schirm, mit touch-none blieb ein senkrechtes Wischen darauf
+            hängen, statt die Seite zu scrollen. Wird die Geste zum Scrollen,
+            meldet der Browser pointercancel — dann verschwindet die Marke. */}
         <svg
           ref={svgRef}
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
           preserveAspectRatio="none"
-          className="h-28 w-full cursor-crosshair touch-none"
+          className="h-28 w-full cursor-crosshair touch-pan-y"
           role="img"
           aria-label={`Tempodiagramm, Spitze ${spitze.kmh} km/h bei km ${spitze.km}${
             hoverPunkt ? `, ausgewählt: ${hoverPunkt.kmh} km/h bei km ${hoverPunkt.km.toFixed(1)}` : ""
@@ -99,6 +103,7 @@ export default function TempoDiagram({
           onPointerDown={onPointerActivity}
           onPointerLeave={() => setHoverIndex(null)}
           onPointerUp={() => setHoverIndex(null)}
+          onPointerCancel={() => setHoverIndex(null)}
         >
           <defs>
             <linearGradient id="tempo-fill" x1="0" y1="0" x2="0" y2="1">

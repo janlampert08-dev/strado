@@ -3,7 +3,8 @@ import Header from "@/components/Header";
 import PremiumPurchaseView from "@/components/PremiumPurchaseView";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { getPremiumAngebot } from "@/lib/actions/billing";
-import { getPremiumStatus } from "@/lib/premium";
+import { getPremiumStatus, kaufseiteOffen } from "@/lib/premium";
+import { saisonpassImWinter } from "@/lib/saisonpassSaison";
 
 // Die Preise kommen bei jedem Aufruf frisch aus Stripe — ein im Dashboard
 // geänderter Preis darf nicht als zwischengespeicherte Zahl weiterlaufen.
@@ -34,7 +35,11 @@ export default async function PremiumPage() {
   // abschliessen (es zahlt erst ab dem Passende) oder den Pass kurz vor
   // Ablauf verlängern. Ihn wegzuschicken hiesse, den einzigen Weg zurück zu
   // schliessen.
-  if (status.aktiv && status.quelle !== "saisonpass") redirect("/profil");
+  //
+  // Seit 0135 dieselbe Ausnahme für das Gratis-Premium aus dem Signup-Link:
+  // es endet nach sieben Tagen von selbst, und wer in dieser Zeit kaufen
+  // will, soll es können (kaufseiteOffen in lib/premiumLimits.ts).
+  if (!kaufseiteOffen(status)) redirect("/profil");
 
   return (
     <div className="flex h-dvh flex-col">
@@ -46,7 +51,11 @@ export default async function PremiumPage() {
           Etwas breiter als die Formularseiten, weil die Planauswahl Preis,
           Abzeichen und Zusatzzeile nebeneinander trägt. */}
       <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 overflow-y-auto px-5 py-8 sm:px-6">
-        <PremiumPurchaseView angebot={angebot} />
+        <PremiumPurchaseView
+          angebot={angebot}
+          gratisBis={status.gratisBis ? status.gratisBis.toISOString() : null}
+          winter={saisonpassImWinter()}
+        />
       </main>
     </div>
   );

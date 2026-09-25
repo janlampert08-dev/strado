@@ -14,6 +14,7 @@ import {
   useStandortFreigabe,
 } from "@/components/useStandortFreigabe";
 import { merkeErsteFahrtHinweiseGesehen } from "@/lib/ersteFahrt";
+import { streckenPfad } from "@/lib/streckenPfad";
 
 export default function GefahrenSection({
   route,
@@ -105,8 +106,8 @@ export default function GefahrenSection({
 
   useEffect(() => {
     if (!guestContinuationToken) return;
-    window.history.replaceState(null, "", `/strecken/${route.id}`);
-  }, [guestContinuationToken, route.id]);
+    window.history.replaceState(null, "", streckenPfad(route));
+  }, [guestContinuationToken, route]);
 
   if (!open && vorbereitung) {
     return (

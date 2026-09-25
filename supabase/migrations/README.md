@@ -29,6 +29,207 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Eingespielt: 0148_gemeldete_fahrt_verbergen (2026-09-25, Produktion)
+
+"Fahrt verbergen" in der Moderation traf 0 Zeilen (gemessen vor 0145): ein
+UPDATE sieht nur Zeilen, die der Aufrufer lesen darf, und auf
+route_completions gibt es nur "Nutzer sehen eigene Fahrten". Statt einer
+SELECT-Policy für Moderatoren (sie gäbe ihnen alle Fahrten samt vollständiger
+Tracks frei) eine SECURITY-DEFINER-Funktion: Rolle prüfen, offene Meldung
+verlangen, Fahrt ganz aus der Sicht nehmen (öffentlich und Follower), offene
+Meldungen schliessen — in einer Transaktion.
+
+- **Zurückgerollter Funktionstest vorher:** normaler Nutzer → `not_moderator`;
+  Moderator ohne offene Meldung → false; mit Meldung → true, Fahrt danach
+  privat ohne gekappten Track, 0 offene Meldungen, nur diese eine Fahrt
+  betroffen (12 → 11 öffentliche); anon ohne EXECUTE.
+- **Gemessen danach:** Ledger `0148_gemeldete_fahrt_verbergen`, anon ohne,
+  authenticated mit EXECUTE, weiterhin 12 öffentliche Fahrten.
+- Der Code (`unpublishReportedCompletion`) ruft die Funktion auf; der alte
+  Code bleibt bis zum Deploy so kaputt wie vorher.
+
+## Eingespielt: 0160_folgeanfrage_annehmen_zeitpunkt (2026-09-25, Produktion)
+
+Zweites Code-Review vor dem Release: `folgeanfrage_annehmen` übernimmt den
+Zeitpunkt der Anfrage in die follows-Zeile (vorher `now()` — der eben selbst
+angenommene Follower erschien als neue Meldung im Abzeichen), und
+`folgeanfragen_alle_annehmen` ist entfernt (die App ruft sie seit dem ersten
+Review nicht mehr auf, sie war aber weiter per API aufrufbar).
+
+- **Zurückgerollter Test vorher:** Zähler vor/nach dem Annehmen 0/0,
+  Zeitpunkt übernommen, zweites Annehmen → false, Sammelfunktion weg, anon
+  ohne EXECUTE.
+- **Gemessen danach:** Ledger `0160_folgeanfrage_annehmen_zeitpunkt`,
+  Sammelfunktion 0, `folgeanfrage_annehmen` für authenticated, nicht anon.
+
+## Eingespielt: 0149_follower_entfernen (2026-09-25, Produktion)
+
+Die Delete-Policy "Nutzer entfolgen" auf follows lässt jetzt auch den
+Gefolgten löschen (`follower_id = uid or followed_id = uid`). Anlass: wer vor
+0146 gefolgt ist, brauchte keine Bestätigung und hätte die Follower-Fahrten
+eines Kontos sonst auf Dauer gesehen. Die App bietet dazu "Entfernen" in der
+eigenen Follower-Liste (`followerEntfernen`).
+
+- **Zurückgerollter Test vorher:** Gefolgter entfernt eigenen Follower →
+  1 Zeile; fremde Beziehung → 0; anon → 0.
+- **Gemessen danach:** Ledger `0149_follower_entfernen`, Policy wie oben.
+
+**Nachtrag zu 0146:** `folgeanfragen_alle_annehmen()` ruft die App nicht mehr
+auf. Das Ausschalten von "Neue Follower bestätigen" nimmt offene Anfragen
+NICHT mehr an (Code-Review vor dem Release: der Schalter speichert sofort, ein
+versehentliches Umlegen hätte Fremde unwiderruflich zu Followern gemacht).
+Die Funktion bleibt im Schema; 0146 ist eingespielt und wird nicht geändert.
+
+## 0146 eingespielt, 0147 wartet auf den Code in Produktion (Folgeanfragen, 2026-09-25)
+
+Folgeanfragen: `profiles.folgen_bestaetigen` (voreingestellt **an**, für
+alle, Entscheid des Eigentümers), Tabelle `folge_anfragen`, Annehmen über
+`folgeanfrage_annehmen()`, Anfragen unter /aktivitaet
+(`offene_folgeanfragen()`) und im Abzeichen (`count_unseen_activity`).
+
+- **0146 ist eingespielt** (rein additiv, der alte Folgen-Knopf läuft
+  unverändert weiter). Gemessen danach: 0 Profile ohne Bestätigung,
+  0 Anfragen, anon ohne Recht auf Tabelle und alle vier Funktionen,
+  authenticated ohne UPDATE auf `folge_anfragen`, `anonymize_account`
+  löscht Anfragen in beide Richtungen, die follows-Policy ist unverändert.
+- **Zurückgerollter Funktionstest (0146 + 0147 zusammen), 21 Prüfungen:**
+  direktes Folgen bei verlangter Bestätigung abgelehnt; Anfrage stellen ok;
+  Anfrage im Namen eines anderen, fremde Anfragen lesen, löschen oder
+  annehmen: alles abgelehnt bzw. 0 Zeilen; der Gefolgte sieht die Anfrage
+  (neu), das Abzeichen zählt sie; Annehmen legt die follows-Zeile an und
+  entfernt die Anfrage; Bestätigung aus → direktes Folgen geht, offene
+  Anfragen werden mit `folgeanfragen_alle_annehmen()` angenommen; anon
+  liest nichts.
+- **0147 NICHT einspielen, bevor der Code auf `main` läuft.** Die Datei
+  verbietet direktes Folgen, wenn der Gefolgte bestätigen will — und das
+  wollen nach 0146 alle. Der heutige Folgen-Knopf schreibt direkt in
+  follows; mit 0147 scheiterte in der Produktion jedes Folgen, bis der neue
+  Code ankommt. Bis dahin ist die Bestätigung nur so stark wie die App:
+  wer die API direkt aufruft, kann noch ohne Anfrage folgen.
+## Eingespielt: 0154_abschnitte_ohne_follower (2026-09-25, Produktion)
+
+Erkannte Abschnitte (`parent_completion_id` gesetzt) werden nie "nur für
+Follower": der Trigger aus 0145 verengt sie jetzt auch. Grund: 0151 lässt
+Abschnitte der Öffentlichkeit ihrer Fahrt folgen, synchronisiert aber nur
+`ist_oeffentlich` — eine eigene Follower-Stufe bliebe beim Privatstellen der
+Fahrt stehen. Die Oberfläche bietet Abschnitten ohnehin nur Privat/Öffentlich.
+
+- **Zurückgerollter Test vorher:** Abschnitt auf Follower → bleibt false;
+  normale Fahrt auf Follower → true; Triggerfunktion für anon nicht aufrufbar.
+- **Gemessen danach:** Ledger `0154_abschnitte_ohne_follower`, Regel im
+  Funktionsrumpf, 0 Abschnitte mit `fuer_follower`.
+- `lib/followerSichtbarkeit.test.ts` prüft ab jetzt, dass die jüngste
+  Definition jeder der vier Views `fuer_follower` nur zusammen mit
+  `fahrt_fuer_follower_sichtbar()` freigibt und die Ranglisten keine
+  Follower-Fahrten kennen.
+
+## Eingespielt: 0145_fahrten_fuer_follower (2026-09-25, Produktion)
+
+Dritte Sichtbarkeitsstufe für Fahrten: nur für Follower. Neue Spalte
+`route_completions.fuer_follower`; `public_fahrten`, `public_fahrt_tracks`,
+`public_completion_photos`, `kudos_summary` und die zwei Kudos-Policies
+lassen Follower-Fahrten für Follower durch. Moderatoren lesen gemeldete
+Fahrten über `gemeldete_fahrten_fuer_moderation()`, nicht über die Views.
+Neuer Teilindex `route_completions_geteilt_datum_idx` für den Feed.
+Ranglisten, `route_photos` und `oeffentliche_passhoehen` bleiben
+unverändert, also ohne Follower-Fahrten.
+
+- **Geschrieben als 0140**, vor dem Einspielen umnummeriert: dieselbe
+  Nummer hatte inzwischen `0140_streckentexte_steigung_abgleich` belegt.
+- **Gegen den Stand NACH 0139 geschrieben.** Die Moderatoren-Policy heisst
+  seit 0139 "Nutzer bearbeiten eigene Fahrten, Moderatoren entöffentlichen";
+  0145 ändert per `alter policy` nur deren WITH CHECK und lässt das USING
+  stehen, damit 0134 dessen Moderatorenprüfung umstellen kann.
+- **0134 enthält `fuer_follower` in seiner festen Insert-Spaltenliste**
+  (#460, vor dem Einspielen von 0134). Ohne das nähme sein `revoke insert`
+  den Spalten-Grant aus 0145 mit. Gemessen danach: authenticated hat INSERT
+  und UPDATE auf `fuer_follower`.
+- **Live-Körper vorher erneut gelesen:** `anonymize_account`,
+  `save_free_ride_with_segments` und die vier Views entsprachen dem Stand,
+  auf dem die Datei aufbaut.
+- **Zurückgerollter Funktionstest vor dem Einspielen** (ganze Migration +
+  Prüfungen in einer Transaktion, Abschluss per `raise exception`): anon
+  0/0 (Fahrt/Track), Fremder 0/0, Follower 1/1, Besitzer 1; Kudos vom
+  Follower angenommen, vom Fremden abgelehnt; Follower kann melden;
+  Moderator sieht die Fahrt in keiner View, aber über die RPC (1), der
+  Follower über die RPC nicht (0); öffentlich + Follower zugleich wird zu
+  öffentlich; keine Fahrt ist zugleich beides.
+- **Gemessen danach:** Ledger `0145_fahrten_fuer_follower`, 0 Fahrten mit
+  `fuer_follower`, `public_fahrten` führt die Spalte, anon sieht weiter 12
+  Fahrten. `gemeldete_fahrten_fuer_moderation`: authenticated ja, anon
+  nein; Triggerfunktion für niemanden aufrufbar;
+  `fahrt_fuer_follower_sichtbar`: anon ja (gewollt, Views brauchen es).
+- **Nebenbefund, nicht von 0145:** ein Moderator trifft mit einem UPDATE
+  auf `route_completions` heute **0 Zeilen** (gemessen vor 0145) — RLS gibt
+  ihm UPDATE, aber keine SELECT-Policy auf fremde Fahrten, und ohne SELECT
+  sieht das UPDATE die Zeile nicht. "Fahrt verbergen" in der Moderation
+  meldet deshalb "nichts getroffen". Eigener Fix nötig (SELECT-Policy für
+  Moderatoren über `ist_moderator()` oder eine SECURITY-DEFINER-Funktion).
+- **Weg zurück:** siehe Kopf der Datei.
+- **Bekannte Grenzen (zweites Code-Review, bewusst so ausgeliefert):**
+  - *Neu-Einspielen von vorn scheitert an 0134:* dessen Insert-Grant nennt
+    `fuer_follower` (#460), die Spalte entsteht erst in 0145. In der
+    Produktion war die Reihenfolge richtig (0145 vor 0134 eingespielt); ein
+    `supabase db reset` oder ein Branch muss 0145 vor 0134 einspielen. 0134
+    ist eingespielt und wird nicht mehr geändert.
+  - *Moderation sieht bei gemeldeten Follower-Fahrten nur den Text* (Titel,
+    Startort, Strecke, Notiz über `gemeldete_fahrten_fuer_moderation`), die
+    Fahrtseite selbst bleibt für Nicht-Follower 404 — Fotos und Karte lassen
+    sich also nicht prüfen, verbergen (0148) geht trotzdem.
+  - *Streckenfahrten ohne gespeicherten Track* (nur nach einer
+    Kontolöschung) verlieren beim Wechsel öffentlich → Follower ihren
+    Deckungsgrad (0052, Fall 4) und bleiben privat. Am 2026-09-25 gemessen:
+    0 solche Fahrten, und die Konten dazu können sich nicht mehr anmelden.
+
+## Stand 2026-09-25 (nach Promotion #454): 0132–0134, 0150, 0151 eingespielt
+
+Nach dem Produktions-Deploy von #454 eingespielt und gemessen:
+
+- **0132** Privatzone — Spalten-Grant weg (kein tabellenweiter Grant, der
+  ihn umginge), meine_privatzone() nur für authenticated, UPDATE bleibt.
+- **0133** Gastticket-Bremse — anon ohne EXECUTE auf anlegen/puls,
+  service_role legt ein Gastticket an (Rollback-Test), anon bekommt 42501;
+  Cron-Job fahrtstarts-aufraeumen alle 15 Minuten.
+- **0134** Rechte — **mit fuer_follower im INSERT-Grant** eingespielt (#460;
+  0145 kam nach dem Schreiben der Datei, save_free_ride_with_segments ist
+  INVOKER). 20 Policies auf ist_moderator(), is_moderator für niemanden
+  lesbar, Moderator erkannt, anon sieht 32 Strecken.
+- **0150** public_fahrten.ist_abschnitt (vor dem Deploy, rein additiv).
+- **0151** Abschnitte folgen der Fahrt — 0 Abweichungen in beide Richtungen,
+  Umschalt-Test (Rollback) in beide Richtungen bestanden.
+
+Damit ist aus diesem Zug nichts mehr ausstehend.
+
+## Stand 2026-09-25 (abends): 0130–0140
+
+**Eingespielt** (per `apply_migration`, jeweils danach gemessen):
+
+- **0139** RLS aufgeräumt — 0 nackte `auth.uid()`, 0 doppelte permissive
+  Policies; anon sieht dieselben Zeilen wie vorher (32 Strecken, Bewertungen,
+  0 Fahrten direkt, 4 freigegebene Fahrzeuge).
+- **0131** Serverzeit-Plausibilität — beide bestehenden server-Segmente
+  bestehen die neue Prüfung (fahrt_pulse_pruefen = NULL).
+- **0140** Streckentexte Ächerli/Raten — je genau eine Zeile geändert.
+- **0137** GeoJSON vorberechnet — routes_geojson 0.16 ms statt ~50 ms für
+  alle öffentlichen Strecken (warm gemessen).
+- **0138** strecken_paesse als Tabelle — anon sieht 21 Zuordnungen, wie
+  der alte Live-Join.
+- **0130** Slugs — **nach 0137** eingespielt; die View-Definition in der
+  Datei liest deshalb die 0137-Spalten. 32 öffentliche Strecken mit Slug,
+  0 private.
+- **0135** premium_gratis_bis() — anon ohne EXECUTE.
+
+**Bewusst noch NICHT eingespielt — erst nach der nächsten Promotion
+staging → main**, weil der heute auf app.strado.ch laufende Code sonst
+bricht (eine Datenbank für beide):
+
+- **0132** Privatzonen-Radius verbergen — alter Code liest die Spalte auf der
+  Einstellungsseite.
+- **0133** Gastticket-Bremse — alter Code ruft die Ticket-RPCs für Gäste als
+  anon; ohne EXECUTE bräche die Gast-Aufzeichnung.
+- **0134** Rechte nachziehen — alter Code liest `is_moderator` direkt;
+  Moderation und Staging-Gate wären zu.
+
 ## Stand 2026-09-25: 0126–0129 eingespielt, 0115–0122 gemessen
 
 - **0126–0129** am 2026-09-25 per `apply_migration` eingespielt, Ledger-Namen
