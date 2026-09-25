@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { throwOnQueryError } from "@/lib/queryError";
 import { mitSigniertenFotoUrls } from "@/lib/storageUrls";
 import { alsTempoprofil } from "@/lib/tempoprofil";
+import { sichtbarkeitAus, type Sichtbarkeit } from "@/lib/sichtbarkeit";
 import type {
   CompletionPhoto,
   FahrtArt,
@@ -70,7 +71,7 @@ export interface DetectedSegment {
   routeName: string;
   distanzKm: number | null;
   dauerSekunden: number | null;
-  istOeffentlich: boolean;
+  sichtbarkeit: Sichtbarkeit;
   abdeckungProzent: number | null;
 }
 
@@ -90,7 +91,7 @@ export async function getDetectedSegments(
   const { data, error } = await supabase
     .from("route_completions")
     .select(
-      "id, route_id, distanz_km, dauer_sekunden, ist_oeffentlich, abdeckung_prozent, routes(name)",
+      "id, route_id, distanz_km, dauer_sekunden, ist_oeffentlich, fuer_follower, abdeckung_prozent, routes(name)",
     )
     .eq("parent_completion_id", parentId)
     .eq("user_id", viewerId)
@@ -103,6 +104,7 @@ export async function getDetectedSegments(
         distanz_km: number | null;
         dauer_sekunden: number | null;
         ist_oeffentlich: boolean;
+        fuer_follower: boolean;
         abdeckung_prozent: number | null;
         routes: { name: string } | null;
       }[]
@@ -120,7 +122,7 @@ export async function getDetectedSegments(
     routeName: row.routes?.name ?? "Strecke",
     distanzKm: row.distanz_km,
     dauerSekunden: row.dauer_sekunden,
-    istOeffentlich: row.ist_oeffentlich,
+    sichtbarkeit: sichtbarkeitAus(row),
     abdeckungProzent: row.abdeckung_prozent,
   }));
 }
@@ -147,7 +149,9 @@ export interface CompletionDetail {
   // 0125). Für den Besitzer immer true — die Einstellung regelt, was ANDERE
   // sehen, nicht was der Fahrer über seine eigene Fahrt erfährt.
   zeigtTempo: boolean;
-  istOeffentlich: boolean;
+  // Privat, nur für Follower oder öffentlich (0145). Wer die Fahrt über
+  // "follower" sieht, folgt dem Fahrer — oder ist es selbst.
+  sichtbarkeit: Sichtbarkeit;
   // Für private Fahrten nur gesetzt, wenn der Betrachter der Besitzer ist.
   // Für öffentliche Fahrten (ab 0035_public_fahrten_notiz.sql) für jeden
   // Betrachter gesetzt — teilt sich dieselbe Sichtbarkeit wie die Fahrt
@@ -230,9 +234,17 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
   if (publicRow) {
     const row = publicRow as PublicFahrt;
 
+    const istBesitzer = viewerId === row.user_id;
+
+    // Alle Abfragen hängen nur an der Zeile aus public_fahrten und am
+    // Betrachter, nicht aneinander — darum laufen sie gemeinsam statt
+    // nacheinander. Die Fehler werden danach in derselben Reihenfolge
+    // geprüft wie zuvor.
     const [
       { data: photoRows, error: photoError },
       { data: trackRow, error: trackError },
+      tempoFlag,
+      ownRows,
     ] = await Promise.all([
       supabase
         .from("public_completion_photos")
@@ -246,6 +258,38 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
         .select("track_geojson")
         .eq("completion_id", row.completion_id)
         .maybeSingle<Pick<PublicFahrtTrack, "track_geojson">>(),
+      // Das Tempo-Flag des Fahrers, nur für fremde Betrachter gelesen.
+      istBesitzer
+        ? Promise.resolve(null)
+        : supabase
+            .from("profiles")
+            .select("zeigt_tempo")
+            .eq("id", row.user_id)
+            .maybeSingle<{ zeigt_tempo: boolean }>(),
+      // Für den Fahrer selbst zwei Dinge nachladen, die die öffentliche View
+      // bewusst nicht enthält — siehe unten.
+      istBesitzer
+        ? Promise.all([
+            supabase
+              .from("route_completions")
+              .select("hoehenprofil, hoehen_quelle, tempoprofil, parent_completion_id, motorklasse, motorklasse_gewertet")
+              .eq("id", row.completion_id)
+              .eq("user_id", row.user_id)
+              .maybeSingle<{
+                hoehenprofil: HoehenprofilPunkt[] | null;
+                hoehen_quelle: HoehenQuelle | null;
+                tempoprofil: TempoprofilPunkt[] | null;
+                parent_completion_id: string | null;
+                motorklasse: Motorklasse | null;
+                motorklasse_gewertet: Motorklasse | null;
+              }>(),
+            supabase
+              .from("fahrt_tracks")
+              .select("track_geojson")
+              .eq("completion_id", row.completion_id)
+              .maybeSingle<Pick<FahrtTrack, "track_geojson">>(),
+          ])
+        : Promise.resolve(null),
     ]);
 
     // Eine leere Fotoliste bzw. ein fehlender Track sind ein gültiges
@@ -273,40 +317,15 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
     // Tempo verborgen: eine unlesbare Datenschutz-Einstellung darf nicht zum
     // Zeigen führen — derselbe Grundsatz wie beim Privatzonen-Radius
     // (privacyRadiusM in lib/publicTrack.ts).
-    let zeigtTempo = viewerId === row.user_id;
-    if (!zeigtTempo) {
-      const { data: fahrerProfil, error: tempoFlagError } = await supabase
-        .from("profiles")
-        .select("zeigt_tempo")
-        .eq("id", row.user_id)
-        .maybeSingle<{ zeigt_tempo: boolean }>();
-      zeigtTempo = !tempoFlagError && fahrerProfil?.zeigt_tempo === true;
-    }
+    const zeigtTempo =
+      istBesitzer ||
+      (!!tempoFlag && !tempoFlag.error && tempoFlag.data?.zeigt_tempo === true);
 
-    if (viewerId === row.user_id) {
+    if (ownRows) {
       const [
         { data: own, error: ownError },
         { data: ownTrackRow, error: ownTrackError },
-      ] = await Promise.all([
-        supabase
-          .from("route_completions")
-          .select("hoehenprofil, hoehen_quelle, tempoprofil, parent_completion_id, motorklasse, motorklasse_gewertet")
-          .eq("id", row.completion_id)
-          .eq("user_id", viewerId)
-          .maybeSingle<{
-            hoehenprofil: HoehenprofilPunkt[] | null;
-            hoehen_quelle: HoehenQuelle | null;
-            tempoprofil: TempoprofilPunkt[] | null;
-            parent_completion_id: string | null;
-            motorklasse: Motorklasse | null;
-            motorklasse_gewertet: Motorklasse | null;
-          }>(),
-        supabase
-          .from("fahrt_tracks")
-          .select("track_geojson")
-          .eq("completion_id", row.completion_id)
-          .maybeSingle<Pick<FahrtTrack, "track_geojson">>(),
-      ]);
+      ] = ownRows;
       throwOnQueryError(ownError, "Höhenprofil der Fahrt");
       throwOnQueryError(ownTrackError, "Track der Fahrt");
 
@@ -335,10 +354,12 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
       importiert: false,
       distanzKm: row.distanz_km,
       zeigtTempo,
-      istOeffentlich: true,
+      // public_fahrten führt seit 0145 auch Follower-Fahrten — für Follower
+      // des Fahrers und für ihn selbst.
+      sichtbarkeit: row.fuer_follower ? "follower" : "oeffentlich",
       // Ab 0035_public_fahrten_notiz.sql: teilt sich die Sichtbarkeit der
       // Fahrt selbst — hier immer gesetzt (die View filtert bereits auf
-      // ist_oeffentlich = true), nicht mehr nur für den Besitzer.
+      // die Sichtbarkeit), nicht mehr nur für den Besitzer.
       abdeckungProzent: row.abdeckung_prozent,
       notiz: row.notiz,
       vehicle: row.fahrzeug_marke
@@ -387,7 +408,7 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
   const { data: own, error: eigeneFahrtError } = await supabase
     .from("route_completions")
     .select(
-      "id, art, route_id, user_id, datum, dauer_sekunden, dauer_quelle, importiert, distanz_km, ist_oeffentlich, abdeckung_prozent, notiz, titel, start_ort, region, bewegte_zeit_sekunden, hoehenmeter_aufstieg, hoehenprofil, hoehen_quelle, tempoprofil, parent_completion_id, motorklasse, motorklasse_gewertet, vehicles(typ, marke, modell)",
+      "id, art, route_id, user_id, datum, dauer_sekunden, dauer_quelle, importiert, distanz_km, ist_oeffentlich, fuer_follower, abdeckung_prozent, notiz, titel, start_ort, region, bewegte_zeit_sekunden, hoehenmeter_aufstieg, hoehenprofil, hoehen_quelle, tempoprofil, parent_completion_id, motorklasse, motorklasse_gewertet, vehicles(typ, marke, modell)",
     )
     .eq("id", id)
     .eq("user_id", viewerId)
@@ -402,6 +423,7 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
       importiert: boolean;
       distanz_km: number | null;
       ist_oeffentlich: boolean;
+      fuer_follower: boolean;
       abdeckung_prozent: number | null;
       notiz: string | null;
       titel: string | null;
@@ -466,7 +488,7 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
     distanzKm: own.distanz_km,
     // Eigene Fahrt: der Besitzer sieht sein Tempo immer.
     zeigtTempo: true,
-    istOeffentlich: own.ist_oeffentlich,
+    sichtbarkeit: sichtbarkeitAus(own),
     abdeckungProzent: own.abdeckung_prozent,
     notiz: own.notiz,
     vehicle: own.vehicles,

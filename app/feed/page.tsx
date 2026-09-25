@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight, Rss } from "@/components/NavIcons";
 import Header from "@/components/Header";
+import { FollowerIcon } from "@/components/VisibilityIcons";
 import PullToRefreshArea from "@/components/PullToRefreshArea";
 import Avatar from "@/components/Avatar";
 import KudosButton from "@/components/KudosButton";
@@ -235,15 +236,20 @@ export default async function FeedPage({
                         // after: macht den Namen (24 × 20) zu einer 44 px hohen
                         // Tippfläche. Er überlappt dabei den Avatar daneben —
                         // beide führen auf dasselbe Profil.
-                        className="relative z-10 shrink-0 transition-colors duration-fast hover:text-foreground after:absolute after:-inset-x-3 after:-inset-y-3 after:content-['']"
+                        //
+                        // min-w-0 statt shrink-0: Ein langer Name schob Region,
+                        // Distanz und Datum aus der Zeile. Gekürzt wird im
+                        // inneren span — truncate am Link selbst (overflow
+                        // hidden) schnitte das after: der Tippfläche ab.
+                        className="relative z-10 min-w-0 transition-colors duration-fast hover:text-foreground after:absolute after:-inset-x-3 after:-inset-y-3 after:content-['']"
                       >
-                        {item.display_name ?? "Fahrer"}
+                        <span className="block truncate">{item.display_name ?? "Fahrer"}</span>
                       </Link>
                       <span aria-hidden="true">·</span>
                       <span className="truncate">{item.region}</span>
                       <span aria-hidden="true">·</span>
                       <span className="tabular-nums">
-                        {(item.distanz_km ?? item.laenge_km ?? 0).toFixed(1)} km
+                        {(item.distanz_km ?? item.laenge_km ?? 0).toFixed(1)}{"\u00a0"}km
                       </span>
                       <span aria-hidden="true">·</span>
                       {/* Kurzform ohne Jahr: der Feed ist nach Datum
@@ -262,6 +268,16 @@ export default async function FeedPage({
                           month: "2-digit",
                         })}
                       </time>
+                      {/* Nur das Symbol: die Zeile ist auf 390 px schon voll.
+                          Sagt dem Follower, dass nicht jeder diese Fahrt
+                          sieht (0145) — wer sie weiterempfiehlt, soll es
+                          wissen. */}
+                      {item.fuer_follower && (
+                        <span className="inline-flex shrink-0 items-center" title="Nur für Follower sichtbar">
+                          <FollowerIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span className="sr-only">Nur für Follower sichtbar</span>
+                        </span>
+                      )}
                       {item.art === "frei" && (
                         <span className="shrink-0 rounded-full border border-border px-1.5 py-0.5 text-xs">
                           Freie Fahrt

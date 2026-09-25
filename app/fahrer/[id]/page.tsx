@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { datumCH } from "@/lib/format";
+import { datumCH, formatMeter } from "@/lib/format";
 import type { Metadata } from "next";
 import { OG_GEERBT } from "@/lib/openGraph";
 import Link from "next/link";
@@ -14,7 +14,7 @@ import VehicleGrid from "@/components/VehicleGrid";
 import { getPublicProfile } from "@/lib/profile";
 import { getKudosForCompletions } from "@/lib/kudos";
 import {
-  isFollowing,
+  getFolgeZustand,
   getFollowCounts,
   getFollowerProfiles,
   getFollowingProfiles,
@@ -92,7 +92,7 @@ export default async function FahrerPage({
   // Betrachter — dieselbe Bedingung wie beim Kudos-Button oben.
   const showFollow = !!viewer && !isOwnProfile;
 
-  const [kudosByCompletion, followers, following, mutualFollowers, alreadyFollowing] =
+  const [kudosByCompletion, followers, following, mutualFollowers, folgeZustand] =
     await Promise.all([
     getKudosForCompletions(
       profile.fahrten.map((f) => f.completion_id),
@@ -108,7 +108,11 @@ export default async function FahrerPage({
       : Promise.resolve({ preview: [], totalCount: 0 }),
     // Hing von nichts aus diesem Block ab und lief trotzdem als eigener,
     // nachgelagerter Roundtrip — showFollow steht schon weiter oben fest.
-    showFollow ? isFollowing(viewer!.id, id) : Promise.resolve(false),
+    // Seit 0146 drei Zustände (folgt / angefragt / keiner) plus die
+    // Einstellung des Profils, ob es Follower bestätigt.
+    showFollow
+      ? getFolgeZustand(viewer!.id, id)
+      : Promise.resolve({ zustand: "keiner" as const, brauchtBestaetigung: false }),
   ]);
 
   const zeigtStatistiken = profile.zeigtPaesse || profile.zeigtHoehenmeter || profile.zeigtDistanz;
@@ -128,7 +132,11 @@ export default async function FahrerPage({
               size={64}
             />
             <div className="flex flex-col gap-1">
-              <h1 className="text-display font-semibold">{profile.displayName ?? "Fahrer"}</h1>
+              {/* wrap-anywhere statt break-words: Die Überschrift steckt in zwei
+                  flex-Zeilen, und nur anywhere senkt die Mindestbreite — ein
+                  langer Name ohne Leerzeichen bricht so um, statt die Zeile
+                  samt Folgen-Knopf aus dem Bild zu schieben. */}
+              <h1 className="text-display font-semibold wrap-anywhere">{profile.displayName ?? "Fahrer"}</h1>
               <FollowCounts
                 followersCount={followCounts.followers}
                 followingCount={followCounts.following}
@@ -144,7 +152,13 @@ export default async function FahrerPage({
               )}
             </div>
           </div>
-          {showFollow && <FollowButton targetUserId={id} initialFollowing={alreadyFollowing} />}
+          {showFollow && (
+            <FollowButton
+              targetUserId={id}
+              initialZustand={folgeZustand.zustand}
+              brauchtBestaetigung={folgeZustand.brauchtBestaetigung}
+            />
+          )}
         </div>
 
         {zeigtStatistiken && (
@@ -159,13 +173,16 @@ export default async function FahrerPage({
             {profile.zeigtHoehenmeter && profile.hoehenmeter > 0 && (
               <Kennzahl
                 beschriftung="Höhenmeter"
-                wert={`${profile.hoehenmeter.toLocaleString("de-CH")} m`}
+                wert={formatMeter(profile.hoehenmeter)}
               />
             )}
             {profile.zeigtDistanz && profile.distanzKm > 0 && (
               <Kennzahl
                 beschriftung="Distanz"
-                wert={`${profile.distanzKm.toFixed(0)} km`}
+                // Schweizer Tausendertrennung wie bei den Höhenmetern darüber
+                // und im eigenen Profil — "1234 km" neben "12’345 m" las sich
+                // wie zwei Schreibweisen.
+                wert={`${Math.round(profile.distanzKm).toLocaleString("de-CH")}\u00a0km`}
               />
             )}
           </Kennzahlen>

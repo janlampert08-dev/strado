@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation";
 import { MoreHorizontal, Trash2 } from "@/components/NavIcons";
 import {
   deleteCompletion,
-  toggleCompletionVisibility,
+  setCompletionVisibility,
   updateCompletionNotiz,
 } from "@/lib/actions/completions";
-import { GlobeIcon, LockIcon } from "@/components/VisibilityIcons";
-import { COVERAGE_THRESHOLD_PERCENT } from "@/lib/routeCoverage";
+import { SichtbarkeitIcon } from "@/components/VisibilityIcons";
+import { SICHTBARKEITEN, teilenSperrGrund, type Sichtbarkeit } from "@/lib/sichtbarkeit";
 import Card from "@/components/ui/Card";
 import IconButton from "@/components/ui/IconButton";
 import { Dialog } from "@/components/ui/Dialog";
@@ -22,19 +22,29 @@ const ITEM_CLASS =
 
 const MAX_NOTIZ_LENGTH = 280;
 
+// Was ein Eintrag tut, von der aktuellen Stufe aus gesehen.
+const ZIEL_LABEL: Record<Sichtbarkeit, string> = {
+  privat: "Privat machen",
+  follower: "Nur mit Followern teilen",
+  oeffentlich: "Öffentlich teilen",
+};
+
 // 3-Punkte-Menü auf der Fahrt-Detailseite (app/fahrten/[id]/page.tsx),
 // ersetzt die vorherige statische "Nur für dich sichtbar"-Card — nur für den
 // Besitzer gerendert. Gleiches Grundmuster wie RouteActionsMenu.tsx
 // (Klick-ausserhalb schliesst, Card elevated als Dropdown-Panel).
 export default function CompletionActionsMenu({
   completionId,
-  isPublic,
+  sichtbarkeit,
   coveragePercent,
   blockedReason = null,
   notiz,
+  stufen = SICHTBARKEITEN,
 }: {
   completionId: string;
-  isPublic: boolean;
+  sichtbarkeit: Sichtbarkeit;
+  // Welche Stufen das Menü anbietet — erkannte Abschnitte kein "Follower".
+  stufen?: readonly Sichtbarkeit[];
   coveragePercent: number | null;
   blockedReason?: string | null;
   notiz: string | null;
@@ -51,11 +61,10 @@ export default function CompletionActionsMenu({
   const containerRef = useRef<HTMLDivElement>(null);
   const ausloeserRef = useRef<HTMLButtonElement>(null);
 
-  const belowThreshold =
-    coveragePercent !== null && coveragePercent < COVERAGE_THRESHOLD_PERCENT;
   // Gesperrt wird je nach Fahrtart über den Deckungsgrad (Strecke) oder die
-  // Mindestwerte fürs Teilen (freie Fahrt, siehe publicationBlockReason).
-  const toggleBlocked = !isPublic && (belowThreshold || blockedReason !== null);
+  // Mindestwerte fürs Teilen (freie Fahrt, siehe publicationBlockReason) —
+  // für Follower genauso wie für alle (0145).
+  const sperrGrund = teilenSperrGrund(coveragePercent, blockedReason);
 
   useEffect(() => {
     if (!open) return;
@@ -116,10 +125,10 @@ export default function CompletionActionsMenu({
     if (fokusIstDrin) ausloeserRef.current?.focus();
   }
 
-  function handleToggleVisibility() {
+  function handleSetVisibility(ziel: Sichtbarkeit) {
     schliessenUndFokusZurueck();
     startToggle(async () => {
-      const result = await toggleCompletionVisibility(completionId);
+      const result = await setCompletionVisibility(completionId, ziel);
       setError(result.error);
     });
   }
@@ -160,29 +169,26 @@ export default function CompletionActionsMenu({
       </IconButton>
       {open && (
         <Card elevated as="div" className="absolute top-full right-0 z-10 mt-1 flex w-60 flex-col overflow-hidden">
-          <button
-            type="button"
-            onClick={handleToggleVisibility}
-            disabled={toggling || toggleBlocked}
-            title={
-              toggleBlocked
-                ? (blockedReason ??
-                  `Kann nicht öffentlich gemacht werden — deckt nur ${Math.round(coveragePercent ?? 0)}% der Strecke ab.`)
-                : undefined
-            }
-            className={`${ITEM_CLASS} flex items-center gap-1.5`}
-          >
-            {/* Icon zeigt den aktuellen Sichtbarkeitsstatus — dieselbe
-                Globus/Schloss-Zuordnung wie RideVisibilityToggle,
-                LiveTrackingForm und NeueStreckeForm, statt hier eine reine
-                Textzeile ohne visuellen Anker zu bleiben. */}
-            {isPublic ? (
-              <GlobeIcon className="h-4 w-4 text-muted" aria-hidden="true" />
-            ) : (
-              <LockIcon className="h-4 w-4 text-muted" aria-hidden="true" />
-            )}
-            {isPublic ? "Privat machen" : "Öffentlich teilen"}
-          </button>
+          {/* Die beiden anderen Stufen als eigene Einträge, jeder mit dem
+              Symbol der Stufe, in die er führt — dieselbe Zuordnung
+              Schloss/Personen/Globus wie RideVisibilityToggle und das
+              Fazit-Formular. */}
+          {stufen.filter((stufe) => stufe !== sichtbarkeit).map((stufe) => {
+            const gesperrt = stufe !== "privat" && sperrGrund !== null;
+            return (
+              <button
+                key={stufe}
+                type="button"
+                onClick={() => handleSetVisibility(stufe)}
+                disabled={toggling || gesperrt}
+                title={gesperrt ? sperrGrund : undefined}
+                className={`${ITEM_CLASS} flex items-center gap-1.5`}
+              >
+                <SichtbarkeitIcon sichtbarkeit={stufe} className="h-4 w-4 text-muted" />
+                {ZIEL_LABEL[stufe]}
+              </button>
+            );
+          })}
           <button
             type="button"
             onClick={() => {
