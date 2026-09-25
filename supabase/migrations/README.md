@@ -89,6 +89,20 @@ unverändert, also ohne Follower-Fahrten.
   meldet deshalb "nichts getroffen". Eigener Fix nötig (SELECT-Policy für
   Moderatoren über `ist_moderator()` oder eine SECURITY-DEFINER-Funktion).
 - **Weg zurück:** siehe Kopf der Datei.
+- **Bekannte Grenzen (zweites Code-Review, bewusst so ausgeliefert):**
+  - *Neu-Einspielen von vorn scheitert an 0134:* dessen Insert-Grant nennt
+    `fuer_follower` (#460), die Spalte entsteht erst in 0145. In der
+    Produktion war die Reihenfolge richtig (0145 vor 0134 eingespielt); ein
+    `supabase db reset` oder ein Branch muss 0145 vor 0134 einspielen. 0134
+    ist eingespielt und wird nicht mehr geändert.
+  - *Moderation sieht bei gemeldeten Follower-Fahrten nur den Text* (Titel,
+    Startort, Strecke, Notiz über `gemeldete_fahrten_fuer_moderation`), die
+    Fahrtseite selbst bleibt für Nicht-Follower 404 — Fotos und Karte lassen
+    sich also nicht prüfen, verbergen (0148) geht trotzdem.
+  - *Streckenfahrten ohne gespeicherten Track* (nur nach einer
+    Kontolöschung) verlieren beim Wechsel öffentlich → Follower ihren
+    Deckungsgrad (0052, Fall 4) und bleiben privat. Am 2026-09-25 gemessen:
+    0 solche Fahrten, und die Konten dazu können sich nicht mehr anmelden.
 
 ## Stand 2026-09-25 (abends): 0130–0140
 

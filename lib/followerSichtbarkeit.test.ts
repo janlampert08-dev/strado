@@ -13,10 +13,16 @@ const dateien = readdirSync(verzeichnis)
   .filter((f) => /^\d{4}_.*\.sql$/.test(f))
   .sort();
 
-// Die jüngste Definition einer View: die letzte Datei, die sie neu anlegt,
-// und darin der Text bis zum nächsten Semikolon am Zeilenende.
+// Die jüngste Definition einer View: die letzte Datei, die sie neu anlegt —
+// per "create or replace view" oder per "drop view … ; create view" (so
+// muss man es machen, wenn eine Spalte wegfällt) —, und darin der Text bis
+// zum nächsten Semikolon am Zeilenende.
+function definitionsMuster(view: string): RegExp {
+  return new RegExp(`create (?:or replace )?view public\\.${view} as([\\s\\S]*?);\\s*$`, "im");
+}
+
 function juengsteDefinition(view: string): { datei: string; sql: string } {
-  const muster = new RegExp(`create or replace view public\\.${view} as([\\s\\S]*?);\\s*$`, "im");
+  const muster = definitionsMuster(view);
   for (const datei of [...dateien].reverse()) {
     const treffer = muster.exec(readFileSync(join(verzeichnis, datei), "utf8"));
     if (treffer) return { datei, sql: treffer[1] };
@@ -49,7 +55,7 @@ describe("Follower-Fahrten in den öffentlichen Views (0145)", () => {
       let gefunden = false;
       for (const datei of [...dateien].reverse()) {
         const sql = readFileSync(join(verzeichnis, datei), "utf8");
-        const m = new RegExp(`create or replace view public\\.${view} as([\\s\\S]*?);\\s*$`, "im").exec(sql);
+        const m = definitionsMuster(view).exec(sql);
         if (m) {
           expect(m[1], `${view} in ${datei}`).not.toMatch(/fuer_follower/);
           gefunden = true;

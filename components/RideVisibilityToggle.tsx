@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { setCompletionVisibility } from "@/lib/actions/completions";
 import { SichtbarkeitIcon } from "@/components/VisibilityIcons";
 import {
@@ -50,12 +50,20 @@ export default function RideVisibilityToggle({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  // Der Dialog wird beim Schliessen ausgehängt statt geschlossen — den
+  // Fokus gibt deshalb nicht der Browser zurück, sondern schliessen() hier.
+  const ausloeserRef = useRef<HTMLButtonElement>(null);
+
+  function schliessen() {
+    setOpen(false);
+    ausloeserRef.current?.focus();
+  }
 
   // Teilen — mit Followern wie mit allen — hängt an denselben Hürden.
   const sperrGrund = teilenSperrGrund(coveragePercent, blockedReason);
 
   function waehle(ziel: Sichtbarkeit) {
-    setOpen(false);
+    schliessen();
     if (ziel === sichtbarkeit) return;
     startTransition(async () => {
       const result = await setCompletionVisibility(completionId, ziel);
@@ -66,6 +74,7 @@ export default function RideVisibilityToggle({
   return (
     <div className="relative shrink-0">
       <IconButton
+        ref={ausloeserRef}
         ton={sichtbarkeit === "privat" ? "neutral" : "aktiv"}
         aria-haspopup="dialog"
         aria-label={`Sichtbarkeit: ${SICHTBARKEIT_LABEL[sichtbarkeit]} — ändern`}
@@ -82,7 +91,7 @@ export default function RideVisibilityToggle({
           jeder Fahrt, und hundert versteckte Dialoge im DOM braucht es
           nicht. */}
       {open && (
-      <Dialog open={open} onClose={() => setOpen(false)} title="Wer sieht diese Fahrt?">
+      <Dialog open={open} onClose={schliessen} title="Wer sieht diese Fahrt?">
         <div role="radiogroup" aria-label="Sichtbarkeit der Fahrt" className="flex flex-col gap-2">
           {stufen.map((stufe) => {
             const gesperrt = stufe !== "privat" && sperrGrund !== null;
