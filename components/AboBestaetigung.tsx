@@ -10,7 +10,9 @@ import {
   confirmCheckoutSession,
   confirmSubscription,
   meldeCheckoutProblem,
+  pruefeCheckoutErgebnis,
 } from "@/lib/actions/billing";
+import type { AboPlan } from "@/lib/premiumLimits";
 import { fehlerMeldung } from "@/lib/checkoutFehler";
 import { EINZELVERSUCH, WARTEZEITEN_MS } from "@/lib/abobremse";
 
@@ -45,7 +47,11 @@ function warte(ms: number): Promise<void> {
   return new Promise((fertig) => setTimeout(fertig, ms));
 }
 
-type Zustand = "prueft" | "bestaetigt" | "offen";
+// "offen": nicht bestätigt, aber womöglich unterwegs. "fehlgeschlagen":
+// Stripe sagt ausdrücklich, dass diese Zahlung nicht zustande kam (abgelehnt
+// oder Session abgelaufen) — siehe lib/checkoutErgebnis.ts. Nur dann darf die
+// Seite "nicht abgeschlossen" sagen; im Zweifel bleibt es bei "offen".
+type Zustand = "prueft" | "bestaetigt" | "offen" | "fehlgeschlagen";
 
 export default function AboBestaetigung({
   sitzung,
@@ -59,6 +65,9 @@ export default function AboBestaetigung({
 }) {
   const router = useRouter();
   const [zustand, setZustand] = useState<Zustand>("prueft");
+  // Der Plan der gescheiterten Session, für den Weg zurück aufs
+  // Bezahlformular. Kommt vom Server (Session-Metadaten), nicht aus der URL.
+  const [plan, setPlan] = useState<AboPlan | null>(null);
   // Verhindert einen zweiten Durchlauf, solange einer läuft — sowohl beim
   // doppelt ausgeführten Effekt im Entwicklungsmodus als auch beim hektisch
   // getippten "Erneut prüfen".
@@ -93,6 +102,22 @@ export default function AboBestaetigung({
     }
   }
 
+  // Nach einem erfolglosen Versuch: ist die Zahlung sicher gescheitert?
+  // Nur für den regulären Weg (Checkout-Session); der Übergangsweg über die
+  // Abo-ID kennt diese Unterscheidung nicht und bleibt beim alten Verhalten.
+  // Ein Fehler hier ist kein Befund — dann wird einfach weiter geprüft.
+  async function sicherGescheitert(): Promise<boolean> {
+    if (!sitzung) return false;
+    try {
+      const antwort = await pruefeCheckoutErgebnis(sitzung);
+      if (antwort.ergebnis !== "fehlgeschlagen") return false;
+      setPlan(antwort.plan);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async function schleife(wartezeiten: readonly number[]) {
     if (laeuft.current) return;
     laeuft.current = true;
@@ -116,6 +141,16 @@ export default function AboBestaetigung({
           // Seite später neu lädt, kommt damit erneut durch die Prüfung,
           // statt auf eine Seite ohne Bezug zu seiner Zahlung zu treffen.
           router.refresh();
+          return;
+        }
+
+        // Eine abgelehnte TWINT-Zahlung wird nicht mehr bezahlt, egal wie
+        // lange diese Seite wartet. Sie bis zum Ende der Leiter als
+        // "unterwegs" zu führen, hiess: eine halbe Minute Warten auf nichts,
+        // und danach der Satz "geht nichts verloren" statt "versuch es
+        // nochmals".
+        if (await sicherGescheitert()) {
+          if (!abgemeldet.current) setZustand("fehlgeschlagen");
           return;
         }
       }
@@ -143,6 +178,31 @@ export default function AboBestaetigung({
           </p>
         </div>
         <Skeleton className="h-32 w-full rounded-lg" />
+      </div>
+    );
+  }
+
+  if (zustand === "fehlgeschlagen") {
+    // Zurück aufs Bezahlformular desselben Plans: createCheckoutSession
+    // nimmt dort die noch offene Session wieder auf (oder legt eine neue an,
+    // wenn sie abgelaufen ist) — ein zweiter Versuch ist also derselbe Kauf,
+    // kein zweiter. Ohne bekannten Plan zur Planauswahl.
+    const zurueck = plan ? `/profil/premium/zahlung?plan=${plan}` : "/profil/premium";
+    return (
+      <div className="flex flex-col gap-4">
+        <h1 className="text-display font-semibold">Zahlung nicht abgeschlossen</h1>
+        <p role="alert" className="text-sm text-muted">
+          Die Zahlung wurde abgelehnt oder abgebrochen — abgebucht wurde nichts. Versuch es
+          nochmals, gern auch mit einer anderen Zahlungsart.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Link href={zurueck} className={buttonVariants({ size: "sm" })}>
+            Nochmals versuchen
+          </Link>
+          <Link href="/profil" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+            Zum Profil
+          </Link>
+        </div>
       </div>
     );
   }
