@@ -747,7 +747,7 @@ export default async function StreckeDetailPage({
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">
                       <Link
-                        href={`/strecken/${nachbar.id}`}
+                        href={streckenPfad(nachbar)}
                         className="hover:text-accent-ink after:absolute after:inset-0 after:content-['']"
                       >
                         {nachbar.name}

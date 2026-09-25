@@ -11,10 +11,10 @@ import { istFeedGesund, schwerwiegendster } from "@/lib/passStatus";
 import { heuteCH, type PassEreignis, type Sperrtag, type SperrtagArt } from "@/lib/passKalender";
 import { throwOnQueryError } from "@/lib/queryError";
 import { fehltSlugSpalte } from "@/lib/streckenPfad";
+import { istPassId, naechstePaesse, punktAusEwkb } from "@/lib/passSeite";
 
 /** Die öffentliche Strecke über einen Pass; slug fehlt vor 0130. */
 export type PassStrecke = { id: string; name: string; slug?: string | null };
-import { istPassId, naechstePaesse, punktAusEwkb } from "@/lib/passSeite";
 
 export interface Pass {
   id: string;
@@ -452,6 +452,8 @@ export async function getPassModerationsDaten(): Promise<ModerationsDaten> {
 
 export interface PassSeitenStrecke {
   id: string;
+  /** Lesbare Adresse (0130). */
+  slug: string | null;
   name: string;
   region: string;
   startOrt: string;
@@ -542,7 +544,7 @@ export const getPassSeite = cache(async function getPassSeite(id: string): Promi
   const { data: streckenRoh, error: streckenFehler } = routeIds.length
     ? await supabase
         .from("routes")
-        .select("id, name, region, start_ort, ziel_ort, laenge_km, kehren, hoehe_m, max_steigung_prozent")
+        .select("id, slug, name, region, start_ort, ziel_ort, laenge_km, kehren, hoehe_m, max_steigung_prozent")
         .in("id", routeIds)
         .eq("status_ok", true)
         .eq("ist_privat", false)
@@ -553,7 +555,7 @@ export const getPassSeite = cache(async function getPassSeite(id: string): Promi
   throwOnQueryError(streckenFehler, "Die Strecken über diesen Pass");
 
   type StreckeRoh = {
-    id: string; name: string; region: string; start_ort: string; ziel_ort: string;
+    id: string; slug: string | null; name: string; region: string; start_ort: string; ziel_ort: string;
     laenge_km: number; kehren: number | null; hoehe_m: number | null;
     max_steigung_prozent: number | null;
   };
@@ -584,6 +586,7 @@ export const getPassSeite = cache(async function getPassSeite(id: string): Promi
     folgtMan: ((folgen.data as { pass_id: string }[] | null) ?? []).length > 0,
     strecken: ((streckenRoh as StreckeRoh[] | null) ?? []).map((s) => ({
       id: s.id,
+      slug: s.slug,
       name: s.name,
       region: s.region,
       startOrt: s.start_ort,

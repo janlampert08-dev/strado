@@ -19,6 +19,7 @@ import { formatKm, formatMeter } from "@/lib/format";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { siteUrl } from "@/lib/siteUrl";
 import { ogMitBild } from "@/lib/openGraph";
+import { streckenPfad } from "@/lib/streckenPfad";
 
 // Die Seite eines einzelnen Passes: heutiger Zustand, übliche Wintersperre,
 // die Strecke darüber, die Nachbarn.
@@ -128,7 +129,7 @@ export default async function PassSeite({ params }: Props) {
             subjectOf: strecken.map((s) => ({
               "@type": "TouristTrip",
               name: s.name,
-              url: `${origin}/strecken/${s.id}`,
+              url: `${origin}${streckenPfad(s)}`,
             })),
           }
         : {}),
@@ -223,7 +224,7 @@ export default async function PassSeite({ params }: Props) {
                   <p className="font-medium">
                     {/* after:inset-0: die ganze Karte ist die Tippfläche. */}
                     <Link
-                      href={`/strecken/${strecke.id}`}
+                      href={streckenPfad(strecke)}
                       className="hover:text-accent-ink after:absolute after:inset-0 after:content-['']"
                     >
                       {strecke.name}
