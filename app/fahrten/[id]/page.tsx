@@ -342,7 +342,12 @@ export default async function FahrtDetailPage({
                   eine Follower-Fahrt sähe dort nicht jeder, dem das Bild
                   weitergeleitet wird. Streckenfahrten nehmen wie bisher die
                   Streckengeometrie. */}
-              {(route ||
+              {/* Teilen-Bild nur für den Fahrer selbst oder bei öffentlichen
+                  Fahrten: eine Follower-Fahrt hat der Fahrer bewusst nicht
+                  öffentlich gemacht — ein Follower soll sie nicht per
+                  Knopfdruck als Bild auf Instagram tragen (Code-Review). */}
+              {(completion.isOwner || completion.sichtbarkeit === "oeffentlich") &&
+                (route ||
                 (istFreieFahrt && completion.sichtbarkeit === "oeffentlich" && completion.track)) && (
                 <ShareRideButton
                   routeId={route?.id ?? null}
@@ -373,6 +378,9 @@ export default async function FahrtDetailPage({
                 <CompletionActionsMenu
                   completionId={completion.id}
                   sichtbarkeit={completion.sichtbarkeit}
+                  // Erkannte Abschnitte folgen der Fahrt (0151) und werden
+                  // nie "nur für Follower" (0154).
+                  stufen={completion.parentCompletionId ? ["privat", "oeffentlich"] : undefined}
                   coveragePercent={completion.abdeckungProzent}
                   blockedReason={
                     completion.importiert

@@ -29,6 +29,23 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Eingespielt: 0154_abschnitte_ohne_follower (2026-09-25, Produktion)
+
+Erkannte Abschnitte (`parent_completion_id` gesetzt) werden nie "nur für
+Follower": der Trigger aus 0145 verengt sie jetzt auch. Grund: 0151 lässt
+Abschnitte der Öffentlichkeit ihrer Fahrt folgen, synchronisiert aber nur
+`ist_oeffentlich` — eine eigene Follower-Stufe bliebe beim Privatstellen der
+Fahrt stehen. Die Oberfläche bietet Abschnitten ohnehin nur Privat/Öffentlich.
+
+- **Zurückgerollter Test vorher:** Abschnitt auf Follower → bleibt false;
+  normale Fahrt auf Follower → true; Triggerfunktion für anon nicht aufrufbar.
+- **Gemessen danach:** Ledger `0154_abschnitte_ohne_follower`, Regel im
+  Funktionsrumpf, 0 Abschnitte mit `fuer_follower`.
+- `lib/followerSichtbarkeit.test.ts` prüft ab jetzt, dass die jüngste
+  Definition jeder der vier Views `fuer_follower` nur zusammen mit
+  `fahrt_fuer_follower_sichtbar()` freigibt und die Ranglisten keine
+  Follower-Fahrten kennen.
+
 ## Eingespielt: 0145_fahrten_fuer_follower (2026-09-25, Produktion)
 
 Dritte Sichtbarkeitsstufe für Fahrten: nur für Follower. Neue Spalte

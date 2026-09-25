@@ -39,9 +39,12 @@ export default function CompletionActionsMenu({
   coveragePercent,
   blockedReason = null,
   notiz,
+  stufen = SICHTBARKEITEN,
 }: {
   completionId: string;
   sichtbarkeit: Sichtbarkeit;
+  // Welche Stufen das Menü anbietet — erkannte Abschnitte kein "Follower".
+  stufen?: readonly Sichtbarkeit[];
   coveragePercent: number | null;
   blockedReason?: string | null;
   notiz: string | null;
@@ -170,7 +173,7 @@ export default function CompletionActionsMenu({
               Symbol der Stufe, in die er führt — dieselbe Zuordnung
               Schloss/Personen/Globus wie RideVisibilityToggle und das
               Fazit-Formular. */}
-          {SICHTBARKEITEN.filter((stufe) => stufe !== sichtbarkeit).map((stufe) => {
+          {stufen.filter((stufe) => stufe !== sichtbarkeit).map((stufe) => {
             const gesperrt = stufe !== "privat" && sperrGrund !== null;
             return (
               <button

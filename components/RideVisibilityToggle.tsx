@@ -78,6 +78,10 @@ export default function RideVisibilityToggle({
       >
         <SichtbarkeitIcon sichtbarkeit={sichtbarkeit} className="h-5 w-5" />
       </IconButton>
+      {/* Nur eingehängt, solange offen: im Profil steht dieser Knopf an
+          jeder Fahrt, und hundert versteckte Dialoge im DOM braucht es
+          nicht. */}
+      {open && (
       <Dialog open={open} onClose={() => setOpen(false)} title="Wer sieht diese Fahrt?">
         <div role="radiogroup" aria-label="Sichtbarkeit der Fahrt" className="flex flex-col gap-2">
           {stufen.map((stufe) => {
@@ -112,6 +116,7 @@ export default function RideVisibilityToggle({
           })}
         </div>
       </Dialog>
+      )}
       {error && (
         <Card
           elevated

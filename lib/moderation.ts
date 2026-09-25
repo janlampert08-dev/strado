@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { throwOnQueryError } from "@/lib/queryError";
 import { freieFahrtTitel } from "@/lib/completions";
 import { leseModeratorStatus } from "@/lib/moderatorStatus";
 import type { Route } from "@/types/database";
@@ -149,9 +150,12 @@ export async function getOpenCompletionReports(): Promise<CompletionReportWithCo
   // zeigt einem Moderator aber keine Follower-Fahrt, und die kann ein
   // Follower seither melden. Die Funktion liefert nur geteilte Fahrten mit
   // offener Meldung, und nur an Moderatoren.
-  const { data } = await supabase.rpc("gemeldete_fahrten_fuer_moderation", {
+  const { data, error: fahrtenFehler } = await supabase.rpc("gemeldete_fahrten_fuer_moderation", {
     p_ids: completionIds,
   });
+  // Ein Fehler darf nicht als "alle Fahrten sind schon privat" durchgehen —
+  // sonst verschwänden sämtliche Meldungen still aus der Warteschlange.
+  throwOnQueryError(fahrtenFehler, "Gemeldete Fahrten");
   const fahrten = data as
     | {
         completion_id: string;

@@ -1387,12 +1387,6 @@ export async function setCompletionVisibility(
     .maybeSingle<{ ist_oeffentlich: boolean; fuer_follower: boolean }>();
 
   if (error || !gespeichert) return { error: "Sichtbarkeit konnte nicht geändert werden." };
-  // Die Trigger (0052/0059/0145) verengen still, statt abzulehnen. Hat die
-  // Datenbank die Fahrt privat gelassen, darf die Oberfläche nicht "geteilt"
-  // behaupten.
-  if (sichtbarkeitAus(gespeichert) !== sichtbarkeit) {
-    return { error: "Diese Fahrt kann nicht geteilt werden und bleibt privat." };
-  }
 
   revalidatePath("/profil");
   revalidatePath("/feed");
@@ -1400,8 +1394,15 @@ export async function setCompletionVisibility(
   revalidatePath(`/fahrer/${user.id}`);
   if (existing.route_id) revalidatePath(`/strecken/${existing.route_id}`);
   // Nur wenn die Fahrt in die Ranglisten kommt oder aus ihnen verschwindet.
-  if (existing.ist_oeffentlich !== (sichtbarkeit === "oeffentlich")) {
+  if (existing.ist_oeffentlich !== gespeichert.ist_oeffentlich) {
     revalidatePath("/ranglisten");
+  }
+  // Die Trigger (0052/0059/0145/0154) verengen still, statt abzulehnen. Hat
+  // die Datenbank die Fahrt privat gelassen, darf die Oberfläche nicht
+  // "geteilt" behaupten. Erst nach dem Revalidieren: geschrieben ist der
+  // verengte Stand ja trotzdem, und die Seiten sollen ihn zeigen.
+  if (sichtbarkeitAus(gespeichert) !== sichtbarkeit) {
+    return { error: "Diese Fahrt kann nicht geteilt werden und bleibt privat." };
   }
   return { error: null };
 }

@@ -721,7 +721,7 @@ export default function LiveTrackingForm({
               // "zurückgelegte Länge". Der dritte Grund im Text ist der neue:
               // bei einer Strecke, die über dieselbe Strasse zurückführt, kann
               // alles berührt und trotzdem nur die Hälfte gefahren sein.
-              publicDisabledHint: `Diese Fahrt deckt nur ${coveragePercent}% der offiziellen Strecke ab — evtl. abgekürzt, am falschen Punkt gestartet/beendet, oder die Strecke führt zurück und du bist nur eine Richtung gefahren. Sie bleibt privat gespeichert, kann aber nicht öffentlich geteilt werden.`,
+              publicDisabledHint: `Diese Fahrt deckt nur ${coveragePercent}% der offiziellen Strecke ab — evtl. abgekürzt, am falschen Punkt gestartet/beendet, oder die Strecke führt zurück und du bist nur eine Richtung gefahren. Sie bleibt privat gespeichert und kann weder öffentlich noch mit Followern geteilt werden.`,
               publicHint:
                 "Öffentlich: erscheint in den Ranglisten und auf deinem öffentlichen Profil. Später jederzeit umschaltbar.",
               followerHint:
