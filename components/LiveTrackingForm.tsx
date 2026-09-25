@@ -359,7 +359,11 @@ export default function LiveTrackingForm({
     // dem Bild. Die Karte behält mindestens 30dvh, das Panel schrumpft nie.
     return (
       <FullscreenDialog label="Fahrt aufzeichnen" className="fixed inset-0 z-50 flex flex-col overflow-y-auto overscroll-y-contain bg-background">
-        <div className="flex-1 min-h-[30dvh]">
+        {/* Die Karte beginnt bei y=0: In der installierten App lagen Zoom und
+            Kompass (.mapboxgl-ctrl-top-right) sonst unter der Statusleiste.
+            Das ! ist nötig, weil mapbox-gl.css ungeschichtet ist und damit
+            jede Tailwind-Utility ohne !important schlägt. */}
+        <div className="flex-1 min-h-[30dvh] [&_.mapboxgl-ctrl-top-right]:top-[var(--safe-top)]!">
           <RouteMap
             routes={routes}
             // Derselbe Schweiz-Scheinwerfer wie auf Home und bei der freien
