@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isModerator } from "@/lib/moderation";
+import { oeffentlicheStreckenGeaendert } from "@/lib/streckenCache";
 
 // Zusätzlich zur RLS-Policy "Moderatoren können alle Strecken freischalten"
 // (siehe 0009_profil_erweiterungen.sql) auch hier explizit prüfen
@@ -92,6 +93,9 @@ export async function approveRoute(routeId: string): Promise<ModerationResult> {
   if (error) return fehlgeschlagen("Das Freischalten");
   if (count === 0) return nichtGetroffen("Das Freischalten");
 
+  // Freigegebener Bestand geändert: Startseite und Streckenseiten lesen
+  // ihn aus dem Cache (lib/streckenCache.ts).
+  oeffentlicheStreckenGeaendert();
   revalidatePath("/moderation");
   revalidatePath("/");
   revalidatePath("/profil");
@@ -113,6 +117,9 @@ export async function rejectRoute(routeId: string): Promise<ModerationResult> {
   if (error) return fehlgeschlagen("Das Ablehnen");
   if (count === 0) return nichtGetroffen("Das Ablehnen");
 
+  // Freigegebener Bestand geändert: Startseite und Streckenseiten lesen
+  // ihn aus dem Cache (lib/streckenCache.ts).
+  oeffentlicheStreckenGeaendert();
   revalidatePath("/moderation");
   revalidatePath("/");
   revalidatePath("/profil");
@@ -188,6 +195,7 @@ export async function deleteReportedRoute(routeId: string): Promise<ModerationRe
   if (error) return fehlgeschlagen("Das Löschen der Strecke");
   if (count === 0) return nichtGetroffen("Das Löschen der Strecke");
 
+  oeffentlicheStreckenGeaendert();
   revalidatePath("/moderation");
   revalidatePath("/");
   return OK;

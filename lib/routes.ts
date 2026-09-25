@@ -1,5 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { createAnonClient } from "@/lib/supabase/anon";
+import { oeffentlichGecacht } from "@/lib/streckenCache";
 import { haversineKm } from "@/lib/geo";
 import { fehltSlugSpalte, leseStreckenAdressteil } from "@/lib/streckenPfad";
 import { waehleNachbarStrecken } from "@/lib/nachbarStrecken";
@@ -48,16 +50,33 @@ const EXPLORE_SPALTEN_LEGACY =
 // überquert. Die Karte zeichnet auf der Startseite und bei der freien Fahrt
 // nie eine Tempolimit-Ebene (showSpeedLimits fehlt dort), sie vermisst die
 // Segmente also nicht.
+//
+// Anfrageübergreifend zwischengespeichert (lib/streckenCache.ts): der
+// Bestand ist für alle derselbe, nur freigegebene, öffentliche Strecken.
+// Ein Ladefehler wird geworfen (nicht gecacht) und hier zu error: true.
 export async function getRoutes(): Promise<{
   routes: ExploreRoute[];
   signaturen: Record<string, RouteSignature>;
   error: boolean;
 }> {
-  const supabase = await createClient();
+  try {
+    return { ...(await ladeOeffentlicheRoutes()), error: false };
+  } catch (fehler) {
+    console.error("Strecken konnten nicht geladen werden:", (fehler as Error).message);
+    return { routes: [], signaturen: {}, error: true };
+  }
+}
+
+const ladeOeffentlicheRoutes = oeffentlichGecacht("explore", async (): Promise<{
+  routes: ExploreRoute[];
+  signaturen: Record<string, RouteSignature>;
+}> => {
+  const supabase = createAnonClient();
   const mitSlug = await supabase
     .from("routes_geojson")
     .select(EXPLORE_SPALTEN)
     .eq("status_ok", true)
+    .eq("ist_privat", false)
     .order("name");
   let data: unknown = mitSlug.data;
   let error = mitSlug.error;
@@ -69,6 +88,7 @@ export async function getRoutes(): Promise<{
       .from("routes_geojson")
       .select(EXPLORE_SPALTEN_OHNE_SLUG)
       .eq("status_ok", true)
+      .eq("ist_privat", false)
       .order("name");
     data = ohneSlug.data;
     error = ohneSlug.error;
@@ -81,31 +101,25 @@ export async function getRoutes(): Promise<{
         .from("routes_geojson")
         .select(EXPLORE_SPALTEN_LEGACY)
         .eq("status_ok", true)
+        .eq("ist_privat", false)
         .order("name");
-      if (fallback.error) {
-        console.error("Strecken konnten nicht geladen werden:", fallback.error.message);
-        return { routes: [], signaturen: {}, error: true };
-      }
-      return { ...mitSignaturen((fallback.data as unknown as ExploreZeile[]) ?? []), error: false };
+      if (fallback.error) throw new Error(fallback.error.message);
+      return mitSignaturen((fallback.data as unknown as ExploreZeile[]) ?? []);
     }
-    console.error("Strecken konnten nicht geladen werden:", error.message);
-    return { routes: [], signaturen: {}, error: true };
+    throw new Error(error.message);
   }
 
   // Die Karte zeichnet die vereinfachte Linie; fehlt sie (null), gilt die
   // exakte. Deckungsgrad und Erkennung nutzen diese Funktion nie — sie lesen
   // die volle Geometrie über getRoute()/Kandidaten.
   const zeilen = (data as unknown as ExploreZeile[]) ?? [];
-  return {
-    ...mitSignaturen(
-      zeilen.map(({ geometry_uebersicht_geojson, ...rest }) => ({
-        ...rest,
-        geometry_geojson: geometry_uebersicht_geojson ?? rest.geometry_geojson,
-      })),
-    ),
-    error: false,
-  };
-}
+  return mitSignaturen(
+    zeilen.map(({ geometry_uebersicht_geojson, ...rest }) => ({
+      ...rest,
+      geometry_geojson: geometry_uebersicht_geojson ?? rest.geometry_geojson,
+    })),
+  );
+});
 
 // Eine Zeile, wie getRoutes() sie liest: ExploreRoute plus die beiden
 // Spalten, die den Server nicht verlassen.
@@ -137,15 +151,27 @@ export function mitSignaturen(
 // zweiten Welle danach (app/page.tsx). Ein Fehler ergibt eine leere Liste:
 // dann fehlen Sterne und Abzeichen, die Liste selbst steht — dasselbe wie
 // bisher, wenn getRoutes() scheiterte.
+//
+// Im selben Cache wie getRoutes() (lib/streckenCache.ts, gleicher Tag):
+// beide Mengen veralten und erneuern sich zusammen.
 export async function getFreigegebeneStreckenIds(): Promise<string[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.from("routes").select("id").eq("status_ok", true);
-  if (error) {
-    console.error("Strecken-IDs konnten nicht geladen werden:", error.message);
+  try {
+    return await ladeFreigegebeneStreckenIds();
+  } catch (fehler) {
+    console.error("Strecken-IDs konnten nicht geladen werden:", (fehler as Error).message);
     return [];
   }
-  return ((data as { id: string }[] | null) ?? []).map((r) => r.id);
 }
+
+const ladeFreigegebeneStreckenIds = oeffentlichGecacht("ids", async (): Promise<string[]> => {
+  const { data, error } = await createAnonClient()
+    .from("routes")
+    .select("id")
+    .eq("status_ok", true)
+    .eq("ist_privat", false);
+  if (error) throw new Error(error.message);
+  return ((data as { id: string }[] | null) ?? []).map((r) => r.id);
+});
 
 // Umkreis um die gefahrene Strecke, in dem umliegende Strecken auf der
 // Aufzeichnungskarte als Orientierung mitgezeichnet werden. 25 km decken die
@@ -282,12 +308,25 @@ const KARTEN_SPALTEN_UEBERSICHT =
 // bloss die Orientierungshilfe, nicht die Aufzeichnung — dann bleibt die
 // Karte bei der gefahrenen Strecke allein (gleiches Verhalten wie bei der
 // freien Fahrt, siehe app/fahrten/neu/page.tsx).
+//
+// Der Bestand ist für alle derselbe und liegt im Cache (lib/streckenCache.ts);
+// nur die Auswahl um die jeweilige Strecke läuft pro Anfrage.
 export async function getKontextStrecken(route: RouteGeoJSON): Promise<KartenStrecke[]> {
-  const supabase = await createClient();
+  try {
+    return waehleKontextStrecken(await ladeKontextBestand(), route);
+  } catch (fehler) {
+    console.error("Kontext-Strecken konnten nicht geladen werden:", (fehler as Error).message);
+    return [];
+  }
+}
+
+const ladeKontextBestand = oeffentlichGecacht("kontext", async (): Promise<KartenStrecke[]> => {
+  const supabase = createAnonClient();
   const { data, error } = await supabase
     .from("routes_geojson")
     .select(KARTEN_SPALTEN_UEBERSICHT)
-    .eq("status_ok", true);
+    .eq("status_ok", true)
+    .eq("ist_privat", false);
 
   if (!error) {
     type Zeile = Omit<KartenStrecke, "geometry_geojson"> & {
@@ -297,13 +336,12 @@ export async function getKontextStrecken(route: RouteGeoJSON): Promise<KartenStr
     // Eine Zeile ohne Übersicht (null) fällt weg statt ihre exakte Linie
     // nachzuladen: die Übersicht ist eine generierte Spalte, null heisst
     // also, es gibt keine Geometrie zum Zeichnen.
-    const strecken: KartenStrecke[] = zeilen
+    return zeilen
       .filter((z) => z.geometry_uebersicht_geojson?.coordinates?.length)
       .map(({ geometry_uebersicht_geojson, ...rest }) => ({
         ...rest,
         geometry_geojson: geometry_uebersicht_geojson!,
       }));
-    return waehleKontextStrecken(strecken, route);
   }
 
   // 0117 noch nicht eingespielt: unbekannte Spalte -> exakte Linien wie
@@ -312,17 +350,27 @@ export async function getKontextStrecken(route: RouteGeoJSON): Promise<KartenStr
     const fallback = await supabase
       .from("routes_geojson")
       .select(KARTEN_SPALTEN)
-      .eq("status_ok", true);
-    if (!fallback.error) {
-      return waehleKontextStrecken((fallback.data as unknown as KartenStrecke[]) ?? [], route);
-    }
-    console.error("Kontext-Strecken konnten nicht geladen werden:", fallback.error.message);
-    return [];
+      .eq("status_ok", true)
+      .eq("ist_privat", false);
+    if (fallback.error) throw new Error(fallback.error.message);
+    return (fallback.data as unknown as KartenStrecke[]) ?? [];
   }
 
-  console.error("Kontext-Strecken konnten nicht geladen werden:", error.message);
-  return [];
-}
+  throw new Error(error.message);
+});
+
+type NachbarZeile = { id: string; name: string; region: string; laenge_km: number; start_geojson: { coordinates: [number, number] }; slug: string | null };
+
+// Der Bestand für getNachbarStrecken(), im Cache (lib/streckenCache.ts).
+const ladeNachbarBestand = oeffentlichGecacht("nachbarn", async (): Promise<NachbarZeile[]> => {
+  const { data, error } = await createAnonClient()
+    .from("routes_geojson")
+    .select("id, name, region, laenge_km, start_geojson, slug")
+    .eq("status_ok", true)
+    .eq("ist_privat", false);
+  if (error) throw new Error(error.message);
+  return (data as unknown as NachbarZeile[]) ?? [];
+});
 
 export interface NachbarStrecke {
   id: string;
@@ -343,24 +391,19 @@ export async function getNachbarStrecken(route: {
   region: string;
   start_geojson: { coordinates: unknown };
 }): Promise<NachbarStrecke[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("routes_geojson")
-    .select("id, name, region, laenge_km, start_geojson, slug")
-    .eq("status_ok", true)
-    .eq("ist_privat", false);
-
-  if (error) {
-    console.error("Nachbarstrecken konnten nicht geladen werden:", error.message);
+  let data: NachbarZeile[];
+  try {
+    data = await ladeNachbarBestand();
+  } catch (fehler) {
+    console.error("Nachbarstrecken konnten nicht geladen werden:", (fehler as Error).message);
     return [];
   }
 
-  type Zeile = { id: string; name: string; region: string; laenge_km: number; start_geojson: { coordinates: [number, number] }; slug: string | null };
-  const kandidaten = ((data as unknown as Zeile[]) ?? [])
+  const kandidaten = data
     .filter((z) => Array.isArray(z.start_geojson?.coordinates))
     .map((z) => ({ id: z.id, name: z.name, region: z.region, laengeKm: z.laenge_km, start: z.start_geojson.coordinates }));
 
-  const slugJeId = new Map(((data as unknown as Zeile[]) ?? []).map((z) => [z.id, z.slug]));
+  const slugJeId = new Map(data.map((z) => [z.id, z.slug]));
 
   return waehleNachbarStrecken(kandidaten, {
     id: route.id,
@@ -393,23 +436,29 @@ export interface RouteSitemapEintrag {
 // vollständig, aber ohne Geometrie, Höhenprofil und Namen: bei dreissig
 // Strecken ist die Geometrie der mit Abstand teuerste Posten, und gezeichnet
 // wird hier nichts davon.
+//
+// Im Cache (lib/streckenCache.ts): derselbe Bestand für alle.
 export async function getSignaturbestand(): Promise<SignaturStrecke[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("routes")
-    .select("id, hoehe_m, laenge_km, max_steigung_prozent, kehren, tempolimits")
-    .eq("status_ok", true);
-
-  // Ohne Bestand kein Vergleich, und ohne Vergleich kein Merkmal — die
-  // Streckenseite lässt das Abzeichen dann weg, statt eine Fehlermeldung
-  // für eine Auszeichnung zu zeigen.
-  if (error) {
-    console.error("Signaturbestand konnte nicht geladen werden:", error.message);
+  try {
+    return await ladeSignaturbestand();
+  } catch (fehler) {
+    // Ohne Bestand kein Vergleich, und ohne Vergleich kein Merkmal — die
+    // Streckenseite lässt das Abzeichen dann weg, statt eine Fehlermeldung
+    // für eine Auszeichnung zu zeigen.
+    console.error("Signaturbestand konnte nicht geladen werden:", (fehler as Error).message);
     return [];
   }
-
-  return (data as unknown as SignaturStrecke[]) ?? [];
 }
+
+const ladeSignaturbestand = oeffentlichGecacht("signatur", async (): Promise<SignaturStrecke[]> => {
+  const { data, error } = await createAnonClient()
+    .from("routes")
+    .select("id, hoehe_m, laenge_km, max_steigung_prozent, kehren, tempolimits")
+    .eq("status_ok", true)
+    .eq("ist_privat", false);
+  if (error) throw new Error(error.message);
+  return (data as unknown as SignaturStrecke[]) ?? [];
+});
 
 export async function listRoutesForSitemap(): Promise<RouteSitemapEintrag[]> {
   const supabase = await createClient();
