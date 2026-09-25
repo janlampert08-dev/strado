@@ -32,6 +32,8 @@ export async function toggleFollow(
   zustand?: FolgeZustand;
   // false: der Knopf war veraltet, es wurde nichts geändert.
   geaendert?: boolean;
+  // true: zu schnell hintereinander getippt (Sperre gegen Skripte).
+  gebremst?: boolean;
   // Die Regel des Profils, wie sie jetzt gilt — der Knopf kennt sie sonst
   // nur vom Laden der Seite.
   brauchtBestaetigung?: boolean;
@@ -50,7 +52,7 @@ export async function toggleFollow(
 
   // Alles, was vor dem Schreiben gelesen werden muss, in einem Zug. Beide
   // Tabellen für die Sperre: Anfragen legen keine follows-Zeile an.
-  const [folgenGesperrt, anfragenGesperrt, { data: folgt }, { data: anfrage }, regel] =
+  const [folgenGesperrt, anfragenGesperrt, folgtLesen, anfrageLesen, regel] =
     await Promise.all([
       isRateLimited(supabase, "follows", "erstellt_am", "follower_id", user.id, FOLLOW_COOLDOWN_MS),
       isRateLimited(supabase, "folge_anfragen", "erstellt_am", "von", user.id, FOLLOW_COOLDOWN_MS),
@@ -68,7 +70,12 @@ export async function toggleFollow(
         .maybeSingle(),
       supabase.rpc("folgen_braucht_bestaetigung", { p_ziel: targetUserId }),
     ]);
-  if (folgenGesperrt || anfragenGesperrt || regel.error) return { ok: false };
+  // Ein Lesefehler ist kein "keine Zeile": sonst meldete der Knopf "du
+  // folgst nicht mehr", während die Beziehung weiter besteht.
+  if (folgtLesen.error || anfrageLesen.error || regel.error) return { ok: false };
+  if (folgenGesperrt || anfragenGesperrt) return { ok: false, gebremst: true };
+  const folgt = folgtLesen.data;
+  const anfrage = anfrageLesen.data;
 
   const brauchtBestaetigung = regel.data === true;
   const vorher: FolgeZustand = folgt ? "folgt" : anfrage ? "angefragt" : "keiner";
@@ -79,20 +86,40 @@ export async function toggleFollow(
 
   let zustand: FolgeZustand;
   if (vorher === "folgt") {
-    const { error } = await supabase
+    const { error, count } = await supabase
       .from("follows")
-      .delete()
+      .delete({ count: "exact" })
       .eq("follower_id", user.id)
       .eq("followed_id", targetUserId);
     if (error) return { ok: false };
+    // 0 Zeilen: der Gefolgte hat einen inzwischen entfernt.
+    if (count === 0) return { ok: true, zustand: "keiner", geaendert: false, brauchtBestaetigung };
     zustand = "keiner";
   } else if (vorher === "angefragt") {
-    const { error } = await supabase
+    const { error, count } = await supabase
       .from("folge_anfragen")
-      .delete()
+      .delete({ count: "exact" })
       .eq("von", user.id)
       .eq("an", targetUserId);
     if (error) return { ok: false };
+    // 0 Zeilen: die Anfrage wurde gerade beantwortet — angenommen (dann folgt
+    // man jetzt) oder abgelehnt. Den echten Stand nachlesen statt
+    // "zurückgezogen" zu melden.
+    if (count === 0) {
+      const { data: jetzt, error: nachlesen } = await supabase
+        .from("follows")
+        .select("followed_id")
+        .eq("follower_id", user.id)
+        .eq("followed_id", targetUserId)
+        .maybeSingle();
+      if (nachlesen) return { ok: false };
+      return {
+        ok: true,
+        zustand: jetzt ? "folgt" : "keiner",
+        geaendert: false,
+        brauchtBestaetigung,
+      };
+    }
     zustand = "keiner";
   } else if (brauchtBestaetigung) {
     const { error } = await supabase
@@ -130,12 +157,14 @@ export async function followerEntfernen(followerId: string): Promise<{ ok: boole
   } = await supabase.auth.getUser();
   if (!user || user.id === followerId) return { ok: false };
 
-  const { error, count } = await supabase
+  const { error } = await supabase
     .from("follows")
-    .delete({ count: "exact" })
+    .delete()
     .eq("follower_id", followerId)
     .eq("followed_id", user.id);
-  if (error || count === 0) return { ok: false };
+  if (error) return { ok: false };
+  // 0 Zeilen: die Person folgt schon nicht mehr (selbst entfolgt) — das Ziel
+  // ist erreicht, die Liste soll den Eintrag nicht zurückholen.
 
   revalidatePath("/profil");
   revalidatePath(`/fahrer/${user.id}`);

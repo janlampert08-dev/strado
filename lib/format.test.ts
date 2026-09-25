@@ -8,8 +8,7 @@ import {
   formatMeter,
   mitAnzahl,
   nomen,
-  todayInZurich,
-} from "@/lib/format";
+  todayInZurich, formatZeitpunkt } from "@/lib/format";
 
 describe("formatDuration", () => {
   it("formats sub-hour durations as mm:ss", () => {
@@ -121,5 +120,14 @@ describe("formatKmGerundet", () => {
     expect(formatKmGerundet(24.371829)).toBe("24");
     expect(formatKmGerundet(7.5)).toBe("8");
     expect(formatKmGerundet(33.49)).toBe("33");
+  });
+});
+
+describe("formatZeitpunkt", () => {
+  it("rechnet in Europe/Zurich, unabhängig von der Zeitzone des Servers", () => {
+    // 12:05 UTC im Sommer ist 14:05 in Zürich (CEST).
+    expect(formatZeitpunkt("2026-09-25T12:05:00Z")).toContain("14:05");
+    // 23:30 UTC ist in Zürich schon der nächste Tag.
+    expect(formatZeitpunkt("2026-09-25T23:30:00Z")).toContain("26.");
   });
 });

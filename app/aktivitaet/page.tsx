@@ -86,7 +86,7 @@ export default async function AktivitaetPage() {
 
           <FolgeanfragenListe initial={anfragen} />
 
-          <ActivityList initialEintraege={eintraege} />
+          <ActivityList initialEintraege={eintraege} hatFolgeanfragen={anfragen.length > 0} />
         </Seitenrahmen>
       </div>
       </PullToRefreshArea>

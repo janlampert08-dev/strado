@@ -8,7 +8,6 @@ import EmptyState from "@/components/ui/EmptyState";
 import { Lock, Users } from "@/components/NavIcons";
 import type { FollowProfile } from "@/lib/follows";
 import { followerEntfernen } from "@/lib/actions/follows";
-import { zeigeHinweis } from "@/components/Hinweis";
 import { buttonVariants } from "@/components/ui/Button";
 
 // Popup für die Follower/Following-Zahlen auf Profilseiten (eigenes und
@@ -45,6 +44,9 @@ export default function FollowListModal({
   const [rueckfrage, setRueckfrage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const liste = profiles.filter((p) => !entfernt.has(p.id));
+  // Rückmeldung IM Dialog statt als Hinweis-Toast: der Toast liegt nicht im
+  // Top-Layer und verschwände hinter dem offenen <dialog>.
+  const [meldung, setMeldung] = useState<{ text: string; fehler: boolean } | null>(null);
 
   function entfernen(profile: FollowProfile) {
     setRueckfrage(null);
@@ -57,15 +59,19 @@ export default function FollowListModal({
           neu.delete(profile.id);
           return neu;
         });
-        zeigeHinweis("Das hat nicht geklappt. Bitte versuche es noch einmal.");
+        setMeldung({ text: "Das hat nicht geklappt. Bitte versuche es noch einmal.", fehler: true });
         return;
       }
-      zeigeHinweis(`${profile.displayName ?? "Die Person"} folgt dir nicht mehr.`);
+      setMeldung({ text: `${profile.displayName ?? "Die Person"} folgt dir nicht mehr.`, fehler: false });
     });
   }
 
   return (
     <Dialog open={open} onClose={onClose} title={title} className="max-h-[70dvh] overflow-y-auto overscroll-y-contain">
+      {/* role="status" liest die Rückmeldung vor, ohne den Fokus zu ziehen. */}
+      <p role="status" className={meldung?.fehler ? "text-sm text-danger" : "text-sm text-muted"}>
+        {meldung?.text}
+      </p>
       {hidden ? (
         <EmptyState icon={Lock} title="Diese Liste ist privat." />
       ) : liste.length === 0 ? (
@@ -96,6 +102,9 @@ export default function FollowListModal({
                     </button>
                     <button
                       type="button"
+                      // Der erste Knopf verschwindet beim Tippen — ohne das
+                      // landete der Tastaturfokus auf <body>.
+                      autoFocus
                       disabled={pending}
                       onClick={() => entfernen(profile)}
                       aria-label={`${profile.displayName ?? "Fahrer"} wirklich als Follower entfernen`}

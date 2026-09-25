@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { OG_GEERBT } from "@/lib/openGraph";
 import Link from "next/link";
 import { Car, Route as RouteIcon } from "@/components/NavIcons";
+import { FollowerIcon } from "@/components/VisibilityIcons";
 import Header from "@/components/Header";
 import Avatar from "@/components/Avatar";
 import KudosButton from "@/components/KudosButton";
@@ -224,7 +225,16 @@ export default async function FahrerPage({
                             ? freieFahrtTitel(f.titel, f.start_ort)
                             : f.route_name}
                         </span>
-                        <span className="ml-2 shrink-0 text-xs tabular-nums text-muted">
+                        <span className="ml-2 flex shrink-0 items-center gap-1.5 text-xs tabular-nums text-muted">
+                          {/* Follower-Fahrten sehen nur Follower und der
+                              Fahrer selbst — auch in der Vorschau "So sehen
+                              dich andere" soll das erkennbar sein (0145). */}
+                          {f.fuer_follower && (
+                            <span className="inline-flex items-center" title="Nur für Follower sichtbar">
+                              <FollowerIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                              <span className="sr-only">Nur für Follower sichtbar</span>
+                            </span>
+                          )}
                           {datumCH(new Date(f.datum))}
                         </span>
                       </Link>

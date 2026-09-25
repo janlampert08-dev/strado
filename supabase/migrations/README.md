@@ -29,6 +29,32 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Eingespielt: 0162_kudos_eigene_sichtbar (2026-09-25, Produktion)
+
+Drittes Code-Review nach dem Release: wer einer Person nicht mehr folgt
+(oder entfernt wurde), sah seine eigenen Kudos auf deren Follower-Fahrten
+nicht mehr und konnte sie deshalb nicht zurücknehmen. Neue SELECT-Policy
+"Nutzer sehen eigene Kudos"; Kommentar von `kudos_summary` berichtigt.
+
+- **Zurückgerollter Test vorher:** ehemaliger Follower sieht sein Kudo (1),
+  nicht die Zahl (`kudos_summary` leer), kann es zurücknehmen (1 Zeile);
+  Fremder sieht nichts (0).
+- **Gemessen danach:** Ledger `0162_kudos_eigene_sichtbar`, vier Policies auf
+  kudos.
+
+**Weitere Befunde des dritten Reviews, bewusst so gelassen:**
+- `gemeldete_fahrt_verbergen` (0148) scheitert, wenn eine Altzeile gegen
+  eine nachträglich eingeführte Prüfung verstösst (NOT-VALID-Checks aus 0059,
+  Tempogrenze je Klasse aus 0080): jedes UPDATE prüft die ganze Zeile.
+  Gemessen am 2026-09-25: 0 von 13 geteilten Fahrten betroffen; neue Fahrten
+  durchlaufen dieselben Prüfungen schon beim Speichern.
+- Eine abgelehnte Anfrage kann sofort neu gestellt werden (nur die
+  500-ms-Sperre bremst). Eine Sperre nach Ablehnung bräuchte einen
+  gespeicherten Ablehnungsvermerk — offen.
+- 0160 übernimmt den Anfragezeitpunkt in die follows-Zeile: eine lange
+  wartende Anfrage erscheint nach der Annahme weiter unten in der
+  Aktivität, bei vielen neueren Einträgen ausserhalb der letzten 30.
+
 ## Ausstehend: 0161_ist_premium_privat — erst nach der nächsten Promotion
 
 Entzieht anon/authenticated den Spalten-Grant auf `profiles.ist_premium`
@@ -91,7 +117,7 @@ eigenen Follower-Liste (`followerEntfernen`).
 auf. Das Ausschalten von "Neue Follower bestätigen" nimmt offene Anfragen
 NICHT mehr an (Code-Review vor dem Release: der Schalter speichert sofort, ein
 versehentliches Umlegen hätte Fremde unwiderruflich zu Followern gemacht).
-Die Funktion bleibt im Schema; 0146 ist eingespielt und wird nicht geändert.
+0160 hat die Funktion inzwischen entfernt; 0146 ist eingespielt und wird nicht geändert.
 
 ## Eingespielt: 0146 und 0147 (Folgeanfragen, 2026-09-25, Produktion)
 

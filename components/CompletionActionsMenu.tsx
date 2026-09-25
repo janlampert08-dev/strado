@@ -181,11 +181,16 @@ export default function CompletionActionsMenu({
                 type="button"
                 onClick={() => handleSetVisibility(stufe)}
                 disabled={toggling || gesperrt}
-                title={gesperrt ? sperrGrund : undefined}
-                className={`${ITEM_CLASS} flex items-center gap-1.5`}
+                className={`${ITEM_CLASS} flex items-start gap-1.5`}
               >
-                <SichtbarkeitIcon sichtbarkeit={stufe} className="h-4 w-4 text-muted" />
-                {ZIEL_LABEL[stufe]}
+                <SichtbarkeitIcon sichtbarkeit={stufe} className="mt-0.5 h-4 w-4 shrink-0 text-muted" />
+                {/* Der Grund steht sichtbar darunter statt im title: ein
+                    deaktivierter Eintrag zeigt keinen Tooltip, auf dem
+                    Telefon ohnehin nicht. */}
+                <span className="flex flex-col">
+                  {ZIEL_LABEL[stufe]}
+                  {gesperrt && <span className="text-xs text-muted">{sperrGrund}</span>}
+                </span>
               </button>
             );
           })}

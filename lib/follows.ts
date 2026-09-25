@@ -1,17 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { throwOnQueryError } from "@/lib/queryError";
 
-export async function isFollowing(followerId: string, followedId: string): Promise<boolean> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("follows")
-    .select("followed_id")
-    .eq("follower_id", followerId)
-    .eq("followed_id", followedId)
-    .maybeSingle();
-  return data !== null;
-}
-
 // Wie der Betrachter zu einem Profil steht (0146): er folgt, hat angefragt,
 // oder keins von beidem — plus ob das Profil Anfragen verlangt, damit der
 // Knopf "Folgen" oder "Anfrage senden" sagen kann.
