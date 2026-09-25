@@ -53,7 +53,8 @@ export default function DetectedSegmentsCard({ segments }: { segments: DetectedS
                 </Link>
                 <RideVisibilityToggle
                   completionId={segment.id}
-                  isPublic={segment.istOeffentlich}
+                  sichtbarkeit={segment.sichtbarkeit}
+                  stufen={["privat", "oeffentlich"]}
                   coveragePercent={segment.abdeckungProzent}
                 />
               </div>

@@ -68,9 +68,10 @@ export async function searchProfiles(query: string): Promise<ProfileSearchResult
   // Quellen, die für jeden ohnehin lesbar sind:
   //
   // - Region und Fahrtenzahl aus public_fahrten — dieselbe Sicht, die den
-  //   öffentlichen Feed und das öffentliche Profil speist. Sie enthält nur
-  //   Fahrten mit ist_oeffentlich = true; eine private Fahrt verrät hier
-  //   also weder ihre Region noch ihre Existenz.
+  //   öffentlichen Feed und das öffentliche Profil speist. Sie enthält
+  //   öffentliche Fahrten und, nur für Follower, Follower-Fahrten (0145);
+  //   eine private Fahrt verrät hier also weder ihre Region noch ihre
+  //   Existenz.
   // - Follower über get_follow_counts, die SECURITY-DEFINER-Funktion, die
   //   auch das Profil nutzt (0040). Die Zahl ist laut Einstellungen "für
   //   andere immer sichtbar", unabhängig von zeigt_follower_liste — die

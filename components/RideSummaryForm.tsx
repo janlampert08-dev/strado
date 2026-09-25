@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { addVehicleInline } from "@/lib/actions/vehicles";
-import { GlobeIcon, LockIcon } from "@/components/VisibilityIcons";
+import { FollowerIcon, GlobeIcon, LockIcon } from "@/components/VisibilityIcons";
+import type { Sichtbarkeit } from "@/lib/sichtbarkeit";
 import MultiPhotoInput from "@/components/MultiPhotoInput";
 import type { FahrzeugTyp, Vehicle } from "@/types/database";
 import MotorklasseBadge from "@/components/MotorklasseBadge";
@@ -49,10 +50,12 @@ export const FAZIT_ABSCHNITT = "flex flex-col gap-2 border-t border-border pt-4 
 const FAHRZEUG_FELD = "flex flex-col gap-1 text-xs font-medium text-muted";
 
 export interface VisibilityChoice {
-  // Verhindert die Auswahl "öffentlich" (z.B. Deckungsgrad unterschritten).
+  // Verhindert jedes Teilen — "Follower" wie "öffentlich" (z.B.
+  // Deckungsgrad unterschritten, siehe 0145).
   publicDisabled: boolean;
   publicDisabledHint?: string;
   publicHint: string;
+  followerHint: string;
   privateHint: string;
 }
 
@@ -71,8 +74,8 @@ export default function RideSummaryForm({
   ticketJson = "null",
   visibility,
   visibilityNote,
-  isPublic,
-  onIsPublicChange,
+  sichtbarkeit,
+  onSichtbarkeitChange,
   onSubmit,
   onDiscard,
   onResume,
@@ -92,8 +95,10 @@ export default function RideSummaryForm({
   // null: keine Auswahl anbieten (dann greift visibilityNote als Erklärung).
   visibility: VisibilityChoice | null;
   visibilityNote?: string;
-  isPublic: boolean;
-  onIsPublicChange: (next: boolean) => void;
+  // Die Aufzeichnungs-Komponente setzt hier schon "privat", wenn das Teilen
+  // gesperrt ist — der Server prüft es ohnehin noch einmal.
+  sichtbarkeit: Sichtbarkeit;
+  onSichtbarkeitChange: (next: Sichtbarkeit) => void;
   onSubmit: () => void;
   onDiscard: () => void;
   /** "Weiter aufzeichnen": die Fahrt war nicht zu Ende, nur der Knopf wurde
@@ -231,7 +236,14 @@ export default function RideSummaryForm({
       }}
       className="flex flex-col gap-4"
     >
-      <input type="hidden" name="ist_oeffentlich" value={isPublic ? "true" : "false"} />
+      <input type="hidden" name="sichtbarkeit" value={sichtbarkeit} />
+      {/* Für einen Server von vor 0145, solange ein Deploy noch nicht
+          überall angekommen ist. Der neue liest "sichtbarkeit" zuerst. */}
+      <input
+        type="hidden"
+        name="ist_oeffentlich"
+        value={sichtbarkeit === "oeffentlich" ? "true" : "false"}
+      />
       {/* distanz_km/dauer_sekunden/abdeckung_prozent werden serverseitig aus
           trail neu berechnet (lib/actions/completions.ts) — hier nur der
           aufgezeichnete GPS-Trail als Rohdaten, keine vom Client berechneten
@@ -447,8 +459,8 @@ export default function RideSummaryForm({
                 Klassen. Siehe components/ui/SegmentedControl.tsx. */}
             <SegmentedControl
               label="Sichtbarkeit der Fahrt"
-              wert={isPublic ? "oeffentlich" : "privat"}
-              onChange={(w: "privat" | "oeffentlich") => onIsPublicChange(w === "oeffentlich")}
+              wert={sichtbarkeit}
+              onChange={(w: Sichtbarkeit) => onSichtbarkeitChange(w)}
               segmente={[
                 {
                   wert: "privat" as const,
@@ -458,6 +470,17 @@ export default function RideSummaryForm({
                       Privat
                     </>
                   ),
+                },
+                {
+                  wert: "follower" as const,
+                  label: (
+                    <>
+                      <FollowerIcon className="h-4 w-4" />
+                      Follower
+                    </>
+                  ),
+                  gesperrt: visibility.publicDisabled,
+                  hinweis: visibility.publicDisabledHint,
                 },
                 {
                   wert: "oeffentlich" as const,
@@ -475,9 +498,11 @@ export default function RideSummaryForm({
             <p className="text-sm text-muted">
               {visibility.publicDisabled
                 ? visibility.publicDisabledHint
-                : isPublic
+                : sichtbarkeit === "oeffentlich"
                   ? visibility.publicHint
-                  : visibility.privateHint}
+                  : sichtbarkeit === "follower"
+                    ? visibility.followerHint
+                    : visibility.privateHint}
             </p>
           </>
         ) : (

@@ -29,6 +29,81 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Eingespielt: 0154_abschnitte_ohne_follower (2026-09-25, Produktion)
+
+Erkannte Abschnitte (`parent_completion_id` gesetzt) werden nie "nur für
+Follower": der Trigger aus 0145 verengt sie jetzt auch. Grund: 0151 lässt
+Abschnitte der Öffentlichkeit ihrer Fahrt folgen, synchronisiert aber nur
+`ist_oeffentlich` — eine eigene Follower-Stufe bliebe beim Privatstellen der
+Fahrt stehen. Die Oberfläche bietet Abschnitten ohnehin nur Privat/Öffentlich.
+
+- **Zurückgerollter Test vorher:** Abschnitt auf Follower → bleibt false;
+  normale Fahrt auf Follower → true; Triggerfunktion für anon nicht aufrufbar.
+- **Gemessen danach:** Ledger `0154_abschnitte_ohne_follower`, Regel im
+  Funktionsrumpf, 0 Abschnitte mit `fuer_follower`.
+- `lib/followerSichtbarkeit.test.ts` prüft ab jetzt, dass die jüngste
+  Definition jeder der vier Views `fuer_follower` nur zusammen mit
+  `fahrt_fuer_follower_sichtbar()` freigibt und die Ranglisten keine
+  Follower-Fahrten kennen.
+
+## Eingespielt: 0145_fahrten_fuer_follower (2026-09-25, Produktion)
+
+Dritte Sichtbarkeitsstufe für Fahrten: nur für Follower. Neue Spalte
+`route_completions.fuer_follower`; `public_fahrten`, `public_fahrt_tracks`,
+`public_completion_photos`, `kudos_summary` und die zwei Kudos-Policies
+lassen Follower-Fahrten für Follower durch. Moderatoren lesen gemeldete
+Fahrten über `gemeldete_fahrten_fuer_moderation()`, nicht über die Views.
+Neuer Teilindex `route_completions_geteilt_datum_idx` für den Feed.
+Ranglisten, `route_photos` und `oeffentliche_passhoehen` bleiben
+unverändert, also ohne Follower-Fahrten.
+
+- **Geschrieben als 0140**, vor dem Einspielen umnummeriert: dieselbe
+  Nummer hatte inzwischen `0140_streckentexte_steigung_abgleich` belegt.
+- **Gegen den Stand NACH 0139 geschrieben.** Die Moderatoren-Policy heisst
+  seit 0139 "Nutzer bearbeiten eigene Fahrten, Moderatoren entöffentlichen";
+  0145 ändert per `alter policy` nur deren WITH CHECK und lässt das USING
+  stehen, damit 0134 dessen Moderatorenprüfung umstellen kann.
+- **0134 enthält `fuer_follower` in seiner festen Insert-Spaltenliste**
+  (#460, vor dem Einspielen von 0134). Ohne das nähme sein `revoke insert`
+  den Spalten-Grant aus 0145 mit. Gemessen danach: authenticated hat INSERT
+  und UPDATE auf `fuer_follower`.
+- **Live-Körper vorher erneut gelesen:** `anonymize_account`,
+  `save_free_ride_with_segments` und die vier Views entsprachen dem Stand,
+  auf dem die Datei aufbaut.
+- **Zurückgerollter Funktionstest vor dem Einspielen** (ganze Migration +
+  Prüfungen in einer Transaktion, Abschluss per `raise exception`): anon
+  0/0 (Fahrt/Track), Fremder 0/0, Follower 1/1, Besitzer 1; Kudos vom
+  Follower angenommen, vom Fremden abgelehnt; Follower kann melden;
+  Moderator sieht die Fahrt in keiner View, aber über die RPC (1), der
+  Follower über die RPC nicht (0); öffentlich + Follower zugleich wird zu
+  öffentlich; keine Fahrt ist zugleich beides.
+- **Gemessen danach:** Ledger `0145_fahrten_fuer_follower`, 0 Fahrten mit
+  `fuer_follower`, `public_fahrten` führt die Spalte, anon sieht weiter 12
+  Fahrten. `gemeldete_fahrten_fuer_moderation`: authenticated ja, anon
+  nein; Triggerfunktion für niemanden aufrufbar;
+  `fahrt_fuer_follower_sichtbar`: anon ja (gewollt, Views brauchen es).
+- **Nebenbefund, nicht von 0145:** ein Moderator trifft mit einem UPDATE
+  auf `route_completions` heute **0 Zeilen** (gemessen vor 0145) — RLS gibt
+  ihm UPDATE, aber keine SELECT-Policy auf fremde Fahrten, und ohne SELECT
+  sieht das UPDATE die Zeile nicht. "Fahrt verbergen" in der Moderation
+  meldet deshalb "nichts getroffen". Eigener Fix nötig (SELECT-Policy für
+  Moderatoren über `ist_moderator()` oder eine SECURITY-DEFINER-Funktion).
+- **Weg zurück:** siehe Kopf der Datei.
+- **Bekannte Grenzen (zweites Code-Review, bewusst so ausgeliefert):**
+  - *Neu-Einspielen von vorn scheitert an 0134:* dessen Insert-Grant nennt
+    `fuer_follower` (#460), die Spalte entsteht erst in 0145. In der
+    Produktion war die Reihenfolge richtig (0145 vor 0134 eingespielt); ein
+    `supabase db reset` oder ein Branch muss 0145 vor 0134 einspielen. 0134
+    ist eingespielt und wird nicht mehr geändert.
+  - *Moderation sieht bei gemeldeten Follower-Fahrten nur den Text* (Titel,
+    Startort, Strecke, Notiz über `gemeldete_fahrten_fuer_moderation`), die
+    Fahrtseite selbst bleibt für Nicht-Follower 404 — Fotos und Karte lassen
+    sich also nicht prüfen, verbergen (0148) geht trotzdem.
+  - *Streckenfahrten ohne gespeicherten Track* (nur nach einer
+    Kontolöschung) verlieren beim Wechsel öffentlich → Follower ihren
+    Deckungsgrad (0052, Fall 4) und bleiben privat. Am 2026-09-25 gemessen:
+    0 solche Fahrten, und die Konten dazu können sich nicht mehr anmelden.
+
 ## Stand 2026-09-25 (nach Promotion #454): 0132–0134, 0150, 0151 eingespielt
 
 Nach dem Produktions-Deploy von #454 eingespielt und gemessen:

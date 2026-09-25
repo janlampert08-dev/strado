@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight, Rss } from "@/components/NavIcons";
 import Header from "@/components/Header";
+import { FollowerIcon } from "@/components/VisibilityIcons";
 import PullToRefreshArea from "@/components/PullToRefreshArea";
 import Avatar from "@/components/Avatar";
 import KudosButton from "@/components/KudosButton";
@@ -262,6 +263,16 @@ export default async function FeedPage({
                           month: "2-digit",
                         })}
                       </time>
+                      {/* Nur das Symbol: die Zeile ist auf 390 px schon voll.
+                          Sagt dem Follower, dass nicht jeder diese Fahrt
+                          sieht (0145) — wer sie weiterempfiehlt, soll es
+                          wissen. */}
+                      {item.fuer_follower && (
+                        <span className="inline-flex shrink-0 items-center" title="Nur für Follower sichtbar">
+                          <FollowerIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span className="sr-only">Nur für Follower sichtbar</span>
+                        </span>
+                      )}
                       {item.art === "frei" && (
                         <span className="shrink-0 rounded-full border border-border px-1.5 py-0.5 text-xs">
                           Freie Fahrt

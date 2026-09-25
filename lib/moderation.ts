@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { throwOnQueryError } from "@/lib/queryError";
 import { freieFahrtTitel } from "@/lib/completions";
 import { leseModeratorStatus } from "@/lib/moderatorStatus";
 import type { Route } from "@/types/database";
@@ -143,16 +144,20 @@ export async function getOpenCompletionReports(): Promise<CompletionReportWithCo
   if (!reports || reports.length === 0) return [];
 
   const completionIds = [...new Set(reports.map((r) => r.completion_id))];
-  // Über public_fahrten statt route_completions: die Tabelle selbst ist per
-  // RLS auf den Besitzer beschränkt, und ein Moderator ist das nicht. Die
-  // View zeigt genau die öffentlichen Fahrten — und nur die können gemeldet
-  // werden (Insert-Policy in 0046).
-  const { data: fahrten } = await supabase
-    .from("public_fahrten")
-    .select("completion_id, art, titel, start_ort, route_name, notiz")
-    .in("completion_id", completionIds)
-    .returns<
-      {
+  // Über gemeldete_fahrten_fuer_moderation() (0145) statt route_completions:
+  // die Tabelle selbst ist per RLS auf den Besitzer beschränkt, und ein
+  // Moderator ist das nicht. Bis 0145 lief das über public_fahrten — das
+  // zeigt einem Moderator aber keine Follower-Fahrt, und die kann ein
+  // Follower seither melden. Die Funktion liefert nur geteilte Fahrten mit
+  // offener Meldung, und nur an Moderatoren.
+  const { data, error: fahrtenFehler } = await supabase.rpc("gemeldete_fahrten_fuer_moderation", {
+    p_ids: completionIds,
+  });
+  // Ein Fehler darf nicht als "alle Fahrten sind schon privat" durchgehen —
+  // sonst verschwänden sämtliche Meldungen still aus der Warteschlange.
+  throwOnQueryError(fahrtenFehler, "Gemeldete Fahrten");
+  const fahrten = data as
+    | {
         completion_id: string;
         art: "strecke" | "frei";
         titel: string | null;
@@ -160,7 +165,7 @@ export async function getOpenCompletionReports(): Promise<CompletionReportWithCo
         route_name: string | null;
         notiz: string | null;
       }[]
-    >();
+    | null;
 
   const fahrtById = new Map((fahrten ?? []).map((f) => [f.completion_id, f]));
 

@@ -26,6 +26,7 @@ import MarkSeen from "@/components/MarkSeen";
 import VehicleGrid from "@/components/VehicleGrid";
 import AvatarUpload from "@/components/AvatarUpload";
 import RideVisibilityToggle from "@/components/RideVisibilityToggle";
+import { sichtbarkeitAus } from "@/lib/sichtbarkeit";
 import AchievementBadges from "@/components/AchievementBadges";
 import { getSammlungsStand } from "@/lib/paesse";
 import ActivityHeatmap from "@/components/ActivityHeatmap";
@@ -202,7 +203,7 @@ export default async function ProfilPage() {
         // Streckenfahrt trägt route_completions.region nichts, bei einer
         // freien Fahrt gibt es keine Strecke — deshalb weiter unten das
         // coalesce der beiden, wie es public_fahrten seit 0045 auch macht.
-        "id, art, route_id, fahrzeug_id, datum, dauer_sekunden, distanz_km, ist_oeffentlich, abdeckung_prozent, notiz, titel, start_ort, region, bewegte_zeit_sekunden, hoehenmeter_aufstieg, routes(name, region)",
+        "id, art, route_id, fahrzeug_id, datum, dauer_sekunden, distanz_km, importiert, ist_oeffentlich, fuer_follower, abdeckung_prozent, notiz, titel, start_ort, region, bewegte_zeit_sekunden, hoehenmeter_aufstieg, routes(name, region)",
       )
       .eq("user_id", user.id)
       .not("dauer_sekunden", "is", null)
@@ -224,7 +225,9 @@ export default async function ProfilPage() {
           datum: string;
           dauer_sekunden: number;
           distanz_km: number;
+          importiert: boolean;
           ist_oeffentlich: boolean;
+          fuer_follower: boolean;
           abdeckung_prozent: number | null;
           notiz: string | null;
           titel: string | null;
@@ -660,10 +663,12 @@ export default async function ProfilPage() {
                                   (freie Fahrt, siehe lib/track.ts). */}
                               <RideVisibilityToggle
                                 completionId={ride.id}
-                                isPublic={ride.ist_oeffentlich}
+                                sichtbarkeit={sichtbarkeitAus(ride)}
                                 coveragePercent={ride.abdeckung_prozent}
                                 blockedReason={
-                                  ride.art === "frei"
+                                  ride.importiert
+                                    ? "Importierte Fahrten bleiben privat."
+                                    : ride.art === "frei"
                                     ? publicationBlockReason(
                                         ride.distanz_km,
                                         ride.bewegte_zeit_sekunden ?? ride.dauer_sekunden,

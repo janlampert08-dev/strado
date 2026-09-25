@@ -21,6 +21,7 @@ import { formatDuration } from "@/lib/format";
 import type { RouteSignature } from "@/lib/signature";
 import { movingSeconds, publicationBlockReason } from "@/lib/track";
 import { bewerteBewegungsprofil } from "@/lib/bewegungsprofil";
+import type { Sichtbarkeit } from "@/lib/sichtbarkeit";
 import type { ExploreRoute, Vehicle } from "@/types/database";
 import { fieldClassName } from "@/components/ui/Input";
 import { buttonVariants } from "@/components/ui/Button";
@@ -222,8 +223,9 @@ export default function FreeRideForm({
   //
   // Eine Fahrt, die die Veröffentlichung nicht erfüllt, bleibt trotzdem
   // privat: der Wert unten wird mit der Sperre verrechnet, und der Server
-  // kann ist_oeffentlich ohnehin nur verengen (0052).
-  const [isPublic, setIsPublic] = useState(true);
+  // kann ist_oeffentlich ohnehin nur verengen (0052) — fuer_follower
+  // ebenso (0145).
+  const [sichtbarkeit, setSichtbarkeit] = useState<Sichtbarkeit>("oeffentlich");
   const [submitted, setSubmitted] = useState(false);
   // Hält die automatische Weiterleitung an, solange es noch etwas
   // Informatives zu zeigen gibt (siehe partialAttempts unten) — im
@@ -470,11 +472,13 @@ export default function FreeRideForm({
                 publicDisabledHint: publicationBlocked ?? undefined,
                 publicHint:
                   "Öffentlich: erscheint im Feed und auf deinem öffentlichen Profil. Start und Ziel werden auf der Karte gekappt (Privatzone in den Einstellungen). Später jederzeit umschaltbar.",
+                followerHint:
+                  "Follower: nur wer dir folgt, sieht die Fahrt – im Feed und auf deinem Profil. Start und Ziel werden auf der Karte gekappt wie bei öffentlichen Fahrten. Später jederzeit umschaltbar.",
                 privateHint:
                   "Privat: nur du siehst diese Fahrt in deinem Profil, für andere bleibt sie unsichtbar. Später jederzeit umschaltbar.",
               }}
-              isPublic={isPublic && publicationBlocked === null}
-              onIsPublicChange={setIsPublic}
+              sichtbarkeit={publicationBlocked === null ? sichtbarkeit : "privat"}
+              onSichtbarkeitChange={setSichtbarkeit}
               onSubmit={() => setSubmitted(true)}
               onDiscard={handleDiscard}
               onResume={recorder.fortsetzen}
