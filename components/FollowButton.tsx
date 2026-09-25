@@ -66,11 +66,10 @@ export default function FollowButton({
       const result = await toggleFollow(targetUserId, angezeigt);
       if (!result.ok || !result.zustand) {
         setzen(angezeigt);
-        zeigeHinweis(
-          result.gebremst
-            ? "Einen Moment — bitte gleich noch einmal tippen."
-            : "Das hat nicht geklappt. Bitte versuche es noch einmal.",
-        );
+        // Eine Meldung für beides: die Sperre (isRateLimited) antwortet auch
+        // bei einem Lesefehler mit "gesperrt" — "zu schnell getippt" wäre dann
+        // die falsche Erklärung.
+        zeigeHinweis("Das hat nicht geklappt — bitte gleich noch einmal versuchen.");
         return;
       }
       setzen(result.zustand);

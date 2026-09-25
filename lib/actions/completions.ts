@@ -1371,11 +1371,13 @@ export async function setCompletionVisibility(
   // die niemand mehr sehen darf.
   let trackOeffentlich: string | null = null;
   if (geteilt) {
-    const { data: trackRow } = await supabase
+    const { data: trackRow, error: trackFehler } = await supabase
       .from("fahrt_tracks")
       .select("track_geojson")
       .eq("completion_id", completionId)
       .maybeSingle<{ track_geojson: { coordinates: [number, number][] } }>();
+    // Ein Lesefehler ist kein fehlender Track.
+    if (trackFehler) return { error: "Sichtbarkeit konnte nicht geändert werden." };
     // Ohne gespeicherten Track verengt die Datenbank (0052, Fall 4 / 0145)
     // auf privat und setzt bei einer Streckenfahrt den Deckungsgrad auf 0 —
     // eine öffentliche Fahrt wäre danach dauerhaft privat. Vorher ablehnen.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import { Dialog } from "@/components/ui/Dialog";
@@ -47,9 +47,22 @@ export default function FollowListModal({
   // Rückmeldung IM Dialog statt als Hinweis-Toast: der Toast liegt nicht im
   // Top-Layer und verschwände hinter dem offenen <dialog>.
   const [meldung, setMeldung] = useState<{ text: string; fehler: boolean } | null>(null);
+  // Nach "Abbrechen" soll der Fokus auf dem Entfernen-Knopf derselben Zeile
+  // landen, nach dem Entfernen auf der Rückmeldung — beide Male verschwindet
+  // der gerade fokussierte Knopf aus dem Dokument.
+  const [fokusZurueck, setFokusZurueck] = useState<string | null>(null);
+  const meldungRef = useRef<HTMLParagraphElement>(null);
+
+  function schliessen() {
+    setMeldung(null);
+    setRueckfrage(null);
+    onClose();
+  }
 
   function entfernen(profile: FollowProfile) {
     setRueckfrage(null);
+    setMeldung(null);
+    meldungRef.current?.focus();
     setEntfernt((s) => new Set(s).add(profile.id));
     startTransition(async () => {
       const { ok } = await followerEntfernen(profile.id);
@@ -67,9 +80,14 @@ export default function FollowListModal({
   }
 
   return (
-    <Dialog open={open} onClose={onClose} title={title} className="max-h-[70dvh] overflow-y-auto overscroll-y-contain">
+    <Dialog open={open} onClose={schliessen} title={title} className="max-h-[70dvh] overflow-y-auto overscroll-y-contain">
       {/* role="status" liest die Rückmeldung vor, ohne den Fokus zu ziehen. */}
-      <p role="status" className={meldung?.fehler ? "text-sm text-danger" : "text-sm text-muted"}>
+      <p
+        ref={meldungRef}
+        tabIndex={-1}
+        role="status"
+        className={`outline-none ${meldung?.fehler ? "text-sm text-danger" : "text-sm text-muted"}`}
+      >
         {meldung?.text}
       </p>
       {hidden ? (
@@ -95,7 +113,10 @@ export default function FollowListModal({
                   <span className="flex shrink-0 gap-1.5">
                     <button
                       type="button"
-                      onClick={() => setRueckfrage(null)}
+                      onClick={() => {
+                        setRueckfrage(null);
+                        setFokusZurueck(profile.id);
+                      }}
                       className={buttonVariants({ variant: "secondary", size: "sm" })}
                     >
                       Abbrechen
@@ -117,7 +138,13 @@ export default function FollowListModal({
                   <button
                     type="button"
                     disabled={pending}
-                    onClick={() => setRueckfrage(profile.id)}
+                    onClick={() => {
+                      setFokusZurueck(null);
+                      setRueckfrage(profile.id);
+                    }}
+                    // Nur direkt nach "Abbrechen" — sonst stähle es beim
+                    // Öffnen des Dialogs den Fokus.
+                    autoFocus={fokusZurueck === profile.id}
                     aria-label={`${profile.displayName ?? "Fahrer"} als Follower entfernen`}
                     className={buttonVariants({ variant: "secondary", size: "sm", className: "shrink-0" })}
                   >

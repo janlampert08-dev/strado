@@ -47,7 +47,13 @@ export default function FolgeanfragenListe({ initial }: { initial: Folgeanfrage[
   function beantworte(anfrage: Folgeanfrage, annehmen: boolean) {
     // Optimistisch ausblenden; bei einem Fehler wieder an ihren Platz.
     setBeantwortet((s) => new Set(s).add(schluessel(anfrage)));
-    ueberschriftRef.current?.focus();
+    // War es die letzte Anfrage, verschwindet der ganze Abschnitt — dann an
+    // die Seitenüberschrift, die sicher stehen bleibt.
+    if (anfragen.length <= 1) {
+      document.getElementById("aktivitaet-titel")?.focus();
+    } else {
+      ueberschriftRef.current?.focus();
+    }
     startTransition(async () => {
       const { ok } = annehmen
         ? await folgeanfrageAnnehmen(anfrage.von)

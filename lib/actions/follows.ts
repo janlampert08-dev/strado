@@ -32,8 +32,6 @@ export async function toggleFollow(
   zustand?: FolgeZustand;
   // false: der Knopf war veraltet, es wurde nichts geändert.
   geaendert?: boolean;
-  // true: zu schnell hintereinander getippt (Sperre gegen Skripte).
-  gebremst?: boolean;
   // Die Regel des Profils, wie sie jetzt gilt — der Knopf kennt sie sonst
   // nur vom Laden der Seite.
   brauchtBestaetigung?: boolean;
@@ -73,7 +71,7 @@ export async function toggleFollow(
   // Ein Lesefehler ist kein "keine Zeile": sonst meldete der Knopf "du
   // folgst nicht mehr", während die Beziehung weiter besteht.
   if (folgtLesen.error || anfrageLesen.error || regel.error) return { ok: false };
-  if (folgenGesperrt || anfragenGesperrt) return { ok: false, gebremst: true };
+  if (folgenGesperrt || anfragenGesperrt) return { ok: false };
   const folgt = folgtLesen.data;
   const anfrage = anfrageLesen.data;
 
@@ -113,6 +111,10 @@ export async function toggleFollow(
         .eq("followed_id", targetUserId)
         .maybeSingle();
       if (nachlesen) return { ok: false };
+      // Die Seite des Profils zeigt sonst weiter die Ansicht eines
+      // Nicht-Followers, obwohl der Knopf schon "Folgst du" sagt.
+      revalidatePath(`/fahrer/${targetUserId}`);
+      revalidatePath("/feed");
       return {
         ok: true,
         zustand: jetzt ? "folgt" : "keiner",
@@ -157,14 +159,23 @@ export async function followerEntfernen(followerId: string): Promise<{ ok: boole
   } = await supabase.auth.getUser();
   if (!user || user.id === followerId) return { ok: false };
 
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from("follows")
-    .delete()
+    .delete({ count: "exact" })
     .eq("follower_id", followerId)
     .eq("followed_id", user.id);
   if (error) return { ok: false };
-  // 0 Zeilen: die Person folgt schon nicht mehr (selbst entfolgt) — das Ziel
-  // ist erreicht, die Liste soll den Eintrag nicht zurückholen.
+  // 0 Zeilen heisst entweder "folgt schon nicht mehr" (Ziel erreicht) oder
+  // "durfte nicht löschen" (RLS löscht still nichts). Nachlesen statt raten.
+  if (count === 0) {
+    const { data: nochDa, error: nachlesen } = await supabase
+      .from("follows")
+      .select("follower_id")
+      .eq("follower_id", followerId)
+      .eq("followed_id", user.id)
+      .maybeSingle();
+    if (nachlesen || nochDa) return { ok: false };
+  }
 
   revalidatePath("/profil");
   revalidatePath(`/fahrer/${user.id}`);

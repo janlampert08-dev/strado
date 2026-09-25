@@ -9,8 +9,10 @@ export interface KudosInfo {
 
 // Ein Batch-Read für eine ganze Liste von Fahrten statt einer Query pro
 // Kudos-Button. kudos_summary (0029) ist bereits auf sichtbare Fahrten gefiltert
-// (öffentlich, seit 0145 Follower-Fahrten für Follower), die zweite Query
-// (eigene Kudos) braucht deshalb keinen zusätzlichen Sichtbarkeits-Check.
+// (öffentlich, seit 0145 Follower-Fahrten für Follower). Die zweite Query
+// (eigene Kudos) sieht seit 0162 auch eigene Kudos auf Fahrten, die man
+// nicht mehr sehen darf — abgefragt wird sie aber nur für Fahrten, die die
+// aufrufende Seite ohnehin anzeigt.
 export async function getKudosForCompletions(
   completionIds: string[],
   userId: string | null,

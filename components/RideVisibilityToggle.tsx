@@ -93,6 +93,7 @@ export default function RideVisibilityToggle({
         // Nicht disabled während des Speicherns: ein deaktivierter Knopf nimmt
         // den zurückgegebenen Fokus nicht an. Ein zweites Öffnen wartet.
         aria-busy={pending}
+        className={pending ? "animate-pulse" : undefined}
         onClick={() => {
           if (!pending) setOpen(true);
         }}

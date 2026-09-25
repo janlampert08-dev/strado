@@ -52,7 +52,12 @@ export default function ActivityList({
   );
 
   if (eintraege.length === 0) {
-    if (hatFolgeanfragen) return null;
+    // Mit offenen Anfragen darüber nur eine leise Zeile statt des grossen
+    // Leerzustands — und nicht gar nichts: werden die Anfragen beantwortet,
+    // stünde die Seite sonst bis zum Neuladen leer da.
+    if (hatFolgeanfragen) {
+      return <p className="text-sm text-muted">Sonst noch keine Neuigkeiten.</p>;
+    }
     return (
       <EmptyState
         icon={AktivitaetIcon}
