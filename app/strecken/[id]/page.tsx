@@ -24,6 +24,7 @@ import { computeSignatures } from "@/lib/signature";
 import { SIGNATURE_ICONS, SIGNATUR_KLASSEN } from "@/components/signaturStil";
 import PremiumHinweis from "@/components/PremiumHinweis";
 import { WetterfensterStreifen, WetterfensterStreifenPlatzhalter } from "@/components/Wetterfenster";
+import AktuellesWetter, { AktuellesWetterPlatzhalter } from "@/components/AktuellesWetter";
 import { formatKm, formatMeter } from "@/lib/format";
 import { getRatings, getOwnRating } from "@/lib/ratings";
 import { bewertungAusSternen } from "@/lib/bewertungen";
@@ -33,7 +34,6 @@ import { isFavorite } from "@/lib/favorites";
 import { isModerator } from "@/lib/moderation";
 import { getPremiumStatus, maxFotosProFahrt } from "@/lib/premium";
 import { getRouteLeaderboard, getRouteLeaderboardKlassen } from "@/lib/leaderboard";
-import { fetchCurrentWeather } from "@/lib/weather";
 import FahrCheck from "@/components/FahrCheck";
 import { PassStatusMarke } from "@/components/PassStatusZeile";
 import { anzeigeFuerStatus } from "@/lib/passStatus";
@@ -204,7 +204,7 @@ export default async function StreckeDetailPage({
   // hier serverseitig mitgeladen, weil GefahrenSection eine Client-Komponente
   // ist und selbst nicht abfragen kann — im selben Promise.all wie alles
   // andere, also ohne die Antwortzeit zu verlängern.
-  const [ratings, ownRating, favorite, vehicles, personalBestSeconds, photos, leaderboard, leaderboardKlassen, weather, moderator, premiumStatus, kontextStrecken, signaturbestand, passKontexte, feedStand, ruhigeZeiten, nachbarStrecken] =
+  const [ratings, ownRating, favorite, vehicles, personalBestSeconds, photos, leaderboard, leaderboardKlassen, moderator, premiumStatus, kontextStrecken, signaturbestand, passKontexte, feedStand, ruhigeZeiten, nachbarStrecken] =
     await Promise.all([
       getRatings(id),
       user ? getOwnRating(id, user.id) : Promise.resolve(null),
@@ -220,7 +220,6 @@ export default async function StreckeDetailPage({
       getRoutePhotos(id),
       getRouteLeaderboard(id),
       getRouteLeaderboardKlassen(id),
-      fetchCurrentWeather(route.start_geojson.coordinates as [number, number]),
       user ? isModerator(user.id) : Promise.resolve(false),
       getPremiumStatus(),
       getKontextStrecken(route),
@@ -643,7 +642,13 @@ export default async function StreckeDetailPage({
             },
             {
               beschriftung: "Wetter",
-              wert: weather ? `${weather.tempC} °C, ${weather.label}` : "—",
+              // Streamt nach, statt im Promise.all oben die ganze Seite
+              // auf Open-Meteo warten zu lassen (components/AktuellesWetter.tsx).
+              wert: (
+                <Suspense fallback={<AktuellesWetterPlatzhalter />}>
+                  <AktuellesWetter koordinate={route.start_geojson.coordinates as [number, number]} />
+                </Suspense>
+              ),
             },
           ]}
         />
