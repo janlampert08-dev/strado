@@ -113,17 +113,29 @@ export function mitSignaturen(
 // liefert (status_ok; private Strecken sind nie freigegeben), aber ohne
 // Geometrie. Die Startseite braucht sie für Bewertungen und Passzustand; mit
 // dieser schmalen Abfrage laufen beide parallel zu getRoutes() statt in einer
-// zweiten Welle danach (app/page.tsx). Ein Fehler ergibt eine leere Liste:
-// dann fehlen Sterne und Abzeichen, die Liste selbst steht — dasselbe wie
-// bisher, wenn getRoutes() scheiterte.
-export async function getFreigegebeneStreckenIds(): Promise<string[]> {
+// zweiten Welle danach (app/page.tsx).
+//
+// Gibt den Fehler mit heraus, statt ihn in eine leere Liste zu verwandeln.
+// Eine leere Liste ist hier nicht "keine Strecken", sondern "wir wissen es
+// nicht" — und der Aufrufer kann das nur unterscheiden, wenn er es erfährt
+// (lib/queryError.ts, dieselbe Regel wie bei getRecentFollowersReceived).
+// Bis 2026-09-25 stand hier, ein Fehler sei "dasselbe wie bisher, wenn
+// getRoutes() scheiterte". Das stimmte nicht: vorher kamen die IDs aus
+// getRoutes() selbst, ein Fehler war also immer an dessen error gekoppelt
+// und damit sichtbar. Seit der schmalen Abfrage ist es ein eigener Weg, und
+// auf ihm verlor stillschweigend jede Zeile Sterne und Passabzeichen,
+// während die Seite Erfolg meldete.
+export async function getFreigegebeneStreckenIds(): Promise<{
+  ids: string[];
+  fehler: boolean;
+}> {
   const supabase = await createClient();
   const { data, error } = await supabase.from("routes").select("id").eq("status_ok", true);
   if (error) {
     console.error("Strecken-IDs konnten nicht geladen werden:", error.message);
-    return [];
+    return { ids: [], fehler: true };
   }
-  return ((data as { id: string }[] | null) ?? []).map((r) => r.id);
+  return { ids: ((data as { id: string }[] | null) ?? []).map((r) => r.id), fehler: false };
 }
 
 // Umkreis um die gefahrene Strecke, in dem umliegende Strecken auf der
