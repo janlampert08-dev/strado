@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { oeffentlicheStreckenGeaendert } from "@/lib/streckenCache";
 import { createClient } from "@/lib/supabase/server";
 import { isModerator } from "@/lib/moderation";
 import { isRateLimited } from "@/lib/rateLimit";
@@ -441,6 +442,9 @@ export async function updateRouteAsModerator(
 
   if (error) return { error: "Änderungen konnten nicht gespeichert werden." };
 
+  // Name, Region, Orte einer womöglich freigegebenen Strecke: der
+  // öffentliche Bestand im Cache (lib/streckenCache.ts) ist veraltet.
+  oeffentlicheStreckenGeaendert();
   revalidatePath(`/strecken/${routeId}`);
   revalidatePath("/");
   revalidatePath("/moderation");
@@ -460,6 +464,7 @@ export async function deleteRouteAsModerator(routeId: string) {
   if (!user || !(await isModerator(user.id))) return;
 
   await supabase.from("routes").delete().eq("id", routeId);
+  oeffentlicheStreckenGeaendert();
   revalidatePath("/");
   revalidatePath("/moderation");
   redirect("/");

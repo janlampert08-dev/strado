@@ -42,13 +42,14 @@ export async function GET(req: Request) {
 
   const admin = createAdminClient();
 
-  // Nur Konten mit mindestens einer öffentlichen Fahrt. Der Service-Role-
+  // Nur Konten mit mindestens einer geteilten Fahrt — öffentlich oder seit
+  // 0145 für Follower, die denselben gekappten Track trägt. Der Service-Role-
   // Client liest privatzone_radius_m weiterhin (0132 entzieht das Recht nur
   // anon/authenticated).
   const { data: fahrten, error } = await admin
     .from("route_completions")
     .select("user_id")
-    .eq("ist_oeffentlich", true)
+    .or("ist_oeffentlich.eq.true,fuer_follower.eq.true")
     .not("track_oeffentlich", "is", null)
     .returns<{ user_id: string }[]>();
   if (error) {

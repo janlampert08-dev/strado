@@ -131,7 +131,7 @@ export default function PhotoGallery({ photos }: { photos: RoutePhoto[] }) {
                 width={1600}
                 height={1200}
                 sizes="90vw"
-                className="max-h-[80vh] w-auto max-w-[90vw] object-contain"
+                className="max-h-[80dvh] w-auto max-w-[90vw] object-contain"
                 onClick={(e) => e.stopPropagation()}
               />
               <figcaption className="text-sm text-background/70">

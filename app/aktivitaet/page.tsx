@@ -3,6 +3,8 @@ import Header from "@/components/Header";
 import PullToRefreshArea from "@/components/PullToRefreshArea";
 import MarkSeen from "@/components/MarkSeen";
 import ActivityList from "@/components/ActivityList";
+import FolgeanfragenListe from "@/components/FolgeanfragenListe";
+import { getOffeneFolgeanfragen } from "@/lib/follows";
 import FeedReiter from "@/components/FeedReiter";
 import { getAktivitaet, getUnseenActivityCount } from "@/lib/aktivitaetsliste";
 import { markActivitySeen } from "@/lib/actions/aktivitaet";
@@ -34,7 +36,13 @@ export default async function AktivitaetPage() {
   // zum Anzeigen, die Zahl als Schalter fürs Markieren — siehe unten. Beide
   // Aufrufe sind per React cache() dedupliziert, der Header fragt dieselbe
   // Zahl ohnehin.
-  const [eintraege, ungesehen] = await Promise.all([getAktivitaet(), getUnseenActivityCount()]);
+  // Offene Folgeanfragen (0146) stehen über der Zeitachse, bis sie
+  // beantwortet sind — siehe FolgeanfragenListe.
+  const [eintraege, ungesehen, anfragen] = await Promise.all([
+    getAktivitaet(),
+    getUnseenActivityCount(),
+    getOffeneFolgeanfragen(),
+  ]);
 
   return (
     <div className="flex h-dvh flex-col">
@@ -63,7 +71,7 @@ export default async function AktivitaetPage() {
           <div>
             <h1 className="text-display font-semibold">Aktivität</h1>
             <p className="mt-1 text-sm text-muted">
-              Kudos auf deine geteilten Fahrten und neue Follower.
+              Folgeanfragen, Kudos auf deine geteilten Fahrten und neue Follower.
             </p>
           </div>
 
@@ -75,6 +83,8 @@ export default async function AktivitaetPage() {
               oben setzt beim Laden alles auf gesehen, eine Zahl am aktiven
               Reiter wäre also im selben Moment falsch. */}
           <FeedReiter aktiv="aktivitaet" angemeldet />
+
+          <FolgeanfragenListe initial={anfragen} />
 
           <ActivityList initialEintraege={eintraege} />
         </Seitenrahmen>

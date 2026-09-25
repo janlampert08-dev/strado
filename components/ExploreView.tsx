@@ -37,28 +37,6 @@ function searchQueryHref(pathname: string, query: string): string {
   return trimmed ? `${pathname}?${new URLSearchParams({ q: trimmed })}` : pathname;
 }
 
-// Zwei Einstiege, eine Liste: kurze Runden ab Haustür (Agglo-Loops,
-// ≤70 km) und Pässe & Berge (Wochenende, teilen). Die Unterscheidung
-// ist eine Heuristik über die kuratierten Felder — kein Schema, kein
-// Filter-Backend: hoehe/kehren/Name statt neuer Spalte, damit Bestand und
-// Teilen-Bild unangetastet bleiben. Agglo ist kein Second-Class-Bestand,
-// sondern der zweite Funnel neben dem Pass.
-export type ExploreArt = "alle" | "kurz" | "berg";
-
-function istBergPass(route: ExploreRoute): boolean {
-  if ((route.hoehe_m ?? 0) >= 800) return true;
-  if ((route.kehren ?? 0) >= 8) return true;
-  return /pass/i.test(
-    `${route.name} ${route.region} ${route.start_ort} ${route.ziel_ort}`,
-  );
-}
-
-function passtZurArt(route: ExploreRoute, art: ExploreArt): boolean {
-  if (art === "alle") return true;
-  if (art === "berg") return istBergPass(route);
-  return route.laenge_km <= 70;
-}
-
 // mapbox-gl ist eine schwere Abhängigkeit (WebGL, eigenes CSS) — dynamisch
 // geladen, damit Suchfeld/Streckenliste interaktiv werden, ohne auf den
 // Kartencode zu warten, statt beides in einem Chunk zu bündeln. ssr:false,
@@ -226,7 +204,6 @@ export default function ExploreView({
     () => new Map([...signatures].map(([id, sig]) => [id, sig.key])),
     [signatures],
   );
-  const [artFilter, setArtFilter] = useState<ExploreArt>("alle");
   // Das Eingabefeld hängt weiter direkt an searchInput und antwortet damit
   // bei jedem Tastendruck sofort. Gefiltert wird dagegen mit dem
   // zurückgestellten Wert: vorher baute jeder Tastendruck angezeigteRouten
@@ -242,12 +219,9 @@ export default function ExploreView({
   const visibleRoutes = useMemo(() => {
     // suchbegriff statt des (debounced) URL-Werts: die Liste soll ohne
     // feste Verzögerung reagieren, nicht erst nach dem URL-Sync-Delay.
-    // Art-Filter (Agglo vs. Pass) läuft davor — beides sind explizite
-    // Absichten, keine angeheftete Empfehlung.
-    const nachArt = artFilter === "alle" ? routes : routes.filter((r) => passtZurArt(r, artFilter));
     const filtered = suchbegriff.trim()
-      ? nachArt.filter((r) => matchesSearch(r, suchbegriff))
-      : nachArt;
+      ? routes.filter((r) => matchesSearch(r, suchbegriff))
+      : routes;
 
     if (!userLocation) return filtered;
 
@@ -256,7 +230,7 @@ export default function ExploreView({
         haversineKm(userLocation, a.start_geojson.coordinates) -
         haversineKm(userLocation, b.start_geojson.coordinates),
     );
-  }, [routes, suchbegriff, userLocation, artFilter]);
+  }, [routes, suchbegriff, userLocation]);
 
   // Genau eine Empfehlung für die Hierarchie der Liste — und sie steht ganz
   // oben, ausser der Nutzer filtert oder sortiert selbst: Bei Suche oder
@@ -266,7 +240,7 @@ export default function ExploreView({
   // an erster Stelle der angezeigten Liste.
   // Derselbe zurückgestellte Wert wie für die Liste, damit Empfehlung und
   // Trefferliste immer zum selben Suchstand gehören.
-  const hatFilter = suchbegriff.trim() !== "" || artFilter !== "alle";
+  const hatFilter = suchbegriff.trim() !== "";
   const hatStandort = userLocation !== null;
   const empfehlung: Empfehlung | null = useMemo(() => {
     if (hatFilter || hatStandort || loadError) return null;
@@ -374,8 +348,6 @@ export default function ExploreView({
           anzahlStrecken={routes.length}
           searchQuery={searchInput}
           onSearchChange={setSearchInput}
-          artFilter={artFilter}
-          onArtFilterChange={setArtFilter}
           signatures={signatures}
           empfehlung={empfehlung}
           userLocation={userLocation}

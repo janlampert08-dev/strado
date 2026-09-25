@@ -94,13 +94,14 @@ export async function fetchCurrentWeather(
       // genau sein, spart aber wiederholte Aufrufe bei mehreren Aufrufen
       // derselben Strecke innerhalb kurzer Zeit.
       //
-      // Zeitlimit: dieser Aufruf steht im grossen Promise.all der
-      // Streckenseite, ein hängender Open-Meteo hält also die GANZE Seite
-      // auf — bis zum Verbindungs-Timeout von Node (10 s). Am 2026-09-20
-      // stand genau das in den Vercel-Logs (connect ETIMEDOUT
-      // api.open-meteo.com). Knapper als die 5 s der Vorhersage oben, weil
-      // die Vorhersage hinter Suspense streamt und dies nicht: ohne Wetter
-      // zeigt die Seite einfach keine Temperatur.
+      // Zeitlimit: ohne hinge ein langsamer Open-Meteo bis zum
+      // Verbindungs-Timeout von Node (10 s). Am 2026-09-20 stand genau das
+      // in den Vercel-Logs (connect ETIMEDOUT api.open-meteo.com) — damals
+      // stand dieser Aufruf noch im grossen Promise.all der Streckenseite
+      // und hielt die GANZE Seite auf. Seit 2026-09-25 streamt er hinter
+      // Suspense (components/AktuellesWetter.tsx); die 2,5 s bleiben, weil
+      // ein offener Suspense-Strom die Antwort trotzdem nicht abschliesst.
+      // Ohne Wetter zeigt die Zeile einfach "keine Angabe".
       { next: { revalidate: 600 }, signal: AbortSignal.timeout(2500) },
     );
     if (!res.ok) return null;
