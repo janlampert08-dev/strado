@@ -600,8 +600,10 @@ lässt sich mit einem Tipp auf „Follower" oder „Privat" umstellen; nachträg
 ist die Einstellung pro Fahrt jederzeit änderbar. Fahrten, die die
 Voraussetzungen für eine Veröffentlichung nicht erfüllen (etwa eine zu kurze
 Fahrt oder eine zu geringe Abdeckung der Strecke), bleiben privat; das gilt
-für beide geteilten Stufen. Veröffentlicht wird nie der
-vollständige GPS-Track, sondern eine um die Privatzone gekappte Fassung.
+für beide geteilten Stufen. Automatisch erkannte Streckenabschnitte sind
+privat oder öffentlich und folgen der Fahrt. Geteilt — öffentlich oder mit
+Followern — wird nie der vollständige GPS-Track, sondern eine um die
+Privatzone gekappte Fassung.
 Bereits gespeicherte Fahrten bleiben unverändert. Die Profilangaben Profilbild, Fahrzeuge, Anzahl Pässe,
 Höhenmeter, Distanz und Follower-Liste sind demgegenüber bei **neu angelegten
 Konten** auf dem öffentlichen Profil **voreingestellt sichtbar** und lassen
@@ -612,8 +614,9 @@ Konten bleibt die dort gespeicherte Einstellung unverändert.
 Mit der Einstellung „Neue Follower bestätigen", die für alle Konten
 **voreingestellt eingeschaltet** ist, wird daraus eine Anfrage, die die
 Gefolgten annehmen oder ablehnen; erst mit der Annahme entsteht die
-Folgebeziehung. Wird die Einstellung ausgeschaltet, gelten offene Anfragen als
-angenommen. Bestehende Folgebeziehungen bleiben beim Einschalten bestehen.
+Folgebeziehung. Wird die Einstellung ausgeschaltet, bleiben offene Anfragen
+bestehen und werden einzeln beantwortet. Bestehende Folgebeziehungen bleiben
+beim Einschalten bestehen; Gefolgte können Follower jederzeit entfernen.
 Einzelheiten regelt die Datenschutzerklärung.
 
 **10.2 Rechteeinräumung.** Nutzende räumen der Anbieterin an den von ihnen
