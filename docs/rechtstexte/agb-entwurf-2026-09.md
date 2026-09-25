@@ -15,7 +15,7 @@
 > kann. Grundlage ist der Stand von `docs/rechtstexte/agb.md` auf `staging`
 > (2026-09-23).
 >
-> Entwurfsdatum: 23. September 2026
+> Entwurfsdatum: 23. September 2026, ergänzt am 25. September 2026 (Abschnitt D)
 
 ## Änderungsübersicht gegenüber der geltenden Fassung (14. September 2026)
 
@@ -65,6 +65,15 @@ letzter Aufzählungspunkt entfällt.
 | **4.5** | „kein Testzeitraum" → 14 Tage gratis auf dem Jahresabo, einmal pro Konto | `docs/premium-neu/`; `PREMIUM_TESTPHASE` bleibt bis zum Inkrafttreten aus |
 | **4.6, 6.1, 6.3, 6.6, 6.7, 7.1, 7.2** | Saisonpass: keine Verlängerung, keine Kündigung, Geld-zurück gilt auch für ihn | Folgeänderungen zu 4.1 |
 | **10.1.1** | Fahrten neu **voreingestellt öffentlich** statt standardmässig privat | Entscheid des Inhabers nach UI/UX-Review; PR `staging-fahrten-standardmaessig-oeffentlich` darf nicht vor dem Inkrafttreten ausgeliefert werden |
+
+### D. Ergänzt am 25. September 2026 (Fahrten für Follower, Folgeanfragen)
+
+| Ziff. | Änderung in Kurzform | Warum |
+| --- | --- | --- |
+| **10.1.1, 10.1.2 (neu)** | Dritte Sichtbarkeitsstufe **„Follower"**; neue Ziffer 10.1.2 zu Folgen und Folgeanfragen mit der Einstellung **„Neue Follower bestätigen"**, voreingestellt an | Entscheid des Inhabers vom 2026-09-25 (Migrationen `0145`–`0147`). Engere Sichtbarkeit und mehr Kontrolle — die Funktion darf vor dem Inkrafttreten ausgeliefert werden, die AGB beschreiben sie nur nach |
+| **10.2** | Rechteeinräumung auch für Inhalte, die **mit Followern geteilt** sind | Ohne sie deckte das Recht aus 10.2 die Anzeige einer Follower-Fahrt nicht, weil sie nicht „veröffentlicht" ist |
+| **11.3** | Follower-Fahrten erscheinen in **keiner Bestzeitenliste** | Eine Liste, deren Inhalt davon abhängt, wer schaut, ist keine |
+| **9.6** | Bei der Kontolöschung werden Follower-Fahrten unsichtbar und offene Folgeanfragen gelöscht | `anonymize_account` seit `0145`/`0146` |
 
 ## Vor der Veröffentlichung
 
@@ -567,7 +576,9 @@ Premium-Funktionen ohne Datenverlust wieder zur Verfügung.
 **9.6 Kontolöschung.** Bei einer Kontolöschung wird das Profil anonymisiert
 statt vollständig entfernt: Anzeigename und Profilbild werden entfernt, die
 Fahrzeuge gelöscht und die GPS-Tracks aller Fahrten entfernt; freie Fahrten
-werden auf privat gestellt. **Bereits veröffentlichte Streckenfahrten bleiben —
+werden auf privat gestellt, nur mit Followern geteilte Fahrten sind für
+niemanden mehr sichtbar, und offene Folgeanfragen werden gelöscht. **Bereits
+veröffentlichte Streckenfahrten bleiben —
 ohne Namensbezug — in Bestenlisten und Statistiken erhalten**, damit diese
 nicht rückwirkend verfälscht werden. Die Einzelheiten und die Möglichkeit,
 darüber hinaus eine weitergehende Löschung zu verlangen, sind in der
@@ -580,27 +591,41 @@ GPS-Tracks, Fotos, Bewertungstexte, Fahrt-Titel und -Notizen sowie
 Profilangaben („Nutzerinhalte"). Die Rechte an diesen Inhalten verbleiben bei
 den Nutzenden.
 
-**10.1.1 Voreingestellte Sichtbarkeit von Fahrten und Profilangaben.** Neu
-aufgezeichnete Fahrten sind **voreingestellt öffentlich**: Vor dem Speichern
-ist die Sichtbarkeit sichtbar auf „Öffentlich" gesetzt und lässt sich mit
-einem Tipp auf „Privat" umstellen; nachträglich ist die Einstellung pro Fahrt
-jederzeit umkehrbar. Fahrten, die die Voraussetzungen für eine
-Veröffentlichung nicht erfüllen (etwa eine zu kurze Fahrt oder eine zu
-geringe Abdeckung der Strecke), bleiben privat. Veröffentlicht wird nie der
-vollständige GPS-Track, sondern eine um die Privatzone gekappte Fassung.
+**10.1.1 Voreingestellte Sichtbarkeit von Fahrten und Profilangaben.** Eine
+Fahrt ist **privat** (nur für die Nutzerin oder den Nutzer selbst), **für
+Follower** sichtbar (zusätzlich für die Personen, die dem Konto folgen) oder
+**öffentlich**. Neu aufgezeichnete Fahrten sind **voreingestellt öffentlich**:
+Vor dem Speichern ist die Sichtbarkeit sichtbar auf „Öffentlich" gesetzt und
+lässt sich mit einem Tipp auf „Follower" oder „Privat" umstellen; nachträglich
+ist die Einstellung pro Fahrt jederzeit änderbar. Fahrten, die die
+Voraussetzungen für eine Veröffentlichung nicht erfüllen (etwa eine zu kurze
+Fahrt oder eine zu geringe Abdeckung der Strecke), bleiben privat; das gilt
+für beide geteilten Stufen. Automatisch erkannte Streckenabschnitte sind
+privat oder öffentlich und folgen der Fahrt. Geteilt — öffentlich oder mit
+Followern — wird nie der vollständige GPS-Track, sondern eine um die
+Privatzone gekappte Fassung.
 Bereits gespeicherte Fahrten bleiben unverändert. Die Profilangaben Profilbild, Fahrzeuge, Anzahl Pässe,
 Höhenmeter, Distanz und Follower-Liste sind demgegenüber bei **neu angelegten
 Konten** auf dem öffentlichen Profil **voreingestellt sichtbar** und lassen
 sich in den Profileinstellungen jederzeit einzeln abschalten. Bei bestehenden
-Konten bleibt die dort gespeicherte Einstellung unverändert. Einzelheiten
-regelt die Datenschutzerklärung.
+Konten bleibt die dort gespeicherte Einstellung unverändert.
+
+**10.1.2 Folgen und Folgeanfragen.** Nutzende können anderen Nutzenden folgen.
+Mit der Einstellung „Neue Follower bestätigen", die für alle Konten
+**voreingestellt eingeschaltet** ist, wird daraus eine Anfrage, die die
+Gefolgten annehmen oder ablehnen; erst mit der Annahme entsteht die
+Folgebeziehung. Wird die Einstellung ausgeschaltet, bleiben offene Anfragen
+bestehen und werden einzeln beantwortet. Bereits bestehende Folgebeziehungen bleiben
+beim Einschalten erhalten; Gefolgte können Follower jederzeit entfernen.
+Einzelheiten regelt die Datenschutzerklärung.
 
 **10.2 Rechteeinräumung.** Nutzende räumen der Anbieterin an den von ihnen
-**veröffentlichten** Inhalten ein räumlich und zeitlich unbeschränktes, nicht
-ausschliessliches, unentgeltliches Recht ein, diese im Rahmen des Betriebs von
-Strado zu speichern, zu vervielfältigen, zu bearbeiten (insbesondere
-Skalierung, Zuschnitt und die Kappung von Track-Enden zur Wahrung der
-Privatsphäre) und öffentlich zugänglich zu machen. Bei einem
+**veröffentlichten** oder **mit Followern geteilten** Inhalten ein räumlich
+und zeitlich unbeschränktes, nicht ausschliessliches, unentgeltliches Recht
+ein, diese im Rahmen des Betriebs von Strado zu speichern, zu vervielfältigen,
+zu bearbeiten (insbesondere Skalierung, Zuschnitt und die Kappung von
+Track-Enden zur Wahrung der Privatsphäre) und öffentlich bzw. — bei mit
+Followern geteilten Inhalten — den Followern zugänglich zu machen. Bei einem
 Streckenvorschlag, der freigegeben wird, umfasst dies auch die dauerhafte
 Aufnahme in den kuratierten Streckenbestand. Das Recht endet mit der Löschung
 des jeweiligen Inhalts, soweit dessen Entfernung technisch und im Hinblick auf
@@ -664,7 +689,8 @@ markiert; mehr als diese Markierung folgt aus ihnen nicht.
 
 Eine Zeit entsteht bei jeder aufgezeichneten Fahrt. Was die Nutzenden
 entscheiden, ist nicht die Messung, sondern die **Veröffentlichung**: Wer eine
-Fahrt privat lässt, erscheint in keiner Bestzeitenliste. Wer sie öffentlich
+Fahrt privat lässt oder nur mit Followern teilt, erscheint in keiner
+Bestzeitenliste. Wer sie öffentlich
 stellt, **kann** dort erscheinen — vorausgesetzt, es handelt sich um die Fahrt
 einer freigegebenen, nicht privaten Strecke und die Zeit ist verifiziert
 (Ziff. 12.6). Eine freie Fahrt ohne Strecke und eine Fahrt ohne verifizierte
