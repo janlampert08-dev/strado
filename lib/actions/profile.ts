@@ -154,6 +154,7 @@ export async function updateVisibilitySettings(
     return { error: "Ungültiger Wert für die Privatzone. Bitte lade die Seite neu." };
   }
   const privatzoneRadiusM = radius;
+  const folgenBestaetigen = formData.get("folgen_bestaetigen") === "true";
 
   // profiles.zeigt_premium_badge wird hier bewusst NICHT geschrieben. Das
   // Abzeichen hinter dem Namen ist aus der App entfernt; die Spalte bleibt
@@ -175,10 +176,26 @@ export async function updateVisibilitySettings(
       // 0125: Durchschnittstempo auf geteilten Fahrten. Der Besitzer sieht
       // es immer; das Flag entscheidet nur, ob Strado es anderen ausweist.
       zeigt_tempo: formData.get("zeigt_tempo") === "true",
+      // 0146: neue Follower bestätigen. Voreingestellt an.
+      folgen_bestaetigen: folgenBestaetigen,
     })
     .eq("id", user.id);
 
   if (error) return { error: "Einstellungen konnten nicht gespeichert werden." };
+
+  // Wer die Bestätigung ausschaltet, nimmt alle offenen Anfragen an — sonst
+  // warteten Leute auf eine Antwort, die niemand mehr geben muss. Ohne
+  // offene Anfragen tut der Aufruf nichts.
+  if (!folgenBestaetigen) {
+    const { error: annahmeFehler } = await supabase.rpc("folgeanfragen_alle_annehmen");
+    if (annahmeFehler) {
+      return {
+        error:
+          "Die Einstellungen wurden gespeichert, aber offene Folgeanfragen konnten nicht angenommen werden. Du findest sie unter Aktivität.",
+      };
+    }
+    revalidatePath("/aktivitaet");
+  }
 
   // Ein geänderter Radius muss auch für bereits geteilte Fahrten gelten —
   // sonst wirkte die strengere Einstellung nur in die Zukunft, und genau

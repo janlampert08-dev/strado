@@ -18,6 +18,7 @@ export interface VisibilityFlags {
   zeigtDistanz: boolean;
   zeigtFollowerListe: boolean;
   zeigtTempo: boolean;
+  folgenBestaetigen: boolean;
 }
 
 export interface VisibilitySettingsProps extends VisibilityFlags {
@@ -39,6 +40,15 @@ interface Field {
 }
 
 const FIELDS: Field[] = [
+  {
+    // 0146, voreingestellt an: ohne sie wäre "nur für Follower" für jeden
+    // offen, der auf "Folgen" tippt.
+    name: "folgenBestaetigen",
+    formKey: "folgen_bestaetigen",
+    label: "Neue Follower bestätigen",
+    description:
+      "Wer dir folgen will, schickt eine Anfrage, die du unter Aktivität annimmst. So sehen Fahrten, die du nur mit Followern teilst, nur Leute, die du kennst. Ausschalten nimmt offene Anfragen an.",
+  },
   { name: "zeigtAvatar", formKey: "zeigt_avatar", label: "Profilbild zeigen" },
   { name: "zeigtFahrzeuge", formKey: "zeigt_fahrzeuge", label: "Fahrzeuge zeigen" },
   { name: "zeigtPaesse", formKey: "zeigt_paesse", label: "Anzahl befahrener Pässe zeigen" },

@@ -29,6 +29,32 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## 0146 eingespielt, 0147 wartet auf den Code in Produktion (Folgeanfragen, 2026-09-25)
+
+Folgeanfragen: `profiles.folgen_bestaetigen` (voreingestellt **an**, für
+alle, Entscheid des Eigentümers), Tabelle `folge_anfragen`, Annehmen über
+`folgeanfrage_annehmen()`, Anfragen unter /aktivitaet
+(`offene_folgeanfragen()`) und im Abzeichen (`count_unseen_activity`).
+
+- **0146 ist eingespielt** (rein additiv, der alte Folgen-Knopf läuft
+  unverändert weiter). Gemessen danach: 0 Profile ohne Bestätigung,
+  0 Anfragen, anon ohne Recht auf Tabelle und alle vier Funktionen,
+  authenticated ohne UPDATE auf `folge_anfragen`, `anonymize_account`
+  löscht Anfragen in beide Richtungen, die follows-Policy ist unverändert.
+- **Zurückgerollter Funktionstest (0146 + 0147 zusammen), 21 Prüfungen:**
+  direktes Folgen bei verlangter Bestätigung abgelehnt; Anfrage stellen ok;
+  Anfrage im Namen eines anderen, fremde Anfragen lesen, löschen oder
+  annehmen: alles abgelehnt bzw. 0 Zeilen; der Gefolgte sieht die Anfrage
+  (neu), das Abzeichen zählt sie; Annehmen legt die follows-Zeile an und
+  entfernt die Anfrage; Bestätigung aus → direktes Folgen geht, offene
+  Anfragen werden mit `folgeanfragen_alle_annehmen()` angenommen; anon
+  liest nichts.
+- **0147 NICHT einspielen, bevor der Code auf `main` läuft.** Die Datei
+  verbietet direktes Folgen, wenn der Gefolgte bestätigen will — und das
+  wollen nach 0146 alle. Der heutige Folgen-Knopf schreibt direkt in
+  follows; mit 0147 scheiterte in der Produktion jedes Folgen, bis der neue
+  Code ankommt. Bis dahin ist die Bestätigung nur so stark wie die App:
+  wer die API direkt aufruft, kann noch ohne Anfrage folgen.
 ## Eingespielt: 0154_abschnitte_ohne_follower (2026-09-25, Produktion)
 
 Erkannte Abschnitte (`parent_completion_id` gesetzt) werden nie "nur für

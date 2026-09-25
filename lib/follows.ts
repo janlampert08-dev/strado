@@ -12,6 +12,68 @@ export async function isFollowing(followerId: string, followedId: string): Promi
   return data !== null;
 }
 
+// Wie der Betrachter zu einem Profil steht (0146): er folgt, hat angefragt,
+// oder keins von beidem — plus ob das Profil Anfragen verlangt, damit der
+// Knopf "Folgen" oder "Anfrage senden" sagen kann.
+export type FolgeZustand = "folgt" | "angefragt" | "keiner";
+
+export async function getFolgeZustand(
+  viewerId: string,
+  targetId: string,
+): Promise<{ zustand: FolgeZustand; brauchtBestaetigung: boolean }> {
+  const supabase = await createClient();
+  const [{ data: folgt }, { data: anfrage }, { data: ziel }] = await Promise.all([
+    supabase
+      .from("follows")
+      .select("followed_id")
+      .eq("follower_id", viewerId)
+      .eq("followed_id", targetId)
+      .maybeSingle(),
+    supabase
+      .from("folge_anfragen")
+      .select("an")
+      .eq("von", viewerId)
+      .eq("an", targetId)
+      .maybeSingle(),
+    supabase
+      .from("profiles")
+      .select("folgen_bestaetigen")
+      .eq("id", targetId)
+      .maybeSingle<{ folgen_bestaetigen: boolean }>(),
+  ]);
+  return {
+    zustand: folgt ? "folgt" : anfrage ? "angefragt" : "keiner",
+    // Im Zweifel an: so zeigt der Knopf eher "Anfrage senden" als ein
+    // Folgen zu versprechen, das die Datenbank (0147) ablehnt.
+    brauchtBestaetigung: ziel?.folgen_bestaetigen ?? true,
+  };
+}
+
+export interface Folgeanfrage {
+  von: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  erstelltAm: string;
+  neu: boolean;
+}
+
+// Offene Anfragen an den eingeloggten Nutzer, für /aktivitaet. Wie
+// recent_follows_received: SECURITY DEFINER, nur auth.uid(), keine
+// Parameter (0146).
+export async function getOffeneFolgeanfragen(): Promise<Folgeanfrage[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("offene_folgeanfragen");
+  throwOnQueryError(error, "Folgeanfragen");
+  if (!data) return [];
+  return (data as Array<Record<string, unknown>>).map((row) => ({
+    von: row.von as string,
+    displayName: row.display_name as string | null,
+    avatarUrl: row.avatar_url as string | null,
+    erstelltAm: row.erstellt_am as string,
+    neu: row.neu as boolean,
+  }));
+}
+
 // Für den "Folge ich"-Filter im Feed (lib/feed.ts) — eine einzige Query
 // statt einer pro Fahrt/Nutzer.
 export async function getFollowedUserIds(userId: string): Promise<string[]> {
