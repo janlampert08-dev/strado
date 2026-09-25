@@ -4,7 +4,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 // Streckenliste aus Supabase. Beides hier ersetzt, damit der Test das
 // Antwortverhalten prüft und nicht die Umgebung.
 const getOrigin = vi.fn<() => Promise<string>>();
-const listRoutesForSitemap = vi.fn<() => Promise<{ id: string; created_at: string }[]>>();
+const listRoutesForSitemap = vi.fn<() => Promise<{ id: string; created_at: string; slug?: string | null }[]>>();
 
 vi.mock("@/lib/utils/url", () => ({ getOrigin: () => getOrigin() }));
 vi.mock("@/lib/routes", () => ({ listRoutesForSitemap: () => listRoutesForSitemap() }));
@@ -40,6 +40,21 @@ describe("app/sitemap.ts", () => {
     expect(urls).toContain(
       "https://app.strado.ch/strecken/11111111-1111-4111-8111-111111111111",
     );
+  });
+
+  // Seit 0130: die Sitemap nennt die kanonische Slug-Adresse, nicht die
+  // UUID, von der proxy.ts ohnehin weiterleitet.
+  it("nennt den Slug, wo es einen gibt", async () => {
+    listRoutesForSitemap.mockResolvedValue([
+      {
+        id: "11111111-1111-4111-8111-111111111111",
+        created_at: "2026-09-23T20:50:21.977777+00:00",
+        slug: "aecherlipass-kerns-dallenwil",
+      },
+    ]);
+    const urls = (await sitemap()).map((e) => e.url);
+    expect(urls).toContain("https://app.strado.ch/strecken/aecherlipass-kerns-dallenwil");
+    expect(urls.some((u) => u.includes("11111111-1111"))).toBe(false);
   });
 
   // Der Googlebot-Fall: reisst die DB, muss trotzdem valides XML mit den

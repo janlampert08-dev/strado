@@ -30,6 +30,7 @@ function kuerzen(text: string, max: number): string {
 }
 
 import type { ExploreArt } from "@/components/ExploreView";
+import { streckenPfad } from "@/lib/streckenPfad";
 
 export default function ExploreSidebar({
   routes,
@@ -378,7 +379,7 @@ export default function ExploreSidebar({
           return (
             <li key={route.id}>
               <Link
-                href={`/strecken/${route.id}`}
+                href={streckenPfad(route)}
                 onMouseEnter={() => onHoverRoute(route.id)}
                 onMouseLeave={() => onHoverRoute(null)}
                 onFocus={() => onHoverRoute(route.id)}

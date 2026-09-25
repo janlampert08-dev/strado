@@ -225,6 +225,10 @@ export interface KartenStrecke {
   ziel_geojson: GeoPoint;
   geometry_geojson: GeoLineString;
   ist_rundfahrt: boolean;
+  /** Lesbare Adresse (0130). Optional: nur gesetzt, wenn die Abfrage die
+   *  Spalte mitliest, die Migration eingespielt ist und die Strecke
+   *  freigegeben ist — sonst gilt die UUID (lib/streckenPfad.ts). */
+  slug?: string | null;
   /** Optional, weil die Tempolimit-Ebene ohnehin nur bei genau einer Strecke
    *  gezeichnet wird — Kontext-Strecken schicken sie deshalb nicht mit. */
   tempolimits?: TempolimitSegment[] | null;
@@ -275,6 +279,7 @@ export type ExploreRoute = Pick<
   | "kehren"
   | "saison_status"
   | "ist_rundfahrt"
+  | "slug"
 >;
 // Ohne tempolimits: getRoutes() liest sie noch, rechnet daraus das
 // Signatur-Merkmal und gibt die Segmente nicht an den Client weiter

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 import { istStaging } from "@/lib/staging";
+import { leseUuidStreckenseite, slugWeiterleitungsZiel } from "@/lib/streckenPfad";
 import { leseModeratorStatus } from "@/lib/moderatorStatus";
 
 // Pfade, die auch auf Staging ohne Login/Moderator-Status erreichbar bleiben
@@ -32,6 +33,54 @@ function istVomGateAusgenommen(pathname: string): boolean {
   );
 }
 
+// Alte Streckenadressen /strecken/<uuid>(/bearbeiten) dauerhaft (308) auf
+// den Slug umleiten (0130, lib/streckenPfad.ts).
+//
+// Hier und nicht in der Seite: app/strecken/[id]/ hat eine loading.tsx, die
+// Seite streamt also. Ein permanentRedirect() aus der Seite fiele erst, wenn
+// die Hülle schon mit 200 unterwegs ist, und käme dann als Meta-Refresh im
+// Browser an — für eine Suchmaschine und für die Vorschau eines geteilten
+// Links ist das keine dauerhafte Weiterleitung.
+//
+// Die Abfrage läuft über den Client der Anfrage (Sitzung der Person, RLS),
+// also dieselbe Sicht wie die Seite: eine Strecke, die man nicht sehen darf,
+// liefert keinen Slug, und die Anfrage geht unverändert weiter zur Seite,
+// die dann ihre 404 zeigt. Jeder Fehler — auch die fehlende Spalte vor
+// 0130 — heisst ebenso "keine Weiterleitung": die UUID-Adresse funktioniert
+// immer, die Weiterleitung ist nur der schönere Weg.
+//
+// Kostet eine kleine Abfrage (Primärschlüssel) nur für Aufrufe unter der
+// UUID; die App selbst verlinkt, wo sie den Slug kennt, direkt dorthin.
+async function streckenSlugWeiterleitung(
+  request: NextRequest,
+  supabase: Awaited<ReturnType<typeof updateSession>>["supabase"],
+  response: NextResponse,
+): Promise<NextResponse | null> {
+  if (!supabase || (request.method !== "GET" && request.method !== "HEAD")) return null;
+  const seite = leseUuidStreckenseite(request.nextUrl.pathname);
+  if (!seite) return null;
+
+  const { data, error } = await supabase
+    .from("routes")
+    .select("slug")
+    .eq("id", seite.id)
+    .maybeSingle();
+  if (error || !data) return null;
+
+  const ziel = slugWeiterleitungsZiel(
+    seite.unterpfad,
+    request.nextUrl.search,
+    (data as { slug?: string | null }).slug,
+  );
+  if (!ziel) return null;
+
+  const weiterleitung = NextResponse.redirect(new URL(ziel, request.url), 308);
+  // Die erneuerten Sitzungs-Cookies aus updateSession() mitgeben — sonst
+  // ginge ein gerade rotierter Token mit der Weiterleitung verloren.
+  for (const cookie of response.cookies.getAll()) weiterleitung.cookies.set(cookie);
+  return weiterleitung;
+}
+
 export async function proxy(request: NextRequest) {
   const { response, supabase, user } = await updateSession(request);
 
@@ -39,7 +88,7 @@ export async function proxy(request: NextRequest) {
     !istStaging(request.nextUrl.hostname) ||
     istVomGateAusgenommen(request.nextUrl.pathname)
   ) {
-    return response;
+    return (await streckenSlugWeiterleitung(request, supabase, response)) ?? response;
   }
 
   // Kein eingeloggter User (oder kein Supabase-Client, z.B. fehlende
@@ -67,7 +116,7 @@ export async function proxy(request: NextRequest) {
     );
   }
 
-  return response;
+  return (await streckenSlugWeiterleitung(request, supabase, response)) ?? response;
 }
 
 export const config = {
