@@ -29,6 +29,20 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Eingespielt: 0160_folgeanfrage_annehmen_zeitpunkt (2026-09-25, Produktion)
+
+Zweites Code-Review vor dem Release: `folgeanfrage_annehmen` übernimmt den
+Zeitpunkt der Anfrage in die follows-Zeile (vorher `now()` — der eben selbst
+angenommene Follower erschien als neue Meldung im Abzeichen), und
+`folgeanfragen_alle_annehmen` ist entfernt (die App ruft sie seit dem ersten
+Review nicht mehr auf, sie war aber weiter per API aufrufbar).
+
+- **Zurückgerollter Test vorher:** Zähler vor/nach dem Annehmen 0/0,
+  Zeitpunkt übernommen, zweites Annehmen → false, Sammelfunktion weg, anon
+  ohne EXECUTE.
+- **Gemessen danach:** Ledger `0160_folgeanfrage_annehmen_zeitpunkt`,
+  Sammelfunktion 0, `folgeanfrage_annehmen` für authenticated, nicht anon.
+
 ## Eingespielt: 0149_follower_entfernen (2026-09-25, Produktion)
 
 Die Delete-Policy "Nutzer entfolgen" auf follows lässt jetzt auch den

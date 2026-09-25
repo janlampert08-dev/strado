@@ -11,19 +11,21 @@ import type { FolgeZustand } from "@/lib/follows";
 // — seit 0146 mit einem dritten Zustand: "angefragt", wenn das Profil neue
 // Follower bestätigt.
 //
-// Was tatsächlich geschah, sagt der Server (vorher/zustand), nicht der
-// Knopf: eine offene Seite kann veraltet sein — die Anfrage ist inzwischen
-// angenommen, oder man folgt schon aus einem anderen Tab.
+// Der Knopf schickt den angezeigten Zustand mit; der Server handelt nur,
+// wenn er noch stimmt (siehe toggleFollow), und meldet sonst den echten
+// Stand zurück. Die Regel des Profils (Bestätigung ja/nein) übernimmt der
+// Knopf ebenfalls aus jeder Antwort, statt beim Stand vom Laden zu bleiben.
 export default function FollowButton({
   targetUserId,
   initialZustand,
-  brauchtBestaetigung,
+  brauchtBestaetigung: brauchtBestaetigungBeimLaden,
 }: {
   targetUserId: string;
   initialZustand: FolgeZustand;
   brauchtBestaetigung: boolean;
 }) {
   const [zustand, setZustand] = useState<FolgeZustand>(initialZustand);
+  const [brauchtBestaetigung, setBrauchtBestaetigung] = useState(brauchtBestaetigungBeimLaden);
   // Der aktuelle Stand für Aufrufe, die ausserhalb eines Renders passieren
   // (das Rückgängig im Hinweis) — ohne ihn sähe es den Stand von damals.
   const zustandRef = useRef(zustand);
@@ -40,14 +42,29 @@ export default function FollowButton({
       angezeigt !== "keiner" ? "keiner" : brauchtBestaetigung ? "angefragt" : "folgt";
     setzen(erwartet);
     startTransition(async () => {
-      const result = await toggleFollow(targetUserId);
+      const result = await toggleFollow(targetUserId, angezeigt);
       if (!result.ok || !result.zustand) {
         setzen(angezeigt);
         return;
       }
       setzen(result.zustand);
+      if (result.brauchtBestaetigung !== undefined) {
+        setBrauchtBestaetigung(result.brauchtBestaetigung);
+      }
 
-      if (result.vorher === "folgt") {
+      if (!result.geaendert) {
+        // Die Seite war veraltet — nichts geändert, nur den echten Stand zeigen.
+        zeigeHinweis(
+          result.zustand === "folgt"
+            ? "Du folgst bereits — deine Anfrage wurde angenommen."
+            : result.zustand === "angefragt"
+              ? "Deine Anfrage ist bereits gestellt."
+              : "Du folgst nicht mehr — die Anfrage gibt es nicht mehr.",
+        );
+        return;
+      }
+
+      if (angezeigt === "folgt") {
         // Entfolgen geschah auf einen Tipp, ohne Rückfrage — deshalb eine
         // Quittung. Rückgängig nur, wo erneutes Folgen wirklich wieder folgt:
         // bei einem Profil mit Bestätigung würde daraus eine neue Anfrage.
@@ -61,7 +78,7 @@ export default function FollowButton({
             },
           });
         }
-      } else if (result.vorher === "angefragt") {
+      } else if (angezeigt === "angefragt") {
         zeigeHinweis("Anfrage zurückgezogen.");
       } else if (result.zustand === "angefragt") {
         zeigeHinweis("Anfrage gesendet. Du folgst, sobald sie angenommen ist.");

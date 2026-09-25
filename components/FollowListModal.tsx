@@ -40,10 +40,14 @@ export default function FollowListModal({
   // Wie FolgeanfragenListe: die Liste kommt aus den Props, lokal gemerkt
   // wird nur, wer gerade entfernt wurde.
   const [entfernt, setEntfernt] = useState<ReadonlySet<string>>(new Set());
+  // Entfernen in zwei Schritten: rückgängig machen lässt es sich nicht —
+  // mit Bestätigung (0146) müsste die Person neu anfragen.
+  const [rueckfrage, setRueckfrage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const liste = profiles.filter((p) => !entfernt.has(p.id));
 
   function entfernen(profile: FollowProfile) {
+    setRueckfrage(null);
     setEntfernt((s) => new Set(s).add(profile.id));
     startTransition(async () => {
       const { ok } = await followerEntfernen(profile.id);
@@ -80,17 +84,37 @@ export default function FollowListModal({
                   {profile.displayName ?? "Fahrer"}
                 </span>
               </Link>
-              {entfernbar && (
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => entfernen(profile)}
-                  aria-label={`${profile.displayName ?? "Fahrer"} als Follower entfernen`}
-                  className={buttonVariants({ variant: "secondary", size: "sm", className: "shrink-0" })}
-                >
-                  Entfernen
-                </button>
-              )}
+              {entfernbar &&
+                (rueckfrage === profile.id ? (
+                  <span className="flex shrink-0 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setRueckfrage(null)}
+                      className={buttonVariants({ variant: "secondary", size: "sm" })}
+                    >
+                      Abbrechen
+                    </button>
+                    <button
+                      type="button"
+                      disabled={pending}
+                      onClick={() => entfernen(profile)}
+                      aria-label={`${profile.displayName ?? "Fahrer"} wirklich als Follower entfernen`}
+                      className={buttonVariants({ variant: "danger", size: "sm" })}
+                    >
+                      Entfernen
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => setRueckfrage(profile.id)}
+                    aria-label={`${profile.displayName ?? "Fahrer"} als Follower entfernen`}
+                    className={buttonVariants({ variant: "secondary", size: "sm", className: "shrink-0" })}
+                  >
+                    Entfernen
+                  </button>
+                ))}
             </li>
           ))}
         </ul>

@@ -22,7 +22,7 @@ export async function getFolgeZustand(
   targetId: string,
 ): Promise<{ zustand: FolgeZustand; brauchtBestaetigung: boolean }> {
   const supabase = await createClient();
-  const [{ data: folgt }, { data: anfrage }, { data: ziel }] = await Promise.all([
+  const [{ data: folgt }, { data: anfrage }, { data: braucht }] = await Promise.all([
     supabase
       .from("follows")
       .select("followed_id")
@@ -35,17 +35,14 @@ export async function getFolgeZustand(
       .eq("von", viewerId)
       .eq("an", targetId)
       .maybeSingle(),
-    supabase
-      .from("profiles")
-      .select("folgen_bestaetigen")
-      .eq("id", targetId)
-      .maybeSingle<{ folgen_bestaetigen: boolean }>(),
+    // Dieselbe Regel wie toggleFollow und die Policies (0146/0147).
+    supabase.rpc("folgen_braucht_bestaetigung", { p_ziel: targetId }),
   ]);
   return {
     zustand: folgt ? "folgt" : anfrage ? "angefragt" : "keiner",
-    // Im Zweifel an: so zeigt der Knopf eher "Anfrage senden" als ein
+    // Im Zweifel an: so zeigt der Knopf eher "Folgen anfragen" als ein
     // Folgen zu versprechen, das die Datenbank (0147) ablehnt.
-    brauchtBestaetigung: ziel?.folgen_bestaetigen ?? true,
+    brauchtBestaetigung: braucht !== false,
   };
 }
 

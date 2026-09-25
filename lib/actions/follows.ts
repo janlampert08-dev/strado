@@ -11,24 +11,35 @@ const FOLLOW_COOLDOWN_MS = 500;
 // Ein Knopf, drei Zustände (0146): folgt → entfolgen; angefragt → Anfrage
 // zurückziehen; keiner → folgen, oder eine Anfrage stellen, wenn das Profil
 // Follower bestätigt. Selbst-Folgen verhindern zusätzlich die Constraints
-// follows_not_self (0030) und folge_anfragen_nicht_selbst (0146) — der Check
-// hier vermeidet nur den unnötigen Roundtrip.
+// follows_not_self (0030) und folge_anfragen_nicht_selbst (0146).
 //
-// Ob angefragt statt gefolgt wird, entscheidet hier der Server, nicht der
-// Knopf: der kennt die Einstellung nur vom Laden der Seite. Die Datenbank
-// setzt dasselbe mit 0147 durch.
+// Der Knopf schickt mit, von welchem Zustand er ausging (angezeigt). Stimmt
+// der mit der Datenbank nicht überein — die Anfrage wurde inzwischen
+// angenommen oder abgelehnt, man folgt schon aus einem anderen Tab —, wird
+// NICHTS geschrieben und der tatsächliche Stand zurückgegeben. Ein blindes
+// Umschalten täte sonst das Gegenteil des Getippten; und seit den
+// Folgeanfragen lässt sich ein versehentliches Entfolgen nur noch über eine
+// neue Anfrage rückgängig machen.
+//
+// Ob angefragt statt gefolgt wird, entscheidet der Server mit derselben
+// Regel wie die Policies (folgen_braucht_bestaetigung, 0146/0147).
 export async function toggleFollow(
   targetUserId: string,
+  angezeigt: FolgeZustand,
 ): Promise<{
   ok: boolean;
+  // Der Stand danach, wie die Datenbank ihn sieht.
   zustand?: FolgeZustand;
-  // Der Zustand VOR dem Tipp, wie die Datenbank ihn sah — nicht, wie der
-  // Knopf ihn zeigte. Eine offene Seite kann veraltet sein (die Anfrage ist
-  // inzwischen angenommen), und die Quittung soll sagen, was geschehen ist.
-  vorher?: FolgeZustand;
+  // false: der Knopf war veraltet, es wurde nichts geändert.
+  geaendert?: boolean;
+  // Die Regel des Profils, wie sie jetzt gilt — der Knopf kennt sie sonst
+  // nur vom Laden der Seite.
   brauchtBestaetigung?: boolean;
 }> {
   if (!isValidUuid(targetUserId)) return { ok: false };
+  if (angezeigt !== "folgt" && angezeigt !== "angefragt" && angezeigt !== "keiner") {
+    return { ok: false };
+  }
 
   const supabase = await createClient();
   const {
@@ -37,31 +48,37 @@ export async function toggleFollow(
 
   if (!user || user.id === targetUserId) return { ok: false };
 
-  // Beide Tabellen: Anfragen legen keine follows-Zeile an und liefen sonst
-  // an der Sperre vorbei.
-  const [folgenGesperrt, anfragenGesperrt] = await Promise.all([
-    isRateLimited(supabase, "follows", "erstellt_am", "follower_id", user.id, FOLLOW_COOLDOWN_MS),
-    isRateLimited(supabase, "folge_anfragen", "erstellt_am", "von", user.id, FOLLOW_COOLDOWN_MS),
-  ]);
-  if (folgenGesperrt || anfragenGesperrt) return { ok: false };
+  // Alles, was vor dem Schreiben gelesen werden muss, in einem Zug. Beide
+  // Tabellen für die Sperre: Anfragen legen keine follows-Zeile an.
+  const [folgenGesperrt, anfragenGesperrt, { data: folgt }, { data: anfrage }, regel] =
+    await Promise.all([
+      isRateLimited(supabase, "follows", "erstellt_am", "follower_id", user.id, FOLLOW_COOLDOWN_MS),
+      isRateLimited(supabase, "folge_anfragen", "erstellt_am", "von", user.id, FOLLOW_COOLDOWN_MS),
+      supabase
+        .from("follows")
+        .select("followed_id")
+        .eq("follower_id", user.id)
+        .eq("followed_id", targetUserId)
+        .maybeSingle(),
+      supabase
+        .from("folge_anfragen")
+        .select("an")
+        .eq("von", user.id)
+        .eq("an", targetUserId)
+        .maybeSingle(),
+      supabase.rpc("folgen_braucht_bestaetigung", { p_ziel: targetUserId }),
+    ]);
+  if (folgenGesperrt || anfragenGesperrt || regel.error) return { ok: false };
 
-  const [{ data: folgt }, { data: anfrage }] = await Promise.all([
-    supabase
-      .from("follows")
-      .select("followed_id")
-      .eq("follower_id", user.id)
-      .eq("followed_id", targetUserId)
-      .maybeSingle(),
-    supabase
-      .from("folge_anfragen")
-      .select("an")
-      .eq("von", user.id)
-      .eq("an", targetUserId)
-      .maybeSingle(),
-  ]);
+  const brauchtBestaetigung = regel.data === true;
+  const vorher: FolgeZustand = folgt ? "folgt" : anfrage ? "angefragt" : "keiner";
+
+  if (vorher !== angezeigt) {
+    return { ok: true, zustand: vorher, geaendert: false, brauchtBestaetigung };
+  }
 
   let zustand: FolgeZustand;
-  if (folgt) {
+  if (vorher === "folgt") {
     const { error } = await supabase
       .from("follows")
       .delete()
@@ -69,7 +86,7 @@ export async function toggleFollow(
       .eq("followed_id", targetUserId);
     if (error) return { ok: false };
     zustand = "keiner";
-  } else if (anfrage) {
+  } else if (vorher === "angefragt") {
     const { error } = await supabase
       .from("folge_anfragen")
       .delete()
@@ -77,28 +94,18 @@ export async function toggleFollow(
       .eq("an", targetUserId);
     if (error) return { ok: false };
     zustand = "keiner";
+  } else if (brauchtBestaetigung) {
+    const { error } = await supabase
+      .from("folge_anfragen")
+      .insert({ von: user.id, an: targetUserId });
+    if (error) return { ok: false };
+    zustand = "angefragt";
   } else {
-    // Dieselbe Regel, die die Policies durchsetzen (0146/0147), statt sie
-    // hier aus profiles nachzubauen — sie nimmt z. B. gelöschte Konten aus.
-    const { data: braucht, error: regelFehler } = await supabase.rpc(
-      "folgen_braucht_bestaetigung",
-      { p_ziel: targetUserId },
-    );
-    if (regelFehler) return { ok: false };
-
-    if (braucht === true) {
-      const { error } = await supabase
-        .from("folge_anfragen")
-        .insert({ von: user.id, an: targetUserId });
-      if (error) return { ok: false };
-      zustand = "angefragt";
-    } else {
-      const { error } = await supabase
-        .from("follows")
-        .insert({ follower_id: user.id, followed_id: targetUserId });
-      if (error) return { ok: false };
-      zustand = "folgt";
-    }
+    const { error } = await supabase
+      .from("follows")
+      .insert({ follower_id: user.id, followed_id: targetUserId });
+    if (error) return { ok: false };
+    zustand = "folgt";
   }
 
   revalidatePath(`/fahrer/${targetUserId}`);
@@ -109,16 +116,7 @@ export async function toggleFollow(
   // abgeleitet (0100) und verschwindet mit ihr wieder. Offene Anfragen
   // stehen seit 0146 ebenfalls dort.
   revalidatePath("/aktivitaet");
-
-  const vorher: FolgeZustand = folgt ? "folgt" : anfrage ? "angefragt" : "keiner";
-  // Nur fürs Rückgängig nach dem Entfolgen gebraucht: verlangt das Profil
-  // eine Bestätigung, wäre "erneut folgen" nur eine neue Anfrage.
-  let brauchtBestaetigung: boolean | undefined;
-  if (vorher === "folgt") {
-    const { data } = await supabase.rpc("folgen_braucht_bestaetigung", { p_ziel: targetUserId });
-    brauchtBestaetigung = data === true;
-  }
-  return { ok: true, zustand, vorher, brauchtBestaetigung };
+  return { ok: true, zustand, geaendert: true, brauchtBestaetigung };
 }
 
 // Einen eigenen Follower entfernen (0149). Wichtig für Fahrten "nur für

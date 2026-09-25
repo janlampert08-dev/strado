@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import Card from "@/components/ui/Card";
 import SectionHeading from "@/components/ui/SectionHeading";
@@ -21,15 +22,26 @@ export default function FolgeanfragenListe({ initial }: { initial: Folgeanfrage[
   // eine zurückgezogene Anfrage verschwindet. Lokal gemerkt wird nur, was
   // gerade beantwortet wurde, damit die Karte nicht bis zur Antwort des
   // Servers stehen bleibt.
+  //
+  // Schlüssel ist Person UND Zeitpunkt: fragt jemand nach einer Ablehnung
+  // erneut an, ist das eine neue Anfrage und soll erscheinen.
   const [beantwortet, setBeantwortet] = useState<ReadonlySet<string>>(new Set());
   const [pending, startTransition] = useTransition();
-  const anfragen = initial.filter((a) => !beantwortet.has(a.von));
+  const router = useRouter();
+  const anfragen = initial.filter((a) => !beantwortet.has(schluessel(a)));
+
+  // Der "neu"-Punkt als Stand beim Laden, wie in ActivityList: MarkSeen
+  // markiert direkt danach alles als gesehen und lädt neu — ohne diesen
+  // Schnappschuss verschwände der Punkt, bevor ihn jemand sieht.
+  const [neuBeimLaden] = useState<ReadonlySet<string>>(
+    () => new Set(initial.filter((a) => a.neu).map(schluessel)),
+  );
 
   if (anfragen.length === 0) return null;
 
   function beantworte(anfrage: Folgeanfrage, annehmen: boolean) {
     // Optimistisch ausblenden; bei einem Fehler wieder an ihren Platz.
-    setBeantwortet((s) => new Set(s).add(anfrage.von));
+    setBeantwortet((s) => new Set(s).add(schluessel(anfrage)));
     startTransition(async () => {
       const { ok } = annehmen
         ? await folgeanfrageAnnehmen(anfrage.von)
@@ -37,10 +49,13 @@ export default function FolgeanfragenListe({ initial }: { initial: Folgeanfrage[
       if (!ok) {
         setBeantwortet((s) => {
           const neu = new Set(s);
-          neu.delete(anfrage.von);
+          neu.delete(schluessel(anfrage));
           return neu;
         });
-        zeigeHinweis("Das hat nicht geklappt. Bitte versuche es noch einmal.");
+        // Meist ist die Anfrage inzwischen zurückgezogen — neu laden, damit
+        // keine Karte stehen bleibt, die nie mehr gelingen kann.
+        router.refresh();
+        zeigeHinweis("Das hat nicht geklappt — die Liste ist jetzt aktualisiert.");
         return;
       }
       zeigeHinweis(
@@ -58,7 +73,7 @@ export default function FolgeanfragenListe({ initial }: { initial: Folgeanfrage[
       </SectionHeading>
       <ul className="flex flex-col gap-3">
         {anfragen.map((anfrage) => (
-          <Card as="li" key={anfrage.von} className="flex flex-col gap-3 p-4">
+          <Card as="li" key={schluessel(anfrage)} className="flex flex-col gap-3 p-4">
             <div className="flex items-center gap-3">
               <Avatar url={anfrage.avatarUrl} name={anfrage.displayName} size={40} />
               <Link
@@ -78,7 +93,7 @@ export default function FolgeanfragenListe({ initial }: { initial: Folgeanfrage[
                   })}
                 </p>
               </Link>
-              {anfrage.neu && <span className="h-2 w-2 shrink-0 rounded-full bg-accent" aria-label="Neu" />}
+              {neuBeimLaden.has(schluessel(anfrage)) && <span className="h-2 w-2 shrink-0 rounded-full bg-accent" aria-label="Neu" />}
             </div>
             <div className="flex gap-2">
               <button
@@ -103,4 +118,8 @@ export default function FolgeanfragenListe({ initial }: { initial: Folgeanfrage[
       </ul>
     </section>
   );
+}
+
+function schluessel(anfrage: Folgeanfrage): string {
+  return `${anfrage.von}|${anfrage.erstelltAm}`;
 }
