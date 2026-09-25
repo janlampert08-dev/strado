@@ -305,7 +305,7 @@ export default async function EinstellungenPage() {
                   ? "Abo-Status, Rechnungen, Kündigung."
                   : premiumStatus.offeneZahlung
                     ? "Für dein Abo ist eine Zahlung offen."
-                  : premiumKurzform()}
+                    : premiumKurzform()}
             </p>
             {/* Text und Knopf standen nebeneinander in einer Zeile. Ohne Abo
                 ist der Text premiumKurzform() und damit ein ganzer Satz —
