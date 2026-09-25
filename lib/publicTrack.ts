@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { MAX_PRIVACY_RADIUS_M, cropTrackEnds, toEwktLineString } from "@/lib/track";
+import { privatzonenGeheimnis, verschleiertGekappt } from "@/lib/privatzone";
+import { MAX_PRIVACY_RADIUS_M, toEwktLineString } from "@/lib/track";
 import type { GeoLineString } from "@/types/database";
 
 type ServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -25,32 +26,87 @@ type ServerClient = Awaited<ReturnType<typeof createClient>>;
 // wird zu viel gekappt. Das kostet im schlimmsten Fall ein Stück Kartenlinie
 // bei jemandem, der die Privatzone bewusst abgeschaltet hat — die
 // Gegenrichtung kostet eine Adresse.
+//
+// GELESEN WIRD ÜBER meine_privatzone() (0132)
+//
+// Bis 0132 hatte authenticated einen Spalten-Grant auf privatzone_radius_m,
+// und weil die SELECT-Policy auf profiles zeilenoffen ist, konnte jeder
+// eingeloggte Nutzer den Radius JEDES anderen lesen — die halbe Arbeit, um
+// aus den Enden seiner Tracks die Haustür zu bestimmen. 0132 nimmt den
+// Grant zurück; der eigene Wert kommt nur noch über die SECURITY-DEFINER-
+// Funktion, die auf auth.uid() festgelegt ist. Deshalb spielt userId hier
+// für die Abfrage keine Rolle mehr: alle Aufrufer übergeben ohnehin die ID
+// der angemeldeten Sitzung.
+//
+// Solange 0132 noch nicht eingespielt ist, fehlt die Funktion (PGRST202);
+// dann gilt der bisherige Weg über die Spalte, damit der Code vor der
+// Migration deployt werden kann. Nach der Migration schlägt genau dieser
+// Weg fehl — er wird aber nicht mehr erreicht.
 export async function privacyRadiusM(supabase: ServerClient, userId: string): Promise<number> {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("privatzone_radius_m")
-    .eq("id", userId)
-    .maybeSingle<{ privatzone_radius_m: number }>();
-
-  if (error) {
-    console.error("Privatzonen-Radius konnte nicht gelesen werden", { userId }, error);
+  const ergebnis = await eigenerPrivatzonenRadius(supabase);
+  if (ergebnis.fehler) {
+    console.error("Privatzonen-Radius konnte nicht gelesen werden", { userId }, ergebnis.fehler);
     return MAX_PRIVACY_RADIUS_M;
   }
-
-  return data?.privatzone_radius_m ?? MAX_PRIVACY_RADIUS_M;
+  return ergebnis.radiusM ?? MAX_PRIVACY_RADIUS_M;
 }
 
-// Die öffentlich sichtbare Fassung eines Tracks: Anfang und Ende innerhalb
-// der Privatzone entfernt (siehe cropTrackEnds). null, wenn danach zu wenig
-// übrig bleibt — dann zeigt die Fahrt eben keine Karte, aber niemals eine
-// ungekappte.
+// Der Radius der angemeldeten Person, ohne Rückfallwert — die
+// Einstellungsseite braucht den Unterschied zwischen "nicht lesbar" und
+// "gelesen", privacyRadiusM oben macht aus beidem die strengste Stufe.
+export async function eigenerPrivatzonenRadius(
+  supabase: ServerClient,
+): Promise<{ radiusM: number | null; fehler: unknown }> {
+  const { data, error } = await supabase.rpc("meine_privatzone");
+  if (!error) {
+    return { radiusM: typeof data === "number" ? data : null, fehler: null };
+  }
+  if (error.code !== "PGRST202") return { radiusM: null, fehler: error };
+
+  // Vor 0132: direkt aus der Spalte (RLS-Client, eigene Zeile).
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { radiusM: null, fehler: new Error("Keine Sitzung") };
+  const alt = await supabase
+    .from("profiles")
+    .select("privatzone_radius_m")
+    .eq("id", user.id)
+    .maybeSingle<{ privatzone_radius_m: number }>();
+  if (alt.error) return { radiusM: null, fehler: alt.error };
+  return { radiusM: alt.data?.privatzone_radius_m ?? null, fehler: null };
+}
+
+// Die öffentlich sichtbaren Koordinaten eines Tracks: Anfang und Ende
+// innerhalb der verschleierten Privatzone entfernt (lib/privatzone.ts).
+// Leer, wenn danach zu wenig übrig bleibt oder kein Servergeheimnis da ist —
+// dann zeigt die Fahrt eben keine Karte, aber niemals eine ungekappte oder
+// nachrechenbar gekappte.
+//
+// Auch der Ortsname einer freien Fahrt (start_ort) wird aus dem ersten
+// dieser Punkte bestimmt und nicht aus dem rohen Start — sonst nennte die
+// Fahrt das Quartier, das der Track gerade verschweigt.
+export function oeffentlicheKoordinaten(
+  coordinates: [number, number][],
+  radiusM: number,
+  userId: string,
+): [number, number][] {
+  if (radiusM <= 0) return [...coordinates];
+  const geheimnis = privatzonenGeheimnis();
+  if (!geheimnis) {
+    console.error("Privatzone: kein Servergeheimnis (PRIVATZONE_SECRET/SUPABASE_SECRET_KEY)");
+    return [];
+  }
+  return verschleiertGekappt(coordinates, radiusM, userId, geheimnis);
+}
+
 export async function publicTrackEwkt(
   supabase: ServerClient,
   userId: string,
   coordinates: [number, number][],
 ): Promise<string | null> {
   const radiusM = await privacyRadiusM(supabase, userId);
-  return toEwktLineString(cropTrackEnds(coordinates, radiusM));
+  return toEwktLineString(oeffentlicheKoordinaten(coordinates, radiusM, userId));
 }
 
 // Nach einer Änderung des Radius müssen die bereits geteilten Fahrten neu
@@ -102,7 +158,7 @@ export async function recomputePublicTracks(
   // Fehlermeldung zeigt statt "Gespeichert.".
   //
   // Bewusst kein einzelnes UPDATE über alle Zeilen: der Zuschnitt ist
-  // JS-Rechnung (cropTrackEnds), keine SQL-Operation — siehe Kommentar
+  // JS-Rechnung (oeffentlicheKoordinaten), keine SQL-Operation — siehe Kommentar
   // oben. Ein Block begrenzt nur, wie viele davon gleichzeitig fliegen.
   const BLOCKGROESSE = 25;
   const zeilen = tracks ?? [];
@@ -112,7 +168,7 @@ export async function recomputePublicTracks(
     const block = zeilen.slice(i, i + BLOCKGROESSE);
     const ergebnisse = await Promise.all(
       block.map((row) => {
-        const cropped = cropTrackEnds(row.track_geojson.coordinates, radiusM);
+        const cropped = oeffentlicheKoordinaten(row.track_geojson.coordinates, radiusM, userId);
         return supabase
           .from("route_completions")
           .update({ track_oeffentlich: toEwktLineString(cropped) })

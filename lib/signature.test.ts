@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { computeSignatures } from "@/lib/signature";
-import type { ExploreRoute } from "@/types/database";
+import type { ExploreRoute, SignaturStrecke } from "@/types/database";
 
-function strecke(over: Partial<ExploreRoute> & { id: string }): ExploreRoute {
+// ExploreRoute trägt seit der serverseitigen Signatur keine Tempolimits
+// mehr; computeSignatures() liest sie aber — daher die Schnittmenge.
+type Zeile = ExploreRoute & SignaturStrecke;
+
+function strecke(over: Partial<Zeile> & { id: string }): Zeile {
   return {
     name: "Teststrecke",
     region: "Kanton Zürich",
@@ -25,7 +29,7 @@ function strecke(over: Partial<ExploreRoute> & { id: string }): ExploreRoute {
     tempolimits: null,
     ist_rundfahrt: false,
     ...over,
-  } as ExploreRoute;
+  } as Zeile;
 }
 
 describe("computeSignatures", () => {

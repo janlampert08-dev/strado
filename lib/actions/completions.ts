@@ -22,7 +22,7 @@ import {
 } from "@/lib/track";
 import { metadatenEntfernen } from "@/lib/imageMetadata";
 import { istPremium, maxFotosProFahrt } from "@/lib/premium";
-import { publicTrackEwkt } from "@/lib/publicTrack";
+import { oeffentlicheKoordinaten, privacyRadiusM, publicTrackEwkt } from "@/lib/publicTrack";
 import {
   buildHoehenprofil,
   computeAscentM,
@@ -882,10 +882,25 @@ export async function logFreeRide(
   const track = toEwktLineString(coordinates);
   if (!track) return { error: "Ungültige Tracking-Daten." };
 
+  // Die öffentlich sichtbare Fassung des Tracks, einmal berechnet: für
+  // track_oeffentlich weiter unten UND für den Ortsnamen. start_ort wird aus
+  // ihrem ersten Punkt bestimmt, nicht aus dem rohen Start — sonst nennte
+  // die Fahrt das Quartier, das die Privatzone gerade verschweigt (0132).
+  // Auch bei einer privaten Fahrt: start_ort bleibt stehen, wenn sie später
+  // über toggleCompletionVisibility veröffentlicht wird.
+  const oeffentlich = oeffentlicheKoordinaten(
+    coordinates,
+    await privacyRadiusM(supabase, user.id),
+    user.id,
+  );
+
   // Ortsbezug und Höhendaten parallel — beide sind externe Aufrufe, die die
-  // Antwortzeit sonst nacheinander verlängern würden.
+  // Antwortzeit sonst nacheinander verlängern würden. Bleibt vom Track
+  // öffentlich nichts übrig (kurze Fahrt, grosse Privatzone), gibt es auch
+  // keinen Ortsnamen: der einzige Ort, den man noch nennen könnte, wäre
+  // der innerhalb der Privatzone.
   const [ort, elevation, fahrzeugTyp] = await Promise.all([
-    reverseGeocode(coordinates[0]).catch(() => null),
+    oeffentlich.length > 0 ? reverseGeocode(oeffentlich[0]).catch(() => null) : null,
     deriveElevation(coordinates),
     fahrzeugTypLaden(supabase, fahrzeugId, user.id),
   ]);
@@ -989,9 +1004,7 @@ export async function logFreeRide(
     // das Maximum mit der deklarierten Klasse (0080).
     motorklasse_belegt: belegteKlasse(fahrzeugTyp, trail, elevation.hoehenprofil),
     track,
-    track_oeffentlich: istOeffentlich
-      ? await publicTrackEwkt(supabase, user.id, coordinates)
-      : null,
+    track_oeffentlich: istOeffentlich ? toEwktLineString(oeffentlich) : null,
   };
 
   let { data: insertedRaw, error } = await supabase.rpc("save_free_ride_with_segments", {
@@ -1156,8 +1169,17 @@ export async function importGpxRide(formData: FormData): Promise<ImportFormState
   const track = toEwktLineString(coordinates);
   if (!track) return { error: "Ungültige Tracking-Daten." };
 
+  // Importierte Fahrten bleiben privat (0124), der Ortsname kommt trotzdem
+  // aus demselben verschleierten Anfang wie bei einer aufgezeichneten Fahrt
+  // (siehe logFreeRide) — sollte die Regel je fallen, trägt keine
+  // importierte Fahrt schon das Quartier der Haustür.
+  const oeffentlich = oeffentlicheKoordinaten(
+    coordinates,
+    await privacyRadiusM(supabase, user.id),
+    user.id,
+  );
   const [ort, elevation] = await Promise.all([
-    reverseGeocode(coordinates[0]).catch(() => null),
+    oeffentlich.length > 0 ? reverseGeocode(oeffentlich[0]).catch(() => null) : null,
     deriveElevation(coordinates),
   ]);
 

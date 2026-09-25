@@ -46,7 +46,7 @@ export async function GET() {
     "## Öffentliche Seiten",
     "",
     `- Strecken entdecken: ${origin}/`,
-    `- Passstatus (tagesaktuell): ${origin}/paesse`,
+    `- Passstatus (tagesaktuell): ${origin}/paesse — je Pass: ${origin}/paesse/{kürzel}, z. B. ${origin}/paesse/susten`,
     `- Ranglisten: ${origin}/ranglisten`,
     `- Premium-Übersicht: ${origin}/premium`,
     `- Was „verifizierte Zeiten" bedeutet: ${origin}/verifiziert`,
@@ -68,11 +68,13 @@ export async function GET() {
 
   if (paesse.length > 0) {
     zeilen.push(
-      "## Pässe (Katalog — der tagesaktuelle Status steht unter /paesse, nicht hier)",
+      "## Pässe (Katalog — der tagesaktuelle Status steht auf der Seite jedes Passes, nicht hier)",
       "",
     );
     for (const { pass } of paesse) {
-      zeilen.push(`- ${pass.name} (${pass.hoeheM.toLocaleString("de-CH")} m, ${pass.kantone.join("/")})`);
+      zeilen.push(
+        `- ${pass.name} (${pass.hoeheM.toLocaleString("de-CH")} m, ${pass.kantone.join("/")}): ${origin}/paesse/${pass.id}`,
+      );
     }
     zeilen.push("");
   }

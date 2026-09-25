@@ -144,31 +144,37 @@ export default function GefahrenSection({
   }
 
   if (!open) {
+    // Eine Zeile, keine schwebende Karte mehr: die Leiste steht als feste
+    // Fusszeile des Sheets (RouteDetailLayout, Prop `aktion`), Trennlinie und
+    // Hintergrund bringt sie dort mit. Vorher eine eigene Karte mit
+    // `sticky bottom-0`, die innerhalb des Reiters nie kleben konnte.
+    //
+    // Links kein zweites "Strecke fahren" mehr über dem gleichnamigen Knopf —
+    // in der schmalen Leiste zählt jede Zeile, und die Zeile sagt jetzt das,
+    // was der Knopf nicht sagt: wann die Uhr läuft.
     return (
-      <div className="sticky bottom-0 z-10 -mx-1 px-1 pt-2 pb-1">
-        <div className="flex items-center gap-3 rounded-2xl border border-border bg-background/95 p-3 shadow-elevated backdrop-blur">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">Strecke fahren</p>
-            {/* "ohne Konto" nur für Gäste: angemeldet ist der Satz keine
-                Information mehr, sondern eine Falschaussage über den Zustand. */}
-            <p className="truncate text-xs text-muted">
-              {route.laenge_km.toFixed(0)} km · Zeitmessung startet am Startpunkt
-              {userId === null && " · auch ohne Konto"}
-            </p>
-          </div>
-          {/* Handgebaute Pille durch die Design-System-Variante ersetzt (Kernregel
-              14): dieselbe Höhe wie zuvor, aber jetzt aus derselben Quelle wie
-              die übrigen Bedienelemente der Aufzeichnung — px-10 statt px-6
-              bleibt als Zusatz, weil diese eine Schaltfläche bewusst breiter
-              steht als die im Vollbild. */}
-          <button
-            type="button"
-            onClick={() => (ersteFahrtHinweiseGesehen ? setOpen(true) : setVorbereitung(true))}
-            className={buttonVariants({ variant: "accent", size: "lg", className: "shrink-0 px-8" })}
-          >
-            Strecke fahren
-          </button>
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold">Zeitmessung ab Start</p>
+          {/* "ohne Konto" nur für Gäste: angemeldet ist der Satz keine
+              Information mehr, sondern eine Falschaussage über den Zustand. */}
+          <p className="truncate text-xs text-muted">
+            {route.laenge_km.toFixed(0)} km
+            {userId === null && " · auch ohne Konto"}
+          </p>
         </div>
+        {/* Handgebaute Pille durch die Design-System-Variante ersetzt (Kernregel
+            14): dieselbe Höhe wie zuvor, aber jetzt aus derselben Quelle wie
+            die übrigen Bedienelemente der Aufzeichnung — px-8 statt px-6
+            bleibt als Zusatz, weil diese eine Schaltfläche bewusst breiter
+            steht als die im Vollbild. */}
+        <button
+          type="button"
+          onClick={() => (ersteFahrtHinweiseGesehen ? setOpen(true) : setVorbereitung(true))}
+          className={buttonVariants({ variant: "accent", size: "lg", className: "shrink-0 px-8" })}
+        >
+          Strecke fahren
+        </button>
       </div>
     );
   }

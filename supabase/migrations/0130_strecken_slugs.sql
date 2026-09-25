@@ -249,6 +249,10 @@ $$;
 
 -- 5. View ------------------------------------------------------------------
 
+-- Stand 2026-09-25: nach 0137 eingespielt. Die vier GeoJSON-Spalten lesen
+-- deshalb die gespeicherten Spalten aus 0137 statt ST_AsGeoJSON — sonst
+-- nähme dieses create or replace die Vorberechnung wieder zurück. Die
+-- Spalten und ihre Reihenfolge sind unverändert, slug kommt ans Ende.
 create or replace view public.routes_geojson
 with (security_invoker = true) as
  select id,
@@ -256,9 +260,9 @@ with (security_invoker = true) as
     region,
     start_ort,
     ziel_ort,
-    st_asgeojson(start_coord)::json as start_geojson,
-    st_asgeojson(ziel_coord)::json as ziel_geojson,
-    st_asgeojson(geometry)::json as geometry_geojson,
+    geojson_start as start_geojson,
+    geojson_ziel as ziel_geojson,
+    geojson_geometrie as geometry_geojson,
     hoehe_m,
     laenge_km,
     max_steigung_prozent,
@@ -273,6 +277,6 @@ with (security_invoker = true) as
     erstellt_von,
     created_at,
     ist_privat,
-    st_asgeojson(geometry_uebersicht)::json as geometry_uebersicht_geojson,
+    geojson_uebersicht as geometry_uebersicht_geojson,
     slug
    from public.routes;

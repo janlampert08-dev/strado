@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Header from "@/components/Header";
 import ExploreView from "@/components/ExploreView";
-import { getRoutes } from "@/lib/routes";
+import { getFreigegebeneStreckenIds, getRoutes } from "@/lib/routes";
 import { getBewertungen } from "@/lib/ratings";
 import { getPassZustaendeJeStrecke } from "@/lib/paesse";
 import { getCurrentUser } from "@/lib/supabase/server";
@@ -49,13 +49,16 @@ export default async function Home() {
   // <Header /> ruft es auf derselben Anfrage ohnehin auf — der Aufruf hier
   // kostet also keinen zusätzlichen GoTrue-Roundtrip. Parallel zu
   // getRoutes(), weil beide voneinander unabhängig sind.
-  const [{ routes, error }, user, origin] = await Promise.all([
-    getRoutes(),
-    getCurrentUser(),
-    getOrigin(),
-  ]);
-
-  // Erst danach, weil die Abfrage die IDs der geladenen Strecken braucht.
+  //
+  // Bewertungen und Passzustand laufen in derselben Welle mit. Sie brauchen
+  // nur die IDs der freigegebenen Strecken, und die liefert eine eigene,
+  // schmale Abfrage (getFreigegebeneStreckenIds) schneller als getRoutes()
+  // mit seinen Geometrien. Bis 2026-09-25 warteten beide auf getRoutes() und
+  // hängten damit eine zweite (beim Passzustand: dritte und vierte)
+  // Datenbank-Runde hinten an. Dieselbe Menge ist es, weil beide Abfragen
+  // auf status_ok filtern; weicht sie in einem Moment ab (eine Strecke wird
+  // genau dazwischen freigegeben), fehlt einer Zeile höchstens der Stern.
+  //
   // Eine Abfrage für die ganze Liste, nicht eine pro Zeile — die Begründung
   // steht im Kopf von lib/bewertungen.ts.
   //
@@ -70,10 +73,15 @@ export default async function Home() {
   // die erste Frage, und sie soll ohne Öffnen der Strecke beantwortet sein.
   // "Offen" bleibt ohne Abzeichen, sonst trüge fast jede Zeile eins.
   // Beide Abfragen hängen am selben Streckenbestand, aber nicht aneinander.
-  const [bewertungenPaare, passZustaende] = await Promise.all([
-    getBewertungen(routes.map((r) => r.id)),
-    getPassZustaendeJeStrecke(routes.map((r) => r.id)),
-  ]);
+  const [{ routes, signaturen, error }, user, origin, [bewertungenPaare, passZustaende]] =
+    await Promise.all([
+      getRoutes(),
+      getCurrentUser(),
+      getOrigin(),
+      getFreigegebeneStreckenIds().then((ids) =>
+        Promise.all([getBewertungen(ids), getPassZustaendeJeStrecke(ids)]),
+      ),
+    ]);
   const bewertungen = Object.fromEntries(bewertungenPaare);
 
   // Strukturierte Daten der Startseite — bisher die einzige Hauptseite ohne.
@@ -124,6 +132,7 @@ export default async function Home() {
       <Header />
       <ExploreView
         routes={routes}
+        signaturen={signaturen}
         bewertungen={bewertungen}
         passZustaende={Object.fromEntries(passZustaende)}
         loadError={error}

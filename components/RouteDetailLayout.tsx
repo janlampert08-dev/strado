@@ -18,9 +18,16 @@ const SHEET_PEEK_PX = 320;
 
 export default function RouteDetailLayout({
   route,
+  aktion,
   children,
 }: {
   route: RouteGeoJSON;
+  /**
+   * Die Hauptaktion der Seite ("Strecke fahren"). Sie steht NICHT im
+   * scrollenden Inhalt, sondern als feste Leiste an dessen Fuss — siehe
+   * den Kommentar am Rendern unten.
+   */
+  aktion?: ReactNode;
   children: ReactNode;
 }) {
   const containerRef = useRef<HTMLElement>(null);
@@ -50,6 +57,17 @@ export default function RouteDetailLayout({
       >
         Zur Streckeninfo
       </a>
+      {/* Die Hauptaktion steht im DOM nach dem ganzen Inhalt (feste
+          Fussleiste, siehe unten) — per Tab käme sie erst nach allen
+          Reitern. Deshalb ein zweiter Sprunglink direkt dorthin. */}
+      {aktion && (
+        <a
+          href="#fahren"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-full focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-overlay"
+        >
+          Zu „Strecke fahren“
+        </a>
+      )}
       {/* Kein role="img" um die interaktive Karte (siehe ExploreView):
           der Navigationsschalter darin bleibt für Tastatur und
           Hilfstechnik erreichbar, die Beschreibung steht daneben. */}
@@ -82,12 +100,46 @@ export default function RouteDetailLayout({
           </>
         }
       >
-        {/* Kein Sonderpolster mehr für die BottomNav — das Sheet endet
-            inzwischen über der Leiste (bottom: var(--bottom-nav-h), siehe
-            DragSheet.tsx). pb-8 ist der Wert, der vorher ab md galt, wo es
-            die Leiste nie gab. */}
-        <div id="streckeninfo" tabIndex={-1} className="flex w-full flex-col gap-5 overflow-y-auto outline-none overscroll-y-contain border-border px-5 pt-6 pb-8 sm:px-6 sm:pt-8 md:max-w-md md:border-r lg:max-w-lg xl:max-w-xl">
-          {children}
+        {/* Die Hauptaktion als feste Fussleiste des Sheets, ausserhalb des
+            scrollenden Inhalts. Vorher stand "Strecke fahren" im Reiter
+            Fahren, unter Titel, Aktionsknöpfen, Bestzeit und Reiterleiste —
+            gemessen bei 390 × 844 rund 100 px UNTER der Peek-Kante (320 px
+            minus 44 px Griff). Die wichtigste Handlung der Seite war beim
+            ersten Aufruf also nicht zu sehen. Das `sticky bottom-0`, das
+            GefahrenSection dafür mitbrachte, griff nie: ein Sticky-Element
+            bewegt sich nur innerhalb seines Elternblocks, und der war ein
+            div, das nur den Knopf selbst umschloss.
+
+            Den Peek dafür zu erhöhen hätte gegen den Grundsatz aus
+            docs/design-vereinfachung.md (3.1) verstossen: das Budget wird im
+            Inhalt geholt, nicht am Fenster — die Karte ist die zweite Hälfte
+            der Seite. Die Leiste kostet stattdessen rund 70 px vom Inhalt
+            und steht dafür bei JEDER Bildschirmhöhe (iPhone SE wie Pro Max),
+            in jedem Reiter und auch aufgezogen im Blick. Eingeklappt
+            ("versteckt") schneidet das Sheet sie mit weg, und der Wrapper in
+            DragSheet macht sie dort inert wie den Rest.
+
+            Ab md steht sie am Fuss der linken Spalte. `empty:hidden`, weil
+            GefahrenSection während der Aufzeichnung nichts an Ort und Stelle
+            rendert (der Dialog hängt per Portal an body) — ohne blieb ein
+            leerer Streifen mit Trennlinie stehen.
+
+            Die max-w- und border-r-Klassen sitzen jetzt auf dieser Spalte
+            statt auf #streckeninfo: ab md ist sie das echte Flex-Kind von
+            main (DragSheet wird dort display:contents). */}
+        <div className="flex min-h-0 w-full flex-1 flex-col border-border md:max-w-md md:border-r lg:max-w-lg xl:max-w-xl">
+          {/* Kein Sonderpolster mehr für die BottomNav — das Sheet endet
+              inzwischen über der Leiste (bottom: var(--bottom-nav-h), siehe
+              DragSheet.tsx). pb-8 ist der Wert, der vorher ab md galt, wo es
+              die Leiste nie gab. */}
+          <div id="streckeninfo" tabIndex={-1} className="flex min-h-0 w-full flex-1 flex-col gap-5 overflow-y-auto outline-none overscroll-y-contain px-5 pt-6 pb-8 sm:px-6 sm:pt-8">
+            {children}
+          </div>
+          {aktion && (
+            <div id="fahren" tabIndex={-1} className="shrink-0 border-t border-border bg-background px-5 py-3 outline-none empty:hidden sm:px-6">
+              {aktion}
+            </div>
+          )}
         </div>
       </DragSheet>
     </main>

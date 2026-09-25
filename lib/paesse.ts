@@ -14,6 +14,7 @@ import { fehltSlugSpalte } from "@/lib/streckenPfad";
 
 /** Die öffentliche Strecke über einen Pass; slug fehlt vor 0130. */
 export type PassStrecke = { id: string; name: string; slug?: string | null };
+import { istPassId, naechstePaesse, punktAusEwkb } from "@/lib/passSeite";
 
 export interface Pass {
   id: string;
@@ -289,14 +290,19 @@ export async function getPassZustaendeJeStrecke(
   // Startseite den Zustand roh aus der Tabelle, während jede andere Fläche
   // ihn bei stillem Feed auf "kein Stand" zurücknimmt — die Liste hätte als
   // einzige weiter "Gesperrt" behauptet.
-  const feedStand = await getFeedStand();
+  //
+  // Feed-Stand und Verknüpfungen hängen nicht aneinander und laufen deshalb
+  // gleichzeitig; bis 2026-09-25 standen sie hintereinander, eine Runde mehr
+  // auf dem Weg jeder Startseite.
+  const [feedStand, { data: verknuepfungen }] = await Promise.all([
+    getFeedStand(),
+    supabase
+      .from("strecken_paesse")
+      .select("route_id, pass_id")
+      .in("route_id", routeIds)
+      .returns<{ route_id: string; pass_id: string }[]>(),
+  ]);
   const feedGesund = istFeedGesund(feedStand);
-
-  const { data: verknuepfungen } = await supabase
-    .from("strecken_paesse")
-    .select("route_id, pass_id")
-    .in("route_id", routeIds)
-    .returns<{ route_id: string; pass_id: string }[]>();
 
   if (!verknuepfungen || verknuepfungen.length === 0) return new Map();
 
@@ -442,4 +448,181 @@ export async function getPassModerationsDaten(): Promise<ModerationsDaten> {
     })),
     feedStand,
   };
+}
+
+export interface PassSeitenStrecke {
+  id: string;
+  name: string;
+  region: string;
+  startOrt: string;
+  zielOrt: string;
+  istRundfahrt: boolean;
+  laengeKm: number;
+  kehren: number | null;
+  hoeheM: number | null;
+  maxSteigungProzent: number | null;
+}
+
+export interface PassNachbar {
+  pass: Pass;
+  status: PassStatusZeile | null;
+  distanzKm: number | null;
+}
+
+export interface PassSeite extends PassKontext {
+  /** Die öffentlichen, freigegebenen Strecken über diesen Pass — meist eine,
+   *  manchmal keine. Keine ist der Aufruf, eine vorzuschlagen. */
+  strecken: PassSeitenStrecke[];
+  nachbarn: PassNachbar[];
+  /** [lng, lat] des Scheitels, null bei unlesbarer Geometrie. */
+  scheitel: [number, number] | null;
+  feedStand: string | null;
+}
+
+/**
+ * Alles für die Seite eines Passes (app/paesse/[id]) — null, wenn es den
+ * Pass nicht gibt.
+ *
+ * cache(): generateMetadata und die Seite fragen dasselbe im selben Request.
+ */
+export const getPassSeite = cache(async function getPassSeite(id: string): Promise<PassSeite | null> {
+  // Eine Adresse, die dem Schlüsselmuster nicht folgt, kann kein Pass sein —
+  // dafür braucht es keine sieben Abfragen.
+  if (!istPassId(id)) return null;
+  const supabase = await createClient();
+  const user = await getCurrentUser();
+
+  // Den ganzen Katalog statt nur dieses Passes: 34 Zeilen, und die Nachbarn
+  // brauchen ohnehin jeden Scheitelpunkt. Der Status ebenso — die Nachbarn
+  // zeigen ihren mit.
+  const [katalog, status, ereignisse, sperrtage, verknuepfungen, folgen, feedStand] = await Promise.all([
+    supabase.from("paesse").select(`${PASS_SPALTEN}, scheitel`),
+    supabase.from("pass_status").select("*"),
+    supabase
+      .from("pass_ereignisse")
+      .select("zustand, vorher, erfasst_am")
+      .eq("pass_id", id)
+      .order("erfasst_am", { ascending: false })
+      .limit(30),
+    supabase
+      .from("pass_sperrtage")
+      .select("id, pass_id, von, bis, art, titel, zeitfenster, quelle_url")
+      .eq("pass_id", id)
+      .order("von"),
+    supabase.from("strecken_paesse").select("route_id").eq("pass_id", id),
+    user
+      ? supabase.from("pass_folgen").select("pass_id").eq("pass_id", id)
+      : Promise.resolve({ data: [] as { pass_id: string }[] }),
+    getFeedStand(),
+  ]);
+
+  // Katalog und Status tragen die Seite. Fehlen sie, ist eine Fehlerseite
+  // ehrlicher als ein 404 oder ein "Kein Stand", der in Wahrheit ein Ausfall
+  // ist (lib/queryError.ts).
+  throwOnQueryError(katalog.error, "Die Passhöhen");
+  throwOnQueryError(status.error, "Der Passstatus");
+
+  const zeilen = ((katalog.data as (PassRoh & { scheitel: unknown })[] | null) ?? []).map((zeile) => ({
+    id: zeile.id,
+    kantone: zeile.kantone,
+    scheitel: punktAusEwkb(zeile.scheitel),
+    pass: alsPass(zeile),
+  }));
+  const eigene = zeilen.find((z) => z.id === id);
+  if (!eigene) return null;
+
+  const statusJePass = new Map(
+    ((status.data as StatusRoh[] | null) ?? []).map((s) => [s.pass_id, alsStatus(s)]),
+  );
+
+  // Wie auf der Passliste: strecken_paesse zeigt der Besitzerin auch ihre
+  // privaten und noch nicht freigegebenen Strecken (security_invoker). Die
+  // Seite ist öffentlich und verlinkt nur, was alle sehen.
+  const routeIds = ((verknuepfungen.data as { route_id: string }[] | null) ?? []).map((v) => v.route_id);
+  const { data: streckenRoh, error: streckenFehler } = routeIds.length
+    ? await supabase
+        .from("routes")
+        .select("id, name, region, start_ort, ziel_ort, laenge_km, kehren, hoehe_m, max_steigung_prozent")
+        .in("id", routeIds)
+        .eq("status_ok", true)
+        .eq("ist_privat", false)
+        .order("name")
+    : { data: [], error: null };
+  // Ohne diese Prüfung stünde bei einem Ausfall "Noch keine Strecke" da —
+  // eine falsche Einladung, die wie eine Tatsache aussieht.
+  throwOnQueryError(streckenFehler, "Die Strecken über diesen Pass");
+
+  type StreckeRoh = {
+    id: string; name: string; region: string; start_ort: string; ziel_ort: string;
+    laenge_km: number; kehren: number | null; hoehe_m: number | null;
+    max_steigung_prozent: number | null;
+  };
+  type EreignisRoh = { zustand: PassEreignis["zustand"]; vorher: PassEreignis["vorher"]; erfasst_am: string };
+  type SperrtagRoh = {
+    id: string; pass_id: string; von: string; bis: string;
+    art: SperrtagArt; titel: string; zeitfenster: string | null; quelle_url: string | null;
+  };
+
+  return {
+    pass: eigene.pass,
+    status: statusJePass.get(id) ?? null,
+    ereignisse: ((ereignisse.data as EreignisRoh[] | null) ?? []).map((e) => ({
+      zustand: e.zustand,
+      vorher: e.vorher,
+      erfasstAm: e.erfasst_am,
+    })),
+    sperrtage: ((sperrtage.data as SperrtagRoh[] | null) ?? []).map((s) => ({
+      id: s.id,
+      passId: s.pass_id,
+      von: s.von,
+      bis: s.bis,
+      art: s.art,
+      titel: s.titel,
+      zeitfenster: s.zeitfenster,
+      quelleUrl: s.quelle_url,
+    })),
+    folgtMan: ((folgen.data as { pass_id: string }[] | null) ?? []).length > 0,
+    strecken: ((streckenRoh as StreckeRoh[] | null) ?? []).map((s) => ({
+      id: s.id,
+      name: s.name,
+      region: s.region,
+      startOrt: s.start_ort,
+      zielOrt: s.ziel_ort,
+      // ist_rundfahrt gibt es nur in der View routes_geojson; dieselbe
+      // Regel wie im Suchtitel der Streckenseite: Start gleich Ziel.
+      istRundfahrt: s.start_ort.trim().toLowerCase() === s.ziel_ort.trim().toLowerCase(),
+      laengeKm: s.laenge_km,
+      kehren: s.kehren,
+      hoeheM: s.hoehe_m,
+      maxSteigungProzent: s.max_steigung_prozent,
+    })),
+    nachbarn: naechstePaesse(eigene, zeilen, 4).map(({ pass: z, distanzKm }) => ({
+      pass: z.pass,
+      status: statusJePass.get(z.id) ?? null,
+      distanzKm,
+    })),
+    scheitel: eigene.scheitel,
+    feedStand,
+  };
+});
+
+/** Nur der Katalogeintrag — für das Vorschaubild, das weder Status noch
+ *  Konto braucht und deshalb nicht die sieben Abfragen der Seite. */
+export async function getPass(id: string): Promise<Pass | null> {
+  if (!istPassId(id)) return null;
+  const supabase = await createClient();
+  const { data } = await supabase.from("paesse").select(PASS_SPALTEN).eq("id", id).maybeSingle<PassRoh>();
+  return data ? alsPass(data) : null;
+}
+
+/** Nur die Schlüssel, für die Sitemap. Ein Fehler kostet die Passseiten in
+ *  der Sitemap, nicht die ganze Sitemap. */
+export async function listPassIdsFuerSitemap(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("paesse").select("id").order("id");
+  if (error) {
+    console.error("Sitemap-Pässe konnten nicht geladen werden:", error.message);
+    return [];
+  }
+  return ((data as { id: string }[] | null) ?? []).map((p) => p.id);
 }

@@ -136,3 +136,22 @@ export function sollPulsen(
       : PULS_INTERVALL_MS;
   return jetztMs - letzterPulsMs >= intervall;
 }
+
+/**
+ * Ist dieser Fehler eines Fahrtstart-Aufrufs die fehlende Berechtigung eines
+ * Gasts — darf die Server Action also auf den Service-Role-Client
+ * ausweichen (lib/actions/fahrtstart.ts, 0133_gastticket_bremse.sql)?
+ *
+ * 42501 ist "permission denied for function": anon hat seit 0133 kein
+ * EXECUTE mehr. PGRST202 ("function not found") kommt dazu, falls PostgREST
+ * eine Funktion ohne EXECUTE gar nicht erst im Schema-Cache führt.
+ *
+ * Bewusst NICHT dabei: Fehler eines ungültigen oder abgelaufenen Tokens
+ * (PGRST301/PGRST303) und alles aus der Funktion selbst ("Zu viele
+ * Fahrtstarts" ist P0001). Wer ein kaputtes Sitzungs-Cookie schickt, soll
+ * nicht still als Gast weiterlaufen, und eine Grenze der Datenbank soll kein
+ * zweiter Aufruf umgehen.
+ */
+export function istGastSperre(fehler: { code?: string | null } | null | undefined): boolean {
+  return fehler?.code === "42501" || fehler?.code === "PGRST202";
+}

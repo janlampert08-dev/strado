@@ -14,7 +14,6 @@ import { getCurrentUser } from "@/lib/supabase/server";
 import { getOrigin } from "@/lib/utils/url";
 import { mitAnzahl } from "@/lib/format";
 import { OG_GEERBT } from "@/lib/openGraph";
-import { streckenPfad } from "@/lib/streckenPfad";
 
 // Die öffentliche Passseite: der Katalog, sein heutiger Zustand, und — für
 // angemeldete Konten — die eigene Sammlung.
@@ -100,9 +99,10 @@ export default async function PaessePage() {
         "@type": "TouristAttraction",
         name: eintrag.name,
         description: `${eintrag.hoeheM.toLocaleString("de-CH")} m · ${eintrag.kantone.join(" / ")}${eintrag.strecke ? "" : " · noch keine Strecke"}`,
-        url: eintrag.strecke
-          ? `${origin}${streckenPfad(eintrag.strecke)}`
-          : `${origin}/paesse#${eintrag.id}`,
+        // Jeder Pass hat seit app/paesse/[id] eine eigene Seite; vorher
+        // zeigte die Adresse auf die Strecke oder, ohne Strecke, auf einen
+        // Anker dieser Liste.
+        url: `${origin}/paesse/${eintrag.id}`,
       },
     })),
   };
@@ -168,9 +168,9 @@ export default async function PaessePage() {
             <Card as="ul" className="divide-y divide-border">
               {gefolgt.map((eintrag) => {
                 const anzeige = anzeigeFuerStatus(eintrag.status, feedStand);
-                const ziel = eintrag.strecke
-                  ? streckenPfad(eintrag.strecke)
-                  : `/paesse#${eintrag.id}`;
+                // Auf die Passseite, nicht mehr auf die Strecke: dort steht
+                // der Status mit Quelle, und die Strecke ist einen Tipp weiter.
+                const ziel = `/paesse/${eintrag.id}`;
                 return (
                   <li key={eintrag.id} className="druckbar relative flex items-center gap-3 px-4 py-3">
                     <div className="min-w-0 flex-1">

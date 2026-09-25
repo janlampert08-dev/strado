@@ -19,7 +19,7 @@ import { liveSplitEingeschaltet } from "@/lib/liveSplit";
 import OfflineRouteButton from "@/components/OfflineRouteButton";
 import { VolleGeometrieProvider } from "@/components/VolleGeometrie";
 import { geometrieUrl, kodiereGeometrie, mitUebersichtsgeometrie } from "@/lib/streckenGeometrie";
-import { getKontextStrecken, getRoute, getSignaturbestand } from "@/lib/routes";
+import { getKontextStrecken, getNachbarStrecken, getRoute, getSignaturbestand } from "@/lib/routes";
 import { computeSignatures } from "@/lib/signature";
 import { SIGNATURE_ICONS, SIGNATUR_KLASSEN } from "@/components/signaturStil";
 import PremiumHinweis from "@/components/PremiumHinweis";
@@ -47,7 +47,8 @@ import { siteUrl } from "@/lib/siteUrl";
 import { streckenPfad } from "@/lib/streckenPfad";
 import { averageTempolimit, estimateRouteDurationMinutes, formatMinutes } from "@/lib/geo";
 import type { Vehicle } from "@/types/database";
-import { ChevronDown, Pencil } from "@/components/NavIcons";
+import { ChevronDown, Compass, Pencil } from "@/components/NavIcons";
+import SectionHeading from "@/components/ui/SectionHeading";
 import Card from "@/components/ui/Card";
 import AbschnittTabs from "@/components/ui/AbschnittTabs";
 import Kennzahl, { Kennzahlen, Kennzahlenzeile } from "@/components/ui/Kennzahl";
@@ -203,7 +204,7 @@ export default async function StreckeDetailPage({
   // hier serverseitig mitgeladen, weil GefahrenSection eine Client-Komponente
   // ist und selbst nicht abfragen kann — im selben Promise.all wie alles
   // andere, also ohne die Antwortzeit zu verlängern.
-  const [ratings, ownRating, favorite, vehicles, personalBestSeconds, photos, leaderboard, leaderboardKlassen, weather, moderator, premiumStatus, kontextStrecken, signaturbestand, passKontexte, feedStand, ruhigeZeiten] =
+  const [ratings, ownRating, favorite, vehicles, personalBestSeconds, photos, leaderboard, leaderboardKlassen, weather, moderator, premiumStatus, kontextStrecken, signaturbestand, passKontexte, feedStand, ruhigeZeiten, nachbarStrecken] =
     await Promise.all([
       getRatings(id),
       user ? getOwnRating(id, user.id) : Promise.resolve(null),
@@ -234,6 +235,9 @@ export default async function StreckeDetailPage({
       getPassKontextFuerStrecke(id),
       getFeedStand(),
       getRuhigeZeiten(id),
+      // "Weitere Strecken in der Nähe" am Ende der Seite — nach Startpunkt,
+      // ohne Linien (lib/nachbarStrecken.ts).
+      getNachbarStrecken(route),
     ]);
 
   const signatur = computeSignatures(signaturbestand).get(route.id) ?? null;
@@ -341,7 +345,31 @@ export default async function StreckeDetailPage({
           laufen — siehe AufzeichnungsKontext.tsx. */}
       <AufzeichnungProvider>
       <VolleGeometrieProvider streckenId={route.id} url={linienUrl}>
-      <RouteDetailLayout route={leichteRoute}>
+      <RouteDetailLayout
+        route={leichteRoute}
+        // Die Hauptaktion steht als feste Fussleiste des Sheets statt im
+        // Reiter Fahren — im Peek lag sie sonst unter der Kante (siehe
+        // RouteDetailLayout.tsx). Das Sprungziel #fahren ("Zum Start" in der
+        // leeren Bestenliste) sitzt jetzt auf dieser Leiste.
+        aktion={
+          <GefahrenSection
+            route={leichteRoute}
+            kontextStrecken={kontextStrecken}
+            userId={user?.id ?? null}
+            vehicles={vehicles}
+            personalBestSeconds={personalBestSeconds}
+            guestContinuationToken={fortsetzen ?? null}
+            maxPhotos={maxFotosProFahrt(premiumStatus.aktiv)}
+            // Aus, bis die neuen AGB gelten (lib/liveSplit.ts). Server-Variable,
+            // damit Ausschalten ohne neuen Build geht.
+            liveSplit={
+              liveSplitEingeschaltet(process.env.STRADO_LIVE_SPLIT)
+                ? { streckenBestzeitS: leaderboard[0]?.dauerSekunden ?? null }
+                : null
+            }
+          />
+        }
+      >
         <div>
           <p className="text-sm text-muted">
             {route.region}
@@ -408,7 +436,7 @@ export default async function StreckeDetailPage({
                         Status nicht zuordenbar. */}
                     {!istNameSchonImTitel(route.name, kontext.pass.name, passKontexte.length) && (
                       <Link
-                        href={`/paesse#${kontext.pass.id}`}
+                        href={`/paesse/${kontext.pass.id}`}
                         className="relative font-medium text-foreground transition-colors hover:text-accent-ink after:absolute after:-inset-x-1 after:-inset-y-3 after:content-['']"
                         title={`${kontext.pass.name} auf der Passseite`}
                       >
@@ -517,32 +545,17 @@ export default async function StreckeDetailPage({
             der Bestenliste begann — Bestzeit und Sterne sind zwei Fragen. */}
         <AbschnittTabs tabs={[{ titel: "Fahren" }, { titel: "Details" }, { titel: "Bestzeiten", anzahl: leaderboard.length }]}>
           <div className="flex flex-col gap-5">
-        {/* Sprungziel für "Zum Start" in der leeren Bestenliste. scroll-mt:
-            sonst endet der Sprung mit dem Knopf an der oberen Kante. */}
-        <div id="fahren" className="scroll-mt-6">
-        <GefahrenSection
-          route={leichteRoute}
-          kontextStrecken={kontextStrecken}
-          userId={user?.id ?? null}
-          vehicles={vehicles}
-          personalBestSeconds={personalBestSeconds}
-          guestContinuationToken={fortsetzen ?? null}
-          maxPhotos={maxFotosProFahrt(premiumStatus.aktiv)}
-          // Aus, bis die neuen AGB gelten (lib/liveSplit.ts). Server-Variable,
-          // damit Ausschalten ohne neuen Build geht.
-          liveSplit={
-            liveSplitEingeschaltet(process.env.STRADO_LIVE_SPLIT)
-              ? { streckenBestzeitS: leaderboard[0]?.dauerSekunden ?? null }
-              : null
-          }
-        />
-        </div>
-
-        {/* Das Höhenprofil als Hauptbild der Strecke, direkt unter dem
-            Start: die Höhe ist das, was einen Pass von einer Landstrasse
+        {/* Das Höhenprofil als Hauptbild der Strecke, zuoberst im Reiter
+            (der Start steht seit 2026-09-25 in der Fussleiste des Sheets):
+            die Höhe ist das, was einen Pass von einer Landstrasse
             unterscheidet, und stand bisher im zweiten Reiter. */}
         {route.hoehenprofil && route.hoehenprofil.length > 1 && (
-          <ElevationProfile punkte={route.hoehenprofil} gross />
+          <section aria-labelledby="hoehenprofil">
+            <h2 id="hoehenprofil" className="sr-only">
+              Höhenprofil
+            </h2>
+            <ElevationProfile punkte={route.hoehenprofil} gross />
+          </section>
         )}
 
         {/* Ein Widget statt zweier Sektionen: Öffnung und Verkehr als eine
@@ -550,6 +563,7 @@ export default async function StreckeDetailPage({
             offen ist und wie der Verkehr liegt, kommt vor der Frage, wie
             steil die Strecke ist. Kalender, Meldung und Wochenraster leben
             auf der Passseite und im Details-Reiter. */}
+        <h2 className="sr-only">{passKontexte.length > 0 ? "Passstatus und Verkehr" : "Verkehr"}</h2>
         <FahrCheck
           kontexte={passKontexte}
           feedStand={feedStand}
@@ -562,6 +576,7 @@ export default async function StreckeDetailPage({
         {/* Kategorien und Charakter nach Start und Passlage: was die Strecke
             IST, steht vor Profil und Zahlen — vorher erst nach der
             Bestenliste, also Beschreibung nach Wertung. */}
+        <h2 className="sr-only">Streckeninfo</h2>
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
             {route.kategorien.map((k) => (
@@ -716,6 +731,42 @@ export default async function StreckeDetailPage({
             />
           </div>
         </AbschnittTabs>
+
+        {/* Ausserhalb der Reiter und damit immer im ausgelieferten HTML: die
+            Reiter rendern nur den offenen, und "wohin als Nächstes?" ist
+            keine Frage eines einzelnen Reiters. Dieselbe Zeilenform wie auf
+            /paesse (Card mit Trennlinien, ganze Zeile tippbar). */}
+        {nachbarStrecken.length > 0 && (
+          <section aria-labelledby="in-der-naehe" className="flex flex-col gap-2">
+            <SectionHeading id="in-der-naehe" icon={Compass}>
+              Weitere Strecken in der Nähe
+            </SectionHeading>
+            <Card as="ul" className="divide-y divide-border">
+              {nachbarStrecken.map((nachbar) => (
+                <li key={nachbar.id} className="druckbar relative flex items-center gap-3 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">
+                      <Link
+                        href={`/strecken/${nachbar.id}`}
+                        className="hover:text-accent-ink after:absolute after:inset-0 after:content-['']"
+                      >
+                        {nachbar.name}
+                      </Link>
+                    </p>
+                    <p className="truncate text-xs text-muted">
+                      {nachbar.region} · {formatKm(nachbar.laengeKm)} km
+                    </p>
+                  </div>
+                  {/* Luftlinie zwischen den Startpunkten — "entfernt" statt
+                      einer Fahrzeit, die hier niemand gerechnet hat. */}
+                  <span className="shrink-0 text-xs tabular-nums text-muted">
+                    {Math.max(1, Math.round(nachbar.distanzKm))} km entfernt
+                  </span>
+                </li>
+              ))}
+            </Card>
+          </section>
+        )}
       </RouteDetailLayout>
       </VolleGeometrieProvider>
       </AufzeichnungProvider>
