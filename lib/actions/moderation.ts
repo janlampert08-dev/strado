@@ -269,6 +269,9 @@ export async function unpublishReportedCompletion(
     p_completion_id: completionId,
   });
 
+  // Die Funktion prüft die Rolle selbst noch einmal — ist sie inzwischen
+  // weg, ist das keine Störung zum Wiederholen, sondern fehlende Berechtigung.
+  if (error?.message.includes("not_moderator")) return NICHT_BERECHTIGT;
   if (error) return fehlgeschlagen("Das Verbergen der Fahrt");
   if (data !== true) return nichtGetroffen("Das Verbergen der Fahrt");
 
