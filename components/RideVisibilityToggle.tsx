@@ -33,9 +33,14 @@ export default function RideVisibilityToggle({
   sichtbarkeit,
   coveragePercent,
   blockedReason = null,
+  stufen = SICHTBARKEITEN,
 }: {
   completionId: string;
   sichtbarkeit: Sichtbarkeit;
+  // Welche Stufen angeboten werden. Erkannte Abschnitte folgen seit 0151
+  // der Öffentlichkeit ihrer Fahrt und bekommen deshalb keine eigene
+  // Follower-Stufe, die beim Privatstellen der Fahrt stehen bliebe.
+  stufen?: readonly Sichtbarkeit[];
   // Nur bei Streckenfahrten gesetzt — dort entscheidet der Deckungsgrad.
   coveragePercent: number | null;
   // Grund, warum die Fahrt nicht geteilt werden kann (zu kurze freie Fahrt,
@@ -75,7 +80,7 @@ export default function RideVisibilityToggle({
       </IconButton>
       <Dialog open={open} onClose={() => setOpen(false)} title="Wer sieht diese Fahrt?">
         <div role="radiogroup" aria-label="Sichtbarkeit der Fahrt" className="flex flex-col gap-2">
-          {SICHTBARKEITEN.map((stufe) => {
+          {stufen.map((stufe) => {
             const gesperrt = stufe !== "privat" && sperrGrund !== null;
             const aktiv = stufe === sichtbarkeit;
             return (

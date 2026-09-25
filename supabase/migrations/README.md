@@ -46,10 +46,10 @@ unverändert, also ohne Follower-Fahrten.
   seit 0139 "Nutzer bearbeiten eigene Fahrten, Moderatoren entöffentlichen";
   0145 ändert per `alter policy` nur deren WITH CHECK und lässt das USING
   stehen, damit 0134 dessen Moderatorenprüfung umstellen kann.
-- **0134 (noch nicht eingespielt) wurde angepasst:** seine feste
-  Spaltenliste für `grant insert` enthält jetzt `fuer_follower`. Ohne das
-  nähme sein `revoke insert … on route_completions` auch den Spalten-Grant
-  aus 0145 mit, und Follower-Fahrten liessen sich nicht mehr speichern.
+- **0134 enthält `fuer_follower` in seiner festen Insert-Spaltenliste**
+  (#460, vor dem Einspielen von 0134). Ohne das nähme sein `revoke insert`
+  den Spalten-Grant aus 0145 mit. Gemessen danach: authenticated hat INSERT
+  und UPDATE auf `fuer_follower`.
 - **Live-Körper vorher erneut gelesen:** `anonymize_account`,
   `save_free_ride_with_segments` und die vier Views entsprachen dem Stand,
   auf dem die Datei aufbaut.
