@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Einrichtung from "@/components/Einrichtung";
-import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { createClient, getFreshUser } from "@/lib/supabase/server";
 import { getPaesseMitStatus } from "@/lib/paesse";
 import {
   EINRICHTUNG_PFAD,
@@ -34,7 +34,11 @@ export default async function EinrichtenPage({
   const { next } = await searchParams;
   const ziel = zielNachEinrichtung(next);
 
-  const user = await getCurrentUser();
+  // getFreshUser() statt getCurrentUser(): der Erledigt-Merker steht in
+  // user_metadata, und das JWT trägt nach einrichtungAbschliessen() bis zum
+  // nächsten Refresh noch den alten Stand — wer über die Chronik zurückkommt,
+  // sähe die Einrichtung sonst ein zweites Mal.
+  const user = await getFreshUser();
   if (!user) {
     redirect(`/anmelden?next=${encodeURIComponent(EINRICHTUNG_PFAD)}`);
   }

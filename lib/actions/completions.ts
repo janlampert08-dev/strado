@@ -24,6 +24,13 @@ import { metadatenEntfernen } from "@/lib/imageMetadata";
 import { istPremium, maxFotosProFahrt } from "@/lib/premium";
 import { oeffentlicheKoordinaten, privacyRadiusM, publicTrackEwkt } from "@/lib/publicTrack";
 import {
+  istSichtbarkeit,
+  sichtbarkeitAus,
+  sichtbarkeitAusFormular,
+  sichtbarkeitSpalten,
+  type Sichtbarkeit,
+} from "@/lib/sichtbarkeit";
+import {
   buildHoehenprofil,
   computeAscentM,
   fetchElevationProfile,
@@ -392,7 +399,7 @@ export async function logTrackedCompletion(
   }
 
   const fahrzeugId = String(formData.get("fahrzeug_id") ?? "") || null;
-  const requestedOeffentlich = formData.get("ist_oeffentlich") === "true";
+  const gewuenschteSichtbarkeit = sichtbarkeitAusFormular(formData);
   const notizRaw = String(formData.get("notiz") ?? "").trim();
   const notiz = notizRaw ? notizRaw.slice(0, MAX_NOTIZ_LENGTH) : null;
   const maxFotos = maxFotosProFahrt(await istPremium());
@@ -436,8 +443,12 @@ export async function logTrackedCompletion(
 
   // Serverseitig erzwungen, nicht nur im UI verhindert: unabhängig davon, was
   // das Formular schickt, kann eine Fahrt unterhalb des Deckungsgrad-
-  // Schwellenwerts nicht öffentlich sein (siehe lib/routeCoverage.ts).
-  const istOeffentlich = requestedOeffentlich && abdeckungProzent >= COVERAGE_THRESHOLD_PERCENT;
+  // Schwellenwerts nicht öffentlich sein (siehe lib/routeCoverage.ts) — und
+  // auch nicht für Follower sichtbar: die Fahrt würde dort ebenso eine
+  // Strecke behaupten, die sie nicht gefahren ist (0145).
+  const sichtbarkeit: Sichtbarkeit =
+    abdeckungProzent >= COVERAGE_THRESHOLD_PERCENT ? gewuenschteSichtbarkeit : "privat";
+  const geteilt = sichtbarkeit !== "privat";
 
   const streckenKoordinaten = toCoordinates(simplifyTrack(trail));
 
@@ -489,7 +500,7 @@ export async function logTrackedCompletion(
       // falls GPS-Zeitstempel leicht über die Ticket-Dauer hinausragen.
       bewegte_zeit_sekunden: bewegteSekundenGekappt,
       art: "strecke",
-      ist_oeffentlich: istOeffentlich,
+      ...sichtbarkeitSpalten(sichtbarkeit),
       abdeckung_prozent: abdeckungProzent,
       notiz,
       // Seit 0054_freie_fahrten_in_bestenlisten.sql zählen Streckenfahrten
@@ -517,9 +528,9 @@ export async function logTrackedCompletion(
       // weiterhin aus den Rohpunkten). Nur für den Besitzer lesbar.
       track: toEwktLineString(streckenKoordinaten),
       // Die gekappte Fassung entsteht nur, wenn die Fahrt auch wirklich
-      // geteilt wird (0045) — eine private Fahrt hinterlässt keine
-      // öffentliche Geometrie.
-      track_oeffentlich: istOeffentlich
+      // geteilt wird (0045), öffentlich oder mit Followern — eine private
+      // Fahrt hinterlässt keine gekappte Geometrie.
+      track_oeffentlich: geteilt
         ? await publicTrackEwkt(supabase, user.id, streckenKoordinaten)
         : null,
     })
@@ -858,9 +869,12 @@ export async function logFreeRide(
   if (bewegteSekunden > dauerSekunden) {
     bewegteSekunden = dauerSekunden;
   }
-  const istOeffentlich =
-    formData.get("ist_oeffentlich") === "true" &&
-    publicationBlockReason(distanzKm, bewegteSekunden) === null;
+  // Zu kurze Fahrten bleiben privat — auch gegenüber Followern (0145).
+  const sichtbarkeit: Sichtbarkeit =
+    publicationBlockReason(distanzKm, bewegteSekunden) === null
+      ? sichtbarkeitAusFormular(formData)
+      : "privat";
+  const geteilt = sichtbarkeit !== "privat";
 
   const fahrzeugId = String(formData.get("fahrzeug_id") ?? "") || null;
   const titelRaw = String(formData.get("titel") ?? "").trim();
@@ -987,7 +1001,8 @@ export async function logFreeRide(
     dauer_trail_sekunden: dauerTrailSekunden,
     fahrt_start_id: fahrtstart?.ticketId ?? null,
     bewegte_zeit_sekunden: bewegteSekunden,
-    ist_oeffentlich: istOeffentlich,
+    // save_free_ride_with_segments liest fuer_follower seit 0145.
+    ...sichtbarkeitSpalten(sichtbarkeit),
     titel,
     notiz,
     start_ort: ort?.ort ?? null,
@@ -1004,7 +1019,8 @@ export async function logFreeRide(
     // das Maximum mit der deklarierten Klasse (0080).
     motorklasse_belegt: belegteKlasse(fahrzeugTyp, trail, elevation.hoehenprofil),
     track,
-    track_oeffentlich: istOeffentlich ? toEwktLineString(oeffentlich) : null,
+    // Die gekappte Fassung für beide geteilten Stufen (0145).
+    track_oeffentlich: geteilt ? toEwktLineString(oeffentlich) : null,
   };
 
   let { data: insertedRaw, error } = await supabase.rpc("save_free_ride_with_segments", {
@@ -1057,7 +1073,7 @@ export async function logFreeRide(
   const segments = segmentRows.map((row, i) => ({ id: row.out_id, ...segmentSummaries[i] }));
 
   revalidatePath("/profil");
-  if (istOeffentlich) {
+  if (geteilt) {
     revalidatePath("/feed");
     revalidatePath(`/fahrer/${user.id}`);
   }
@@ -1280,12 +1296,16 @@ export interface ToggleVisibilityState {
   error: string | null;
 }
 
-// Symbol-Umschalter unter "Getrackte Fahrten" im Profil — ändert die
-// Sichtbarkeit einer bereits gespeicherten Fahrt nachträglich, ohne den
-// Umweg über den Fazit-Screen (RLS erlaubt Update ohnehin nur der eigenen Zeile).
-export async function toggleCompletionVisibility(
+// Sichtbarkeitswahl unter "Getrackte Fahrten" im Profil und im Menü der
+// Fahrtseite — ändert die Sichtbarkeit einer bereits gespeicherten Fahrt
+// nachträglich, ohne den Umweg über den Fazit-Screen (RLS erlaubt Update
+// ohnehin nur der eigenen Zeile).
+export async function setCompletionVisibility(
   completionId: string,
+  sichtbarkeit: Sichtbarkeit,
 ): Promise<ToggleVisibilityState> {
+  if (!istSichtbarkeit(sichtbarkeit)) return { error: "Unbekannte Sichtbarkeit." };
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -1313,15 +1333,16 @@ export async function toggleCompletionVisibility(
 
   if (!existing) return { error: "Fahrt nicht gefunden." };
 
-  const nextOeffentlich = !existing.ist_oeffentlich;
+  const geteilt = sichtbarkeit !== "privat";
+  const mitWem = sichtbarkeit === "follower" ? "mit Followern geteilt" : "öffentlich gemacht";
 
   // Dieselben zwei Anker wie beim ersten Speichern, je nach Fahrtart: der
   // Deckungsgrad bei einer Streckenfahrt, die Mindestwerte bei einer freien
   // Fahrt. Ohne diese Prüfung liesse sich die Regel über den nachträglichen
-  // Umschalter umgehen.
-  if (nextOeffentlich) {
-    // Die Datenbank lehnt das ohnehin ab (0124) — hier nur, damit der Nutzer
-    // einen Satz liest statt "Sichtbarkeit konnte nicht geändert werden."
+  // Umschalter umgehen. Für Follower gelten sie genauso (0145).
+  if (geteilt) {
+    // Die Datenbank lehnt das ohnehin ab (0124/0145) — hier nur, damit der
+    // Nutzer einen Satz liest statt "Sichtbarkeit konnte nicht geändert werden."
     if (existing.importiert) {
       return { error: "Importierte Fahrten bleiben privat." };
     }
@@ -1333,16 +1354,16 @@ export async function toggleCompletionVisibility(
       if (blocked) return { error: blocked };
     } else if ((existing.abdeckung_prozent ?? 0) < COVERAGE_THRESHOLD_PERCENT) {
       return {
-        error: `Diese Fahrt deckt nur ${Math.round(existing.abdeckung_prozent ?? 0)}% der Strecke ab und kann daher nicht öffentlich gemacht werden.`,
+        error: `Diese Fahrt deckt nur ${Math.round(existing.abdeckung_prozent ?? 0)}% der Strecke ab und kann daher nicht ${mitWem} werden.`,
       };
     }
   }
 
-  // Die öffentliche Geometrie entsteht beim Veröffentlichen und verschwindet
-  // beim Zurücknehmen — es soll kein gekappter Track einer Fahrt liegen
-  // bleiben, die niemand mehr sehen darf.
+  // Die gekappte Geometrie entsteht beim Teilen und verschwindet beim
+  // Zurücknehmen — es soll kein gekappter Track einer Fahrt liegen bleiben,
+  // die niemand mehr sehen darf.
   let trackOeffentlich: string | null = null;
-  if (nextOeffentlich) {
+  if (geteilt) {
     const { data: trackRow } = await supabase
       .from("fahrt_tracks")
       .select("track_geojson")
@@ -1357,20 +1378,32 @@ export async function toggleCompletionVisibility(
     }
   }
 
-  const { error } = await supabase
+  const { data: gespeichert, error } = await supabase
     .from("route_completions")
-    .update({ ist_oeffentlich: nextOeffentlich, track_oeffentlich: trackOeffentlich })
+    .update({ ...sichtbarkeitSpalten(sichtbarkeit), track_oeffentlich: trackOeffentlich })
     .eq("id", completionId)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .select("ist_oeffentlich, fuer_follower")
+    .maybeSingle<{ ist_oeffentlich: boolean; fuer_follower: boolean }>();
 
-  if (error) return { error: "Sichtbarkeit konnte nicht geändert werden." };
+  if (error || !gespeichert) return { error: "Sichtbarkeit konnte nicht geändert werden." };
 
   revalidatePath("/profil");
   revalidatePath("/feed");
   revalidatePath(`/fahrten/${completionId}`);
   revalidatePath(`/fahrer/${user.id}`);
   if (existing.route_id) revalidatePath(`/strecken/${existing.route_id}`);
-  revalidatePath("/ranglisten");
+  // Nur wenn die Fahrt in die Ranglisten kommt oder aus ihnen verschwindet.
+  if (existing.ist_oeffentlich !== gespeichert.ist_oeffentlich) {
+    revalidatePath("/ranglisten");
+  }
+  // Die Trigger (0052/0059/0145/0154) verengen still, statt abzulehnen. Hat
+  // die Datenbank die Fahrt privat gelassen, darf die Oberfläche nicht
+  // "geteilt" behaupten. Erst nach dem Revalidieren: geschrieben ist der
+  // verengte Stand ja trotzdem, und die Seiten sollen ihn zeigen.
+  if (sichtbarkeitAus(gespeichert) !== sichtbarkeit) {
+    return { error: "Diese Fahrt kann nicht geteilt werden und bleibt privat." };
+  }
   return { error: null };
 }
 

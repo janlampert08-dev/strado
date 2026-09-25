@@ -251,7 +251,7 @@ export default function MultiPhotoInput({
         accept="image/*"
         multiple
         onChange={handleChange}
-        className="sr-only"
+        className="peer sr-only"
       />
       <input type="hidden" name="foto_pfade" value={JSON.stringify(fotoPfade)} />
       {entries.length > 0 && (
@@ -270,29 +270,42 @@ export default function MultiPhotoInput({
                   className="absolute inset-0 m-auto h-5 w-5 animate-spin rounded-full border-2 border-background/40 border-t-background"
                 />
               )}
+              {/* 44 px Trefferfläche, sichtbar bleibt der 24-px-Kreis — wie
+                  in CompletionPhotoGallery. Ohne Rückfrage: Das Foto ist
+                  hier noch nicht gespeichert, erneut wählen kostet nichts. */}
               <button
                 type="button"
                 onClick={() => removeAt(i)}
                 aria-label="Foto entfernen"
-                className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-foreground/70 text-background backdrop-blur transition-colors duration-fast hover:bg-foreground"
+                className="group absolute top-0 right-0 flex h-11 w-11 items-start justify-end p-1 focus-visible:outline-none"
               >
-                <X className="h-3.5 w-3.5" aria-hidden="true" />
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-foreground/70 text-background backdrop-blur transition-colors duration-fast group-hover:bg-foreground group-focus-visible:ring-2 group-focus-visible:ring-accent">
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                </span>
               </button>
             </div>
           ))}
         </div>
       )}
       {entries.length < maxPhotos && (
+        // Das Dateifeld ist sr-only und bekommt den Tastaturfokus unsichtbar
+        // — der Ring gehört an das sichtbare Feld, das dafür steht (peer).
         <label
           htmlFor={id}
-          className="cursor-pointer rounded-md border border-dashed border-border px-3 py-3 text-center text-muted transition-colors duration-fast hover:border-muted hover:text-foreground"
+          className="cursor-pointer rounded-md border border-dashed border-border px-3 py-3 text-center text-muted transition-colors duration-fast hover:border-muted hover:text-foreground peer-focus-visible:ring-2 peer-focus-visible:ring-accent"
         >
           + Foto hinzufügen
         </label>
       )}
-      {sizeError && <span className="text-xs text-danger">Ein Foto ist zu gross (max. 8 MB).</span>}
+      {sizeError && (
+        <span role="alert" className="text-xs text-danger">
+          Ein Foto ist zu gross (max. 8 MB).
+        </span>
+      )}
       {limitError && (
-        <span className="text-xs text-danger">Maximal {maxPhotos} Fotos pro Fahrt.</span>
+        <span role="alert" className="text-xs text-danger">
+          Maximal {maxPhotos} Fotos pro Fahrt.
+        </span>
       )}
       {lädtHoch && (
         <span role="status" className="text-xs text-muted">

@@ -19,9 +19,13 @@ export function dauerTeile(totalSeconds: number): { wert: string; einheit: "min"
   return { wert: formatDuration(totalSeconds), einheit: totalSeconds >= 3600 ? "h" : "min" };
 }
 
+// Zahl und Einheit hängen mit einem geschützten Leerzeichen (\u00a0)
+// zusammen: In schmalen Spalten brach "15:27" sonst am Zeilenende um und
+// "min" stand allein auf der nächsten Zeile. Gilt für jede Angabe mit
+// Einheit in dieser Datei.
 export function formatDauer(totalSeconds: number): string {
   const { wert, einheit } = dauerTeile(totalSeconds);
-  return `${wert} ${einheit}`;
+  return `${wert}\u00a0${einheit}`;
 }
 
 // Höhe in Metern mit Schweizer Tausendertrennung: "2’315 m". Dieselbe
@@ -29,7 +33,7 @@ export function formatDauer(totalSeconds: number): string {
 // als "Höchster Punkt 2308 m" — zwei Schreibweisen lesen sich wie zwei
 // verschiedene Angaben.
 export function formatMeter(meter: number): string {
-  return `${Math.round(meter).toLocaleString("de-CH")} m`;
+  return `${Math.round(meter).toLocaleString("de-CH")}\u00a0m`;
 }
 
 // laenge_km kommt bei serverseitig aus der Route-Geometrie berechneten

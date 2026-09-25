@@ -113,8 +113,9 @@ export async function publicTrackEwkt(
 // gekappt werden — sonst gölte die neue Einstellung nur für künftige
 // Fahrten, und genau die alten wären das Problem.
 //
-// Die Schleife läuft ausdrücklich nur über die öffentlichen Fahrten: private
-// tragen gar keinen öffentlichen Track (siehe 0045), und deren Zahl ist pro
+// Die Schleife läuft ausdrücklich nur über die geteilten Fahrten —
+// öffentliche UND seit 0145 die für Follower, die denselben gekappten Track
+// tragen: private tragen gar keinen (siehe 0045), und deren Zahl ist pro
 // Nutzer klein. Ein einzelnes UPDATE über alle Zeilen ginge nicht, weil die
 // Kappung pro Fahrt eine eigene Geometrie ergibt und in SQL nur
 // näherungsweise möglich wäre (siehe Migrationskommentar).
@@ -132,7 +133,9 @@ export async function recomputePublicTracks(
     .from("route_completions")
     .select("id")
     .eq("user_id", userId)
-    .eq("ist_oeffentlich", true)
+    // Beide geteilten Stufen: eine Follower-Fahrt, die hier fehlte, behielte
+    // den alten, weiteren Radius — sichtbar für jeden, der folgt.
+    .or("ist_oeffentlich.eq.true,fuer_follower.eq.true")
     .returns<{ id: string }[]>();
 
   if (ridesError) return false;
