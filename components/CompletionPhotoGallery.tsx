@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, useTransition } from "react";
 import Image from "next/image";
 import { Image as ImageIcon, X } from "@/components/NavIcons";
-import { Dialog } from "@/components/ui/Dialog";
+import { ConfirmDialog, Dialog } from "@/components/ui/Dialog";
 import { removeCompletionPhoto } from "@/lib/actions/completions";
 import type { CompletionPhotoItem } from "@/lib/completions";
 import SectionHeading from "@/components/ui/SectionHeading";
@@ -31,6 +31,7 @@ export default function CompletionPhotoGallery({
   const items = photos.filter((p) => !removedIds.has(p.id));
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   const close = useCallback(() => setOpenIndex(null), []);
@@ -101,13 +102,19 @@ export default function CompletionPhotoGallery({
               <Image src={photo.fotoUrl} alt={caption} fill sizes="33vw" className="object-cover" />
             </button>
             {canRemove && (
+              // 44 px Trefferfläche um den sichtbaren 24-px-Kreis: Der Knopf
+              // selbst füllt die Ecke, der Kreis ist nur sein Inhalt. Ein
+              // ::after-Rand nach aussen würde hier am overflow-hidden der
+              // Kachel abgeschnitten.
               <button
                 type="button"
-                onClick={() => handleRemove(photo.id)}
+                onClick={() => setConfirmId(photo.id)}
                 aria-label="Foto entfernen"
-                className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-foreground/70 text-background backdrop-blur transition-colors duration-fast hover:bg-foreground"
+                className="group absolute top-0 right-0 flex h-11 w-11 items-start justify-end p-1 focus-visible:outline-none"
               >
-                <X className="h-3.5 w-3.5" aria-hidden="true" />
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-foreground/70 text-background backdrop-blur transition-colors duration-fast group-hover:bg-foreground group-focus-visible:ring-2 group-focus-visible:ring-accent">
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                </span>
               </button>
             )}
           </div>
@@ -176,7 +183,7 @@ export default function CompletionPhotoGallery({
                 width={1600}
                 height={1200}
                 sizes="90vw"
-                className="max-h-[80vh] w-auto max-w-[90vw] object-contain"
+                className="max-h-[80dvh] w-auto max-w-[90vw] object-contain"
                 onClick={(e) => e.stopPropagation()}
               />
               <figcaption className="text-sm text-background/70">
@@ -187,6 +194,23 @@ export default function CompletionPhotoGallery({
           </div>
         )}
       </Dialog>
+
+      {/* Ein Tipp auf das kleine Kreuz löschte das Foto sofort und endgültig
+          — auf dem Telefon, beim Antippen des Bildes daneben, schnell
+          passiert. Gleiche Rückfrage wie DeleteRatingButton. */}
+      <ConfirmDialog
+        open={confirmId !== null}
+        title="Foto entfernen"
+        description="Das Foto wird dauerhaft von dieser Fahrt entfernt."
+        confirmLabel="Entfernen"
+        variant="danger"
+        onCancel={() => setConfirmId(null)}
+        onConfirm={() => {
+          const id = confirmId;
+          setConfirmId(null);
+          if (id) handleRemove(id);
+        }}
+      />
     </section>
   );
 }
