@@ -52,16 +52,23 @@ export default async function FahrzeugPage({ params }: { params: Promise<{ id: s
   // Fahrzeuge frei, deren Besitzer zeigt_fahrzeuge aktiviert hat. Ohne
   // dieses .eq() zeigte diese Seite mit der richtigen ID ein fremdes
   // Fahrzeug — samt Löschen-Knopf, der dann an der RLS scheitert.
-  const { data: fahrzeug } = await supabase
-    .from("vehicles")
-    .select("*")
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .maybeSingle<Vehicle>();
+  //
+  // Abo-Status und Wartungsheft hängen nur an user.id und der ID aus der
+  // Adresse, nicht am Fahrzeug — darum gemeinsam mit ihm geladen. Das
+  // Wartungsheft filtert selbst auf user_id und liefert für eine fremde ID
+  // nichts; notFound() folgt erst danach.
+  const [{ data: fahrzeug }, premium, heft] = await Promise.all([
+    supabase
+      .from("vehicles")
+      .select("*")
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .maybeSingle<Vehicle>(),
+    istPremium(),
+    getWartungsheft(user.id, id),
+  ]);
 
   if (!fahrzeug) notFound();
-
-  const [premium, heft] = await Promise.all([istPremium(), getWartungsheft(user.id, id)]);
 
   const Icon = fahrzeug.typ === "motorrad" ? MotorradIcon : AutoIcon;
   const heute = todayInZurich();

@@ -154,11 +154,11 @@ export default async function FahrtDetailPage({
 
   const istFreieFahrt = completion.art === "frei";
 
-  // Die folgenden vier Abfragen hängen alle nur an completion, nicht
+  // Die folgenden fünf Abfragen hängen alle nur an completion, nicht
   // voneinander — parallel statt nacheinander gestartet (gleiches Muster
   // wie app/strecken/[id]/page.tsx), spart auf dieser Seite einen
   // entsprechend langen Round-Trip-Wasserfall.
-  const [route, kudosByCompletion, detectedSegments, achievementStats] = await Promise.all([
+  const [route, kudosByCompletion, detectedSegments, achievementStats, premiumStatus] = await Promise.all([
     completion.routeId ? getRoute(completion.routeId) : Promise.resolve(null),
     completion.sichtbarkeit !== "privat"
       ? getKudosForCompletions([completion.id], user?.id ?? null)
@@ -175,6 +175,8 @@ export default async function FahrtDetailPage({
     // Gesamtzahlen, nicht die dieser einzelnen Fahrt, und für einen fremden
     // Betrachter irrelevant (spart die zusätzliche Query in dem Fall).
     completion.isOwner ? getUserAchievementStats(completion.userId) : Promise.resolve(null),
+    // Nur für den Besitzer — für den Premium-Satz weiter unten.
+    completion.isOwner ? getPremiumStatus() : Promise.resolve(null),
   ]);
 
   // Eine Streckenfahrt ohne auffindbare Strecke gibt es nicht — eine freie
@@ -245,7 +247,7 @@ export default async function FahrtDetailPage({
   // Der Premium-Satz unter der eigenen Fahrt, nur für Konten ohne Abo.
   // getPremiumStatus() ist request-weit gecacht (der Header fragt ohnehin).
   const premiumSatz =
-    completion.isOwner && !(await getPremiumStatus()).aktiv
+    completion.isOwner && premiumStatus && !premiumStatus.aktiv
       ? premiumSatzZurFahrt({
           streckenfahrt: !istFreieFahrt,
           fotos: completion.photos.length,
