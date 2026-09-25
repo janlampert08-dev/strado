@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { Crosshair, Route, SearchX } from "@/components/NavIcons";
 import { routeShapePath } from "@/lib/routeShape";
 import { type Empfehlung } from "@/lib/empfehlung";
@@ -31,7 +31,7 @@ function kuerzen(text: string, max: number): string {
 
 import { streckenPfad } from "@/lib/streckenPfad";
 
-export default function ExploreSidebar({
+function ExploreSidebar({
   routes,
   bewertungen,
   passZustaende,
@@ -68,20 +68,6 @@ export default function ExploreSidebar({
   onRequestLocation: () => void;
   onHoverRoute: (id: string | null) => void;
 }) {
-  // Nur bei Änderung des Streckenbestands neu berechnet — sonst würde jeder
-  // Hover (der über onHoverRoute den State im Elternteil ändert) hier eine
-  // erneute Pfadberechnung für alle Karten auslösen.
-  const shapes = useMemo(
-    () =>
-      new Map(
-        routes.map((r) => [
-          r.id,
-          routeShapePath(r.geometry_geojson.coordinates as [number, number][], 64, 48, 4),
-        ]),
-      ),
-    [routes],
-  );
-
   return (
     // Kein Sonderpolster mehr für die BottomNav: das Sheet endet inzwischen
     // über der Leiste (bottom: var(--bottom-nav-h), siehe DragSheet.tsx),
@@ -274,198 +260,254 @@ export default function ExploreSidebar({
         )}
       </div>
 
-      <ul className="flex flex-col gap-1">
-        {routes.length === 0 && loadError && (
-          <li>
-            <div role="alert" className="flex flex-col gap-3 py-2">
-              <p className="text-sm text-danger">
-                Strecken konnten nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.
-              </p>
-              <Button variant="secondary" size="md" onClick={() => window.location.reload()}>
-                Erneut versuchen
-              </Button>
-            </div>
-          </li>
-        )}
-        {routes.map((route) => {
-          const signature = signatures.get(route.id);
-          const shape = shapes.get(route.id);
-          // Wenn das Signatur-Merkmal selbst die Länge ist (signature.label
-          // lautet dann z.B. "24 km lang"), nicht zusätzlich eine separate
-          // km-Zahl daneben zeigen — sonst steht dieselbe Länge zweimal da.
-          const showPlainKm = signature?.key !== "laenge";
-          const bewertung = bewertungen[route.id];
-          // Ohne Signatur (kann nicht vorkommen, solange computeSignatures
-          // auf demselben Bestand lief — der Typ lässt es trotzdem zu) bleibt
-          // die Zeile bei der neutralen Strukturkante.
-          const ton = signature ? SIGNATUR_KLASSEN[signature.key] : null;
-          const istEmpfohlen = empfehlung !== null && route.id === empfehlung.id;
-          // Die Begründung steht an der Empfehlung, nicht irgendwo darüber.
-          // Nur "bestbewertet" nennt einen Grund — der Bestand-Fallback
-          // behauptet ehrlich keinen.
-          const empfehlungsText = !istEmpfohlen
-            ? null
-            : empfehlung.grund === "bewertung"
-              ? "Für dich empfohlen · bestbewertet"
-              : "Für dich empfohlen";
-
-          return (
-            <li key={route.id}>
-              <Link
-                href={streckenPfad(route)}
-                onMouseEnter={() => onHoverRoute(route.id)}
-                onMouseLeave={() => onHoverRoute(null)}
-                onFocus={() => onHoverRoute(route.id)}
-                onBlur={() => onHoverRoute(null)}
-                // Alle Zeilen tragen Name, Länge, Signatur-Merkmal,
-                // Sternenschnitt und Streckenform — 80 px reichen dafür und
-                // liegen weiter deutlich über jeder Antippgrenze. Zusammen
-                // mit der Suchzeile oben macht das im Peek-Fenster aus einer
-                // angeschnittenen Zeile zwei volle plus Anschnitt.
-                //
-                // DER LINKE RAND TRÄGT DEN SIGNATURTON, NICHT DEN AKZENT.
-                //
-                // Die Unterscheidung, die hier vorher stand, gilt weiter und
-                // ist der Grund, warum das geht: der Akzent ist in dieser App
-                // die eine Farbe für "hier steht ein Wert"
-                // (components/Sterne.tsx). In dieser Zeile steht ein Wert —
-                // der Sternenschnitt —, und trüge der Rand ebenfalls den
-                // Akzent, wäre die Regel keine mehr.
-                //
-                // Der Signaturton ist kein Akzent, sondern eine eigene
-                // Kategorie: er sagt, WAS für eine Strecke das ist, und sagt
-                // es an drei Stellen derselben Zeile (Kante, Label, Form).
-                // Der Akzent bleibt dem einen Wert und dem Hover, der ein
-                // Zustand ist und keine dauerhafte Markierung.
-                //
-                // Hierarchie aus einer: Die Empfehlung steht auf einer Fläche
-                // (rounded, border, surface) mit Begründung darüber und
-                // grösserer Form — der Rest bleibt volle Zeile MIT Form, damit
-                // ein Dutzend Strecken kein Hintergrundrauschen wird.
-                className={`group flex items-center gap-3 border-l-[3px] py-3 pr-2 pl-3 transition-colors duration-fast hover:bg-accent-subtle active:bg-accent-subtle ${ton?.rand ?? "border-l-border-strong"} ${istEmpfohlen ? "min-h-24 rounded-xl border border-border bg-surface" : "h-20 border-b border-border"}`}
-              >
-                <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5">
-                  {empfehlungsText && (
-                    // Neutral statt Akzent: Die Empfehlung ist kein Wert und
-                    // kein Zustand, sondern eine Einordnung — der Akzent
-                    // bleibt Wert (Sterne) und Hover vorbehalten.
-                    <span className="truncate text-xs font-medium text-muted">
-                      {empfehlungsText}
-                    </span>
-                  )}
-                  <span className="truncate text-base font-medium transition-colors duration-fast group-hover:text-accent-ink">
-                    {route.name}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    {showPlainKm && (
-                      // shrink-0 und whitespace-nowrap: ohne beides ist diese
-                      // Zahl das erste, was der Flexbox ausgeht. Am Preview
-                      // auf 390 px nachgesehen — aus "33.1 km" wurden zwei
-                      // Zeilen, "33.1" über "km", und die Zeile wuchs über
-                      // ihre 80 px hinaus.
-                      //
-                      // Schrumpfen soll das Signatur-Label daneben: es hat
-                      // truncate und kürzt mit Auslassungspunkten, was bei
-                      // "Ø erlaubt 114 km/h" lesbar bleibt. Eine umbrechende
-                      // Masszahl ist dagegen nie richtig.
-                      <span className="shrink-0 text-sm tabular-nums whitespace-nowrap text-muted">
-                        {formatKmGerundet(route.laenge_km)} km
-                      </span>
-                    )}
-                    {/* Eine Sperrung verdrängt das Signatur-Label: beide
-                        zusammen mit Länge und Sternen passten auf 360 px nicht,
-                        und das Label schrumpfte auf 0 px, zurück blieb ein
-                        verwaistes Icon (Gotthard, Re-Audit 2026-09-23). Ob
-                        der Pass zu ist, zählt dann mehr als sein Charakter. */}
-                    {signature && !zeigeInListe(passZustaende[route.id] ?? null) && (
-                      <span className="flex min-w-0 items-center gap-1.5">
-                        {/* Icon und Label im Signaturton. Bei text-xs ist die
-                            Schwelle 4,5:1 — genau daran war die alte Palette
-                            gescheitert (drei von fünf fielen im hellen Theme
-                            durch). Die Tokens dahinter sind gegen alle drei
-                            Untergründe gerechnet, auf denen diese Zeile
-                            vorkommt; der schlechteste Wert ist 4,70:1. */}
-                        {(() => {
-                          const SignatureIcon = SIGNATURE_ICONS[signature.key];
-                          return (
-                            <SignatureIcon
-                              className={`h-3 w-3 shrink-0 ${ton?.text ?? "text-muted"}`}
-                              aria-hidden="true"
-                            />
-                          );
-                        })()}
-                        <span
-                          className={`truncate text-xs font-medium tracking-wide ${ton?.text ?? "text-muted"}`}
-                        >
-                          {signature.label}
-                        </span>
-                      </span>
-                    )}
-                    {/* Zuletzt und shrink-0: die Zeile davor darf kürzen,
-                        diese Zahl nicht. Und zuletzt statt zuerst, damit die
-                        linke Kante der Liste ausgerichtet bleibt — eine
-                        Strecke ohne Wertung liesse eine führende Spalte sonst
-                        leer und die Liste ausgefranst aussehen.
-
-                        Ohne eine einzige Wertung steht hier nichts statt
-                        "0.0": siehe RatingSection, dieselbe Regel. */}
-                    {bewertung && (
-                      <Sternschnitt
-                        schnitt={bewertung.schnitt}
-                        zahlClassName="text-xs text-muted"
-                        sternClassName="h-3 w-3"
-                      >
-                        <span className="sr-only">{anzahlText(bewertung.anzahl)}</span>
-                      </Sternschnitt>
-                    )}
-                    {/* Der Passzustand steht nur hier, wenn er die Planung
-                        ändert: gesperrt, Wintersperre, eingeschränkt. "Offen"
-                        ist die Erwartung und bekäme sonst in jeder Zeile ein
-                        Abzeichen, das nichts sagt (lib/passStatus.ts). */}
-                    {zeigeInListe(passZustaende[route.id] ?? null) && (
-                      <PassStatusMarke
-                        className="shrink-0"
-                        anzeige={{
-                          zustand: passZustaende[route.id],
-                          label: ZUSTAND_LABEL[passZustaende[route.id]],
-                          ton: ZUSTAND_TON[passZustaende[route.id]],
-                          text: "",
-                          herkunft: "",
-                        }}
-                      />
-                    )}
-                  </div>
-                </div>
-
-                {/* Die Form gehört zu jeder Zeile: Erst sie macht aus der
-                    Liste lesbare Strecken statt blosser Namen — der Rest
-                    rückt einen Schritt zurück (ohne Fläche, ohne Begründung),
-                    aber nicht in den Hintergrund. Die Empfehlung zeigt sie
-                    grösser. Ihre Wanne läuft dort auf dem Seitenhintergrund,
-                    weil sie auf der Fläche sonst unsichtbar wäre. */}
-                <div className={`relative shrink-0 overflow-hidden rounded-md ${istEmpfohlen ? "h-16 w-24 bg-background" : "h-14 w-20 bg-surface"}`}>
-                  {shape && (
-                    <svg
-                      viewBox="0 0 64 48"
-                      aria-hidden="true"
-                      className={`absolute inset-0 h-full w-full opacity-80 transition-opacity duration-fast group-hover:opacity-100 ${ton?.text ?? "text-muted"}`}
-                    >
-                      <path
-                        d={shape}
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
-                </div>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+      {/* Eigene memoisierte Komponente: beim Tippen rendert die Seitenleiste
+          sofort neu (das Eingabefeld hängt am unverzögerten Suchtext), die
+          Liste darunter aber erst, wenn der zurückgestellte Suchstand in
+          ExploreView.tsx eine neue Trefferliste liefert. Ohne die Trennung
+          liefe bei jedem Tastendruck die ganze Liste mit durch. */}
+      <Streckenliste
+        routes={routes}
+        loadError={loadError}
+        signatures={signatures}
+        bewertungen={bewertungen}
+        passZustaende={passZustaende}
+        empfehlung={empfehlung}
+        onHoverRoute={onHoverRoute}
+      />
     </div>
   );
 }
+
+// memo: ExploreView rendert bei jedem Hover über eine Zeile, bei jedem
+// Zufallsvorschlag und während das Sheet gezogen wird neu. Alle Props hier
+// sind dort über Renders hinweg stabil (useMemo, useCallback, State-Setter
+// oder Server-Props), damit überspringt React die Seitenleiste in diesen
+// Fällen ganz.
+export default memo(ExploreSidebar);
+
+const Streckenliste = memo(function Streckenliste({
+  routes,
+  loadError,
+  signatures,
+  bewertungen,
+  passZustaende,
+  empfehlung,
+  onHoverRoute,
+}: {
+  routes: ExploreRoute[];
+  loadError: boolean;
+  signatures: Map<string, RouteSignature>;
+  bewertungen: Record<string, Streckenbewertung>;
+  passZustaende: Record<string, PassZustand>;
+  empfehlung: Empfehlung | null;
+  onHoverRoute: (id: string | null) => void;
+}) {
+  // Nur bei Änderung des Streckenbestands neu berechnet — sonst würde jeder
+  // Hover (der über onHoverRoute den State im Elternteil ändert) hier eine
+  // erneute Pfadberechnung für alle Karten auslösen.
+  const shapes = useMemo(
+    () =>
+      new Map(
+        routes.map((r) => [
+          r.id,
+          routeShapePath(r.geometry_geojson.coordinates as [number, number][], 64, 48, 4),
+        ]),
+      ),
+    [routes],
+  );
+
+  return (
+    <ul className="flex flex-col gap-1">
+      {routes.length === 0 && loadError && (
+        <li>
+          <div role="alert" className="flex flex-col gap-3 py-2">
+            <p className="text-sm text-danger">
+              Strecken konnten nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.
+            </p>
+            <Button variant="secondary" size="md" onClick={() => window.location.reload()}>
+              Erneut versuchen
+            </Button>
+          </div>
+        </li>
+      )}
+      {routes.map((route) => {
+        const signature = signatures.get(route.id);
+        const shape = shapes.get(route.id);
+        // Wenn das Signatur-Merkmal selbst die Länge ist (signature.label
+        // lautet dann z.B. "24 km lang"), nicht zusätzlich eine separate
+        // km-Zahl daneben zeigen — sonst steht dieselbe Länge zweimal da.
+        const showPlainKm = signature?.key !== "laenge";
+        const bewertung = bewertungen[route.id];
+        // Ohne Signatur (kann nicht vorkommen, solange computeSignatures
+        // auf demselben Bestand lief — der Typ lässt es trotzdem zu) bleibt
+        // die Zeile bei der neutralen Strukturkante.
+        const ton = signature ? SIGNATUR_KLASSEN[signature.key] : null;
+        const istEmpfohlen = empfehlung !== null && route.id === empfehlung.id;
+        // Die Begründung steht an der Empfehlung, nicht irgendwo darüber.
+        // Nur "bestbewertet" nennt einen Grund — der Bestand-Fallback
+        // behauptet ehrlich keinen.
+        const empfehlungsText = !istEmpfohlen
+          ? null
+          : empfehlung.grund === "bewertung"
+            ? "Für dich empfohlen · bestbewertet"
+            : "Für dich empfohlen";
+
+        return (
+          <li key={route.id}>
+            <Link
+              href={streckenPfad(route)}
+              onMouseEnter={() => onHoverRoute(route.id)}
+              onMouseLeave={() => onHoverRoute(null)}
+              onFocus={() => onHoverRoute(route.id)}
+              onBlur={() => onHoverRoute(null)}
+              // Alle Zeilen tragen Name, Länge, Signatur-Merkmal,
+              // Sternenschnitt und Streckenform — 80 px reichen dafür und
+              // liegen weiter deutlich über jeder Antippgrenze. Zusammen
+              // mit der Suchzeile oben macht das im Peek-Fenster aus einer
+              // angeschnittenen Zeile zwei volle plus Anschnitt.
+              //
+              // DER LINKE RAND TRÄGT DEN SIGNATURTON, NICHT DEN AKZENT.
+              //
+              // Die Unterscheidung, die hier vorher stand, gilt weiter und
+              // ist der Grund, warum das geht: der Akzent ist in dieser App
+              // die eine Farbe für "hier steht ein Wert"
+              // (components/Sterne.tsx). In dieser Zeile steht ein Wert —
+              // der Sternenschnitt —, und trüge der Rand ebenfalls den
+              // Akzent, wäre die Regel keine mehr.
+              //
+              // Der Signaturton ist kein Akzent, sondern eine eigene
+              // Kategorie: er sagt, WAS für eine Strecke das ist, und sagt
+              // es an drei Stellen derselben Zeile (Kante, Label, Form).
+              // Der Akzent bleibt dem einen Wert und dem Hover, der ein
+              // Zustand ist und keine dauerhafte Markierung.
+              //
+              // Hierarchie aus einer: Die Empfehlung steht auf einer Fläche
+              // (rounded, border, surface) mit Begründung darüber und
+              // grösserer Form — der Rest bleibt volle Zeile MIT Form, damit
+              // ein Dutzend Strecken kein Hintergrundrauschen wird.
+              className={`group flex items-center gap-3 border-l-[3px] py-3 pr-2 pl-3 transition-colors duration-fast hover:bg-accent-subtle active:bg-accent-subtle ${ton?.rand ?? "border-l-border-strong"} ${istEmpfohlen ? "min-h-24 rounded-xl border border-border bg-surface" : "h-20 border-b border-border"}`}
+            >
+              <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5">
+                {empfehlungsText && (
+                  // Neutral statt Akzent: Die Empfehlung ist kein Wert und
+                  // kein Zustand, sondern eine Einordnung — der Akzent
+                  // bleibt Wert (Sterne) und Hover vorbehalten.
+                  <span className="truncate text-xs font-medium text-muted">
+                    {empfehlungsText}
+                  </span>
+                )}
+                <span className="truncate text-base font-medium transition-colors duration-fast group-hover:text-accent-ink">
+                  {route.name}
+                </span>
+                <div className="flex items-center gap-2">
+                  {showPlainKm && (
+                    // shrink-0 und whitespace-nowrap: ohne beides ist diese
+                    // Zahl das erste, was der Flexbox ausgeht. Am Preview
+                    // auf 390 px nachgesehen — aus "33.1 km" wurden zwei
+                    // Zeilen, "33.1" über "km", und die Zeile wuchs über
+                    // ihre 80 px hinaus.
+                    //
+                    // Schrumpfen soll das Signatur-Label daneben: es hat
+                    // truncate und kürzt mit Auslassungspunkten, was bei
+                    // "Ø erlaubt 114 km/h" lesbar bleibt. Eine umbrechende
+                    // Masszahl ist dagegen nie richtig.
+                    <span className="shrink-0 text-sm tabular-nums whitespace-nowrap text-muted">
+                      {formatKmGerundet(route.laenge_km)} km
+                    </span>
+                  )}
+                  {/* Eine Sperrung verdrängt das Signatur-Label: beide
+                      zusammen mit Länge und Sternen passten auf 360 px nicht,
+                      und das Label schrumpfte auf 0 px, zurück blieb ein
+                      verwaistes Icon (Gotthard, Re-Audit 2026-09-23). Ob
+                      der Pass zu ist, zählt dann mehr als sein Charakter. */}
+                  {signature && !zeigeInListe(passZustaende[route.id] ?? null) && (
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      {/* Icon und Label im Signaturton. Bei text-xs ist die
+                          Schwelle 4,5:1 — genau daran war die alte Palette
+                          gescheitert (drei von fünf fielen im hellen Theme
+                          durch). Die Tokens dahinter sind gegen alle drei
+                          Untergründe gerechnet, auf denen diese Zeile
+                          vorkommt; der schlechteste Wert ist 4,70:1. */}
+                      {(() => {
+                        const SignatureIcon = SIGNATURE_ICONS[signature.key];
+                        return (
+                          <SignatureIcon
+                            className={`h-3 w-3 shrink-0 ${ton?.text ?? "text-muted"}`}
+                            aria-hidden="true"
+                          />
+                        );
+                      })()}
+                      <span
+                        className={`truncate text-xs font-medium tracking-wide ${ton?.text ?? "text-muted"}`}
+                      >
+                        {signature.label}
+                      </span>
+                    </span>
+                  )}
+                  {/* Zuletzt und shrink-0: die Zeile davor darf kürzen,
+                      diese Zahl nicht. Und zuletzt statt zuerst, damit die
+                      linke Kante der Liste ausgerichtet bleibt — eine
+                      Strecke ohne Wertung liesse eine führende Spalte sonst
+                      leer und die Liste ausgefranst aussehen.
+
+                      Ohne eine einzige Wertung steht hier nichts statt
+                      "0.0": siehe RatingSection, dieselbe Regel. */}
+                  {bewertung && (
+                    <Sternschnitt
+                      schnitt={bewertung.schnitt}
+                      zahlClassName="text-xs text-muted"
+                      sternClassName="h-3 w-3"
+                    >
+                      <span className="sr-only">{anzahlText(bewertung.anzahl)}</span>
+                    </Sternschnitt>
+                  )}
+                  {/* Der Passzustand steht nur hier, wenn er die Planung
+                      ändert: gesperrt, Wintersperre, eingeschränkt. "Offen"
+                      ist die Erwartung und bekäme sonst in jeder Zeile ein
+                      Abzeichen, das nichts sagt (lib/passStatus.ts). */}
+                  {zeigeInListe(passZustaende[route.id] ?? null) && (
+                    <PassStatusMarke
+                      className="shrink-0"
+                      anzeige={{
+                        zustand: passZustaende[route.id],
+                        label: ZUSTAND_LABEL[passZustaende[route.id]],
+                        ton: ZUSTAND_TON[passZustaende[route.id]],
+                        text: "",
+                        herkunft: "",
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Die Form gehört zu jeder Zeile: Erst sie macht aus der
+                  Liste lesbare Strecken statt blosser Namen — der Rest
+                  rückt einen Schritt zurück (ohne Fläche, ohne Begründung),
+                  aber nicht in den Hintergrund. Die Empfehlung zeigt sie
+                  grösser. Ihre Wanne läuft dort auf dem Seitenhintergrund,
+                  weil sie auf der Fläche sonst unsichtbar wäre. */}
+              <div className={`relative shrink-0 overflow-hidden rounded-md ${istEmpfohlen ? "h-16 w-24 bg-background" : "h-14 w-20 bg-surface"}`}>
+                {shape && (
+                  <svg
+                    viewBox="0 0 64 48"
+                    aria-hidden="true"
+                    className={`absolute inset-0 h-full w-full opacity-80 transition-opacity duration-fast group-hover:opacity-100 ${ton?.text ?? "text-muted"}`}
+                  >
+                    <path
+                      d={shape}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </div>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
+});
