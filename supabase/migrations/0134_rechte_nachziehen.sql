@@ -261,5 +261,11 @@ grant insert (
   motorklasse_belegt,
   parent_completion_id, erkennung_automatisch,
   segment_fenster_von, segment_fenster_bis,
-  importiert
+  importiert,
+  -- fuer_follower kam mit 0145 (anderer Zweig, vor dem Einspielen dieser
+  -- Datei live) dazu. save_free_ride_with_segments läuft als Aufrufer
+  -- (SECURITY INVOKER) und schreibt die Spalte — ohne sie hier scheiterte
+  -- das Speichern jeder freien Fahrt. Nachgetragen am 2026-09-25, vor dem
+  -- Einspielen.
+  fuer_follower
 ) on public.route_completions to authenticated;
