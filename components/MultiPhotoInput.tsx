@@ -251,7 +251,7 @@ export default function MultiPhotoInput({
         accept="image/*"
         multiple
         onChange={handleChange}
-        className="sr-only"
+        className="peer sr-only"
       />
       <input type="hidden" name="foto_pfade" value={JSON.stringify(fotoPfade)} />
       {entries.length > 0 && (
@@ -283,16 +283,24 @@ export default function MultiPhotoInput({
         </div>
       )}
       {entries.length < maxPhotos && (
+        // Das Dateifeld ist sr-only und bekommt den Tastaturfokus unsichtbar
+        // — der Ring gehört an das sichtbare Feld, das dafür steht (peer).
         <label
           htmlFor={id}
-          className="cursor-pointer rounded-md border border-dashed border-border px-3 py-3 text-center text-muted transition-colors duration-fast hover:border-muted hover:text-foreground"
+          className="cursor-pointer rounded-md border border-dashed border-border px-3 py-3 text-center text-muted transition-colors duration-fast hover:border-muted hover:text-foreground peer-focus-visible:ring-2 peer-focus-visible:ring-accent"
         >
           + Foto hinzufügen
         </label>
       )}
-      {sizeError && <span className="text-xs text-danger">Ein Foto ist zu gross (max. 8 MB).</span>}
+      {sizeError && (
+        <span role="alert" className="text-xs text-danger">
+          Ein Foto ist zu gross (max. 8 MB).
+        </span>
+      )}
       {limitError && (
-        <span className="text-xs text-danger">Maximal {maxPhotos} Fotos pro Fahrt.</span>
+        <span role="alert" className="text-xs text-danger">
+          Maximal {maxPhotos} Fotos pro Fahrt.
+        </span>
       )}
       {lädtHoch && (
         <span role="status" className="text-xs text-muted">
