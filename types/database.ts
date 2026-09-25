@@ -490,6 +490,9 @@ export interface Profile {
   //
   // Für die ANZEIGE des Abzeichens ist keine dieser beiden Spalten die
   // richtige: dafür steht zeigt_premium_abzeichen weiter unten.
+  //
+  // Seit 0154 nur für service_role direkt lesbar; die angemeldete Person
+  // liest den eigenen Wert über rpc("mein_premium") (lib/meinPremium.ts).
   ist_premium: boolean;
   // Opt-in. Nur wirksam zusammen mit ist_premium — verknüpft wird in der
   // Datenbank, nicht hier.

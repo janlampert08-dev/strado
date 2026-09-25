@@ -4,6 +4,7 @@ import { BESTAND_VARIABLEN, preisIdsAus } from "@/lib/stripeWebhook";
 import { passZeitraum } from "@/lib/premiumAngebot";
 import { zahlungNochOffen } from "@/lib/offeneZahlung";
 import { throwOnQueryError } from "@/lib/queryError";
+import { eigenerPremiumStatus } from "@/lib/meinPremium";
 import {
   MAX_PRIVATE_STRECKEN_GRATIS,
   type AboPlanKennung,
@@ -88,8 +89,9 @@ function statusIstLaufend(status: string): boolean {
 //
 // Liest über den an die Session gebundenen Client, also unter RLS — die
 // Policy aus 0063 gibt genau die eigene Zeile frei, und der Spalten-Grant
-// hält die Stripe-Kennungen heraus. Kein Service-Role-Client: eine
-// Berechtigungsfrage über den RLS-Bypass zu beantworten hiesse, die
+// hält die Stripe-Kennungen heraus. ist_premium kommt seit 0161 über
+// mein_premium() (lib/meinPremium.ts), festgelegt auf auth.uid().
+// Kein Service-Role-Client: eine Berechtigungsfrage über den RLS-Bypass zu beantworten hiesse, die
 // Schranke genau dort aufzugeben, wo sie zählt.
 export const getPremiumStatus = cache(async function getPremiumStatus(): Promise<PremiumStatus> {
   const supabase = await createClient();
@@ -98,11 +100,13 @@ export const getPremiumStatus = cache(async function getPremiumStatus(): Promise
   if (!user) return KEIN_PREMIUM;
 
   const [
-    { data: profil, error: profilError },
+    { aktiv, fehler: profilError },
     { data: abo, error: aboError },
     { data: pass, error: passError },
   ] = await Promise.all([
-    supabase.from("profiles").select("ist_premium").eq("id", user.id).maybeSingle(),
+    // Über mein_premium() (0161): die Spalte ist für authenticated nicht
+    // mehr lesbar, sonst läse jeder den Abo-Status jedes anderen.
+    eigenerPremiumStatus(supabase, user.id),
     supabase
       .from("subscriptions")
       .select("status, price_id, current_period_end, cancel_at_period_end, kulanz_bis")
@@ -165,8 +169,7 @@ export const getPremiumStatus = cache(async function getPremiumStatus(): Promise
   // profiles.ist_premium ist die massgebliche Projektion: sie wird in
   // derselben Transaktion geschrieben wie die Abo-Zeile (0059) bzw. der
   // Pass (0110) und deckt zusätzlich den Fall ab, dass Premium ohne beides
-  // von Hand gesetzt wurde.
-  const aktiv = profil?.ist_premium === true;
+  // von Hand gesetzt wurde. (aktiv kommt oben aus eigenerPremiumStatus.)
 
   // Läuft gerade einer, und bis wann reicht die Kette? Die Auswertung steht
   // in lib/premiumAngebot.ts, damit sie geprüft werden kann (Vitest kennt

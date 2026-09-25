@@ -29,6 +29,19 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Ausstehend: 0161_ist_premium_privat — erst nach der nächsten Promotion
+
+Entzieht anon/authenticated den Spalten-Grant auf `profiles.ist_premium`
+(der offene Befund aus dem Kopf von 0087) und gibt die eigene Antwort über
+`mein_premium()` heraus. Stellt dazu die beiden Leser unter authenticated
+um, die sonst mit 42501 brächen: `darf_private_strecke_anlegen()` und die
+vier Premium-Policies des Wartungshefts (0111).
+
+**Erst nach der Promotion staging → main einspielen**: der Code auf main
+liest die Spalte direkt (`getPremiumStatus`). Der neue Code fällt auf die
+Spalte zurück, solange die Funktion fehlt (PGRST202), und läuft deshalb
+schon vorher. Prüfabfragen und Rückweg im Kopf der Datei.
+
 ## Eingespielt: 0148_gemeldete_fahrt_verbergen (2026-09-25, Produktion)
 
 "Fahrt verbergen" in der Moderation traf 0 Zeilen (gemessen vor 0145): ein
