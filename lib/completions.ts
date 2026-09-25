@@ -230,9 +230,17 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
   if (publicRow) {
     const row = publicRow as PublicFahrt;
 
+    const istBesitzer = viewerId === row.user_id;
+
+    // Alle Abfragen hängen nur an der Zeile aus public_fahrten und am
+    // Betrachter, nicht aneinander — darum laufen sie gemeinsam statt
+    // nacheinander. Die Fehler werden danach in derselben Reihenfolge
+    // geprüft wie zuvor.
     const [
       { data: photoRows, error: photoError },
       { data: trackRow, error: trackError },
+      tempoFlag,
+      ownRows,
     ] = await Promise.all([
       supabase
         .from("public_completion_photos")
@@ -246,6 +254,38 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
         .select("track_geojson")
         .eq("completion_id", row.completion_id)
         .maybeSingle<Pick<PublicFahrtTrack, "track_geojson">>(),
+      // Das Tempo-Flag des Fahrers, nur für fremde Betrachter gelesen.
+      istBesitzer
+        ? Promise.resolve(null)
+        : supabase
+            .from("profiles")
+            .select("zeigt_tempo")
+            .eq("id", row.user_id)
+            .maybeSingle<{ zeigt_tempo: boolean }>(),
+      // Für den Fahrer selbst zwei Dinge nachladen, die die öffentliche View
+      // bewusst nicht enthält — siehe unten.
+      istBesitzer
+        ? Promise.all([
+            supabase
+              .from("route_completions")
+              .select("hoehenprofil, hoehen_quelle, tempoprofil, parent_completion_id, motorklasse, motorklasse_gewertet")
+              .eq("id", row.completion_id)
+              .eq("user_id", row.user_id)
+              .maybeSingle<{
+                hoehenprofil: HoehenprofilPunkt[] | null;
+                hoehen_quelle: HoehenQuelle | null;
+                tempoprofil: TempoprofilPunkt[] | null;
+                parent_completion_id: string | null;
+                motorklasse: Motorklasse | null;
+                motorklasse_gewertet: Motorklasse | null;
+              }>(),
+            supabase
+              .from("fahrt_tracks")
+              .select("track_geojson")
+              .eq("completion_id", row.completion_id)
+              .maybeSingle<Pick<FahrtTrack, "track_geojson">>(),
+          ])
+        : Promise.resolve(null),
     ]);
 
     // Eine leere Fotoliste bzw. ein fehlender Track sind ein gültiges
@@ -273,40 +313,15 @@ export const getCompletionDetail = cache(async function getCompletionDetail(
     // Tempo verborgen: eine unlesbare Datenschutz-Einstellung darf nicht zum
     // Zeigen führen — derselbe Grundsatz wie beim Privatzonen-Radius
     // (privacyRadiusM in lib/publicTrack.ts).
-    let zeigtTempo = viewerId === row.user_id;
-    if (!zeigtTempo) {
-      const { data: fahrerProfil, error: tempoFlagError } = await supabase
-        .from("profiles")
-        .select("zeigt_tempo")
-        .eq("id", row.user_id)
-        .maybeSingle<{ zeigt_tempo: boolean }>();
-      zeigtTempo = !tempoFlagError && fahrerProfil?.zeigt_tempo === true;
-    }
+    const zeigtTempo =
+      istBesitzer ||
+      (!!tempoFlag && !tempoFlag.error && tempoFlag.data?.zeigt_tempo === true);
 
-    if (viewerId === row.user_id) {
+    if (ownRows) {
       const [
         { data: own, error: ownError },
         { data: ownTrackRow, error: ownTrackError },
-      ] = await Promise.all([
-        supabase
-          .from("route_completions")
-          .select("hoehenprofil, hoehen_quelle, tempoprofil, parent_completion_id, motorklasse, motorklasse_gewertet")
-          .eq("id", row.completion_id)
-          .eq("user_id", viewerId)
-          .maybeSingle<{
-            hoehenprofil: HoehenprofilPunkt[] | null;
-            hoehen_quelle: HoehenQuelle | null;
-            tempoprofil: TempoprofilPunkt[] | null;
-            parent_completion_id: string | null;
-            motorklasse: Motorklasse | null;
-            motorklasse_gewertet: Motorklasse | null;
-          }>(),
-        supabase
-          .from("fahrt_tracks")
-          .select("track_geojson")
-          .eq("completion_id", row.completion_id)
-          .maybeSingle<Pick<FahrtTrack, "track_geojson">>(),
-      ]);
+      ] = ownRows;
       throwOnQueryError(ownError, "Höhenprofil der Fahrt");
       throwOnQueryError(ownTrackError, "Track der Fahrt");
 

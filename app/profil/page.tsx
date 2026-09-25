@@ -275,21 +275,25 @@ export default async function ProfilPage() {
   // Passfahrten aus derselben Quelle wie die Zeile oben (0104/0113). Nur mit
   // Abo — ohne gibt es dort nur den Hinweis, und die Zahl steht schon in
   // getSammlungsStand.
-  const passSammlung = premiumStatus.aktiv ? await getPassSammlungsDaten() : null;
-
+  //
   // Eine Wartungszeile je Fahrzeugkachel, aber nur mit laufendem Abo und
   // erst nach dem Status: die drei Abfragen dahinter (Einträge,
   // Erinnerungen, Fahrten) sind für ein Konto ohne Wartungsheft reine
-  // Leerläufe. Bewusst NACH dem Promise.all und nicht darin — sonst liefe
-  // sie für jedes kostenlose Konto bei jedem Profilaufruf mit.
+  // Leerläufe. Bewusst NACH dem Promise.all oben und nicht darin — sonst
+  // liefe sie für jedes kostenlose Konto bei jedem Profilaufruf mit.
   // Eine Zusatzzeile, kein tragender Teil der Seite: scheitert sie, fehlen
   // die Hinweise, nicht das ganze Profil.
-  const wartungsHinweise = premiumStatus.aktiv
-    ? await getWartungsHinweise(user.id).catch((err) => {
-        console.error("Wartungshinweise nicht ladbar", err);
-        return undefined;
-      })
-    : undefined;
+  //
+  // Beide hängen nur am Abo-Status, nicht aneinander — darum gemeinsam.
+  const [passSammlung, wartungsHinweise] = premiumStatus.aktiv
+    ? await Promise.all([
+        getPassSammlungsDaten(),
+        getWartungsHinweise(user.id).catch((err) => {
+          console.error("Wartungshinweise nicht ladbar", err);
+          return undefined;
+        }),
+      ])
+    : [null, undefined];
 
   // Die mobile Leiste (BottomNav) führt Creator und Moderation nicht mehr —
   // sie ist auf fünf Einträge gedeckelt, siehe lib/nav.ts. Unter md ist das

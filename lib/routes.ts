@@ -526,11 +526,15 @@ export interface RouteChoice {
 
 export async function listRouteChoices(): Promise<RouteChoice[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("routes_geojson")
-    .select("id, name")
-    .eq("status_ok", true)
-    .order("name");
+  // Beide Abfragen hängen nicht aneinander — darum gemeinsam gestartet.
+  const [{ data, error }, { data: zeiten }] = await Promise.all([
+    supabase
+      .from("routes_geojson")
+      .select("id, name")
+      .eq("status_ok", true)
+      .order("name"),
+    supabase.from("route_leaderboard").select("route_id").limit(2000),
+  ]);
 
   if (error) {
     console.error("Streckenliste konnte nicht geladen werden:", error.message);
@@ -544,7 +548,6 @@ export async function listRouteChoices(): Promise<RouteChoice[]> {
   // es bei der alphabetischen Reihenfolge: das ist eine Sortierhilfe, kein
   // Inhalt.
   const strecken = (data as RouteChoice[]) ?? [];
-  const { data: zeiten } = await supabase.from("route_leaderboard").select("route_id").limit(2000);
   const mitZeiten = new Set(((zeiten as { route_id: string }[] | null) ?? []).map((z) => z.route_id));
   if (mitZeiten.size === 0) return strecken;
   return [

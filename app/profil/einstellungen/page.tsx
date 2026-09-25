@@ -64,6 +64,7 @@ export default async function EinstellungenPage() {
     premiumStatus,
     istMod,
     origin,
+    privatzone,
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -89,6 +90,8 @@ export default async function EinstellungenPage() {
     getPremiumStatus(),
     isModerator(user.id),
     getOrigin(),
+    // Der Privatzonen-Radius, eigene Abfrage — siehe unten.
+    eigenerPrivatzonenRadius(supabase),
   ]);
 
   // Der Privatzonen-Radius steht seit 0132 nicht mehr in der Spaltenliste
@@ -102,7 +105,6 @@ export default async function EinstellungenPage() {
   // Felder mit (VisibilitySettings), eine falsch vorbelegte Auswahl würde
   // also still gespeichert — und dann besser in die schützende Richtung
   // (dieselbe Überlegung wie bei privacyRadiusM in lib/publicTrack.ts).
-  const privatzone = await eigenerPrivatzonenRadius(supabase);
   const privatzoneRadiusM = privatzone.fehler
     ? MAX_PRIVACY_RADIUS_M
     : (privatzone.radiusM ?? DEFAULT_PRIVACY_RADIUS_M);
