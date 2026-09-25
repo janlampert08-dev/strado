@@ -89,7 +89,7 @@ function statusIstLaufend(status: string): boolean {
 //
 // Liest über den an die Session gebundenen Client, also unter RLS — die
 // Policy aus 0063 gibt genau die eigene Zeile frei, und der Spalten-Grant
-// hält die Stripe-Kennungen heraus. ist_premium kommt seit 0154 über
+// hält die Stripe-Kennungen heraus. ist_premium kommt seit 0161 über
 // mein_premium() (lib/meinPremium.ts), festgelegt auf auth.uid().
 // Kein Service-Role-Client: eine Berechtigungsfrage über den RLS-Bypass zu beantworten hiesse, die
 // Schranke genau dort aufzugeben, wo sie zählt.
@@ -104,7 +104,7 @@ export const getPremiumStatus = cache(async function getPremiumStatus(): Promise
     { data: abo, error: aboError },
     { data: pass, error: passError },
   ] = await Promise.all([
-    // Über mein_premium() (0154): die Spalte ist für authenticated nicht
+    // Über mein_premium() (0161): die Spalte ist für authenticated nicht
     // mehr lesbar, sonst läse jeder den Abo-Status jedes anderen.
     eigenerPremiumStatus(supabase, user.id),
     supabase

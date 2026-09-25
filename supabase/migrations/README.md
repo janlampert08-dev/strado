@@ -29,7 +29,7 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
-## Ausstehend: 0154_ist_premium_privat — erst nach der nächsten Promotion
+## Ausstehend: 0161_ist_premium_privat — erst nach der nächsten Promotion
 
 Entzieht anon/authenticated den Spalten-Grant auf `profiles.ist_premium`
 (der offene Befund aus dem Kopf von 0087) und gibt die eigene Antwort über

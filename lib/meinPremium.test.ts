@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { eigenerPremiumStatus } from "@/lib/meinPremium";
 
-// Seit 0154 liest getPremiumStatus() den eigenen Abo-Status über
+// Seit 0161 liest getPremiumStatus() den eigenen Abo-Status über
 // rpc("mein_premium"); die Spalte profiles.ist_premium ist für
 // authenticated nicht mehr lesbar. Der Weg über die Spalte bleibt nur als
 // Rückfall, solange die Funktion noch nicht existiert (PGRST202).
@@ -49,7 +49,7 @@ describe("eigenerPremiumStatus", () => {
     expect(aufrufe.spalte).toBe(0);
   });
 
-  it("fällt vor 0154 auf die Spalte zurück", async () => {
+  it("fällt vor 0161 auf die Spalte zurück", async () => {
     const { client, aufrufe } = fakeClient(FEHLT, { data: { ist_premium: true }, error: null });
     await expect(eigenerPremiumStatus(client, "u1")).resolves.toEqual({ aktiv: true, fehler: null });
     expect(aufrufe.spalte).toBe(1);

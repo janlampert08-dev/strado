@@ -101,7 +101,7 @@ as $$
 $$;
 
 comment on function public.mein_premium() is
-  'Abo-Status (profiles.ist_premium) der angemeldeten Person (0154). Einziger Leseweg für authenticated, seit der Spalten-Grant entzogen ist — sonst läse jeder den Status jedes anderen.';
+  'Abo-Status (profiles.ist_premium) der angemeldeten Person (0161). Einziger Leseweg für authenticated, seit der Spalten-Grant entzogen ist — sonst läse jeder den Status jedes anderen.';
 
 revoke all on function public.mein_premium() from public, anon;
 grant execute on function public.mein_premium() to authenticated;
@@ -174,4 +174,4 @@ alter policy "Wartungserinnerungen aendern mit Premium" on public.wartungserinne
 revoke select (ist_premium) on public.profiles from anon, authenticated;
 
 comment on column public.profiles.ist_premium is
-  'Abo-Status, fortgeschrieben von Webhook und Abgleich (0059/0110). Seit 0154 nicht mehr für anon/authenticated lesbar; die Person selbst liest über mein_premium(), fremde Profile zeigen zeigt_premium_abzeichen (0087).';
+  'Abo-Status, fortgeschrieben von Webhook und Abgleich (0059/0110). Seit 0161 nicht mehr für anon/authenticated lesbar; die Person selbst liest über mein_premium(), fremde Profile zeigen zeigt_premium_abzeichen (0087).';
