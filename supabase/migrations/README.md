@@ -29,6 +29,25 @@ ist frei wählbar und historisch uneinheitlich (ältere Einträge tragen den
 `00NN_`-Präfix nicht) — maßgeblich ist, ob die **Objekte** existieren, nicht
 ob die Namen zusammenpassen.
 
+## Eingespielt: 0148_gemeldete_fahrt_verbergen (2026-09-25, Produktion)
+
+"Fahrt verbergen" in der Moderation traf 0 Zeilen (gemessen vor 0145): ein
+UPDATE sieht nur Zeilen, die der Aufrufer lesen darf, und auf
+route_completions gibt es nur "Nutzer sehen eigene Fahrten". Statt einer
+SELECT-Policy für Moderatoren (sie gäbe ihnen alle Fahrten samt vollständiger
+Tracks frei) eine SECURITY-DEFINER-Funktion: Rolle prüfen, offene Meldung
+verlangen, Fahrt ganz aus der Sicht nehmen (öffentlich und Follower), offene
+Meldungen schliessen — in einer Transaktion.
+
+- **Zurückgerollter Funktionstest vorher:** normaler Nutzer → `not_moderator`;
+  Moderator ohne offene Meldung → false; mit Meldung → true, Fahrt danach
+  privat ohne gekappten Track, 0 offene Meldungen, nur diese eine Fahrt
+  betroffen (12 → 11 öffentliche); anon ohne EXECUTE.
+- **Gemessen danach:** Ledger `0148_gemeldete_fahrt_verbergen`, anon ohne,
+  authenticated mit EXECUTE, weiterhin 12 öffentliche Fahrten.
+- Der Code (`unpublishReportedCompletion`) ruft die Funktion auf; der alte
+  Code bleibt bis zum Deploy so kaputt wie vorher.
+
 ## Eingespielt: 0160_folgeanfrage_annehmen_zeitpunkt (2026-09-25, Produktion)
 
 Zweites Code-Review vor dem Release: `folgeanfrage_annehmen` übernimmt den
