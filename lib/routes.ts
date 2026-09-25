@@ -326,6 +326,8 @@ export async function getKontextStrecken(route: RouteGeoJSON): Promise<KartenStr
 
 export interface NachbarStrecke {
   id: string;
+  /** Lesbare Adresse (0130); null nur für eine Strecke ohne Slug. */
+  slug: string | null;
   name: string;
   region: string;
   laengeKm: number;
@@ -344,7 +346,7 @@ export async function getNachbarStrecken(route: {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("routes_geojson")
-    .select("id, name, region, laenge_km, start_geojson")
+    .select("id, name, region, laenge_km, start_geojson, slug")
     .eq("status_ok", true)
     .eq("ist_privat", false);
 
@@ -353,10 +355,12 @@ export async function getNachbarStrecken(route: {
     return [];
   }
 
-  type Zeile = { id: string; name: string; region: string; laenge_km: number; start_geojson: { coordinates: [number, number] } };
+  type Zeile = { id: string; name: string; region: string; laenge_km: number; start_geojson: { coordinates: [number, number] }; slug: string | null };
   const kandidaten = ((data as unknown as Zeile[]) ?? [])
     .filter((z) => Array.isArray(z.start_geojson?.coordinates))
     .map((z) => ({ id: z.id, name: z.name, region: z.region, laengeKm: z.laenge_km, start: z.start_geojson.coordinates }));
+
+  const slugJeId = new Map(((data as unknown as Zeile[]) ?? []).map((z) => [z.id, z.slug]));
 
   return waehleNachbarStrecken(kandidaten, {
     id: route.id,
@@ -364,6 +368,9 @@ export async function getNachbarStrecken(route: {
     start: route.start_geojson.coordinates as [number, number],
   }).map(({ strecke, distanzKm }) => ({
     id: strecke.id,
+    // Direkt die lesbare Adresse verlinken statt die UUID, die proxy.ts erst
+    // per Datenbankabfrage auf den Slug umleitet (Re-Audit 2026-09-25, L2).
+    slug: slugJeId.get(strecke.id) ?? null,
     name: strecke.name,
     region: strecke.region,
     laengeKm: strecke.laengeKm,
@@ -379,7 +386,6 @@ export interface RouteSitemapEintrag {
   created_at: string;
   slug?: string | null;
 }
-
 
 // Der Streckenbestand, reduziert auf die Spalten, aus denen sich ein
 // Signatur-Merkmal berechnet. computeSignatures() vergleicht eine Strecke
